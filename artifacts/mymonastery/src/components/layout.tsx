@@ -25,7 +25,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden">
-      <header className="absolute top-0 left-0 right-0 z-10 px-6 md:px-8 py-6 md:py-8 flex justify-between items-center">
+      <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 py-4 md:py-6 flex justify-between items-center" style={{ background: "rgba(242,239,230,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
         <div className="flex items-center gap-6">
           <Link href="/dashboard" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md">
             <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors" style={{ letterSpacing: "-0.025em", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -122,7 +122,7 @@ export function Layout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main className="flex-1 flex flex-col pt-24 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 flex flex-col pt-4 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
