@@ -130,8 +130,8 @@ function LettersSection() {
           style={{ background: "#E8E4D8", border: "1px dashed #C8C4B4" }}
         >
           <div className="text-3xl mb-2">📮</div>
-          <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>A correspondence is how you tend a relationship across distance.</p>
-          <p className="text-xs mb-3" style={{ color: "#9a9390" }}>Slow, deliberate, yours. 🌿</p>
+          <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>Letters are how belonging gets cultivated, one week at a time.</p>
+          <p className="text-xs mb-3" style={{ color: "#9a9390" }}>A real dialogue. A shared history. A relationship that deepens.</p>
           <Link href="/letters/new">
             <span className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>Start a correspondence →</span>
           </Link>
@@ -274,9 +274,9 @@ function GatheringsSection() {
           className="rounded-xl p-5 text-center"
           style={{ background: "#E8E4D8", border: "1px dashed #C8C4B4" }}
         >
-          <div className="text-3xl mb-2">🎉</div>
-          <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>Roots grow before they're needed.</p>
-          <p className="text-xs mb-3" style={{ color: "#9a9390" }}>A gathering is your community meeting regularly, with intention. 🌱</p>
+          <div className="text-3xl mb-2">⛪</div>
+          <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>Community grows where people keep showing up.</p>
+          <p className="text-xs mb-3" style={{ color: "#9a9390" }}>Commit to a rhythm. Phoebe handles the rest.</p>
           <Link href="/tradition/new">
             <span className="text-sm font-semibold" style={{ color: "#C17F24" }}>Start a gathering →</span>
           </Link>

@@ -59,10 +59,10 @@ export default function GatheringsPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center text-center py-12"
           >
-            <div className="text-5xl mb-6">🎉</div>
-            <p className="text-base font-medium mb-1" style={{ color: "#2C1810" }}>Roots grow before they're needed.</p>
+            <div className="text-5xl mb-6">⛪</div>
+            <p className="text-base font-medium mb-1" style={{ color: "#2C1810" }}>Community grows where people keep showing up.</p>
             <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
-              A gathering is how your community meets regularly — with rhythm, with care. 🌱
+              Commit to a rhythm. Phoebe handles the rest.
             </p>
             <Link href="/tradition/new">
               <button

@@ -241,9 +241,9 @@ export default function LettersPage() {
             className="flex flex-col items-center text-center py-12"
           >
             <div className="text-5xl mb-6">📮</div>
-            <p className="text-base font-medium mb-1" style={{ color: "#2C1810" }}>A correspondence is how you tend a relationship across distance.</p>
+            <p className="text-base font-medium mb-1" style={{ color: "#2C1810" }}>Letters are how belonging gets cultivated, one week at a time.</p>
             <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
-              Slow, deliberate, yours.
+              A real dialogue. A shared history. A relationship that deepens.
             </p>
             <Link href="/letters/new">
               <button
