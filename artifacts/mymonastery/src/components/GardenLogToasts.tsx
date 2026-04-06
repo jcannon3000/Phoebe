@@ -13,7 +13,7 @@ export function GardenLogToasts({ toasts }: { toasts: VisibleToast[] }) {
           style={{
             maxWidth: 260,
             background: "#2C1810",
-            color: "#EDE8DE",
+            color: "#E8E4D8",
             borderRadius: 12,
             padding: "12px 16px",
             opacity: toast.exiting ? 0 : 1,

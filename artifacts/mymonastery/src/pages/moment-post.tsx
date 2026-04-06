@@ -104,7 +104,7 @@ function PresenceDots({ count, total }: { count: number; total: number }) {
     <div className="flex items-center gap-1.5 justify-center">
       {Array.from({ length: shown }).map((_, i) => (
         <motion.div key={i} initial={false} animate={{ scale: i < count ? [1.2, 1] : 1 }}
-          className={clsx("w-2.5 h-2.5 rounded-full transition-colors", i < count ? "bg-[#6B8F71]" : "bg-[#c9b99a]/40")} />
+          className={clsx("w-2.5 h-2.5 rounded-full transition-colors", i < count ? "bg-[#5C7A5F]" : "bg-[#c9b99a]/40")} />
       ))}
       {total > 8 && <span className="text-xs text-[#c9b99a]/60">+{total - 8}</span>}
     </div>
@@ -126,8 +126,8 @@ function NamedPresence({ members, myToken }: { members: MomentMember[]; myToken?
               className={clsx(
                 "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors",
                 m.prayed
-                  ? "bg-[#6B8F71] border-[#6B8F71] text-white"
-                  : "bg-transparent border-[#6B8F71]/40 text-[#6B8F71]/60"
+                  ? "bg-[#5C7A5F] border-[#5C7A5F] text-white"
+                  : "bg-transparent border-[#5C7A5F]/40 text-[#5C7A5F]/60"
               )}
             >
               {initial}
@@ -140,7 +140,7 @@ function NamedPresence({ members, myToken }: { members: MomentMember[]; myToken?
       })}
       {members.length > shown && (
         <div className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold border-2 border-[#6B8F71]/30 text-[#6B8F71]/50">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold border-2 border-[#5C7A5F]/30 text-[#5C7A5F]/50">
             +{members.length - shown}
           </div>
         </div>
@@ -163,13 +163,13 @@ function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: Mo
             <motion.div
               animate={{
                 scale: isBloomin ? [0, 1.3, 1] : 1,
-                backgroundColor: m.prayed ? "#6B8F71" : "#EDE8DE",
-                borderColor: m.prayed ? "#6B8F71" : "rgba(107,143,113,0.4)",
+                backgroundColor: m.prayed ? "#5C7A5F" : "#E8E4D8",
+                borderColor: m.prayed ? "#5C7A5F" : "rgba(92,122,95,0.4)",
               }}
               transition={{ duration: 0.5, ease: "easeOut" }}
               className={clsx(
                 "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2",
-                m.prayed ? "text-white" : "text-[#6B8F71]/60"
+                m.prayed ? "text-white" : "text-[#5C7A5F]/60"
               )}
             >
               {initial}
@@ -182,7 +182,7 @@ function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: Mo
       })}
       {members.length > shown && (
         <div className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold border-2 border-[#6B8F71]/30 text-[#6B8F71]/50">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold border-2 border-[#5C7A5F]/30 text-[#5C7A5F]/50">
             +{members.length - shown}
           </div>
         </div>
@@ -287,16 +287,16 @@ function IntercessionPrayerPage({
         {!myReflection && (
           <div className="mb-6">
             {!showReflection ? (
-              <button onClick={() => setShowReflection(true)} className="text-sm text-[#6B8F71] underline-offset-2 hover:underline">
+              <button onClick={() => setShowReflection(true)} className="text-sm text-[#5C7A5F] underline-offset-2 hover:underline">
                 Add a reflection?
               </button>
             ) : (
               <div className="text-left">
-                <p className="font-serif italic text-[#6B8F71] text-sm mb-2">"{reflectionPrompt}"</p>
+                <p className="font-serif italic text-[#5C7A5F] text-sm mb-2">"{reflectionPrompt}"</p>
                 <textarea value={reflection} onChange={e => setReflection(e.target.value.slice(0, 280))} rows={3}
-                  className="w-full px-4 py-3 rounded-2xl border border-[#c9b99a]/40 focus:border-[#6B8F71] focus:outline-none bg-white resize-none text-sm"
+                  className="w-full px-4 py-3 rounded-2xl border border-[#c9b99a]/40 focus:border-[#5C7A5F] focus:outline-none bg-white resize-none text-sm"
                   placeholder="What is on your heart today?" autoFocus />
-                <button onClick={() => onComplete(reflection)} className="mt-2 w-full py-3 rounded-xl bg-[#6B8F71] text-white text-sm font-semibold">
+                <button onClick={() => onComplete(reflection)} className="mt-2 w-full py-3 rounded-xl bg-[#5C7A5F] text-white text-sm font-semibold">
                   Save reflection
                 </button>
               </div>
@@ -328,7 +328,7 @@ function IntercessionPrayerPage({
 
         {/* Header — staggered fade-in */}
         <motion.div variants={headerContainer} initial="hidden" animate="visible" className="text-center mb-5">
-          <motion.p variants={headerItem} className="text-[11px] uppercase tracking-widest text-[#6B8F71]/60 mb-2">
+          <motion.p variants={headerItem} className="text-[11px] uppercase tracking-widest text-[#5C7A5F]/60 mb-2">
             {intercessionSource === "bcp" ? "Intercession Prayer" : "Prayer Together"}
           </motion.p>
           <motion.h1 variants={headerItem} className="text-[22px] font-bold text-[#2C1A0E] leading-snug mb-2"
@@ -336,13 +336,13 @@ function IntercessionPrayerPage({
             {topic}
           </motion.h1>
           {intention && intention !== topic && (
-            <motion.p variants={headerItem} className="text-[#6B8F71] text-[13px]">
+            <motion.p variants={headerItem} className="text-[#5C7A5F] text-[13px]">
               Praying for: {intention}
             </motion.p>
           )}
         </motion.div>
 
-        <div className="w-full h-px bg-[#6B8F71]/20 mb-6" />
+        <div className="w-full h-px bg-[#5C7A5F]/20 mb-6" />
 
         {/* Prayer text — subtle upward settle, 400ms after header */}
         {fullText && (
@@ -364,7 +364,7 @@ function IntercessionPrayerPage({
           </motion.div>
         )}
 
-        <div className="w-full h-px bg-[#6B8F71]/20 mb-6" />
+        <div className="w-full h-px bg-[#5C7A5F]/20 mb-6" />
 
         {/* Presence — with ambient glow when two have prayed */}
         <motion.div
@@ -386,10 +386,10 @@ function IntercessionPrayerPage({
         {alreadyPosted && confirmStep === "prayer" ? (
           /* Already prayed today — full prayer always readable, no Amen button */
           <div className="text-center py-6">
-            <p className="text-[#6B8F71] font-medium text-base mb-3" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+            <p className="text-[#5C7A5F] font-medium text-base mb-3" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
               🙏 You prayed this today.
             </p>
-            <button onClick={onBack} className="text-sm text-[#6B8F71]/60 hover:text-[#6B8F71] transition-colors">
+            <button onClick={onBack} className="text-sm text-[#5C7A5F]/60 hover:text-[#5C7A5F] transition-colors">
               ← Back to practice
             </button>
           </div>
@@ -400,18 +400,18 @@ function IntercessionPrayerPage({
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-4"
             >
-              <p className="text-4xl font-bold text-[#6B8F71]">🙏 Amen</p>
+              <p className="text-4xl font-bold text-[#5C7A5F]">🙏 Amen</p>
             </motion.div>
           ) : (
             <>
               <div className="mb-5">
-                <p className="font-serif italic text-[#6B8F71] text-sm mb-2 text-center">"{reflectionPrompt}"</p>
+                <p className="font-serif italic text-[#5C7A5F] text-sm mb-2 text-center">"{reflectionPrompt}"</p>
                 <textarea
                   value={reflection}
                   onChange={e => setReflection(e.target.value.slice(0, 280))}
                   placeholder="What is on your heart today?"
                   rows={3}
-                  className="w-full px-4 py-4 rounded-2xl border border-[#c9b99a]/40 focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71] outline-none bg-white resize-none text-base leading-relaxed"
+                  className="w-full px-4 py-4 rounded-2xl border border-[#c9b99a]/40 focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-white resize-none text-base leading-relaxed"
                 />
                 <p className="text-xs text-[#6b5c4a]/40 mt-1.5 italic text-center">optional</p>
               </div>
@@ -420,7 +420,7 @@ function IntercessionPrayerPage({
         ) : (
           /* Window closed — prayer always readable, back link */
           <div className="text-center py-6">
-            <button onClick={onBack} className="text-sm text-[#6B8F71]/70 hover:text-[#6B8F71] transition-colors">
+            <button onClick={onBack} className="text-sm text-[#5C7A5F]/70 hover:text-[#5C7A5F] transition-colors">
               ← Back to practice
             </button>
           </div>
@@ -539,7 +539,7 @@ export default function MomentPostPage() {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-[#F5EDD8] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-[#6B8F71] border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-[#5C7A5F] border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -552,7 +552,7 @@ export default function MomentPostPage() {
     return (
       <div className="min-h-screen bg-[#F5EDD8] flex items-center justify-center px-6">
         <div className="text-center max-w-sm">
-          <div className="w-14 h-14 rounded-2xl bg-[#6B8F71]/10 flex items-center justify-center text-[#6B8F71] mx-auto mb-5">
+          <div className="w-14 h-14 rounded-2xl bg-[#5C7A5F]/10 flex items-center justify-center text-[#5C7A5F] mx-auto mb-5">
             <Sprout size={28} strokeWidth={1.5} />
           </div>
           <p className="font-serif text-xl font-semibold text-[#2C1A0E] mb-2">You've been invited</p>
@@ -565,7 +565,7 @@ export default function MomentPostPage() {
           )}
           <a
             href={`/?redirect=${encodeURIComponent(currentPath)}`}
-            className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-xl bg-[#6B8F71] text-white font-medium text-sm transition-opacity hover:opacity-90 mb-3"
+            className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-xl bg-[#5C7A5F] text-white font-medium text-sm transition-opacity hover:opacity-90 mb-3"
           >
             Create account to continue
           </a>
@@ -784,11 +784,11 @@ export default function MomentPostPage() {
     const bgColor = isMorning ? "#2C1810" : "#1A1C2E";
     return (
       <div className="min-h-screen flex items-center justify-center px-6" style={{ background: bgColor }}>
-        <div className="text-center max-w-xs text-[#EDE8DE]">
+        <div className="text-center max-w-xs text-[#E8E4D8]">
           <div className="text-5xl mb-5">{isMorning ? "🌅" : "🌙"}</div>
           <h1 className="text-2xl font-bold mb-2">{isMorning ? "Morning Prayer" : "Evening Prayer"}</h1>
-          <p className="text-[#EDE8DE]/60 text-sm mb-6">This practice rests today.</p>
-          <p className="font-serif italic text-[#EDE8DE]/70 text-sm leading-relaxed">
+          <p className="text-[#E8E4D8]/60 text-sm mb-6">This practice rests today.</p>
+          <p className="font-serif italic text-[#E8E4D8]/70 text-sm leading-relaxed">
             {isMorning ? "Come back on your next practice morning." : "Come back on your next practice evening."}
           </p>
         </div>
@@ -848,7 +848,7 @@ export default function MomentPostPage() {
           </div>
 
           {/* Artwork + info card */}
-          <div className="bg-white/60 border border-[#6B8F71]/20 rounded-2xl px-5 py-5 mb-6 text-center">
+          <div className="bg-white/60 border border-[#5C7A5F]/20 rounded-2xl px-5 py-5 mb-6 text-center">
             {hasArtwork && (
               <img
                 src={moment.listeningArtworkUrl!}
@@ -873,13 +873,13 @@ export default function MomentPostPage() {
             </motion.div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <div className="bg-white/60 border border-[#6B8F71]/20 rounded-2xl px-5 py-6 w-full">
+              <div className="bg-white/60 border border-[#5C7A5F]/20 rounded-2xl px-5 py-6 w-full">
                 <p className="text-sm font-semibold text-[#2a402c] mb-2">Waiting for your listen</p>
                 <p className="text-xs text-muted-foreground leading-relaxed mb-4">
                   Play this {typeLabel} on Apple Music. Eleanor checks every few hours and will auto-log when it detects you've listened.
                 </p>
-                <div className="flex items-center justify-center gap-2 text-xs text-[#6B8F71]">
-                  <span className="inline-block w-2 h-2 rounded-full bg-[#6B8F71] animate-pulse" />
+                <div className="flex items-center justify-center gap-2 text-xs text-[#5C7A5F]">
+                  <span className="inline-block w-2 h-2 rounded-full bg-[#5C7A5F] animate-pulse" />
                   Listening for activity
                 </div>
               </div>
@@ -919,7 +919,7 @@ export default function MomentPostPage() {
               <h2 className="text-xl font-semibold text-[#2a402c] mb-2">Fast logged</h2>
               <p className="text-sm text-muted-foreground mb-6">Your practice today is complete.</p>
               {myPost?.reflectionText && (
-                <div className="bg-white/70 border border-[#6B8F71]/25 rounded-2xl px-4 py-3 text-sm text-[#3a5a40] italic w-full text-left">
+                <div className="bg-white/70 border border-[#5C7A5F]/25 rounded-2xl px-4 py-3 text-sm text-[#3a5a40] italic w-full text-left">
                   "{myPost.reflectionText}"
                 </div>
               )}
@@ -927,7 +927,7 @@ export default function MomentPostPage() {
           ) : (
             <div className="flex-1 flex flex-col">
               {/* Scripture of the fast */}
-              <div className="bg-white/60 border border-[#6B8F71]/20 rounded-2xl px-5 py-4 mb-6">
+              <div className="bg-white/60 border border-[#5C7A5F]/20 rounded-2xl px-5 py-4 mb-6">
                 <p className="text-xs font-semibold text-[#4a6b50] uppercase tracking-wider mb-2">A word for fasting</p>
                 <p className="text-sm text-[#2a402c] leading-relaxed italic">
                   "Is not this the kind of fasting I have chosen: to loose the chains of injustice and untie the cords of the yoke, to set the oppressed free and break every yoke?"
@@ -945,7 +945,7 @@ export default function MomentPostPage() {
                   onChange={e => setReflection(e.target.value)}
                   rows={4}
                   placeholder="A thought, a prayer, a word…"
-                  className="w-full px-4 py-3 rounded-2xl border border-border focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71] outline-none bg-white/80 resize-none text-sm leading-relaxed"
+                  className="w-full px-4 py-3 rounded-2xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-white/80 resize-none text-sm leading-relaxed"
                 />
               </div>
             </div>
@@ -954,7 +954,7 @@ export default function MomentPostPage() {
 
         {/* Fixed bottom button */}
         {!fastingConfirmed && (
-          <div className="fixed bottom-0 left-0 right-0 bg-[#F2F7F2] border-t border-[#6B8F71]/20 px-6 pb-[env(safe-area-inset-bottom)] z-50">
+          <div className="fixed bottom-0 left-0 right-0 bg-[#F2F7F2] border-t border-[#5C7A5F]/20 px-6 pb-[env(safe-area-inset-bottom)] z-50">
             <div className="max-w-md mx-auto py-4">
               {postMutation.isError && (
                 <p className="text-center text-sm text-red-600 mb-2">Couldn't save — tap to try again.</p>
@@ -962,7 +962,7 @@ export default function MomentPostPage() {
               <button
                 onClick={() => postMutation.mutate({ isCheckin: true, reflectionText: reflection.trim() || undefined })}
                 disabled={postMutation.isPending}
-                className="w-full py-4 rounded-2xl bg-[#6B8F71] text-white font-semibold text-base tracking-wide hover:bg-[#5a7a60] transition-all disabled:opacity-60"
+                className="w-full py-4 rounded-2xl bg-[#5C7A5F] text-white font-semibold text-base tracking-wide hover:bg-[#5a7a60] transition-all disabled:opacity-60"
               >
                 {postMutation.isPending ? "Logging…" : postMutation.isError ? "Try again ✓" : "✓ I am keeping the fast"}
               </button>
@@ -989,24 +989,24 @@ export default function MomentPostPage() {
           {/* Header */}
           <div className="text-center mb-6">
             <div className="text-4xl mb-3">{isMorning ? "🌅" : "🌙"}</div>
-            <h1 className="text-2xl font-bold text-[#EDE8DE]">{officeName}</h1>
-            <p className="text-[#EDE8DE]/50 text-sm mt-1 font-serif italic">{moment.intention}</p>
+            <h1 className="text-2xl font-bold text-[#E8E4D8]">{officeName}</h1>
+            <p className="text-[#E8E4D8]/50 text-sm mt-1 font-serif italic">{moment.intention}</p>
           </div>
 
           {/* Presence count */}
           <div className="flex items-center justify-center gap-3 mb-6">
             <PresenceDots count={actualTodayCount} total={actualMemberCount} />
-            <span className="text-sm text-[#EDE8DE]/60">{actualTodayCount} of {actualMemberCount} prayed today</span>
+            <span className="text-sm text-[#E8E4D8]/60">{actualTodayCount} of {actualMemberCount} prayed today</span>
           </div>
 
           {/* The BCP link — always visible */}
-          <div className="rounded-2xl border border-[#EDE8DE]/20 p-6 mb-5 text-center"
+          <div className="rounded-2xl border border-[#E8E4D8]/20 p-6 mb-5 text-center"
             style={{ background: "rgba(247,240,230,0.07)" }}>
-            <p className="text-[#EDE8DE]/50 text-xs uppercase tracking-widest mb-3">Open your Book of Common Prayer</p>
-            <p className="text-[#EDE8DE] font-bold text-xl mb-1">📖 Page {bcpPage}</p>
-            <p className="text-[#EDE8DE]/60 text-sm mb-4">{officeName} Rite II</p>
-            <div className="border-t border-[#EDE8DE]/10 pt-4">
-              <p className="text-[#EDE8DE]/50 text-xs mb-2">No BCP? Pray online:</p>
+            <p className="text-[#E8E4D8]/50 text-xs uppercase tracking-widest mb-3">Open your Book of Common Prayer</p>
+            <p className="text-[#E8E4D8] font-bold text-xl mb-1">📖 Page {bcpPage}</p>
+            <p className="text-[#E8E4D8]/60 text-sm mb-4">{officeName} Rite II</p>
+            <div className="border-t border-[#E8E4D8]/10 pt-4">
+              <p className="text-[#E8E4D8]/50 text-xs mb-2">No BCP? Pray online:</p>
               <button
                 onClick={() => window.open(bcpUrl, "_blank", "noopener,noreferrer")}
                 className="inline-block px-5 py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer"
@@ -1020,11 +1020,11 @@ export default function MomentPostPage() {
           {alreadyPosted && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               className="text-center py-6">
-              <p className="text-lg font-bold text-[#EDE8DE] mb-1">🌿 You prayed today.</p>
-              <p className="text-[#EDE8DE]/50 text-sm">
+              <p className="text-lg font-bold text-[#E8E4D8] mb-1">🌿 You prayed today.</p>
+              <p className="text-[#E8E4D8]/50 text-sm">
                 {actualTodayCount} of {actualMemberCount} prayed {officeName} today.
               </p>
-              <p className="font-serif italic text-[#EDE8DE]/40 text-xs leading-relaxed mt-4">
+              <p className="font-serif italic text-[#E8E4D8]/40 text-xs leading-relaxed mt-4">
                 {isMorning
                   ? '"Let my prayer be set forth in thy sight as incense." — Psalm 141'
                   : '"O gracious Light, pure brightness of the everliving Father." — Phos Hilaron'}
@@ -1048,7 +1048,7 @@ export default function MomentPostPage() {
                   : isMorning ? "I prayed Morning Prayer 🌿" : "I prayed Evening Prayer 🌿"
                 }
               </button>
-              <p className="text-center text-xs text-[#EDE8DE]/30 mt-3 font-serif italic">
+              <p className="text-center text-xs text-[#E8E4D8]/30 mt-3 font-serif italic">
                 Tap after you pray. Takes 15–20 minutes.
               </p>
             </div>
@@ -1078,14 +1078,14 @@ export default function MomentPostPage() {
 
         {/* Intention */}
         <div className="bg-white rounded-2xl border border-[#c9b99a]/30 p-6 mb-6 text-center shadow-sm">
-          <p className="text-base leading-relaxed text-[#6B8F71] font-serif italic">{moment.intention}</p>
+          <p className="text-base leading-relaxed text-[#5C7A5F] font-serif italic">{moment.intention}</p>
         </div>
 
         {/* Window / practice day status */}
         {effectiveWindowOpen && !alreadyPosted && (
           <div className="flex items-center justify-between mb-5">
             {isSpiritual ? (
-              <span className="text-sm font-medium text-[#6B8F71] bg-[#6B8F71]/10 border border-[#6B8F71]/30 px-3 py-1.5 rounded-full">
+              <span className="text-sm font-medium text-[#5C7A5F] bg-[#5C7A5F]/10 border border-[#5C7A5F]/30 px-3 py-1.5 rounded-full">
                 Practice day 🌿
               </span>
             ) : (
@@ -1131,7 +1131,7 @@ export default function MomentPostPage() {
               <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 0.6 }} className="text-6xl mb-4">🌿</motion.div>
               <p className="text-xl font-semibold text-[#2C1A0E] mb-2">You practiced.</p>
               {(actualTodayCount ?? 0) >= 2 ? (
-                <p className="text-sm text-[#6B8F71] font-medium">
+                <p className="text-sm text-[#5C7A5F] font-medium">
                   🌸 {actualTodayCount} of {actualMemberCount} tended this together.
                 </p>
               ) : (
@@ -1152,14 +1152,14 @@ export default function MomentPostPage() {
             {moment.loggingType === "reflection" && (
               <div>
                 {moment.reflectionPrompt && (
-                  <p className="text-center font-serif italic text-[#6B8F71] text-lg mb-3">
+                  <p className="text-center font-serif italic text-[#5C7A5F] text-lg mb-3">
                     "{moment.reflectionPrompt}"
                   </p>
                 )}
                 <textarea value={reflection} onChange={e => setReflection(e.target.value.slice(0, 280))}
                   placeholder="Take a moment. Then share..."
                   rows={4}
-                  className="w-full px-4 py-4 rounded-2xl border border-[#c9b99a]/40 focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71] outline-none bg-white resize-none text-base leading-relaxed"
+                  className="w-full px-4 py-4 rounded-2xl border border-[#c9b99a]/40 focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-white resize-none text-base leading-relaxed"
                 />
                 <p className="text-right text-xs text-[#6b5c4a]/50 mt-1">{reflection.length}/280</p>
               </div>

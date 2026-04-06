@@ -51,32 +51,33 @@
 }
 
 :root {
-  /* Phoebe — Gardening for your relationships */
-  /* soil   #2C1810 — dark bg, hero, nav       */
-  /* cream  #F7F0E6 — cards, light surfaces    */
-  /* sage   #6B8F71 — CTAs, growing states     */
-  /* amber  #C17F24 — streaks, goals           */
-  /* blush  #D4896A — at-risk, needs water     */
-  /* white  #FAF6F0 — page background          */
-  /* muted  #9B8E82 — secondary text           */
+  /* Phoebe — everything from the same warm-green soil */
+  /* soil   #2C1810 — primary text, headings           */
+  /* ground #F2EFE6 — page background, green undertone */
+  /* card   #E8E4D8 — slightly deeper, same family     */
+  /* sage   #5C7A5F — living color, CTAs, progress     */
+  /* amber  #C17F24 — gatherings accent                */
+  /* blush  #D4896A — prayer, warmth                   */
+  /* ink    #4A6FA5 — letters-specific UI only         */
+  /* muted  #9B8E82 — secondary text                   */
 
-  --background: 36 50% 96%;        /* #FAF7F2 lightest parchment */
+  --background: 60 18% 92%;        /* #F2EFE6 warm beige, green undertone */
   --foreground: 17 47% 12%;        /* #2C1810 soil */
 
-  --border: 36 22% 84%;
-  --input: 36 22% 84%;
-  --ring: 130 14% 49%;             /* sage */
+  --border: 48 16% 74%;            /* #C8C4B8 */
+  --input: 48 16% 74%;
+  --ring: 128 14% 42%;             /* #5C7A5F sage */
 
-  --card: 36 40% 93%;              /* #F2EDE3 warm linen card */
+  --card: 48 18% 86%;              /* #E8E4D8 card surface */
   --card-foreground: 17 47% 12%;
-  --card-border: 36 20% 86%;
+  --card-border: 48 14% 78%;
 
-  --popover: 37 50% 96%;
+  --popover: 60 18% 95%;
   --popover-foreground: 17 47% 12%;
-  --popover-border: 35 28% 88%;
+  --popover-border: 48 14% 82%;
 
-  --primary: 130 14% 49%;          /* #6B8F71 sage */
-  --primary-foreground: 37 50% 96%;
+  --primary: 128 14% 42%;          /* #5C7A5F sage */
+  --primary-foreground: 0 0% 100%;
 
   --secondary: 35 46% 93%;         /* cream */
   --secondary-foreground: 17 47% 12%;
@@ -109,8 +110,8 @@
 }
 
 @keyframes glow-breathe {
-  0%, 100% { box-shadow: 0 4px 12px rgba(107, 143, 113, 0.22), 0 0 0 0 rgba(107,143,113,0.12); }
-  50%       { box-shadow: 0 4px 32px rgba(107, 143, 113, 0.55), 0 0 0 6px rgba(107,143,113,0); }
+  0%, 100% { box-shadow: 0 4px 12px rgba(92, 122, 95, 0.28), 0 0 0 0 rgba(92,122,95,0.12); }
+  50%       { box-shadow: 0 4px 32px rgba(92, 122, 95, 0.58), 0 0 0 6px rgba(92,122,95,0); }
 }
 @keyframes glow-breathe-amber {
   0%, 100% { box-shadow: 0 4px 12px rgba(193, 127, 36, 0.18); }
@@ -150,32 +151,32 @@ input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus,
 textarea:focus {
-  box-shadow: 0 0 0 3px rgba(107, 143, 113, 0.18), 0 2px 12px rgba(44, 24, 16, 0.10);
+  box-shadow: 0 0 0 3px rgba(92, 122, 95, 0.22), 0 2px 12px rgba(44, 24, 16, 0.10);
 }
 
 /* ── Primary button pulse ─────────────────────────────────────────── */
 @keyframes btn-pulse {
-  0%, 100% { box-shadow: 0 4px 14px rgba(107,143,113,0.35), 0 1px 4px rgba(44,24,16,0.10); }
-  50%       { box-shadow: 0 6px 24px rgba(107,143,113,0.55), 0 2px 8px rgba(44,24,16,0.12); }
+  0%, 100% { box-shadow: 0 4px 14px rgba(92,122,95,0.40), 0 1px 4px rgba(44,24,16,0.10); }
+  50%       { box-shadow: 0 6px 26px rgba(92,122,95,0.62), 0 2px 8px rgba(44,24,16,0.12); }
 }
 @keyframes btn-pulse-ink {
   0%, 100% { box-shadow: 0 4px 14px rgba(74,111,165,0.30), 0 1px 4px rgba(44,24,16,0.08); }
   50%       { box-shadow: 0 6px 24px rgba(74,111,165,0.50), 0 2px 8px rgba(44,24,16,0.10); }
 }
 .btn-sage {
-  background: #6B8F71;
+  background: #5C7A5F;
   color: #fff;
   animation: btn-pulse 3s ease-in-out infinite;
   transform: translateZ(0);
 }
 .btn-sage:hover {
   animation: none;
-  box-shadow: 0 8px 28px rgba(107,143,113,0.60);
+  box-shadow: 0 8px 28px rgba(92,122,95,0.65);
   transform: translateY(-1px);
 }
 .btn-sage:active {
   transform: translateY(0px);
-  box-shadow: 0 2px 8px rgba(107,143,113,0.35);
+  box-shadow: 0 2px 8px rgba(92,122,95,0.35);
 }
 .btn-ink {
   background: #4A6FA5;
@@ -202,11 +203,11 @@ textarea:focus {
 
   body {
     @apply font-sans antialiased text-foreground;
-    background-color: #FAF7F2;
+    background-color: #F2EFE6;
     background-image:
-      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(212, 137, 106, 0.10) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 80% 90%, rgba(107, 143, 113, 0.09) 0%, transparent 55%),
-      radial-gradient(ellipse 70% 60% at 60% 40%, rgba(193, 127, 36, 0.06) 0%, transparent 50%);
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(212, 137, 106, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 90%, rgba(92, 122, 95, 0.10) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 60% at 60% 40%, rgba(193, 127, 36, 0.05) 0%, transparent 50%);
     background-size: 200% 200%;
     background-attachment: fixed;
     animation: gradient-drift 18s ease-in-out infinite alternate;

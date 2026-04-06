@@ -104,10 +104,10 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
         animate={{ opacity: 1, y: 0 }}
         className="relative cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99] transition-transform"
         style={{
-          backgroundColor: "#FAF7F2",
+          backgroundColor: "#F2EFE6",
           border: `1px solid rgba(74,111,165,${unread ? "0.3" : "0.15"})`,
           borderRadius: "4px",
-          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#4A6FA5" : "#C5BFB0"}`,
+          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#4A6FA5" : "#C8C4B4"}`,
           boxShadow: "0 2px 8px rgba(44, 24, 16, 0.06)",
           padding: "16px 20px",
           marginBottom: "12px",
@@ -135,11 +135,11 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
           <span className="text-[11px] font-semibold uppercase" style={{ color: "#4A6FA5", letterSpacing: "0.08em" }}>
             {isOneToOne ? `Letter ${currentPeriod.periodNumber}` : `Week ${currentPeriod.periodNumber}`}
           </span>
-          <span style={{ color: "#C5BFB0" }}>·</span>
+          <span style={{ color: "#C8C4B4" }}>·</span>
 
           {/* Status */}
           {currentPeriod.hasWrittenThisPeriod ? (
-            <span className="text-[12px]" style={{ color: "#6B8F71" }}>
+            <span className="text-[12px]" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? "Sent · awaiting reply 🌿" : "Update sent 🌿"}
             </span>
           ) : item.myTurn ? (
@@ -231,7 +231,7 @@ export default function LettersPage() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-24 rounded animate-pulse" style={{ backgroundColor: "#E2DCD0" }} />
+              <div key={i} className="h-24 rounded animate-pulse" style={{ backgroundColor: "#DDD9CC" }} />
             ))}
           </div>
         ) : isEmpty ? (

@@ -175,7 +175,7 @@ export function PrayerSection() {
               type="button"
               onClick={handleSendClick}
               disabled={!inputValue.trim()}
-              className="px-4 py-2.5 rounded-xl text-[#EDE8DE] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="px-4 py-2.5 rounded-xl text-[#E8E4D8] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
               style={{ backgroundColor: "#D4896A" }}
             >
               🙏
@@ -299,14 +299,14 @@ export function PrayerSection() {
 
                         {/* Released brief state */}
                         {isReleased && (
-                          <p className="text-sm italic text-center py-2" style={{ color: "#6B8F71" }}>
+                          <p className="text-sm italic text-center py-2" style={{ color: "#5C7A5F" }}>
                             🌾 Released with gratitude
                           </p>
                         )}
 
                         {/* Answered brief state */}
                         {isAnsweredBrief && (
-                          <p className="text-sm italic text-center py-2" style={{ color: "#6B8F71" }}>
+                          <p className="text-sm italic text-center py-2" style={{ color: "#5C7A5F" }}>
                             🌾 Held and answered
                           </p>
                         )}
@@ -319,7 +319,7 @@ export function PrayerSection() {
                             </p>
 
                             {request.words.length === 0 ? (
-                              <p className="text-sm italic mb-3" style={{ color: "#6B8F71" }}>
+                              <p className="text-sm italic mb-3" style={{ color: "#5C7A5F" }}>
                                 Be the first to hold this 🌿
                               </p>
                             ) : (
@@ -362,7 +362,7 @@ export function PrayerSection() {
                                   onClick={() => handleWordSubmit(request.id)}
                                   disabled={!(wordInputs[request.id] || "").trim() || wordMutation.isPending}
                                   className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-                                  style={{ backgroundColor: "#D4896A", color: "#EDE8DE" }}
+                                  style={{ backgroundColor: "#D4896A", color: "#E8E4D8" }}
                                 >
                                   🙏
                                 </button>
@@ -377,7 +377,7 @@ export function PrayerSection() {
                                   onClick={() => answerMutation.mutate(request.id)}
                                   disabled={answerMutation.isPending}
                                   className="text-xs transition-opacity hover:opacity-70 disabled:opacity-40"
-                                  style={{ color: "#6B8F71" }}
+                                  style={{ color: "#5C7A5F" }}
                                 >
                                   Mark as answered ✓
                                 </button>
@@ -404,7 +404,7 @@ export function PrayerSection() {
         >
           <div
             className="rounded-t-3xl shadow-2xl px-6 pt-6 pb-10"
-            style={{ backgroundColor: "#EDE8DE" }}
+            style={{ backgroundColor: "#E8E4D8" }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -443,14 +443,14 @@ export function PrayerSection() {
               </button>
             </div>
             {isAnonymous && (
-              <p className="text-xs italic mb-4" style={{ color: "#6B8F71" }}>
+              <p className="text-xs italic mb-4" style={{ color: "#5C7A5F" }}>
                 (Your name won't be shown)
               </p>
             )}
             {!isAnonymous && <div className="mb-4" />}
 
             {/* Instructional copy */}
-            <p className="text-xs italic mb-6" style={{ color: "#6B8F71" }}>
+            <p className="text-xs italic mb-6" style={{ color: "#5C7A5F" }}>
               Your garden will hold this for three days. On the third day, you can renew it or let it rest. 🌿
             </p>
 
@@ -460,7 +460,7 @@ export function PrayerSection() {
               onClick={handleModalSubmit}
               disabled={submitMutation.isPending}
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: "#2C1810", color: "#EDE8DE" }}
+              style={{ backgroundColor: "#2C1810", color: "#E8E4D8" }}
             >
               {submitMutation.isPending ? "Sharing…" : "Share with my garden 🙏"}
             </button>

@@ -111,7 +111,7 @@ export default function MomentJoin() {
     return (
       <div className="min-h-screen bg-[#2C1A0E] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
-          <div className="w-14 h-14 rounded-2xl bg-[#6B8F71]/20 flex items-center justify-center mx-auto mb-5">
+          <div className="w-14 h-14 rounded-2xl bg-[#5C7A5F]/20 flex items-center justify-center mx-auto mb-5">
             <Sprout size={28} strokeWidth={1.5} className="text-[#9ecc9f]" />
           </div>
           <p className="text-xl font-semibold text-[#F5EDD8] mb-2">Join this practice</p>
@@ -120,7 +120,7 @@ export default function MomentJoin() {
           {!data && <p className="text-[#c9b99a] text-sm mb-6">Create an account to join.</p>}
           <a
             href={`/?redirect=${encodeURIComponent(currentPath)}`}
-            className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-xl bg-[#6B8F71] text-white font-medium text-sm transition-opacity hover:opacity-90 mb-3"
+            className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-xl bg-[#5C7A5F] text-white font-medium text-sm transition-opacity hover:opacity-90 mb-3"
           >
             Create account to join
           </a>
@@ -168,7 +168,7 @@ export default function MomentJoin() {
 
           <a
             href="/dashboard"
-            className="inline-block px-8 py-3 bg-[#6B8F71] text-white rounded-full font-medium hover:bg-[#5a7a60] transition-colors"
+            className="inline-block px-8 py-3 bg-[#5C7A5F] text-white rounded-full font-medium hover:bg-[#5a7a60] transition-colors"
           >
             Go to your dashboard 🌿
           </a>
@@ -200,7 +200,7 @@ export default function MomentJoin() {
               <div className="grid grid-cols-6 gap-1.5">
                 {[1,2,3,4,5,6,7,8,9,10,11,12].map(hv => (
                   <button key={hv} onClick={() => setPersonalHour(hv)}
-                    className={`py-2 rounded-lg border text-sm font-medium transition-all ${personalHour === hv ? "border-[#6B8F71] bg-[#6B8F71]/20 text-[#9ecc9f]" : "border-[#5a3d28] text-[#c9b99a] hover:border-[#6B8F71]/40"}`}>
+                    className={`py-2 rounded-lg border text-sm font-medium transition-all ${personalHour === hv ? "border-[#5C7A5F] bg-[#5C7A5F]/20 text-[#9ecc9f]" : "border-[#5a3d28] text-[#c9b99a] hover:border-[#5C7A5F]/40"}`}>
                     {hv}
                   </button>
                 ))}
@@ -212,7 +212,7 @@ export default function MomentJoin() {
               <div className="flex gap-2">
                 {[0, 15, 30, 45].map(mv => (
                   <button key={mv} onClick={() => setPersonalMinute(mv)}
-                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${personalMinute === mv ? "border-[#6B8F71] bg-[#6B8F71]/20 text-[#9ecc9f]" : "border-[#5a3d28] text-[#c9b99a] hover:border-[#6B8F71]/40"}`}>
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${personalMinute === mv ? "border-[#5C7A5F] bg-[#5C7A5F]/20 text-[#9ecc9f]" : "border-[#5a3d28] text-[#c9b99a] hover:border-[#5C7A5F]/40"}`}>
                     :{String(mv).padStart(2, "0")}
                   </button>
                 ))}
@@ -222,7 +222,7 @@ export default function MomentJoin() {
             <div className="flex gap-3">
               {(["AM", "PM"] as const).map(p => (
                 <button key={p} onClick={() => setPersonalAmPm(p)}
-                  className={`flex-1 py-3 rounded-xl border-2 font-medium text-sm transition-all ${personalAmPm === p ? "border-[#6B8F71] bg-[#6B8F71]/20 text-[#9ecc9f]" : "border-[#5a3d28] text-[#c9b99a] hover:border-[#6B8F71]/40"}`}>
+                  className={`flex-1 py-3 rounded-xl border-2 font-medium text-sm transition-all ${personalAmPm === p ? "border-[#5C7A5F] bg-[#5C7A5F]/20 text-[#9ecc9f]" : "border-[#5a3d28] text-[#c9b99a] hover:border-[#5C7A5F]/40"}`}>
                   {p}
                 </button>
               ))}
@@ -231,7 +231,7 @@ export default function MomentJoin() {
             <div>
               <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">Your timezone</label>
               <select value={personalTimezone} onChange={e => setPersonalTimezone(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] focus:border-[#6B8F71] focus:outline-none text-sm">
+                className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] focus:border-[#5C7A5F] focus:outline-none text-sm">
                 {Intl.supportedValuesOf("timeZone").map(tz => (
                   <option key={tz} value={tz}>{tz}</option>
                 ))}
@@ -246,7 +246,7 @@ export default function MomentJoin() {
           <button
             onClick={handleJoinWithTime}
             disabled={joinMutation.isPending}
-            className="w-full mt-6 py-4 rounded-2xl bg-[#6B8F71] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
+            className="w-full mt-6 py-4 rounded-2xl bg-[#5C7A5F] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
           >
             {joinMutation.isPending ? "Joining..." : "Set my time 🌿"}
           </button>
@@ -300,7 +300,7 @@ export default function MomentJoin() {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="First name or how you'd like to be known"
-              className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] placeholder-[#7a5a42] focus:border-[#6B8F71] focus:outline-none text-sm"
+              className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] placeholder-[#7a5a42] focus:border-[#5C7A5F] focus:outline-none text-sm"
             />
           </div>
           <div>
@@ -310,7 +310,7 @@ export default function MomentJoin() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="For your personal link"
-              className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] placeholder-[#7a5a42] focus:border-[#6B8F71] focus:outline-none text-sm"
+              className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] placeholder-[#7a5a42] focus:border-[#5C7A5F] focus:outline-none text-sm"
             />
           </div>
           <p className="text-xs text-[#c9b99a]/60 italic">Calendar invites will be sent to your email.</p>
@@ -319,7 +319,7 @@ export default function MomentJoin() {
         <button
           onClick={handleJoinStep1}
           disabled={!name.trim() || !email.trim() || joinMutation.isPending}
-          className="w-full mt-5 py-4 rounded-2xl bg-[#6B8F71] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
+          className="w-full mt-5 py-4 rounded-2xl bg-[#5C7A5F] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
         >
           {joinMutation.isPending ? "Joining..." : "Join this practice 🌿"}
         </button>

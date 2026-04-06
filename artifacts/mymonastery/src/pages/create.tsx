@@ -608,7 +608,7 @@ export default function CreateRitual() {
 
           {/* Disabled message for tradition invite step */}
           {step === 2 && showTraditionDisabledMsg && invitedPeople.length === 0 && (
-            <div className="mt-4 px-4 py-3 rounded-2xl bg-[#6B8F71]/8 border border-[#6B8F71]/20 text-center">
+            <div className="mt-4 px-4 py-3 rounded-2xl bg-[#5C7A5F]/8 border border-[#5C7A5F]/20 text-center">
               <p className="text-sm text-[#4a6b50] font-medium mb-1">🌱 This tradition needs at least one other person.</p>
               <p className="text-xs text-[#4a6b50]/70 leading-relaxed">
                 Eleanor coordinates shifting calendars so the things<br />

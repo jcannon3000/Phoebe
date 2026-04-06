@@ -374,9 +374,9 @@ export default function MomentPlant() {
                         onClick={() => setCommitmentSessionsGoal(opt.sessions)}
                         className="relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200"
                         style={{
-                          background: sel ? "#6B8F71" : "#EEF3EF",
-                          border: `1.5px solid ${sel ? "#6B8F71" : "#c8dac9"}`,
-                          boxShadow: sel ? "0 4px 14px rgba(107,143,113,0.22)" : undefined,
+                          background: sel ? "#5C7A5F" : "#EEF3EF",
+                          border: `1.5px solid ${sel ? "#5C7A5F" : "#c8dac9"}`,
+                          boxShadow: sel ? "0 4px 14px rgba(92,122,95,0.22)" : undefined,
                         }}
                       >
                         {sel && (
@@ -404,7 +404,7 @@ export default function MomentPlant() {
                 </p>
 
                 {commitmentSessionsGoal && (
-                  <p className="text-sm text-center text-[#6B8F71] italic" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                  <p className="text-sm text-center text-[#5C7A5F] italic" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                     {commitmentSessionsGoal} sessions together. A good place to begin. 🌱
                   </p>
                 )}

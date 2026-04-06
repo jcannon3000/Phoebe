@@ -104,7 +104,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     className="w-full flex items-center justify-between px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                   >
                     <span>Show when I'm here 🌿</span>
-                    <div className={`w-8 h-[18px] rounded-full transition-colors relative ${user.showPresence ? "bg-[#6B8F71]" : "bg-border"}`}>
+                    <div className={`w-8 h-[18px] rounded-full transition-colors relative ${user.showPresence ? "bg-[#5C7A5F]" : "bg-border"}`}>
                       <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform ${user.showPresence ? "left-[16px]" : "left-[2px]"}`} />
                     </div>
                   </button>

@@ -16,7 +16,7 @@ function initials(name: string) {
 
 // Eleanor palette avatar colors: sage, amber, blush — assigned by email hash
 const AVATAR_COLORS = [
-  { bg: "rgba(107,143,113,0.15)", text: "#4a6e50" },  // sage
+  { bg: "rgba(92,122,95,0.15)", text: "#4a6e50" },  // sage
   { bg: "rgba(193,127,36,0.15)", text: "#8a5a18" },   // amber
   { bg: "rgba(212,137,106,0.15)", text: "#9a5a3a" },  // blush
 ];
@@ -190,7 +190,7 @@ export default function People() {
                                 key={i}
                                 className="inline-flex items-center gap-1 text-xs rounded-md px-2.5 py-0.5"
                                 style={{
-                                  backgroundColor: item.type === "practice" ? "rgba(107,143,113,0.1)" : "rgba(193,127,36,0.1)",
+                                  backgroundColor: item.type === "practice" ? "rgba(92,122,95,0.1)" : "rgba(193,127,36,0.1)",
                                   color: item.type === "practice" ? "#4a6e50" : "#8a5a18",
                                 }}
                               >
@@ -233,11 +233,11 @@ export default function People() {
                             <span
                               className="inline-block w-2 h-2 rounded-full"
                               style={{
-                                backgroundColor: "#6B8F71",
+                                backgroundColor: "#5C7A5F",
                                 animation: "presence-dot-pulse 2s ease-in-out infinite",
                               }}
                             />
-                            <span className="text-xs font-medium" style={{ color: "#6B8F71" }}>
+                            <span className="text-xs font-medium" style={{ color: "#5C7A5F" }}>
                               Here now 🌿
                             </span>
                           </div>
@@ -261,7 +261,7 @@ export default function People() {
                             {/* Shared practices */}
                             {person.sharedPractices.length > 0 && (
                               <div>
-                                <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: "#6B8F71" }}>
+                                <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: "#5C7A5F" }}>
                                   Practices together
                                 </p>
                                 <div className="space-y-2">
@@ -275,7 +275,7 @@ export default function People() {
                                         {practice.templateType === "intercession" ? "🙏" : practice.templateType === "contemplative" ? "🕯️" : practice.templateType === "morning-prayer" ? "✨" : practice.templateType === "evening-prayer" ? "🌙" : practice.templateType === "fasting" ? "🌿" : practice.templateType === "listening" ? "🎵" : "🌱"}{" "}
                                         {practice.name}
                                       </span>
-                                      <span className={`text-xs ${practice.currentStreak >= 3 ? "animate-streak-glow" : ""}`} style={{ color: practice.currentStreak > 0 ? "#C17F24" : "#6B8F71" }}>
+                                      <span className={`text-xs ${practice.currentStreak >= 3 ? "animate-streak-glow" : ""}`} style={{ color: practice.currentStreak > 0 ? "#C17F24" : "#5C7A5F" }}>
                                         {practice.currentStreak > 0
                                           ? `🔥 ${practice.currentStreak} day${practice.currentStreak !== 1 ? "s" : ""}`
                                           : "🌱 Just beginning"}
@@ -330,7 +330,7 @@ export default function People() {
                             <Link
                               href="/moment/new"
                               className="inline-block text-[13px] font-medium transition-colors hover:opacity-80"
-                              style={{ color: "#6B8F71" }}
+                              style={{ color: "#5C7A5F" }}
                             >
                               + Invite {person.name.split(" ")[0]} to something new 🌿
                             </Link>

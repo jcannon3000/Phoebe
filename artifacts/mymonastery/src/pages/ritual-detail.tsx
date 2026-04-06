@@ -418,7 +418,7 @@ export default function RitualDetail() {
               </div>
               <button
                 onClick={() => setShowInviteSheet(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#6B8F71]/50 text-[#4a6b50] text-xs font-medium hover:bg-[#6B8F71]/10 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#5C7A5F]/50 text-[#4a6b50] text-xs font-medium hover:bg-[#5C7A5F]/10 transition-colors"
               >
                 <UserPlus size={12} />
                 Add people
@@ -469,7 +469,7 @@ export default function RitualDetail() {
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: i * 0.08 }}
                     onClick={() => setCalSyncNotifs(prev => prev.filter(n => n.email !== m.email))}
-                    className="flex items-center gap-3 bg-[#F0F8F0] border border-[#6B8F71]/30 rounded-2xl px-4 py-3 cursor-pointer"
+                    className="flex items-center gap-3 bg-[#F0F8F0] border border-[#5C7A5F]/30 rounded-2xl px-4 py-3 cursor-pointer"
                   >
                     <span className="text-xl">🌱</span>
                     <div className="flex-1">
@@ -604,8 +604,8 @@ export default function RitualDetail() {
                           onClick={() => handleRsvp("going")}
                           className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                             rsvp === "going"
-                              ? "bg-[#6B8F71] border-[#6B8F71] text-white shadow-sm"
-                              : "border-border text-muted-foreground hover:border-[#6B8F71]/60 hover:text-[#6B8F71]"
+                              ? "bg-[#5C7A5F] border-[#5C7A5F] text-white shadow-sm"
+                              : "border-border text-muted-foreground hover:border-[#5C7A5F]/60 hover:text-[#5C7A5F]"
                           }`}
                         >
                           I'll be there ✓
@@ -667,7 +667,7 @@ export default function RitualDetail() {
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-medium text-foreground">Suggest a time</p>
                     {suggestSent && (
-                      <span className="text-xs text-[#6B8F71]">Suggestion sent ✓</span>
+                      <span className="text-xs text-[#5C7A5F]">Suggestion sent ✓</span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">
@@ -1116,7 +1116,7 @@ export default function RitualDetail() {
                             ) : (
                               <button
                                 onClick={() => handleQuickInvite(c.name, c.email)}
-                                className="text-xs font-medium text-[#4a6b50] border border-[#6B8F71]/50 rounded-full px-3 py-1 hover:bg-[#6B8F71]/10 transition-colors whitespace-nowrap"
+                                className="text-xs font-medium text-[#4a6b50] border border-[#5C7A5F]/50 rounded-full px-3 py-1 hover:bg-[#5C7A5F]/10 transition-colors whitespace-nowrap"
                               >
                                 Invite →
                               </button>
@@ -1138,11 +1138,11 @@ export default function RitualDetail() {
                       onChange={e => setInviteEmailInput(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && handleAddEmailToQueue()}
                       placeholder="name@example.com"
-                      className="flex-1 px-4 py-2.5 rounded-2xl border border-border focus:border-[#6B8F71] outline-none bg-secondary/30 text-sm"
+                      className="flex-1 px-4 py-2.5 rounded-2xl border border-border focus:border-[#5C7A5F] outline-none bg-secondary/30 text-sm"
                     />
                     <button
                       onClick={handleAddEmailToQueue}
-                      className="px-4 py-2.5 rounded-2xl bg-[#6B8F71] text-white text-sm font-medium hover:bg-[#5a7a60] transition-colors"
+                      className="px-4 py-2.5 rounded-2xl bg-[#5C7A5F] text-white text-sm font-medium hover:bg-[#5a7a60] transition-colors"
                     >
                       Add
                     </button>
@@ -1150,7 +1150,7 @@ export default function RitualDetail() {
                   {inviteQueue.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {inviteQueue.map(p => (
-                        <span key={p.email} className="flex items-center gap-1.5 px-3 py-1 bg-[#6B8F71]/10 border border-[#6B8F71]/30 rounded-full text-sm text-[#4a6b50]">
+                        <span key={p.email} className="flex items-center gap-1.5 px-3 py-1 bg-[#5C7A5F]/10 border border-[#5C7A5F]/30 rounded-full text-sm text-[#4a6b50]">
                           {p.email}
                           <button onClick={() => handleRemoveFromQueue(p.email)} className="text-[#4a6b50]/50 hover:text-[#4a6b50]">
                             <X size={12} />
@@ -1181,7 +1181,7 @@ export default function RitualDetail() {
                 <button
                   onClick={handleSendInvites}
                   disabled={inviting || inviteQueue.length === 0}
-                  className="w-full py-4 bg-[#6B8F71] text-white rounded-2xl font-semibold text-base hover:bg-[#5a7a60] transition-all disabled:opacity-50"
+                  className="w-full py-4 bg-[#5C7A5F] text-white rounded-2xl font-semibold text-base hover:bg-[#5a7a60] transition-all disabled:opacity-50"
                 >
                   {inviting ? "Sending…" : `Send invites 🌱${inviteQueue.length > 0 ? ` (${inviteQueue.length})` : ""}`}
                 </button>

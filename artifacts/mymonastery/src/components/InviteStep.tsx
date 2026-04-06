@@ -103,11 +103,11 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
         onClick={() => toggleConnection(c.email)}
         style={{ width: CARD_W, minWidth: CARD_W }}
         className={`flex-shrink-0 p-3 rounded-2xl border text-left transition-all ${
-          sel ? "bg-[#6B8F71] border-[#6B8F71]" : "bg-card border-border/60 hover:border-[#6B8F71]/40 hover:bg-[#6B8F71]/5"
+          sel ? "bg-[#5C7A5F] border-[#5C7A5F]" : "bg-card border-border/60 hover:border-[#5C7A5F]/40 hover:bg-[#5C7A5F]/5"
         }`}
       >
         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold mb-2 ${
-          sel ? "bg-white/20 text-white" : "bg-[#6B8F71]/10 text-[#6B8F71]"
+          sel ? "bg-white/20 text-white" : "bg-[#5C7A5F]/10 text-[#5C7A5F]"
         }`}>
           {initials(c.name)}
         </div>
@@ -120,7 +120,7 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
         <div className={`mt-2 text-[11px] font-semibold px-2 py-1 rounded-lg text-center ${
           sel
             ? "bg-white/20 text-white"
-            : "border border-[#6B8F71] text-[#6B8F71]"
+            : "border border-[#5C7A5F] text-[#5C7A5F]"
         }`}>
           {sel ? "Added ✓" : "+ Add"}
         </div>
@@ -202,14 +202,14 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
                 value={p.name}
                 onChange={e => updateManual(i, "name", e.target.value)}
                 placeholder="Name (optional)"
-                className="flex-1 px-3 py-2.5 rounded-xl border border-border focus:border-[#6B8F71] outline-none bg-background text-sm"
+                className="flex-1 px-3 py-2.5 rounded-xl border border-border focus:border-[#5C7A5F] outline-none bg-background text-sm"
               />
               <input
                 type="email"
                 value={p.email}
                 onChange={e => updateManual(i, "email", e.target.value)}
                 placeholder="Email"
-                className="flex-1 px-3 py-2.5 rounded-xl border border-border focus:border-[#6B8F71] outline-none bg-background text-sm"
+                className="flex-1 px-3 py-2.5 rounded-xl border border-border focus:border-[#5C7A5F] outline-none bg-background text-sm"
               />
               {manualPeople.length > 1 && (
                 <button
@@ -225,7 +225,7 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
         {manualPeople.length < 8 && (
           <button
             onClick={addManualRow}
-            className="mt-3 text-sm text-[#6B8F71] hover:text-[#4a6b50] transition-colors flex items-center gap-1"
+            className="mt-3 text-sm text-[#5C7A5F] hover:text-[#4a6b50] transition-colors flex items-center gap-1"
           >
             + Add another person
           </button>
@@ -240,12 +240,12 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
             {allInvited.map((p, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6B8F71]/10 text-[#4a6b50] text-sm font-medium"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#5C7A5F]/10 text-[#4a6b50] text-sm font-medium"
               >
                 {p.name || p.email.split("@")[0]}
                 <button
                   onClick={() => removePill(p.email)}
-                  className="text-[#6B8F71]/60 hover:text-[#4a6b50] text-base leading-none"
+                  className="text-[#5C7A5F]/60 hover:text-[#4a6b50] text-base leading-none"
                 >
                   ×
                 </button>

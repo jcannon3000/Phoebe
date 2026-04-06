@@ -146,7 +146,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
                 ? "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.15)] bg-[#FDFCF8]"
                 : "border-[#7B9EBE]/60 shadow-[0_0_18px_rgba(123,158,190,0.15)] bg-[#FDFCF8]"
               : isSpiritual
-                ? "border-[#6B8F71]/60 shadow-[0_0_18px_rgba(107,143,113,0.18)] bg-[#FDFCF8]"
+                ? "border-[#5C7A5F]/60 shadow-[0_0_18px_rgba(92,122,95,0.18)] bg-[#FDFCF8]"
                 : "border-amber-400/60 shadow-[0_0_18px_rgba(193,127,36,0.18)] bg-[#FDFCF8]"
             : "border-[#c9b99a]/40 bg-[#FDFCF8] hover:shadow-md"
         }`}>
@@ -155,8 +155,8 @@ function MomentCard({ moment }: { moment: MomentData }) {
           moment.windowOpen
             ? isBcp
               ? isMorning ? "bg-[#C8975A] animate-pulse" : "bg-[#7B9EBE] animate-pulse"
-              : isSpiritual ? "bg-[#6B8F71] animate-pulse" : "bg-amber-400 animate-pulse"
-            : isBcp ? (isMorning ? "bg-[#C8975A]" : "bg-[#7B9EBE]") : "bg-[#6B8F71]"
+              : isSpiritual ? "bg-[#5C7A5F] animate-pulse" : "bg-amber-400 animate-pulse"
+            : isBcp ? (isMorning ? "bg-[#C8975A]" : "bg-[#7B9EBE]") : "bg-[#5C7A5F]"
         }`} />
 
         <div className="flex-1 p-4">
@@ -168,7 +168,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
                 <span className="text-base font-semibold text-[#2C1A0E] leading-snug">{moment.name}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {isBcp && (
-                    <span className="text-[10px] font-semibold text-[#6B8F71] bg-[#6B8F71]/10 border border-[#6B8F71]/20 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-semibold text-[#5C7A5F] bg-[#5C7A5F]/10 border border-[#5C7A5F]/20 px-2 py-0.5 rounded-full">
                       Daily Office
                     </span>
                   )}
@@ -178,7 +178,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
                         {isMorning ? "Morning 🌅" : "Evening 🌙"}
                       </span>
                     ) : isSpiritual ? (
-                      <span className="text-[11px] font-bold text-[#6B8F71] uppercase tracking-wide">
+                      <span className="text-[11px] font-bold text-[#5C7A5F] uppercase tracking-wide">
                         Practice day 🌿
                       </span>
                     ) : (
@@ -221,7 +221,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
                 <span className="font-medium">{moment.listeningTitle ?? moment.listeningArtist ?? "music"}</span> together
               </p>
             ) : isSpiritual ? (
-              <p className="text-sm text-[#6B8F71] font-medium mb-2">
+              <p className="text-sm text-[#5C7A5F] font-medium mb-2">
                 {moment.todayPostCount} of {moment.memberCount} practiced today
               </p>
             ) : (
@@ -252,7 +252,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
                 </span>
               )}
               {moment.todayPostCount > 0 && moment.memberCount > 1 && (
-                <span className="text-[11px] text-[#6B8F71]/80">
+                <span className="text-[11px] text-[#5C7A5F]/80">
                   · {moment.todayPostCount} of {moment.memberCount} this week
                 </span>
               )}
@@ -261,7 +261,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
             <div className="mt-1">
               <span className="text-[11px] text-[#6b5c4a]/80">{mLabel}</span>
               <div className="mt-1 w-full h-0.5 bg-[#c9b99a]/30 rounded-full overflow-hidden">
-                <div className="h-full bg-[#6B8F71] rounded-full transition-all"
+                <div className="h-full bg-[#5C7A5F] rounded-full transition-all"
                   style={{ width: `${Math.round(mProgress * 100)}%` }} />
               </div>
             </div>

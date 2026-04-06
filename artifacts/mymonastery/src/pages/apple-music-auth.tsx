@@ -76,7 +76,7 @@ export default function AppleMusicAuth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-6">
+    <div className="min-h-screen flex items-center justify-center bg-[#F2EFE6] px-6">
       <div className="text-center max-w-sm">
         {status === "loading" && (
           <>
@@ -125,7 +125,7 @@ export default function AppleMusicAuth() {
             <p className="text-sm text-red-600 mt-2">{error}</p>
             <button
               onClick={() => setLocation(returnTo, { replace: true })}
-              className="mt-4 text-sm text-[#6B8F71] underline"
+              className="mt-4 text-sm text-[#5C7A5F] underline"
             >
               Go back
             </button>

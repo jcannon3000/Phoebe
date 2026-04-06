@@ -196,7 +196,7 @@ export default function WriteLetter() {
 
   if (errorState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#FAF7F2" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#F2EFE6" }}>
         <p className="text-4xl mb-4">📮</p>
         <p className="text-base mb-2" style={{ color: "#2C1810" }}>{errorState.message}</p>
         {errorState.nextPeriodStart && (
@@ -210,7 +210,7 @@ export default function WriteLetter() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF7F2" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F2EFE6" }}>
       {/* Minimal header */}
       <div className="px-6 pt-6 pb-3 flex items-center justify-between">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
@@ -229,11 +229,11 @@ export default function WriteLetter() {
       {/* Bottom action bar (fixed) */}
       <div
         className="px-6 py-3"
-        style={{ borderBottom: "1px solid #D5CEBC" }}
+        style={{ borderBottom: "1px solid #C8C4B8" }}
       >
         {!confirmSend ? (
           <div className="flex items-center justify-between">
-            <span className="text-[13px]" style={{ color: wordCount < minWords ? "#9a9390" : "#6B8F71" }}>
+            <span className="text-[13px]" style={{ color: wordCount < minWords ? "#9a9390" : "#5C7A5F" }}>
               {wordCount} word{wordCount !== 1 ? "s" : ""}
               {!isOneToOne && wordCount < minWords && (
                 <span style={{ color: "#C17F24" }}> · {minWords - wordCount} to go</span>
@@ -241,13 +241,13 @@ export default function WriteLetter() {
             </span>
             <div className="flex items-center gap-2">
               {showSaved && (
-                <span className="text-[12px]" style={{ color: "#6B8F71" }}>Saved 🌿</span>
+                <span className="text-[12px]" style={{ color: "#5C7A5F" }}>Saved 🌿</span>
               )}
               <button
                 onClick={handleSendClick}
                 disabled={!canSend}
                 className="btn-sage px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity"
-                style={{ background: "#6B8F71", color: "#fff" }}
+                style={{ background: "#5C7A5F", color: "#fff" }}
               >
                 Send letter
               </button>
@@ -263,7 +263,7 @@ export default function WriteLetter() {
                 onClick={() => sendMutation.mutate()}
                 disabled={sendMutation.isPending}
                 className="btn-sage px-5 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "#6B8F71", color: "#fff" }}
+                style={{ background: "#5C7A5F", color: "#fff" }}
               >
                 {sendMutation.isPending ? "Sending..." : "Send letter"}
               </button>
@@ -314,7 +314,7 @@ export default function WriteLetter() {
             {locating ? (
               <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Finding your location…</span>
             ) : postmarkCity ? (
-              <span className="text-[13px] font-medium" style={{ color: "#6B8F71" }}>{postmarkCity}</span>
+              <span className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>{postmarkCity}</span>
             ) : locationDenied ? (
               <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Location unavailable</span>
             ) : null}

@@ -39,7 +39,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#FAF7F2", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
+              style={{ background: "#F2EFE6", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>📮 Start a correspondence</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Write letters with someone you care about</p>
@@ -47,7 +47,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#FAF7F2", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
+              style={{ background: "#F2EFE6", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Meet together regularly</p>
@@ -58,7 +58,7 @@ function FAB() {
       <button
         onClick={() => setOpen(o => !o)}
         className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#2C1810", color: "#EDE8DE" }}
+        style={{ background: "#2C1810", color: "#E8E4D8" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open ? <X size={24} /> : <Plus size={24} />}
@@ -76,7 +76,7 @@ function SectionHeader({ label }: { label: string }) {
       <h2 className="text-lg font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
         {label}
       </h2>
-      <div className="flex-1 h-px" style={{ background: "#C5BFB0" }} />
+      <div className="flex-1 h-px" style={{ background: "#C8C4B4" }} />
     </div>
   );
 }
@@ -111,7 +111,7 @@ function LettersSection() {
         <SectionHeader label="Letters 📮" />
         <div className="space-y-3 mb-8">
           {[1, 2].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#E2DCD0" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#DDD9CC" }} />
           ))}
         </div>
       </>
@@ -127,7 +127,7 @@ function LettersSection() {
       {items.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#EDE8DE", border: "1px dashed #C5BFB0" }}
+          style={{ background: "#E8E4D8", border: "1px dashed #C8C4B4" }}
         >
           <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>A correspondence is how you tend a relationship across distance.</p>
           <p className="text-xs mb-3" style={{ color: "#9a9390" }}>Slow, deliberate, yours.</p>
@@ -163,7 +163,7 @@ function LettersSection() {
               statusColor = "#4A6FA5";
             } else {
               statusText = "All written 🌿";
-              statusColor = "#6B8F71";
+              statusColor = "#5C7A5F";
             }
 
             const lastPostmark = c.recentPostmarks[0];
@@ -179,7 +179,7 @@ function LettersSection() {
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer"
                   style={{
-                    background: "#F2EDE3",
+                    background: "#E8E4D8",
                     border: `1px solid rgba(74,111,165,${needsAction ? "0.35" : "0.15"})`,
                     boxShadow: needsAction
                       ? "0 4px 16px rgba(74,111,165,0.15), 0 1px 4px rgba(44,24,16,0.06)"
@@ -225,7 +225,7 @@ function LettersSection() {
                             animate={{ scale: [1, 1.04, 1] }}
                             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                             className="btn-sage text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 inline-block"
-                            style={{ background: "#6B8F71", color: "#fff" }}
+                            style={{ background: "#5C7A5F", color: "#fff" }}
                           >
                             Write 📮
                           </motion.span>
@@ -255,7 +255,7 @@ function GatheringsSection() {
         <SectionHeader label="Gatherings" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#E2DCD0" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#DDD9CC" }} />
           ))}
         </div>
       </>
@@ -271,7 +271,7 @@ function GatheringsSection() {
       {gatherings.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#EDE8DE", border: "1px dashed #C5BFB0" }}
+          style={{ background: "#E8E4D8", border: "1px dashed #C8C4B4" }}
         >
           <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>Roots grow before they're needed.</p>
           <p className="text-xs mb-3" style={{ color: "#9a9390" }}>A gathering is your community meeting regularly, with intention.</p>
@@ -299,7 +299,7 @@ function GatheringsSection() {
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer"
                   style={{
-                    background: "#F2EDE3",
+                    background: "#E8E4D8",
                     border: "1px solid rgba(193,127,36,0.2)",
                     boxShadow: "0 2px 8px rgba(44,24,16,0.07), 0 1px 3px rgba(44,24,16,0.04)",
                   }}

@@ -26,8 +26,8 @@ const BCP_FREQ_OPTIONS: {
   { id: "once",  emoji: "🌱", label: "Once a week",       sub: "A gentle beginning",  dots: 1, daysPerWeek: 1, badge: null,          bg: "#EEF3EF", message: "One office together each week. A beginning." },
   { id: "twice", emoji: "🌿", label: "Twice a week",       sub: "Taking root",         dots: 2, daysPerWeek: 2, badge: null,          bg: "#E8F0EA", message: "Two offices. Enough to find a rhythm." },
   { id: "three", emoji: "🌸", label: "Three times a week", sub: "A real rhythm",       dots: 3, daysPerWeek: 3, badge: "Most chosen 🌿", bg: "#E0EBE2", message: "Three times. This is where something real takes root." },
-  { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",  dots: 5, daysPerWeek: 5, badge: null,          bg: "#EDE8DE", message: "The weekday office. A serious commitment." },
-  { id: "daily", emoji: "✨", label: "Daily",              sub: "The full Daily Office", dots: 7, daysPerWeek: 7, badge: null,         bg: "#EDE8DE", message: "Every day. The full practice of the Daily Office." },
+  { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",  dots: 5, daysPerWeek: 5, badge: null,          bg: "#E8E4D8", message: "The weekday office. A serious commitment." },
+  { id: "daily", emoji: "✨", label: "Daily",              sub: "The full Daily Office", dots: 7, daysPerWeek: 7, badge: null,         bg: "#E8E4D8", message: "Every day. The full practice of the Daily Office." },
 ];
 
 const WEEK_DAYS = [
@@ -360,14 +360,14 @@ const GOAL_OPTIONS_DAILY = [
   },
   {
     days: 14, emoji: "🌸", label: "2 weeks", sub: "In bloom — then renew",
-    bg: "#EDE8DE", borderColor: "#b0cdb3",
+    bg: "#E8E4D8", borderColor: "#b0cdb3",
     dots: Array(14).fill(0), dotLabel: "14 practices — then your tradition renews the commitment",
     badge: null, accentBar: true,
     message: "Two weeks. If you reach it, Eleanor will ask you to renew. The practice stays alive.",
   },
   {
     days: 0, emoji: "✨", label: "Just begin", sub: "No goal, tend freely",
-    bg: "#FAF7F2", borderColor: "rgba(0,0,0,0.06)",
+    bg: "#F2EFE6", borderColor: "rgba(0,0,0,0.06)",
     dots: [], dotLabel: "",
     badge: null,
     message: "No pressure. The practice is open. Tend it when you can.",
@@ -384,14 +384,14 @@ const GOAL_OPTIONS_WEEKLY = [
   },
   {
     days: 21, emoji: "🌸", label: "3 weeks", sub: "In bloom — then renew",
-    bg: "#EDE8DE", borderColor: "#b0cdb3",
+    bg: "#E8E4D8", borderColor: "#b0cdb3",
     dots: Array(3).fill(0), dotLabel: "3 practices — then your tradition renews the commitment",
     badge: null, accentBar: true,
     message: "Three weeks. If you reach it, Eleanor will ask you to renew. The practice stays alive.",
   },
   {
     days: 0, emoji: "✨", label: "Just begin", sub: "No goal, tend freely",
-    bg: "#FAF7F2", borderColor: "rgba(0,0,0,0.06)",
+    bg: "#F2EFE6", borderColor: "rgba(0,0,0,0.06)",
     dots: [], dotLabel: "",
     badge: null,
     message: "No pressure. The practice is open. Tend it when you can.",
@@ -1105,7 +1105,7 @@ export default function MomentNew() {
           </p>
           <button
             onClick={() => createdMomentId ? setLocation(`/moments/${createdMomentId}`) : setLocation("/moments")}
-            className="px-8 py-3 bg-[#6B8F71] text-white rounded-full font-medium hover:bg-[#5a7a60] transition-colors"
+            className="px-8 py-3 bg-[#5C7A5F] text-white rounded-full font-medium hover:bg-[#5a7a60] transition-colors"
           >
             Done 🌿
           </button>
@@ -1122,30 +1122,30 @@ export default function MomentNew() {
     return (
       <div className="min-h-screen bg-[#2C1810] flex items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          className="max-w-sm w-full text-center text-[#EDE8DE]">
+          className="max-w-sm w-full text-center text-[#E8E4D8]">
           <div className="text-6xl mb-6">{isMorning ? "🌅" : "🌙"}</div>
           <h2 className="text-3xl font-bold mb-2">
             {isMorning ? "Morning Prayer is planted." : "Evening Prayer is planted."}
           </h2>
-          <p className="text-[#EDE8DE]/70 mb-6">{freqLabel} · Everyone prays at their own time</p>
-          <p className="text-sm text-[#EDE8DE]/60 mb-8">Calendar invites are on their way.</p>
-          <div className="bg-[#EDE8DE]/10 border border-[#EDE8DE]/20 rounded-2xl p-5 mb-8 text-left">
-            <p className="text-sm font-medium text-[#EDE8DE] mb-1">
+          <p className="text-[#E8E4D8]/70 mb-6">{freqLabel} · Everyone prays at their own time</p>
+          <p className="text-sm text-[#E8E4D8]/60 mb-8">Calendar invites are on their way.</p>
+          <div className="bg-[#E8E4D8]/10 border border-[#E8E4D8]/20 rounded-2xl p-5 mb-8 text-left">
+            <p className="text-sm font-medium text-[#E8E4D8] mb-1">
               Open your BCP to page {isMorning ? "75" : "115"}.
             </p>
             <a href={isMorning ? "https://bcponline.org/DailyOffice/mp2.html" : "https://bcponline.org/DailyOffice/ep2.html"}
               target="_blank" rel="noopener noreferrer"
-              className="text-sm text-[#6B8F71] underline underline-offset-2">
+              className="text-sm text-[#5C7A5F] underline underline-offset-2">
               Or pray online: {isMorning ? "bcponline.org/DailyOffice/mp2.html" : "bcponline.org/DailyOffice/ep2.html"}
             </a>
           </div>
-          <p className="text-[#EDE8DE]/50 font-serif italic text-sm leading-relaxed mb-8">
+          <p className="text-[#E8E4D8]/50 font-serif italic text-sm leading-relaxed mb-8">
             {isMorning
               ? '"Let my prayer be set forth in thy sight as incense, and the lifting up of my hands as the evening sacrifice." — Psalm 141:2'
               : '"O gracious Light, pure brightness of the everliving Father in heaven." — Phos Hilaron'}
           </p>
           <button onClick={() => setLocation("/moments")}
-            className="px-10 py-4 bg-[#6B8F71] text-white rounded-full text-base font-semibold hover:bg-[#5a7a60] transition-colors">
+            className="px-10 py-4 bg-[#5C7A5F] text-white rounded-full text-base font-semibold hover:bg-[#5a7a60] transition-colors">
             Done 🌿
           </button>
         </motion.div>
@@ -1159,13 +1159,13 @@ export default function MomentNew() {
     return (
       <div className="min-h-screen bg-[#2C1810] flex items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          className="max-w-sm w-full text-center text-[#EDE8DE]">
+          className="max-w-sm w-full text-center text-[#E8E4D8]">
           <div className="text-6xl mb-6">{isMorning ? "🌅" : "🌙"}</div>
           <h1 className="text-3xl font-bold leading-tight mb-2">
             Plant {isMorning ? "Morning Prayer" : "Evening Prayer"}
           </h1>
-          <p className="text-[#6B8F71] text-lg font-semibold mb-8">with your people</p>
-          <p className="font-serif italic text-[#EDE8DE]/80 text-base leading-loose mb-8">
+          <p className="text-[#5C7A5F] text-lg font-semibold mb-8">with your people</p>
+          <p className="font-serif italic text-[#E8E4D8]/80 text-base leading-loose mb-8">
             {isMorning ? (
               <>
                 "You can't always be together.<br />
@@ -1186,17 +1186,17 @@ export default function MomentNew() {
               </>
             )}
           </p>
-          <p className="text-[#EDE8DE]/50 text-sm mb-8">
+          <p className="text-[#E8E4D8]/50 text-sm mb-8">
             {isMorning
               ? "Morning Prayer Rite II · Book of Common Prayer · Page 75 · A Daily Office"
               : "Evening Prayer Rite II · Book of Common Prayer · Page 115 · A Daily Office"}
           </p>
           <button onClick={goNext}
-            className="w-full py-4 rounded-2xl bg-[#6B8F71] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors">
+            className="w-full py-4 rounded-2xl bg-[#5C7A5F] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors">
             Plant this with my people 🌿
           </button>
           <button onClick={() => { setTemplateId(null); setStep("template"); }}
-            className="mt-4 text-sm text-[#EDE8DE]/40 hover:text-[#EDE8DE]/70 transition-colors">
+            className="mt-4 text-sm text-[#E8E4D8]/40 hover:text-[#E8E4D8]/70 transition-colors">
             ← Go back
           </button>
         </motion.div>
@@ -1216,7 +1216,7 @@ export default function MomentNew() {
             transition={{ duration: 0.35 }}
             className="w-full max-w-sm mx-auto"
           >
-            <div className="bg-[#EEF3EF] border border-[#6B8F71]/20 rounded-[2rem] p-10 text-center shadow-[var(--shadow-warm-lg)]">
+            <div className="bg-[#EEF3EF] border border-[#5C7A5F]/20 rounded-[2rem] p-10 text-center shadow-[var(--shadow-warm-lg)]">
               <div className="text-5xl mb-5">🌿</div>
               <p className="text-[#2C1A0E] font-serif text-[1.1rem] leading-relaxed italic">
                 "Practices are for the distance between gatherings.
@@ -1242,7 +1242,7 @@ export default function MomentNew() {
             </button>
             <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-[#6B8F71] rounded-full"
+                className="h-full bg-[#5C7A5F] rounded-full"
                 animate={{ width: `${((stepIndex) / (totalSteps - 1)) * 100}%` }}
                 transition={{ duration: 0.4, ease: "easeInOut" }}
               />
@@ -1265,7 +1265,7 @@ export default function MomentNew() {
                   <div className="grid gap-3">
                     {TEMPLATES.map(t => (
                       <button key={t.id} onClick={() => selectTemplate(t)}
-                        className="w-full text-left p-4 rounded-2xl border border-border/60 hover:border-[#6B8F71]/60 hover:bg-[#6B8F71]/5 transition-all flex items-center gap-4 group">
+                        className="w-full text-left p-4 rounded-2xl border border-border/60 hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all flex items-center gap-4 group">
                         <span className="text-3xl">{t.emoji}</span>
                         <div>
                           <p className="font-semibold text-foreground text-sm group-hover:text-[#4a6b50]">{t.name}</p>
@@ -1289,7 +1289,7 @@ export default function MomentNew() {
                       </div>
                       <div className="grid gap-4">
                         <button onClick={() => setIntercessionMode("bcp")}
-                          className="w-full text-left p-5 rounded-2xl border-2 border-border hover:border-[#6B8F71]/60 hover:bg-[#6B8F71]/5 transition-all">
+                          className="w-full text-left p-5 rounded-2xl border-2 border-border hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all">
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">📖</span>
                             <div>
@@ -1299,7 +1299,7 @@ export default function MomentNew() {
                           </div>
                         </button>
                         <button onClick={confirmCustomIntercession}
-                          className="w-full text-left p-5 rounded-2xl border-2 border-border hover:border-[#6B8F71]/60 hover:bg-[#6B8F71]/5 transition-all">
+                          className="w-full text-left p-5 rounded-2xl border-2 border-border hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all">
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">✍️</span>
                             <div>
@@ -1334,7 +1334,7 @@ export default function MomentNew() {
                         onChange={e => setIntercessionTopic(e.target.value.slice(0, 200))}
                         rows={4}
                         placeholder="The climate crisis and those most affected..."
-                        className="w-full px-4 py-3 rounded-xl border border-border focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71] focus:outline-none resize-none"
+                        className="w-full px-4 py-3 rounded-xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] focus:outline-none resize-none"
                       />
                       <p className="text-xs text-muted-foreground/60 text-right mt-1">{intercessionTopic.length}/200</p>
                       <div className="text-xs text-muted-foreground/60 italic mt-2 space-y-0.5">
@@ -1345,7 +1345,7 @@ export default function MomentNew() {
                       <button
                         onClick={confirmCustomIntercession}
                         disabled={!intercessionTopic.trim()}
-                        className="mt-4 w-full py-3 bg-[#6B8F71] text-white rounded-xl font-medium hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
+                        className="mt-4 w-full py-3 bg-[#5C7A5F] text-white rounded-xl font-medium hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
                       >
                         Set this intention →
                       </button>
@@ -1376,29 +1376,29 @@ export default function MomentNew() {
                             else setBcpPracticeDays([]);
                           }}
                             className="relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200"
-                            style={{ background: sel ? "#6B8F71" : opt.bg }}
+                            style={{ background: sel ? "#5C7A5F" : opt.bg }}
                           >
                             {accentBar && !sel && (
-                              <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: opt.id === "five" ? "#6B8F71" : "#C17F24" }} />
+                              <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: opt.id === "five" ? "#5C7A5F" : "#C17F24" }} />
                             )}
                             <div className={`flex items-center gap-4 px-5 py-4 ${accentBar && !sel ? "pl-6" : ""}`}>
                               <span className="text-3xl">{opt.emoji}</span>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`font-bold text-base ${sel ? "text-[#EDE8DE]" : "text-[#2C1A0E]"}`}>{opt.label}</span>
+                                  <span className={`font-bold text-base ${sel ? "text-[#E8E4D8]" : "text-[#2C1A0E]"}`}>{opt.label}</span>
                                   {opt.badge && !sel && (
                                     <span className="text-xs font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">{opt.badge}</span>
                                   )}
-                                  {sel && <span className="ml-auto text-[#EDE8DE] text-lg">✓</span>}
+                                  {sel && <span className="ml-auto text-[#E8E4D8] text-lg">✓</span>}
                                 </div>
-                                <p className={`text-xs mt-0.5 ${sel ? "text-[#EDE8DE]/80" : "text-[#6b5c4a]/70"}`}>{opt.sub}</p>
+                                <p className={`text-xs mt-0.5 ${sel ? "text-[#E8E4D8]/80" : "text-[#6b5c4a]/70"}`}>{opt.sub}</p>
                                 <div className="flex gap-1 mt-2">
                                   {Array.from({ length: 7 }).map((_, i) => (
                                     <div key={i} className="w-2.5 h-2.5 rounded-full transition-all duration-300"
-                                      style={{ background: i < opt.dots ? (sel ? "#EDE8DE" : "#6B8F71") : "rgba(107,143,113,0.2)" }} />
+                                      style={{ background: i < opt.dots ? (sel ? "#E8E4D8" : "#5C7A5F") : "rgba(92,122,95,0.2)" }} />
                                   ))}
                                 </div>
-                                <p className={`text-xs mt-1 ${sel ? "text-[#EDE8DE]/60" : "text-[#6b5c4a]/50"}`}>
+                                <p className={`text-xs mt-1 ${sel ? "text-[#E8E4D8]/60" : "text-[#6b5c4a]/50"}`}>
                                   {opt.dots} office{opt.dots > 1 ? "s" : ""} together each week
                                 </p>
                               </div>
@@ -1410,7 +1410,7 @@ export default function MomentNew() {
                     {/* Dynamic message */}
                     {bcpFreqType && freqOpt && (
                       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                        className="text-sm text-[#6B8F71] font-medium italic text-center py-2">
+                        className="text-sm text-[#5C7A5F] font-medium italic text-center py-2">
                         {freqOpt.message}
                       </motion.p>
                     )}
@@ -1431,7 +1431,7 @@ export default function MomentNew() {
                                   else if (!atMax) setBcpPracticeDays(prev => [...prev, d.id]);
                                 }}
                                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                  sel ? "bg-[#6B8F71] text-white" : "bg-secondary text-foreground hover:bg-[#6B8F71]/10"
+                                  sel ? "bg-[#5C7A5F] text-white" : "bg-secondary text-foreground hover:bg-[#5C7A5F]/10"
                                 } ${atMax ? "opacity-30 cursor-not-allowed" : ""}`}
                               >
                                 {d.label}
@@ -1480,7 +1480,7 @@ export default function MomentNew() {
                             setBcpPersonalAmPm(s.amPm);
                           }}
                             className={`rounded-2xl p-4 text-left transition-all ${
-                              sel ? "bg-[#6B8F71] text-white" : "bg-secondary/50 border border-border hover:border-[#6B8F71]/40"
+                              sel ? "bg-[#5C7A5F] text-white" : "bg-secondary/50 border border-border hover:border-[#5C7A5F]/40"
                             }`}>
                             <div className="text-2xl mb-2">{s.emoji}</div>
                             <p className={`font-bold text-sm ${sel ? "text-white" : "text-foreground"}`}>{s.label}</p>
@@ -1520,7 +1520,7 @@ export default function MomentNew() {
                         <div>
                           <label className="text-xs text-muted-foreground">Timezone</label>
                           <input type="text" value={bcpTimezone} onChange={e => setBcpTimezone(e.target.value)}
-                            className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:border-[#6B8F71] focus:outline-none" />
+                            className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:border-[#5C7A5F] focus:outline-none" />
                         </div>
                       </motion.div>
                     )}
@@ -1552,7 +1552,7 @@ export default function MomentNew() {
                             </div>
                             <button onClick={() => setBcpConnections(prev => prev.map((x, j) => j === i ? { ...x, invited: !x.invited } : x))}
                               className={`text-sm font-medium rounded-full px-4 py-1.5 transition-all ${
-                                c.invited ? "bg-[#6B8F71] text-white" : "border border-[#6B8F71] text-[#6B8F71] hover:bg-[#6B8F71]/10"
+                                c.invited ? "bg-[#5C7A5F] text-white" : "border border-[#5C7A5F] text-[#5C7A5F] hover:bg-[#5C7A5F]/10"
                               }`}>
                               {c.invited ? "Invited ✓" : "+ Invite"}
                             </button>
@@ -1566,9 +1566,9 @@ export default function MomentNew() {
                       {bcpParticipants.map((p, i) => (
                         <div key={i} className="flex gap-2">
                           <input type="text" value={p.name} onChange={e => setBcpParticipants(prev => { const n = [...prev]; n[i] = { ...n[i], name: e.target.value }; return n; })}
-                            placeholder="Name" className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:border-[#6B8F71] focus:outline-none" />
+                            placeholder="Name" className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:border-[#5C7A5F] focus:outline-none" />
                           <input type="email" value={p.email} onChange={e => setBcpParticipants(prev => { const n = [...prev]; n[i] = { ...n[i], email: e.target.value }; return n; })}
-                            placeholder="Email" className="flex-[1.5] px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:border-[#6B8F71] focus:outline-none" />
+                            placeholder="Email" className="flex-[1.5] px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:border-[#5C7A5F] focus:outline-none" />
                           {bcpParticipants.length > 1 && (
                             <button onClick={() => setBcpParticipants(prev => prev.filter((_, j) => j !== i))}
                               className="text-muted-foreground hover:text-destructive px-2">×</button>
@@ -1577,13 +1577,13 @@ export default function MomentNew() {
                       ))}
                       {bcpParticipants.length < 10 && (
                         <button onClick={() => setBcpParticipants(prev => [...prev, { name: "", email: "" }])}
-                          className="text-sm text-[#6B8F71] hover:text-[#4a6b50] transition-colors">
+                          className="text-sm text-[#5C7A5F] hover:text-[#4a6b50] transition-colors">
                           + Add another person
                         </button>
                       )}
                     </div>
                     {/* BCP info card */}
-                    <div className="bg-[#EEF3EF] border border-[#6B8F71]/20 rounded-2xl p-4 space-y-1">
+                    <div className="bg-[#EEF3EF] border border-[#5C7A5F]/20 rounded-2xl p-4 space-y-1">
                       <p className="text-sm font-semibold text-[#2C1A0E]">📖 About {isMorning ? "Morning Prayer" : "Evening Prayer"}</p>
                       <p className="text-sm text-[#6b5c4a]">
                         {isMorning ? "Morning Prayer Rite II takes 15–20 minutes." : "Evening Prayer Rite II takes 15–20 minutes."}<br />
@@ -1591,7 +1591,7 @@ export default function MomentNew() {
                       </p>
                       <a href={isMorning ? "https://bcponline.org/DailyOffice/mp2.html" : "https://bcponline.org/DailyOffice/ep2.html"}
                         target="_blank" rel="noopener noreferrer"
-                        className="text-sm text-[#6B8F71] underline underline-offset-2 block">
+                        className="text-sm text-[#5C7A5F] underline underline-offset-2 block">
                         No BCP? Pray online: {isMorning ? "bcponline.org/DailyOffice/mp2.html" : "bcponline.org/DailyOffice/ep2.html"}
                       </a>
                       <p className="text-xs text-[#6b5c4a]/70 italic mt-1">Everyone chooses their own time. You are together in spirit.</p>
@@ -1614,7 +1614,7 @@ export default function MomentNew() {
                     onChange={e => setName(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && canNext() && goNext()}
                     placeholder="Morning Prayer, Evening Coffee, Sunday Sit..."
-                    className="w-full text-xl md:text-2xl px-0 py-4 bg-transparent border-b-2 border-border focus:border-[#6B8F71] focus:outline-none transition-colors placeholder:text-muted-foreground/40"
+                    className="w-full text-xl md:text-2xl px-0 py-4 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors placeholder:text-muted-foreground/40"
                   />
                 </div>
               )}
@@ -1632,7 +1632,7 @@ export default function MomentNew() {
                     <textarea autoFocus value={intention}
                       onChange={e => setIntention(e.target.value.slice(0, 200))}
                       rows={4}
-                      className="w-full px-4 py-4 bg-card border-2 border-border focus:border-[#6B8F71] focus:outline-none transition-colors resize-none text-base placeholder:text-muted-foreground/40 font-serif rounded-2xl"
+                      className="w-full px-4 py-4 bg-card border-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors resize-none text-base placeholder:text-muted-foreground/40 font-serif rounded-2xl"
                     />
                     {intention.length > 150 && (
                       <p className="text-right text-xs text-muted-foreground/50 mt-1">{intention.length}/200</p>
@@ -1671,18 +1671,18 @@ export default function MomentNew() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest text-[#6B8F71]">Your intention</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest text-[#5C7A5F]">Your intention</label>
                     <input autoFocus type="text" value={intention}
                       onChange={e => setIntention(e.target.value.slice(0, 120))}
                       placeholder="e.g. End to the war in Iran, My mother's health, Our parish community..."
-                      className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#6B8F71] focus:outline-none transition-colors text-base placeholder:text-muted-foreground/40"
+                      className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors text-base placeholder:text-muted-foreground/40"
                     />
                     {intention.length > 80 && (
                       <p className="text-right text-xs text-muted-foreground/50">{intention.length}/120</p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest text-[#6B8F71]">A prayer (optional)</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest text-[#5C7A5F]">A prayer (optional)</label>
                     <p className="text-xs text-muted-foreground/60">
                       Write your own prayer, or leave this blank and Eleanor will display just your intention.
                     </p>
@@ -1690,7 +1690,7 @@ export default function MomentNew() {
                       onChange={e => setIntercessionFullText(e.target.value)}
                       rows={4}
                       placeholder="Write a prayer for your group to pray together..."
-                      className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#6B8F71] focus:outline-none transition-colors resize-none text-base placeholder:text-muted-foreground/40 font-serif"
+                      className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors resize-none text-base placeholder:text-muted-foreground/40 font-serif"
                     />
                   </div>
                 </div>
@@ -1704,7 +1704,7 @@ export default function MomentNew() {
                     onChange={e => setIntention(e.target.value)}
                     maxLength={280} rows={3}
                     placeholder="The heart of this practice in a sentence..."
-                    className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#6B8F71] focus:outline-none transition-colors resize-none text-lg placeholder:text-muted-foreground/40 font-serif italic"
+                    className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors resize-none text-lg placeholder:text-muted-foreground/40 font-serif italic"
                   />
                   <p className="text-right text-xs text-muted-foreground/50">{intention.length}/280</p>
                 </div>
@@ -1721,7 +1721,7 @@ export default function MomentNew() {
                   </div>
                   <input autoFocus type="text" value={reflectionPrompt}
                     onChange={e => setReflectionPrompt(e.target.value)}
-                    className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#6B8F71] focus:outline-none transition-colors text-base"
+                    className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors text-base"
                   />
                   <div className="flex flex-wrap gap-2">
                     {[
@@ -1733,8 +1733,8 @@ export default function MomentNew() {
                       <button key={chip} onClick={() => setReflectionPrompt(chip)}
                         className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
                           reflectionPrompt === chip
-                            ? "border-[#6B8F71] bg-[#6B8F71]/10 text-[#6B8F71]"
-                            : "border-border text-muted-foreground hover:border-[#6B8F71]/40"
+                            ? "border-[#5C7A5F] bg-[#5C7A5F]/10 text-[#5C7A5F]"
+                            : "border-border text-muted-foreground hover:border-[#5C7A5F]/40"
                         }`}>
                         {chip}
                       </button>
@@ -1750,14 +1750,14 @@ export default function MomentNew() {
                   <div className="grid gap-3">
                     {LOGGING_OPTIONS.map(opt => (
                       <button key={opt.type} onClick={() => setLoggingType(opt.type)}
-                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${loggingType === opt.type ? "border-[#6B8F71] bg-[#6B8F71]/5" : "border-border hover:border-[#6B8F71]/30"}`}>
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${loggingType === opt.type ? "border-[#5C7A5F] bg-[#5C7A5F]/5" : "border-border hover:border-[#5C7A5F]/30"}`}>
                         <div className="flex items-center gap-3">
                           <span className="text-xl">{opt.icon}</span>
                           <div className="flex-1">
                             <p className="font-medium text-foreground text-sm">{opt.label}</p>
                             <p className="text-xs text-muted-foreground">{opt.description}</p>
                           </div>
-                          {loggingType === opt.type && <span className="text-[#6B8F71]">✓</span>}
+                          {loggingType === opt.type && <span className="text-[#5C7A5F]">✓</span>}
                         </div>
                       </button>
                     ))}
@@ -1770,7 +1770,7 @@ export default function MomentNew() {
                       <input autoFocus type="text" value={reflectionPrompt}
                         onChange={e => setReflectionPrompt(e.target.value)}
                         placeholder="What are you carrying into this day?"
-                        className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71] focus:outline-none"
+                        className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] focus:outline-none"
                       />
                     </motion.div>
                   )}
@@ -1791,7 +1791,7 @@ export default function MomentNew() {
                     <div className="flex gap-3">
                       {(["daily", "weekly"] as Frequency[]).map(f => (
                         <button key={f} onClick={() => { setFrequency(f); setScheduledDays([]); }}
-                          className={`flex-1 py-3 rounded-xl border-2 font-medium text-sm capitalize transition-all ${frequency === f ? "border-[#6B8F71] bg-[#6B8F71]/5 text-[#4a6b50]" : "border-border hover:border-[#6B8F71]/30 text-foreground"}`}>
+                          className={`flex-1 py-3 rounded-xl border-2 font-medium text-sm capitalize transition-all ${frequency === f ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/30 text-foreground"}`}>
                           {f === "daily" ? "Every day" : "Once a week"}
                         </button>
                       ))}
@@ -1811,7 +1811,7 @@ export default function MomentNew() {
                               ? setScheduledDays([val])
                               : setScheduledDays(prev => prev.includes(val) ? prev.filter(d => d !== val) : [...prev, val])
                             }
-                            className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all ${scheduledDays.includes(val) ? "border-[#6B8F71] bg-[#6B8F71]/5 text-[#4a6b50]" : "border-border hover:border-[#6B8F71]/30 text-foreground"}`}>
+                            className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all ${scheduledDays.includes(val) ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/30 text-foreground"}`}>
                             {label}
                           </button>
                         ))}
@@ -1825,7 +1825,7 @@ export default function MomentNew() {
                     <div className="grid grid-cols-6 gap-1.5">
                       {[1,2,3,4,5,6,7,8,9,10,11,12].map(h => (
                         <button key={h} onClick={() => setScheduledHour(h)}
-                          className={`py-2 rounded-lg border text-sm font-medium transition-all ${scheduledHour === h ? "border-[#6B8F71] bg-[#6B8F71]/5 text-[#4a6b50]" : "border-border hover:border-[#6B8F71]/20 text-foreground"}`}>
+                          className={`py-2 rounded-lg border text-sm font-medium transition-all ${scheduledHour === h ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/20 text-foreground"}`}>
                           {h}
                         </button>
                       ))}
@@ -1838,7 +1838,7 @@ export default function MomentNew() {
                     <div className="flex gap-2">
                       {[0, 15, 30, 45].map(m => (
                         <button key={m} onClick={() => setScheduledMinute(m)}
-                          className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${scheduledMinute === m ? "border-[#6B8F71] bg-[#6B8F71]/5 text-[#4a6b50]" : "border-border hover:border-[#6B8F71]/20 text-foreground"}`}>
+                          className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${scheduledMinute === m ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/20 text-foreground"}`}>
                           :{String(m).padStart(2, "0")}
                         </button>
                       ))}
@@ -1849,13 +1849,13 @@ export default function MomentNew() {
                   <div className="flex gap-3">
                     {(["AM", "PM"] as const).map(p => (
                       <button key={p} onClick={() => setScheduledAmPm(p)}
-                        className={`flex-1 py-3 rounded-xl border-2 font-medium text-sm transition-all ${scheduledAmPm === p ? "border-[#6B8F71] bg-[#6B8F71]/5 text-[#4a6b50]" : "border-border hover:border-[#6B8F71]/20 text-foreground"}`}>
+                        className={`flex-1 py-3 rounded-xl border-2 font-medium text-sm transition-all ${scheduledAmPm === p ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/20 text-foreground"}`}>
                         {p}
                       </button>
                     ))}
                   </div>
 
-                  <p className="text-xs text-[#6B8F71] italic">The reminder fires at this time for everyone. 🔔</p>
+                  <p className="text-xs text-[#5C7A5F] italic">The reminder fires at this time for everyone. 🔔</p>
                   <p className="text-xs text-muted-foreground/60">You can log any time that day — the whole day counts. 🌿</p>
                 </div>
               )}
@@ -1905,9 +1905,9 @@ export default function MomentNew() {
                             transition={{ duration: 0.15 }}
                             className="relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200"
                             style={{
-                              background: sel ? "#6B8F71" : "#EEF3EF",
-                              border: `1.5px solid ${sel ? "#6B8F71" : "#c8dac9"}`,
-                              boxShadow: sel ? "0 4px 14px rgba(107,143,113,0.22)" : undefined,
+                              background: sel ? "#5C7A5F" : "#EEF3EF",
+                              border: `1.5px solid ${sel ? "#5C7A5F" : "#c8dac9"}`,
+                              boxShadow: sel ? "0 4px 14px rgba(92,122,95,0.22)" : undefined,
                             }}
                           >
                             {sel && (
@@ -1944,7 +1944,7 @@ export default function MomentNew() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -5 }}
                           transition={{ duration: 0.2 }}
-                          className="text-sm text-center text-[#6B8F71] italic px-2"
+                          className="text-sm text-center text-[#5C7A5F] italic px-2"
                           style={{ fontFamily: "Space Grotesk, sans-serif" }}
                         >
                           {commitmentSessionsGoal} sessions together. A good place to begin. 🌱
@@ -1980,7 +1980,7 @@ export default function MomentNew() {
                     ] as const).map(opt => (
                       <button key={opt.mins}
                         onClick={() => { setContemplativeDuration(opt.mins); goNext(); }}
-                        className="w-full text-left p-4 rounded-2xl border border-border/60 hover:border-[#6B8F71]/60 hover:bg-[#6B8F71]/5 transition-all flex items-center gap-4 group">
+                        className="w-full text-left p-4 rounded-2xl border border-border/60 hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all flex items-center gap-4 group">
                         <span className="text-3xl">{opt.emoji}</span>
                         <div>
                           <p className="font-semibold text-sm group-hover:text-[#4a6b50]">{opt.label}</p>
@@ -1990,7 +1990,7 @@ export default function MomentNew() {
                       </button>
                     ))}
                     {contemplativeDuration === -1 ? (
-                      <div className="p-4 rounded-2xl border-2 border-[#6B8F71]/60 bg-[#6B8F71]/5">
+                      <div className="p-4 rounded-2xl border-2 border-[#5C7A5F]/60 bg-[#5C7A5F]/5">
                         <p className="font-semibold text-sm text-[#4a6b50] mb-3">✨ Choose your own</p>
                         <div className="flex items-center gap-3">
                           <input type="number" min={1} max={60} value={customDurationInput}
@@ -1999,14 +1999,14 @@ export default function MomentNew() {
                           <span className="text-muted-foreground text-sm">minutes</span>
                           <button
                             onClick={() => { const n = Math.max(1, Math.min(60, parseInt(customDurationInput) || 20)); setContemplativeDuration(n); goNext(); }}
-                            className="ml-auto py-2 px-4 rounded-xl bg-[#6B8F71] text-white text-sm font-semibold">
+                            className="ml-auto py-2 px-4 rounded-xl bg-[#5C7A5F] text-white text-sm font-semibold">
                             Continue →
                           </button>
                         </div>
                       </div>
                     ) : (
                       <button onClick={() => setContemplativeDuration(-1)}
-                        className="w-full text-left p-4 rounded-2xl border border-border/60 hover:border-[#6B8F71]/60 hover:bg-[#6B8F71]/5 transition-all flex items-center gap-4 group">
+                        className="w-full text-left p-4 rounded-2xl border border-border/60 hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all flex items-center gap-4 group">
                         <span className="text-3xl">✨</span>
                         <div>
                           <p className="font-semibold text-sm group-hover:text-[#4a6b50]">Choose your own</p>
@@ -2045,11 +2045,11 @@ export default function MomentNew() {
                   {/* Selected item — show when chosen, tap to clear */}
                   {listeningTitle.trim() ? (
                     <div className="mb-4">
-                      <div className="p-4 rounded-2xl bg-[#F0F8F0] border border-[#6B8F71]/30 flex items-center gap-4">
+                      <div className="p-4 rounded-2xl bg-[#F0F8F0] border border-[#5C7A5F]/30 flex items-center gap-4">
                         {listeningArtworkUrl ? (
                           <img src={listeningArtworkUrl} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm" />
                         ) : (
-                          <div className="w-14 h-14 rounded-xl bg-[#6B8F71]/10 flex items-center justify-center flex-shrink-0 text-2xl">🎵</div>
+                          <div className="w-14 h-14 rounded-xl bg-[#5C7A5F]/10 flex items-center justify-center flex-shrink-0 text-2xl">🎵</div>
                         )}
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-[15px] text-[#2a402c] truncate">{listeningTitle.trim()}</p>
@@ -2075,7 +2075,7 @@ export default function MomentNew() {
                           onChange={e => searchAppleMusic(e.target.value)}
                           placeholder={`Search for a ${listeningType}…`}
                           autoFocus
-                          className="w-full px-4 py-3.5 rounded-2xl border border-border focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71] outline-none bg-background text-base pl-10"
+                          className="w-full px-4 py-3.5 rounded-2xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-background text-base pl-10"
                         />
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40">🔍</span>
                         {listeningSearching && (
@@ -2126,7 +2126,7 @@ export default function MomentNew() {
                   <textarea value={fastingFrom}
                     onChange={e => setFastingFrom(e.target.value.slice(0, 140))}
                     rows={3} autoFocus
-                    className="w-full px-4 py-4 rounded-2xl border border-border focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71] outline-none bg-background resize-none text-base leading-relaxed mb-2"
+                    className="w-full px-4 py-4 rounded-2xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-background resize-none text-base leading-relaxed mb-2"
                   />
                   <p className="text-xs text-muted-foreground/60 italic mb-2">e.g. "{FASTING_FROM_EXAMPLES[fastingFromIdx]}"</p>
                   <span className="text-xs text-muted-foreground/40">{fastingFrom.length}/140</span>
@@ -2141,7 +2141,7 @@ export default function MomentNew() {
                   <textarea value={fastingIntention}
                     onChange={e => setFastingIntention(e.target.value.slice(0, 200))}
                     rows={4} autoFocus
-                    className="w-full px-4 py-4 rounded-2xl border border-border focus:border-[#6B8F71] focus:ring-1 focus:ring-[#6B8F71] outline-none bg-background resize-none text-base leading-relaxed mb-2"
+                    className="w-full px-4 py-4 rounded-2xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-background resize-none text-base leading-relaxed mb-2"
                   />
                   <p className="text-xs text-muted-foreground/60 italic mb-2">e.g. "{FASTING_INTENTION_EXAMPLES[fastingIntentionIdx]}"</p>
                   <span className="text-xs text-muted-foreground/40">{fastingIntention.length}/200</span>
@@ -2168,7 +2168,7 @@ export default function MomentNew() {
                       {FASTING_FREQ_OPTS.map(opt => (
                         <button key={opt.id}
                           onClick={() => { setFastingFrequency(opt.id); setFastingDate(""); setFastingDay(""); setFastingDayOfMonth(null); }}
-                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${fastingFrequency === opt.id ? "border-[#6B8F71] bg-[#6B8F71]/5" : "border-border/60 hover:border-[#6B8F71]/40"}`}>
+                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${fastingFrequency === opt.id ? "border-[#5C7A5F] bg-[#5C7A5F]/5" : "border-border/60 hover:border-[#5C7A5F]/40"}`}>
                           <span className="text-2xl">{opt.emoji}</span>
                           <div>
                             <p className={`font-semibold text-sm ${fastingFrequency === opt.id ? "text-[#4a6b50]" : ""}`}>{opt.label}</p>
@@ -2183,7 +2183,7 @@ export default function MomentNew() {
                         <input type="date" value={fastingDate}
                           onChange={e => setFastingDate(e.target.value)}
                           min={new Date().toISOString().split("T")[0]}
-                          className="w-full px-4 py-3 rounded-2xl border border-border focus:border-[#6B8F71] outline-none bg-background text-base"
+                          className="w-full px-4 py-3 rounded-2xl border border-border focus:border-[#5C7A5F] outline-none bg-background text-base"
                         />
                       </div>
                     )}
@@ -2193,7 +2193,7 @@ export default function MomentNew() {
                         <div className="grid grid-cols-7 gap-1.5">
                           {FAST_DAYS.map(d => (
                             <button key={d.id} onClick={() => setFastingDay(d.id)}
-                              className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${fastingDay === d.id ? "bg-[#6B8F71] text-white border-[#6B8F71]" : "border-border text-muted-foreground hover:border-[#6B8F71]/40"}`}>
+                              className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${fastingDay === d.id ? "bg-[#5C7A5F] text-white border-[#5C7A5F]" : "border-border text-muted-foreground hover:border-[#5C7A5F]/40"}`}>
                               {d.label}
                             </button>
                           ))}
@@ -2206,7 +2206,7 @@ export default function MomentNew() {
                         <div className="grid grid-cols-7 gap-1.5">
                           {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
                             <button key={d} onClick={() => setFastingDayOfMonth(d)}
-                              className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${fastingDayOfMonth === d ? "bg-[#6B8F71] text-white border-[#6B8F71]" : "border-border text-muted-foreground hover:border-[#6B8F71]/40"}`}>
+                              className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${fastingDayOfMonth === d ? "bg-[#5C7A5F] text-white border-[#5C7A5F]" : "border-border text-muted-foreground hover:border-[#5C7A5F]/40"}`}>
                               {d}
                             </button>
                           ))}
@@ -2230,7 +2230,7 @@ export default function MomentNew() {
             <div className="mt-6 pt-4 border-t border-border/30">
               {/* Disabled inline message for invite step */}
               {step === "invite" && showInviteDisabledMsg && invitedPeople.length === 0 && (
-                <div className="mb-3 px-4 py-3 rounded-2xl bg-[#6B8F71]/8 border border-[#6B8F71]/20 text-center">
+                <div className="mb-3 px-4 py-3 rounded-2xl bg-[#5C7A5F]/8 border border-[#5C7A5F]/20 text-center">
                   <p className="text-sm text-[#4a6b50] font-medium mb-1">🌿 This practice needs at least one other person.</p>
                   <p className="text-xs text-[#4a6b50]/70 leading-relaxed">
                     Eleanor is built for doing things together across distance —<br />
@@ -2250,8 +2250,8 @@ export default function MomentNew() {
                 disabled={(step !== "invite" && !canNext()) || plantMutation.isPending || bcpPlantMutation.isPending}
                 className={`w-full py-4 rounded-2xl text-white text-base font-semibold transition-colors ${
                   (step === "invite" && invitedPeople.length === 0) || (!canNext() && step !== "invite")
-                    ? "bg-[#6B8F71]/40 cursor-not-allowed"
-                    : "bg-[#6B8F71] hover:bg-[#5a7a60]"
+                    ? "bg-[#5C7A5F]/40 cursor-not-allowed"
+                    : "bg-[#5C7A5F] hover:bg-[#5a7a60]"
                 }`}
               >
                 {(plantMutation.isPending || bcpPlantMutation.isPending)

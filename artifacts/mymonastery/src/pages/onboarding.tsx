@@ -87,7 +87,7 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF7F2" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F2EFE6" }}>
       {/* Header */}
       <header className="px-6 py-6 flex items-center">
         <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
@@ -120,10 +120,10 @@ export default function Onboarding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
             className="rounded-2xl p-6 animate-card-breathe"
-            style={{ background: "#F2EDE3", border: "1px solid rgba(44,24,16,0.07)", boxShadow: "0 8px 32px rgba(44,24,16,0.12), 0 2px 8px rgba(44,24,16,0.07)" }}
+            style={{ background: "#E8E4D8", border: "1px solid rgba(44,24,16,0.07)", boxShadow: "0 8px 32px rgba(44,24,16,0.12), 0 2px 8px rgba(44,24,16,0.07)" }}
           >
             {/* Mode toggle */}
-            <div className="flex rounded-xl p-1 mb-4" style={{ background: "#D5CEBC" }}>
+            <div className="flex rounded-xl p-1 mb-4" style={{ background: "#C8C4B8" }}>
               {(["signin", "register"] as Mode[]).map((m) => (
                 <button
                   key={m}
@@ -131,7 +131,7 @@ export default function Onboarding() {
                   onClick={() => switchMode(m)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
                   style={{
-                    background: mode === m ? "#FAF7F2" : "transparent",
+                    background: mode === m ? "#F2EFE6" : "transparent",
                     color: mode === m ? "#2C1810" : "#6b6460",
                     boxShadow: mode === m ? "0 1px 4px rgba(44,24,16,0.08)" : "none",
                   }}
@@ -159,7 +159,7 @@ export default function Onboarding() {
                       value={firstName}
                       onChange={e => { setFirstName(e.target.value); setError(""); }}
                       className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                      style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                      style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
                       autoComplete="given-name"
                       disabled={submitting}
                     />
@@ -169,7 +169,7 @@ export default function Onboarding() {
                       value={lastName}
                       onChange={e => { setLastName(e.target.value); setError(""); }}
                       className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                      style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                      style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
                       autoComplete="family-name"
                       disabled={submitting}
                     />
@@ -182,7 +182,7 @@ export default function Onboarding() {
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(""); }}
                   className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                  style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                  style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
                   autoComplete="email"
                   disabled={submitting}
                 />
@@ -194,7 +194,7 @@ export default function Onboarding() {
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(""); }}
                     className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none transition-colors"
-                    style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                    style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
                     autoComplete={mode === "register" ? "new-password" : "current-password"}
                     disabled={submitting}
                   />
@@ -230,7 +230,7 @@ export default function Onboarding() {
                   type="submit"
                   disabled={submitting}
                   className="btn-sage flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1"
-                  style={{ background: "#6B8F71", color: "#fff" }}
+                  style={{ background: "#5C7A5F", color: "#fff" }}
                 >
                   {submitting ? (
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />

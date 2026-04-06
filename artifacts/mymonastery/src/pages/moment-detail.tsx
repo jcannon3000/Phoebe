@@ -237,7 +237,7 @@ function nextPracticeLabel(frequency: string, scheduledTime: string, dayOfWeek?:
 
 const STATUS_ICON: Record<string, string> = { bloom: "🌸", solo: "👤", wither: "🥀" };
 const STATUS_LABEL: Record<string, string> = { bloom: "Bloomed", solo: "Solo", wither: "Withered" };
-const STATUS_COLOR: Record<string, string> = { bloom: "text-[#6B8F71]", solo: "text-amber-600", wither: "text-rose-400/80" };
+const STATUS_COLOR: Record<string, string> = { bloom: "text-[#5C7A5F]", solo: "text-amber-600", wither: "text-rose-400/80" };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -473,7 +473,7 @@ export default function MomentDetail() {
             <h1 className="text-2xl font-semibold text-foreground mb-1 min-w-0 break-words">{moment.name}</h1>
             <button
               onClick={() => setShowInvite(true)}
-              className="shrink-0 mt-0.5 text-xs font-medium text-[#6B8F71] border border-[#6B8F71]/40 rounded-full px-3 py-1.5 hover:bg-[#6B8F71]/8 transition-colors whitespace-nowrap"
+              className="shrink-0 mt-0.5 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-3 py-1.5 hover:bg-[#5C7A5F]/8 transition-colors whitespace-nowrap"
             >
               + Invite 🌿
             </button>
@@ -481,7 +481,7 @@ export default function MomentDetail() {
 
           {/* Intercession: "Praying for" — only when label differs from name; others: italic intention */}
           {showIntercessionLabel ? (
-            <p className="text-sm text-[#6B8F71] mb-1.5">
+            <p className="text-sm text-[#5C7A5F] mb-1.5">
               Praying for: {intentionDisplay}
             </p>
           ) : !isIntercession && moment.intention ? (
@@ -544,7 +544,7 @@ export default function MomentDetail() {
         {isFasting && (
           <div className="mb-5 space-y-2">
             {moment.fastingFrom && (
-              <div className="bg-[#F0F8F0] border border-[#6B8F71]/25 rounded-2xl px-4 py-3 flex items-start gap-3">
+              <div className="bg-[#F0F8F0] border border-[#5C7A5F]/25 rounded-2xl px-4 py-3 flex items-start gap-3">
                 <span className="text-xl mt-0.5">🌿</span>
                 <div>
                   <p className="text-xs font-semibold text-[#4a6b50] uppercase tracking-wider mb-0.5">Fasting from</p>
@@ -590,7 +590,7 @@ export default function MomentDetail() {
               href={appleMusicUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mb-5 bg-[#F0F8F0] border border-[#6B8F71]/25 rounded-2xl px-4 py-3 flex items-start gap-3 active:opacity-70 transition-opacity"
+              className="mb-5 bg-[#F0F8F0] border border-[#5C7A5F]/25 rounded-2xl px-4 py-3 flex items-start gap-3 active:opacity-70 transition-opacity"
             >
               {moment.listeningArtworkUrl ? (
                 <img
@@ -613,7 +613,7 @@ export default function MomentDetail() {
                   <p className="text-xs text-[#4a6b50] mt-0.5 truncate">{moment.listeningArtist}</p>
                 )}
               </div>
-              <span className="text-xs text-[#6B8F71]/60 shrink-0 mt-0.5">↗</span>
+              <span className="text-xs text-[#5C7A5F]/60 shrink-0 mt-0.5">↗</span>
             </a>
           );
         })()}
@@ -676,7 +676,7 @@ export default function MomentDetail() {
             </div>
             {postUrl && !isListening && (
               <Link href={postUrl}>
-                <span className="text-sm font-medium text-white bg-[#6B8F71] rounded-full px-4 py-2 hover:bg-[#5a7a60] transition-colors whitespace-nowrap">
+                <span className="text-sm font-medium text-white bg-[#5C7A5F] rounded-full px-4 py-2 hover:bg-[#5a7a60] transition-colors whitespace-nowrap">
                   {actionLabel}
                 </span>
               </Link>
@@ -699,7 +699,7 @@ export default function MomentDetail() {
             </div>
             {isIntercession && postUrl ? (
               <Link href={postUrl}>
-                <span className="shrink-0 text-sm font-medium text-[#6B8F71] border border-[#6B8F71]/40 rounded-full px-4 py-2 hover:bg-[#6B8F71]/5 transition-colors cursor-pointer whitespace-nowrap">
+                <span className="shrink-0 text-sm font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-4 py-2 hover:bg-[#5C7A5F]/5 transition-colors cursor-pointer whitespace-nowrap">
                   Pray 🙏
                 </span>
               </Link>
@@ -776,7 +776,7 @@ export default function MomentDetail() {
                   </span>
                 </div>
                 <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-                  <motion.div className="h-full bg-[#6B8F71] rounded-full"
+                  <motion.div className="h-full bg-[#5C7A5F] rounded-full"
                     initial={{ width: 0 }} animate={{ width: `${daysDone > 0 ? Math.max(progressPct, 3) : 0}%` }}
                     transition={{ duration: 0.6, ease: "easeOut" }} />
                 </div>
@@ -804,7 +804,7 @@ export default function MomentDetail() {
                   <p className="text-lg font-semibold text-[#2C1A0E]" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                     You showed up {sessionsLogged} times together.
                   </p>
-                  <p className="text-sm text-[#6B8F71] italic mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                  <p className="text-sm text-[#5C7A5F] italic mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                     That's not nothing. That's a real thing you built.
                   </p>
                 </div>
@@ -830,7 +830,7 @@ export default function MomentDetail() {
                         commitmentTendFreely: isOngoing,
                       })}
                       disabled={updateGoalMutation.isPending}
-                      className="w-full py-3 rounded-xl bg-[#6B8F71] text-white font-semibold text-sm transition-all hover:bg-[#5a7a60] disabled:opacity-50"
+                      className="w-full py-3 rounded-xl bg-[#5C7A5F] text-white font-semibold text-sm transition-all hover:bg-[#5a7a60] disabled:opacity-50"
                       style={{ fontFamily: "Space Grotesk, sans-serif" }}
                     >
                       {updateGoalMutation.isPending ? "Setting..."
@@ -853,7 +853,7 @@ export default function MomentDetail() {
           }
 
           // Active goal — progress bar
-          const barColor = almostThere ? "#C17F24" : "#6B8F71";
+          const barColor = almostThere ? "#C17F24" : "#5C7A5F";
           return (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
@@ -903,7 +903,7 @@ export default function MomentDetail() {
                       {/* Avatar */}
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold ${
                         log.loggedAt
-                          ? "bg-[#6B8F71]/15 text-[#4a6b50]"
+                          ? "bg-[#5C7A5F]/15 text-[#4a6b50]"
                           : "bg-secondary/60 text-muted-foreground/50"
                       }`}>
                         {initials}
@@ -918,7 +918,7 @@ export default function MomentDetail() {
                       </div>
                       <div className="shrink-0 text-right">
                         {loggedTime ? (
-                          <p className="text-xs text-[#6B8F71] font-medium">
+                          <p className="text-xs text-[#5C7A5F] font-medium">
                             {isFasting
                               ? "Fasting · all day"
                               : isListening
@@ -1046,7 +1046,7 @@ export default function MomentDetail() {
                       setEditScheduledTime(moment.scheduledTime);
                       setEditingPractice(true);
                     }}
-                    className="shrink-0 ml-4 text-xs font-medium text-[#6B8F71] border border-[#6B8F71]/40 rounded-full px-4 py-2 hover:bg-[#6B8F71]/8 transition-colors min-h-[36px]"
+                    className="shrink-0 ml-4 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-4 py-2 hover:bg-[#5C7A5F]/8 transition-colors min-h-[36px]"
                   >
                     Edit
                   </button>
@@ -1055,7 +1055,7 @@ export default function MomentDetail() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.97 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-card border border-[#6B8F71]/30 rounded-2xl px-5 py-4 space-y-4"
+                  className="bg-card border border-[#5C7A5F]/30 rounded-2xl px-5 py-4 space-y-4"
                 >
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1">Name</label>
@@ -1064,7 +1064,7 @@ export default function MomentDetail() {
                       value={editName}
                       onChange={e => setEditName(e.target.value)}
                       maxLength={100}
-                      className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#6B8F71] focus:ring-2 focus:ring-[#6B8F71]/20"
+                      className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20"
                     />
                   </div>
                   <div>
@@ -1074,7 +1074,7 @@ export default function MomentDetail() {
                       onChange={e => setEditIntention(e.target.value)}
                       maxLength={500}
                       rows={2}
-                      className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#6B8F71] focus:ring-2 focus:ring-[#6B8F71]/20 resize-none"
+                      className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20 resize-none"
                     />
                   </div>
                   <div>
@@ -1085,7 +1085,7 @@ export default function MomentDetail() {
                       onChange={e => setEditGoalDays(Math.max(0, Math.min(365, parseInt(e.target.value) || 0)))}
                       min={0}
                       max={365}
-                      className="w-24 border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#6B8F71] focus:ring-2 focus:ring-[#6B8F71]/20"
+                      className="w-24 border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20"
                     />
                   </div>
                   {!isFasting && (
@@ -1095,7 +1095,7 @@ export default function MomentDetail() {
                         type="time"
                         value={editScheduledTime}
                         onChange={e => setEditScheduledTime(e.target.value)}
-                        className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#6B8F71] focus:ring-2 focus:ring-[#6B8F71]/20"
+                        className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20"
                       />
                       <p className="text-xs text-muted-foreground mt-1">Everyone can log any time that day. 🌿</p>
                     </div>
@@ -1115,7 +1115,7 @@ export default function MomentDetail() {
                         }
                       }}
                       disabled={editMutation.isPending || !editName.trim()}
-                      className="text-sm font-semibold text-white bg-[#6B8F71] rounded-full px-5 py-2.5 hover:bg-[#5a7d60] transition-colors disabled:opacity-50"
+                      className="text-sm font-semibold text-white bg-[#5C7A5F] rounded-full px-5 py-2.5 hover:bg-[#5a7d60] transition-colors disabled:opacity-50"
                     >
                       {editMutation.isPending ? "Saving…" : "Save changes"}
                     </button>
@@ -1333,7 +1333,7 @@ export default function MomentDetail() {
                     disabled={invitePeople.length === 0 || inviteMutation.isPending}
                     className={`w-full py-3.5 rounded-2xl text-sm font-semibold transition-colors ${
                       invitePeople.length > 0
-                        ? "bg-[#6B8F71] text-white hover:bg-[#5a7a60]"
+                        ? "bg-[#5C7A5F] text-white hover:bg-[#5a7a60]"
                         : "bg-secondary text-muted-foreground cursor-not-allowed"
                     }`}
                   >

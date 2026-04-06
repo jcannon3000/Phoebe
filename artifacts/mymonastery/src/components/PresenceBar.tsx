@@ -35,15 +35,15 @@ export function PresenceBar({ users }: { users: PresenceUser[] }) {
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold presence-avatar"
               style={{
-                backgroundColor: "#6B8F71",
-                color: "#EDE8DE",
+                backgroundColor: "#5C7A5F",
+                color: "#E8E4D8",
                 animation: "presence-pulse 2s ease-in-out infinite",
               }}
             >
               {initials(u.display_name)}
             </div>
             {hoveredId === u.user_id && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 bg-[#2C1810] text-[#EDE8DE] text-xs rounded-lg whitespace-nowrap z-30 pointer-events-none">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 bg-[#2C1810] text-[#E8E4D8] text-xs rounded-lg whitespace-nowrap z-30 pointer-events-none">
                 {u.display_name} is here {"\u{1F33F}"}
               </div>
             )}

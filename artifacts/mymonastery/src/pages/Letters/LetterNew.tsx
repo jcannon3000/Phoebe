@@ -86,7 +86,7 @@ export default function LetterNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF7F2" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F2EFE6" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
@@ -101,7 +101,7 @@ export default function LetterNew() {
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#4A6FA5" : "#C5BFB0" }}
+              style={{ background: s <= step ? "#5C7A5F" : "#C8C4B4" }}
             />
           ))}
         </div>
@@ -124,22 +124,24 @@ export default function LetterNew() {
                 <button
                   onClick={() => handleTypeSelect("one_to_one")}
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99] card-elevated"
-                  style={{ background: "#fff", border: "2px solid rgba(74,111,165,0.3)" }}
+                  style={{ background: "#fff", border: "2px solid rgba(92,122,95,0.35)" }}
                 >
-                  <p className="text-base font-semibold mb-1" style={{ color: "#2C1810" }}>📮 A letter</p>
+                  <p className="text-base font-semibold mb-2" style={{ color: "#2C1810" }}>📮 A letter</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: "#5C7A5F" }}>Start a dialogue. Stay in touch.</p>
                   <p className="text-sm leading-relaxed" style={{ color: "#9a9390" }}>
-                    One to one · You write, they respond, you write back · Alternating weeks
+                    Once a week, one letter, one person. A zoom out from the daily noise — not a text, not ambient. A real correspondence, with history. Monks have written this way for centuries. Sacred because it's the only one you send.
                   </p>
                 </button>
 
                 <button
                   onClick={() => handleTypeSelect("group")}
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99] card-elevated"
-                  style={{ background: "#fff", border: "2px solid rgba(74,111,165,0.3)" }}
+                  style={{ background: "#fff", border: "2px solid rgba(193,127,36,0.3)" }}
                 >
-                  <p className="text-base font-semibold mb-1" style={{ color: "#2C1810" }}>✉️ Group updates</p>
+                  <p className="text-base font-semibold mb-2" style={{ color: "#2C1810" }}>✉️ Group updates</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: "#C17F24" }}>Keep a circle close.</p>
                   <p className="text-sm leading-relaxed" style={{ color: "#9a9390" }}>
-                    3 to 15 people · Everyone shares weekly · 50 words or more
+                    3 to 15 people. Everyone shares once a week — 50 words or more. A thread that keeps a community rooted in each other's lives.
                   </p>
                 </button>
               </div>
@@ -168,7 +170,7 @@ export default function LetterNew() {
                         value={m.name}
                         onChange={(e) => updateMember(i, "name", e.target.value)}
                         className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                        style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
                       />
                       {type === "group" && i >= 2 && (
                         <button onClick={() => removeMember(i)} className="text-lg px-1" style={{ color: "#9a9390" }}>×</button>
@@ -180,7 +182,7 @@ export default function LetterNew() {
                       value={m.email}
                       onChange={(e) => updateMember(i, "email", e.target.value)}
                       className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-                      style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                      style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
                     />
                   </div>
                 ))}
@@ -202,7 +204,7 @@ export default function LetterNew() {
                 onClick={handleWhoNext}
                 disabled={createMutation.isPending}
                 className="btn-sage w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50"
-                style={{ background: "#6B8F71", color: "#fff" }}
+                style={{ background: "#5C7A5F", color: "#fff" }}
               >
                 {createMutation.isPending ? "Starting…" : type === "one_to_one" ? "Start writing" : "Continue →"}
               </button>
@@ -227,7 +229,7 @@ export default function LetterNew() {
                 maxLength={60}
                 autoFocus
                 className="w-full px-4 py-4 rounded-xl text-lg font-medium focus:outline-none"
-                style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
               />
 
               {error && <p className="text-sm mt-3" style={{ color: "#C17F24" }}>{error}</p>}
@@ -236,7 +238,7 @@ export default function LetterNew() {
                 onClick={handleSubmit}
                 disabled={createMutation.isPending || !name.trim()}
                 className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
-                style={{ background: "#4A6FA5", color: "#fff" }}
+                style={{ background: "#5C7A5F", color: "#fff" }}
               >
                 {createMutation.isPending ? "Starting..." : "Start writing 📮"}
               </button>

@@ -9,9 +9,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Eleanor palette avatar colors: sage, amber, blush
 const AVATAR_COLORS = [
-  { bg: "#6B8F71", text: "#EDE8DE" },  // sage
-  { bg: "#C17F24", text: "#EDE8DE" },  // amber
-  { bg: "#D4896A", text: "#EDE8DE" },  // blush
+  { bg: "#5C7A5F", text: "#E8E4D8" },  // sage
+  { bg: "#C17F24", text: "#E8E4D8" },  // amber
+  { bg: "#D4896A", text: "#E8E4D8" },  // blush
 ];
 
 function colorFor(email: string) {
@@ -95,7 +95,7 @@ export default function PersonProfile() {
           <div className="text-4xl mb-4">🌱</div>
           <h2 className="font-serif text-2xl mb-2">Person not found</h2>
           <p className="text-muted-foreground mb-6 text-sm">This person isn't in any of your traditions or practices.</p>
-          <Link href="/people" className="text-sm font-medium" style={{ color: "#6B8F71" }}>← Back to Your People</Link>
+          <Link href="/people" className="text-sm font-medium" style={{ color: "#5C7A5F" }}>← Back to Your People</Link>
         </div>
       </Layout>
     );
@@ -153,7 +153,7 @@ export default function PersonProfile() {
             </div>
           </div>
 
-          <p className="mt-4 text-sm italic" style={{ color: "#6B8F71" }}>
+          <p className="mt-4 text-sm italic" style={{ color: "#5C7A5F" }}>
             {scoreLabel}
           </p>
         </motion.div>
@@ -187,7 +187,7 @@ export default function PersonProfile() {
               {/* Response input */}
               <div className="mt-4">
                 {wordSent ? (
-                  <p className="text-sm italic" style={{ color: "#6B8F71" }}>
+                  <p className="text-sm italic" style={{ color: "#5C7A5F" }}>
                     🌿 You left a word
                   </p>
                 ) : (
@@ -227,7 +227,7 @@ export default function PersonProfile() {
           >
             <div className="h-px w-full" style={{ backgroundColor: "rgba(44,24,16,0.06)" }} />
             <div className="pt-6">
-              <p className="text-[10px] font-semibold tracking-widest uppercase mb-4" style={{ color: "#6B8F71" }}>
+              <p className="text-[10px] font-semibold tracking-widest uppercase mb-4" style={{ color: "#5C7A5F" }}>
                 Practices together
               </p>
 
@@ -236,11 +236,11 @@ export default function PersonProfile() {
                   <Link key={practice.id} href={`/moments/${practice.id}`} className="block group">
                     <div
                       className="flex items-center gap-4 py-3 pl-4 border-l-[3px] hover:bg-card/30 transition-colors rounded-r-lg"
-                      style={{ borderLeftColor: "#6B8F71" }}
+                      style={{ borderLeftColor: "#5C7A5F" }}
                     >
                       <span className="text-lg flex-shrink-0">{practiceEmoji(practice.templateType)}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[15px] text-foreground group-hover:text-[#6B8F71] transition-colors truncate">
+                        <p className="font-medium text-[15px] text-foreground group-hover:text-[#5C7A5F] transition-colors truncate">
                           {practice.name}
                         </p>
                         <p className="text-xs text-muted-foreground capitalize mt-0.5">
@@ -296,7 +296,7 @@ export default function PersonProfile() {
                         </p>
                       </div>
                       {ritual.status === "on_track" && (
-                        <span className="text-xs flex-shrink-0" style={{ color: "#6B8F71" }}>
+                        <span className="text-xs flex-shrink-0" style={{ color: "#5C7A5F" }}>
                           ✓ On track
                         </span>
                       )}
@@ -318,7 +318,7 @@ export default function PersonProfile() {
           <Link
             href="/moment/new"
             className="text-[14px] font-medium transition-opacity hover:opacity-70"
-            style={{ color: "#6B8F71" }}
+            style={{ color: "#5C7A5F" }}
           >
             + Invite {firstName} to something new 🌿
           </Link>

@@ -15,8 +15,8 @@ interface SlideProps {
 }
 
 const SOIL = "#2C1810";
-const CREAM = "#EDE8DE";
-const SAGE = "#6B8F71";
+const CREAM = "#E8E4D8";
+const SAGE = "#5C7A5F";
 const AMBER = "#C17F24";
 const MUTED = "#9B8577";
 
