@@ -103,10 +103,10 @@ export default function Onboarding() {
           >
             <div className="text-5xl mb-5">📮</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
-              Letters and gatherings.
+              Be together with Phoebe.
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#6b6460" }}>
-              The oldest way to cultivate belonging.
+              Cultivate connection through letters and gatherings.
             </p>
           </motion.div>
 
