@@ -147,7 +147,7 @@ export default function TraditionNew() {
           {step === 1 && (
             <motion.div key="s1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                What will you gather for? ⛪
+                What will you gather for? 🏡
               </h1>
               <p className="text-sm mb-8" style={{ color: "#9a9390" }}>Recurring gatherings are where belonging forms.</p>
 
@@ -176,7 +176,7 @@ export default function TraditionNew() {
           {step === 2 && (
             <motion.div key="s2" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-6" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Who are you gathering with? ⛪
+                Who are you gathering with? 🏡
               </h1>
 
               {/* Name */}
@@ -287,7 +287,7 @@ export default function TraditionNew() {
           {step === 3 && (
             <motion.div key="s3" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                How often will you gather? ⛪
+                How often will you gather? 🏡
               </h1>
               <p className="text-sm mb-8" style={{ color: "#9a9390" }}>The rhythm is the commitment.</p>
 
@@ -413,7 +413,7 @@ export default function TraditionNew() {
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
                 style={{ background: "#C17F24", color: "#fff" }}
               >
-                {submitting ? "Starting..." : "Start this gathering ⛪"}
+                {submitting ? "Starting..." : "Start this gathering 🏡"}
               </button>
 
               {(!hasIntercession && !hasFasting) && (
