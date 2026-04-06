@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import ImprintSlideshow, { gatheringSlides } from "@/components/ImprintSlideshow";
 
 const TEMPLATE_OPTIONS = [
   { value: "coffee", emoji: "☕", label: "Coffee", tagline: "Share your first cup, again and again" },
@@ -32,6 +33,7 @@ export default function TraditionNew() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
+  const [imprintDone, setImprintDone] = useState(false);
   const [step, setStep] = useState<Step>(1);
   const [template, setTemplate] = useState("");
   const [name, setName] = useState("");
@@ -116,6 +118,17 @@ export default function TraditionNew() {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setSubmitting(false);
     }
+  }
+
+  if (user && !user.gatheringImprintCompleted && !imprintDone) {
+    return (
+      <ImprintSlideshow
+        slides={gatheringSlides}
+        ctaLabel="Start a gathering →"
+        imprintType="gathering"
+        onComplete={() => setImprintDone(true)}
+      />
+    );
   }
 
   return (

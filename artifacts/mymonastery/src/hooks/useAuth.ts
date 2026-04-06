@@ -7,6 +7,8 @@ export interface AuthUser {
   avatarUrl: string | null;
   googleId: string | null;
   showPresence: boolean;
+  correspondenceImprintCompleted: boolean;
+  gatheringImprintCompleted: boolean;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

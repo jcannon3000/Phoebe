@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import ImprintSlideshow, { correspondenceSlides } from "@/components/ImprintSlideshow";
 
 type CorrespondenceType = "one_to_one" | "group";
 
@@ -20,7 +22,9 @@ const stepVariants = {
 export default function LetterNew() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
+  const [imprintDone, setImprintDone] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [type, setType] = useState<CorrespondenceType | null>(null);
   const [members, setMembers] = useState<Member[]>([{ email: "", name: "" }]);
@@ -83,6 +87,17 @@ export default function LetterNew() {
 
   function removeMember(i: number) {
     setMembers((ms) => ms.filter((_, idx) => idx !== i));
+  }
+
+  if (user && !user.correspondenceImprintCompleted && !imprintDone) {
+    return (
+      <ImprintSlideshow
+        slides={correspondenceSlides}
+        ctaLabel="Start writing →"
+        imprintType="correspondence"
+        onComplete={() => setImprintDone(true)}
+      />
+    );
   }
 
   return (

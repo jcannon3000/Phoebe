@@ -178,6 +178,7 @@ router.get("/auth/me", (req, res) => {
   const u = req.user as {
     id: number; name: string; email: string; avatarUrl: string | null;
     googleId: string | null; showPresence: boolean;
+    correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
   };
   res.json({
     id: u.id,
@@ -186,7 +187,28 @@ router.get("/auth/me", (req, res) => {
     avatarUrl: u.avatarUrl,
     googleId: u.googleId,
     showPresence: u.showPresence,
+    correspondenceImprintCompleted: u.correspondenceImprintCompleted ?? false,
+    gatheringImprintCompleted: u.gatheringImprintCompleted ?? false,
   });
+});
+
+router.patch("/auth/me/imprints", async (req, res): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = (req.user as { id: number }).id;
+  const { type } = req.body;
+  if (type !== "correspondence" && type !== "gathering") {
+    res.status(400).json({ error: "type must be 'correspondence' or 'gathering'" });
+    return;
+  }
+  const field = type === "correspondence"
+    ? "correspondenceImprintCompleted"
+    : "gatheringImprintCompleted";
+  await db.update(usersTable).set({ [field]: true } as Record<string, unknown>).where(eq(usersTable.id, userId));
+  // Update session user so /me reflects the change immediately
+  if (req.user) {
+    (req.user as Record<string, unknown>)[field] = true;
+  }
+  res.json({ ok: true });
 });
 
 router.patch("/auth/me/presence", async (req, res): Promise<void> => {
