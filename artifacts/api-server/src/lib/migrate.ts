@@ -357,6 +357,8 @@ export async function migrate() {
 
     // Password-based auth
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expiry TIMESTAMPTZ`);
 
     // Imprint formation tracking
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS correspondence_imprint_completed BOOLEAN NOT NULL DEFAULT false`);
