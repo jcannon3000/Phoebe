@@ -221,7 +221,7 @@ function LettersSection() {
                             animate={{ scale: [1, 1.04, 1] }}
                             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 inline-block"
-                            style={{ background: "#4A6FA5", color: "#fff" }}
+                            style={{ background: "#6B8F71", color: "#fff" }}
                           >
                             Write 📮
                           </motion.span>

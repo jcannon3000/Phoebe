@@ -222,7 +222,7 @@ export default function WriteLetter() {
                 onClick={handleSendClick}
                 disabled={!canSend}
                 className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity"
-                style={{ background: "#4A6FA5", color: "#fff" }}
+                style={{ background: "#6B8F71", color: "#fff" }}
               >
                 Send letter
               </button>
@@ -238,7 +238,7 @@ export default function WriteLetter() {
                 onClick={() => sendMutation.mutate()}
                 disabled={sendMutation.isPending}
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "#4A6FA5", color: "#fff" }}
+                style={{ background: "#6B8F71", color: "#fff" }}
               >
                 {sendMutation.isPending ? "Sending..." : "Send letter"}
               </button>

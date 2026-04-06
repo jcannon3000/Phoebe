@@ -80,7 +80,7 @@ export default function ResetPassword() {
                 <button
                   onClick={() => setLocation("/")}
                   className="px-6 py-3 rounded-xl font-semibold text-sm"
-                  style={{ background: "#2C1810", color: "#EDE8DE" }}
+                  style={{ background: "#6B8F71", color: "#fff" }}
                 >
                   Sign in
                 </button>
@@ -117,7 +117,7 @@ export default function ResetPassword() {
                   type="submit"
                   disabled={submitting}
                   className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 mt-1"
-                  style={{ background: "#2C1810", color: "#EDE8DE" }}
+                  style={{ background: "#6B8F71", color: "#fff" }}
                 >
                   {submitting ? (
                     <div className="w-4 h-4 rounded-full border-2 border-[#EDE8DE] border-t-transparent animate-spin" />
