@@ -110,7 +110,7 @@ export default function Onboarding() {
               Research keeps confirming the strength of our relationships is what makes life most vibrant.
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#6b6460" }}>
-              Phoebe sets apart a place to stay close to the people who matter most, away from the noise of the modern world.
+              Phoebe sets apart a place to stay close to the people who matter most through the wisdom of monasticism made new for a world of isolation and distraction.
             </p>
           </motion.div>
 
