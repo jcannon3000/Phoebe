@@ -194,7 +194,7 @@ export function PrayerSection() {
           {/* Empty state */}
           {!isLoading && requests.length === 0 && (
             <p className="text-sm text-muted-foreground/60 text-center py-6 italic">
-              Your community, growing slowly, with care. Share what's on your heart.
+              Your community, growing slowly, with care. 🙏 Share what's on your heart.
             </p>
           )}
 

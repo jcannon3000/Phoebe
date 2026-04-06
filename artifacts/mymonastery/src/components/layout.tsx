@@ -53,7 +53,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                 }`}
               >
-                🤝 Gatherings
+                🎉 Gatherings
               </Link>
               <Link
                 href="/people"
