@@ -274,7 +274,7 @@ function GatheringsSection() {
           className="rounded-xl p-5 text-center"
           style={{ background: "#E8E4D8", border: "1px dashed #C8C4B4" }}
         >
-          <div className="text-3xl mb-2">⛪</div>
+          <div className="text-3xl mb-2">🎉</div>
           <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>Community grows where people keep showing up.</p>
           <p className="text-xs mb-3" style={{ color: "#9a9390" }}>Commit to a rhythm. Phoebe handles the rest.</p>
           <Link href="/tradition/new">
