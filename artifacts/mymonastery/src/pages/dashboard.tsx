@@ -49,7 +49,7 @@ function FAB() {
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#FAF6F0", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>⛪ Start a gathering</p>
+              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Meet together regularly</p>
             </button>
           </motion.div>
@@ -195,15 +195,13 @@ function LettersSection() {
                       </span>
                     </div>
 
-                    <p className="text-sm mt-1 font-medium" style={{ color: statusColor }}>
-                      {statusText}
-                    </p>
-
-                    <div className="flex items-center justify-between gap-2 mt-2">
-                      <span className="text-[11px]" style={{ color: "#9a9390" }}>
-                        {c.currentPeriod.periodLabel}
-                        {lastPostmark?.city ? ` · ${lastPostmark.city}` : ""}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                      <p className="text-sm font-medium" style={{ color: statusColor }}>
+                        {statusText}
+                        <span className="font-normal" style={{ color: "#9a9390" }}>
+                          {" · "}{c.currentPeriod.periodLabel}{lastPostmark?.city ? ` · ${lastPostmark.city}` : ""}
+                        </span>
+                      </p>
                       {needsWrite && (
                         <Link
                           href={`/letters/${c.id}/write`}
@@ -238,7 +236,7 @@ function GatheringsSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Gatherings ⛪" />
+        <SectionHeader label="Gatherings" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#F0EAE0" }} />
@@ -252,14 +250,14 @@ function GatheringsSection() {
 
   return (
     <div className="mb-8">
-      <SectionHeader label="Gatherings ⛪" />
+      <SectionHeader label="Gatherings" />
 
       {gatherings.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
           style={{ background: "#F7F0E6", border: "1px dashed #C8B99A" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No gatherings yet. Start one. ⛪</p>
+          <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No gatherings yet. Start one.</p>
           <Link href="/tradition/new">
             <span className="text-sm font-semibold" style={{ color: "#C17F24" }}>Start a gathering →</span>
           </Link>
