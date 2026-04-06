@@ -317,10 +317,6 @@ export async function migrate() {
       )
     `);
 
-    // Apple Music integration columns
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_music_user_token TEXT`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_music_snapshot TEXT`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_music_last_polled TIMESTAMPTZ`);
 
     // Connection cache — persists even when practices are deleted
     await run(client, `

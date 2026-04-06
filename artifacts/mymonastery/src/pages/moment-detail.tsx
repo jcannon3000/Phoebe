@@ -268,29 +268,6 @@ export default function MomentDetail() {
     refetchInterval: 30_000,
   });
 
-  const { data: amStatus, refetch: refetchAmStatus } = useQuery({
-    queryKey: ["/api/apple-music/status"],
-    queryFn: () => apiRequest<{ connected: boolean; lastPolled: string | null }>("GET", "/api/apple-music/status"),
-    enabled: !!user,
-  });
-
-  const amDisconnectMutation = useMutation({
-    mutationFn: () => apiRequest("DELETE", "/api/apple-music/disconnect", {}),
-    onSuccess: () => { void refetchAmStatus(); },
-  });
-
-  // On-demand Apple Music check: when a listening practice loads, check all members' history
-  const [amChecked, setAmChecked] = useState(false);
-  useEffect(() => {
-    if (!data || amChecked) return;
-    if (data.moment.templateType !== "listening") return;
-    setAmChecked(true);
-    apiRequest<{ checked: number; newLogs: number }>("POST", `/api/apple-music/check-now/${id}`, {})
-      .then(result => {
-        if (result.newLogs > 0) qc.invalidateQueries({ queryKey: [`/api/moments/${id}`] });
-      })
-      .catch(() => { /* Apple Music not connected or not configured */ });
-  }, [data, amChecked, id, qc]);
 
   const seedMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/moments/${id}/seed-post`, {
@@ -396,8 +373,6 @@ export default function MomentDetail() {
   if (!data) return null;
 
   const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, isCreator } = data;
-
-  const appleMusicAuthUrl = `/apple-music-auth?returnTo=${encodeURIComponent(`/moments/${id}`)}`;
 
   const parsedPracticeDays = parsePracticeDays(moment.practiceDays);
   const isIntercession = moment.templateType === "intercession";
@@ -581,75 +556,6 @@ export default function MomentDetail() {
           </div>
         )}
 
-        {/* Listening — artwork + info card (tappable → Apple Music) */}
-        {isListening && (moment.listeningTitle || moment.listeningArtist) && (() => {
-          const searchTerm = encodeURIComponent(moment.listeningTitle ?? moment.listeningArtist ?? "");
-          const appleMusicUrl = moment.listeningAppleMusicUrl ?? `https://music.apple.com/search?term=${searchTerm}`;
-          return (
-            <a
-              href={appleMusicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mb-5 bg-[#F0F8F0] border border-[#5C7A5F]/25 rounded-2xl px-4 py-3 flex items-start gap-3 active:opacity-70 transition-opacity"
-            >
-              {moment.listeningArtworkUrl ? (
-                <img
-                  src={moment.listeningArtworkUrl}
-                  alt=""
-                  width={56}
-                  height={56}
-                  className="rounded-xl object-cover shadow-sm"
-                  style={{ width: 56, height: 56, minWidth: 56, maxWidth: 56 }}
-                />
-              ) : (
-                <span className="text-xl mt-0.5">🎵</span>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-[#4a6b50] uppercase tracking-wider mb-0.5">
-                  Listening to {moment.listeningType === "album" ? "an album" : moment.listeningType === "artist" ? "an artist" : "a song"}
-                </p>
-                <p className="text-sm font-semibold text-[#2a402c] truncate">{moment.listeningTitle ?? moment.listeningArtist}</p>
-                {moment.listeningArtist && moment.listeningType !== "artist" && (
-                  <p className="text-xs text-[#4a6b50] mt-0.5 truncate">{moment.listeningArtist}</p>
-                )}
-              </div>
-              <span className="text-xs text-[#5C7A5F]/60 shrink-0 mt-0.5">↗</span>
-            </a>
-          );
-        })()}
-
-        {/* Apple Music connection — listening practices only */}
-        {isListening && (
-          amStatus?.connected ? (
-            <div className="mb-5 bg-[#FFF0F0] border border-[#FC3C44]/20 rounded-2xl px-4 py-3 flex items-start gap-3">
-              <span className="text-xl mt-0.5">🎵</span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-[#a02030]">Apple Music connected</p>
-                <p className="text-xs text-[#a02030]/60 mt-0.5">Eleanor will auto-log when you listen</p>
-              </div>
-              <button
-                onClick={() => amDisconnectMutation.mutate()}
-                className="text-xs text-[#a02030]/50 hover:text-[#a02030] transition-colors mt-1"
-              >
-                Disconnect
-              </button>
-            </div>
-          ) : (
-            <div className="mb-5 bg-white border border-[#FC3C44]/20 rounded-2xl px-4 py-3">
-              <p className="text-sm font-semibold text-foreground mb-1">Auto-log with Apple Music</p>
-              <p className="text-xs text-muted-foreground mb-3">
-                Connect your account to auto-detect listens.
-              </p>
-              <a
-                href={appleMusicAuthUrl}
-                className="block py-2.5 rounded-xl font-medium text-sm text-white text-center"
-                style={{ background: "linear-gradient(135deg, #FC3C44 0%, #fa233b 100%)" }}
-              >
-                Connect Apple Music
-              </a>
-            </div>
-          )
-        )}
 
         {/* Open Now Banner — only when actually open (morning prayer is always accessible) */}
         {(isOpenNow || isMorningPrayer) ? (
