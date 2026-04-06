@@ -39,7 +39,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#F5F0E8", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
+              style={{ background: "#FAF7F2", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>📮 Start a correspondence</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Write letters with someone you care about</p>
@@ -47,7 +47,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#F5F0E8", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
+              style={{ background: "#FAF7F2", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Meet together regularly</p>
@@ -175,11 +175,15 @@ function LettersSection() {
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  whileHover={{ y: -2, boxShadow: "0 8px 28px rgba(44,24,16,0.13), 0 2px 8px rgba(44,24,16,0.07)" }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="relative flex rounded-xl overflow-hidden cursor-pointer"
                   style={{
-                    background: "#F5F0E8",
-                    border: `1px solid rgba(74,111,165,${needsAction ? "0.4" : "0.2"})`,
-                    boxShadow: needsAction ? "0 0 0 0 rgba(74,111,165,0.3)" : undefined,
+                    background: "#F2EDE3",
+                    border: `1px solid rgba(74,111,165,${needsAction ? "0.35" : "0.15"})`,
+                    boxShadow: needsAction
+                      ? "0 4px 16px rgba(74,111,165,0.15), 0 1px 4px rgba(44,24,16,0.06)"
+                      : "0 2px 8px rgba(44,24,16,0.07), 0 1px 3px rgba(44,24,16,0.04)",
                   }}
                 >
                   {/* Ink left bar — pulses when action needed */}
@@ -291,8 +295,14 @@ function GatheringsSection() {
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#F5F0E8", border: "1px solid rgba(193,127,36,0.2)" }}
+                  whileHover={{ y: -2, boxShadow: "0 8px 28px rgba(44,24,16,0.13), 0 2px 8px rgba(44,24,16,0.07)" }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="relative flex rounded-xl overflow-hidden cursor-pointer"
+                  style={{
+                    background: "#F2EDE3",
+                    border: "1px solid rgba(193,127,36,0.2)",
+                    boxShadow: "0 2px 8px rgba(44,24,16,0.07), 0 1px 3px rgba(44,24,16,0.04)",
+                  }}
                 >
                   {/* Amber left bar */}
                   <div className="w-1 flex-shrink-0" style={{ background: "#C17F24" }} />

@@ -171,7 +171,7 @@ export default function WriteLetter() {
 
   if (errorState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#F5F0E8" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#FAF7F2" }}>
         <p className="text-4xl mb-4">📮</p>
         <p className="text-base mb-2" style={{ color: "#2C1810" }}>{errorState.message}</p>
         {errorState.nextPeriodStart && (
@@ -185,7 +185,7 @@ export default function WriteLetter() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F5F0E8" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#FAF7F2" }}>
       {/* Minimal header */}
       <div className="px-6 pt-6 pb-3 flex items-center justify-between">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>

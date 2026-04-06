@@ -119,7 +119,7 @@ export default function TraditionNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F5F0E8" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#FAF7F2" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
@@ -366,7 +366,7 @@ export default function TraditionNew() {
                     onChange={(e) => setIntercessionIntention(e.target.value)}
                     placeholder="What will you pray for?"
                     className="w-full mt-3 px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#F5F0E8", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                    style={{ background: "#FAF7F2", border: "1px solid #C5BFB0", color: "#2C1810" }}
                     autoFocus
                   />
                 )}
@@ -400,7 +400,7 @@ export default function TraditionNew() {
                     onChange={(e) => setFastingDescription(e.target.value)}
                     placeholder="Describe the fast (optional)"
                     className="w-full mt-3 px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#F5F0E8", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                    style={{ background: "#FAF7F2", border: "1px solid #C5BFB0", color: "#2C1810" }}
                   />
                 )}
               </div>

@@ -188,7 +188,7 @@ export default function CorrespondencePage() {
         {memberCities.length === 0 && <div className="mb-5" />}
 
         {/* Period bar */}
-        <div className="rounded-xl overflow-hidden mb-8" style={{ background: "#F5F0E8", border: "1px solid rgba(74,111,165,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
+        <div className="rounded-xl overflow-hidden mb-8" style={{ background: "#FAF7F2", border: "1px solid rgba(74,111,165,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
           <div className="flex">
             <div className="w-[3px] flex-shrink-0" style={{ background: "#4A6FA5" }} />
             <div className="flex-1 p-5">
@@ -273,7 +273,7 @@ export default function CorrespondencePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="relative cursor-pointer transition-shadow hover:shadow-sm"
                       style={{
-                        background: "#F5F0E8",
+                        background: "#FAF7F2",
                         border: `1px solid rgba(74,111,165,${isOwn ? "0.2" : "0.12"})`,
                         borderLeft: `3px solid ${isOwn ? "#4A6FA5" : "#C5BFB0"}`,
                         borderRadius: "4px",

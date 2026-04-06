@@ -83,7 +83,7 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F5F0E8" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#FAF7F2" }}>
       {/* Header */}
       <header className="px-6 py-6 flex items-center">
         <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
@@ -101,7 +101,7 @@ export default function Onboarding() {
             transition={{ duration: 0.5 }}
             className="text-center mb-10"
           >
-            <div className="text-5xl mb-5">📮</div>
+            <div className="text-5xl mb-5 animate-float inline-block">🌿</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
               Be together with Phoebe.
             </h1>
@@ -115,6 +115,8 @@ export default function Onboarding() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
+            className="rounded-2xl p-6 animate-card-breathe"
+            style={{ background: "#F2EDE3", border: "1px solid rgba(44,24,16,0.07)" }}
           >
             {/* Mode toggle */}
             <div className="flex rounded-xl p-1 mb-4" style={{ background: "#D5CEBC" }}>
@@ -125,7 +127,7 @@ export default function Onboarding() {
                   onClick={() => switchMode(m)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
                   style={{
-                    background: mode === m ? "#F5F0E8" : "transparent",
+                    background: mode === m ? "#FAF7F2" : "transparent",
                     color: mode === m ? "#2C1810" : "#6b6460",
                     boxShadow: mode === m ? "0 1px 4px rgba(44,24,16,0.08)" : "none",
                   }}
@@ -211,7 +213,7 @@ export default function Onboarding() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1"
+                  className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 animate-glow-breathe"
                   style={{ background: "#6B8F71", color: "#fff" }}
                 >
                   {submitting ? (

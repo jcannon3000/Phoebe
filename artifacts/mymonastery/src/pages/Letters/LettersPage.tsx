@@ -104,7 +104,7 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
         animate={{ opacity: 1, y: 0 }}
         className="relative cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99] transition-transform"
         style={{
-          backgroundColor: "#F5F0E8",
+          backgroundColor: "#FAF7F2",
           border: `1px solid rgba(74,111,165,${unread ? "0.3" : "0.15"})`,
           borderRadius: "4px",
           borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#4A6FA5" : "#C5BFB0"}`,
