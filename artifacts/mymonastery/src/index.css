@@ -1,0 +1,203 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* Phoebe — Gardening for your relationships */
+  /* soil   #2C1810 — dark bg, hero, nav       */
+  /* cream  #F7F0E6 — cards, light surfaces    */
+  /* sage   #6B8F71 — CTAs, growing states     */
+  /* amber  #C17F24 — streaks, goals           */
+  /* blush  #D4896A — at-risk, needs water     */
+  /* white  #FAF6F0 — page background          */
+  /* muted  #9B8E82 — secondary text           */
+
+  --background: 37 50% 96%;        /* #FAF6F0 */
+  --foreground: 17 47% 12%;        /* #2C1810 soil */
+
+  --border: 35 28% 86%;
+  --input: 35 28% 86%;
+  --ring: 130 14% 49%;             /* sage */
+
+  --card: 35 46% 93%;              /* #F7F0E6 cream */
+  --card-foreground: 17 47% 12%;
+  --card-border: 35 28% 88%;
+
+  --popover: 37 50% 96%;
+  --popover-foreground: 17 47% 12%;
+  --popover-border: 35 28% 88%;
+
+  --primary: 130 14% 49%;          /* #6B8F71 sage */
+  --primary-foreground: 37 50% 96%;
+
+  --secondary: 35 46% 93%;         /* cream */
+  --secondary-foreground: 17 47% 12%;
+
+  --muted: 35 18% 94%;
+  --muted-foreground: 29 11% 56%;  /* #9B8E82 */
+
+  --accent: 35 69% 45%;            /* #C17F24 amber */
+  --accent-foreground: 37 50% 96%;
+
+  --destructive: 18 55% 62%;       /* #D4896A blush — warm not alarming */
+  --destructive-foreground: 37 50% 96%;
+
+  --app-font-sans: 'Space Grotesk', sans-serif;
+  --app-font-serif: 'Space Grotesk', sans-serif;
+  --app-font-mono: Menlo, monospace;
+
+  --radius: 1rem;
+
+  --shadow-warm-sm: 0 2px 4px -1px rgba(44, 24, 16, 0.06);
+  --shadow-warm-md: 0 4px 6px -1px rgba(44, 24, 16, 0.06), 0 2px 4px -1px rgba(44, 24, 16, 0.04);
+  --shadow-warm-lg: 0 10px 15px -3px rgba(44, 24, 16, 0.06), 0 4px 6px -2px rgba(44, 24, 16, 0.03);
+  --shadow-warm-xl: 0 20px 25px -5px rgba(44, 24, 16, 0.06), 0 10px 10px -5px rgba(44, 24, 16, 0.025);
+
+  --button-outline: rgba(107, 143, 113, 0.15);
+  --badge-outline: rgba(107, 143, 113, 0.08);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(44, 24, 16, 0.03);
+  --elevate-2: rgba(44, 24, 16, 0.07);
+}
+
+@keyframes glow-breathe {
+  0%, 100% { box-shadow: 0 4px 12px rgba(107, 143, 113, 0.18); }
+  50%       { box-shadow: 0 4px 28px rgba(107, 143, 113, 0.48); }
+}
+@keyframes glow-breathe-amber {
+  0%, 100% { box-shadow: 0 4px 12px rgba(193, 127, 36, 0.18); }
+  50%       { box-shadow: 0 4px 28px rgba(193, 127, 36, 0.48); }
+}
+
+.animate-glow-breathe {
+  animation: glow-breathe 3s ease-in-out infinite;
+}
+.animate-glow-breathe-amber {
+  animation: glow-breathe-amber 3s ease-in-out infinite;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    background-image: radial-gradient(rgba(44, 24, 16, 0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--app-font-sans);
+    @apply font-semibold tracking-tight;
+  }
+}
+
+/* ── Presence animations ──────────────────────────────────────────── */
+@keyframes presence-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(107, 143, 113, 0.4); }
+  50% { box-shadow: 0 0 0 3px rgba(107, 143, 113, 0); }
+}
+
+@keyframes garden-toast-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes presence-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes goal-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ── Garden shimmer & pulse ──────────────────────────────────────── */
+@keyframes garden-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes prayer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+@keyframes avatar-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(107, 143, 113, 0); }
+  50%      { box-shadow: 0 0 0 4px rgba(107, 143, 113, 0.12); }
+}
+@keyframes streak-glow {
+  0%, 100% { text-shadow: 0 0 0 transparent; }
+  50%      { text-shadow: 0 0 8px rgba(193, 127, 36, 0.35); }
+}
+
+.animate-garden-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(107, 143, 113, 0.06) 40%,
+    rgba(107, 143, 113, 0.12) 50%,
+    rgba(107, 143, 113, 0.06) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: garden-shimmer 4s ease-in-out infinite;
+}
+.animate-prayer-pulse {
+  animation: prayer-pulse 3s ease-in-out infinite;
+}
+.animate-avatar-breathe {
+  animation: avatar-breathe 4s ease-in-out infinite;
+}
+.animate-streak-glow {
+  animation: streak-glow 3s ease-in-out infinite;
+}

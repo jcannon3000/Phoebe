@@ -1,0 +1,2416 @@
+import { getFrontendUrl } from "../lib/urls";
+import { Router, type IRouter } from "express";
+import { eq, and, inArray, sql } from "drizzle-orm";
+import { z } from "zod/v4";
+import {
+  db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
+  sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
+  momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
+} from "@workspace/db";
+import { createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
+import crypto from "crypto";
+import { broadcastLog } from "../lib/ws";
+
+const router: IRouter = Router();
+
+function generateToken() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+// Saves bidirectional connection pairs between all members (so recommendations persist after deletion).
+async function saveConnectionCache(members: Array<{ email: string; name: string | null }>) {
+  if (members.length < 2) return;
+  try {
+    for (const a of members) {
+      for (const b of members) {
+        if (a.email === b.email) continue;
+        await db.execute(
+          sql`INSERT INTO user_connections_cache (user_email, contact_email, contact_name, last_seen_at)
+              VALUES (${a.email}, ${b.email}, ${b.name}, NOW())
+              ON CONFLICT (user_email, contact_email) DO UPDATE SET contact_name = ${b.name}, last_seen_at = NOW()`
+        );
+      }
+    }
+  } catch { /* non-fatal */ }
+}
+
+// ─── Timezone-aware time helpers ─────────────────────────────────────────────
+
+function getCurrentTimeInTz(timezone: string): { hour: number; minute: number } {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone, hour: "numeric", minute: "numeric", hour12: false,
+    }).formatToParts(new Date());
+    const hour = parseInt(parts.find(p => p.type === "hour")?.value ?? "0", 10);
+    const minute = parseInt(parts.find(p => p.type === "minute")?.value ?? "0", 10);
+    return { hour: isNaN(hour) ? 0 : hour, minute: isNaN(minute) ? 0 : minute };
+  } catch {
+    const now = new Date();
+    return { hour: now.getUTCHours(), minute: now.getUTCMinutes() };
+  }
+}
+
+function todayDateInTz(timezone: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+// ─── Current window date (YYYY-MM-DD) — falls back to UTC ───────────────────
+function todayDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ─── Is the posting window currently open? — all-day for all practices ────────
+// Log any time on a practice day.
+function isWindowOpen(_moment: { scheduledTime: string; windowMinutes: number; timezone?: string | null }): boolean {
+  return true;
+}
+
+// ─── Day-of-week check (timezone-aware) ──────────────────────────────────────
+const RRULE_DOW: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+const DOW_LC: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+function getCurrentDayOfWeekInTz(tz: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long" }).formatToParts(new Date());
+    const name = (parts.find(p => p.type === "weekday")?.value ?? "").toLowerCase();
+    return DOW_LC[name] ?? new Date().getDay();
+  } catch { return new Date().getDay(); }
+}
+
+function isPracticeDayInTz(moment: { frequency: string; dayOfWeek?: string | null; practiceDays?: string | null; timezone?: string | null }): boolean {
+  if (moment.frequency !== "weekly") return true;
+  const todayDow = getCurrentDayOfWeekInTz(moment.timezone || "UTC");
+  // Check practiceDays JSON array (RRULE codes like ["MO","WE"])
+  if (moment.practiceDays) {
+    try {
+      const days: string[] = JSON.parse(moment.practiceDays);
+      if (days.length > 0) {
+        return days.some(d => {
+          const up = d.toUpperCase(); if (RRULE_DOW[up] !== undefined) return RRULE_DOW[up] === todayDow;
+          return DOW_LC[d.toLowerCase()] === todayDow;
+        });
+      }
+    } catch { /* ignore */ }
+  }
+  // Fallback: single dayOfWeek
+  if (moment.dayOfWeek) {
+    const up = moment.dayOfWeek.toUpperCase();
+    if (RRULE_DOW[up] !== undefined) return RRULE_DOW[up] === todayDow;
+    return DOW_LC[moment.dayOfWeek.toLowerCase()] === todayDow;
+  }
+  return true;
+}
+
+// ─── Combined open check: must be both a practice day AND within window ───────
+function computeWindowOpen(moment: { scheduledTime: string; windowMinutes: number; timezone?: string | null; frequency: string; dayOfWeek?: string | null; practiceDays?: string | null }): boolean {
+  if (!isPracticeDayInTz(moment)) return false;
+  return isWindowOpen(moment);
+}
+
+// ─── Intercession window: open during a generous band around time-of-day ─────
+// Intercession stores scheduledTime="00:00"/windowMinutes=1440 so we gate by
+// a real-world time-of-day band instead of the raw window.
+const TOD_WINDOW_RANGES: Record<string, [number, number]> = {
+  "early-morning": [5, 9], "morning": [6, 11], "midday": [10, 14],
+  "afternoon": [12, 18], "late-afternoon": [14, 20], "evening": [17, 23], "night": [20, 24],
+};
+function isIntercessionWindowOpen(timeOfDay: string | null | undefined, timezone: string): boolean {
+  if (!timeOfDay) return true; // no time set → always accessible
+  const range = TOD_WINDOW_RANGES[timeOfDay];
+  if (!range) return true;
+  const { hour } = getCurrentTimeInTz(timezone);
+  return hour >= range[0] && hour < range[1];
+}
+
+// ─── Minutes remaining in window — returns time until end of day ─────────────
+function minutesRemaining(moment: { scheduledTime: string; windowMinutes: number; timezone?: string | null }): number {
+  const tz = moment.timezone || "UTC";
+  const { hour, minute } = getCurrentTimeInTz(tz);
+  return Math.max(0, 1439 - (hour * 60 + minute));
+}
+
+// ─── Event duration by practice template ─────────────────────────────────────
+function practiceEventDurationMins(templateType: string | null | undefined): number {
+  if (templateType === "intercession" || templateType === "listening") return 5;
+  if (templateType === "morning-prayer" || templateType === "evening-prayer" || templateType === "contemplative") return 20;
+  return 60;
+}
+
+// ─── Build local datetime strings for calendar events ────────────────────────
+function buildLocalEventTimes(
+  hh: number,
+  mm: number,
+  timezone: string,
+  durationMins = 60,
+): { startLocalStr: string; endLocalStr: string } {
+  const { hour: curH, minute: curM } = getCurrentTimeInTz(timezone);
+  const hasPassed = (curH * 60 + curM) >= (hh * 60 + mm);
+
+  const localToday = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+  let startDay = localToday;
+
+  if (hasPassed) {
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    startDay = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(tomorrow);
+  }
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const endTotalMins = hh * 60 + mm + durationMins;
+  const endH = Math.floor(endTotalMins / 60) % 24;
+  const endM = endTotalMins % 60;
+
+  return {
+    startLocalStr: `${startDay}T${pad(hh)}:${pad(mm)}:00`,
+    endLocalStr: `${startDay}T${pad(endH)}:${pad(endM)}:00`,
+  };
+}
+
+// ─── Evaluate window and update streak ──────────────────────────────────────
+async function evaluateWindow(momentId: number, windowDate: string) {
+  const posts = await db.select().from(momentPostsTable)
+    .where(and(eq(momentPostsTable.momentId, momentId), eq(momentPostsTable.windowDate, windowDate)));
+
+  const postCount = posts.length;
+  const allMembersForMoment = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+  const groupSize = allMembersForMoment.length;
+  const bloomThreshold = Math.max(2, Math.ceil(groupSize / 2));
+  const status = postCount >= bloomThreshold ? "bloom" : postCount === 1 ? "solo" : "wither";
+
+  // Upsert window record
+  const existing = await db.select().from(momentWindowsTable)
+    .where(and(eq(momentWindowsTable.momentId, momentId), eq(momentWindowsTable.windowDate, windowDate)));
+
+  if (existing.length === 0) {
+    await db.insert(momentWindowsTable).values({
+      momentId, windowDate, status, postCount, closedAt: new Date(),
+    });
+  } else {
+    await db.update(momentWindowsTable)
+      .set({ status, postCount, closedAt: new Date() })
+      .where(eq(momentWindowsTable.id, existing[0].id));
+  }
+
+  // Update streak on the moment
+  if (status === "bloom") {
+    const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+    if (moment) {
+      const newStreak = moment.currentStreak + 1;
+      const newLongest = Math.max(newStreak, moment.longestStreak);
+      const newState = (moment.state === "needs_water" || moment.state === "dormant") ? "active" : moment.state;
+      const goalHit = moment.goalDays > 0 && newStreak >= moment.goalDays;
+      const newBlooms = goalHit ? moment.totalBlooms + 1 : moment.totalBlooms;
+      // Reset streak after goal completion so the next cycle starts fresh
+      const nextStreak = goalHit ? 0 : newStreak;
+      const nextState = goalHit ? "active" : newState;
+      // Increment progressive session counter
+      const newSessionsLogged = ((moment as Record<string, unknown>).commitmentSessionsLogged as number ?? 0) + 1;
+      await db.update(sharedMomentsTable)
+        .set({
+          currentStreak: nextStreak, longestStreak: newLongest, totalBlooms: newBlooms, state: nextState,
+          commitmentSessionsLogged: newSessionsLogged,
+        } as Record<string, unknown>)
+        .where(eq(sharedMomentsTable.id, momentId));
+    }
+  } else if (status === "wither") {
+    const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+    if (moment) {
+      // Check for consecutive withers
+      const recentWindows = await db.select().from(momentWindowsTable)
+        .where(eq(momentWindowsTable.momentId, momentId));
+      const sortedWindows = recentWindows
+        .sort((a, b) => b.windowDate.localeCompare(a.windowDate))
+        .slice(0, 3);
+
+      const consecutiveWithers = sortedWindows.filter(w => w.status === "wither").length;
+
+      if (consecutiveWithers >= 2) {
+        await db.update(sharedMomentsTable)
+          .set({ currentStreak: 0, state: "dormant" })
+          .where(eq(sharedMomentsTable.id, momentId));
+      } else if (consecutiveWithers === 1) {
+        await db.update(sharedMomentsTable)
+          .set({ state: "needs_water" })
+          .where(eq(sharedMomentsTable.id, momentId));
+      }
+    }
+  }
+}
+
+// ─── POST /api/rituals/:id/moments — plant a shared moment ──────────────────
+const PlantSchema = z.object({
+  name: z.string().min(1).max(100),
+  intention: z.string().min(1).max(140),
+  loggingType: z.enum(["photo", "reflection", "both", "checkin"]),
+  reflectionPrompt: z.string().max(100).optional(),
+  frequency: z.enum(["daily", "weekly", "monthly"]).default("weekly"),
+  scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).default("08:00"),
+  goalDays: z.number().int().min(1).max(365).default(30),
+  commitmentSessionsGoal: z.number().int().min(1).max(365).nullable().optional(),
+});
+
+router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
+  const ritualId = parseInt(req.params.id, 10);
+  if (isNaN(ritualId)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = PlantSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
+
+  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
+  if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (ritual.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const { name, intention, loggingType, reflectionPrompt, frequency, scheduledTime, goalDays, commitmentSessionsGoal } = parsed.data;
+
+  const momentToken = generateToken();
+
+  const [moment] = await db.insert(sharedMomentsTable).values({
+    ritualId,
+    name,
+    intention,
+    loggingType,
+    reflectionPrompt: reflectionPrompt ?? null,
+    frequency,
+    scheduledTime,
+    goalDays,
+    momentToken,
+    windowMinutes: 240,
+    ...(commitmentSessionsGoal !== undefined ? { commitmentSessionsGoal } : {}),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any).returning();
+
+  // Get the organizer's info
+  const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+
+  // Get all circle members (invite_tokens) + organizer
+  const inviteTokens = await db.select().from(inviteTokensTable).where(eq(inviteTokensTable.ritualId, ritualId));
+
+  // Build member list: organizer + all invitees
+  const members: Array<{ email: string; name: string }> = [
+    { email: organizer.email, name: organizer.name ?? organizer.email },
+    ...inviteTokens.map(t => ({ email: t.email, name: t.name ?? t.email })),
+  ];
+
+  // Deduplicate by email
+  const seen = new Set<string>();
+  const uniqueMembers = members.filter(m => {
+    if (seen.has(m.email)) return false;
+    seen.add(m.email);
+    return true;
+  });
+
+  // Create moment_user_tokens for each member
+  const baseUrl = `${getFrontendUrl()}/moment`;
+
+  const memberTokenRows = uniqueMembers.map(m => ({
+    momentId: moment.id,
+    email: m.email,
+    name: m.name,
+    userToken: generateToken(),
+  }));
+
+  const insertedTokens = await db.insert(momentUserTokensTable).values(memberTokenRows).returning();
+
+  // Calendar setup
+  const recurrenceRule = frequency === "daily"
+    ? ["RRULE:FREQ=DAILY"]
+    : frequency === "weekly"
+    ? ["RRULE:FREQ=WEEKLY"]
+    : ["RRULE:FREQ=MONTHLY"];
+
+  const [hh, mm] = scheduledTime.split(":").map(Number);
+  const startDate = new Date();
+  startDate.setHours(hh, mm, 0, 0);
+  if (startDate < new Date()) startDate.setDate(startDate.getDate() + 1);
+  const endDate = new Date(startDate.getTime() + 60 * 60_000);
+
+  const organizerName = organizer.name ?? organizer.email ?? "Eleanor";
+  const creatorFirst = organizerName.split(" ")[0];
+  const tradMemberNames = uniqueMembers.map(m => m.name.split(" ")[0]).join(", ");
+  const tradGoalSessions = commitmentSessionsGoal ?? goalDays ?? null;
+  // (dividers removed — they render inline in email clients)
+
+  // Calendar invites for non-organizer members only.
+  // The organizer gets their own bell event — not a duplicate invite event.
+  const nonOrganizerTokens = insertedTokens.filter(t => t.email !== organizer.email);
+  let gcalCreated = false;
+
+  for (const t of nonOrganizerTokens) {
+    const shortLink = `${getFrontendUrl()}/m/${t.userToken}`;
+    const tradFreqLabel = frequency === "daily" ? "Daily" : frequency === "weekly" ? "Weekly" : "Monthly";
+    const tradStartDate = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    const tradTimeLabel = (() => {
+      const period = hh < 12 ? "AM" : "PM";
+      const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
+      const minStr = String(mm).padStart(2, "0");
+      return minStr === "00" ? `${h12} ${period}` : `${h12}:${minStr} ${period}`;
+    })();
+
+    const description = [
+      `${creatorFirst} invited you to practice together.`,
+      `Open in Eleanor → ${shortLink}`,
+      "",
+      ...(intention ? [`"${intention}"`, ""] : []),
+      `When: ${tradFreqLabel} at ${tradTimeLabel} · Starting ${tradStartDate}`,
+      `Who: ${tradMemberNames}`,
+      ...(tradGoalSessions ? [`Goal: ${tradGoalSessions} sessions together 🌱`] : []),
+    ].join("\n");
+
+    const eventId = await createCalendarEvent(sessionUserId, {
+      summary: `🌱 ${name} with ${creatorFirst}`,
+      description,
+      startDate,
+      endDate,
+      attendees: [t.email],
+      recurrence: recurrenceRule,
+      colorId: "2",
+      reminders: [
+        { method: "popup", minutes: 5 },
+      ],
+    }).catch(() => null);
+
+    if (eventId) {
+      await db.update(momentUserTokensTable)
+        .set({ googleCalendarEventId: eventId })
+        .where(eq(momentUserTokensTable.id, t.id));
+      gcalCreated = true;
+    }
+  }
+
+  res.status(201).json({
+    moment: { ...moment },
+    memberCount: uniqueMembers.length,
+    gcalCreated,
+  });
+});
+
+// ─── POST /api/moments — plant a standalone shared moment ───────────────────
+const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "listening", "custom"]);
+const BCP_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer"]);
+
+const StandalonePlantSchema = z.object({
+  name: z.string().min(1).max(100),
+  intention: z.string().min(1).max(500),
+  loggingType: z.enum(["photo", "reflection", "both", "checkin"]),
+  reflectionPrompt: z.string().max(300).optional(),
+  templateType: z.string().optional(),
+  intercessionTopic: z.string().max(300).optional(),
+  intercessionSource: z.enum(["bcp", "custom"]).optional(),
+  intercessionFullText: z.string().optional(),
+  frequency: z.enum(["daily", "weekly", "monthly"]).default("weekly"),
+  scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).default("08:00"),
+  dayOfWeek: z.enum(["MO","TU","WE","TH","FR","SA","SU"]).optional(),
+  goalDays: z.number().int().min(0).max(365).default(7),
+  timezone: z.string().default("UTC"),
+  timeOfDay: z.enum(["early-morning", "morning", "midday", "afternoon", "late-afternoon", "evening", "night"]).optional(),
+  participants: z.array(z.object({ name: z.string(), email: z.string().min(3) })).max(20).default([]),
+  // BCP-specific fields
+  frequencyType: z.string().optional(),
+  frequencyDaysPerWeek: z.number().int().min(1).max(7).optional(),
+  practiceDays: z.string().optional(),
+  // Optional link to a tradition/circle
+  ritualId: z.number().int().positive().optional(),
+  // Contemplative Prayer duration
+  contemplativeDurationMinutes: z.number().int().min(1).max(60).optional(),
+  // Fasting-specific fields
+  fastingFrom: z.string().max(140).optional(),
+  fastingIntention: z.string().max(200).optional(),
+  fastingFrequency: z.enum(["specific", "weekly", "monthly"]).optional(),
+  fastingDate: z.string().optional(),
+  fastingDay: z.string().optional(),
+  fastingDayOfMonth: z.number().int().min(1).max(31).optional(),
+  // Commitment fields
+  commitmentDuration: z.number().int().min(0).max(365).optional(),
+  // Progressive goal fields
+  commitmentSessionsGoal: z.number().int().min(1).max(365).nullable().optional(),
+  // Listening fields
+  listeningType: z.enum(["song", "album", "artist"]).optional(),
+  listeningTitle: z.string().max(200).optional(),
+  listeningArtist: z.string().max(200).optional(),
+  listeningSpotifyUri: z.string().max(500).optional(),
+  listeningAppleMusicUrl: z.string().max(500).optional(),
+  listeningArtworkUrl: z.string().max(500).optional(),
+  listeningManual: z.boolean().optional(),
+});
+
+router.post("/moments", async (req, res): Promise<void> => {
+  try {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = StandalonePlantSchema.safeParse(req.body);
+  if (!parsed.success) {
+    console.error("POST /api/moments validation error:", parsed.error.flatten());
+    res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return;
+  }
+
+  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual } = parsed.data;
+
+  // Compute commitment end date if a duration was provided
+  const commitmentEndDate = (commitmentDuration && commitmentDuration > 0)
+    ? (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + commitmentDuration);
+        return d.toISOString().slice(0, 10);
+      })()
+    : null;
+  const isFasting = templateType === "fasting";
+
+  const isSpiritual = SPIRITUAL_TEMPLATE_IDS.has(templateType ?? "");
+  const isBcp = BCP_TEMPLATE_IDS.has(templateType ?? "");
+  const momentToken = generateToken();
+
+  const [moment] = await db.insert(sharedMomentsTable).values({
+    ritualId: providedRitualId ?? null,
+    name,
+    intention,
+    loggingType,
+    reflectionPrompt: reflectionPrompt ?? null,
+    templateType: templateType ?? null,
+    intercessionTopic: intercessionTopic ?? null,
+    intercessionSource: intercessionSource ?? null,
+    intercessionFullText: intercessionFullText ?? null,
+    frequency,
+    scheduledTime,
+    dayOfWeek: dayOfWeek ?? null,
+    goalDays,
+    timezone,
+    timeOfDay: isSpiritual ? (timeOfDay ?? null) : null,
+    momentToken,
+    windowMinutes: isBcp ? 1440 : (isSpiritual ? 1440 : 240),
+    ...(frequencyType !== undefined ? { frequencyType } : {}),
+    ...(frequencyDaysPerWeek !== undefined ? { frequencyDaysPerWeek } : {}),
+    ...(practiceDays !== undefined ? { practiceDays } : {}),
+    ...(contemplativeDurationMinutes !== undefined ? { contemplativeDurationMinutes } : {}),
+    ...(fastingFrom !== undefined ? { fastingFrom } : {}),
+    ...(fastingIntention !== undefined ? { fastingIntention } : {}),
+    ...(fastingFrequency !== undefined ? { fastingFrequency } : {}),
+    ...(fastingDate !== undefined ? { fastingDate } : {}),
+    ...(fastingDay !== undefined ? { fastingDay } : {}),
+    ...(fastingDayOfMonth !== undefined ? { fastingDayOfMonth } : {}),
+    ...(commitmentDuration !== undefined ? { commitmentDuration } : {}),
+    ...(commitmentEndDate ? { commitmentEndDate } : {}),
+    ...(commitmentSessionsGoal !== undefined ? { commitmentSessionsGoal } : {}),
+    ...(listeningType !== undefined ? { listeningType } : {}),
+    ...(listeningTitle !== undefined ? { listeningTitle } : {}),
+    ...(listeningArtist !== undefined ? { listeningArtist } : {}),
+    ...(listeningSpotifyUri !== undefined ? { listeningSpotifyUri } : {}),
+    ...(listeningAppleMusicUrl !== undefined ? { listeningAppleMusicUrl } : {}),
+    ...(listeningArtworkUrl !== undefined ? { listeningArtworkUrl } : {}),
+    ...(listeningManual !== undefined ? { listeningManual } : {}),
+  }).returning();
+
+  const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+
+  // Merge organizer into participants, deduplicate by email
+  const allMembers: Array<{ email: string; name: string }> = [
+    { email: organizer.email, name: organizer.name ?? organizer.email },
+    ...participants.map(p => ({ email: p.email, name: p.name || p.email })),
+  ];
+  const seen = new Set<string>();
+  const uniqueMembers = allMembers.filter(m => {
+    if (seen.has(m.email)) return false;
+    seen.add(m.email);
+    return true;
+  });
+
+  const baseUrl = `${getFrontendUrl()}/moment`;
+
+  const memberTokenRows = uniqueMembers.map(m => ({
+    momentId: moment.id,
+    email: m.email,
+    name: m.name,
+    userToken: generateToken(),
+  }));
+
+  const insertedTokens = await db.insert(momentUserTokensTable).values(memberTokenRows).returning();
+
+  // ─── Friendly schedule label (time-of-day language, never clock times) ──────
+  const TOD_LABELS: Record<string, string> = {
+    "early-morning": "early morning", "morning": "morning", "midday": "midday",
+    "afternoon": "afternoon", "late-afternoon": "late afternoon", "evening": "evening", "night": "night",
+  };
+  const DAY_NAMES_SHORT: Record<string, string> = {
+    MO: "Monday", TU: "Tuesday", WE: "Wednesday", TH: "Thursday", FR: "Friday", SA: "Saturday", SU: "Sunday",
+  };
+  function clockToTod(time: string): string {
+    const [h] = time.split(":").map(Number);
+    if (h < 6) return "early morning";
+    if (h < 12) return "morning";
+    if (h < 14) return "midday";
+    if (h < 17) return "afternoon";
+    if (h < 20) return "evening";
+    return "night";
+  }
+  function buildFrequencyLabel(): string {
+    const tod = timeOfDay ? (TOD_LABELS[timeOfDay] ?? timeOfDay) : clockToTod(scheduledTime);
+    if (frequency === "daily") return `Every ${tod}`;
+    if (frequency === "weekly") {
+      let days: string[] = [];
+      if (practiceDays) {
+        try { days = JSON.parse(practiceDays); } catch { days = []; }
+      } else if (dayOfWeek) {
+        days = [dayOfWeek];
+      }
+      const dayStr = days.map((d: string) => DAY_NAMES_SHORT[d.toUpperCase()] ?? d).join(", ");
+      return dayStr ? `${dayStr} · ${tod}` : `Every week · ${tod}`;
+    }
+    return `Monthly · ${tod}`;
+  }
+  const scheduleLabel = buildFrequencyLabel();
+
+  const recurrenceRule = frequency === "daily"
+    ? ["RRULE:FREQ=DAILY"]
+    : frequency === "weekly"
+    ? [`RRULE:FREQ=WEEKLY${dayOfWeek ? `;BYDAY=${dayOfWeek}` : ""}`]
+    : ["RRULE:FREQ=MONTHLY"];
+
+  const tz = timezone || "UTC";
+  const [hh, mm] = scheduledTime.split(":").map(Number);
+  // Map time-of-day label to a representative clock hour for calendar events
+  const TOD_CLOCK_HOURS: Record<string, [number, number]> = {
+    "early-morning": [6, 0], "morning": [8, 0], "midday": [12, 0],
+    "afternoon": [14, 0], "late-afternoon": [16, 0], "evening": [19, 0], "night": [21, 0],
+  };
+  // Spiritual practices store scheduledTime="00:00"; derive actual hour from timeOfDay
+  const hhEff = (hh === 0 && mm === 0 && isSpiritual)
+    ? (TOD_CLOCK_HOURS[timeOfDay ?? ""] ?? TOD_CLOCK_HOURS["morning"])[0]
+    : hh;
+  const mmEff = (hh === 0 && mm === 0 && isSpiritual)
+    ? (TOD_CLOCK_HOURS[timeOfDay ?? ""] ?? TOD_CLOCK_HOURS["morning"])[1]
+    : mm;
+  const { startLocalStr, endLocalStr } = buildLocalEventTimes(hhEff, mmEff, tz, practiceEventDurationMins(templateType));
+  const startDate = new Date(); // fallback
+
+  function formatTimeForTitle(h: number, m: number): string {
+    const period = h < 12 ? "AM" : "PM";
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const minStr = String(m).padStart(2, "0");
+    return minStr === "00" ? `${hour12} ${period}` : `${hour12}:${minStr} ${period}`;
+  }
+  const calTimeLabel = formatTimeForTitle(hhEff, mmEff);
+  const creatorFirstName = (organizer.name ?? organizer.email ?? "Eleanor").split(" ")[0];
+  function buildEventTitle(): string {
+    if (templateType === "morning-prayer") return `✨ Morning Prayer with ${creatorFirstName}`;
+    if (templateType === "evening-prayer") return `🌙 Evening Prayer with ${creatorFirstName}`;
+    if (templateType === "intercession") return `🙏 ${name}`;
+    if (templateType === "contemplative") return `🕯️ ${name}`;
+    if (templateType === "fasting") return `🌿 ${name}`;
+    if (templateType === "listening") return `🎵 Listening to ${listeningArtist ?? listeningTitle ?? name} together`;
+    return `🌱 ${name} with ${creatorFirstName}`;
+  }
+
+  // ─── Warm, human calendar description for each member ─────────────────────
+  const memberNames = uniqueMembers.map(m => m.name.split(" ")[0]);
+  const memberListStr = memberNames.join(", ");
+  const goalSessions = commitmentSessionsGoal ?? goalDays ?? null;
+  function humanStartDate(): string {
+    const d = new Date();
+    return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  }
+  const freqLabel = frequency === "daily" ? "Daily" : frequency === "weekly" ? "Weekly" : "Monthly";
+
+  function buildDescription(memberToken: string, _memberName: string, inviterName: string, _isOrganizer: boolean): string {
+    const shortLink = `${getFrontendUrl()}/m/${memberToken}`;
+    const invFirst = inviterName.split(" ")[0];
+
+    if (templateType === "intercession") {
+      const lines: string[] = [];
+      lines.push(`${invFirst} invited you to pray with them.`);
+      lines.push(`Open in Eleanor → ${shortLink}`);
+      lines.push("");
+      if (intention) {
+        lines.push(`${invFirst} is praying for ${intention}${goalSessions ? ` — ${goalSessions} days together` : ""}. They want you alongside them.`);
+        lines.push("");
+      }
+      lines.push(`When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`);
+      if (goalSessions) lines.push(`Goal: ${goalSessions} days together 🌱`);
+      return lines.join("\n");
+    }
+
+    if (templateType === "morning-prayer") {
+      return [
+        `${invFirst} invited you to pray the Daily Office together.`,
+        `Open in Eleanor → ${shortLink}`,
+        "",
+        `Each morning, ${invFirst} will be praying Morning Prayer from the Book of Common Prayer. Wherever you are, at the same time of day — knowing the other is doing the same.`,
+        "",
+        `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
+        ...(goalSessions ? [`Goal: ${goalSessions} days together 🌱`] : []),
+      ].join("\n");
+    }
+
+    if (templateType === "evening-prayer") {
+      return [
+        `${invFirst} invited you to pray the Daily Office together.`,
+        `Open in Eleanor → ${shortLink}`,
+        "",
+        `Each evening, ${invFirst} will be praying Evening Prayer from the Book of Common Prayer. Wherever you are, at the same time of day — knowing the other is doing the same.`,
+        "",
+        `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
+        ...(goalSessions ? [`Goal: ${goalSessions} days together 🌱`] : []),
+      ].join("\n");
+    }
+
+    if (templateType === "contemplative") {
+      const durStr = contemplativeDurationMinutes ? `${contemplativeDurationMinutes} minutes of silence together` : "A shared time of silence";
+      return [
+        `${invFirst} invited you to sit in silence together.`,
+        `Open in Eleanor → ${shortLink}`,
+        "",
+        `${durStr}. Wherever you are, at the same time of day — knowing the other is present too.`,
+        "",
+        `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
+        ...(goalSessions ? [`Goal: ${goalSessions} sessions together 🌱`] : []),
+      ].join("\n");
+    }
+
+    if (templateType === "listening") {
+      const what = listeningType === "artist"
+        ? `${listeningArtist ?? listeningTitle ?? "an artist"}`
+        : listeningType === "album"
+          ? `${listeningTitle ?? "an album"} by ${listeningArtist ?? "an artist"}`
+          : `${listeningTitle ?? "a song"} by ${listeningArtist ?? "an artist"}`;
+      const headline = goalSessions
+        ? `We're listening to ${what} together — ${goalSessions} days, building a streak.`
+        : `We're listening to ${what} together.`;
+      return [
+        headline,
+        `Open in Eleanor → ${shortLink}`,
+        "",
+        "Though you'll be in different places, you'll each listen — knowing the other is too. That's the whole thing.",
+        "",
+        `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
+      ].join("\n");
+    }
+
+    // Default / custom practice
+    return [
+      `${invFirst} invited you to practice together.`,
+      `Open in Eleanor → ${shortLink}`,
+      "",
+      ...(intention ? [`"${intention}"`, ""] : []),
+      `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
+      ...(goalSessions ? [`Goal: ${goalSessions} sessions together 🌱`] : []),
+    ].join("\n");
+  }
+
+  // ─── Helpers for fasting all-day event date ─────────────────────────────────
+  function getFastingStartDateStr(): string {
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+    if (fastingFrequency === "specific" && fastingDate) return fastingDate;
+    if (fastingFrequency === "weekly" && fastingDay) {
+      const DAY_MAP: Record<string, number> = { sunday:0, monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6 };
+      const target = DAY_MAP[fastingDay.toLowerCase()] ?? 5;
+      const d = new Date(today);
+      const diff = (target - d.getDay() + 7) % 7;
+      d.setDate(d.getDate() + (diff === 0 ? 7 : diff));
+      return d.toISOString().split("T")[0];
+    }
+    if (fastingFrequency === "monthly" && fastingDayOfMonth) {
+      const d = new Date(today.getFullYear(), today.getMonth(), fastingDayOfMonth);
+      if (d <= today) d.setMonth(d.getMonth() + 1);
+      return d.toISOString().split("T")[0];
+    }
+    return todayStr;
+  }
+
+  function getFastingRecurrence(): string[] {
+    if (fastingFrequency === "specific") return [];
+    if (fastingFrequency === "weekly" && fastingDay) {
+      const DAY_RRULE: Record<string, string> = { sunday:"SU", monday:"MO", tuesday:"TU", wednesday:"WE", thursday:"TH", friday:"FR", saturday:"SA" };
+      const byday = DAY_RRULE[fastingDay.toLowerCase()] ?? "FR";
+      return [`RRULE:FREQ=WEEKLY;BYDAY=${byday}`];
+    }
+    if (fastingFrequency === "monthly" && fastingDayOfMonth) {
+      return [`RRULE:FREQ=MONTHLY;BYMONTHDAY=${fastingDayOfMonth}`];
+    }
+    return [];
+  }
+
+  function buildFastingDescription(memberToken: string, inviterName: string, _isOrganizer: boolean): string {
+    const shortLink = `${getFrontendUrl()}/m/${memberToken}`;
+    const invFirst = inviterName.split(" ")[0];
+    const fastFreqLabel = fastingFrequency === "weekly" ? "Weekly" : fastingFrequency === "monthly" ? "Monthly" : "Fasting day";
+
+    return [
+      `${invFirst} invited you to fast together.`,
+      `Open in Eleanor → ${shortLink}`,
+      "",
+      "A shared fast as a discipline — knowing someone else is keeping it alongside you changes everything.",
+      ...(fastingIntention ? ["", `Why we fast: ${fastingIntention}`] : []),
+      "",
+      `When: ${fastFreqLabel} · Starting ${humanStartDate()}`,
+      ...(goalSessions ? [`Goal: ${goalSessions} fasts together 🌱`] : []),
+    ].join("\n");
+  }
+
+  // ─── Create ONE group calendar event with all members ──────────────────────
+  const organizerName = organizer.name ?? organizer.email ?? "Eleanor";
+  const attendeeEmails = insertedTokens.map(t => t.email); // All members get invites from scheduler
+  let gcalCreated = false;
+
+  // Reminders: 5 min popup + 1 day email
+  const practiceReminders = [
+    { method: "popup", minutes: 5 },
+    { method: "email", minutes: 1440 },
+  ];
+
+  try {
+    const eventTitle = buildEventTitle();
+    // Organizer gets their own personalised description too
+    const orgToken = insertedTokens.find(t => t.email === organizer.email);
+    const orgDescription = orgToken
+      ? buildDescription(orgToken.userToken, organizer.name ?? "You", organizerName, true)
+      : `Open Eleanor → ${getFrontendUrl()}/moments/${moment.id}`;
+
+    if (isFasting) {
+      const fastingDateStr = getFastingStartDateStr();
+      const fastingRec = getFastingRecurrence();
+      const fastingTitle = buildEventTitle();
+      const fastOrgDesc = orgToken
+        ? buildFastingDescription(orgToken.userToken, organizerName, true)
+        : orgDescription;
+      const eventId = await createAllDayCalendarEvent(sessionUserId, {
+        summary: fastingTitle,
+        description: fastOrgDesc,
+        dateStr: fastingDateStr,
+        attendees: attendeeEmails,
+        recurrence: fastingRec,
+      }).catch(() => null);
+
+      if (eventId) {
+        if (orgToken) {
+          await db.update(momentUserTokensTable)
+            .set({ googleCalendarEventId: eventId })
+            .where(eq(momentUserTokensTable.id, orgToken.id));
+        }
+        gcalCreated = true;
+      }
+    } else {
+      const eventId = await createCalendarEvent(sessionUserId, {
+        summary: eventTitle,
+        description: orgDescription,
+        startDate,
+        startLocalStr,
+        endLocalStr,
+        timeZone: tz,
+        attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
+        recurrence: recurrenceRule,
+        colorId: "2",
+        reminders: practiceReminders,
+      }).catch(() => null);
+
+      if (eventId) {
+        if (orgToken) {
+          await db.update(momentUserTokensTable)
+            .set({ googleCalendarEventId: eventId })
+            .where(eq(momentUserTokensTable.id, orgToken.id));
+        }
+        gcalCreated = true;
+      }
+    }
+  } catch (calErr) {
+    console.error("Practice calendar event creation failed (non-fatal):", calErr);
+  }
+
+  res.status(201).json({
+    moment: { ...moment },
+    memberCount: uniqueMembers.length,
+    gcalCreated,
+  });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("POST /api/moments error:", msg);
+    if (!res.headersSent) res.status(500).json({ error: msg });
+  }
+});
+
+// ─── GET /api/moments — list all standalone moments the user participates in ─
+router.get("/moments", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  // Find all moment_user_tokens for this user's email
+  const userTokenRows = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.email, user.email));
+
+  const momentIds = [...new Set(userTokenRows.map(t => t.momentId))];
+  if (momentIds.length === 0) { res.json({ moments: [] }); return; }
+
+  const flatMoments = (await db.select().from(sharedMomentsTable)
+    .where(inArray(sharedMomentsTable.id, momentIds)))
+    .filter(m => m.ritualId === null && m.state !== "archived");
+
+  const enriched = await Promise.all(flatMoments.map(async (m) => {
+    const allMembers = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, m.id));
+
+    const todayPosts = await db.select().from(momentPostsTable)
+      .where(and(eq(momentPostsTable.momentId, m.id), eq(momentPostsTable.windowDate, todayDateInTz(m.timezone || "UTC"))));
+
+    const windows = await db.select().from(momentWindowsTable)
+      .where(eq(momentWindowsTable.momentId, m.id));
+    const latestWindow = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate))[0] ?? null;
+
+    const myToken = userTokenRows.find(t => t.momentId === m.id);
+
+    return {
+      ...m,
+      memberCount: allMembers.length,
+      members: allMembers.map(t => ({ name: t.name, email: t.email })),
+      todayPostCount: todayPosts.length,
+      windowOpen: computeWindowOpen(m),
+      minutesLeft: minutesRemaining(m),
+      latestWindow,
+      myUserToken: myToken?.userToken ?? null,
+    };
+  }));
+
+  res.json({ moments: enriched });
+});
+
+// ─── GET /api/moments/:id — full detail for one moment ──────────────────────
+router.get("/moments/:id", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  // Auth: must be a participant
+  const myTokenRow = await db.select().from(momentUserTokensTable)
+    .where(and(eq(momentUserTokensTable.momentId, momentId), eq(momentUserTokensTable.email, user.email)));
+  if (myTokenRow.length === 0) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const allMembers = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+
+  // All windows sorted newest first
+  const windows = await db.select().from(momentWindowsTable)
+    .where(eq(momentWindowsTable.momentId, momentId));
+  const sortedWindows = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate));
+
+  // All posts ever
+  const allPosts = await db.select().from(momentPostsTable)
+    .where(eq(momentPostsTable.momentId, momentId));
+
+  // Group posts by windowDate, separate out seed posts
+  const postsByDate: Record<string, typeof allPosts> = {};
+  const seedPosts: typeof allPosts = [];
+  for (const post of allPosts) {
+    if (post.windowDate === "seed") {
+      seedPosts.push(post);
+    } else {
+      if (!postsByDate[post.windowDate]) postsByDate[post.windowDate] = [];
+      postsByDate[post.windowDate].push(post);
+    }
+  }
+
+  const windowsWithPosts = sortedWindows.map(w => ({
+    ...w,
+    posts: (postsByDate[w.windowDate] ?? []).map(p => ({
+      guestName: p.guestName,
+      photoUrl: p.photoUrl,
+      reflectionText: p.reflectionText,
+      isCheckin: p.isCheckin === 1,
+      loggedAt: p.createdAt?.toISOString() ?? null,
+    })),
+  }));
+
+  // Today's open window (may not have a record yet if no posts)
+  const tz = moment.timezone || "UTC";
+  const windowDate = todayDateInTz(tz);
+  const todayPosts = postsByDate[windowDate] ?? [];
+  const windowOpen = computeWindowOpen(moment);
+  const minsLeft = minutesRemaining(moment);
+
+  // Per-member today log status — match by guestName
+  const todayLogs = allMembers.map(member => {
+    const memberName = (member.name ?? member.email).toLowerCase();
+    const post = todayPosts.find(p => (p.guestName ?? "").toLowerCase() === memberName);
+    return {
+      name: member.name ?? member.email,
+      email: member.email,
+      loggedAt: post?.createdAt?.toISOString() ?? null,
+      reflectionText: post?.reflectionText ?? null,
+      isCheckin: post ? post.isCheckin === 1 : false,
+    };
+  });
+
+  // Determine creator — member with the smallest token id
+  const creatorToken = allMembers.length > 0
+    ? allMembers.reduce((min, m) => m.id < min.id ? m : min, allMembers[0])
+    : null;
+  const isCreator = myTokenRow[0]?.email.toLowerCase() === creatorToken?.email.toLowerCase();
+
+  // Check if the creator's calendar event was deleted
+  let calendarEventMissing = false;
+  const myEventId = myTokenRow[0]?.googleCalendarEventId;
+  if (isCreator && myEventId && myTokenRow[0]?.calendarConnected) {
+    const calEvent = await getCalendarEvent(sessionUserId, myEventId);
+    if (!calEvent) calendarEventMissing = true;
+  }
+
+  // Personal streak: consecutive closed windows (newest first) where current user posted
+  const myUserTokenValue = myTokenRow[0]?.userToken ?? null;
+  const myPostDates = new Set(
+    allPosts.filter(p => p.userToken === myUserTokenValue).map(p => p.windowDate)
+  );
+  // Include today if I've already logged
+  const todayILogged = myPostDates.has(windowDate);
+  let myStreak = todayILogged ? 1 : 0;
+  // Walk through past closed windows in order
+  for (const w of sortedWindows) {
+    if (w.windowDate === windowDate) continue; // skip today (counted above)
+    if (myPostDates.has(w.windowDate)) {
+      myStreak++;
+    } else {
+      break;
+    }
+  }
+
+  res.json({
+    moment,
+    members: allMembers.map(t => ({ name: t.name, email: t.email })),
+    memberCount: allMembers.length,
+    myUserToken: myTokenRow[0]?.userToken ?? null,
+    myPersonalTime: myTokenRow[0]?.personalTime ?? null,
+    myPersonalTimezone: myTokenRow[0]?.personalTimezone ?? null,
+    myGoogleCalendarEventId: myTokenRow[0]?.googleCalendarEventId ?? null,
+    windows: windowsWithPosts,
+    seedPosts: seedPosts.map(p => ({
+      guestName: p.guestName,
+      photoUrl: p.photoUrl,
+      reflectionText: p.reflectionText,
+      isCheckin: p.isCheckin === 1,
+    })),
+    todayPostCount: todayPosts.length,
+    windowOpen,
+    minutesLeft: minsLeft,
+    todayLogs,
+    isCreator,
+    myStreak,
+    calendarEventMissing,
+  });
+});
+
+// ─── POST /api/moments/:id/invite — add new participants ─────────────────────
+const InviteMembersSchema = z.object({
+  people: z.array(z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+  })).min(1),
+});
+
+router.post("/moments/:id/invite", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = InviteMembersSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [myTokenRow] = await db.select().from(momentUserTokensTable)
+    .where(and(eq(momentUserTokensTable.momentId, momentId), eq(momentUserTokensTable.email, user.email)));
+  if (!myTokenRow) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const existingMembers = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+  const existingEmails = new Set(existingMembers.map(m => m.email.toLowerCase()));
+
+  const newPeople = parsed.data.people.filter(p => !existingEmails.has(p.email.toLowerCase()));
+  if (newPeople.length === 0) {
+    res.json({ added: 0, message: "All people are already members" });
+    return;
+  }
+
+  const newTokenRows = newPeople.map(p => ({
+    momentId,
+    email: p.email,
+    name: p.name,
+    userToken: generateToken(),
+  }));
+
+  const insertedNewTokens = await db.insert(momentUserTokensTable).values(newTokenRows).returning();
+
+  // Add new members to the existing group calendar event
+  try {
+    const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+    if (moment) {
+      // Find the organizer's token row (lowest ID) — they own the group event
+      const allTokens = await db.select().from(momentUserTokensTable)
+        .where(eq(momentUserTokensTable.momentId, momentId));
+      const organizerToken = allTokens.reduce((min, t) => t.id < min.id ? t : min, allTokens[0]);
+      const [organizer] = await db.select().from(usersTable)
+        .where(eq(usersTable.email, organizerToken.email));
+
+      if (organizer?.googleAccessToken) {
+        const newEmails = insertedNewTokens.map(t => t.email);
+
+        if (organizerToken.googleCalendarEventId) {
+          // Add new members as attendees to the existing group event — they'll get an email invite
+          await addAttendeesToCalendarEvent(organizer.id, organizerToken.googleCalendarEventId, newEmails)
+            .catch(() => null);
+          console.info(`Added ${newEmails.join(", ")} to GCal event ${organizerToken.googleCalendarEventId}`);
+        } else {
+          // No existing group event — create one now with all current members
+          const allEmails = allTokens.map(t => t.email); // All members get invites from scheduler
+          const [hh, mm] = moment.scheduledTime.split(":").map(Number);
+          const startDate = new Date();
+          startDate.setHours(hh, mm, 0, 0);
+          if (startDate < new Date()) startDate.setDate(startDate.getDate() + 1);
+          const endDate = new Date(startDate.getTime() + practiceEventDurationMins(moment.templateType) * 60_000);
+          const recurrenceRule = moment.frequency === "daily"
+            ? ["RRULE:FREQ=DAILY"]
+            : moment.frequency === "weekly"
+            ? ["RRULE:FREQ=WEEKLY"]
+            : ["RRULE:FREQ=MONTHLY"];
+
+          const eventId = await createCalendarEvent(organizer.id, {
+            summary: `🌿 ${moment.name}`,
+            description: [
+              `${moment.name} practice on Eleanor.`,
+              ...(moment.intention ? [`"${moment.intention}"`] : []),
+              "",
+              `Open Eleanor → ${getFrontendUrl()}/moments/${momentId}`,
+            ].join("\n"),
+            startDate,
+            endDate,
+            attendees: allEmails,
+            recurrence: recurrenceRule,
+          }).catch(() => null);
+
+          if (eventId) {
+            await db.update(momentUserTokensTable)
+              .set({ googleCalendarEventId: eventId })
+              .where(eq(momentUserTokensTable.id, organizerToken.id));
+            console.info(`Created new group GCal event ${eventId} for moment ${momentId}`);
+          }
+        }
+      }
+    }
+  } catch (calErr) {
+    console.error("Invite calendar event update failed (non-fatal):", calErr);
+  }
+
+  // Save connections to cache so they persist even if this practice is later deleted
+  try {
+    const updatedMembers = await db.select({ email: momentUserTokensTable.email, name: momentUserTokensTable.name })
+      .from(momentUserTokensTable).where(eq(momentUserTokensTable.momentId, momentId));
+    await saveConnectionCache(updatedMembers.map(m => ({ email: m.email, name: m.name ?? null })));
+  } catch { /* non-fatal */ }
+
+  res.json({ added: newPeople.length, people: newPeople });
+});
+
+// ─── DELETE /api/moments/:id/members/:email — creator removes a member ────────
+router.delete("/moments/:id/members/:email", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const emailToRemove = decodeURIComponent(req.params.email).toLowerCase();
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  // Verify caller is the creator (lowest token ID)
+  const allMembers = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+  if (allMembers.length === 0) { res.status(404).json({ error: "Practice not found" }); return; }
+
+  const creatorToken = allMembers.reduce((min, m) => m.id < min.id ? m : min, allMembers[0]);
+  if (creatorToken.email.toLowerCase() !== user.email.toLowerCase()) {
+    res.status(403).json({ error: "Only the creator can remove members" });
+    return;
+  }
+
+  // Can't remove yourself (use delete practice instead)
+  if (emailToRemove === user.email.toLowerCase()) {
+    res.status(400).json({ error: "Cannot remove yourself. Delete the practice instead." });
+    return;
+  }
+
+  const memberToRemove = allMembers.find(m => m.email.toLowerCase() === emailToRemove);
+  if (!memberToRemove) {
+    res.status(404).json({ error: "Member not found in this practice" });
+    return;
+  }
+
+  // Remove from calendar event
+  try {
+    if (creatorToken.googleCalendarEventId) {
+      const [organizer] = await db.select().from(usersTable)
+        .where(eq(usersTable.email, creatorToken.email));
+      if (organizer?.googleAccessToken) {
+        await removeAttendeesFromCalendarEvent(organizer.id, creatorToken.googleCalendarEventId, [emailToRemove]);
+      }
+    }
+  } catch { /* non-fatal */ }
+
+  // Delete their token row
+  await db.delete(momentUserTokensTable)
+    .where(and(
+      eq(momentUserTokensTable.momentId, momentId),
+      eq(momentUserTokensTable.email, memberToRemove.email),
+    ));
+
+  res.json({ success: true, removed: emailToRemove });
+});
+
+// ─── POST /api/moments/:id/seed-post — creator plants an example post ────────
+const SeedPostSchema = z.object({
+  photoUrl: z.string().url().optional(),
+  reflectionText: z.string().max(500).optional(),
+});
+
+router.post("/moments/:id/seed-post", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = SeedPostSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  // Must be a participant
+  const [myTokenRow] = await db.select().from(momentUserTokensTable)
+    .where(and(eq(momentUserTokensTable.momentId, momentId), eq(momentUserTokensTable.email, user.email)));
+  if (!myTokenRow) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const { photoUrl, reflectionText } = parsed.data;
+
+  // Upsert seed post (one per user)
+  const existing = await db.select().from(momentPostsTable)
+    .where(and(
+      eq(momentPostsTable.momentId, momentId),
+      eq(momentPostsTable.windowDate, "seed"),
+      eq(momentPostsTable.userToken, myTokenRow.userToken),
+    ));
+
+  if (existing.length > 0) {
+    await db.update(momentPostsTable)
+      .set({ photoUrl: photoUrl ?? null, reflectionText: reflectionText ?? null })
+      .where(eq(momentPostsTable.id, existing[0].id));
+  } else {
+    await db.insert(momentPostsTable).values({
+      momentId,
+      windowDate: "seed",
+      userToken: myTokenRow.userToken,
+      guestName: myTokenRow.name ?? user.email,
+      photoUrl: photoUrl ?? null,
+      reflectionText: reflectionText ?? null,
+      isCheckin: 0,
+    });
+  }
+
+  res.status(201).json({ success: true });
+});
+
+// ─── GET /api/rituals/:id/moments — list moments for a circle ───────────────
+router.get("/rituals/:id/moments", async (req, res): Promise<void> => {
+  const ritualId = parseInt(req.params.id, 10);
+  if (isNaN(ritualId)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
+  if (!ritual || ritual.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const moments = await db.select().from(sharedMomentsTable)
+    .where(eq(sharedMomentsTable.ritualId, ritualId));
+
+  // For each moment, get the latest window
+  const enriched = await Promise.all(moments.map(async (m) => {
+    const windows = await db.select().from(momentWindowsTable)
+      .where(eq(momentWindowsTable.momentId, m.id));
+    const sortedWindows = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate));
+    const latestWindow = sortedWindows[0] ?? null;
+
+    const todayPosts = await db.select().from(momentPostsTable)
+      .where(and(eq(momentPostsTable.momentId, m.id), eq(momentPostsTable.windowDate, todayDateInTz(m.timezone || "UTC"))));
+
+    return {
+      ...m,
+      latestWindow,
+      todayPostCount: todayPosts.length,
+      windowOpen: computeWindowOpen(m),
+    };
+  }));
+
+  res.json({ moments: enriched });
+});
+
+// ─── GET /api/m/:userToken — resolve short link to momentToken/userToken ─────
+router.get("/m/:userToken", async (req, res): Promise<void> => {
+  const { userToken } = req.params;
+  const [tokenRow] = await db.select({ momentId: momentUserTokensTable.momentId, userToken: momentUserTokensTable.userToken })
+    .from(momentUserTokensTable).where(eq(momentUserTokensTable.userToken, userToken));
+  if (!tokenRow) { res.status(404).json({ error: "Not found" }); return; }
+  const [moment] = await db.select({ momentToken: sharedMomentsTable.momentToken })
+    .from(sharedMomentsTable).where(eq(sharedMomentsTable.id, tokenRow.momentId));
+  if (!moment) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ momentToken: moment.momentToken, userToken: tokenRow.userToken });
+});
+
+// ─── GET /api/moment/:momentToken/:userToken — public posting page ───────────
+router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> => {
+  const { momentToken, userToken } = req.params;
+
+  const [moment] = await db.select().from(sharedMomentsTable)
+    .where(eq(sharedMomentsTable.momentToken, momentToken));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  const [userTokenRow] = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.userToken, userToken));
+  if (!userTokenRow || userTokenRow.momentId !== moment.id) {
+    res.status(404).json({ error: "Invalid token" });
+    return;
+  }
+
+  const ritual = moment.ritualId
+    ? (await db.select().from(ritualsTable).where(eq(ritualsTable.id, moment.ritualId)))[0] ?? null
+    : null;
+  const windowDate = todayDateInTz(moment.timezone || "UTC");
+
+  const allTodayPosts = await db.select().from(momentPostsTable)
+    .where(and(eq(momentPostsTable.momentId, moment.id), eq(momentPostsTable.windowDate, windowDate)));
+
+  const myPost = allTodayPosts.find(p => p.userToken === userToken) ?? null;
+
+  const allMembers = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, moment.id));
+
+  // Intercession uses a time-of-day band instead of raw window minutes
+  const windowOpen = moment.templateType === "intercession"
+    ? isPracticeDayInTz(moment) && isIntercessionWindowOpen(moment.timeOfDay, moment.timezone || "UTC")
+    : computeWindowOpen(moment);
+  const minsLeft = minutesRemaining(moment);
+
+  // Build member presence: who has prayed today
+  const prayedTokens = new Set(allTodayPosts.map(p => p.userToken));
+  const memberPresence = allMembers.map(m => ({
+    name: m.name ?? m.email.split("@")[0],
+    userToken: m.userToken,
+    prayed: prayedTokens.has(m.userToken),
+  }));
+
+  // Determine inviter — member with the lowest token row ID is the organizer/creator
+  const organizerToken = allMembers.length > 0
+    ? allMembers.reduce((min, m) => m.id < min.id ? m : min, allMembers[0])
+    : null;
+  const inviterName = organizerToken?.name ?? organizerToken?.email?.split("@")[0] ?? "Eleanor";
+
+  res.json({
+    moment: {
+      id: moment.id,
+      name: moment.name,
+      intention: moment.intention,
+      loggingType: moment.loggingType,
+      reflectionPrompt: moment.reflectionPrompt,
+      templateType: moment.templateType,
+      intercessionFullText: moment.intercessionFullText,
+      intercessionTopic: moment.intercessionTopic,
+      intercessionSource: moment.intercessionSource,
+      currentStreak: moment.currentStreak,
+      longestStreak: moment.longestStreak,
+      state: moment.state,
+      frequency: moment.frequency,
+      dayOfWeek: moment.dayOfWeek,
+      practiceDays: moment.practiceDays ?? null,
+      timeOfDay: moment.timeOfDay,
+      contemplativeDurationMinutes: moment.contemplativeDurationMinutes ?? null,
+      fastingFrom: moment.fastingFrom ?? null,
+      fastingIntention: moment.fastingIntention ?? null,
+      fastingFrequency: moment.fastingFrequency ?? null,
+      fastingDate: moment.fastingDate ?? null,
+      fastingDay: moment.fastingDay ?? null,
+      fastingDayOfMonth: moment.fastingDayOfMonth ?? null,
+      listeningType: (moment as Record<string, unknown>).listeningType ?? null,
+      listeningTitle: (moment as Record<string, unknown>).listeningTitle ?? null,
+      listeningArtist: (moment as Record<string, unknown>).listeningArtist ?? null,
+      listeningSpotifyUri: (moment as Record<string, unknown>).listeningSpotifyUri ?? null,
+      listeningAppleMusicUrl: (moment as Record<string, unknown>).listeningAppleMusicUrl ?? null,
+      listeningArtworkUrl: (moment as Record<string, unknown>).listeningArtworkUrl ?? null,
+    },
+    ritualName: ritual?.name ?? "",
+    inviterName,
+    windowDate,
+    windowOpen,
+    minutesRemaining: minsLeft,
+    memberCount: allMembers.length,
+    todayPostCount: allTodayPosts.length,
+    members: memberPresence,
+    myPost: myPost
+      ? {
+          photoUrl: myPost.photoUrl,
+          reflectionText: myPost.reflectionText,
+          isCheckin: myPost.isCheckin === 1,
+        }
+      : null,
+    userName: userTokenRow.name ?? userTokenRow.email,
+  });
+});
+
+// ─── POST /api/moment/:momentToken/:userToken/post — submit a post ───────────
+const PostSchema = z.object({
+  photoUrl: z.string().optional(),
+  reflectionText: z.string().max(280).optional(),
+  isCheckin: z.boolean().default(false),
+});
+
+router.post("/moment/:momentToken/:userToken/post", async (req, res): Promise<void> => {
+  const { momentToken, userToken } = req.params;
+
+  const parsed = PostSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
+
+  try {
+    const [moment] = await db.select().from(sharedMomentsTable)
+      .where(eq(sharedMomentsTable.momentToken, momentToken));
+    if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+    const [userTokenRow] = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.userToken, userToken));
+    if (!userTokenRow || userTokenRow.momentId !== moment.id) {
+      res.status(404).json({ error: "Invalid token" });
+      return;
+    }
+
+    const windowDate = todayDateInTz(moment.timezone || "UTC");
+
+    // Check for existing post today from this user
+    const existingPosts = await db.select().from(momentPostsTable)
+      .where(and(eq(momentPostsTable.momentId, moment.id), eq(momentPostsTable.windowDate, windowDate)));
+    const myExisting = existingPosts.find(p => p.userToken === userToken);
+
+    const guestName = userTokenRow.name ?? userTokenRow.email;
+    const { photoUrl, reflectionText, isCheckin } = parsed.data;
+
+    if (myExisting) {
+      await db.update(momentPostsTable)
+        .set({
+          photoUrl: photoUrl ?? null,
+          reflectionText: reflectionText ?? null,
+          isCheckin: isCheckin ? 1 : 0,
+        })
+        .where(eq(momentPostsTable.id, myExisting.id));
+    } else {
+      await db.insert(momentPostsTable).values({
+        momentId: moment.id,
+        windowDate,
+        userToken,
+        guestName,
+        photoUrl: photoUrl ?? null,
+        reflectionText: reflectionText ?? null,
+        isCheckin: isCheckin ? 1 : 0,
+      });
+    }
+
+    // Recount posts to get fresh total
+    const allTodayPosts = await db.select().from(momentPostsTable)
+      .where(and(eq(momentPostsTable.momentId, moment.id), eq(momentPostsTable.windowDate, windowDate)));
+
+    const allMembers = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, moment.id));
+    const memberCount = allMembers.length;
+
+    res.status(201).json({
+      success: true,
+      todayPostCount: allTodayPosts.length,
+      memberCount,
+    });
+
+    // Broadcast log notification to connected clients (only for new posts, not updates)
+    if (!myExisting) {
+      const latestPost = await db.select().from(momentPostsTable)
+        .where(and(eq(momentPostsTable.momentId, moment.id), eq(momentPostsTable.userToken, userToken)))
+        .limit(1);
+      broadcastLog({
+        momentId: moment.id,
+        postId: latestPost[0]?.id ?? 0,
+        momentName: moment.name,
+        templateType: moment.templateType,
+        guestName,
+        userEmail: userTokenRow.email,
+      });
+    }
+
+    // Evaluate window: either the window has closed, OR 50% of group has logged (bloom condition met)
+    const windowIsStillOpen = isWindowOpen(moment);
+    const bloomThreshold50 = Math.max(2, Math.ceil(memberCount / 2));
+    const halfLogged = allTodayPosts.length >= bloomThreshold50 && memberCount >= 2;
+    if (!windowIsStillOpen || halfLogged) {
+      evaluateWindow(moment.id, windowDate).catch(err =>
+        console.warn("Window evaluation failed:", err?.message ?? err)
+      );
+    }
+
+  } catch (err) {
+    console.error("POST /moment/:momentToken/:userToken/post error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── GET /api/rituals/:id/moments/:momentId/journal — window history ─────────
+router.get("/rituals/:id/moments/:momentId/journal", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.momentId, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (!moment.ritualId) { res.status(403).json({ error: "Forbidden" }); return; }
+  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, moment.ritualId));
+  if (!ritual || ritual.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const windows = await db.select().from(momentWindowsTable)
+    .where(eq(momentWindowsTable.momentId, momentId));
+
+  const enriched = await Promise.all(
+    windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate)).map(async (w) => {
+      const posts = await db.select().from(momentPostsTable)
+        .where(and(eq(momentPostsTable.momentId, momentId), eq(momentPostsTable.windowDate, w.windowDate)));
+      return { ...w, posts };
+    })
+  );
+
+  res.json({ windows: enriched, moment });
+});
+
+// ─── Rolling calendar event helper ──────────────────────────────────────────
+
+function nextOccurrences(personalTime: string, personalTimezone: string, frequency: string, dayOfWeek: string | null, count: number): Date[] {
+  const [hh, mm] = personalTime.split(":").map(Number);
+  const results: Date[] = [];
+  const now = new Date();
+  const dateWeekdayMap: Record<string, string> = { Su: "SU", Mo: "MO", Tu: "TU", We: "WE", Th: "TH", Fr: "FR", Sa: "SA" };
+
+  let candidate = new Date();
+  candidate.setUTCHours(0, 0, 0, 0);
+
+  for (let day = 0; results.length < count && day < 730; day++) {
+    const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: personalTimezone }).format(candidate);
+
+    let included = false;
+    if (frequency === "daily") {
+      included = true;
+    } else if (frequency === "weekly") {
+      const wdCode = dateWeekdayMap[new Intl.DateTimeFormat("en-US", { timeZone: personalTimezone, weekday: "short" }).format(candidate).slice(0, 2)] ?? "";
+      included = dayOfWeek ? wdCode === dayOfWeek : true;
+    }
+
+    if (included) {
+      const tzOffsetMs = getTimezoneOffsetMs(personalTimezone, new Date(`${localDate}T00:00:00`));
+      // Convert local time to UTC: local + offset = UTC (offset is positive for zones behind UTC)
+      const eventUtc = new Date(`${localDate}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`);
+      eventUtc.setTime(eventUtc.getTime() + tzOffsetMs);
+      if (eventUtc > now) results.push(eventUtc);
+    }
+
+    candidate.setUTCDate(candidate.getUTCDate() + 1);
+  }
+
+  return results;
+}
+
+function getTimezoneOffsetMs(timezone: string, date: Date): number {
+  try {
+    const utcDate = new Date(date.toLocaleString("en-US", { timeZone: "UTC" }));
+    const tzDate = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
+    return utcDate.getTime() - tzDate.getTime();
+  } catch {
+    return 0;
+  }
+}
+
+// ─── POST /api/moments/:id/personal-time — set organizer personal time ────────
+const PersonalTimeSchema = z.object({
+  personalTime: z.string().regex(/^\d{2}:\d{2}$/),
+  personalTimezone: z.string(),
+});
+
+router.post("/moments/:id/personal-time", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = PersonalTimeSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+    const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+    if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+    const { personalTime, personalTimezone } = parsed.data;
+
+    // Verify the user is a member
+    const allMembers = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, momentId));
+    const myTokenRow = allMembers.find(t => t.email === user.email);
+    if (!myTokenRow) { res.status(403).json({ error: "Not a member" }); return; }
+
+    // Update the practice's shared scheduled time (applies to everyone)
+    await db.update(sharedMomentsTable)
+      .set({ scheduledTime: personalTime, timezone: personalTimezone })
+      .where(eq(sharedMomentsTable.id, momentId));
+
+    // Build calendar event parameters
+    const [hh2, mm2] = personalTime.split(":").map(Number);
+    const { startLocalStr, endLocalStr } = buildLocalEventTimes(hh2, mm2, personalTimezone, practiceEventDurationMins(moment.templateType));
+
+    const recurrence: string[] = [];
+    if (moment.frequency === "daily") {
+      recurrence.push("RRULE:FREQ=DAILY");
+    } else if (moment.frequency === "weekly" && moment.dayOfWeek) {
+      recurrence.push(`RRULE:FREQ=WEEKLY;BYDAY=${moment.dayOfWeek}`);
+    } else if (moment.frequency === "weekly") {
+      recurrence.push("RRULE:FREQ=WEEKLY");
+    }
+
+    // Delete ALL old calendar events for every member
+    for (const member of allMembers) {
+      if (member.googleCalendarEventId) {
+        try {
+          await deleteCalendarEvent(sessionUserId, member.googleCalendarEventId);
+        } catch { /* best effort */ }
+        await db.update(momentUserTokensTable)
+          .set({ googleCalendarEventId: null, calendarConnected: false })
+          .where(eq(momentUserTokensTable.id, member.id));
+      }
+    }
+
+    // Create ONE new group calendar event on the organizer's calendar with all members
+    try {
+      const attendeeEmails = allMembers.map(m => m.email); // All members get invites from scheduler
+
+      const newId = await createCalendarEvent(sessionUserId, {
+        summary: `🔔 ${moment.name}`,
+        description: [
+          `${moment.name} practice on Eleanor.`,
+          ...(moment.intention ? [`"${moment.intention}"`] : []),
+          "",
+          `${allMembers.length} ${allMembers.length === 1 ? "person" : "people"} practicing together.`,
+          "",
+          `Open Eleanor → ${getFrontendUrl()}/moments/${momentId}`,
+        ].join("\n"),
+        startDate: new Date(),
+        startLocalStr,
+        endLocalStr,
+        timeZone: personalTimezone,
+        attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
+        recurrence: recurrence.length > 0 ? recurrence : undefined,
+      });
+
+      if (newId) {
+        // Store the event ID on the organizer's token row
+        await db.update(momentUserTokensTable)
+          .set({ googleCalendarEventId: newId, calendarConnected: true })
+          .where(eq(momentUserTokensTable.id, myTokenRow.id));
+        console.info(`Bell: created group GCal event ${newId} for moment ${momentId} at ${startLocalStr} ${personalTimezone}`);
+      }
+    } catch (gcalErr) {
+      console.error("Bell GCal sync error:", gcalErr);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /moments/:id/personal-time error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── GET /api/moments/:momentToken/info — public practice info ──────────────
+router.get("/moments/:momentToken/info", async (req, res): Promise<void> => {
+  const { momentToken } = req.params;
+
+  try {
+    const [moment] = await db.select().from(sharedMomentsTable)
+      .where(eq(sharedMomentsTable.momentToken, momentToken));
+    if (!moment) { res.status(404).json({ error: "Not found" }); return; }
+
+    const members = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, moment.id));
+
+    res.json({
+      id: moment.id,
+      name: moment.name,
+      intention: moment.intention,
+      templateType: moment.templateType,
+      timeOfDay: moment.timeOfDay,
+      frequency: moment.frequency,
+      dayOfWeek: moment.dayOfWeek,
+      practiceDays: moment.practiceDays,
+      goalDays: moment.goalDays,
+      loggingType: moment.loggingType,
+      intercessionTopic: moment.intercessionTopic,
+      memberCount: members.length,
+    });
+  } catch (err) {
+    console.error("GET /moments/:momentToken/info error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── POST /api/moments/:momentToken/join — join a practice ──────────────────
+const JoinSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  personalTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  personalTimezone: z.string().optional(),
+});
+
+router.post("/moments/:momentToken/join", async (req, res): Promise<void> => {
+  const { momentToken } = req.params;
+
+  const parsed = JoinSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
+
+  try {
+    const [moment] = await db.select().from(sharedMomentsTable)
+      .where(eq(sharedMomentsTable.momentToken, momentToken));
+    if (!moment) { res.status(404).json({ error: "Practice not found" }); return; }
+
+    const { name, email, personalTime, personalTimezone } = parsed.data;
+
+    const existing = await db.select().from(momentUserTokensTable)
+      .where(and(eq(momentUserTokensTable.momentId, moment.id), eq(momentUserTokensTable.email, email)));
+
+    let tokenRow;
+    if (existing.length > 0) {
+      tokenRow = existing[0];
+      if (personalTime) {
+        await db.update(momentUserTokensTable)
+          .set({ personalTime, personalTimezone: personalTimezone ?? null, name })
+          .where(eq(momentUserTokensTable.id, tokenRow.id));
+        tokenRow = { ...tokenRow, personalTime, personalTimezone: personalTimezone ?? null };
+      }
+    } else {
+      const userToken = generateToken();
+      const [inserted] = await db.insert(momentUserTokensTable).values({
+        momentId: moment.id,
+        email,
+        name,
+        userToken,
+        personalTime: personalTime ?? null,
+        personalTimezone: personalTimezone ?? null,
+      }).returning();
+      tokenRow = inserted;
+    }
+
+    // Create 2 rolling calendar events if personalTime provided
+    if (personalTime && personalTimezone) {
+      const existingEvents = await db.select().from(momentCalendarEventsTable)
+        .where(and(
+          eq(momentCalendarEventsTable.sharedMomentId, moment.id),
+          eq(momentCalendarEventsTable.momentMemberId, tokenRow.id),
+        ));
+      if (existingEvents.length === 0) {
+        const occurrences = nextOccurrences(personalTime, personalTimezone, moment.frequency, moment.dayOfWeek ?? null, 2);
+        for (let i = 0; i < occurrences.length; i++) {
+          await db.insert(momentCalendarEventsTable).values({
+            sharedMomentId: moment.id,
+            momentMemberId: tokenRow.id,
+            scheduledFor: occurrences[i],
+            isFirstEvent: i === 0,
+          });
+        }
+      }
+
+      // Create a Google Calendar event on the joining member's own calendar (if logged in)
+      const joinSessionUserId = req.user ? (req.user as { id: number }).id : null;
+      if (joinSessionUserId && !tokenRow.googleCalendarEventId) {
+        try {
+          const [hh, mm] = personalTime.split(":").map(Number);
+          const { startLocalStr, endLocalStr } = buildLocalEventTimes(hh, mm, personalTimezone, practiceEventDurationMins(moment.templateType));
+
+          const recurrence: string[] = [];
+          if (moment.frequency === "daily") recurrence.push("RRULE:FREQ=DAILY");
+          else if (moment.frequency === "weekly" && moment.dayOfWeek) recurrence.push(`RRULE:FREQ=WEEKLY;BYDAY=${moment.dayOfWeek}`);
+          else if (moment.frequency === "weekly") recurrence.push("RRULE:FREQ=WEEKLY");
+
+          const joinShortLink = `${getFrontendUrl()}/m/${tokenRow.userToken}`;
+          const calEventId = await createCalendarEvent(joinSessionUserId, {
+            summary: `🔔 ${moment.name}`,
+            description: [
+              `Your ${moment.name} practice on Eleanor.`,
+              ...(moment.intention ? [`"${moment.intention}"`] : []),
+              "",
+              "Tap to log:",
+              joinShortLink,
+            ].join("\n"),
+            startDate: new Date(),
+            startLocalStr,
+            endLocalStr,
+            timeZone: personalTimezone,
+            recurrence: recurrence.length > 0 ? recurrence : undefined,
+          });
+
+          if (calEventId) {
+            await db.update(momentUserTokensTable)
+              .set({ googleCalendarEventId: calEventId, calendarConnected: true })
+              .where(eq(momentUserTokensTable.id, tokenRow.id));
+            console.info(`Join GCal event ${calEventId} created for ${email} on moment ${moment.id}`);
+          }
+        } catch (gcalErr) {
+          console.error("Join GCal event creation failed (non-fatal):", gcalErr);
+        }
+      }
+    }
+
+    const baseUrl = `${getFrontendUrl()}/moment`;
+
+    res.status(201).json({
+      userToken: tokenRow.userToken,
+      personalLink: `${baseUrl}/${momentToken}/${tokenRow.userToken}`,
+      momentName: moment.name,
+    });
+  } catch (err) {
+    console.error("POST /moments/:momentToken/join error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── PATCH /api/moments/:id — edit a practice ────────────────────────────────
+const EditMomentSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  intention: z.string().max(500).optional(),
+  frequency: z.enum(["daily", "weekly", "monthly"]).optional(),
+  dayOfWeek: z.enum(["MO","TU","WE","TH","FR","SA","SU"]).nullable().optional(),
+  practiceDays: z.string().optional(),
+  goalDays: z.number().int().min(0).max(365).optional(),
+  scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  intercessionTopic: z.string().max(300).nullable().optional(),
+  contemplativeDurationMinutes: z.number().int().min(1).max(60).nullable().optional(),
+});
+
+router.patch("/moments/:id", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  // Only members can edit
+  const allTokens = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+  const isMember = allTokens.some(t => t.email === user.email);
+  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const parsed = EditMomentSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return; }
+
+  const updates: Record<string, unknown> = {};
+  const d = parsed.data;
+  if (d.name !== undefined) updates.name = d.name;
+  if (d.intention !== undefined) updates.intention = d.intention;
+  if (d.frequency !== undefined) updates.frequency = d.frequency;
+  if (d.dayOfWeek !== undefined) updates.dayOfWeek = d.dayOfWeek;
+  if (d.practiceDays !== undefined) updates.practiceDays = d.practiceDays;
+  if (d.goalDays !== undefined) updates.goalDays = d.goalDays;
+  if (d.scheduledTime !== undefined) updates.scheduledTime = d.scheduledTime;
+  if (d.intercessionTopic !== undefined) updates.intercessionTopic = d.intercessionTopic;
+  if (d.contemplativeDurationMinutes !== undefined) updates.contemplativeDurationMinutes = d.contemplativeDurationMinutes;
+
+  if (Object.keys(updates).length === 0) {
+    res.json({ ok: true });
+    return;
+  }
+
+  await db.update(sharedMomentsTable).set(updates).where(eq(sharedMomentsTable.id, momentId));
+
+  // If schedule-related fields changed, re-sync Google Calendar events for all members
+  const needsCalSync = d.scheduledTime !== undefined || d.frequency !== undefined || d.dayOfWeek !== undefined;
+  if (needsCalSync) {
+    try {
+      const [updated] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+      const timezone = updated.timezone ?? "America/New_York";
+      const [hh, mm] = (updated.scheduledTime ?? "08:00").split(":").map(Number);
+      const { startLocalStr, endLocalStr } = buildLocalEventTimes(hh, mm, timezone, practiceEventDurationMins(updated.templateType));
+
+      const recurrence: string[] = [];
+      if (updated.frequency === "daily") {
+        recurrence.push("RRULE:FREQ=DAILY");
+      } else if (updated.frequency === "weekly" && updated.dayOfWeek) {
+        recurrence.push(`RRULE:FREQ=WEEKLY;BYDAY=${updated.dayOfWeek}`);
+      } else if (updated.frequency === "weekly") {
+        recurrence.push("RRULE:FREQ=WEEKLY");
+      }
+
+      // Delete all existing calendar events
+      for (const member of allTokens) {
+        if (member.googleCalendarEventId) {
+          try { await deleteCalendarEvent(sessionUserId, member.googleCalendarEventId); } catch { /* best effort */ }
+          await db.update(momentUserTokensTable)
+            .set({ googleCalendarEventId: null, calendarConnected: false })
+            .where(eq(momentUserTokensTable.id, member.id));
+        }
+      }
+
+      // Create new group event on the requester's calendar with all members as attendees
+      const myTokenRow = allTokens.find(t => t.email === user.email);
+      const attendeeEmails = allTokens.map(m => m.email); // All members get invites from scheduler
+      const newEventId = await createCalendarEvent(sessionUserId, {
+        summary: `🔔 ${updated.name}`,
+        description: [
+          `${updated.name} practice on Eleanor.`,
+          ...(updated.intention ? [`"${updated.intention}"`] : []),
+          "",
+          `${allTokens.length} ${allTokens.length === 1 ? "person" : "people"} practicing together.`,
+          "",
+          `Open Eleanor → ${getFrontendUrl()}/moments/${momentId}`,
+        ].join("\n"),
+        startDate: new Date(),
+        startLocalStr,
+        endLocalStr,
+        timeZone: timezone,
+        attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
+        recurrence: recurrence.length > 0 ? recurrence : undefined,
+      });
+
+      if (newEventId && myTokenRow) {
+        await db.update(momentUserTokensTable)
+          .set({ googleCalendarEventId: newEventId, calendarConnected: true })
+          .where(eq(momentUserTokensTable.id, myTokenRow.id));
+        console.info(`PATCH moment ${momentId}: recreated GCal event ${newEventId} at ${startLocalStr} ${timezone}`);
+      }
+    } catch (gcalErr) {
+      console.error(`PATCH moment ${momentId} GCal sync error:`, gcalErr);
+      // Non-fatal — DB update already succeeded
+    }
+  }
+
+  res.json({ ok: true });
+});
+
+// ─── PATCH /api/moments/:id/goal — update progressive goal ─────────────────
+const UpdateGoalSchema = z.object({
+  commitmentSessionsGoal: z.number().int().min(1).max(365).nullable(),
+  commitmentTendFreely: z.boolean().optional(),
+});
+
+router.patch("/moments/:id/goal", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  const allTokens = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+  const isMember = allTokens.some(t => t.email === user.email);
+  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const parsed = UpdateGoalSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Validation failed" }); return; }
+
+  const updates: Record<string, unknown> = {};
+
+  if (parsed.data.commitmentTendFreely) {
+    // "Tend freely" — clear the goal, mark tend-freely
+    updates.commitmentSessionsGoal = null;
+    updates.commitmentTendFreely = true;
+  } else if (parsed.data.commitmentSessionsGoal !== null) {
+    // Setting a new goal — increment tier, reset sessions logged, set new goal
+    updates.commitmentSessionsGoal = parsed.data.commitmentSessionsGoal;
+    updates.commitmentSessionsLogged = 0;
+    updates.commitmentGoalTier = (((moment as Record<string, unknown>).commitmentGoalTier as number) ?? 1) + 1;
+    updates.commitmentTendFreely = false;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await db.update(sharedMomentsTable).set(updates as Record<string, unknown>).where(eq(sharedMomentsTable.id, momentId));
+  }
+
+  res.json({ ok: true });
+});
+
+// ─── PATCH /api/moments/:id/archive — soft-delete a practice ─────────────────
+router.patch("/moments/:id/archive", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  // Get all member tokens — used both for auth check and calendar cleanup
+  const allMemberTokens = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+
+  const isMember = allMemberTokens.some(t => t.email === user.email);
+  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  await db.update(sharedMomentsTable)
+    .set({ state: "archived" })
+    .where(eq(sharedMomentsTable.id, momentId));
+
+  res.json({ ok: true });
+});
+
+// ─── DELETE /api/moments/:id — permanently delete a practice ─────────────────
+router.delete("/moments/:id", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  // Get all member tokens — used both for auth check and calendar cleanup
+  const allMemberTokens = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+
+  const isMember = allMemberTokens.some(t => t.email === user.email);
+  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  try {
+    // Save connections to cache before deleting (so they persist in the recommender)
+    await saveConnectionCache(allMemberTokens.map(t => ({ email: t.email, name: t.name ?? null })));
+
+    // Delete Google Calendar events for all members (best effort, non-blocking)
+    const calDeletePromises = allMemberTokens
+      .filter(t => t.googleCalendarEventId)
+      .map(async (t) => {
+        try {
+          // Look up the user by email to get their userId for calendar API
+          const [memberUser] = await db.select({ id: usersTable.id })
+            .from(usersTable).where(eq(usersTable.email, t.email));
+          if (memberUser) {
+            await deleteCalendarEvent(memberUser.id, t.googleCalendarEventId!);
+            console.info(`Deleted GCal event ${t.googleCalendarEventId} for ${t.email}`);
+          }
+        } catch { /* best effort */ }
+      });
+    await Promise.allSettled(calDeletePromises);
+
+    // Also delete moment-level calendar events from momentCalendarEventsTable
+    const momentCalEvents = await db.select().from(momentCalendarEventsTable)
+      .where(eq(momentCalendarEventsTable.sharedMomentId, momentId));
+    for (const evt of momentCalEvents) {
+      if (evt.googleCalendarEventId) {
+        try {
+          await deleteCalendarEvent(sessionUserId, evt.googleCalendarEventId);
+        } catch { /* best effort */ }
+      }
+    }
+
+    // Explicitly delete child rows first (in case DB CASCADE wasn't applied via migration)
+    await db.delete(momentCalendarEventsTable).where(eq(momentCalendarEventsTable.sharedMomentId, momentId));
+    await db.delete(momentPostsTable).where(eq(momentPostsTable.momentId, momentId));
+    await db.delete(momentWindowsTable).where(eq(momentWindowsTable.momentId, momentId));
+    await db.delete(momentUserTokensTable).where(eq(momentUserTokensTable.momentId, momentId));
+    // momentRenewalsTable also references shared_moments
+    await db.delete(momentRenewalsTable).where(eq(momentRenewalsTable.momentId, momentId)).catch(() => {});
+
+    await db.delete(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /moments/:id error:", err);
+    res.status(500).json({ error: "Failed to delete practice" });
+  }
+});
+
+// ─── GET /api/connections — return all unique people in user's moments + traditions ────
+router.get("/connections", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+    const seen = new Set<string>([user.email]);
+    const connections: { name: string; email: string }[] = [];
+
+    // Members from ALL traditions (owned by user OR where user is a participant)
+    const allRituals = await db.select({ participants: ritualsTable.participants })
+      .from(ritualsTable)
+      .where(sql`owner_id = ${sessionUserId} OR participants @> ${JSON.stringify([{ email: user.email }])}::jsonb`);
+
+    for (const r of allRituals) {
+      const parts = (r.participants as Array<{ name: string; email: string }>) ?? [];
+      for (const p of parts) {
+        if (p.email && !seen.has(p.email)) {
+          seen.add(p.email);
+          connections.push({ name: p.name ?? p.email, email: p.email });
+        }
+      }
+    }
+
+    // Members from active practices (moments this user is currently part of)
+    const userTokenRows = await db.select({ momentId: momentUserTokensTable.momentId })
+      .from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.email, user.email));
+
+    const momentIds = [...new Set(userTokenRows.map(r => r.momentId))];
+    if (momentIds.length > 0) {
+      const allMembers = await db.select({ name: momentUserTokensTable.name, email: momentUserTokensTable.email })
+        .from(momentUserTokensTable)
+        .where(inArray(momentUserTokensTable.momentId, momentIds));
+
+      for (const m of allMembers) {
+        if (m.email && !seen.has(m.email)) {
+          seen.add(m.email);
+          connections.push({ name: m.name ?? m.email, email: m.email });
+        }
+      }
+    }
+
+    // Past connections from deleted practices (cached before deletion)
+    const cached = await db.select({
+      contactEmail: userConnectionsCacheTable.contactEmail,
+      contactName: userConnectionsCacheTable.contactName,
+    })
+      .from(userConnectionsCacheTable)
+      .where(eq(userConnectionsCacheTable.userEmail, user.email));
+
+    for (const c of cached) {
+      if (c.contactEmail && !seen.has(c.contactEmail)) {
+        seen.add(c.contactEmail);
+        connections.push({ name: c.contactName ?? c.contactEmail, email: c.contactEmail });
+      }
+    }
+
+    res.json({ connections });
+  } catch (err) {
+    console.error("GET /api/connections error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── POST /api/moments/cleanup-calendars — delete orphaned GCal events ───────
+// Finds archived practices that still have calendar event IDs on member tokens,
+// deletes those events from Google Calendar, and clears the stored IDs.
+router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    // Find all archived practices
+    const archivedMoments = await db.select({ id: sharedMomentsTable.id })
+      .from(sharedMomentsTable)
+      .where(eq(sharedMomentsTable.state, "archived"));
+
+    const archivedIds = archivedMoments.map(m => m.id);
+    let cleaned = 0;
+
+    if (archivedIds.length > 0) {
+      // Find all member tokens for archived practices that still have calendar events
+      const tokensWithEvents = await db.select()
+        .from(momentUserTokensTable)
+        .where(inArray(momentUserTokensTable.momentId, archivedIds));
+
+      for (const token of tokensWithEvents) {
+        if (!token.googleCalendarEventId) continue;
+
+        // Look up the user to get their userId for calendar API
+        const [memberUser] = await db.select({ id: usersTable.id })
+          .from(usersTable).where(eq(usersTable.email, token.email));
+
+        if (memberUser) {
+          try {
+            await deleteCalendarEvent(memberUser.id, token.googleCalendarEventId);
+            console.info(`Cleanup: deleted GCal event ${token.googleCalendarEventId} for ${token.email}`);
+            cleaned++;
+          } catch { /* best effort */ }
+        }
+
+        // Clear the event ID regardless (event may be already gone)
+        await db.update(momentUserTokensTable)
+          .set({ googleCalendarEventId: null, calendarConnected: false })
+          .where(eq(momentUserTokensTable.id, token.id));
+      }
+    }
+
+    // Also check: member tokens pointing to moments that no longer exist at all
+    const allTokens = await db.select({
+      id: momentUserTokensTable.id,
+      momentId: momentUserTokensTable.momentId,
+      email: momentUserTokensTable.email,
+      googleCalendarEventId: momentUserTokensTable.googleCalendarEventId,
+    }).from(momentUserTokensTable);
+
+    const existingMomentIds = new Set(
+      (await db.select({ id: sharedMomentsTable.id }).from(sharedMomentsTable)).map(m => m.id)
+    );
+
+    for (const token of allTokens) {
+      if (existingMomentIds.has(token.momentId)) continue;
+      if (!token.googleCalendarEventId) continue;
+
+      const [memberUser] = await db.select({ id: usersTable.id })
+        .from(usersTable).where(eq(usersTable.email, token.email));
+
+      if (memberUser) {
+        try {
+          await deleteCalendarEvent(memberUser.id, token.googleCalendarEventId);
+          console.info(`Cleanup orphan: deleted GCal event ${token.googleCalendarEventId} for ${token.email}`);
+          cleaned++;
+        } catch { /* best effort */ }
+      }
+    }
+
+    // ─── Tradition/ritual calendar cleanup ──────────────────────────────────
+    // Find meetups with calendar event IDs whose rituals no longer exist
+    const allMeetups = await db.select({
+      id: meetupsTable.id,
+      ritualId: meetupsTable.ritualId,
+      googleCalendarEventId: meetupsTable.googleCalendarEventId,
+    }).from(meetupsTable);
+
+    const existingRitualIds = new Set(
+      (await db.select({ id: ritualsTable.id }).from(ritualsTable)).map(r => r.id)
+    );
+
+    for (const meetup of allMeetups) {
+      if (!meetup.googleCalendarEventId) continue;
+      if (existingRitualIds.has(meetup.ritualId)) continue;
+
+      // Orphaned meetup — ritual was deleted but calendar event remains
+      try {
+        await deleteCalendarEvent(sessionUserId, meetup.googleCalendarEventId);
+        console.info(`Cleanup tradition: deleted GCal event ${meetup.googleCalendarEventId} for deleted ritual ${meetup.ritualId}`);
+        cleaned++;
+      } catch { /* best effort */ }
+
+      await db.update(meetupsTable)
+        .set({ googleCalendarEventId: null })
+        .where(eq(meetupsTable.id, meetup.id));
+    }
+
+    // Also clean up existing meetups for active rituals — try with the session user's credentials
+    // (covers events the organizer created)
+    for (const meetup of allMeetups) {
+      if (!meetup.googleCalendarEventId) continue;
+      if (!existingRitualIds.has(meetup.ritualId)) continue;
+
+      // Check if this ritual still has pending/active state — skip active ones
+      // Only clean events for rituals that exist but don't need them anymore
+      // (We skip this for now — active tradition events should stay)
+    }
+
+    res.json({ ok: true, archivedPractices: archivedIds.length, calendarEventsDeleted: cleaned });
+  } catch (err) {
+    console.error("POST /moments/cleanup-calendars error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── POST /api/moments/:id/refresh-calendar — update existing event title + description ───
+// Updates the calendar event on the creator's Google Calendar to reflect the current
+// description format (removes old member names, applies latest copy).
+router.post("/moments/:id/refresh-calendar", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  const allMembers = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+
+  const myTokenRow = allMembers.find(m => m.email.toLowerCase() === user.email.toLowerCase());
+  if (!myTokenRow?.googleCalendarEventId) {
+    res.status(400).json({ error: "No calendar event to update" }); return;
+  }
+
+  // Build the new title and description in current format
+  const shortLink = `${getFrontendUrl()}/m/${myTokenRow.userToken}`;
+  const freqLabel = moment.frequency === "daily" ? "Daily" : moment.frequency === "weekly" ? "Weekly" : "Monthly";
+  const [h, m] = (moment.scheduledTime || "08:00").split(":").map(Number);
+  const period = h < 12 ? "AM" : "PM";
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const calTimeLabel = `${hour12}${m > 0 ? `:${String(m).padStart(2, "0")}` : ""} ${period}`;
+  const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const goalSessions = moment.commitmentSessionsGoal ?? null;
+  const invFirst = user.name?.split(" ")[0] ?? "Someone";
+
+  let newSummary: string;
+  let newDescription: string;
+
+  if (moment.templateType === "listening") {
+    const listeningArtist = moment.listeningArtist ?? null;
+    const listeningTitle = moment.listeningTitle ?? null;
+    const listeningType = moment.listeningType ?? null;
+    const what = listeningType === "artist"
+      ? `${listeningArtist ?? listeningTitle ?? moment.name}`
+      : listeningType === "album"
+        ? `${listeningTitle ?? "an album"} by ${listeningArtist ?? "an artist"}`
+        : `${listeningTitle ?? "a song"} by ${listeningArtist ?? "an artist"}`;
+    const headline = goalSessions
+      ? `We're listening to ${what} together — ${goalSessions} days, building a streak.`
+      : `We're listening to ${what} together.`;
+
+    newSummary = `🎵 Listening to ${listeningArtist ?? listeningTitle ?? moment.name} together`;
+    newDescription = [
+      headline,
+      `Open in Eleanor → ${shortLink}`,
+      "",
+      "Though you'll be in different places, you'll each listen — knowing the other is too. That's the whole thing.",
+      "",
+      `When: ${freqLabel} at ${calTimeLabel} · Starting ${todayStr}`,
+    ].join("\n");
+  } else {
+    // For non-listening practices, rebuild with current format (no member names)
+    newSummary = `🌱 ${moment.name}`;
+    newDescription = [
+      `${invFirst} invited you to practice together.`,
+      `Open in Eleanor → ${shortLink}`,
+      "",
+      ...(moment.intention ? [`"${moment.intention}"`, ""] : []),
+      `When: ${freqLabel} at ${calTimeLabel} · Starting ${todayStr}`,
+      ...(goalSessions ? [`Goal: ${goalSessions} sessions together 🌱`] : []),
+    ].join("\n");
+  }
+
+  const ok = await updateCalendarEvent(sessionUserId, myTokenRow.googleCalendarEventId, {
+    summary: newSummary,
+    description: newDescription,
+  });
+
+  if (!ok) { res.status(500).json({ error: "Could not update calendar event" }); return; }
+
+  res.json({ success: true });
+});
+
+// ─── POST /api/moments/:id/restore-calendar — creator restores deleted calendar event ───
+router.post("/moments/:id/restore-calendar", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  const allMembers = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+
+  const myTokenRow = allMembers.find(m => m.email.toLowerCase() === user.email.toLowerCase());
+  if (!myTokenRow) { res.status(403).json({ error: "Not a member of this practice" }); return; }
+
+  const creatorToken = allMembers.length > 0
+    ? allMembers.reduce((min, m) => m.id < min.id ? m : min, allMembers[0])
+    : null;
+  if (myTokenRow.email.toLowerCase() !== creatorToken?.email.toLowerCase()) {
+    res.status(403).json({ error: "Only the creator can restore the calendar event" }); return;
+  }
+
+  // Build a new calendar event using the moment's schedule
+  const tz = moment.timezone || "UTC";
+  const [h, m] = (moment.scheduledTime || "08:00").split(":").map(Number);
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setHours(h, m, 0, 0);
+  if (startDate < now) startDate.setDate(startDate.getDate() + 1);
+  const durationMins = 60;
+  const endDate = new Date(startDate.getTime() + durationMins * 60_000);
+
+  const recurrenceRule = moment.frequency === "daily"
+    ? ["RRULE:FREQ=DAILY"]
+    : moment.frequency === "weekly"
+    ? ["RRULE:FREQ=WEEKLY"]
+    : ["RRULE:FREQ=MONTHLY"];
+
+  const attendeeEmails = allMembers.map(m => m.email); // All members get invites from scheduler
+
+  const eventId = await createCalendarEvent(sessionUserId, {
+    summary: `🌿 ${moment.name}`,
+    description: [
+      `${moment.name} practice on Eleanor — restored.`,
+      moment.intention ? `"${moment.intention}"` : "",
+      "",
+      `Open Eleanor → ${getFrontendUrl()}/moments/${momentId}`,
+    ].filter(Boolean).join("\n"),
+    startDate,
+    endDate,
+    timeZone: tz,
+    attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
+    recurrence: recurrenceRule,
+    colorId: "2",
+    reminders: [{ method: "popup", minutes: 10 }],
+  });
+
+  if (!eventId) { res.status(500).json({ error: "Could not create calendar event" }); return; }
+
+  await db.update(momentUserTokensTable)
+    .set({ googleCalendarEventId: eventId, calendarConnected: true })
+    .where(eq(momentUserTokensTable.id, myTokenRow.id));
+
+  res.json({ success: true });
+});
+
+export default router;
