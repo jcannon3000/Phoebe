@@ -160,8 +160,8 @@ textarea:focus {
   50%       { box-shadow: 0 6px 26px rgba(92,122,95,0.62), 0 2px 8px rgba(44,24,16,0.12); }
 }
 @keyframes btn-pulse-ink {
-  0%, 100% { box-shadow: 0 4px 14px rgba(74,111,165,0.30), 0 1px 4px rgba(44,24,16,0.08); }
-  50%       { box-shadow: 0 6px 24px rgba(74,111,165,0.50), 0 2px 8px rgba(44,24,16,0.10); }
+  0%, 100% { box-shadow: 0 4px 14px rgba(92,122,95,0.30), 0 1px 4px rgba(44,24,16,0.08); }
+  50%       { box-shadow: 0 6px 24px rgba(92,122,95,0.50), 0 2px 8px rgba(44,24,16,0.10); }
 }
 .btn-sage {
   background: #5C7A5F;

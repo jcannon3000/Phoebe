@@ -202,7 +202,7 @@ export default function WriteLetter() {
         {errorState.nextPeriodStart && (
           <p className="text-sm mb-6" style={{ color: "#9a9390" }}>Next period starts {errorState.nextPeriodStart}.</p>
         )}
-        <button onClick={() => setLocation(`/letters/${correspondenceId}${tokenParam}`)} className="text-sm font-medium" style={{ color: "#4A6FA5" }}>
+        <button onClick={() => setLocation(`/letters/${correspondenceId}${tokenParam}`)} className="text-sm font-medium" style={{ color: "#5C7A5F" }}>
           ← Back to letters
         </button>
       </div>
@@ -217,7 +217,7 @@ export default function WriteLetter() {
         <div className="text-center">
           <p className="text-[13px]" style={{ color: "#9a9390" }}>{correspondence?.name}</p>
           {correspondence?.currentPeriod && (
-            <p className="text-[13px] font-medium" style={{ color: "#4A6FA5" }}>
+            <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? `Letter ${correspondence.currentPeriod.periodNumber}` : `Week ${correspondence.currentPeriod.periodNumber}`}
               {" · "}{correspondence.currentPeriod.periodLabel}
             </p>
@@ -297,7 +297,7 @@ export default function WriteLetter() {
             fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif",
             fontSize: "18px",
             lineHeight: "2.1",
-            caretColor: "#4A6FA5",
+            caretColor: "#5C7A5F",
           }}
         />
 

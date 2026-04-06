@@ -61,7 +61,7 @@ export default function ForgotPassword() {
                 <button
                   onClick={() => setLocation("/")}
                   className="text-sm font-semibold"
-                  style={{ color: "#4A6FA5" }}
+                  style={{ color: "#5C7A5F" }}
                 >
                   ← Back to sign in
                 </button>

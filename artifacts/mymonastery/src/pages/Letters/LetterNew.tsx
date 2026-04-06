@@ -191,7 +191,7 @@ export default function LetterNew() {
                   <button
                     onClick={() => setMembers((ms) => [...ms, { email: "", name: "" }])}
                     className="text-sm font-medium"
-                    style={{ color: "#4A6FA5" }}
+                    style={{ color: "#5C7A5F" }}
                   >
                     + Add another person
                   </button>

@@ -63,7 +63,7 @@ function PostmarkStamp({ city, date, rotation = -8 }: { city: string; date: stri
     <div
       className="inline-flex flex-col items-center justify-center flex-shrink-0"
       style={{
-        border: "1px solid #4A6FA5",
+        border: "1px solid #5C7A5F",
         borderRadius: "50% / 40%",
         padding: "4px 10px",
         transform: `rotate(${rotation}deg)`,
@@ -72,11 +72,11 @@ function PostmarkStamp({ city, date, rotation = -8 }: { city: string; date: stri
     >
       <span
         className="font-semibold uppercase"
-        style={{ color: "#4A6FA5", fontSize: "9px", letterSpacing: "0.08em", lineHeight: 1.2 }}
+        style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.08em", lineHeight: 1.2 }}
       >
         {city}
       </span>
-      <span style={{ color: "#4A6FA5", fontSize: "8px", lineHeight: 1.2 }}>
+      <span style={{ color: "#5C7A5F", fontSize: "8px", lineHeight: 1.2 }}>
         {formatShortDate(date)}
       </span>
     </div>
@@ -105,9 +105,9 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
         className="relative cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99] transition-transform"
         style={{
           backgroundColor: "#F2EFE6",
-          border: `1px solid rgba(74,111,165,${unread ? "0.3" : "0.15"})`,
+          border: `1px solid rgba(92,122,95,${unread ? "0.3" : "0.15"})`,
           borderRadius: "4px",
-          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#4A6FA5" : "#C8C4B4"}`,
+          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#5C7A5F" : "#C8C4B4"}`,
           boxShadow: "0 2px 8px rgba(44, 24, 16, 0.06)",
           padding: "16px 20px",
           marginBottom: "12px",
@@ -132,7 +132,7 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
 
         <div className="flex items-center gap-2 mt-2">
           {/* Period pill */}
-          <span className="text-[11px] font-semibold uppercase" style={{ color: "#4A6FA5", letterSpacing: "0.08em" }}>
+          <span className="text-[11px] font-semibold uppercase" style={{ color: "#5C7A5F", letterSpacing: "0.08em" }}>
             {isOneToOne ? `Letter ${currentPeriod.periodNumber}` : `Week ${currentPeriod.periodNumber}`}
           </span>
           <span style={{ color: "#C8C4B4" }}>·</span>
@@ -143,11 +143,11 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
               {isOneToOne ? "Sent · awaiting reply 🌿" : "Update sent 🌿"}
             </span>
           ) : item.myTurn ? (
-            <span className="text-[12px] font-medium" style={{ color: "#4A6FA5" }}>
+            <span className="text-[12px] font-medium" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? "Your turn to write 📮" : "Write your update 📮"}
             </span>
           ) : unread ? (
-            <span className="text-[12px] font-medium" style={{ color: "#4A6FA5" }}>
+            <span className="text-[12px] font-medium" style={{ color: "#5C7A5F" }}>
               New {isOneToOne ? "letter" : "update"} 📮
             </span>
           ) : lastLetterDate ? (
@@ -214,7 +214,7 @@ export default function LettersPage() {
             </h1>
             {!isEmpty && (
               <Link href="/letters/new">
-                <span className="text-[13px] font-semibold" style={{ color: "#4A6FA5" }}>
+                <span className="text-[13px] font-semibold" style={{ color: "#5C7A5F" }}>
                   + New
                 </span>
               </Link>
@@ -226,7 +226,7 @@ export default function LettersPage() {
         </div>
 
         {/* Rule */}
-        <div className="mb-6" style={{ borderTop: "1px solid rgba(74,111,165,0.2)" }} />
+        <div className="mb-6" style={{ borderTop: "1px solid rgba(92,122,95,0.2)" }} />
 
         {isLoading ? (
           <div className="space-y-3">
@@ -248,7 +248,7 @@ export default function LettersPage() {
             <Link href="/letters/new">
               <button
                 className="px-6 py-3.5 rounded-2xl text-base font-semibold"
-                style={{ backgroundColor: "#4A6FA5", color: "#fff" }}
+                style={{ backgroundColor: "#5C7A5F", color: "#fff" }}
               >
                 Start a correspondence
               </button>
@@ -261,7 +261,7 @@ export default function LettersPage() {
               <Link href={`/letters/${needsLetter.id}/write`}>
                 <div
                   className="mb-5 p-5 rounded-2xl text-center cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ backgroundColor: "#4A6FA5", color: "#fff", boxShadow: "0 4px 16px rgba(74,111,165,0.3)" }}
+                  style={{ backgroundColor: "#5C7A5F", color: "#fff", boxShadow: "0 4px 16px rgba(92,122,95,0.3)" }}
                 >
                   <p className="text-lg font-semibold">
                     {needsLetter.groupType === "one_to_one" ? "Write your letter 📮" : "Share your update 📮"}

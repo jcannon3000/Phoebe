@@ -120,7 +120,7 @@ export default function ReadLetter() {
         className="max-w-3xl mx-auto relative"
         style={{
           backgroundColor: "#F2EFE6",
-          boxShadow: "inset 0 0 0 1px rgba(74,111,165,0.1), 0 4px 24px rgba(44,24,16,0.08)",
+          boxShadow: "inset 0 0 0 1px rgba(92,122,95,0.1), 0 4px 24px rgba(44,24,16,0.08)",
           padding: "48px 32px",
           borderRadius: "2px",
           marginLeft: "auto",
@@ -135,7 +135,7 @@ export default function ReadLetter() {
             style={{
               top: "20px",
               right: "20px",
-              border: "1.5px solid #4A6FA5",
+              border: "1.5px solid #5C7A5F",
               borderRadius: "50% / 40%",
               padding: "10px 16px",
               transform: "rotate(-8deg)",
@@ -144,11 +144,11 @@ export default function ReadLetter() {
           >
             <span
               className="font-semibold uppercase"
-              style={{ color: "#4A6FA5", fontSize: "11px", letterSpacing: "0.08em", lineHeight: 1.3 }}
+              style={{ color: "#5C7A5F", fontSize: "11px", letterSpacing: "0.08em", lineHeight: 1.3 }}
             >
               {letter.postmarkCity}
             </span>
-            <span style={{ color: "#4A6FA5", fontSize: "10px", lineHeight: 1.3 }}>
+            <span style={{ color: "#5C7A5F", fontSize: "10px", lineHeight: 1.3 }}>
               {formatShortDate(letter.sentAt)}
             </span>
           </div>
@@ -199,13 +199,13 @@ export default function ReadLetter() {
         {/* Write back prompt */}
         {!isOwnLetter && myTurn && !hasWrittenThisPeriod && (
           <div className="mt-8">
-            <p className="text-[15px] italic mb-4" style={{ color: "#4A6FA5" }}>
+            <p className="text-[15px] italic mb-4" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? "Your turn to write. 📮" : "Share your update. 📮"}
             </p>
             <button
               onClick={() => setLocation(writeUrl)}
               className="px-6 py-3 rounded-xl font-semibold text-sm"
-              style={{ backgroundColor: "#4A6FA5", color: "#fff" }}
+              style={{ backgroundColor: "#5C7A5F", color: "#fff" }}
             >
               {isOneToOne ? "Write your letter 📮" : "Share your update 📮"}
             </button>

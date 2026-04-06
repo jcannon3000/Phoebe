@@ -63,12 +63,12 @@ function PostmarkStamp({ city, date }: { city: string; date: string }) {
   return (
     <div
       className="inline-flex flex-col items-center justify-center flex-shrink-0"
-      style={{ border: "1.5px solid #4A6FA5", borderRadius: "50% / 40%", padding: "5px 10px", transform: "rotate(-8deg)", minWidth: 64 }}
+      style={{ border: "1.5px solid #5C7A5F", borderRadius: "50% / 40%", padding: "5px 10px", transform: "rotate(-8deg)", minWidth: 64 }}
     >
-      <span className="font-semibold uppercase" style={{ color: "#4A6FA5", fontSize: "9px", letterSpacing: "0.1em", lineHeight: 1.2 }}>
+      <span className="font-semibold uppercase" style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.1em", lineHeight: 1.2 }}>
         {city}
       </span>
-      <span style={{ color: "#4A6FA5", fontSize: "8px", lineHeight: 1.3 }}>{formatShortDate(date)}</span>
+      <span style={{ color: "#5C7A5F", fontSize: "8px", lineHeight: 1.3 }}>{formatShortDate(date)}</span>
     </div>
   );
 }
@@ -188,11 +188,11 @@ export default function CorrespondencePage() {
         {memberCities.length === 0 && <div className="mb-5" />}
 
         {/* Period bar */}
-        <div className="rounded-xl overflow-hidden mb-8" style={{ background: "#F2EFE6", border: "1px solid rgba(74,111,165,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
+        <div className="rounded-xl overflow-hidden mb-8" style={{ background: "#F2EFE6", border: "1px solid rgba(92,122,95,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
           <div className="flex">
-            <div className="w-[3px] flex-shrink-0" style={{ background: "#4A6FA5" }} />
+            <div className="w-[3px] flex-shrink-0" style={{ background: "#5C7A5F" }} />
             <div className="flex-1 p-5">
-              <p className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: "#4A6FA5", letterSpacing: "0.1em" }}>
+              <p className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: "#5C7A5F", letterSpacing: "0.1em" }}>
                 {periodLabel}
               </p>
 
@@ -205,14 +205,14 @@ export default function CorrespondencePage() {
                       <div
                         className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm"
                         style={{
-                          borderColor: m.hasWritten ? "#4A6FA5" : "#C8C4B4",
-                          background: m.hasWritten ? "#4A6FA5" : "transparent",
+                          borderColor: m.hasWritten ? "#5C7A5F" : "#C8C4B4",
+                          background: m.hasWritten ? "#5C7A5F" : "transparent",
                           color: m.hasWritten ? "#fff" : "#9a9390",
                         }}
                       >
                         {m.hasWritten ? "✓" : ""}
                       </div>
-                      <span className="text-[11px]" style={{ color: isYou ? "#4A6FA5" : "#2C1810", fontWeight: isYou ? 600 : 400 }}>
+                      <span className="text-[11px]" style={{ color: isYou ? "#5C7A5F" : "#2C1810", fontWeight: isYou ? 600 : 400 }}>
                         {isYou ? "You" : m.name}
                       </span>
                     </div>
@@ -225,7 +225,7 @@ export default function CorrespondencePage() {
                 <Link href={writeUrl}>
                   <button
                     className="w-full py-3 rounded-xl text-base font-semibold"
-                    style={{ background: "#4A6FA5", color: "#fff" }}
+                    style={{ background: "#5C7A5F", color: "#fff" }}
                   >
                     {isOneToOne ? "Write your letter 📮" : "Share your update 📮"}
                   </button>
@@ -249,7 +249,7 @@ export default function CorrespondencePage() {
             <p className="text-base mb-2" style={{ color: "#6b6460" }}>No letters yet.</p>
             {data.myTurn && (
               <Link href={writeUrl}>
-                <button className="px-6 py-3 rounded-xl font-semibold text-sm" style={{ background: "#4A6FA5", color: "#fff" }}>
+                <button className="px-6 py-3 rounded-xl font-semibold text-sm" style={{ background: "#5C7A5F", color: "#fff" }}>
                   Write first 📮
                 </button>
               </Link>
@@ -274,8 +274,8 @@ export default function CorrespondencePage() {
                       className="relative cursor-pointer transition-shadow hover:shadow-sm"
                       style={{
                         background: "#F2EFE6",
-                        border: `1px solid rgba(74,111,165,${isOwn ? "0.2" : "0.12"})`,
-                        borderLeft: `3px solid ${isOwn ? "#4A6FA5" : "#C8C4B4"}`,
+                        border: `1px solid rgba(92,122,95,${isOwn ? "0.2" : "0.12"})`,
+                        borderLeft: `3px solid ${isOwn ? "#5C7A5F" : "#C8C4B4"}`,
                         borderRadius: "4px",
                         padding: "24px 28px",
                         boxShadow: "0 2px 8px rgba(44,24,16,0.04)",
@@ -312,7 +312,7 @@ export default function CorrespondencePage() {
                   </Link>
 
                   {index < letters.length - 1 && (
-                    <div className="flex items-center justify-center py-4" style={{ color: "rgba(74,111,165,0.25)" }}>
+                    <div className="flex items-center justify-center py-4" style={{ color: "rgba(92,122,95,0.25)" }}>
                       <span className="text-sm tracking-[0.5em]">· · ·</span>
                     </div>
                   )}

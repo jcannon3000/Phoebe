@@ -18,7 +18,7 @@ export default function ResetPassword() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#F2EFE6" }}>
         <div className="text-center max-w-sm px-4">
           <p className="text-base mb-4" style={{ color: "#2C1810" }}>This reset link is invalid or has expired.</p>
-          <button onClick={() => setLocation("/")} className="text-sm font-semibold" style={{ color: "#4A6FA5" }}>
+          <button onClick={() => setLocation("/")} className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>
             Back to sign in
           </button>
         </div>

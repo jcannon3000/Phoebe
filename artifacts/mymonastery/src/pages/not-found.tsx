@@ -15,7 +15,7 @@ export default function NotFound() {
         <button
           onClick={() => setLocation("/dashboard")}
           className="px-6 py-3 rounded-xl font-semibold text-sm"
-          style={{ background: "#4A6FA5", color: "#fff" }}
+          style={{ background: "#5C7A5F", color: "#fff" }}
         >
           Back to Phoebe
         </button>

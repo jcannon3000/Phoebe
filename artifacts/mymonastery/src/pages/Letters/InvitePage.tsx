@@ -77,7 +77,7 @@ export default function LetterInvitePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#F2EFE6" }}>
-        <div className="w-6 h-6 rounded-full border-2 border-[#4A6FA5] border-t-transparent animate-spin" />
+        <div className="w-6 h-6 rounded-full border-2 border-[#5C7A5F] border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -116,7 +116,7 @@ export default function LetterInvitePage() {
         <button
           onClick={() => setLocation(writeUrl)}
           className="px-8 py-4 rounded-2xl font-semibold text-base mb-4"
-          style={{ background: "#4A6FA5", color: "#fff" }}
+          style={{ background: "#5C7A5F", color: "#fff" }}
         >
           Write your first letter 📮
         </button>
@@ -180,7 +180,7 @@ export default function LetterInvitePage() {
           onClick={handleAccept}
           disabled={!name.trim() || !email.includes("@") || isSubmitting}
           className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-opacity"
-          style={{ background: "#4A6FA5", color: "#fff" }}
+          style={{ background: "#5C7A5F", color: "#fff" }}
         >
           {isSubmitting ? "Accepting..." : "Accept and start writing 📮"}
         </button>

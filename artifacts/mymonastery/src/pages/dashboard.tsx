@@ -39,7 +39,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#F2EFE6", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
+              style={{ background: "#F2EFE6", border: "1px solid rgba(92,122,95,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>📮 Start a correspondence</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Write letters with someone you care about</p>
@@ -133,7 +133,7 @@ function LettersSection() {
           <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>A correspondence is how you tend a relationship across distance.</p>
           <p className="text-xs mb-3" style={{ color: "#9a9390" }}>Slow, deliberate, yours. 🌿</p>
           <Link href="/letters/new">
-            <span className="text-sm font-semibold" style={{ color: "#4A6FA5" }}>Start a correspondence →</span>
+            <span className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>Start a correspondence →</span>
           </Link>
         </div>
       ) : (
@@ -155,13 +155,13 @@ function LettersSection() {
 
             if (hasUnread) {
               statusText = `${otherMembers} wrote 🌿`;
-              statusColor = "#4A6FA5";
+              statusColor = "#5C7A5F";
             } else if (iWrote && !theyWrote) {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
               statusColor = "#9a9390";
             } else if (needsWrite) {
               statusText = isOneToOne ? `Your turn to write 📮` : `Share your update 📮`;
-              statusColor = "#4A6FA5";
+              statusColor = "#5C7A5F";
             } else {
               statusText = "All written 🌿";
               statusColor = "#5C7A5F";
@@ -181,16 +181,16 @@ function LettersSection() {
                   className="relative flex rounded-xl overflow-hidden cursor-pointer"
                   style={{
                     background: "#E8E4D8",
-                    border: `1px solid rgba(74,111,165,${needsAction ? "0.35" : "0.15"})`,
+                    border: `1px solid rgba(92,122,95,${needsAction ? "0.35" : "0.15"})`,
                     boxShadow: needsAction
-                      ? "0 4px 16px rgba(74,111,165,0.15), 0 1px 4px rgba(44,24,16,0.06)"
+                      ? "0 4px 16px rgba(92,122,95,0.15), 0 1px 4px rgba(44,24,16,0.06)"
                       : "0 2px 8px rgba(44,24,16,0.07), 0 1px 3px rgba(44,24,16,0.04)",
                   }}
                 >
                   {/* Ink left bar — pulses when action needed */}
                   <div
                     className={needsAction ? "w-1 flex-shrink-0 animate-pulse" : "w-1 flex-shrink-0"}
-                    style={{ background: "#4A6FA5" }}
+                    style={{ background: "#5C7A5F" }}
                   />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2">
@@ -201,11 +201,11 @@ function LettersSection() {
                         {hasUnread && (
                           <span
                             className="ml-2 inline-block w-2 h-2 rounded-full align-middle animate-pulse"
-                            style={{ background: "#4A6FA5" }}
+                            style={{ background: "#5C7A5F" }}
                           />
                         )}
                       </div>
-                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#4A6FA5", letterSpacing: "0.08em" }}>
+                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#5C7A5F", letterSpacing: "0.08em" }}>
                         {isOneToOne ? `Letter ${c.currentPeriod.periodNumber}` : `Week ${c.currentPeriod.periodNumber}`}
                       </span>
                     </div>
