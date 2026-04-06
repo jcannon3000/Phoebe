@@ -14,7 +14,8 @@ export default function Onboarding() {
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -40,8 +41,11 @@ export default function Onboarding() {
     if (!email.trim() || !email.includes("@")) {
       setError("Enter a valid email address."); return;
     }
-    if (mode === "register" && !name.trim()) {
-      setError("Enter your name."); return;
+    if (mode === "register" && !firstName.trim()) {
+      setError("Enter your first name."); return;
+    }
+    if (mode === "register" && !lastName.trim()) {
+      setError("Enter your last name."); return;
     }
     if (!password || password.length < 6) {
       setError("Password must be at least 6 characters."); return;
@@ -51,7 +55,7 @@ export default function Onboarding() {
     try {
       const endpoint = mode === "register" ? "/api/auth/register" : "/api/auth/login";
       const body = mode === "register"
-        ? { email: email.trim(), name: name.trim(), password }
+        ? { email: email.trim(), name: `${firstName.trim()} ${lastName.trim()}`, password }
         : { email: email.trim(), password };
 
       const res = await fetch(endpoint, {
@@ -148,16 +152,28 @@ export default function Onboarding() {
                 className="flex flex-col gap-3"
               >
                 {mode === "register" && (
-                  <input
-                    type="text"
-                    placeholder="Your name"
-                    value={name}
-                    onChange={e => { setName(e.target.value); setError(""); }}
-                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                    style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
-                    autoComplete="name"
-                    disabled={submitting}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="First name"
+                      value={firstName}
+                      onChange={e => { setFirstName(e.target.value); setError(""); }}
+                      className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
+                      style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                      autoComplete="given-name"
+                      disabled={submitting}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Last name"
+                      value={lastName}
+                      onChange={e => { setLastName(e.target.value); setError(""); }}
+                      className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
+                      style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
+                      autoComplete="family-name"
+                      disabled={submitting}
+                    />
+                  </div>
                 )}
 
                 <input
