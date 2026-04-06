@@ -123,7 +123,7 @@ export default function LetterNew() {
               <div className="space-y-3">
                 <button
                   onClick={() => handleTypeSelect("one_to_one")}
-                  className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+                  className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99] card-elevated"
                   style={{ background: "#fff", border: "2px solid rgba(74,111,165,0.3)" }}
                 >
                   <p className="text-base font-semibold mb-1" style={{ color: "#2C1810" }}>📮 A letter</p>
@@ -134,7 +134,7 @@ export default function LetterNew() {
 
                 <button
                   onClick={() => handleTypeSelect("group")}
-                  className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+                  className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99] card-elevated"
                   style={{ background: "#fff", border: "2px solid rgba(74,111,165,0.3)" }}
                 >
                   <p className="text-base font-semibold mb-1" style={{ color: "#2C1810" }}>✉️ Group updates</p>
@@ -201,7 +201,7 @@ export default function LetterNew() {
               <button
                 onClick={handleWhoNext}
                 disabled={createMutation.isPending}
-                className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50"
+                className="btn-sage w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50"
                 style={{ background: "#6B8F71", color: "#fff" }}
               >
                 {createMutation.isPending ? "Starting…" : type === "one_to_one" ? "Start writing" : "Continue →"}

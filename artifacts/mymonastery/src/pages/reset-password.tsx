@@ -79,7 +79,7 @@ export default function ResetPassword() {
                 </p>
                 <button
                   onClick={() => setLocation("/")}
-                  className="px-6 py-3 rounded-xl font-semibold text-sm"
+                  className="btn-sage px-6 py-3 rounded-xl font-semibold text-sm"
                   style={{ background: "#6B8F71", color: "#fff" }}
                 >
                   Sign in
@@ -116,7 +116,7 @@ export default function ResetPassword() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 mt-1"
+                  className="btn-sage flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 mt-1"
                   style={{ background: "#6B8F71", color: "#fff" }}
                 >
                   {submitting ? (

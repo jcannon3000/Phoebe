@@ -138,6 +138,62 @@
   animation: card-breathe 4s ease-in-out infinite;
 }
 
+/* ── Global input shadows ─────────────────────────────────────────── */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  box-shadow: 0 2px 8px rgba(44, 24, 16, 0.07), 0 1px 2px rgba(44, 24, 16, 0.05);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+  box-shadow: 0 0 0 3px rgba(107, 143, 113, 0.18), 0 2px 12px rgba(44, 24, 16, 0.10);
+}
+
+/* ── Primary button pulse ─────────────────────────────────────────── */
+@keyframes btn-pulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(107,143,113,0.35), 0 1px 4px rgba(44,24,16,0.10); }
+  50%       { box-shadow: 0 6px 24px rgba(107,143,113,0.55), 0 2px 8px rgba(44,24,16,0.12); }
+}
+@keyframes btn-pulse-ink {
+  0%, 100% { box-shadow: 0 4px 14px rgba(74,111,165,0.30), 0 1px 4px rgba(44,24,16,0.08); }
+  50%       { box-shadow: 0 6px 24px rgba(74,111,165,0.50), 0 2px 8px rgba(44,24,16,0.10); }
+}
+.btn-sage {
+  background: #6B8F71;
+  color: #fff;
+  animation: btn-pulse 3s ease-in-out infinite;
+  transform: translateZ(0);
+}
+.btn-sage:hover {
+  animation: none;
+  box-shadow: 0 8px 28px rgba(107,143,113,0.60);
+  transform: translateY(-1px);
+}
+.btn-sage:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 8px rgba(107,143,113,0.35);
+}
+.btn-ink {
+  background: #4A6FA5;
+  color: #fff;
+  animation: btn-pulse-ink 3s ease-in-out infinite;
+  transform: translateZ(0);
+}
+
+/* ── Card shadow ──────────────────────────────────────────────────── */
+.card-elevated {
+  box-shadow: 0 4px 20px rgba(44,24,16,0.10), 0 1px 4px rgba(44,24,16,0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-elevated:hover {
+  box-shadow: 0 8px 32px rgba(44,24,16,0.14), 0 2px 8px rgba(44,24,16,0.08);
+  transform: translateY(-2px);
+}
+
 @layer base {
   * {
     @apply border-border;

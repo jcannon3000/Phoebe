@@ -120,7 +120,7 @@ export default function Onboarding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
             className="rounded-2xl p-6 animate-card-breathe"
-            style={{ background: "#F2EDE3", border: "1px solid rgba(44,24,16,0.07)" }}
+            style={{ background: "#F2EDE3", border: "1px solid rgba(44,24,16,0.07)", boxShadow: "0 8px 32px rgba(44,24,16,0.12), 0 2px 8px rgba(44,24,16,0.07)" }}
           >
             {/* Mode toggle */}
             <div className="flex rounded-xl p-1 mb-4" style={{ background: "#D5CEBC" }}>
@@ -229,7 +229,7 @@ export default function Onboarding() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 animate-glow-breathe"
+                  className="btn-sage flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1"
                   style={{ background: "#6B8F71", color: "#fff" }}
                 >
                   {submitting ? (
