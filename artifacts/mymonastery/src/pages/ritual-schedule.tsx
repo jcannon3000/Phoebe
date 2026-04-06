@@ -101,12 +101,12 @@ export default function RitualSchedule() {
         location: locationEdit.trim() || undefined,
       });
       toast({
-        title: "Gathering confirmed 🌱",
+        title: "Tradition confirmed 🌱",
         description: "Your tradition is planted.",
       });
       setLocation(`/ritual/${ritualId}`);
     } catch {
-      toast({ variant: "destructive", title: "Could not save the gathering time" });
+      toast({ variant: "destructive", title: "Could not save the tradition time" });
     } finally {
       setIsSaving(false);
     }
@@ -135,7 +135,7 @@ export default function RitualSchedule() {
       });
       setLocation(`/ritual/${ritualId}`);
     } catch {
-      toast({ variant: "destructive", title: "Could not save gathering times" });
+      toast({ variant: "destructive", title: "Could not save tradition times" });
     } finally {
       setIsSaving(false);
     }
@@ -163,7 +163,7 @@ export default function RitualSchedule() {
         </button>
 
         <div className="mb-8">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">Set gathering times</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">Set tradition times</p>
           <h1 className="text-3xl font-semibold text-foreground mb-3">When can you gather?</h1>
           <p className="text-muted-foreground leading-relaxed">
             A fixed time is perfect when everyone can make it. Flexible lets your tradition vote — more options means more people can bloom. 🌸
@@ -284,7 +284,7 @@ export default function RitualSchedule() {
           <label className="block font-medium text-foreground mb-0.5">
             📍 Where will you gather?
           </label>
-          <p className="text-sm text-muted-foreground mb-3">Optional — shows up in the gathering details.</p>
+          <p className="text-sm text-muted-foreground mb-3">Optional — shows up in the tradition details.</p>
           <input
             type="text"
             value={locationEdit}
@@ -304,7 +304,7 @@ export default function RitualSchedule() {
             {isSaving ? (
               <><span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Confirming...</>
             ) : (
-              <>Confirm this gathering 🌱</>
+              <>Confirm this tradition 🌱</>
             )}
           </button>
         ) : (
@@ -316,7 +316,7 @@ export default function RitualSchedule() {
             {isSaving ? (
               <><span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Saving...</>
             ) : (
-              <>Save gathering times 🌿</>
+              <>Save tradition times 🌿</>
             )}
           </button>
         )}

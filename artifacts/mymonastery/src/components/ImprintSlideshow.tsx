@@ -45,15 +45,15 @@ export const gatheringSlides: ImprintSlide[] = [
   },
   {
     headline: "We are wired for the small group.",
-    body: "Sebastian Junger spent years studying why soldiers miss war. His answer wasn't the combat. It was the tribe — the small group of people who depended on each other completely. Modern life dismantles that. We are surrounded by people and known by almost none of them. A gathering is how you rebuild it.",
+    body: "Sebastian Junger spent years studying why soldiers miss war. His answer wasn't the combat. It was the tribe — the small group of people who depended on each other completely. Modern life dismantles that. We are surrounded by people and known by almost none of them. A tradition is how you rebuild it.",
   },
   {
     headline: "There is a difference between being around people and being known by them.",
-    body: "Vivek Murthy found that loneliness has almost nothing to do with how many people are in your life. It has everything to do with whether any of them really know you. A gathering is not a social event. It is a practice of being known — slowly, over time, in the same room.",
+    body: "Vivek Murthy found that loneliness has almost nothing to do with how many people are in your life. It has everything to do with whether any of them really know you. A tradition is not a social event. It is a practice of being known — slowly, over time, in the same room.",
   },
   {
     headline: "You cannot build a support network in a crisis.",
-    body: "Most parishes only activate connection when something has already gone wrong. A death. A diagnosis. A divorce. By then it is too late to build the network — you are asking strangers to show up for each other. The gathering you start today is the network that will be there when it is needed. Every time you show up, the roots go deeper.",
+    body: "Most parishes only activate connection when something has already gone wrong. A death. A diagnosis. A divorce. By then it is too late to build the network — you are asking strangers to show up for each other. The tradition you start today is the network that will be there when it is needed. Every time you show up, the roots go deeper.",
   },
   {
     headline: "This is a covenant, not a calendar event.",

@@ -1,17 +1,17 @@
 import { ReactNode, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, ChevronDown, Users } from "lucide-react";
+import { LogOut, ChevronDown } from "lucide-react";
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const logout = useLogout();
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [location] = useLocation();
+
 
   const presenceToggle = useMutation({
     mutationFn: (showPresence: boolean) =>
@@ -33,41 +33,6 @@ export function Layout({ children }: { children: ReactNode }) {
             </span>
           </Link>
 
-          {user && (
-            <nav className="flex items-center gap-1">
-              <Link
-                href="/letters"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  location.startsWith("/letters")
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                }`}
-              >
-                📮 Letters
-              </Link>
-              <Link
-                href="/gatherings"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  location.startsWith("/gatherings") || location.startsWith("/ritual") || location.startsWith("/tradition")
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                }`}
-              >
-                🎉 Gatherings
-              </Link>
-              <Link
-                href="/people"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  location.startsWith("/people")
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                }`}
-              >
-                <Users size={14} />
-                People
-              </Link>
-            </nav>
-          )}
         </div>
 
         {user && (

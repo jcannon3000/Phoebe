@@ -8,10 +8,10 @@ import ImprintSlideshow, { gatheringSlides } from "@/components/ImprintSlideshow
 
 const TEMPLATE_OPTIONS = [
   { value: "coffee", emoji: "☕", label: "Coffee", tagline: "Share your first cup, again and again" },
-  { value: "meal", emoji: "🍽️", label: "A Meal", tagline: "The table is the oldest gathering place" },
+  { value: "meal", emoji: "🍽️", label: "A Meal", tagline: "The table is the oldest tradition" },
   { value: "walk", emoji: "🚶", label: "A Walk", tagline: "Move together on a regular day" },
   { value: "book_club", emoji: "📚", label: "Book Club", tagline: "Read together, think together" },
-  { value: "custom", emoji: "🌿", label: "Something else", tagline: "Name your own gathering" },
+  { value: "custom", emoji: "🌿", label: "Something else", tagline: "Name your own tradition" },
 ];
 
 const RHYTHM_OPTIONS = [
@@ -87,7 +87,7 @@ export default function TraditionNew() {
   }
 
   function handleWhoNext() {
-    if (!name.trim()) { setError("Give your gathering a name."); return; }
+    if (!name.trim()) { setError("Give your tradition a name."); return; }
     if (!hasAtLeastOnePerson) { setError("Add at least one person."); return; }
     setError("");
     setStep(3);
@@ -124,7 +124,7 @@ export default function TraditionNew() {
     return (
       <ImprintSlideshow
         slides={gatheringSlides}
-        ctaLabel="Start a gathering →"
+        ctaLabel="Start a tradition →"
         imprintType="gathering"
         onComplete={() => setImprintDone(true)}
       />
@@ -160,9 +160,9 @@ export default function TraditionNew() {
           {step === 1 && (
             <motion.div key="s1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                What will you gather for? 🎉
+                What will you start? 🎉
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>Recurring gatherings are where belonging forms.</p>
+              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>Recurring traditions are where belonging forms.</p>
 
               <div className="space-y-3">
                 {TEMPLATE_OPTIONS.map((o) => (
@@ -189,13 +189,13 @@ export default function TraditionNew() {
           {step === 2 && (
             <motion.div key="s2" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-6" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Who are you gathering with? 🎉
+                Who are you meeting with? 🎉
               </h1>
 
               {/* Name */}
               <div className="mb-6">
                 <label className="text-xs font-semibold uppercase tracking-widest mb-2 block" style={{ color: "#C17F24" }}>
-                  Name this gathering
+                  Name this tradition
                 </label>
                 <input
                   ref={nameRef}
@@ -426,7 +426,7 @@ export default function TraditionNew() {
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
                 style={{ background: "#C17F24", color: "#fff" }}
               >
-                {submitting ? "Starting..." : "Start this gathering 🎉"}
+                {submitting ? "Starting..." : "Start this tradition 🎉"}
               </button>
 
               {(!hasIntercession && !hasFasting) && (

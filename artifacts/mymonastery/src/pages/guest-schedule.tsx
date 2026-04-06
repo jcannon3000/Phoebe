@@ -165,7 +165,7 @@ export default function GuestSchedule() {
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">You're invited</p>
           <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-3">{scheduleData?.ritualName}</h1>
           <p className="text-muted-foreground text-sm">
-            {scheduleData?.organizerName} is scheduling a {formatFrequencyPhrase(scheduleData?.frequency ?? "")} gathering and wants to know when you're available.
+            {scheduleData?.organizerName} is scheduling a {formatFrequencyPhrase(scheduleData?.frequency ?? "")} tradition and wants to know when you're available.
           </p>
         </div>
 

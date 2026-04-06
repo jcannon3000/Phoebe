@@ -49,7 +49,7 @@ function FAB() {
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#F2EFE6", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>🎉 Start a gathering</p>
+              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>🎉 Start a tradition</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Meet together regularly</p>
             </button>
           </motion.div>
@@ -253,7 +253,7 @@ function GatheringsSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Gatherings 🎉" />
+        <SectionHeader label="Traditions 🎉" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -267,7 +267,7 @@ function GatheringsSection() {
 
   return (
     <div className="mb-8">
-      <SectionHeader label="Gatherings 🎉" />
+      <SectionHeader label="Traditions 🎉" />
 
       {gatherings.length === 0 ? (
         <div
@@ -278,7 +278,7 @@ function GatheringsSection() {
           <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>Community grows where people keep showing up.</p>
           <p className="text-xs mb-3" style={{ color: "#9a9390" }}>Commit to a rhythm. Phoebe handles the rest.</p>
           <Link href="/tradition/new">
-            <span className="text-sm font-semibold" style={{ color: "#C17F24" }}>Start a gathering →</span>
+            <span className="text-sm font-semibold" style={{ color: "#C17F24" }}>Start a tradition →</span>
           </Link>
         </div>
       ) : (
@@ -371,7 +371,7 @@ export default function Dashboard() {
         {/* ── Letters ── */}
         <LettersSection />
 
-        {/* ── Gatherings ── */}
+        {/* ── Traditions ── */}
         <GatheringsSection />
 
         {/* ── Prayer Requests ── */}

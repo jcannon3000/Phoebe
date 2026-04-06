@@ -31,7 +31,7 @@ export default function GatheringsPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Gatherings 🎉
+              Traditions 🎉
             </h1>
             <p className="text-sm mt-1" style={{ color: "#9a9390" }}>
               Your community, meeting regularly, with intention.
@@ -42,7 +42,7 @@ export default function GatheringsPage() {
               className="btn-sage px-4 py-2.5 rounded-xl text-sm font-semibold"
               style={{ background: "#5C7A5F", color: "#fff" }}
             >
-              Start a gathering
+              Start a tradition
             </button>
           </Link>
         </div>
@@ -69,7 +69,7 @@ export default function GatheringsPage() {
                 className="btn-sage px-6 py-3.5 rounded-2xl text-base font-semibold"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                Start a gathering
+                Start a tradition
               </button>
             </Link>
           </motion.div>

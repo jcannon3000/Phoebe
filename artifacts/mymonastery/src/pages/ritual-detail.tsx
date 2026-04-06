@@ -192,14 +192,14 @@ export default function RitualDetail() {
       });
       if (!res.ok) throw new Error("Failed to log");
       const msg = status === "completed"
-        ? "Gathering logged. Your tradition grows stronger. 🌱"
+        ? "Tradition logged. Your tradition grows stronger. 🌱"
         : "Noted — it happens. Phoebe will keep watch.";
       toast({ title: msg });
       await fetchTimeline();
       queryClient.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/rituals`] });
     } catch {
-      toast({ variant: "destructive", title: "Could not log gathering" });
+      toast({ variant: "destructive", title: "Could not log tradition" });
     } finally {
       setLoggingId(null);
     }
@@ -499,7 +499,7 @@ export default function RitualDetail() {
                 </div>
               )}
 
-              {/* Upcoming gathering */}
+              {/* Upcoming tradition */}
               {timelineLoading ? (
                 <div className="h-40 bg-card rounded-2xl border border-card-border animate-pulse" />
               ) : timeline?.upcoming ? (
@@ -643,12 +643,12 @@ export default function RitualDetail() {
                   )}
                 </div>
               ) : (
-                /* No gathering scheduled yet */
+                /* No tradition scheduled yet */
                 <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center">
                   <div className="w-12 h-12 bg-primary/8 rounded-full flex items-center justify-center mx-auto mb-3">
                     <Sprout size={22} strokeWidth={1.5} className="text-primary/60" />
                   </div>
-                  <p className="font-medium text-foreground mb-1">No gathering scheduled yet</p>
+                  <p className="font-medium text-foreground mb-1">No tradition scheduled yet</p>
                   <p className="text-sm text-muted-foreground mb-4">
                     Set a time and Phoebe will send calendar invites to your tradition.
                   </p>
@@ -656,7 +656,7 @@ export default function RitualDetail() {
                     href={`/ritual/${ritualId}/schedule`}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
                   >
-                    Schedule a gathering 🗓️
+                    Schedule a tradition 🗓️
                   </Link>
                 </div>
               )}
@@ -767,12 +767,12 @@ export default function RitualDetail() {
               {/* Past gatherings */}
               <div>
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-4">
-                  Past Gatherings
+                  Past Traditions
                 </h2>
                 {(!timeline || timeline.past.length === 0) ? (
                   <div className="text-center py-10 text-muted-foreground/50 space-y-2">
-                    <p className="text-sm">No past gatherings yet.</p>
-                    <p className="text-xs">Your history will appear here after you log a gathering.</p>
+                    <p className="text-sm">No past traditions yet.</p>
+                    <p className="text-xs">Your history will appear here after you log a tradition.</p>
                   </div>
                 ) : (
                   <div className="relative space-y-4">
@@ -856,7 +856,7 @@ export default function RitualDetail() {
                 <div className="text-center py-12">
                   <div className="text-4xl mb-3">🌿</div>
                   <p className="font-medium text-foreground mb-1">No moments planted yet</p>
-                  <p className="text-sm text-muted-foreground">Plant your first Shared Moment to start gathering together.</p>
+                  <p className="text-sm text-muted-foreground">Plant your first Shared Moment to start your tradition.</p>
                 </div>
               )}
 

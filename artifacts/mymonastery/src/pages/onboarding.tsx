@@ -110,7 +110,7 @@ export default function Onboarding() {
               Be together with Phoebe.
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#6b6460" }}>
-              Cultivate connection through letters and gatherings.
+              Cultivate connection through letters and traditions.
             </p>
           </motion.div>
 

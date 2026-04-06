@@ -439,7 +439,7 @@ export default function InvitePage() {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">The tradition</p>
               <p className="font-semibold text-foreground">{data?.ritualName}</p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {data?.ritualIntention || `A recurring ${data?.frequency ?? ""} gathering organized by ${data?.organizerName ?? "your host"}.`}
+                {data?.ritualIntention || `A recurring ${data?.frequency ?? ""} tradition organized by ${data?.organizerName ?? "your host"}.`}
               </p>
               <div className="flex flex-wrap gap-3 pt-1">
                 {data?.frequency && (
@@ -467,7 +467,7 @@ export default function InvitePage() {
                 <p className="text-sm font-semibold text-foreground">Want to host your own traditions?</p>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Phoebe coordinates recurring gatherings — so the people and traditions you love keep showing up.
+                Phoebe coordinates recurring traditions — so the people and traditions you love keep showing up.
               </p>
               <a
                 href="/"
@@ -501,7 +501,7 @@ export default function InvitePage() {
           </p>
           <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-3">{data?.ritualName}</h1>
           <p className="text-muted-foreground text-sm leading-relaxed mb-3">
-            {data?.ritualIntention || `A recurring ${data?.frequency ?? ""} gathering organized by ${data?.organizerName ?? "your host"}.`}
+            {data?.ritualIntention || `A recurring ${data?.frequency ?? ""} tradition organized by ${data?.organizerName ?? "your host"}.`}
           </p>
           <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
             <span className="capitalize"><FrequencyLabel f={data?.frequency ?? ""} /> gathering</span>
