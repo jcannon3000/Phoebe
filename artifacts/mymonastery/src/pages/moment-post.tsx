@@ -163,7 +163,7 @@ function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: Mo
             <motion.div
               animate={{
                 scale: isBloomin ? [0, 1.3, 1] : 1,
-                backgroundColor: m.prayed ? "#6B8F71" : "#F5ECDA",
+                backgroundColor: m.prayed ? "#6B8F71" : "#EDE8DE",
                 borderColor: m.prayed ? "#6B8F71" : "rgba(107,143,113,0.4)",
               }}
               transition={{ duration: 0.5, ease: "easeOut" }}
@@ -784,11 +784,11 @@ export default function MomentPostPage() {
     const bgColor = isMorning ? "#2C1810" : "#1A1C2E";
     return (
       <div className="min-h-screen flex items-center justify-center px-6" style={{ background: bgColor }}>
-        <div className="text-center max-w-xs text-[#F5ECDA]">
+        <div className="text-center max-w-xs text-[#EDE8DE]">
           <div className="text-5xl mb-5">{isMorning ? "🌅" : "🌙"}</div>
           <h1 className="text-2xl font-bold mb-2">{isMorning ? "Morning Prayer" : "Evening Prayer"}</h1>
-          <p className="text-[#F5ECDA]/60 text-sm mb-6">This practice rests today.</p>
-          <p className="font-serif italic text-[#F5ECDA]/70 text-sm leading-relaxed">
+          <p className="text-[#EDE8DE]/60 text-sm mb-6">This practice rests today.</p>
+          <p className="font-serif italic text-[#EDE8DE]/70 text-sm leading-relaxed">
             {isMorning ? "Come back on your next practice morning." : "Come back on your next practice evening."}
           </p>
         </div>
@@ -989,24 +989,24 @@ export default function MomentPostPage() {
           {/* Header */}
           <div className="text-center mb-6">
             <div className="text-4xl mb-3">{isMorning ? "🌅" : "🌙"}</div>
-            <h1 className="text-2xl font-bold text-[#F5ECDA]">{officeName}</h1>
-            <p className="text-[#F5ECDA]/50 text-sm mt-1 font-serif italic">{moment.intention}</p>
+            <h1 className="text-2xl font-bold text-[#EDE8DE]">{officeName}</h1>
+            <p className="text-[#EDE8DE]/50 text-sm mt-1 font-serif italic">{moment.intention}</p>
           </div>
 
           {/* Presence count */}
           <div className="flex items-center justify-center gap-3 mb-6">
             <PresenceDots count={actualTodayCount} total={actualMemberCount} />
-            <span className="text-sm text-[#F5ECDA]/60">{actualTodayCount} of {actualMemberCount} prayed today</span>
+            <span className="text-sm text-[#EDE8DE]/60">{actualTodayCount} of {actualMemberCount} prayed today</span>
           </div>
 
           {/* The BCP link — always visible */}
-          <div className="rounded-2xl border border-[#F5ECDA]/20 p-6 mb-5 text-center"
+          <div className="rounded-2xl border border-[#EDE8DE]/20 p-6 mb-5 text-center"
             style={{ background: "rgba(247,240,230,0.07)" }}>
-            <p className="text-[#F5ECDA]/50 text-xs uppercase tracking-widest mb-3">Open your Book of Common Prayer</p>
-            <p className="text-[#F5ECDA] font-bold text-xl mb-1">📖 Page {bcpPage}</p>
-            <p className="text-[#F5ECDA]/60 text-sm mb-4">{officeName} Rite II</p>
-            <div className="border-t border-[#F5ECDA]/10 pt-4">
-              <p className="text-[#F5ECDA]/50 text-xs mb-2">No BCP? Pray online:</p>
+            <p className="text-[#EDE8DE]/50 text-xs uppercase tracking-widest mb-3">Open your Book of Common Prayer</p>
+            <p className="text-[#EDE8DE] font-bold text-xl mb-1">📖 Page {bcpPage}</p>
+            <p className="text-[#EDE8DE]/60 text-sm mb-4">{officeName} Rite II</p>
+            <div className="border-t border-[#EDE8DE]/10 pt-4">
+              <p className="text-[#EDE8DE]/50 text-xs mb-2">No BCP? Pray online:</p>
               <button
                 onClick={() => window.open(bcpUrl, "_blank", "noopener,noreferrer")}
                 className="inline-block px-5 py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer"
@@ -1020,11 +1020,11 @@ export default function MomentPostPage() {
           {alreadyPosted && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               className="text-center py-6">
-              <p className="text-lg font-bold text-[#F5ECDA] mb-1">🌿 You prayed today.</p>
-              <p className="text-[#F5ECDA]/50 text-sm">
+              <p className="text-lg font-bold text-[#EDE8DE] mb-1">🌿 You prayed today.</p>
+              <p className="text-[#EDE8DE]/50 text-sm">
                 {actualTodayCount} of {actualMemberCount} prayed {officeName} today.
               </p>
-              <p className="font-serif italic text-[#F5ECDA]/40 text-xs leading-relaxed mt-4">
+              <p className="font-serif italic text-[#EDE8DE]/40 text-xs leading-relaxed mt-4">
                 {isMorning
                   ? '"Let my prayer be set forth in thy sight as incense." — Psalm 141'
                   : '"O gracious Light, pure brightness of the everliving Father." — Phos Hilaron'}
@@ -1048,7 +1048,7 @@ export default function MomentPostPage() {
                   : isMorning ? "I prayed Morning Prayer 🌿" : "I prayed Evening Prayer 🌿"
                 }
               </button>
-              <p className="text-center text-xs text-[#F5ECDA]/30 mt-3 font-serif italic">
+              <p className="text-center text-xs text-[#EDE8DE]/30 mt-3 font-serif italic">
                 Tap after you pray. Takes 15–20 minutes.
               </p>
             </div>

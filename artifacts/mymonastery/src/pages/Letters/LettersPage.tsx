@@ -104,10 +104,10 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
         animate={{ opacity: 1, y: 0 }}
         className="relative cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99] transition-transform"
         style={{
-          backgroundColor: "#EDE0C4",
+          backgroundColor: "#F5F0E8",
           border: `1px solid rgba(74,111,165,${unread ? "0.3" : "0.15"})`,
           borderRadius: "4px",
-          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#4A6FA5" : "#C8B88A"}`,
+          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#4A6FA5" : "#C5BFB0"}`,
           boxShadow: "0 2px 8px rgba(44, 24, 16, 0.06)",
           padding: "16px 20px",
           marginBottom: "12px",
@@ -135,7 +135,7 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
           <span className="text-[11px] font-semibold uppercase" style={{ color: "#4A6FA5", letterSpacing: "0.08em" }}>
             {isOneToOne ? `Letter ${currentPeriod.periodNumber}` : `Week ${currentPeriod.periodNumber}`}
           </span>
-          <span style={{ color: "#C8B88A" }}>·</span>
+          <span style={{ color: "#C5BFB0" }}>·</span>
 
           {/* Status */}
           {currentPeriod.hasWrittenThisPeriod ? (
@@ -231,7 +231,7 @@ export default function LettersPage() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-24 rounded animate-pulse" style={{ backgroundColor: "#E8D8BC" }} />
+              <div key={i} className="h-24 rounded animate-pulse" style={{ backgroundColor: "#E2DCD0" }} />
             ))}
           </div>
         ) : isEmpty ? (
@@ -241,16 +241,16 @@ export default function LettersPage() {
             className="flex flex-col items-center text-center py-12"
           >
             <div className="text-5xl mb-6">📮</div>
-            <p className="text-base mb-1" style={{ color: "#2C1810" }}>No letters yet.</p>
+            <p className="text-base font-medium mb-1" style={{ color: "#2C1810" }}>A correspondence is how you tend a relationship across distance.</p>
             <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
-              Start a correspondence and write your first letter.
+              Slow, deliberate, yours.
             </p>
             <Link href="/letters/new">
               <button
                 className="px-6 py-3.5 rounded-2xl text-base font-semibold"
                 style={{ backgroundColor: "#4A6FA5", color: "#fff" }}
               >
-                Start a correspondence 📮
+                Start a correspondence
               </button>
             </Link>
           </motion.div>

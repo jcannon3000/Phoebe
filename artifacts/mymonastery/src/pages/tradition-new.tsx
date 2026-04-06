@@ -119,7 +119,7 @@ export default function TraditionNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#EDE0C4" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F5F0E8" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
@@ -134,7 +134,7 @@ export default function TraditionNew() {
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#C17F24" : "#C8B88A" }}
+              style={{ background: s <= step ? "#C17F24" : "#C5BFB0" }}
             />
           ))}
         </div>
@@ -191,7 +191,7 @@ export default function TraditionNew() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Morning Coffee, Sunday Dinner"
                   className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none"
-                  style={{ background: "#fff", border: "1.5px solid #C8B88A", color: "#2C1810" }}
+                  style={{ background: "#fff", border: "1.5px solid #C5BFB0", color: "#2C1810" }}
                 />
               </div>
 
@@ -209,12 +209,12 @@ export default function TraditionNew() {
                           className="w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all"
                           style={{
                             background: sel ? "rgba(193,127,36,0.08)" : "#fff",
-                            border: `1.5px solid ${sel ? "#C17F24" : "#C8B88A"}`,
+                            border: `1.5px solid ${sel ? "#C17F24" : "#C5BFB0"}`,
                           }}
                         >
                           <div
                             className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
-                            style={{ background: sel ? "#C17F24" : "#DDD0B3", color: sel ? "#fff" : "#2C1810" }}
+                            style={{ background: sel ? "#C17F24" : "#D5CEBC", color: sel ? "#fff" : "#2C1810" }}
                           >
                             {(person.name || person.email).charAt(0).toUpperCase()}
                           </div>
@@ -245,7 +245,7 @@ export default function TraditionNew() {
                           onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], name: e.target.value }; return c; })}
                           placeholder="Name (optional)"
                           className="flex-1 px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                          style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
+                          style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
                         />
                         {newPeople.length > 1 && (
                           <button onClick={() => setNewPeople((p) => p.filter((_, j) => j !== i))} className="text-lg px-1" style={{ color: "#9a9390" }}>×</button>
@@ -257,7 +257,7 @@ export default function TraditionNew() {
                         onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], email: e.target.value }; return c; })}
                         placeholder="Email address"
                         className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
+                        style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
                       />
                     </div>
                   ))}
@@ -341,7 +341,7 @@ export default function TraditionNew() {
               {/* Intercession toggle */}
               <div
                 className="p-5 rounded-2xl mb-4"
-                style={{ background: "#fff", border: "1.5px solid #C8B88A" }}
+                style={{ background: "#fff", border: "1.5px solid #C5BFB0" }}
               >
                 <div className="flex items-center justify-between mb-1">
                   <div>
@@ -351,7 +351,7 @@ export default function TraditionNew() {
                   <button
                     onClick={() => setHasIntercession((v) => !v)}
                     className="w-12 h-6 rounded-full transition-colors relative flex-shrink-0"
-                    style={{ background: hasIntercession ? "#D4896A" : "#C8B88A" }}
+                    style={{ background: hasIntercession ? "#D4896A" : "#C5BFB0" }}
                   >
                     <div
                       className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform"
@@ -366,7 +366,7 @@ export default function TraditionNew() {
                     onChange={(e) => setIntercessionIntention(e.target.value)}
                     placeholder="What will you pray for?"
                     className="w-full mt-3 px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#EDE0C4", border: "1px solid #C8B88A", color: "#2C1810" }}
+                    style={{ background: "#F5F0E8", border: "1px solid #C5BFB0", color: "#2C1810" }}
                     autoFocus
                   />
                 )}
@@ -375,7 +375,7 @@ export default function TraditionNew() {
               {/* Fasting toggle */}
               <div
                 className="p-5 rounded-2xl mb-8"
-                style={{ background: "#fff", border: "1.5px solid #C8B88A" }}
+                style={{ background: "#fff", border: "1.5px solid #C5BFB0" }}
               >
                 <div className="flex items-center justify-between mb-1">
                   <div>
@@ -385,7 +385,7 @@ export default function TraditionNew() {
                   <button
                     onClick={() => setHasFasting((v) => !v)}
                     className="w-12 h-6 rounded-full transition-colors relative flex-shrink-0"
-                    style={{ background: hasFasting ? "#6B8F71" : "#C8B88A" }}
+                    style={{ background: hasFasting ? "#6B8F71" : "#C5BFB0" }}
                   >
                     <div
                       className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform"
@@ -400,7 +400,7 @@ export default function TraditionNew() {
                     onChange={(e) => setFastingDescription(e.target.value)}
                     placeholder="Describe the fast (optional)"
                     className="w-full mt-3 px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#EDE0C4", border: "1px solid #C8B88A", color: "#2C1810" }}
+                    style={{ background: "#F5F0E8", border: "1px solid #C5BFB0", color: "#2C1810" }}
                   />
                 )}
               </div>

@@ -39,15 +39,15 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#EDE0C4", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
+              style={{ background: "#F5F0E8", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>📮 Start a correspondence</p>
-              <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Write letters with someone</p>
+              <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Write letters with someone you care about</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#EDE0C4", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
+              style={{ background: "#F5F0E8", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Meet together regularly</p>
@@ -58,7 +58,7 @@ function FAB() {
       <button
         onClick={() => setOpen(o => !o)}
         className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#2C1810", color: "#F5ECDA" }}
+        style={{ background: "#2C1810", color: "#EDE8DE" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open ? <X size={24} /> : <Plus size={24} />}
@@ -76,7 +76,7 @@ function SectionHeader({ label }: { label: string }) {
       <h2 className="text-lg font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
         {label}
       </h2>
-      <div className="flex-1 h-px" style={{ background: "#C8B88A" }} />
+      <div className="flex-1 h-px" style={{ background: "#C5BFB0" }} />
     </div>
   );
 }
@@ -111,7 +111,7 @@ function LettersSection() {
         <SectionHeader label="Letters 📮" />
         <div className="space-y-3 mb-8">
           {[1, 2].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#E8D8BC" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#E2DCD0" }} />
           ))}
         </div>
       </>
@@ -127,11 +127,12 @@ function LettersSection() {
       {items.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#F5ECDA", border: "1px dashed #C8B99A" }}
+          style={{ background: "#EDE8DE", border: "1px dashed #C5BFB0" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No letters yet. Start a correspondence. 📮</p>
+          <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>A correspondence is how you tend a relationship across distance.</p>
+          <p className="text-xs mb-3" style={{ color: "#9a9390" }}>Slow, deliberate, yours.</p>
           <Link href="/letters/new">
-            <span className="text-sm font-semibold" style={{ color: "#4A6FA5" }}>Start writing →</span>
+            <span className="text-sm font-semibold" style={{ color: "#4A6FA5" }}>Start a correspondence →</span>
           </Link>
         </div>
       ) : (
@@ -176,7 +177,7 @@ function LettersSection() {
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                   style={{
-                    background: "#EDE0C4",
+                    background: "#F5F0E8",
                     border: `1px solid rgba(74,111,165,${needsAction ? "0.4" : "0.2"})`,
                     boxShadow: needsAction ? "0 0 0 0 rgba(74,111,165,0.3)" : undefined,
                   }}
@@ -250,7 +251,7 @@ function GatheringsSection() {
         <SectionHeader label="Gatherings" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#E8D8BC" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#E2DCD0" }} />
           ))}
         </div>
       </>
@@ -266,9 +267,10 @@ function GatheringsSection() {
       {gatherings.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#F5ECDA", border: "1px dashed #C8B99A" }}
+          style={{ background: "#EDE8DE", border: "1px dashed #C5BFB0" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No gatherings yet. Start one.</p>
+          <p className="text-sm mb-1 font-medium" style={{ color: "#2C1810" }}>Roots grow before they're needed.</p>
+          <p className="text-xs mb-3" style={{ color: "#9a9390" }}>A gathering is your community meeting regularly, with intention.</p>
           <Link href="/tradition/new">
             <span className="text-sm font-semibold" style={{ color: "#C17F24" }}>Start a gathering →</span>
           </Link>
@@ -290,7 +292,7 @@ function GatheringsSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#EDE0C4", border: "1px solid rgba(193,127,36,0.2)" }}
+                  style={{ background: "#F5F0E8", border: "1px solid rgba(193,127,36,0.2)" }}
                 >
                   {/* Amber left bar */}
                   <div className="w-1 flex-shrink-0" style={{ background: "#C17F24" }} />

@@ -83,7 +83,7 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#EDE0C4" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F5F0E8" }}>
       {/* Header */}
       <header className="px-6 py-6 flex items-center">
         <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
@@ -103,11 +103,10 @@ export default function Onboarding() {
           >
             <div className="text-5xl mb-5">📮</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
-              Be together with Phoebe.
+              Letters and gatherings.
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#6b6460" }}>
-              Letters and gatherings.<br />
-              The oldest community technology in the world.
+              The oldest way to cultivate belonging.
             </p>
           </motion.div>
 
@@ -118,7 +117,7 @@ export default function Onboarding() {
             transition={{ duration: 0.5, delay: 0.15 }}
           >
             {/* Mode toggle */}
-            <div className="flex rounded-xl p-1 mb-4" style={{ background: "#DDD0B3" }}>
+            <div className="flex rounded-xl p-1 mb-4" style={{ background: "#D5CEBC" }}>
               {(["signin", "register"] as Mode[]).map((m) => (
                 <button
                   key={m}
@@ -126,7 +125,7 @@ export default function Onboarding() {
                   onClick={() => switchMode(m)}
                   className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
                   style={{
-                    background: mode === m ? "#EDE0C4" : "transparent",
+                    background: mode === m ? "#F5F0E8" : "transparent",
                     color: mode === m ? "#2C1810" : "#6b6460",
                     boxShadow: mode === m ? "0 1px 4px rgba(44,24,16,0.08)" : "none",
                   }}
@@ -153,7 +152,7 @@ export default function Onboarding() {
                     value={name}
                     onChange={e => { setName(e.target.value); setError(""); }}
                     className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                    style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
+                    style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
                     autoComplete="name"
                     disabled={submitting}
                   />
@@ -165,7 +164,7 @@ export default function Onboarding() {
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(""); }}
                   className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                  style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
+                  style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
                   autoComplete="email"
                   disabled={submitting}
                 />
@@ -177,7 +176,7 @@ export default function Onboarding() {
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(""); }}
                     className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none transition-colors"
-                    style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
+                    style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
                     autoComplete={mode === "register" ? "new-password" : "current-password"}
                     disabled={submitting}
                   />
@@ -213,10 +212,10 @@ export default function Onboarding() {
                   type="submit"
                   disabled={submitting}
                   className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1"
-                  style={{ background: "#2C1810", color: "#F5ECDA" }}
+                  style={{ background: "#2C1810", color: "#EDE8DE" }}
                 >
                   {submitting ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-[#F5ECDA] border-t-transparent animate-spin" />
+                    <div className="w-4 h-4 rounded-full border-2 border-[#EDE8DE] border-t-transparent animate-spin" />
                   ) : mode === "signin" ? "Sign in" : "Create account"}
                 </button>
               </motion.form>

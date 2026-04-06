@@ -171,7 +171,7 @@ export default function WriteLetter() {
 
   if (errorState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#EDE0C4" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#F5F0E8" }}>
         <p className="text-4xl mb-4">📮</p>
         <p className="text-base mb-2" style={{ color: "#2C1810" }}>{errorState.message}</p>
         {errorState.nextPeriodStart && (
@@ -185,7 +185,7 @@ export default function WriteLetter() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#EDE0C4" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F5F0E8" }}>
       {/* Minimal header */}
       <div className="px-6 pt-6 pb-3 flex items-center justify-between">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
@@ -204,7 +204,7 @@ export default function WriteLetter() {
       {/* Bottom action bar (fixed) */}
       <div
         className="px-6 py-3"
-        style={{ borderBottom: "1px solid #DDD0B3" }}
+        style={{ borderBottom: "1px solid #D5CEBC" }}
       >
         {!confirmSend ? (
           <div className="flex items-center justify-between">
@@ -224,14 +224,14 @@ export default function WriteLetter() {
                 className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity"
                 style={{ background: "#4A6FA5", color: "#fff" }}
               >
-                Send 📮
+                Send letter
               </button>
             </div>
           </div>
         ) : (
           <div>
             <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
-              Send your {isOneToOne ? "letter" : "update"}? Can't be edited after.
+              Send your {isOneToOne ? "letter" : "update"}? It can't be edited after.
             </p>
             <div className="flex items-center gap-4">
               <button
@@ -240,7 +240,7 @@ export default function WriteLetter() {
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold"
                 style={{ background: "#4A6FA5", color: "#fff" }}
               >
-                {sendMutation.isPending ? "Sending..." : "Send 📮"}
+                {sendMutation.isPending ? "Sending..." : "Send letter"}
               </button>
               <button onClick={() => setConfirmSend(false)} className="text-sm" style={{ color: "#9a9390" }}>
                 Keep writing
@@ -298,7 +298,7 @@ export default function WriteLetter() {
               style={{
                 color: "#2C1810",
                 background: "transparent",
-                border: postmarkError ? "1px solid #C17F24" : "1px solid #DDD0B3",
+                border: postmarkError ? "1px solid #C17F24" : "1px solid #D5CEBC",
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             />

@@ -31,7 +31,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#EDE0C4" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F5F0E8" }}>
       <header className="px-6 py-6">
         <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe
@@ -74,7 +74,7 @@ export default function ForgotPassword() {
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(""); }}
                   className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-                  style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
+                  style={{ background: "#fff", border: "1px solid #C5BFB0", color: "#2C1810" }}
                   autoComplete="email"
                   disabled={submitting}
                 />
@@ -87,10 +87,10 @@ export default function ForgotPassword() {
                   type="submit"
                   disabled={submitting}
                   className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 mt-1"
-                  style={{ background: "#2C1810", color: "#F5ECDA" }}
+                  style={{ background: "#2C1810", color: "#EDE8DE" }}
                 >
                   {submitting ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-[#F5ECDA] border-t-transparent animate-spin" />
+                    <div className="w-4 h-4 rounded-full border-2 border-[#EDE8DE] border-t-transparent animate-spin" />
                   ) : "Send reset link"}
                 </button>
 

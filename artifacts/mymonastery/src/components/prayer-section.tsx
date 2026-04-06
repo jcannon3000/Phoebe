@@ -167,7 +167,7 @@ export function PrayerSection() {
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
-              placeholder="Share a prayer request with your garden… 🌿"
+              placeholder="Share a prayer request…"
               maxLength={1000}
               className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border/60 bg-card placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/50 transition-all"
             />
@@ -175,7 +175,7 @@ export function PrayerSection() {
               type="button"
               onClick={handleSendClick}
               disabled={!inputValue.trim()}
-              className="px-4 py-2.5 rounded-xl text-[#F5ECDA] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="px-4 py-2.5 rounded-xl text-[#EDE8DE] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
               style={{ backgroundColor: "#D4896A" }}
             >
               🙏
@@ -194,7 +194,7 @@ export function PrayerSection() {
           {/* Empty state */}
           {!isLoading && requests.length === 0 && (
             <p className="text-sm text-muted-foreground/60 text-center py-6 italic">
-              No prayer requests yet. Share what's on your heart. 🌿
+              Your community, growing slowly, with care. Share what's on your heart.
             </p>
           )}
 
@@ -362,7 +362,7 @@ export function PrayerSection() {
                                   onClick={() => handleWordSubmit(request.id)}
                                   disabled={!(wordInputs[request.id] || "").trim() || wordMutation.isPending}
                                   className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-                                  style={{ backgroundColor: "#D4896A", color: "#F5ECDA" }}
+                                  style={{ backgroundColor: "#D4896A", color: "#EDE8DE" }}
                                 >
                                   🙏
                                 </button>
@@ -404,7 +404,7 @@ export function PrayerSection() {
         >
           <div
             className="rounded-t-3xl shadow-2xl px-6 pt-6 pb-10"
-            style={{ backgroundColor: "#F5ECDA" }}
+            style={{ backgroundColor: "#EDE8DE" }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -460,7 +460,7 @@ export function PrayerSection() {
               onClick={handleModalSubmit}
               disabled={submitMutation.isPending}
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: "#2C1810", color: "#F5ECDA" }}
+              style={{ backgroundColor: "#2C1810", color: "#EDE8DE" }}
             >
               {submitMutation.isPending ? "Sharing…" : "Share with my garden 🙏"}
             </button>

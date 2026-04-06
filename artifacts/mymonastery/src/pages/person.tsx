@@ -9,9 +9,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Eleanor palette avatar colors: sage, amber, blush
 const AVATAR_COLORS = [
-  { bg: "#6B8F71", text: "#F5ECDA" },  // sage
-  { bg: "#C17F24", text: "#F5ECDA" },  // amber
-  { bg: "#D4896A", text: "#F5ECDA" },  // blush
+  { bg: "#6B8F71", text: "#EDE8DE" },  // sage
+  { bg: "#C17F24", text: "#EDE8DE" },  // amber
+  { bg: "#D4896A", text: "#EDE8DE" },  // blush
 ];
 
 function colorFor(email: string) {
