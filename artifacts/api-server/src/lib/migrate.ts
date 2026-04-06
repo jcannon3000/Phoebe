@@ -362,6 +362,10 @@ export async function migrate() {
     // Password-based auth
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT`);
 
+    // Imprint formation tracking
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS correspondence_imprint_completed BOOLEAN NOT NULL DEFAULT false`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS gathering_imprint_completed BOOLEAN NOT NULL DEFAULT false`);
+
     // ── Daily Office tables ──────────────────────────────────────────────────
     await run(client, `
       CREATE TABLE IF NOT EXISTS bcp_texts (
