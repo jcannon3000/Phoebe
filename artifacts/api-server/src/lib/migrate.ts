@@ -266,6 +266,13 @@ export async function migrate() {
     await run(client, `ALTER TABLE shared_moments ALTER COLUMN goal_days SET DEFAULT 30`);
     await run(client, `ALTER TABLE shared_moments ALTER COLUMN goal_days SET NOT NULL`);
 
+    // Phoebe gathering fields on rituals
+    await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS rhythm TEXT NOT NULL DEFAULT 'fortnightly'`);
+    await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS has_intercession BOOLEAN NOT NULL DEFAULT false`);
+    await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS has_fasting BOOLEAN NOT NULL DEFAULT false`);
+    await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS intercession_intention TEXT`);
+    await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS fasting_description TEXT`);
+
     // Fix missing ON DELETE CASCADE on existing FK constraints (safe to re-run)
     await run(client, `ALTER TABLE rituals DROP CONSTRAINT IF EXISTS rituals_owner_id_fkey`);
     await run(client, `ALTER TABLE rituals ADD CONSTRAINT rituals_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE`);

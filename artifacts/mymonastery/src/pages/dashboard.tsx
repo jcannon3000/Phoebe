@@ -253,7 +253,7 @@ function GatheringsSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Gatherings" />
+        <SectionHeader label="Gatherings 🎉" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -267,7 +267,7 @@ function GatheringsSection() {
 
   return (
     <div className="mb-8">
-      <SectionHeader label="Gatherings" />
+      <SectionHeader label="Gatherings 🎉" />
 
       {gatherings.length === 0 ? (
         <div
@@ -363,9 +363,6 @@ export default function Dashboard() {
 
         {/* ── Header ── */}
         <div className="mb-6">
-          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: "#9a9390" }}>
-            Phoebe
-          </p>
           <h1 className="text-2xl font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </h1>
