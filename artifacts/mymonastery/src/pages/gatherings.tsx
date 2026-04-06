@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { parseISO, format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
-import { useListRituals } from "@/hooks/useRituals";
+import { useListRituals } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 
 function dayLabel(d: Date) {
