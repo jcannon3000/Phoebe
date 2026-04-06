@@ -40,24 +40,24 @@ export const correspondenceSlides: ImprintSlide[] = [
 
 export const gatheringSlides: ImprintSlide[] = [
   {
-    headline: "Humans are built for the small group. Modern life dismantles it.",
-    body: "Sebastian Junger spent years studying soldiers returning from war. What they missed wasn't safety or comfort — it was the profound sense of belonging to a small group with a shared purpose. That pull isn't nostalgia. It's wiring.",
+    headline: "Showing up is the practice.",
+    body: "Not once. Repeatedly. In the same room, with the same people, on a rhythm you committed to together. The early church didn't build community through events. They built it through showing up, again and again, until the relationships had weight.",
   },
   {
-    headline: "Being around people is not the same as being known by people.",
-    body: "Vivek Murthy found that millions of people are surrounded by others all day — at work, online, in cities — and still feel completely unknown. A gathering is the practice of choosing to be known.",
+    headline: "We are wired for the small group.",
+    body: "Sebastian Junger spent years studying why soldiers miss war. His answer wasn't the combat. It was the tribe — the small group of people who depended on each other completely. Modern life dismantles that. We are surrounded by people and known by almost none of them. A gathering is how you rebuild it.",
   },
   {
-    headline: "A gathering is not an event. It is a covenant.",
-    body: "Anyone can host a dinner once. What's rare is showing up again. And again. The tenth gathering is different from the first — not because anything dramatic happened, but because you kept coming. Ritual creates the conditions for trust. Repetition is the whole practice.",
+    headline: "There is a difference between being around people and being known by them.",
+    body: "Vivek Murthy found that loneliness has almost nothing to do with how many people are in your life. It has everything to do with whether any of them really know you. A gathering is not a social event. It is a practice of being known — slowly, over time, in the same room.",
   },
   {
     headline: "You cannot build a support network in a crisis.",
-    body: "Robert Putnam spent decades studying what makes communities hold together. His answer: social capital — the web of relationships that exists before you need it. Every time you gather, you are weaving that web. Not dramatically. Just steadily.",
+    body: "Most parishes only activate connection when something has already gone wrong. A death. A diagnosis. A divorce. By then it is too late to build the network — you are asking strangers to show up for each other. The gathering you start today is the network that will be there when it is needed. Every time you show up, the roots go deeper.",
   },
   {
-    headline: "When something hard happens, the room is already there.",
-    body: "Not the people you text in an emergency. The people who know your name. Who have sat at your table. Who showed up — not because they had to, but because they chose to, again and again. That is what a gathering becomes, over time.",
+    headline: "This is a covenant, not a calendar event.",
+    body: "You are not scheduling a meetup. You are committing to a rhythm — weekly, fortnightly, monthly — and saying: we will keep showing up for each other. Phoebe handles the logistics. Finds the time, sends the invite, reschedules gracefully when life interrupts. Your only job is to show up.",
   },
 ];
 
