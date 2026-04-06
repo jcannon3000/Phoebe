@@ -59,15 +59,15 @@ export default function LetterNew() {
     if (type === "group" && validMembers.length < 2) {
       setError("Add at least 2 people."); return;
     }
-    if (!name) {
-      if (type === "one_to_one") {
-        const other = validMembers[0];
-        setName(`Letters with ${other.name || other.email.split("@")[0]}`);
-      } else {
-        setName("Our Updates");
-      }
+    if (type === "one_to_one") {
+      // Skip naming — auto-generate and create immediately
+      const other = validMembers[0];
+      const autoName = `Letters with ${other.name || other.email.split("@")[0]}`;
+      createMutation.mutate({ type: "one_to_one", name: autoName, members: validMembers });
+    } else {
+      if (!name) setName("Our Updates");
+      setStep(3);
     }
-    setStep(3);
   }
 
   function handleSubmit() {
@@ -97,7 +97,7 @@ export default function LetterNew() {
           ← {step === 1 ? "Letters" : "Back"}
         </button>
         <div className="flex-1 flex gap-1.5">
-          {[1, 2, 3].map((s) => (
+          {(type === "one_to_one" ? [1, 2] : [1, 2, 3]).map((s) => (
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
@@ -200,10 +200,11 @@ export default function LetterNew() {
 
               <button
                 onClick={handleWhoNext}
-                className="w-full mt-8 py-4 rounded-2xl text-base font-semibold"
-                style={{ background: "#4A6FA5", color: "#fff" }}
+                disabled={createMutation.isPending}
+                className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50"
+                style={{ background: "#6B8F71", color: "#fff" }}
               >
-                Continue →
+                {createMutation.isPending ? "Starting…" : type === "one_to_one" ? "Start writing" : "Continue →"}
               </button>
             </motion.div>
           )}
