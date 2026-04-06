@@ -145,9 +145,22 @@
 
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
-    background-image: radial-gradient(rgba(44, 24, 16, 0.025) 1px, transparent 1px);
-    background-size: 32px 32px;
+    @apply font-sans antialiased text-foreground;
+    background-color: #FAF7F2;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(212, 137, 106, 0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 90%, rgba(107, 143, 113, 0.09) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 60% at 60% 40%, rgba(193, 127, 36, 0.06) 0%, transparent 50%);
+    background-size: 200% 200%;
+    background-attachment: fixed;
+    animation: gradient-drift 18s ease-in-out infinite alternate;
+  }
+
+  @keyframes gradient-drift {
+    0%   { background-position: 0% 0%; }
+    33%  { background-position: 60% 30%; }
+    66%  { background-position: 30% 80%; }
+    100% { background-position: 80% 20%; }
   }
 
   h1, h2, h3, h4, h5, h6 {
