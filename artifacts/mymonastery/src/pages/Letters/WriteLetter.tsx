@@ -301,9 +301,9 @@ export default function WriteLetter() {
           }}
         />
 
-        {isOneToOne && user?.name && (
+        {isOneToOne && (
           <p className="text-base italic mt-2" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
-            — {user.name}
+            — {user?.name ?? "You"}
           </p>
         )}
 
