@@ -19,7 +19,7 @@ interface MorningPrayerSlideshowProps {
 }
 
 const SOIL = "#2C1810";
-const CREAM = "#F7F0E6";
+const CREAM = "#F5ECDA";
 const SAGE = "#6B8F71";
 
 export function MorningPrayerSlideshow({

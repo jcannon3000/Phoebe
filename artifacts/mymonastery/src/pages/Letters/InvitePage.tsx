@@ -76,7 +76,7 @@ export default function LetterInvitePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAF6F0" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#EDE0C4" }}>
         <div className="w-6 h-6 rounded-full border-2 border-[#4A6FA5] border-t-transparent animate-spin" />
       </div>
     );
@@ -84,7 +84,7 @@ export default function LetterInvitePage() {
 
   if (notFound) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: "#FAF6F0" }}>
+      <div className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: "#EDE0C4" }}>
         <div>
           <p className="text-4xl mb-4">📮</p>
           <p className="text-base" style={{ color: "#6b6460" }}>This invitation is no longer valid.</p>
@@ -105,7 +105,7 @@ export default function LetterInvitePage() {
       ? `/letters/${correspondenceId}?token=${inviteToken}`
       : "/";
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#FAF6F0" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#EDE0C4" }}>
         <div className="text-5xl mb-6">📮</div>
         <h1 className="text-xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
           You're in. 🌿
@@ -133,7 +133,7 @@ export default function LetterInvitePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: "#EDE0C4" }}>
       <div className="max-w-sm w-full text-center">
         <div className="text-5xl mb-6">📮</div>
 
@@ -164,7 +164,7 @@ export default function LetterInvitePage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
             className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-            style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
+            style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
           />
           <input
             type="email"
@@ -172,7 +172,7 @@ export default function LetterInvitePage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Your email"
             className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-            style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
+            style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
           />
         </div>
 

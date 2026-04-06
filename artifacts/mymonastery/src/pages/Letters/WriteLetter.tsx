@@ -171,7 +171,7 @@ export default function WriteLetter() {
 
   if (errorState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#FAF6F0" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#EDE0C4" }}>
         <p className="text-4xl mb-4">📮</p>
         <p className="text-base mb-2" style={{ color: "#2C1810" }}>{errorState.message}</p>
         {errorState.nextPeriodStart && (
@@ -185,7 +185,7 @@ export default function WriteLetter() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#EDE0C4" }}>
       {/* Minimal header */}
       <div className="px-6 pt-6 pb-3 flex items-center justify-between">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
@@ -204,7 +204,7 @@ export default function WriteLetter() {
       {/* Bottom action bar (fixed) */}
       <div
         className="px-6 py-3"
-        style={{ borderBottom: "1px solid #EDE6D9" }}
+        style={{ borderBottom: "1px solid #DDD0B3" }}
       >
         {!confirmSend ? (
           <div className="flex items-center justify-between">
@@ -298,7 +298,7 @@ export default function WriteLetter() {
               style={{
                 color: "#2C1810",
                 background: "transparent",
-                border: postmarkError ? "1px solid #C17F24" : "1px solid #EDE6D9",
+                border: postmarkError ? "1px solid #C17F24" : "1px solid #DDD0B3",
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             />

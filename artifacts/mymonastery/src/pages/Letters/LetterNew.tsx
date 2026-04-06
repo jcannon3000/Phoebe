@@ -86,7 +86,7 @@ export default function LetterNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#EDE0C4" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
@@ -101,7 +101,7 @@ export default function LetterNew() {
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#4A6FA5" : "#D6CAB8" }}
+              style={{ background: s <= step ? "#4A6FA5" : "#C8B88A" }}
             />
           ))}
         </div>
@@ -168,7 +168,7 @@ export default function LetterNew() {
                         value={m.name}
                         onChange={(e) => updateMember(i, "name", e.target.value)}
                         className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
+                        style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
                       />
                       {type === "group" && i >= 2 && (
                         <button onClick={() => removeMember(i)} className="text-lg px-1" style={{ color: "#9a9390" }}>×</button>
@@ -180,7 +180,7 @@ export default function LetterNew() {
                       value={m.email}
                       onChange={(e) => updateMember(i, "email", e.target.value)}
                       className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-                      style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
+                      style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
                     />
                   </div>
                 ))}
@@ -226,7 +226,7 @@ export default function LetterNew() {
                 maxLength={60}
                 autoFocus
                 className="w-full px-4 py-4 rounded-xl text-lg font-medium focus:outline-none"
-                style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
+                style={{ background: "#fff", border: "1px solid #C8B88A", color: "#2C1810" }}
               />
 
               {error && <p className="text-sm mt-3" style={{ color: "#C17F24" }}>{error}</p>}

@@ -60,16 +60,16 @@
   /* white  #FAF6F0 — page background          */
   /* muted  #9B8E82 — secondary text           */
 
-  --background: 37 50% 96%;        /* #FAF6F0 */
+  --background: 40 45% 88%;        /* #EDE0C4 old paper */
   --foreground: 17 47% 12%;        /* #2C1810 soil */
 
-  --border: 35 28% 86%;
-  --input: 35 28% 86%;
+  --border: 38 30% 76%;
+  --input: 38 30% 76%;
   --ring: 130 14% 49%;             /* sage */
 
-  --card: 35 46% 93%;              /* #F7F0E6 cream */
+  --card: 40 52% 92%;              /* #F5ECDA lighter paper */
   --card-foreground: 17 47% 12%;
-  --card-border: 35 28% 88%;
+  --card-border: 38 28% 78%;
 
   --popover: 37 50% 96%;
   --popover-foreground: 17 47% 12%;

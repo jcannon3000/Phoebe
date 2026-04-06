@@ -93,7 +93,7 @@ export default function ReadLetter() {
 
   if (!letter) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FAF6F0" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#EDE0C4" }}>
         <p style={{ color: "#9a9390" }}>Loading...</p>
       </div>
     );
@@ -103,9 +103,9 @@ export default function ReadLetter() {
   const writeUrl = `/letters/${correspondenceId}/write${tokenParam}`;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#FAF6F0" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#EDE0C4" }}>
       {/* Header */}
-      <div className="px-6 pt-8 pb-4 max-w-[600px] mx-auto">
+      <div className="px-6 pt-8 pb-4 max-w-3xl mx-auto">
         <button
           onClick={() => setLocation(backUrl)}
           className="text-sm"
@@ -117,9 +117,9 @@ export default function ReadLetter() {
 
       {/* Letter paper */}
       <div
-        className="max-w-[560px] mx-auto relative"
+        className="max-w-3xl mx-auto relative"
         style={{
-          backgroundColor: "#FAF6F0",
+          backgroundColor: "#EDE0C4",
           boxShadow: "inset 0 0 0 1px rgba(74,111,165,0.1), 0 4px 24px rgba(44,24,16,0.08)",
           padding: "48px 32px",
           borderRadius: "2px",
@@ -167,12 +167,6 @@ export default function ReadLetter() {
           {formatLetterDate(letter.sentAt)}
         </p>
 
-        {/* Salutation */}
-        {isOneToOne && (
-          <p className="text-base italic mb-6" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
-            Dear {isOwnLetter ? otherMembers : (user?.name || "Friend")},
-          </p>
-        )}
 
         {/* Letter body */}
         <div
@@ -196,7 +190,7 @@ export default function ReadLetter() {
       </div>
 
       {/* Footer */}
-      <div className="max-w-[560px] mx-auto px-6 pt-8 pb-16 text-center">
+      <div className="max-w-3xl mx-auto px-6 pt-8 pb-16 text-center">
         <p className="text-[13px]" style={{ color: "#9a9390" }}>
           {formatLetterDate(letter.sentAt)}
           {letter.postmarkCity ? ` · ${letter.postmarkCity}` : ""}

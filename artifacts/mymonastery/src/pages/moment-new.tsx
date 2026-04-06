@@ -26,8 +26,8 @@ const BCP_FREQ_OPTIONS: {
   { id: "once",  emoji: "🌱", label: "Once a week",       sub: "A gentle beginning",  dots: 1, daysPerWeek: 1, badge: null,          bg: "#EEF3EF", message: "One office together each week. A beginning." },
   { id: "twice", emoji: "🌿", label: "Twice a week",       sub: "Taking root",         dots: 2, daysPerWeek: 2, badge: null,          bg: "#E8F0EA", message: "Two offices. Enough to find a rhythm." },
   { id: "three", emoji: "🌸", label: "Three times a week", sub: "A real rhythm",       dots: 3, daysPerWeek: 3, badge: "Most chosen 🌿", bg: "#E0EBE2", message: "Three times. This is where something real takes root." },
-  { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",  dots: 5, daysPerWeek: 5, badge: null,          bg: "#F7F0E6", message: "The weekday office. A serious commitment." },
-  { id: "daily", emoji: "✨", label: "Daily",              sub: "The full Daily Office", dots: 7, daysPerWeek: 7, badge: null,         bg: "#F7F0E6", message: "Every day. The full practice of the Daily Office." },
+  { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",  dots: 5, daysPerWeek: 5, badge: null,          bg: "#F5ECDA", message: "The weekday office. A serious commitment." },
+  { id: "daily", emoji: "✨", label: "Daily",              sub: "The full Daily Office", dots: 7, daysPerWeek: 7, badge: null,         bg: "#F5ECDA", message: "Every day. The full practice of the Daily Office." },
 ];
 
 const WEEK_DAYS = [
@@ -360,14 +360,14 @@ const GOAL_OPTIONS_DAILY = [
   },
   {
     days: 14, emoji: "🌸", label: "2 weeks", sub: "In bloom — then renew",
-    bg: "#F7F0E6", borderColor: "#b0cdb3",
+    bg: "#F5ECDA", borderColor: "#b0cdb3",
     dots: Array(14).fill(0), dotLabel: "14 practices — then your tradition renews the commitment",
     badge: null, accentBar: true,
     message: "Two weeks. If you reach it, Eleanor will ask you to renew. The practice stays alive.",
   },
   {
     days: 0, emoji: "✨", label: "Just begin", sub: "No goal, tend freely",
-    bg: "#FAF6F0", borderColor: "rgba(0,0,0,0.06)",
+    bg: "#EDE0C4", borderColor: "rgba(0,0,0,0.06)",
     dots: [], dotLabel: "",
     badge: null,
     message: "No pressure. The practice is open. Tend it when you can.",
@@ -384,14 +384,14 @@ const GOAL_OPTIONS_WEEKLY = [
   },
   {
     days: 21, emoji: "🌸", label: "3 weeks", sub: "In bloom — then renew",
-    bg: "#F7F0E6", borderColor: "#b0cdb3",
+    bg: "#F5ECDA", borderColor: "#b0cdb3",
     dots: Array(3).fill(0), dotLabel: "3 practices — then your tradition renews the commitment",
     badge: null, accentBar: true,
     message: "Three weeks. If you reach it, Eleanor will ask you to renew. The practice stays alive.",
   },
   {
     days: 0, emoji: "✨", label: "Just begin", sub: "No goal, tend freely",
-    bg: "#FAF6F0", borderColor: "rgba(0,0,0,0.06)",
+    bg: "#EDE0C4", borderColor: "rgba(0,0,0,0.06)",
     dots: [], dotLabel: "",
     badge: null,
     message: "No pressure. The practice is open. Tend it when you can.",
@@ -1122,15 +1122,15 @@ export default function MomentNew() {
     return (
       <div className="min-h-screen bg-[#2C1810] flex items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          className="max-w-sm w-full text-center text-[#F7F0E6]">
+          className="max-w-sm w-full text-center text-[#F5ECDA]">
           <div className="text-6xl mb-6">{isMorning ? "🌅" : "🌙"}</div>
           <h2 className="text-3xl font-bold mb-2">
             {isMorning ? "Morning Prayer is planted." : "Evening Prayer is planted."}
           </h2>
-          <p className="text-[#F7F0E6]/70 mb-6">{freqLabel} · Everyone prays at their own time</p>
-          <p className="text-sm text-[#F7F0E6]/60 mb-8">Calendar invites are on their way.</p>
-          <div className="bg-[#F7F0E6]/10 border border-[#F7F0E6]/20 rounded-2xl p-5 mb-8 text-left">
-            <p className="text-sm font-medium text-[#F7F0E6] mb-1">
+          <p className="text-[#F5ECDA]/70 mb-6">{freqLabel} · Everyone prays at their own time</p>
+          <p className="text-sm text-[#F5ECDA]/60 mb-8">Calendar invites are on their way.</p>
+          <div className="bg-[#F5ECDA]/10 border border-[#F5ECDA]/20 rounded-2xl p-5 mb-8 text-left">
+            <p className="text-sm font-medium text-[#F5ECDA] mb-1">
               Open your BCP to page {isMorning ? "75" : "115"}.
             </p>
             <a href={isMorning ? "https://bcponline.org/DailyOffice/mp2.html" : "https://bcponline.org/DailyOffice/ep2.html"}
@@ -1139,7 +1139,7 @@ export default function MomentNew() {
               Or pray online: {isMorning ? "bcponline.org/DailyOffice/mp2.html" : "bcponline.org/DailyOffice/ep2.html"}
             </a>
           </div>
-          <p className="text-[#F7F0E6]/50 font-serif italic text-sm leading-relaxed mb-8">
+          <p className="text-[#F5ECDA]/50 font-serif italic text-sm leading-relaxed mb-8">
             {isMorning
               ? '"Let my prayer be set forth in thy sight as incense, and the lifting up of my hands as the evening sacrifice." — Psalm 141:2'
               : '"O gracious Light, pure brightness of the everliving Father in heaven." — Phos Hilaron'}
@@ -1159,13 +1159,13 @@ export default function MomentNew() {
     return (
       <div className="min-h-screen bg-[#2C1810] flex items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          className="max-w-sm w-full text-center text-[#F7F0E6]">
+          className="max-w-sm w-full text-center text-[#F5ECDA]">
           <div className="text-6xl mb-6">{isMorning ? "🌅" : "🌙"}</div>
           <h1 className="text-3xl font-bold leading-tight mb-2">
             Plant {isMorning ? "Morning Prayer" : "Evening Prayer"}
           </h1>
           <p className="text-[#6B8F71] text-lg font-semibold mb-8">with your people</p>
-          <p className="font-serif italic text-[#F7F0E6]/80 text-base leading-loose mb-8">
+          <p className="font-serif italic text-[#F5ECDA]/80 text-base leading-loose mb-8">
             {isMorning ? (
               <>
                 "You can't always be together.<br />
@@ -1186,7 +1186,7 @@ export default function MomentNew() {
               </>
             )}
           </p>
-          <p className="text-[#F7F0E6]/50 text-sm mb-8">
+          <p className="text-[#F5ECDA]/50 text-sm mb-8">
             {isMorning
               ? "Morning Prayer Rite II · Book of Common Prayer · Page 75 · A Daily Office"
               : "Evening Prayer Rite II · Book of Common Prayer · Page 115 · A Daily Office"}
@@ -1196,7 +1196,7 @@ export default function MomentNew() {
             Plant this with my people 🌿
           </button>
           <button onClick={() => { setTemplateId(null); setStep("template"); }}
-            className="mt-4 text-sm text-[#F7F0E6]/40 hover:text-[#F7F0E6]/70 transition-colors">
+            className="mt-4 text-sm text-[#F5ECDA]/40 hover:text-[#F5ECDA]/70 transition-colors">
             ← Go back
           </button>
         </motion.div>
@@ -1385,20 +1385,20 @@ export default function MomentNew() {
                               <span className="text-3xl">{opt.emoji}</span>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`font-bold text-base ${sel ? "text-[#F7F0E6]" : "text-[#2C1A0E]"}`}>{opt.label}</span>
+                                  <span className={`font-bold text-base ${sel ? "text-[#F5ECDA]" : "text-[#2C1A0E]"}`}>{opt.label}</span>
                                   {opt.badge && !sel && (
                                     <span className="text-xs font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">{opt.badge}</span>
                                   )}
-                                  {sel && <span className="ml-auto text-[#F7F0E6] text-lg">✓</span>}
+                                  {sel && <span className="ml-auto text-[#F5ECDA] text-lg">✓</span>}
                                 </div>
-                                <p className={`text-xs mt-0.5 ${sel ? "text-[#F7F0E6]/80" : "text-[#6b5c4a]/70"}`}>{opt.sub}</p>
+                                <p className={`text-xs mt-0.5 ${sel ? "text-[#F5ECDA]/80" : "text-[#6b5c4a]/70"}`}>{opt.sub}</p>
                                 <div className="flex gap-1 mt-2">
                                   {Array.from({ length: 7 }).map((_, i) => (
                                     <div key={i} className="w-2.5 h-2.5 rounded-full transition-all duration-300"
-                                      style={{ background: i < opt.dots ? (sel ? "#F7F0E6" : "#6B8F71") : "rgba(107,143,113,0.2)" }} />
+                                      style={{ background: i < opt.dots ? (sel ? "#F5ECDA" : "#6B8F71") : "rgba(107,143,113,0.2)" }} />
                                   ))}
                                 </div>
-                                <p className={`text-xs mt-1 ${sel ? "text-[#F7F0E6]/60" : "text-[#6b5c4a]/50"}`}>
+                                <p className={`text-xs mt-1 ${sel ? "text-[#F5ECDA]/60" : "text-[#6b5c4a]/50"}`}>
                                   {opt.dots} office{opt.dots > 1 ? "s" : ""} together each week
                                 </p>
                               </div>

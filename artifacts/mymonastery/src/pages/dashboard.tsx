@@ -39,7 +39,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#FAF6F0", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
+              style={{ background: "#EDE0C4", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>📮 Start a correspondence</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Write letters with someone</p>
@@ -47,7 +47,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#FAF6F0", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
+              style={{ background: "#EDE0C4", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Meet together regularly</p>
@@ -58,7 +58,7 @@ function FAB() {
       <button
         onClick={() => setOpen(o => !o)}
         className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#2C1810", color: "#F7F0E6" }}
+        style={{ background: "#2C1810", color: "#F5ECDA" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open ? <X size={24} /> : <Plus size={24} />}
@@ -76,7 +76,7 @@ function SectionHeader({ label }: { label: string }) {
       <h2 className="text-lg font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
         {label}
       </h2>
-      <div className="flex-1 h-px" style={{ background: "#D6CAB8" }} />
+      <div className="flex-1 h-px" style={{ background: "#C8B88A" }} />
     </div>
   );
 }
@@ -111,7 +111,7 @@ function LettersSection() {
         <SectionHeader label="Letters 📮" />
         <div className="space-y-3 mb-8">
           {[1, 2].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#F0EAE0" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#E8D8BC" }} />
           ))}
         </div>
       </>
@@ -127,7 +127,7 @@ function LettersSection() {
       {items.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#F7F0E6", border: "1px dashed #C8B99A" }}
+          style={{ background: "#F5ECDA", border: "1px dashed #C8B99A" }}
         >
           <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No letters yet. Start a correspondence. 📮</p>
           <Link href="/letters/new">
@@ -167,16 +167,25 @@ function LettersSection() {
 
             const lastPostmark = c.recentPostmarks[0];
 
+            const needsAction = hasUnread || needsWrite;
+
             return (
               <Link key={c.id} href={`/letters/${c.id}`}>
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FAF6F0", border: `1px solid rgba(74,111,165,0.2)` }}
+                  style={{
+                    background: "#EDE0C4",
+                    border: `1px solid rgba(74,111,165,${needsAction ? "0.4" : "0.2"})`,
+                    boxShadow: needsAction ? "0 0 0 0 rgba(74,111,165,0.3)" : undefined,
+                  }}
                 >
-                  {/* Ink left bar */}
-                  <div className="w-1 flex-shrink-0" style={{ background: "#4A6FA5" }} />
+                  {/* Ink left bar — pulses when action needed */}
+                  <div
+                    className={needsAction ? "w-1 flex-shrink-0 animate-pulse" : "w-1 flex-shrink-0"}
+                    style={{ background: "#4A6FA5" }}
+                  />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -185,7 +194,7 @@ function LettersSection() {
                         </span>
                         {hasUnread && (
                           <span
-                            className="ml-2 inline-block w-2 h-2 rounded-full align-middle"
+                            className="ml-2 inline-block w-2 h-2 rounded-full align-middle animate-pulse"
                             style={{ background: "#4A6FA5" }}
                           />
                         )}
@@ -207,12 +216,14 @@ function LettersSection() {
                           href={`/letters/${c.id}/write`}
                           onClick={(e: React.MouseEvent) => e.stopPropagation()}
                         >
-                          <span
-                            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
+                          <motion.span
+                            animate={{ scale: [1, 1.04, 1] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 inline-block"
                             style={{ background: "#4A6FA5", color: "#fff" }}
                           >
                             Write 📮
-                          </span>
+                          </motion.span>
                         </Link>
                       )}
                     </div>
@@ -239,7 +250,7 @@ function GatheringsSection() {
         <SectionHeader label="Gatherings" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#F0EAE0" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#E8D8BC" }} />
           ))}
         </div>
       </>
@@ -255,7 +266,7 @@ function GatheringsSection() {
       {gatherings.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#F7F0E6", border: "1px dashed #C8B99A" }}
+          style={{ background: "#F5ECDA", border: "1px dashed #C8B99A" }}
         >
           <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No gatherings yet. Start one.</p>
           <Link href="/tradition/new">
@@ -279,7 +290,7 @@ function GatheringsSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FAF6F0", border: "1px solid rgba(193,127,36,0.2)" }}
+                  style={{ background: "#EDE0C4", border: "1px solid rgba(193,127,36,0.2)" }}
                 >
                   {/* Amber left bar */}
                   <div className="w-1 flex-shrink-0" style={{ background: "#C17F24" }} />

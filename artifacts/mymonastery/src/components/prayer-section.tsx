@@ -175,7 +175,7 @@ export function PrayerSection() {
               type="button"
               onClick={handleSendClick}
               disabled={!inputValue.trim()}
-              className="px-4 py-2.5 rounded-xl text-[#F7F0E6] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="px-4 py-2.5 rounded-xl text-[#F5ECDA] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
               style={{ backgroundColor: "#D4896A" }}
             >
               🙏
@@ -362,7 +362,7 @@ export function PrayerSection() {
                                   onClick={() => handleWordSubmit(request.id)}
                                   disabled={!(wordInputs[request.id] || "").trim() || wordMutation.isPending}
                                   className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-                                  style={{ backgroundColor: "#D4896A", color: "#F7F0E6" }}
+                                  style={{ backgroundColor: "#D4896A", color: "#F5ECDA" }}
                                 >
                                   🙏
                                 </button>
@@ -404,7 +404,7 @@ export function PrayerSection() {
         >
           <div
             className="rounded-t-3xl shadow-2xl px-6 pt-6 pb-10"
-            style={{ backgroundColor: "#F7F0E6" }}
+            style={{ backgroundColor: "#F5ECDA" }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -460,7 +460,7 @@ export function PrayerSection() {
               onClick={handleModalSubmit}
               disabled={submitMutation.isPending}
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: "#2C1810", color: "#F7F0E6" }}
+              style={{ backgroundColor: "#2C1810", color: "#F5ECDA" }}
             >
               {submitMutation.isPending ? "Sharing…" : "Share with my garden 🙏"}
             </button>

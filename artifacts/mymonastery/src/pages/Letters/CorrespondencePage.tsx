@@ -133,7 +133,7 @@ export default function CorrespondencePage() {
     return (
       <Layout>
         <div className="flex flex-col w-full pb-24">
-          {[1, 2].map((i) => <div key={i} className="h-32 rounded-2xl animate-pulse mb-4" style={{ background: "#F0EAE0" }} />)}
+          {[1, 2].map((i) => <div key={i} className="h-32 rounded-2xl animate-pulse mb-4" style={{ background: "#E8D8BC" }} />)}
         </div>
       </Layout>
     );
@@ -188,7 +188,7 @@ export default function CorrespondencePage() {
         {memberCities.length === 0 && <div className="mb-5" />}
 
         {/* Period bar */}
-        <div className="rounded-xl overflow-hidden mb-8" style={{ background: "#FAF6F0", border: "1px solid rgba(74,111,165,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
+        <div className="rounded-xl overflow-hidden mb-8" style={{ background: "#EDE0C4", border: "1px solid rgba(74,111,165,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
           <div className="flex">
             <div className="w-[3px] flex-shrink-0" style={{ background: "#4A6FA5" }} />
             <div className="flex-1 p-5">
@@ -205,7 +205,7 @@ export default function CorrespondencePage() {
                       <div
                         className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm"
                         style={{
-                          borderColor: m.hasWritten ? "#4A6FA5" : "#D6CAB8",
+                          borderColor: m.hasWritten ? "#4A6FA5" : "#C8B88A",
                           background: m.hasWritten ? "#4A6FA5" : "transparent",
                           color: m.hasWritten ? "#fff" : "#9a9390",
                         }}
@@ -273,9 +273,9 @@ export default function CorrespondencePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="relative cursor-pointer transition-shadow hover:shadow-sm"
                       style={{
-                        background: "#FAF6F0",
+                        background: "#EDE0C4",
                         border: `1px solid rgba(74,111,165,${isOwn ? "0.2" : "0.12"})`,
-                        borderLeft: `3px solid ${isOwn ? "#4A6FA5" : "#D6CAB8"}`,
+                        borderLeft: `3px solid ${isOwn ? "#4A6FA5" : "#C8B88A"}`,
                         borderRadius: "4px",
                         padding: "24px 28px",
                         boxShadow: "0 2px 8px rgba(44,24,16,0.04)",
