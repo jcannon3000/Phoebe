@@ -46,9 +46,9 @@ export function Layout({ children }: { children: ReactNode }) {
                 📮 Letters
               </Link>
               <Link
-                href="/dashboard"
+                href="/gatherings"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  location === "/dashboard"
+                  location.startsWith("/gatherings") || location.startsWith("/ritual") || location.startsWith("/tradition")
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                 }`}

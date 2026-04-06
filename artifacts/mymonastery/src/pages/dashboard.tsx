@@ -57,8 +57,8 @@ function FAB() {
       </AnimatePresence>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#2C1810", color: "#E8E4D8" }}
+        className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform btn-sage"
+        style={{ background: "#5C7A5F", color: "#fff" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open ? <X size={24} /> : <Plus size={24} />}
