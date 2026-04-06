@@ -106,11 +106,11 @@ export default function Onboarding() {
             className="text-center mb-10"
           >
             <div className="text-5xl mb-5 animate-float inline-block">🌿</div>
-            <h1 className="text-3xl font-bold mb-3" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
-              Be together with Phoebe.
+            <h1 className="text-2xl font-bold mb-3 leading-snug" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
+              Research keeps confirming the strength of our relationships is what makes life most vibrant.
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#6b6460" }}>
-              Cultivate connection through letters and traditions.
+              Phoebe sets apart a place to stay close to the people who matter most, away from the noise of the modern world.
             </p>
           </motion.div>
 
