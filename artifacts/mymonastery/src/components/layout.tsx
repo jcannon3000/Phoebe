@@ -25,7 +25,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden">
-      <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 py-4 md:py-6 flex justify-between items-center" style={{ background: "rgba(242,239,230,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+      <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 py-5 md:py-6 flex justify-between items-center" style={{ background: "rgba(240,235,224,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
         <div className="flex items-center gap-6">
           <Link href="/dashboard" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md">
             <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors" style={{ letterSpacing: "-0.025em", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -59,7 +59,7 @@ export function Layout({ children }: { children: ReactNode }) {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-card-border rounded-2xl shadow-[var(--shadow-warm-md)] z-20 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl z-20 overflow-hidden" style={{ background: "#E8E2D5", boxShadow: "0 4px 24px rgba(44,24,16,0.10), 0 1px 6px rgba(44,24,16,0.04)" }}>
                   <div className="px-4 py-3 border-b border-border/50">
                     <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>

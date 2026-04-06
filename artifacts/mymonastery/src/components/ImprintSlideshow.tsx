@@ -17,24 +17,20 @@ interface ImprintSlideshowProps {
 
 export const correspondenceSlides: ImprintSlide[] = [
   {
-    headline: "Letters are the oldest community technology in the world.",
-    body: "The early church ran on them. Monks have kept relationships through them for centuries. Phoebe is just making the practice frictionless.",
+    headline: "For centuries, monks cultivated their deepest relationships through writing. 🌿",
+    body: "Not through proximity. Not through events. Through letters — steady, unhurried, returned to week after week. The relationships that lasted were the ones that were written down. This is the wisdom Phoebe draws on.",
   },
   {
-    headline: "Vivek Murthy, the U.S. Surgeon General, named loneliness a public health crisis.",
-    body: "Not a feeling. A health condition. Loneliness raises the risk of heart disease, stroke, and early death as much as smoking fifteen cigarettes a day. The medicine is connection — real, repeated, directed at specific people.",
+    headline: "One letter. One person. Once a week. 📮",
+    body: "Because you only get one, it means something. You can't dash it off. You have to slow down and ask: what actually happened this week? What do I want them to know? The limitation is the gift. Sacred because it is set apart from the noise.",
   },
   {
-    headline: "Once a week. One letter. One person.",
-    body: "Because you only get one, it means something. You can't dash it off. You have to think: what actually happened this week? What do I want them to know? A zoom out from the daily noise. Sacred because it's set apart.",
+    headline: "A letter is not a message. It is a record. 📖",
+    body: "Every week you write, you are adding to something — a shared history, a running account of two lives in honest contact. Not ambient. Not lost in a thread. Directed, deliberate, yours. Years from now you will be able to read it back. That is not something a text gives you.",
   },
   {
-    headline: "You are building something you cannot see yet.",
-    body: "Robert Putnam spent decades studying what makes communities resilient. His answer: social capital. The web of relationships that holds people when hard things happen. You cannot build that web in a crisis. It has to already exist. Every letter you write is a thread in that web.",
-  },
-  {
-    headline: "When the hospital calls, the network is already there.",
-    body: "This is why Phoebe exists. Not to help you stay in touch. To make sure that when something hard happens — to you, to someone you love — there are already people who know you. Who have been reading your words. Who will show up.",
+    headline: "The strength of our relationships is what makes life most vibrant. 🙏",
+    body: "In a world of isolation and distraction, Phoebe sets apart a space to stay close to the people who matter most. When something hard happens — to you, to someone you love — there are already people who know you. Who have been reading your words. Who will show up.",
   },
 ];
 
@@ -106,7 +102,7 @@ export default function ImprintSlideshow({
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: "#F2EFE6", fontFamily: "'Space Grotesk', sans-serif" }}
+      style={{ background: "#F0EBE0", backgroundImage: "radial-gradient(ellipse at 50% 0%, #F5EDD8 0%, #F0EBE0 60%)", fontFamily: "'Space Grotesk', sans-serif" }}
     >
       {/* Skip */}
       <div className="flex justify-end px-6 pt-6">
@@ -139,7 +135,7 @@ export default function ImprintSlideshow({
             </h1>
             <p
               className="text-base leading-relaxed font-normal"
-              style={{ color: "#6B6B6B" }}
+              style={{ color: "#8C7B6B" }}
             >
               {slide.body}
             </p>
@@ -158,7 +154,7 @@ export default function ImprintSlideshow({
               style={{
                 width: i === index ? 20 : 8,
                 height: 8,
-                background: i <= index ? "#5C7A5F" : "#C8C4B4",
+                background: i <= index ? "#5C7A5F" : "#D4CFC4",
               }}
             />
           ))}

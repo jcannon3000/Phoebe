@@ -138,20 +138,20 @@ export function PrayerSection() {
   }, [showModal]);
 
   return (
-    <div className="mt-6">
+    <div>
       {/* Section header */}
       <button
         onClick={() => setIsOpen(o => !o)}
         className="w-full flex items-center justify-between gap-2 py-2 group"
         aria-expanded={isOpen}
       >
-        <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-widest">
+        <span className="section-header">
           Prayer Requests 🙏
         </span>
-        <div className="flex-1 h-px bg-border/40 mx-2" />
+        <div className="flex-1 h-px mx-2" style={{ background: "#D4CFC4" }} />
         <span
-          className="text-muted-foreground/40 text-xs transition-transform duration-200"
-          style={{ display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          className="text-xs transition-transform duration-200"
+          style={{ display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", color: "#A89E92" }}
         >
           ▾
         </span>
@@ -193,9 +193,14 @@ export function PrayerSection() {
 
           {/* Empty state */}
           {!isLoading && requests.length === 0 && (
-            <p className="text-sm text-muted-foreground/60 text-center py-6 italic">
-              Your community, growing slowly, with care. 🙏 Share what's on your heart.
-            </p>
+            <div
+              className="rounded-2xl p-8 text-center"
+              style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
+            >
+              <div className="text-3xl mb-3">🙏</div>
+              <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>Your community is here to carry what you're carrying.</p>
+              <p className="text-xs" style={{ color: "#8C7B6B" }}>Nothing is too small to be held together.</p>
+            </div>
           )}
 
           {/* Prayer request rows */}
@@ -404,7 +409,7 @@ export function PrayerSection() {
         >
           <div
             className="rounded-t-3xl shadow-2xl px-6 pt-6 pb-10"
-            style={{ backgroundColor: "#E8E4D8" }}
+            style={{ backgroundColor: "#E8E2D5" }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
