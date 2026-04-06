@@ -196,6 +196,19 @@ export default function Onboarding() {
                   <p className="text-sm px-1" style={{ color: "#C17F24" }}>{error}</p>
                 )}
 
+                {mode === "signin" && (
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/forgot-password")}
+                      className="text-xs"
+                      style={{ color: "#9a9390" }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={submitting}

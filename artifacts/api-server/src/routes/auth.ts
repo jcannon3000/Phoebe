@@ -1,4 +1,5 @@
 import { getFrontendUrl } from "../lib/urls";
+import { sendEmail } from "../lib/email";
 import { Router, type IRouter } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
@@ -281,6 +282,68 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     if (err) { res.status(500).json({ error: "Login failed." }); return; }
     req.session.save(() => res.json({ ok: true }));
   });
+});
+
+// ─── POST /api/auth/forgot-password ──────────────────────────────────────────
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const { email } = req.body as { email?: string };
+  if (!email || !email.includes("@")) {
+    res.status(400).json({ error: "A valid email address is required." }); return;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, normalizedEmail));
+
+  // Always return success to prevent email enumeration
+  if (!user || !user.passwordHash) {
+    res.json({ ok: true }); return;
+  }
+
+  const token = randomBytes(32).toString("hex");
+  const expiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+
+  await db.update(usersTable)
+    .set({ resetToken: token, resetTokenExpiry: expiry } as Record<string, unknown>)
+    .where(eq(usersTable.id, user.id));
+
+  const resetUrl = `${frontendURL}/reset-password?token=${token}`;
+
+  // Try to send email; fall back to logging locally
+  try {
+    await sendEmail({
+      to: normalizedEmail,
+      subject: "Reset your Phoebe password",
+      text: `Hi ${user.name},\n\nClick the link below to reset your password. It expires in 1 hour.\n\n${resetUrl}\n\nIf you didn't request this, you can ignore this email.\n\n— Phoebe`,
+      html: `<p>Hi ${user.name},</p><p>Click the link below to reset your password. It expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p><p>— Phoebe</p>`,
+    });
+  } catch {
+    console.info(`[forgot-password] Reset link for ${normalizedEmail}: ${resetUrl}`);
+  }
+
+  res.json({ ok: true });
+});
+
+// ─── POST /api/auth/reset-password ───────────────────────────────────────────
+router.post("/auth/reset-password", async (req, res): Promise<void> => {
+  const { token, password } = req.body as { token?: string; password?: string };
+
+  if (!token) { res.status(400).json({ error: "Reset token is required." }); return; }
+  if (!password || password.length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters." }); return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.resetToken, token));
+
+  if (!user || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+    res.status(400).json({ error: "This reset link has expired or is invalid." }); return;
+  }
+
+  const passwordHash = await hashPassword(password);
+  await db.update(usersTable)
+    .set({ passwordHash, resetToken: null, resetTokenExpiry: null } as Record<string, unknown>)
+    .where(eq(usersTable.id, user.id));
+
+  res.json({ ok: true });
 });
 
 export { passport };

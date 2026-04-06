@@ -68,6 +68,24 @@ function encodeMimeMessage(options: {
   return Buffer.from(message).toString("base64url");
 }
 
+export async function sendEmail(options: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) return false;
+  try {
+    const raw = encodeMimeMessage(options);
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    console.error("Failed to send email:", err);
+    return false;
+  }
+}
+
 export async function sendMagicLinkEmail(
   to: string,
   magicLink: string,

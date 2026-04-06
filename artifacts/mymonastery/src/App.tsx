@@ -54,6 +54,8 @@ import WriteLetter from "./pages/Letters/WriteLetter";
 import ReadLetter from "./pages/Letters/ReadLetter";
 import LetterInvitePage from "./pages/Letters/InvitePage";
 import LetterNew from "./pages/Letters/LetterNew";
+import ForgotPassword from "./pages/forgot-password";
+import ResetPassword from "./pages/reset-password";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +70,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Onboarding} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />

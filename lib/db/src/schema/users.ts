@@ -12,6 +12,8 @@ export const usersTable = pgTable("users", {
   googleRefreshToken: text("google_refresh_token"),
   googleTokenExpiry: timestamp("google_token_expiry", { withTimezone: true }),
   passwordHash: text("password_hash"),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),
   showPresence: boolean("show_presence").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
