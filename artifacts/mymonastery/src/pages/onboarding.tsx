@@ -114,7 +114,7 @@ export default function Onboarding() {
           </div>
 
           {/* Mode toggle */}
-          <div className="flex rounded-full p-1 mb-5" style={{ background: "#E6E1D8" }}>
+          <div className="flex rounded-full p-1 mb-5" style={{ background: "#D8D2C8" }}>
             {(["signin", "register"] as Mode[]).map((m) => (
               <button
                 key={m}
@@ -203,22 +203,24 @@ export default function Onboarding() {
                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
-                {mode === "signin" && (
-                  <div className="text-right mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/forgot-password")}
-                      className="text-xs"
-                      style={{ color: "#5C7A5F" }}
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                )}
               </div>
 
               {error && (
-                <p className="text-sm px-1" style={{ color: "#C17F24" }}>{error}</p>
+                <div>
+                  <p className="text-sm px-1" style={{ color: "#C17F24" }}>{error}</p>
+                  {mode === "signin" && (
+                    <div className="text-right mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setLocation("/forgot-password")}
+                        className="text-xs"
+                        style={{ color: "#8C7B6B" }}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
 
               <button

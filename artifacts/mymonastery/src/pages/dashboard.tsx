@@ -140,7 +140,7 @@ function LettersSection() {
         <Link href="/letters/new">
           <div
             className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-sage"
-            style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
+            style={{ background: "#DDD8CE", borderWidth: "1px", borderStyle: "dashed", padding: "32px 24px" }}
           >
             <div className="text-3xl mb-2">✉️</div>
             <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to stay close to?</p>
@@ -282,7 +282,7 @@ function TraditionsSection() {
         <Link href="/tradition/new">
           <div
             className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-sage"
-            style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
+            style={{ background: "#DDD8CE", borderWidth: "1px", borderStyle: "dashed", padding: "32px 24px" }}
           >
             <div className="text-3xl mb-2">🫱🏻‍🫲🏾</div>
             <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to keep showing up for?</p>
