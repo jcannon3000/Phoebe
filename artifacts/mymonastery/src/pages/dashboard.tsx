@@ -19,11 +19,10 @@ function dayLabel(date: Date): string {
   return format(date, "EEE, MMM d");
 }
 
-function timeGreeting(): string {
+function timeGreeting(name?: string): string {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning.";
-  if (h < 17) return "Good afternoon.";
-  return "Good evening.";
+  const tod = h < 12 ? "good morning" : h < 17 ? "good afternoon" : "good evening";
+  return name ? `${name}, ${tod}.` : `${tod.charAt(0).toUpperCase()}${tod.slice(1)}.`;
 }
 
 // ─── FAB ─────────────────────────────────────────────────────────────────────
@@ -143,8 +142,8 @@ function LettersSection() {
             style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
           >
             <div className="text-3xl mb-2">✉️</div>
-            <p style={{ fontSize: "20px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "10px" }}>Who do you want to stay close to?</p>
-            <span className="font-semibold" style={{ fontSize: "15px", color: "#4A6FA5" }}>Start a correspondence →</span>
+            <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to stay close to?</p>
+            <span className="font-semibold" style={{ fontSize: "14px", color: "#4A6FA5" }}>Start a correspondence →</span>
           </div>
         </Link>
       ) : (
@@ -285,8 +284,8 @@ function GatheringsSection() {
             style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
           >
             <div className="text-3xl mb-2">🫱🏻‍🫲🏾</div>
-            <p style={{ fontSize: "20px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "10px" }}>Who do you want to keep showing up for?</p>
-            <span className="font-semibold" style={{ fontSize: "15px", color: "#C17F24" }}>Start a tradition →</span>
+            <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to keep showing up for?</p>
+            <span className="font-semibold" style={{ fontSize: "14px", color: "#C17F24" }}>Start a tradition →</span>
           </div>
         </Link>
       ) : (
@@ -371,7 +370,7 @@ export default function Dashboard() {
         {/* ── Time-of-day greeting ── */}
         <div className="mb-4">
           <p style={{ fontSize: "17px", color: "rgba(44,24,16,0.8)" }}>
-            {timeGreeting()} 🌿
+            {timeGreeting(user.name?.split(" ")[0])} 🌿
           </p>
         </div>
 
