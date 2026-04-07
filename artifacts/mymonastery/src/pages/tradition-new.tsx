@@ -40,59 +40,11 @@ export default function TraditionNew() {
   const [selectedPeople, setSelectedPeople] = useState<{ name: string; email: string }[]>([]);
   const [newPeople, setNewPeople] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [rhythm, setRhythm] = useState("");
-  const [selectedSlot, setSelectedSlot] = useState("");
-  const [altSlot1, setAltSlot1] = useState("");
-  const [altSlot2, setAltSlot2] = useState("");
+  const [firstPick, setFirstPick] = useState("");
+  const [altTime1, setAltTime1] = useState("");
+  const [altTime2, setAltTime2] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  interface Slot { day: string; date: string; time: string; value: string }
-
-  function generateSlots(freq: string): Slot[] {
-    const today = new Date();
-    const fmtDay  = (d: Date) => d.toLocaleDateString("en-US", { weekday: "long" });
-    const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-    const slot = (d: Date, time: string): Slot => ({
-      day: fmtDay(d), date: fmtDate(d), time,
-      value: `${fmtDate(d)}-${time}`,
-    });
-
-    // Next Saturday from today (minimum 2 days away)
-    const daysUntilSat = ((6 - today.getDay()) + 7) % 7 || 7;
-    const sat1 = new Date(today); sat1.setDate(today.getDate() + daysUntilSat);
-    const sun1 = new Date(sat1);  sun1.setDate(sat1.getDate() + 1);
-    const sat2 = new Date(sat1);  sat2.setDate(sat1.getDate() + 7);
-    const sat4 = new Date(sat1);  sat4.setDate(sat1.getDate() + 14);
-
-    if (freq === "weekly") {
-      return [
-        slot(sat1, "10:00 AM"),
-        slot(sat1, "2:00 PM"),
-        slot(sun1, "10:00 AM"),
-        slot(sat2, "10:00 AM"),
-      ];
-    }
-    if (freq === "biweekly") {
-      return [
-        slot(sat1, "10:00 AM"),
-        slot(sat1, "2:00 PM"),
-        slot(sat4, "10:00 AM"),
-        slot(sat4, "2:00 PM"),
-      ];
-    }
-    if (freq === "monthly") {
-      const results: Slot[] = [];
-      for (let m = 0; m < 3; m++) {
-        const d = new Date(today.getFullYear(), today.getMonth() + m + (today.getDate() > 20 ? 1 : 0), 1);
-        while (d.getDay() !== 6) d.setDate(d.getDate() + 1);
-        if (d <= today) d.setDate(d.getDate() + 7);
-        results.push(slot(d, "10:00 AM"));
-        if (m === 0) results.push(slot(d, "2:00 PM"));
-      }
-      return results;
-    }
-    return [];
-  }
 
   const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (step === 2) nameRef.current?.focus(); }, [step]);
@@ -143,28 +95,28 @@ export default function TraditionNew() {
   function handleRhythmNext() {
     if (!rhythm) { setError("Choose a rhythm."); return; }
     setError("");
-    setSelectedSlot("");
-    setAltSlot1("");
-    setAltSlot2("");
     setStep(4);
   }
 
   async function handleCreate() {
     if (!user) return;
-    if (!selectedSlot) { setError("Pick a time for your first gathering."); return; }
+    if (!firstPick) { setError("Pick a time for your first gathering."); return; }
     setSubmitting(true);
     setError("");
     try {
       const participants = allPeople.filter((p) => p.email.trim());
+      const proposedTimes = [firstPick, altTime1, altTime2]
+        .filter(Boolean)
+        .map((t) => new Date(t).toISOString());
+
       const result = await apiRequest<{ id: number }>("POST", "/api/rituals", {
         name: name.trim(),
         frequency: rhythm,
         participants,
         intention: TEMPLATE_OPTIONS.find((o) => o.value === template)?.tagline || `A ${name} gathering.`,
         ownerId: user.id,
-        dayPreference: selectedSlot,
-        altSlot1: altSlot1 || null,
-        altSlot2: altSlot2 || null,
+        dayPreference: firstPick,
+        proposedTimes,
         rhythm,
         hasIntercession: false,
         hasFasting: false,
@@ -401,168 +353,75 @@ export default function TraditionNew() {
             </motion.div>
           )}
 
-          {/* Step 4 — Suggest a time */}
+          {/* Step 4 — When */}
           {step === 4 && (
             <motion.div key="s4" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Suggest a time 🫱🏻‍🫲🏾
-              </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
-                Pick your first choice, then offer two alternates your group can vote on.
-              </p>
-
-              {(() => {
-                const slots = generateSlots(rhythm);
-
-                return (
-                  <div className="space-y-6">
-
-                    {/* Your pick — prominent */}
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "#C17F24" }}>
-                        Your pick
-                      </p>
-                      <div className="space-y-2.5">
-                        {slots.map((slot) => {
-                          const isSelected = selectedSlot === slot.value;
-                          return (
-                            <button
-                              key={slot.value}
-                              onClick={() => {
-                                setSelectedSlot(slot.value);
-                                // Clear alt slots if they match the new primary
-                                if (altSlot1 === slot.value) setAltSlot1("");
-                                if (altSlot2 === slot.value) setAltSlot2("");
-                              }}
-                              className="w-full text-left rounded-2xl transition-all active:scale-[0.99]"
-                              style={{
-                                background: isSelected ? "#5C7A5F" : "#fff",
-                                border: isSelected ? "2px solid #5C7A5F" : "2px solid rgba(44,24,16,0.1)",
-                                padding: "16px 18px",
-                              }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p
-                                    className="text-base font-bold leading-tight"
-                                    style={{
-                                      color: isSelected ? "#fff" : "#2C1810",
-                                      fontFamily: "'Space Grotesk', sans-serif",
-                                    }}
-                                  >
-                                    {slot.day}
-                                  </p>
-                                  <p
-                                    className="text-sm mt-0.5"
-                                    style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "#9a9390" }}
-                                  >
-                                    {slot.date}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className="px-3 py-1.5 rounded-lg text-sm font-semibold"
-                                    style={{
-                                      background: isSelected ? "rgba(255,255,255,0.2)" : "rgba(44,24,16,0.05)",
-                                      color: isSelected ? "#fff" : "#2C1810",
-                                    }}
-                                  >
-                                    {slot.time}
-                                  </div>
-                                  {isSelected && (
-                                    <span className="text-base font-bold" style={{ color: "#fff" }}>✓</span>
-                                  )}
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Alternates — only show after primary is picked */}
-                    {selectedSlot && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.25 }}
-                      >
-                        <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#9a9390" }}>
-                          Alternate times (optional)
-                        </p>
-                        <p className="text-xs mb-3" style={{ color: "#9a9390" }}>
-                          Your group can say if one of these works better.
-                        </p>
-                        <div className="space-y-2">
-                          {slots
-                            .filter((s) => s.value !== selectedSlot)
-                            .map((slot) => {
-                              const isAlt1 = altSlot1 === slot.value;
-                              const isAlt2 = altSlot2 === slot.value;
-                              const isAlt = isAlt1 || isAlt2;
-                              const bothFilled = altSlot1 && altSlot2;
-
-                              return (
-                                <button
-                                  key={slot.value}
-                                  onClick={() => {
-                                    if (isAlt1) { setAltSlot1(""); return; }
-                                    if (isAlt2) { setAltSlot2(""); return; }
-                                    if (!altSlot1) { setAltSlot1(slot.value); return; }
-                                    if (!altSlot2) { setAltSlot2(slot.value); return; }
-                                  }}
-                                  disabled={!isAlt && !!bothFilled}
-                                  className="w-full text-left rounded-xl transition-all active:scale-[0.99] disabled:opacity-30"
-                                  style={{
-                                    background: isAlt ? "rgba(92,122,95,0.06)" : "#fff",
-                                    border: `1.5px solid ${isAlt ? "#5C7A5F" : "rgba(44,24,16,0.08)"}`,
-                                    padding: "12px 14px",
-                                  }}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>
-                                        {slot.day}
-                                      </p>
-                                      <p className="text-xs" style={{ color: "#9a9390" }}>
-                                        {slot.date}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span
-                                        className="text-xs font-medium px-2 py-1 rounded-md"
-                                        style={{
-                                          background: isAlt ? "rgba(92,122,95,0.1)" : "rgba(44,24,16,0.04)",
-                                          color: isAlt ? "#5C7A5F" : "#9a9390",
-                                        }}
-                                      >
-                                        {slot.time}
-                                      </span>
-                                      {isAlt && (
-                                        <span className="text-sm font-bold" style={{ color: "#5C7A5F" }}>✓</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {error && <p className="text-sm mt-6 mb-2" style={{ color: "#C17F24" }}>{error}</p>}
-
-              <button
-                onClick={handleCreate}
-                disabled={!selectedSlot || submitting}
-                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all mt-8"
-                style={{ background: "#5C7A5F", color: "#fff" }}
+              <div
+                className="rounded-2xl p-6"
+                style={{ background: "#fff", border: "1px solid rgba(44,24,16,0.08)" }}
               >
-                {submitting ? "Starting..." : "Start this tradition 🫱🏻‍🫲🏾"}
-              </button>
+                <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  When should you first gather?
+                </h1>
+                <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
+                  Pick your first choice and two alternates. Your group will say which works best.
+                </p>
+
+                {/* First Pick */}
+                <div className="mb-6">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C17F24" }}>
+                    First Pick
+                  </p>
+                  <input
+                    type="datetime-local"
+                    value={firstPick}
+                    onChange={(e) => setFirstPick(e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
+                    style={{ background: "#fff", border: "1.5px solid #C8C4B4", color: "#2C1810" }}
+                  />
+                </div>
+
+                {/* First Alternative */}
+                <div className="mb-6">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#9a9390" }}>
+                    First Alternative
+                  </p>
+                  <input
+                    type="datetime-local"
+                    value={altTime1}
+                    onChange={(e) => setAltTime1(e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
+                    style={{ background: "#fff", border: "1.5px solid #C8C4B4", color: "#2C1810" }}
+                  />
+                </div>
+
+                {/* Second Alternative */}
+                <div className="mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#9a9390" }}>
+                    Second Alternative
+                  </p>
+                  <input
+                    type="datetime-local"
+                    value={altTime2}
+                    onChange={(e) => setAltTime2(e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
+                    style={{ background: "#fff", border: "1.5px solid #C8C4B4", color: "#2C1810" }}
+                  />
+                </div>
+              </div>
+
+              {error && <p className="text-sm mt-4 mb-2" style={{ color: "#C17F24" }}>{error}</p>}
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={handleCreate}
+                  disabled={!firstPick || submitting}
+                  className="px-10 py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
+                  style={{ background: "#C17F24", color: "#fff" }}
+                >
+                  {submitting ? "Starting..." : "Continue →"}
+                </button>
+              </div>
             </motion.div>
           )}
 

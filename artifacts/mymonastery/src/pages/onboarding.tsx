@@ -117,7 +117,7 @@ export default function Onboarding() {
           </div>
 
           {/* Mode toggle */}
-          <div className="flex rounded-full p-1.5 mb-6" style={{ background: "#D8D2C8" }}>
+          <div className="flex rounded-full p-1.5 mb-6" style={{ background: "#DCD7CE" }}>
             {(["signin", "register"] as Mode[]).map((m) => (
               <button
                 key={m}
@@ -128,7 +128,7 @@ export default function Onboarding() {
                   background: mode === m ? "#FFFFFF" : "transparent",
                   color: mode === m ? "#2C1810" : "#8C7B6B",
                   fontWeight: mode === m ? 600 : 400,
-                  boxShadow: mode === m ? "0 2px 8px rgba(44,24,16,0.10)" : "none",
+                  boxShadow: mode === m ? "0 2px 10px rgba(44,24,16,0.14)" : "none",
                 }}
               >
                 {m === "signin" ? "Sign in" : "Create account"}
