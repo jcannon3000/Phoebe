@@ -369,7 +369,7 @@ export default function Dashboard() {
       <div className="flex flex-col w-full pb-28">
 
         {/* ── Time-of-day greeting ── */}
-        <div className="mb-4">
+        <div className="mb-2">
           <p style={{ fontSize: "17px", color: "rgba(44,24,16,0.8)" }}>
             {timeGreeting()} 🌿
           </p>

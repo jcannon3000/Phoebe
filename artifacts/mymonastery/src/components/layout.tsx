@@ -91,7 +91,7 @@ export function Layout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main className="flex-1 flex flex-col pt-4 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
