@@ -107,7 +107,7 @@ export default function Onboarding() {
           >
             {/* Hero */}
             <div className="text-center mb-8">
-              <div className="text-5xl mb-5 animate-float inline-block">🌿</div>
+              <div className="text-5xl mb-5 animate-float inline-block">📬</div>
               <h1 className="text-2xl font-bold mb-4 leading-tight" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
                 Be together with Phoebe.
               </h1>
