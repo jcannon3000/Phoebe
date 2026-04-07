@@ -28,7 +28,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center" style={{ background: "#F0EBE0" }}>
         <div className="flex items-center gap-6">
           <Link href="/dashboard" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md">
-            <span className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors" style={{ letterSpacing: "-0.025em", fontFamily: "'Space Grotesk', sans-serif" }}>
+            <span className="text-2xl font-bold transition-colors" style={{ letterSpacing: "-0.025em", fontFamily: "'Space Grotesk', sans-serif", color: "#5C7A5F" }}>
               Phoebe ✨
             </span>
           </Link>

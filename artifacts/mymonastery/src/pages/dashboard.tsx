@@ -373,6 +373,9 @@ export default function Dashboard() {
           <p style={{ fontSize: "17px", color: "rgba(44,24,16,0.8)" }}>
             {timeGreeting()} 🌿
           </p>
+          <p style={{ fontSize: "14px", color: "rgba(44,24,16,0.45)", marginTop: "4px" }}>
+            Cultivate the connections that matter most.
+          </p>
         </div>
 
         {/* ── Letters ── */}
