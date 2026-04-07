@@ -19,10 +19,11 @@ function dayLabel(date: Date): string {
   return format(date, "EEE, MMM d");
 }
 
-function timeGreeting(name?: string): string {
+function timeGreeting(): string {
   const h = new Date().getHours();
-  const tod = h < 12 ? "good morning" : h < 17 ? "good afternoon" : "good evening";
-  return name ? `${name}, ${tod}.` : `${tod.charAt(0).toUpperCase()}${tod.slice(1)}.`;
+  if (h < 12) return "Kairo, good morning.";
+  if (h < 17) return "Kairo, good afternoon.";
+  return "Kairo, good evening.";
 }
 
 // ─── FAB ─────────────────────────────────────────────────────────────────────
@@ -370,7 +371,7 @@ export default function Dashboard() {
         {/* ── Time-of-day greeting ── */}
         <div className="mb-4">
           <p style={{ fontSize: "17px", color: "rgba(44,24,16,0.8)" }}>
-            {timeGreeting(user.name?.split(" ")[0])} 🌿
+            {timeGreeting()} 🌿
           </p>
         </div>
 
