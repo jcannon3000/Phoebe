@@ -112,7 +112,7 @@ export default function Onboarding() {
                 Be together with Phoebe.
               </h1>
               <p className="text-sm leading-relaxed mb-3" style={{ color: "#8C7B6B" }}>
-                Set apart space to cultivate the connections that matter.
+                Set apart space to cultivate connection.
               </p>
               <p className="text-sm leading-relaxed" style={{ color: "#A89E92" }}>
                 Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
