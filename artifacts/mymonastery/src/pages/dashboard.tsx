@@ -281,7 +281,7 @@ function GatheringsSection() {
           className="rounded-2xl p-8 text-center"
           style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
         >
-          <div className="text-3xl mb-3">🎉</div>
+          <div className="text-3xl mb-3">🫱🏻‍🫲🏾</div>
           <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>Monks have always known: connection grows through repeated gatherings.</p>
           <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>Phoebe helps you commit to a rhythm — weekly, fortnightly, or monthly — and keeps the tradition alive.</p>
           <Link href="/tradition/new">
