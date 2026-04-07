@@ -112,9 +112,6 @@ export default function Onboarding() {
             <p className="text-base leading-relaxed mb-5" style={{ color: "#8C7B6B" }}>
               The strength of our relationships is what makes life most vibrant. Phoebe sets apart space to stay close to the people who matter most, drawing on the wisdom of monastic life made new for a world of isolation and distraction.
             </p>
-            <p className="text-sm leading-relaxed italic" style={{ color: "#A89E92" }}>
-              Phoebe was the deacon who carried Paul's letter to Rome and gathered the church in her home.
-            </p>
           </motion.div>
 
           {/* Auth form */}

@@ -113,10 +113,7 @@ function LettersSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader
-          label="Letters 📮"
-          epigraph="For centuries, monks have cultivated their deepest relationships through writing. That practice gets lost in the noise of texts and emails. Phoebe sets it apart — one letter, one person, once a week. A correspondence with history."
-        />
+        <SectionHeader label="Letters 📮" />
         <div className="space-y-4 mb-16">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -130,19 +127,16 @@ function LettersSection() {
 
   return (
     <div className="mb-16">
-      <SectionHeader
-        label="Letters 📮"
-        epigraph="For centuries, monks have cultivated their deepest relationships through writing. That practice gets lost in the noise of texts and emails. Phoebe sets it apart — one letter, one person, once a week. A correspondence with history."
-      />
+      <SectionHeader label="Letters 📮" />
 
       {items.length === 0 ? (
         <div
           className="rounded-2xl p-8 text-center"
           style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
         >
-          <div className="text-3xl mb-3">📮</div>
-          <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>Letters are how belonging gets cultivated, one week at a time.</p>
-          <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>A real dialogue. A shared history. A relationship that deepens.</p>
+          <p className="text-[13px] italic leading-relaxed mb-5" style={{ color: "#8C7B6B" }}>
+            For centuries, monks have cultivated their deepest relationships through writing. That practice gets lost in the noise of texts and emails. Phoebe sets it apart — one letter, one person, once a week. A correspondence with history.
+          </p>
           <Link href="/letters/new">
             <span className="text-sm font-medium" style={{ color: "#5C7A5F" }}>Start a correspondence →</span>
           </Link>
@@ -264,8 +258,7 @@ function GatheringsSection() {
       <>
         <SectionHeader
           label="Traditions 🎉"
-          epigraph="Monks have always known: connection grows through repeated gatherings. Phoebe helps you commit to a rhythm — weekly, fortnightly, or monthly — and keeps the tradition alive."
-        />
+          />
         <div className="space-y-4 mb-16">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -281,7 +274,6 @@ function GatheringsSection() {
     <div className="mb-16">
       <SectionHeader
         label="Traditions 🎉"
-        epigraph="Monks have always known: connection grows through repeated gatherings. Phoebe helps you commit to a rhythm — weekly, fortnightly, or monthly — and keeps the tradition alive."
       />
 
       {gatherings.length === 0 ? (
@@ -289,9 +281,9 @@ function GatheringsSection() {
           className="rounded-2xl p-8 text-center"
           style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
         >
-          <div className="text-3xl mb-3">🎉</div>
-          <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>Community grows where people keep showing up.</p>
-          <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>Commit to a rhythm. Phoebe handles the rest.</p>
+          <p className="text-[13px] italic leading-relaxed mb-5" style={{ color: "#8C7B6B" }}>
+            Monks have always known: connection grows through repeated gatherings. Phoebe helps you commit to a rhythm — weekly, fortnightly, or monthly — and keeps the tradition alive.
+          </p>
           <Link href="/tradition/new">
             <span className="text-sm font-medium" style={{ color: "#C17F24" }}>Start a tradition →</span>
           </Link>
