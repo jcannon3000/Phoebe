@@ -27,11 +27,8 @@ export function PrayerSection() {
   const [inputValue, setInputValue] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [pendingBody, setPendingBody] = useState("");
-  const [isAnonymous, setIsAnonymous] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [wordInputs, setWordInputs] = useState<Record<number, string>>({});
-  const [releasedId, setReleasedId] = useState<number | null>(null);
-  const [answeredId, setAnsweredId] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -41,13 +38,12 @@ export function PrayerSection() {
   });
 
   const submitMutation = useMutation({
-    mutationFn: ({ body, isAnonymous }: { body: string; isAnonymous: boolean }) =>
-      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous }),
+    mutationFn: ({ body }: { body: string }) =>
+      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       setInputValue("");
       setPendingBody("");
-      setIsAnonymous(false);
       setShowModal(false);
     },
   });
@@ -58,35 +54,6 @@ export function PrayerSection() {
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       setWordInputs(prev => ({ ...prev, [id]: "" }));
-    },
-  });
-
-  const answerMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/answer`),
-    onSuccess: (_data, id) => {
-      setAnsweredId(id);
-      setTimeout(() => {
-        setAnsweredId(null);
-        queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-      }, 1500);
-    },
-  });
-
-  const renewMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    },
-  });
-
-  const releaseMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/release`),
-    onSuccess: (_data, id) => {
-      setReleasedId(id);
-      setTimeout(() => {
-        setReleasedId(null);
-        queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-      }, 1500);
     },
   });
 
@@ -106,13 +73,12 @@ export function PrayerSection() {
 
   const handleModalSubmit = () => {
     if (!pendingBody.trim()) return;
-    submitMutation.mutate({ body: pendingBody.trim(), isAnonymous });
+    submitMutation.mutate({ body: pendingBody.trim() });
   };
 
   const handleModalCancel = () => {
     setShowModal(false);
     setPendingBody("");
-    setIsAnonymous(false);
   };
 
   const handleRowClick = (id: number) => {
@@ -212,8 +178,6 @@ export function PrayerSection() {
             <div>
               {requests.map((request, idx) => {
                 const isExpanded = expandedId === request.id;
-                const isReleased = releasedId === request.id;
-                const isAnsweredBrief = answeredId === request.id;
                 const isLast = idx === requests.length - 1;
 
                 return (
@@ -226,10 +190,10 @@ export function PrayerSection() {
                       className="flex gap-0 cursor-pointer hover:bg-[#D4896A]/[0.04] transition-colors"
                       onClick={() => handleRowClick(request.id)}
                     >
-                      {/* Blush accent bar */}
+                      {/* Sage accent bar */}
                       <div
                         className="w-0.5 self-stretch shrink-0"
-                        style={{ backgroundColor: "#D4896A" }}
+                        style={{ backgroundColor: "#5C7A5F" }}
                       />
 
                       <div className="flex-1 p-4 pl-3 min-w-0">
@@ -237,9 +201,7 @@ export function PrayerSection() {
                           <div className="flex-1 min-w-0">
                             {/* Attribution */}
                             <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-1">
-                              {request.isAnonymous
-                                ? "From someone in your garden 🌿"
-                                : `From ${request.ownerName ?? "someone"}`}
+                              From {request.ownerName ?? "someone"}
                             </p>
                             {/* Body */}
                             <p className="text-sm leading-relaxed" style={{ color: "#2C1810" }}>
@@ -263,6 +225,13 @@ export function PrayerSection() {
                             </button>
                           )}
                         </div>
+
+                        {/* Nearing expiry — quiet line */}
+                        {request.nearingExpiry && (
+                          <p className="text-xs italic mt-2" style={{ color: "#8C7B6B" }}>
+                            Released tomorrow 🌿
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -270,129 +239,64 @@ export function PrayerSection() {
                     {isExpanded && (
                       <div
                         className="pl-4 pr-4 pb-4"
-                        style={{ borderLeft: "2px solid #D4896A", marginLeft: "2px" }}
+                        style={{ borderLeft: "2px solid #5C7A5F", marginLeft: "2px" }}
                         onClick={e => e.stopPropagation()}
                       >
-                        {/* Nearing expiry banner */}
-                        {request.isOwnRequest && request.nearingExpiry && !isReleased && !isAnsweredBrief && (
-                          <div
-                            className="mb-3 px-3 py-2 rounded-lg text-xs italic"
-                            style={{ backgroundColor: "#C17F24/10", color: "#C17F24", border: "1px solid #C17F24/30" }}
-                          >
-                            <span style={{ color: "#C17F24" }}>
-                              This has been held for three days. Renew it or let it rest? 🌿
-                            </span>
-                            <div className="flex gap-3 mt-1.5 not-italic">
-                              <button
-                                type="button"
-                                onClick={() => renewMutation.mutate(request.id)}
-                                disabled={renewMutation.isPending}
-                                className="underline underline-offset-2 transition-opacity hover:opacity-70 disabled:opacity-40"
-                                style={{ color: "#C17F24" }}
-                              >
-                                Renew for three more days
-                              </button>
-                              <span style={{ color: "#C17F24/50" }}>·</span>
-                              <button
-                                type="button"
-                                onClick={() => releaseMutation.mutate(request.id)}
-                                disabled={releaseMutation.isPending}
-                                className="underline underline-offset-2 transition-opacity hover:opacity-70 disabled:opacity-40"
-                                style={{ color: "#C17F24" }}
-                              >
-                                Let it rest
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Released brief state */}
-                        {isReleased && (
-                          <p className="text-sm italic text-center py-2" style={{ color: "#5C7A5F" }}>
-                            🌾 Released with gratitude
-                          </p>
-                        )}
-
-                        {/* Answered brief state */}
-                        {isAnsweredBrief && (
-                          <p className="text-sm italic text-center py-2" style={{ color: "#5C7A5F" }}>
-                            🌾 Held and answered
-                          </p>
-                        )}
-
-                        {!isReleased && !isAnsweredBrief && (
+                        {request.words.length > 0 && (
                           <>
-                            {/* Words from the garden */}
                             <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-2 mt-1">
-                              Words from the garden:
+                              From your community
                             </p>
 
-                            {request.words.length === 0 ? (
-                              <p className="text-sm italic mb-3" style={{ color: "#5C7A5F" }}>
-                                Be the first to hold this 🌿
-                              </p>
-                            ) : (
-                              <div className="mb-3 space-y-1">
-                                {request.words.map((w, i) => {
-                                  const isMyWord = request.myWord && w.content === request.myWord;
-                                  return (
-                                    <p key={i} className="text-sm text-muted-foreground/70">
-                                      <span className="font-medium text-muted-foreground/80">{w.authorName}</span>
-                                      {": "}
-                                      {w.content}
-                                      {isMyWord && " 🌿"}
-                                    </p>
-                                  );
-                                })}
-                              </div>
-                            )}
+                            <div className="mb-3 space-y-1">
+                              {request.words.map((w, i) => {
+                                const isMyWord = request.myWord && w.content === request.myWord;
+                                return (
+                                  <p key={i} className="text-sm text-muted-foreground/70">
+                                    <span className="font-medium text-muted-foreground/80">{w.authorName}</span>
+                                    {": "}
+                                    {w.content}
+                                    {isMyWord && " 🌿"}
+                                  </p>
+                                );
+                              })}
+                            </div>
 
-                            {/* Word input — hide if user already left a word */}
-                            {!request.myWord && !request.isOwnRequest && (
-                              <div className="flex gap-2 mt-2">
-                                <input
-                                  type="text"
-                                  value={wordInputs[request.id] || ""}
-                                  onChange={e =>
-                                    setWordInputs(prev => ({
-                                      ...prev,
-                                      [request.id]: e.target.value,
-                                    }))
-                                  }
-                                  onKeyDown={e => {
-                                    if (e.key === "Enter") handleWordSubmit(request.id);
-                                  }}
-                                  placeholder="Leave a word alongside this… 🌿"
-                                  maxLength={120}
-                                  className="flex-1 text-sm px-3 py-2 rounded-lg border border-border/50 bg-card placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/40 transition-all"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleWordSubmit(request.id)}
-                                  disabled={!(wordInputs[request.id] || "").trim() || wordMutation.isPending}
-                                  className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-                                  style={{ backgroundColor: "#D4896A", color: "#E8E4D8" }}
-                                >
-                                  🙏
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Own request actions */}
-                            {request.isOwnRequest && (
-                              <div className="flex justify-end mt-3">
-                                <button
-                                  type="button"
-                                  onClick={() => answerMutation.mutate(request.id)}
-                                  disabled={answerMutation.isPending}
-                                  className="text-xs transition-opacity hover:opacity-70 disabled:opacity-40"
-                                  style={{ color: "#5C7A5F" }}
-                                >
-                                  Mark as answered ✓
-                                </button>
-                              </div>
-                            )}
+                            <p className="text-xs italic mb-3" style={{ color: "#5C7A5F" }}>
+                              Your community is holding this. 🙏
+                            </p>
                           </>
+                        )}
+
+                        {/* Word input — hide if user already left a word */}
+                        {!request.myWord && !request.isOwnRequest && (
+                          <div className="flex gap-2 mt-2">
+                            <input
+                              type="text"
+                              value={wordInputs[request.id] || ""}
+                              onChange={e =>
+                                setWordInputs(prev => ({
+                                  ...prev,
+                                  [request.id]: e.target.value,
+                                }))
+                              }
+                              onKeyDown={e => {
+                                if (e.key === "Enter") handleWordSubmit(request.id);
+                              }}
+                              placeholder="Leave a word alongside this… 🌿"
+                              maxLength={120}
+                              className="flex-1 text-sm px-3 py-2 rounded-lg border border-border/50 bg-card placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/40 transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleWordSubmit(request.id)}
+                              disabled={!(wordInputs[request.id] || "").trim() || wordMutation.isPending}
+                              className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                              style={{ backgroundColor: "#D4896A", color: "#E8E4D8" }}
+                            >
+                              🙏
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -421,7 +325,7 @@ export function PrayerSection() {
               className="text-lg font-serif mb-4"
               style={{ color: "#2C1810" }}
             >
-              Hold this with your garden 🌿
+              Hold this with your community 🌿
             </h2>
 
             {/* Request preview */}
@@ -432,35 +336,9 @@ export function PrayerSection() {
               {pendingBody}
             </div>
 
-            {/* Anonymous toggle */}
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-sm" style={{ color: "#2C1810" }}>
-                Share anonymously
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isAnonymous}
-                onClick={() => setIsAnonymous(a => !a)}
-                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
-                style={{ backgroundColor: isAnonymous ? "#D4896A" : "#c5b8a8" }}
-              >
-                <span
-                  className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
-                  style={{ transform: isAnonymous ? "translateX(22px)" : "translateX(4px)" }}
-                />
-              </button>
-            </div>
-            {isAnonymous && (
-              <p className="text-xs italic mb-4" style={{ color: "#5C7A5F" }}>
-                (Your name won't be shown)
-              </p>
-            )}
-            {!isAnonymous && <div className="mb-4" />}
-
             {/* Instructional copy */}
             <p className="text-xs italic mb-6" style={{ color: "#5C7A5F" }}>
-              Your garden will hold this for three days. On the third day, you can renew it or let it rest. 🌿
+              Your community will hold this for three days. On the third day it will quietly be released. 🌿
             </p>
 
             {/* Submit button */}
@@ -471,7 +349,7 @@ export function PrayerSection() {
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#2C1810", color: "#E8E4D8" }}
             >
-              {submitMutation.isPending ? "Sharing…" : "Share with my garden 🙏"}
+              {submitMutation.isPending ? "Sharing…" : "Share with my community 🙏"}
             </button>
 
             {/* Cancel */}
