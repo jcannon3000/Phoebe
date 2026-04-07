@@ -172,7 +172,7 @@ export function PrayerSection() {
           {!isLoading && requests.length === 0 && (
             <div
               className="rounded-2xl p-8 text-center"
-              style={{ background: "#E8E2D5", border: "1px solid rgba(44,24,16,0.08)", boxShadow: "0 2px 12px rgba(44,24,16,0.06)" }}
+              style={{ background: "#F0ECE4", border: "1px solid rgba(44,24,16,0.06)", boxShadow: "0 1px 6px rgba(44,24,16,0.04)" }}
             >
               <div className="text-3xl mb-3">🙏</div>
               <p className="italic" style={{ fontSize: "16px", lineHeight: 1.5, color: "#2C1810", marginBottom: "6px" }}>Your community is here to carry what you're carrying.</p>

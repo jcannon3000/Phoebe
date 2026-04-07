@@ -140,7 +140,7 @@ function LettersSection() {
         <Link href="/letters/new">
           <div
             className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-lg"
-            style={{ background: "#E8E2D5", border: "1px solid rgba(44,24,16,0.08)", padding: "36px 24px", boxShadow: "0 2px 12px rgba(44,24,16,0.06)" }}
+            style={{ background: "#F0ECE4", border: "1px solid rgba(44,24,16,0.06)", padding: "36px 24px", boxShadow: "0 1px 6px rgba(44,24,16,0.04)" }}
           >
             <div className="text-3xl mb-2">✉️</div>
             <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to stay close to?</p>
@@ -282,7 +282,7 @@ function TraditionsSection() {
         <Link href="/tradition/new">
           <div
             className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-lg"
-            style={{ background: "#E8E2D5", border: "1px solid rgba(44,24,16,0.08)", padding: "36px 24px", boxShadow: "0 2px 12px rgba(44,24,16,0.06)" }}
+            style={{ background: "#F0ECE4", border: "1px solid rgba(44,24,16,0.06)", padding: "36px 24px", boxShadow: "0 1px 6px rgba(44,24,16,0.04)" }}
           >
             <div className="text-3xl mb-2">🫱🏻‍🫲🏾</div>
             <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to keep showing up for?</p>
