@@ -1,6 +1,7 @@
 [variables]
 NIXPACKS_PNPM_VERSION = "10"
 NIXPACKS_NO_CACHE = "1"
+NIXPACKS_NODE_VERSION = "22"
 
 [phases.install]
 cmds = ["pnpm install --no-frozen-lockfile"]
