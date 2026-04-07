@@ -134,9 +134,9 @@ function LettersSection() {
           className="rounded-2xl p-8 text-center"
           style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
         >
-          <p className="text-[13px] italic leading-relaxed mb-5" style={{ color: "#8C7B6B" }}>
-            For centuries, monks have cultivated their deepest relationships through writing. That practice gets lost in the noise of texts and emails. Phoebe sets it apart — one letter, one person, once a week. A correspondence with history.
-          </p>
+          <div className="text-3xl mb-3">📮</div>
+          <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>For centuries, monks have cultivated their deepest relationships through writing.</p>
+          <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>That practice gets lost in the noise of texts and emails. Phoebe sets it apart — one letter, one person, once a week. A correspondence with history.</p>
           <Link href="/letters/new">
             <span className="text-sm font-medium" style={{ color: "#5C7A5F" }}>Start a correspondence →</span>
           </Link>
@@ -281,9 +281,9 @@ function GatheringsSection() {
           className="rounded-2xl p-8 text-center"
           style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
         >
-          <p className="text-[13px] italic leading-relaxed mb-5" style={{ color: "#8C7B6B" }}>
-            Monks have always known: connection grows through repeated gatherings. Phoebe helps you commit to a rhythm — weekly, fortnightly, or monthly — and keeps the tradition alive.
-          </p>
+          <div className="text-3xl mb-3">🎉</div>
+          <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>Monks have always known: connection grows through repeated gatherings.</p>
+          <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>Phoebe helps you commit to a rhythm — weekly, fortnightly, or monthly — and keeps the tradition alive.</p>
           <Link href="/tradition/new">
             <span className="text-sm font-medium" style={{ color: "#C17F24" }}>Start a tradition →</span>
           </Link>
