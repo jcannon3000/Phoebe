@@ -235,6 +235,10 @@ export default function Onboarding() {
             </motion.form>
           </AnimatePresence>
         </motion.div>
+
+        <p className="text-center text-[11px] italic mt-10" style={{ color: "#C4BAB0" }}>
+          Inspired by Monastic Tradition
+        </p>
       </main>
     </div>
   );
