@@ -112,7 +112,7 @@ export default function Onboarding() {
                 Be together with Phoebe.
               </h1>
               <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
-                Set apart space to stay close to the people who matter most.
+                Set apart space to cultivate the connections that matter.
               </p>
             </div>
             {/* Mode toggle */}
