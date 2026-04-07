@@ -109,10 +109,10 @@ export default function Onboarding() {
               Be together with Phoebe.
             </h1>
             <p className="leading-relaxed" style={{ fontSize: "15px", color: "#8C7B6B" }}>
-              Letters and gatherings.
+              Cultivate connections through writing letters
             </p>
             <p className="leading-relaxed" style={{ fontSize: "15px", color: "#8C7B6B" }}>
-              The oldest community technology in the world.
+              and finding time to gather in person.
             </p>
           </div>
 
