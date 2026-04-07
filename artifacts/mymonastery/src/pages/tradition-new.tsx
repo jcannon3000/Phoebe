@@ -116,13 +116,18 @@ export default function TraditionNew() {
         intention: TEMPLATE_OPTIONS.find((o) => o.value === template)?.tagline || `A ${name} gathering.`,
         ownerId: user.id,
         dayPreference: firstPick,
-        proposedTimes,
         rhythm,
         hasIntercession: false,
         hasFasting: false,
         intercessionIntention: null,
         fastingDescription: null,
       });
+
+      // Save proposed times → creates meetup + Google Calendar invite with alternates
+      await apiRequest("PATCH", `/api/rituals/${result.id}/proposed-times`, {
+        proposedTimes,
+      });
+
       qc.invalidateQueries({ queryKey: ["/api/rituals"] });
       setLocation(`/ritual/${result.id}`);
     } catch (err) {
