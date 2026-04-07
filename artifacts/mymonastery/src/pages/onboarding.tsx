@@ -80,7 +80,7 @@ export default function Onboarding() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F0EBE0" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F7F4EE" }}>
         <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );

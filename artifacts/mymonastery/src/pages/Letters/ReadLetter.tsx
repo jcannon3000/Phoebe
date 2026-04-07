@@ -93,7 +93,7 @@ export default function ReadLetter() {
 
   if (!letter) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#F2EFE6" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#F7F4EE" }}>
         <p style={{ color: "#9a9390" }}>Loading...</p>
       </div>
     );
@@ -103,7 +103,7 @@ export default function ReadLetter() {
   const writeUrl = `/letters/${correspondenceId}/write${tokenParam}`;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F2EFE6" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#F7F4EE" }}>
       {/* Header */}
       <div className="px-6 pt-8 pb-4 max-w-3xl mx-auto">
         <button
@@ -119,7 +119,7 @@ export default function ReadLetter() {
       <div
         className="max-w-3xl mx-auto relative"
         style={{
-          backgroundColor: "#F2EFE6",
+          backgroundColor: "#F7F4EE",
           boxShadow: "inset 0 0 0 1px rgba(92,122,95,0.1), 0 4px 24px rgba(44,24,16,0.08)",
           padding: "48px 32px",
           borderRadius: "2px",

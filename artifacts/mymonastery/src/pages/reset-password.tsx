@@ -15,7 +15,7 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F2EFE6" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F7F4EE" }}>
         <div className="text-center max-w-sm px-4">
           <p className="text-base mb-4" style={{ color: "#2C1810" }}>This reset link is invalid or has expired.</p>
           <button onClick={() => setLocation("/")} className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>
@@ -53,7 +53,7 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F2EFE6" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F7F4EE" }}>
       <header className="px-6 py-6">
         <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe

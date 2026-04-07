@@ -101,7 +101,7 @@ export default function LetterNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F2EFE6" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F7F4EE" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button

@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 export default function NotFound() {
   const [, setLocation] = useLocation();
   return (
-    <div className="min-h-screen w-full flex items-center justify-center px-4" style={{ background: "#F2EFE6" }}>
+    <div className="min-h-screen w-full flex items-center justify-center px-4" style={{ background: "#F7F4EE" }}>
       <div className="text-center max-w-sm">
         <div className="text-5xl mb-6">📮</div>
         <h1 className="text-2xl font-bold mb-3" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>

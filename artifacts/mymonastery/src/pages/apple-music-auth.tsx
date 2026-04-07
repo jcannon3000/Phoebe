@@ -76,7 +76,7 @@ export default function AppleMusicAuth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F2EFE6] px-6">
+    <div className="min-h-screen flex items-center justify-center bg-[#F7F4EE] px-6">
       <div className="text-center max-w-sm">
         {status === "loading" && (
           <>
