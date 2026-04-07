@@ -257,9 +257,6 @@ export default function Onboarding() {
           <p className="text-center text-[11px] mt-10 italic leading-relaxed px-2" style={{ color: "#A89E92" }}>
             Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
           </p>
-          <p className="text-center text-[11px] mt-3 italic" style={{ color: "#A89E92" }}>
-            Romans 16:1 — Phoebe, deacon of the church at Cenchreae.
-          </p>
         </div>
       </main>
     </div>
