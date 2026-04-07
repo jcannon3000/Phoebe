@@ -111,8 +111,11 @@ export default function Onboarding() {
               <h1 className="text-2xl font-bold mb-4 leading-tight" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
                 Be together with Phoebe.
               </h1>
-              <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
+              <p className="text-sm leading-relaxed mb-3" style={{ color: "#8C7B6B" }}>
                 Set apart space to cultivate the connections that matter.
+              </p>
+              <p className="text-sm leading-relaxed" style={{ color: "#A89E92" }}>
+                Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
               </p>
             </div>
             {/* Mode toggle */}
@@ -254,9 +257,6 @@ export default function Onboarding() {
 
           </motion.div>
 
-          <p className="text-center text-[11px] mt-10 italic leading-relaxed px-2" style={{ color: "#A89E92" }}>
-            Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
-          </p>
         </div>
       </main>
     </div>
