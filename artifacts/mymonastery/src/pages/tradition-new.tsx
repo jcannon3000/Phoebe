@@ -16,7 +16,7 @@ const TEMPLATE_OPTIONS = [
 
 const RHYTHM_OPTIONS = [
   { value: "weekly", emoji: "📅", label: "Every week", tagline: "A weekly commitment" },
-  { value: "fortnightly", emoji: "📅", label: "Every two weeks", tagline: "A fortnightly rhythm" },
+  { value: "biweekly", emoji: "📅", label: "Every two weeks", tagline: "A fortnightly rhythm" },
   { value: "monthly", emoji: "📅", label: "Once a month", tagline: "A monthly anchor" },
 ];
 
@@ -26,7 +26,7 @@ const stepVariants = {
   exit: { opacity: 0, x: -20 },
 };
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 export default function TraditionNew() {
   const [, setLocation] = useLocation();
@@ -40,12 +40,25 @@ export default function TraditionNew() {
   const [selectedPeople, setSelectedPeople] = useState<{ name: string; email: string }[]>([]);
   const [newPeople, setNewPeople] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [rhythm, setRhythm] = useState("");
-  const [hasIntercession, setHasIntercession] = useState(false);
-  const [intercessionIntention, setIntercessionIntention] = useState("");
-  const [hasFasting, setHasFasting] = useState(false);
-  const [fastingDescription, setFastingDescription] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  function generateSlots(): { label: string; sub: string; value: string }[] {
+    const today = new Date();
+    const daysUntilSat = ((6 - today.getDay()) + 7) % 7 || 7;
+    const sat = new Date(today);
+    sat.setDate(today.getDate() + daysUntilSat);
+    const sun = new Date(sat);
+    sun.setDate(sat.getDate() + 1);
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    return [
+      { label: fmt(sat), sub: "10:00 AM", value: `${fmt(sat)} at 10:00 AM` },
+      { label: fmt(sat), sub: "2:00 PM",  value: `${fmt(sat)} at 2:00 PM` },
+      { label: fmt(sun), sub: "10:00 AM", value: `${fmt(sun)} at 10:00 AM` },
+    ];
+  }
 
   const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (step === 2) nameRef.current?.focus(); }, [step]);
@@ -105,12 +118,12 @@ export default function TraditionNew() {
         participants,
         intention: TEMPLATE_OPTIONS.find((o) => o.value === template)?.tagline || `A ${name} gathering.`,
         ownerId: user.id,
-        dayPreference: "",
+        dayPreference: selectedSlot,
         rhythm,
-        hasIntercession,
-        hasFasting,
-        intercessionIntention: hasIntercession ? intercessionIntention.trim() : null,
-        fastingDescription: hasFasting ? fastingDescription.trim() : null,
+        hasIntercession: false,
+        hasFasting: false,
+        intercessionIntention: null,
+        fastingDescription: null,
       });
       qc.invalidateQueries({ queryKey: ["/api/rituals"] });
       setLocation(`/ritual/${result.id}`);
@@ -143,7 +156,7 @@ export default function TraditionNew() {
           ← {step === 1 ? "Dashboard" : "Back"}
         </button>
         <div className="flex-1 flex gap-1.5">
-          {[1, 2, 3, 4].map((s) => (
+          {[1, 2, 3].map((s) => (
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
@@ -308,11 +321,11 @@ export default function TraditionNew() {
                 {RHYTHM_OPTIONS.map((o) => (
                   <button
                     key={o.value}
-                    onClick={() => setRhythm(o.value)}
+                    onClick={() => { setRhythm(o.value); setSelectedSlot(""); }}
                     className="w-full text-left p-4 rounded-2xl transition-all"
                     style={{
-                      background: rhythm === o.value ? "rgba(193,127,36,0.08)" : "#fff",
-                      border: `2px solid ${rhythm === o.value ? "#C17F24" : "rgba(193,127,36,0.2)"}`,
+                      background: rhythm === o.value ? "rgba(92,122,95,0.08)" : "#fff",
+                      border: `2px solid ${rhythm === o.value ? "#5C7A5F" : "rgba(92,122,95,0.2)"}`,
                     }}
                   >
                     <div className="flex items-center gap-3">
@@ -326,119 +339,49 @@ export default function TraditionNew() {
                 ))}
               </div>
 
-              <p className="text-sm italic mb-6 text-center" style={{ color: "#9a9390" }}>
-                Phoebe will find times that work and keep the rhythm going. 🌿
-              </p>
-
-              <button
-                onClick={() => { if (rhythm) setStep(4); }}
-                disabled={!rhythm}
-                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-opacity"
-                style={{ background: "#C17F24", color: "#fff" }}
-              >
-                Continue →
-              </button>
-            </motion.div>
-          )}
-
-          {/* Step 4 — Practices (optional) */}
-          {step === 4 && (
-            <motion.div key="s4" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Will you add anything? (optional)
-              </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
-                Spiritual practices are optional. Skip if they're not right for your group.
-              </p>
-
-              {/* Intercession toggle */}
-              <div
-                className="p-5 rounded-2xl mb-4"
-                style={{ background: "#fff", border: "1.5px solid #C8C4B4" }}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div>
-                    <p className="font-semibold text-base" style={{ color: "#2C1810" }}>🙏 Intercession</p>
-                    <p className="text-sm" style={{ color: "#9a9390" }}>Pray together for a shared intention</p>
+              {/* First gathering time picker */}
+              {rhythm && (
+                <div className="mb-8">
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#5C7A5F" }}>
+                    When's your first gathering? 🌿
+                  </p>
+                  <div className="space-y-2">
+                    {generateSlots().map((slot, i) => (
+                      <button
+                        key={slot.value}
+                        onClick={() => setSelectedSlot(slot.value)}
+                        className="w-full text-left p-4 rounded-2xl flex items-center justify-between transition-all"
+                        style={{
+                          background: selectedSlot === slot.value ? "rgba(92,122,95,0.08)" : "#fff",
+                          border: `2px solid ${selectedSlot === slot.value ? "#5C7A5F" : "rgba(92,122,95,0.15)"}`,
+                        }}
+                      >
+                        <div>
+                          {i === 0 && (
+                            <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#5C7A5F" }}>
+                              Recommended
+                            </p>
+                          )}
+                          <p className="font-medium text-sm" style={{ color: "#2C1810" }}>{slot.label}</p>
+                          <p className="text-sm" style={{ color: "#9a9390" }}>{slot.sub}</p>
+                        </div>
+                        {selectedSlot === slot.value && (
+                          <span style={{ color: "#5C7A5F" }}>✓</span>
+                        )}
+                      </button>
+                    ))}
                   </div>
-                  <button
-                    onClick={() => setHasIntercession((v) => !v)}
-                    className="w-12 h-6 rounded-full transition-colors relative flex-shrink-0"
-                    style={{ background: hasIntercession ? "#D4896A" : "#C8C4B4" }}
-                  >
-                    <div
-                      className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform"
-                      style={{ left: hasIntercession ? "calc(100% - 21px)" : "3px" }}
-                    />
-                  </button>
                 </div>
-                {hasIntercession && (
-                  <input
-                    type="text"
-                    value={intercessionIntention}
-                    onChange={(e) => setIntercessionIntention(e.target.value)}
-                    placeholder="What will you pray for?"
-                    className="w-full mt-3 px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#F2EFE6", border: "1px solid #C8C4B4", color: "#2C1810" }}
-                    autoFocus
-                  />
-                )}
-              </div>
-
-              {/* Fasting toggle */}
-              <div
-                className="p-5 rounded-2xl mb-8"
-                style={{ background: "#fff", border: "1.5px solid #C8C4B4" }}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div>
-                    <p className="font-semibold text-base" style={{ color: "#2C1810" }}>🌿 Fasting</p>
-                    <p className="text-sm" style={{ color: "#9a9390" }}>Keep a fast on the day you gather</p>
-                  </div>
-                  <button
-                    onClick={() => setHasFasting((v) => !v)}
-                    className="w-12 h-6 rounded-full transition-colors relative flex-shrink-0"
-                    style={{ background: hasFasting ? "#5C7A5F" : "#C8C4B4" }}
-                  >
-                    <div
-                      className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform"
-                      style={{ left: hasFasting ? "calc(100% - 21px)" : "3px" }}
-                    />
-                  </button>
-                </div>
-                {hasFasting && (
-                  <input
-                    type="text"
-                    value={fastingDescription}
-                    onChange={(e) => setFastingDescription(e.target.value)}
-                    placeholder="Describe the fast (optional)"
-                    className="w-full mt-3 px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#F2EFE6", border: "1px solid #C8C4B4", color: "#2C1810" }}
-                  />
-                )}
-              </div>
-
-              {error && <p className="text-sm mb-4" style={{ color: "#C17F24" }}>{error}</p>}
-
-              <button
-                onClick={handleCreate}
-                disabled={submitting}
-                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
-                style={{ background: "#C17F24", color: "#fff" }}
-              >
-                {submitting ? "Starting..." : "Start this tradition 🫱🏻‍🫲🏾"}
-              </button>
-
-              {(!hasIntercession && !hasFasting) && (
-                <button
-                  onClick={handleCreate}
-                  disabled={submitting}
-                  className="w-full mt-3 py-3 text-sm"
-                  style={{ color: "#9a9390" }}
-                >
-                  Skip — start without practices
-                </button>
               )}
+
+              <button
+                onClick={() => { if (rhythm && selectedSlot) handleCreate(); }}
+                disabled={!rhythm || !selectedSlot || submitting}
+                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-opacity"
+                style={{ background: "#5C7A5F", color: "#fff" }}
+              >
+                {submitting ? "Starting…" : "Start this tradition 🫱🏻‍🫲🏾"}
+              </button>
             </motion.div>
           )}
 
