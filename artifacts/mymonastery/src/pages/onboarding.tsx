@@ -87,7 +87,7 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F0EBE0", backgroundImage: "radial-gradient(ellipse at 50% 0%, #F5EDD8 0%, #F0EBE0 60%)" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F0EBE0", backgroundImage: "radial-gradient(ellipse at 50% 0%, #F5EDD8 0%, #F0EBE0 60%)", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* Header */}
       <header className="px-6 py-8 flex items-center">
         <span className="text-2xl font-bold" style={{ color: "#5C7A5F", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
@@ -103,7 +103,7 @@ export default function Onboarding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="rounded-2xl p-7"
-            style={{ background: "#E8E2D5", boxShadow: "0 4px 24px rgba(44,24,16,0.08), 0 1px 6px rgba(44,24,16,0.04)" }}
+            style={{ background: "#E8E2D5", boxShadow: "0 4px 24px rgba(44,24,16,0.08), 0 1px 6px rgba(44,24,16,0.04)", border: "1px solid rgba(44,24,16,0.09)" }}
           >
             {/* Hero */}
             <div className="text-center mb-8">
@@ -124,9 +124,10 @@ export default function Onboarding() {
                   onClick={() => switchMode(m)}
                   className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all"
                   style={{
-                    background: mode === m ? "#F0EBE0" : "transparent",
+                    background: mode === m ? "#FFFFFF" : "transparent",
                     color: mode === m ? "#2C1810" : "#8C7B6B",
-                    boxShadow: mode === m ? "0 1px 4px rgba(44,24,16,0.06)" : "none",
+                    fontWeight: mode === m ? 600 : 400,
+                    boxShadow: mode === m ? "0 2px 8px rgba(44,24,16,0.10), 0 1px 2px rgba(44,24,16,0.06)" : "none",
                   }}
                 >
                   {m === "signin" ? "Sign in" : "Create account"}
@@ -182,43 +183,44 @@ export default function Onboarding() {
                   disabled={submitting}
                 />
 
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password"
-                    value={password}
-                    onChange={e => { setPassword(e.target.value); setError(""); }}
-                    className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none transition-colors"
-                    style={{ background: "#FAFAF6", border: "none", color: "#2C1810" }}
-                    autoComplete={mode === "register" ? "new-password" : "current-password"}
-                    disabled={submitting}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                    style={{ color: "#A89E92" }}
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
+                <div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={password}
+                      onChange={e => { setPassword(e.target.value); setError(""); }}
+                      className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none transition-colors"
+                      style={{ background: "#FAFAF6", border: "none", color: "#2C1810" }}
+                      autoComplete={mode === "register" ? "new-password" : "current-password"}
+                      disabled={submitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
+                      style={{ color: "#A89E92" }}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  {mode === "signin" && (
+                    <div className="text-right mt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setLocation("/forgot-password")}
+                        className="text-xs"
+                        style={{ color: "#A89E92" }}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {error && (
                   <p className="text-sm px-1" style={{ color: "#C17F24" }}>{error}</p>
-                )}
-
-                {mode === "signin" && (
-                  <div className="text-right">
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/forgot-password")}
-                      className="text-xs"
-                      style={{ color: "#A89E92" }}
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
                 )}
 
                 <button
@@ -238,6 +240,9 @@ export default function Onboarding() {
 
           <p className="text-center text-[11px] mt-10 italic" style={{ color: "#A89E92" }}>
             Romans 16:1 — Phoebe, deacon of the church at Cenchreae.
+          </p>
+          <p className="text-center text-[11px] mt-3 italic leading-relaxed" style={{ color: "#A89E92" }}>
+            Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
           </p>
         </div>
       </main>
