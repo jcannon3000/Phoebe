@@ -90,7 +90,7 @@ export default function Onboarding() {
     <div className="min-h-screen flex flex-col" style={{ background: "#F0EBE0", backgroundImage: "radial-gradient(ellipse at 50% 0%, #F5EDD8 0%, #F0EBE0 60%)" }}>
       {/* Header */}
       <header className="px-6 py-8 flex items-center">
-        <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
+        <span className="text-2xl font-bold" style={{ color: "#5C7A5F", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe ✨
         </span>
       </header>
@@ -154,6 +154,7 @@ export default function Onboarding() {
                       className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
                       style={{ background: "#FAFAF6", border: "none", color: "#2C1810" }}
                       autoComplete="given-name"
+                      required
                       disabled={submitting}
                     />
                     <input
@@ -164,6 +165,7 @@ export default function Onboarding() {
                       className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
                       style={{ background: "#FAFAF6", border: "none", color: "#2C1810" }}
                       autoComplete="family-name"
+                      required
                       disabled={submitting}
                     />
                   </div>
