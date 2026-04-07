@@ -144,7 +144,7 @@ export default function Onboarding() {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.2 }}
               onSubmit={handleSubmit}
-              className="flex flex-col gap-3.5"
+              className="flex flex-col gap-4"
             >
               {mode === "register" && (
                 <div className="flex gap-2.5">
@@ -153,8 +153,8 @@ export default function Onboarding() {
                     placeholder="First name"
                     value={firstName}
                     onChange={e => { setFirstName(e.target.value); setError(""); }}
-                    className="w-1/2 px-4 py-3.5 rounded-full text-sm focus:outline-none transition-colors"
-                    style={{ background: "#FFFFFF", border: "1px solid rgba(44,24,16,0.12)", color: "#2C1810" }}
+                    className="w-1/2 px-4 py-3.5 rounded-2xl text-sm focus:outline-none transition-colors"
+                    style={{ background: "#FFFFFF", border: "1px solid rgba(44,24,16,0.15)", color: "#2C1810", boxShadow: "0 1px 4px rgba(44,24,16,0.06)" }}
                     autoComplete="given-name"
                     required
                     disabled={submitting}
@@ -164,8 +164,8 @@ export default function Onboarding() {
                     placeholder="Last name"
                     value={lastName}
                     onChange={e => { setLastName(e.target.value); setError(""); }}
-                    className="w-1/2 px-4 py-3.5 rounded-full text-sm focus:outline-none transition-colors"
-                    style={{ background: "#FFFFFF", border: "1px solid rgba(44,24,16,0.12)", color: "#2C1810" }}
+                    className="w-1/2 px-4 py-3.5 rounded-2xl text-sm focus:outline-none transition-colors"
+                    style={{ background: "#FFFFFF", border: "1px solid rgba(44,24,16,0.15)", color: "#2C1810", boxShadow: "0 1px 4px rgba(44,24,16,0.06)" }}
                     autoComplete="family-name"
                     required
                     disabled={submitting}
@@ -178,8 +178,8 @@ export default function Onboarding() {
                 placeholder="Email address"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setError(""); }}
-                className="w-full px-5 py-3.5 rounded-full text-sm focus:outline-none transition-colors"
-                style={{ background: "#FFFFFF", border: "1px solid rgba(44,24,16,0.12)", color: "#2C1810" }}
+                className="w-full px-5 py-3.5 rounded-2xl text-sm focus:outline-none transition-colors"
+                style={{ background: "#FFFFFF", border: "1px solid rgba(44,24,16,0.15)", color: "#2C1810", boxShadow: "0 1px 4px rgba(44,24,16,0.06)" }}
                 autoComplete="email"
                 disabled={submitting}
               />
@@ -191,8 +191,8 @@ export default function Onboarding() {
                     placeholder="Password"
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(""); }}
-                    className="w-full px-5 py-3.5 pr-12 rounded-full text-sm focus:outline-none transition-colors"
-                    style={{ background: "#FFFFFF", border: "1px solid rgba(44,24,16,0.12)", color: "#2C1810" }}
+                    className="w-full px-5 py-3.5 pr-12 rounded-2xl text-sm focus:outline-none transition-colors"
+                    style={{ background: "#FFFFFF", border: "1px solid rgba(44,24,16,0.15)", color: "#2C1810", boxShadow: "0 1px 4px rgba(44,24,16,0.06)" }}
                     autoComplete={mode === "register" ? "new-password" : "current-password"}
                     disabled={submitting}
                   />
@@ -229,7 +229,7 @@ export default function Onboarding() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex items-center justify-center w-full px-6 py-3.5 rounded-full font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-2"
+                className="flex items-center justify-center w-full px-6 py-3.5 rounded-2xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-2"
                 style={{ background: "#2C1810", color: "#fff" }}
               >
                 {submitting ? (
