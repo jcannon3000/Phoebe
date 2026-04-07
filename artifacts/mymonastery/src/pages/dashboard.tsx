@@ -135,8 +135,8 @@ function LettersSection() {
           style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
         >
           <div className="text-3xl mb-3">📮</div>
-          <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>For centuries, monks have cultivated their deepest relationships through writing.</p>
-          <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>That practice gets lost in the noise of texts and emails. Phoebe sets it apart — one letter, one person, once a week. A correspondence with history.</p>
+          <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>For centuries, monks have cultivated relationships through writing.</p>
+          <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>But today, this practice gets lost in the noise of texts and emails. Phoebe creates a sacred place to renew this tradition.</p>
           <Link href="/letters/new">
             <span className="text-sm font-medium" style={{ color: "#5C7A5F" }}>Start a correspondence →</span>
           </Link>
