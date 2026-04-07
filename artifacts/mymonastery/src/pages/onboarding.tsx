@@ -103,16 +103,13 @@ export default function Onboarding() {
           className="w-full max-w-sm mx-auto"
         >
           {/* Hero */}
-          <div className="text-center mb-10">
-            <div className="text-5xl mb-6 animate-float inline-block">📮</div>
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-5 inline-block">📮</div>
             <h1 className="text-3xl font-bold mb-3 leading-tight" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
               Be together with Phoebe.
             </h1>
-            <p className="text-sm leading-relaxed mb-2" style={{ color: "#8C7B6B" }}>
+            <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
               Cultivate connections through letter writing and meeting face to face.
-            </p>
-            <p className="text-sm leading-relaxed" style={{ color: "#A89E92" }}>
-              Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
             </p>
           </div>
 
@@ -235,9 +232,6 @@ export default function Onboarding() {
                 ) : mode === "signin" ? "Sign in" : "Create account"}
               </button>
 
-              <p className="text-center text-xs leading-relaxed pt-2" style={{ color: "#A89E92" }}>
-                Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
-              </p>
             </motion.form>
           </AnimatePresence>
         </motion.div>
