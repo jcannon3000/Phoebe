@@ -169,7 +169,8 @@ export function PrayerSection() {
           onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
           placeholder="What would you like your community to hold? 🙏"
           maxLength={1000}
-          className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border/60 bg-card placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/50 transition-all"
+          className="flex-1 px-4 py-2.5 rounded-xl border border-border/60 bg-card placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/50 transition-all"
+          style={{ fontSize: "15px" }}
         />
         <button
           type="button"
@@ -201,8 +202,8 @@ export function PrayerSection() {
               style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
             >
               <div className="text-3xl mb-3">🙏</div>
-              <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>Your community is here to carry what you're carrying.</p>
-              <p className="text-xs" style={{ color: "#8C7B6B" }}>Nothing is too small to be held together.</p>
+              <p className="italic" style={{ fontSize: "16px", lineHeight: 1.5, color: "#2C1810", marginBottom: "6px" }}>Your community is here to carry what you're carrying.</p>
+              <p className="italic" style={{ fontSize: "16px", lineHeight: 1.5, color: "#2C1810" }}>Nothing is too small to be held together.</p>
             </div>
           )}
 

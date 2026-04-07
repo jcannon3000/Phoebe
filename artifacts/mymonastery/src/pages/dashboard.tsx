@@ -143,8 +143,8 @@ function LettersSection() {
             style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
           >
             <div className="text-3xl mb-2">✉️</div>
-            <p className="text-base font-medium mb-2" style={{ color: "#2C1810" }}>Who do you want to stay close to?</p>
-            <span className="text-sm font-medium" style={{ color: "#4A6FA5" }}>Start a correspondence →</span>
+            <p style={{ fontSize: "20px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "10px" }}>Who do you want to stay close to?</p>
+            <span className="font-semibold" style={{ fontSize: "15px", color: "#4A6FA5" }}>Start a correspondence →</span>
           </div>
         </Link>
       ) : (
@@ -285,8 +285,8 @@ function GatheringsSection() {
             style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
           >
             <div className="text-3xl mb-2">🫱🏻‍🫲🏾</div>
-            <p className="text-base font-medium mb-2" style={{ color: "#2C1810" }}>Who do you want to keep showing up for?</p>
-            <span className="text-sm font-medium" style={{ color: "#C17F24" }}>Start a tradition →</span>
+            <p style={{ fontSize: "20px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "10px" }}>Who do you want to keep showing up for?</p>
+            <span className="font-semibold" style={{ fontSize: "15px", color: "#C17F24" }}>Start a tradition →</span>
           </div>
         </Link>
       ) : (
@@ -370,7 +370,7 @@ export default function Dashboard() {
 
         {/* ── Time-of-day greeting ── */}
         <div className="mb-4">
-          <p className="text-[15px]" style={{ color: "#8C7B6B" }}>
+          <p style={{ fontSize: "17px", color: "rgba(44,24,16,0.8)" }}>
             {timeGreeting()} 🌿
           </p>
         </div>
