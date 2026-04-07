@@ -91,7 +91,7 @@ export default function Onboarding() {
       {/* Header */}
       <header className="px-6 py-8 flex items-center">
         <span className="text-3xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
-          Phoebe ✨
+          Phoebe
         </span>
       </header>
 
