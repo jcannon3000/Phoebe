@@ -48,29 +48,29 @@ function FAB() {
               className="px-5 py-4 rounded-2xl text-left transition-colors"
               style={{ background: "#E8E2D5", boxShadow: "0 4px 20px rgba(44,24,16,0.10), 0 1px 4px rgba(44,24,16,0.04)", minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#4A6FA5" }}>✉️ Write a letter</p>
+              <p className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>✉️ Write a letter</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-5 py-4 rounded-2xl text-left transition-colors"
               style={{ background: "#E8E2D5", boxShadow: "0 4px 20px rgba(44,24,16,0.10), 0 1px 4px rgba(44,24,16,0.04)", minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#C17F24" }}>🫱🏻‍🫲🏾 Start a tradition</p>
+              <p className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>🫱🏻‍🫲🏾 Start a tradition</p>
             </button>
             <button
               onClick={() => { setOpen(false); /* scroll to prayer input */ }}
               className="px-5 py-4 rounded-2xl text-left transition-colors"
               style={{ background: "#E8E2D5", boxShadow: "0 4px 20px rgba(44,24,16,0.10), 0 1px 4px rgba(44,24,16,0.04)", minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#D4896A" }}>🙏 Share a prayer request</p>
+              <p className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>🙏 Share a prayer request</p>
             </button>
           </motion.div>
         )}
       </AnimatePresence>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#2C1810", color: "#fff" }}
+        className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform btn-sage"
+        style={{ background: "#5C7A5F", color: "#fff" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open ? <X size={24} /> : <Plus size={24} />}
@@ -82,12 +82,12 @@ function FAB() {
 
 // ─── Section header — quiet marker ───────────────────────────────────────────
 
-function SectionHeader({ label, ruleClass }: { label: string; ruleClass?: string }) {
+function SectionHeader({ label }: { label: string }) {
   return (
     <div className="mb-4">
       <div className="flex items-center gap-3">
         <h2 className="section-header">{label}</h2>
-        <div className={`flex-1 h-px ${ruleClass ?? ""}`} style={ruleClass ? undefined : { background: "#D4CFC4" }} />
+        <div className="flex-1 h-px animate-rule-sage" />
       </div>
     </div>
   );
@@ -120,7 +120,7 @@ function LettersSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Letters" ruleClass="animate-rule-ink" />
+        <SectionHeader label="Letters" />
         <div className="space-y-4 mb-6">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -134,17 +134,17 @@ function LettersSection() {
 
   return (
     <div className="mb-6">
-      <SectionHeader label="Letters" ruleClass="animate-rule-ink" />
+      <SectionHeader label="Letters" />
 
       {items.length === 0 ? (
         <Link href="/letters/new">
           <div
-            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-ink"
+            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-sage"
             style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
           >
             <div className="text-3xl mb-2">✉️</div>
             <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to stay close to?</p>
-            <span className="font-semibold" style={{ fontSize: "14px", color: "#4A6FA5" }}>Start a correspondence →</span>
+            <span className="font-semibold" style={{ fontSize: "14px", color: "#5C7A5F" }}>Start a correspondence →</span>
           </div>
         </Link>
       ) : (
@@ -166,16 +166,16 @@ function LettersSection() {
 
             if (hasUnread) {
               statusText = `${otherMembers} wrote 🌿`;
-              statusColor = "#4A6FA5";
+              statusColor = "#5C7A5F";
             } else if (iWrote && !theyWrote) {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
               statusColor = "#8C7B6B";
             } else if (needsWrite) {
               statusText = isOneToOne ? `Your turn to write ✉️` : `Share your update ✉️`;
-              statusColor = "#4A6FA5";
+              statusColor = "#5C7A5F";
             } else {
               statusText = "All written 🌿";
-              statusColor = "#4A6FA5";
+              statusColor = "#5C7A5F";
             }
 
             const lastPostmark = c.recentPostmarks[0];
@@ -192,14 +192,14 @@ function LettersSection() {
                   style={{
                     background: "#E8E2D5",
                     boxShadow: needsAction
-                      ? "0 2px 16px rgba(74,111,165,0.10), 0 1px 4px rgba(44,24,16,0.04)"
+                      ? "0 2px 16px rgba(92,122,95,0.10), 0 1px 4px rgba(44,24,16,0.04)"
                       : "0 2px 12px rgba(44,24,16,0.06)",
                   }}
                 >
-                  {/* Left bar — ink */}
+                  {/* Left bar — sage */}
                   <div
                     className={needsAction ? "w-1 flex-shrink-0 animate-pulse" : "w-1 flex-shrink-0"}
-                    style={{ background: "#4A6FA5" }}
+                    style={{ background: "#5C7A5F" }}
                   />
                   <div className="flex-1 p-5">
                     <div className="flex items-start justify-between gap-2">
@@ -210,11 +210,11 @@ function LettersSection() {
                         {hasUnread && (
                           <span
                             className="ml-2 inline-block w-2 h-2 rounded-full align-middle animate-pulse"
-                            style={{ background: "#4A6FA5" }}
+                            style={{ background: "#5C7A5F" }}
                           />
                         )}
                       </div>
-                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#4A6FA5", letterSpacing: "0.08em" }}>
+                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#5C7A5F", letterSpacing: "0.08em" }}>
                         {isOneToOne ? `Letter ${c.currentPeriod.periodNumber}` : `Week ${c.currentPeriod.periodNumber}`}
                       </span>
                     </div>
@@ -234,8 +234,8 @@ function LettersSection() {
                           <motion.span
                             animate={{ scale: [1, 1.03, 1] }}
                             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 inline-block"
-                            style={{ background: "#4A6FA5", color: "#fff" }}
+                            className="btn-sage text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 inline-block"
+                            style={{ background: "#5C7A5F", color: "#fff" }}
                           >
                             Write ✉️
                           </motion.span>
@@ -253,16 +253,16 @@ function LettersSection() {
   );
 }
 
-// ─── Gatherings Section ───────────────────────────────────────────────────────
+// ─── Traditions Section ──────────────────────────────────────────────────────
 
-function GatheringsSection() {
+function TraditionsSection() {
   const { user } = useAuth();
   const { data: rituals, isLoading } = useListRituals({ ownerId: user?.id });
 
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Traditions" ruleClass="animate-rule-amber" />
+        <SectionHeader label="Traditions" />
         <div className="space-y-4 mb-6">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -276,17 +276,17 @@ function GatheringsSection() {
 
   return (
     <div className="mb-6">
-      <SectionHeader label="Traditions" ruleClass="animate-rule-amber" />
+      <SectionHeader label="Traditions" />
 
       {gatherings.length === 0 ? (
         <Link href="/tradition/new">
           <div
-            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-amber"
+            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-sage"
             style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
           >
             <div className="text-3xl mb-2">🫱🏻‍🫲🏾</div>
             <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to keep showing up for?</p>
-            <span className="font-semibold" style={{ fontSize: "14px", color: "#C17F24" }}>Start a tradition →</span>
+            <span className="font-semibold" style={{ fontSize: "14px", color: "#5C7A5F" }}>Start a tradition →</span>
           </div>
         </Link>
       ) : (
@@ -313,8 +313,8 @@ function GatheringsSection() {
                     boxShadow: "0 2px 12px rgba(44,24,16,0.06)",
                   }}
                 >
-                  {/* Amber left bar */}
-                  <div className="w-1 flex-shrink-0" style={{ background: "#C17F24" }} />
+                  {/* Sage left bar */}
+                  <div className="w-1 flex-shrink-0" style={{ background: "#5C7A5F" }} />
                   <div className="flex-1 p-5">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <span className="text-base font-semibold" style={{ color: "#2C1810" }}>{ritual.name}</span>
@@ -379,7 +379,7 @@ export default function Dashboard() {
         <LettersSection />
 
         {/* ── Traditions ── */}
-        <GatheringsSection />
+        <TraditionsSection />
 
         {/* ── Prayer Requests ── */}
         <PrayerSection />

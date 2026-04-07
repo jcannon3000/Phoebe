@@ -94,11 +94,11 @@ export default function GatheringsPage() {
                     className="relative flex rounded-xl overflow-hidden cursor-pointer"
                     style={{
                       background: "#E8E4D8",
-                      border: "1px solid rgba(193,127,36,0.2)",
+                      border: "1px solid rgba(92,122,95,0.2)",
                       boxShadow: "0 2px 8px rgba(44,24,16,0.07), 0 1px 3px rgba(44,24,16,0.04)",
                     }}
                   >
-                    <div className="w-1 flex-shrink-0" style={{ background: "#C17F24" }} />
+                    <div className="w-1 flex-shrink-0" style={{ background: "#5C7A5F" }} />
                     <div className="flex-1 p-4">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <span className="text-base font-semibold" style={{ color: "#2C1810" }}>{ritual.name}</span>

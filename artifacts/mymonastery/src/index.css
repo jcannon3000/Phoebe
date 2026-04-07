@@ -261,32 +261,17 @@ textarea:focus {
   animation: streak-glow 4s ease-in-out infinite;
 }
 
-/* ── Section rule pulse — accent lines breathe gently ─────────────── */
-@keyframes rule-pulse-ink {
-  0%, 100% { background: rgba(74,111,165,0.35); }
-  50%      { background: rgba(74,111,165,0.7); }
+/* ── Section rule pulse — sage lines breathe gently ──────────────── */
+@keyframes rule-pulse-sage {
+  0%, 100% { background: rgba(92,122,95,0.3); }
+  50%      { background: rgba(92,122,95,0.6); }
 }
-@keyframes rule-pulse-amber {
-  0%, 100% { background: rgba(193,127,36,0.35); }
-  50%      { background: rgba(193,127,36,0.7); }
+@keyframes border-pulse-sage {
+  0%, 100% { border-color: rgba(92,122,95,0.2); }
+  50%      { border-color: rgba(92,122,95,0.45); }
 }
-@keyframes rule-pulse-blush {
-  0%, 100% { background: rgba(212,137,106,0.35); }
-  50%      { background: rgba(212,137,106,0.7); }
-}
-@keyframes border-pulse-ink {
-  0%, 100% { border-color: rgba(74,111,165,0.2); }
-  50%      { border-color: rgba(74,111,165,0.5); }
-}
-@keyframes border-pulse-amber {
-  0%, 100% { border-color: rgba(193,127,36,0.2); }
-  50%      { border-color: rgba(193,127,36,0.5); }
-}
-.animate-rule-ink    { animation: rule-pulse-ink 4s ease-in-out infinite; }
-.animate-rule-amber  { animation: rule-pulse-amber 4s ease-in-out infinite; }
-.animate-rule-blush  { animation: rule-pulse-blush 4s ease-in-out infinite; }
-.animate-border-ink   { animation: border-pulse-ink 5s ease-in-out infinite; }
-.animate-border-amber { animation: border-pulse-amber 5s ease-in-out infinite; }
+.animate-rule-sage    { animation: rule-pulse-sage 4s ease-in-out infinite; }
+.animate-border-sage  { animation: border-pulse-sage 5s ease-in-out infinite; }
 
 /* ── Glow animations (kept for backward compat) ──────────────────── */
 @keyframes glow-breathe {

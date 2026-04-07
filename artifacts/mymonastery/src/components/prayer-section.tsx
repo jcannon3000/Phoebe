@@ -149,7 +149,7 @@ export function PrayerSection() {
           <span className="section-header">
             Prayer Requests
           </span>
-          <div className="flex-1 h-px mx-2 animate-rule-blush" />
+          <div className="flex-1 h-px mx-2 animate-rule-sage" />
           <span
             className="text-xs transition-transform duration-200"
             style={{ display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", color: "#A89E92" }}
