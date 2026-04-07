@@ -109,7 +109,7 @@ export default function Onboarding() {
               Be together with Phoebe.
             </h1>
             <p className="text-sm leading-relaxed mb-2" style={{ color: "#8C7B6B" }}>
-              Set apart space to cultivate connection.
+              Set apart space for letter writing and in person gatherings to cultivate connections.
             </p>
             <p className="text-sm leading-relaxed" style={{ color: "#A89E92" }}>
               Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
@@ -228,7 +228,7 @@ export default function Onboarding() {
                 type="submit"
                 disabled={submitting}
                 className="flex items-center justify-center w-full px-6 py-3.5 rounded-full font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-2"
-                style={{ background: "#5C7A5F", color: "#fff" }}
+                style={{ background: "#2C1810", color: "#fff" }}
               >
                 {submitting ? (
                   <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
