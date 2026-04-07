@@ -102,7 +102,7 @@ export default function Onboarding() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-2xl p-7"
+            className="rounded-2xl px-7 pt-12 pb-7"
             style={{ background: "#FFFFFF", boxShadow: "0 4px 32px rgba(44,24,16,0.10), 0 1px 8px rgba(44,24,16,0.05)", border: "1px solid rgba(44,24,16,0.08)" }}
           >
             {/* Hero */}
