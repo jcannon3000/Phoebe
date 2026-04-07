@@ -57,6 +57,13 @@ export function PrayerSection() {
     },
   });
 
+  const releaseMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/release`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/prayer-requests/${id}`),
     onSuccess: () => {
@@ -298,6 +305,31 @@ export function PrayerSection() {
                             </button>
                           </div>
                         )}
+
+                        {/* Release / Remove */}
+                        <div className="flex justify-end mt-3 pt-2 border-t border-border/20">
+                          {request.isOwnRequest ? (
+                            <button
+                              type="button"
+                              onClick={() => releaseMutation.mutate(request.id)}
+                              disabled={releaseMutation.isPending}
+                              className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
+                              style={{ color: "#8C7B6B" }}
+                            >
+                              Release this 🌿
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => deleteMutation.mutate(request.id)}
+                              disabled={deleteMutation.isPending}
+                              className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
+                              style={{ color: "#8C7B6B" }}
+                            >
+                              Remove from my view
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
