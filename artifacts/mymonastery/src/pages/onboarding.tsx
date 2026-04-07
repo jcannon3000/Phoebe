@@ -235,20 +235,8 @@ export default function Onboarding() {
                 ) : mode === "signin" ? "Sign in" : "Create account"}
               </button>
 
-              <p className="text-center text-xs pt-1" style={{ color: "#A89E92" }}>
-                {mode === "signin" ? (
-                  <>Don't have an account?{" "}
-                    <button type="button" onClick={() => switchMode("register")} className="font-medium" style={{ color: "#5C7A5F" }}>
-                      Create one
-                    </button>
-                  </>
-                ) : (
-                  <>Already have an account?{" "}
-                    <button type="button" onClick={() => switchMode("signin")} className="font-medium" style={{ color: "#5C7A5F" }}>
-                      Sign in
-                    </button>
-                  </>
-                )}
+              <p className="text-center text-xs leading-relaxed pt-2" style={{ color: "#A89E92" }}>
+                Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
               </p>
             </motion.form>
           </AnimatePresence>
