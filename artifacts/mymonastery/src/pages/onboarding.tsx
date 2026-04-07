@@ -98,30 +98,23 @@ export default function Onboarding() {
       <main className="flex-1 flex flex-col items-center justify-center px-4 pb-16">
         <div className="w-full max-w-sm mx-auto">
 
-          {/* Hero */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center mb-12"
-          >
-            <div className="text-5xl mb-6 animate-float inline-block">🌿</div>
-            <h1 className="text-3xl font-bold mb-5 leading-tight" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
-              Be together with Phoebe.
-            </h1>
-            <p className="text-base leading-relaxed mb-5" style={{ color: "#8C7B6B" }}>
-              The strength of our relationships is what makes life most vibrant. Phoebe sets apart space to stay close to the people who matter most, drawing on the wisdom of monastic life made new for a world of isolation and distraction.
-            </p>
-          </motion.div>
-
-          {/* Auth form */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="rounded-2xl p-7"
             style={{ background: "#E8E2D5", boxShadow: "0 4px 24px rgba(44,24,16,0.08), 0 1px 6px rgba(44,24,16,0.04)" }}
           >
+            {/* Hero */}
+            <div className="text-center mb-8">
+              <div className="text-5xl mb-5 animate-float inline-block">🌿</div>
+              <h1 className="text-2xl font-bold mb-4 leading-tight" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
+                Be together with Phoebe.
+              </h1>
+              <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
+                The strength of our relationships is what makes life most vibrant. Phoebe sets apart space to stay close to the people who matter most, drawing on the wisdom of monastic life made new for a world of isolation and distraction.
+              </p>
+            </div>
             {/* Mode toggle */}
             <div className="flex rounded-xl p-1 mb-5" style={{ background: "#D4CFC4" }}>
               {(["signin", "register"] as Mode[]).map((m) => (
