@@ -90,7 +90,7 @@ export default function Onboarding() {
     <div className="min-h-screen flex flex-col" style={{ background: "#F7F4EE", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* Header */}
       <header className="px-6 py-8 flex items-center">
-        <span className="text-3xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
+        <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe
         </span>
       </header>
@@ -109,7 +109,10 @@ export default function Onboarding() {
               Be together with Phoebe.
             </h1>
             <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
-              Cultivate connections through letter writing and meeting face to face.
+              Letters and gatherings.
+            </p>
+            <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
+              The oldest community technology in the world.
             </p>
           </div>
 
@@ -239,7 +242,7 @@ export default function Onboarding() {
         </motion.div>
 
         <p className="text-center text-[11px] italic mt-10" style={{ color: "#C4BAB0" }}>
-          Inspired by Monastic Tradition
+          Be together with Phoebe.
         </p>
       </main>
     </div>

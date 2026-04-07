@@ -123,7 +123,7 @@ function LettersSection() {
         <SectionHeader label="Letters" />
         <div className="space-y-4 mb-6">
           {[1, 2].map(i => (
-            <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
+            <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#E8E2D5" }} />
           ))}
         </div>
       </>
@@ -133,14 +133,14 @@ function LettersSection() {
   const items = correspondences ?? [];
 
   return (
-    <div className="mb-6">
+    <div className="mb-8">
       <SectionHeader label="Letters" />
 
       {items.length === 0 ? (
         <Link href="/letters/new">
           <div
-            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-sage"
-            style={{ background: "#DDD8CE", borderWidth: "1px", borderStyle: "dashed", padding: "32px 24px" }}
+            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-lg"
+            style={{ background: "#E8E2D5", border: "1px solid rgba(44,24,16,0.08)", padding: "36px 24px", boxShadow: "0 2px 12px rgba(44,24,16,0.06)" }}
           >
             <div className="text-3xl mb-2">✉️</div>
             <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to stay close to?</p>
@@ -265,7 +265,7 @@ function TraditionsSection() {
         <SectionHeader label="Traditions" />
         <div className="space-y-4 mb-6">
           {[1].map(i => (
-            <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
+            <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#E8E2D5" }} />
           ))}
         </div>
       </>
@@ -275,14 +275,14 @@ function TraditionsSection() {
   const gatherings = rituals ?? [];
 
   return (
-    <div className="mb-6">
+    <div className="mb-8">
       <SectionHeader label="Traditions" />
 
       {gatherings.length === 0 ? (
         <Link href="/tradition/new">
           <div
-            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-sage"
-            style={{ background: "#DDD8CE", borderWidth: "1px", borderStyle: "dashed", padding: "32px 24px" }}
+            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-lg"
+            style={{ background: "#E8E2D5", border: "1px solid rgba(44,24,16,0.08)", padding: "36px 24px", boxShadow: "0 2px 12px rgba(44,24,16,0.06)" }}
           >
             <div className="text-3xl mb-2">🫱🏻‍🫲🏾</div>
             <p style={{ fontSize: "16px", fontWeight: 500, lineHeight: 1.4, color: "#2C1810", marginBottom: "8px" }}>Who do you want to keep showing up for?</p>
