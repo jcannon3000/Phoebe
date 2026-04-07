@@ -84,8 +84,8 @@ function FAB() {
 
 function SectionHeader({ label, ruleColor }: { label: string; ruleColor?: string }) {
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-3 mb-2">
+    <div className="mb-4">
+      <div className="flex items-center gap-3">
         <h2 className="section-header">{label}</h2>
         <div className="flex-1 h-px" style={{ background: ruleColor ?? "#D4CFC4" }} />
       </div>
@@ -121,7 +121,7 @@ function LettersSection() {
     return (
       <>
         <SectionHeader label="Letters" ruleColor="#4A6FA5" />
-        <div className="space-y-4 mb-16">
+        <div className="space-y-4 mb-6">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
           ))}
@@ -133,17 +133,17 @@ function LettersSection() {
   const items = correspondences ?? [];
 
   return (
-    <div className="mb-16">
+    <div className="mb-6">
       <SectionHeader label="Letters" ruleColor="#4A6FA5" />
 
       {items.length === 0 ? (
         <Link href="/letters/new">
           <div
-            className="rounded-2xl p-8 text-center cursor-pointer transition-all hover:shadow-md"
-            style={{ background: "#E8E2D5", border: "1px dashed rgba(74,111,165,0.3)" }}
+            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md"
+            style={{ background: "#E8E2D5", border: "1px dashed rgba(74,111,165,0.3)", padding: "20px 24px" }}
           >
-            <div className="text-3xl mb-3">✉️</div>
-            <p className="text-base font-medium mb-3" style={{ color: "#2C1810" }}>Who do you want to stay close to?</p>
+            <div className="text-3xl mb-2">✉️</div>
+            <p className="text-base font-medium mb-2" style={{ color: "#2C1810" }}>Who do you want to stay close to?</p>
             <span className="text-sm font-medium" style={{ color: "#4A6FA5" }}>Start a correspondence →</span>
           </div>
         </Link>
@@ -263,7 +263,7 @@ function GatheringsSection() {
     return (
       <>
         <SectionHeader label="Traditions" ruleColor="#C17F24" />
-        <div className="space-y-4 mb-16">
+        <div className="space-y-4 mb-6">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
           ))}
@@ -275,17 +275,17 @@ function GatheringsSection() {
   const gatherings = rituals ?? [];
 
   return (
-    <div className="mb-16">
+    <div className="mb-6">
       <SectionHeader label="Traditions" ruleColor="#C17F24" />
 
       {gatherings.length === 0 ? (
         <Link href="/tradition/new">
           <div
-            className="rounded-2xl p-8 text-center cursor-pointer transition-all hover:shadow-md"
-            style={{ background: "#E8E2D5", border: "1px dashed rgba(193,127,36,0.3)" }}
+            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md"
+            style={{ background: "#E8E2D5", border: "1px dashed rgba(193,127,36,0.3)", padding: "20px 24px" }}
           >
-            <div className="text-3xl mb-3">🫱🏻‍🫲🏾</div>
-            <p className="text-base font-medium mb-3" style={{ color: "#2C1810" }}>Who do you want to keep showing up for?</p>
+            <div className="text-3xl mb-2">🫱🏻‍🫲🏾</div>
+            <p className="text-base font-medium mb-2" style={{ color: "#2C1810" }}>Who do you want to keep showing up for?</p>
             <span className="text-sm font-medium" style={{ color: "#C17F24" }}>Start a tradition →</span>
           </div>
         </Link>
@@ -369,7 +369,7 @@ export default function Dashboard() {
       <div className="flex flex-col w-full pb-28">
 
         {/* ── Time-of-day greeting ── */}
-        <div className="mb-12">
+        <div className="mb-4">
           <p className="text-[15px]" style={{ color: "#8C7B6B" }}>
             {timeGreeting()} 🌿
           </p>
