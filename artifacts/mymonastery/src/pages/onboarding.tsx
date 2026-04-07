@@ -112,7 +112,7 @@ export default function Onboarding() {
                 Be together with Phoebe.
               </h1>
               <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
-                The strength of our relationships is what makes life most vibrant. Phoebe sets apart space to stay close to the people who matter most, drawing on the wisdom of monastic life made new for a world of isolation and distraction.
+                Set apart space to stay close to the people who matter most.
               </p>
             </div>
             {/* Mode toggle */}
@@ -211,7 +211,7 @@ export default function Onboarding() {
                         type="button"
                         onClick={() => setLocation("/forgot-password")}
                         className="text-xs"
-                        style={{ color: "#A89E92" }}
+                        style={{ color: "#5C7A5F" }}
                       >
                         Forgot password?
                       </button>
@@ -233,16 +233,32 @@ export default function Onboarding() {
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   ) : mode === "signin" ? "Sign in" : "Create account"}
                 </button>
+
+                <p className="text-center text-xs pt-1" style={{ color: "#A89E92" }}>
+                  {mode === "signin" ? (
+                    <>Don't have an account?{" "}
+                      <button type="button" onClick={() => switchMode("register")} className="font-medium underline-offset-2 hover:underline" style={{ color: "#5C7A5F" }}>
+                        Create one
+                      </button>
+                    </>
+                  ) : (
+                    <>Already have an account?{" "}
+                      <button type="button" onClick={() => switchMode("signin")} className="font-medium underline-offset-2 hover:underline" style={{ color: "#5C7A5F" }}>
+                        Sign in
+                      </button>
+                    </>
+                  )}
+                </p>
               </motion.form>
             </AnimatePresence>
 
           </motion.div>
 
-          <p className="text-center text-[11px] mt-10 italic" style={{ color: "#A89E92" }}>
-            Romans 16:1 — Phoebe, deacon of the church at Cenchreae.
-          </p>
-          <p className="text-center text-[11px] mt-3 italic leading-relaxed" style={{ color: "#A89E92" }}>
+          <p className="text-center text-[11px] mt-10 italic leading-relaxed px-2" style={{ color: "#A89E92" }}>
             Relationships are what makes life most vibrant. Phoebe draws on the wisdom of monastic life made new for a world of isolation and distraction.
+          </p>
+          <p className="text-center text-[11px] mt-3 italic" style={{ color: "#A89E92" }}>
+            Romans 16:1 — Phoebe, deacon of the church at Cenchreae.
           </p>
         </div>
       </main>

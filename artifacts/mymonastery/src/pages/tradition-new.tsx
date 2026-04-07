@@ -44,20 +44,53 @@ export default function TraditionNew() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  function generateSlots(): { label: string; sub: string; value: string }[] {
+  interface Slot { day: string; date: string; time: string; value: string }
+
+  function generateSlots(freq: string): Slot[] {
     const today = new Date();
+    const fmtDay  = (d: Date) => d.toLocaleDateString("en-US", { weekday: "long" });
+    const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const slot = (d: Date, time: string): Slot => ({
+      day: fmtDay(d), date: fmtDate(d), time,
+      value: `${fmtDate(d)}-${time}`,
+    });
+
+    // Next Saturday from today (minimum 2 days away so it feels meaningful)
     const daysUntilSat = ((6 - today.getDay()) + 7) % 7 || 7;
-    const sat = new Date(today);
-    sat.setDate(today.getDate() + daysUntilSat);
-    const sun = new Date(sat);
-    sun.setDate(sat.getDate() + 1);
-    const fmt = (d: Date) =>
-      d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-    return [
-      { label: fmt(sat), sub: "10:00 AM", value: `${fmt(sat)} at 10:00 AM` },
-      { label: fmt(sat), sub: "2:00 PM",  value: `${fmt(sat)} at 2:00 PM` },
-      { label: fmt(sun), sub: "10:00 AM", value: `${fmt(sun)} at 10:00 AM` },
-    ];
+    const sat1 = new Date(today); sat1.setDate(today.getDate() + daysUntilSat);
+    const sun1 = new Date(sat1);  sun1.setDate(sat1.getDate() + 1);
+    const sat2 = new Date(sat1);  sat2.setDate(sat1.getDate() + 7);
+    const sat4 = new Date(sat1);  sat4.setDate(sat1.getDate() + 14);
+
+    if (freq === "weekly") {
+      return [
+        slot(sat1, "10:00 AM"),
+        slot(sat1, "2:00 PM"),
+        slot(sun1, "10:00 AM"),
+        slot(sat2, "10:00 AM"),
+      ];
+    }
+    if (freq === "biweekly") {
+      return [
+        slot(sat1, "10:00 AM"),
+        slot(sat1, "2:00 PM"),
+        slot(sat4, "10:00 AM"),
+        slot(sat4, "2:00 PM"),
+      ];
+    }
+    if (freq === "monthly") {
+      // First Saturday of each of the next 3 months
+      const results: Slot[] = [];
+      for (let m = 0; m < 3; m++) {
+        const d = new Date(today.getFullYear(), today.getMonth() + m + (today.getDate() > 20 ? 1 : 0), 1);
+        while (d.getDay() !== 6) d.setDate(d.getDate() + 1);
+        if (d <= today) d.setDate(d.getDate() + 7); // skip if already past
+        results.push(slot(d, "10:00 AM"));
+        if (m === 0) results.push(slot(d, "2:00 PM"));
+      }
+      return results;
+    }
+    return [];
   }
 
   const nameRef = useRef<HTMLInputElement>(null);
@@ -341,43 +374,72 @@ export default function TraditionNew() {
 
               {/* First gathering time picker */}
               {rhythm && (
-                <div className="mb-8">
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#5C7A5F" }}>
-                    When's your first gathering? 🌿
+                <motion.div
+                  key={rhythm}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="mb-8"
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color: "#C17F24" }}>
+                    When's your first gathering?
                   </p>
-                  <div className="space-y-2">
-                    {generateSlots().map((slot, i) => (
-                      <button
-                        key={slot.value}
-                        onClick={() => setSelectedSlot(slot.value)}
-                        className="w-full text-left p-4 rounded-2xl flex items-center justify-between transition-all"
-                        style={{
-                          background: selectedSlot === slot.value ? "rgba(92,122,95,0.08)" : "#fff",
-                          border: `2px solid ${selectedSlot === slot.value ? "#5C7A5F" : "rgba(92,122,95,0.15)"}`,
-                        }}
-                      >
-                        <div>
+                  <div className="space-y-2.5">
+                    {generateSlots(rhythm).map((slot, i) => {
+                      const isSelected = selectedSlot === slot.value;
+                      return (
+                        <button
+                          key={slot.value}
+                          onClick={() => setSelectedSlot(slot.value)}
+                          className="w-full text-left rounded-2xl transition-all active:scale-[0.99]"
+                          style={{
+                            background: isSelected ? "rgba(92,122,95,0.07)" : "#fff",
+                            border: `2px solid ${isSelected ? "#5C7A5F" : "rgba(44,24,16,0.1)"}`,
+                            padding: "14px 16px",
+                          }}
+                        >
                           {i === 0 && (
-                            <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "#5C7A5F" }}>
-                              Recommended
+                            <p className="text-[9px] font-bold uppercase tracking-[0.14em] mb-1.5" style={{ color: "#5C7A5F" }}>
+                              ✦ Recommended
                             </p>
                           )}
-                          <p className="font-medium text-sm" style={{ color: "#2C1810" }}>{slot.label}</p>
-                          <p className="text-sm" style={{ color: "#9a9390" }}>{slot.sub}</p>
-                        </div>
-                        {selectedSlot === slot.value && (
-                          <span style={{ color: "#5C7A5F" }}>✓</span>
-                        )}
-                      </button>
-                    ))}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-base font-bold leading-tight" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+                                {slot.day}
+                              </p>
+                              <p className="text-sm mt-0.5" style={{ color: "#9a9390" }}>
+                                {slot.date}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="px-3 py-1.5 rounded-lg text-sm font-semibold"
+                                style={{
+                                  background: isSelected ? "rgba(92,122,95,0.12)" : "rgba(44,24,16,0.05)",
+                                  color: isSelected ? "#5C7A5F" : "#2C1810",
+                                }}
+                              >
+                                {slot.time}
+                              </div>
+                              {isSelected && (
+                                <span className="text-base font-bold" style={{ color: "#5C7A5F" }}>✓</span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
+                </motion.div>
               )}
+
+              {error && <p className="text-sm mb-4" style={{ color: "#C17F24" }}>{error}</p>}
 
               <button
                 onClick={() => { if (rhythm && selectedSlot) handleCreate(); }}
                 disabled={!rhythm || !selectedSlot || submitting}
-                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-opacity"
+                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
                 {submitting ? "Starting…" : "Start this tradition 🫱🏻‍🫲🏾"}
