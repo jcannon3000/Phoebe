@@ -2,18 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mymonastery",
-      "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["node_modules/.bin/vite", "--config", "vite.config.ts", "--host", "0.0.0.0"],
-      "cwd": "/Users/jeremycannon/Documents/Eleanor/Eleanor/artifacts/mymonastery",
-      "port": 5173
+      "name": "api-server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@workspace/api-server", "run", "dev"],
+      "port": 3001
     },
     {
-      "name": "api-server",
-      "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["--enable-source-maps", "./dist/index.mjs"],
-      "cwd": "/Users/jeremycannon/Documents/Eleanor/Eleanor/artifacts/api-server",
-      "port": 3001
+      "name": "frontend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@workspace/mymonastery", "run", "dev"],
+      "port": 23896
     }
   ]
 }

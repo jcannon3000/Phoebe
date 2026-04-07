@@ -495,7 +495,7 @@ export default function MomentDetail() {
                   {extra > 0 && <span className="text-sm text-muted-foreground/50">+{extra} more</span>}
                 </div>
                 <p className="text-xs text-muted-foreground/50">
-                  🎉 {togetherCount} {togetherCount === 1 ? "time" : "times"} {togetherVerb} together
+                  🫱🏻‍🫲🏾 {togetherCount} {togetherCount === 1 ? "time" : "times"} {togetherVerb} together
                 </p>
               </div>
             );

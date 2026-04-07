@@ -49,7 +49,7 @@ function FAB() {
               className="px-5 py-4 rounded-2xl text-left transition-colors"
               style={{ background: "#E8E2D5", boxShadow: "0 4px 20px rgba(44,24,16,0.10), 0 1px 4px rgba(44,24,16,0.04)", minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>🎉 Start a tradition</p>
+              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>🫱🏻‍🫲🏾 Start a tradition</p>
               <p className="text-xs mt-1" style={{ color: "#8C7B6B" }}>Meet together regularly</p>
             </button>
           </motion.div>
@@ -257,7 +257,7 @@ function GatheringsSection() {
     return (
       <>
         <SectionHeader
-          label="Traditions 🎉"
+          label="Traditions 🫱🏻‍🫲🏾"
           />
         <div className="space-y-4 mb-16">
           {[1].map(i => (
@@ -273,7 +273,7 @@ function GatheringsSection() {
   return (
     <div className="mb-16">
       <SectionHeader
-        label="Traditions 🎉"
+        label="Traditions 🫱🏻‍🫲🏾"
       />
 
       {gatherings.length === 0 ? (
