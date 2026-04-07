@@ -61,7 +61,7 @@
   /* ink    #4A6FA5 — letters-specific UI only         */
   /* muted  #8C7B6B — secondary text, warm grey-brown  */
 
-  --background: 40 25% 95%;         /* #F7F4EE light warm parchment */
+  --background: 40 36% 95%;         /* #F7F4EE light warm parchment */
   --foreground: 17 47% 12%;         /* #2C1810 soil */
 
   --border: 40 14% 80%;             /* #D4CFC4 warm parchment rule */
@@ -178,9 +178,18 @@ textarea:focus {
     @apply border-border;
   }
 
+  html {
+    background-color: #F7F4EE;
+  }
+
   body {
     @apply font-sans antialiased text-foreground;
     background-color: #F7F4EE;
+  }
+
+  #root {
+    background-color: #F7F4EE;
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
