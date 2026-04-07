@@ -103,7 +103,7 @@ export default function Onboarding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="rounded-2xl p-7"
-            style={{ background: "#E8E2D5", boxShadow: "0 4px 24px rgba(44,24,16,0.08), 0 1px 6px rgba(44,24,16,0.04)", border: "1px solid rgba(44,24,16,0.09)" }}
+            style={{ background: "#FFFFFF", boxShadow: "0 4px 32px rgba(44,24,16,0.10), 0 1px 8px rgba(44,24,16,0.05)", border: "1px solid rgba(44,24,16,0.08)" }}
           >
             {/* Hero */}
             <div className="text-center mb-8">
@@ -116,7 +116,7 @@ export default function Onboarding() {
               </p>
             </div>
             {/* Mode toggle */}
-            <div className="flex rounded-xl p-1 mb-5" style={{ background: "#D4CFC4" }}>
+            <div className="flex rounded-xl p-1 mb-5" style={{ background: "#EDE8E0" }}>
               {(["signin", "register"] as Mode[]).map((m) => (
                 <button
                   key={m}
@@ -153,7 +153,7 @@ export default function Onboarding() {
                       value={firstName}
                       onChange={e => { setFirstName(e.target.value); setError(""); }}
                       className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                      style={{ background: "#FAFAF6", border: "none", color: "#2C1810" }}
+                      style={{ background: "#F7F5F1", border: "1px solid rgba(44,24,16,0.10)", color: "#2C1810" }}
                       autoComplete="given-name"
                       required
                       disabled={submitting}
@@ -164,7 +164,7 @@ export default function Onboarding() {
                       value={lastName}
                       onChange={e => { setLastName(e.target.value); setError(""); }}
                       className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                      style={{ background: "#FAFAF6", border: "none", color: "#2C1810" }}
+                      style={{ background: "#F7F5F1", border: "1px solid rgba(44,24,16,0.10)", color: "#2C1810" }}
                       autoComplete="family-name"
                       required
                       disabled={submitting}
@@ -178,7 +178,7 @@ export default function Onboarding() {
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(""); }}
                   className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                  style={{ background: "#FAFAF6", border: "none", color: "#2C1810" }}
+                  style={{ background: "#F7F5F1", border: "1px solid rgba(44,24,16,0.10)", color: "#2C1810" }}
                   autoComplete="email"
                   disabled={submitting}
                 />
@@ -191,7 +191,7 @@ export default function Onboarding() {
                       value={password}
                       onChange={e => { setPassword(e.target.value); setError(""); }}
                       className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none transition-colors"
-                      style={{ background: "#FAFAF6", border: "none", color: "#2C1810" }}
+                      style={{ background: "#F7F5F1", border: "1px solid rgba(44,24,16,0.10)", color: "#2C1810" }}
                       autoComplete={mode === "register" ? "new-password" : "current-password"}
                       disabled={submitting}
                     />
