@@ -82,12 +82,12 @@ function FAB() {
 
 // ─── Section header — quiet marker ───────────────────────────────────────────
 
-function SectionHeader({ label, ruleColor }: { label: string; ruleColor?: string }) {
+function SectionHeader({ label, ruleClass }: { label: string; ruleClass?: string }) {
   return (
     <div className="mb-4">
       <div className="flex items-center gap-3">
         <h2 className="section-header">{label}</h2>
-        <div className="flex-1 h-px" style={{ background: ruleColor ?? "#D4CFC4" }} />
+        <div className={`flex-1 h-px ${ruleClass ?? ""}`} style={ruleClass ? undefined : { background: "#D4CFC4" }} />
       </div>
     </div>
   );
@@ -120,7 +120,7 @@ function LettersSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Letters" ruleColor="#4A6FA5" />
+        <SectionHeader label="Letters" ruleClass="animate-rule-ink" />
         <div className="space-y-4 mb-6">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -134,13 +134,13 @@ function LettersSection() {
 
   return (
     <div className="mb-6">
-      <SectionHeader label="Letters" ruleColor="#4A6FA5" />
+      <SectionHeader label="Letters" ruleClass="animate-rule-ink" />
 
       {items.length === 0 ? (
         <Link href="/letters/new">
           <div
-            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md"
-            style={{ background: "#E8E2D5", border: "1px dashed rgba(74,111,165,0.3)", padding: "20px 24px" }}
+            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-ink"
+            style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
           >
             <div className="text-3xl mb-2">✉️</div>
             <p className="text-base font-medium mb-2" style={{ color: "#2C1810" }}>Who do you want to stay close to?</p>
@@ -262,7 +262,7 @@ function GatheringsSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Traditions" ruleColor="#C17F24" />
+        <SectionHeader label="Traditions" ruleClass="animate-rule-amber" />
         <div className="space-y-4 mb-6">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -276,13 +276,13 @@ function GatheringsSection() {
 
   return (
     <div className="mb-6">
-      <SectionHeader label="Traditions" ruleColor="#C17F24" />
+      <SectionHeader label="Traditions" ruleClass="animate-rule-amber" />
 
       {gatherings.length === 0 ? (
         <Link href="/tradition/new">
           <div
-            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md"
-            style={{ background: "#E8E2D5", border: "1px dashed rgba(193,127,36,0.3)", padding: "20px 24px" }}
+            className="rounded-2xl text-center cursor-pointer transition-all hover:shadow-md animate-border-amber"
+            style={{ background: "#E8E2D5", borderWidth: "1px", borderStyle: "dashed", padding: "20px 24px" }}
           >
             <div className="text-3xl mb-2">🫱🏻‍🫲🏾</div>
             <p className="text-base font-medium mb-2" style={{ color: "#2C1810" }}>Who do you want to keep showing up for?</p>
