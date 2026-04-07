@@ -19,6 +19,13 @@ function dayLabel(date: Date): string {
   return format(date, "EEE, MMM d");
 }
 
+function timeGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning.";
+  if (h < 17) return "Good afternoon.";
+  return "Good evening.";
+}
+
 // ─── FAB ─────────────────────────────────────────────────────────────────────
 
 function FAB() {
@@ -41,24 +48,29 @@ function FAB() {
               className="px-5 py-4 rounded-2xl text-left transition-colors"
               style={{ background: "#E8E2D5", boxShadow: "0 4px 20px rgba(44,24,16,0.10), 0 1px 4px rgba(44,24,16,0.04)", minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>📮 Start a correspondence</p>
-              <p className="text-xs mt-1" style={{ color: "#8C7B6B" }}>Write letters with someone you care about</p>
+              <p className="text-sm font-semibold" style={{ color: "#4A6FA5" }}>✉️ Write a letter</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-5 py-4 rounded-2xl text-left transition-colors"
               style={{ background: "#E8E2D5", boxShadow: "0 4px 20px rgba(44,24,16,0.10), 0 1px 4px rgba(44,24,16,0.04)", minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>🫱🏻‍🫲🏾 Start a tradition</p>
-              <p className="text-xs mt-1" style={{ color: "#8C7B6B" }}>Meet together regularly</p>
+              <p className="text-sm font-semibold" style={{ color: "#C17F24" }}>🫱🏻‍🫲🏾 Start a tradition</p>
+            </button>
+            <button
+              onClick={() => { setOpen(false); /* scroll to prayer input */ }}
+              className="px-5 py-4 rounded-2xl text-left transition-colors"
+              style={{ background: "#E8E2D5", boxShadow: "0 4px 20px rgba(44,24,16,0.10), 0 1px 4px rgba(44,24,16,0.04)", minWidth: 220 }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "#D4896A" }}>🙏 Share a prayer request</p>
             </button>
           </motion.div>
         )}
       </AnimatePresence>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform btn-sage"
-        style={{ background: "#5C7A5F", color: "#fff" }}
+        className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
+        style={{ background: "#2C1810", color: "#fff" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open ? <X size={24} /> : <Plus size={24} />}
@@ -70,18 +82,13 @@ function FAB() {
 
 // ─── Section header — quiet marker ───────────────────────────────────────────
 
-function SectionHeader({ label, epigraph }: { label: string; epigraph?: string }) {
+function SectionHeader({ label, ruleColor }: { label: string; ruleColor?: string }) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-3 mb-2">
         <h2 className="section-header">{label}</h2>
-        <div className="flex-1 h-px" style={{ background: "#D4CFC4" }} />
+        <div className="flex-1 h-px" style={{ background: ruleColor ?? "#D4CFC4" }} />
       </div>
-      {epigraph && (
-        <p className="text-[13px] italic leading-relaxed" style={{ color: "#8C7B6B" }}>
-          {epigraph}
-        </p>
-      )}
     </div>
   );
 }
@@ -113,7 +120,7 @@ function LettersSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Letters 📮" />
+        <SectionHeader label="Letters" ruleColor="#4A6FA5" />
         <div className="space-y-4 mb-16">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -127,20 +134,19 @@ function LettersSection() {
 
   return (
     <div className="mb-16">
-      <SectionHeader label="Letters 📮" />
+      <SectionHeader label="Letters" ruleColor="#4A6FA5" />
 
       {items.length === 0 ? (
-        <div
-          className="rounded-2xl p-8 text-center"
-          style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
-        >
-          <div className="text-3xl mb-3">📮</div>
-          <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>For centuries, monks have cultivated relationships through writing.</p>
-          <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>But today, this practice gets lost in the noise of texts and emails. Phoebe creates a sacred place to renew this tradition.</p>
-          <Link href="/letters/new">
-            <span className="text-sm font-medium" style={{ color: "#5C7A5F" }}>Start a correspondence →</span>
-          </Link>
-        </div>
+        <Link href="/letters/new">
+          <div
+            className="rounded-2xl p-8 text-center cursor-pointer transition-all hover:shadow-md"
+            style={{ background: "#E8E2D5", border: "1px dashed rgba(74,111,165,0.3)" }}
+          >
+            <div className="text-3xl mb-3">✉️</div>
+            <p className="text-base font-medium mb-3" style={{ color: "#2C1810" }}>Who do you want to stay close to?</p>
+            <span className="text-sm font-medium" style={{ color: "#4A6FA5" }}>Start a correspondence →</span>
+          </div>
+        </Link>
       ) : (
         <div className="space-y-4">
           {items.map((c) => {
@@ -160,16 +166,16 @@ function LettersSection() {
 
             if (hasUnread) {
               statusText = `${otherMembers} wrote 🌿`;
-              statusColor = "#5C7A5F";
+              statusColor = "#4A6FA5";
             } else if (iWrote && !theyWrote) {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
               statusColor = "#8C7B6B";
             } else if (needsWrite) {
-              statusText = isOneToOne ? `Your turn to write 📮` : `Share your update 📮`;
-              statusColor = "#5C7A5F";
+              statusText = isOneToOne ? `Your turn to write ✉️` : `Share your update ✉️`;
+              statusColor = "#4A6FA5";
             } else {
               statusText = "All written 🌿";
-              statusColor = "#5C7A5F";
+              statusColor = "#4A6FA5";
             }
 
             const lastPostmark = c.recentPostmarks[0];
@@ -186,14 +192,14 @@ function LettersSection() {
                   style={{
                     background: "#E8E2D5",
                     boxShadow: needsAction
-                      ? "0 2px 16px rgba(92,122,95,0.10), 0 1px 4px rgba(44,24,16,0.04)"
+                      ? "0 2px 16px rgba(74,111,165,0.10), 0 1px 4px rgba(44,24,16,0.04)"
                       : "0 2px 12px rgba(44,24,16,0.06)",
                   }}
                 >
-                  {/* Left bar */}
+                  {/* Left bar — ink */}
                   <div
                     className={needsAction ? "w-1 flex-shrink-0 animate-pulse" : "w-1 flex-shrink-0"}
-                    style={{ background: "#5C7A5F" }}
+                    style={{ background: "#4A6FA5" }}
                   />
                   <div className="flex-1 p-5">
                     <div className="flex items-start justify-between gap-2">
@@ -204,11 +210,11 @@ function LettersSection() {
                         {hasUnread && (
                           <span
                             className="ml-2 inline-block w-2 h-2 rounded-full align-middle animate-pulse"
-                            style={{ background: "#5C7A5F" }}
+                            style={{ background: "#4A6FA5" }}
                           />
                         )}
                       </div>
-                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#5C7A5F", letterSpacing: "0.08em" }}>
+                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#4A6FA5", letterSpacing: "0.08em" }}>
                         {isOneToOne ? `Letter ${c.currentPeriod.periodNumber}` : `Week ${c.currentPeriod.periodNumber}`}
                       </span>
                     </div>
@@ -228,10 +234,10 @@ function LettersSection() {
                           <motion.span
                             animate={{ scale: [1, 1.03, 1] }}
                             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                            className="btn-sage text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 inline-block"
-                            style={{ background: "#5C7A5F", color: "#fff" }}
+                            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 inline-block"
+                            style={{ background: "#4A6FA5", color: "#fff" }}
                           >
-                            Write 📮
+                            Write ✉️
                           </motion.span>
                         </Link>
                       )}
@@ -256,9 +262,7 @@ function GatheringsSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader
-          label="Traditions 🫱🏻‍🫲🏾"
-          />
+        <SectionHeader label="Traditions" ruleColor="#C17F24" />
         <div className="space-y-4 mb-16">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: "#DDD9CC" }} />
@@ -272,22 +276,19 @@ function GatheringsSection() {
 
   return (
     <div className="mb-16">
-      <SectionHeader
-        label="Traditions 🫱🏻‍🫲🏾"
-      />
+      <SectionHeader label="Traditions" ruleColor="#C17F24" />
 
       {gatherings.length === 0 ? (
-        <div
-          className="rounded-2xl p-8 text-center"
-          style={{ background: "#E8E2D5", border: "1px dashed #D4CFC4" }}
-        >
-          <div className="text-3xl mb-3">🫱🏻‍🫲🏾</div>
-          <p className="text-sm mb-2 font-medium" style={{ color: "#2C1810" }}>Monks have always known: connection grows through repeated gatherings.</p>
-          <p className="text-xs mb-4" style={{ color: "#8C7B6B" }}>Phoebe helps you commit to a rhythm — weekly, fortnightly, or monthly — and keeps the tradition alive.</p>
-          <Link href="/tradition/new">
+        <Link href="/tradition/new">
+          <div
+            className="rounded-2xl p-8 text-center cursor-pointer transition-all hover:shadow-md"
+            style={{ background: "#E8E2D5", border: "1px dashed rgba(193,127,36,0.3)" }}
+          >
+            <div className="text-3xl mb-3">🫱🏻‍🫲🏾</div>
+            <p className="text-base font-medium mb-3" style={{ color: "#2C1810" }}>Who do you want to keep showing up for?</p>
             <span className="text-sm font-medium" style={{ color: "#C17F24" }}>Start a tradition →</span>
-          </Link>
-        </div>
+          </div>
+        </Link>
       ) : (
         <div className="space-y-4">
           {gatherings.map((ritual) => {
@@ -367,11 +368,11 @@ export default function Dashboard() {
     <Layout>
       <div className="flex flex-col w-full pb-28">
 
-        {/* ── Date — the bell that calls you back ── */}
+        {/* ── Time-of-day greeting ── */}
         <div className="mb-12">
-          <h1 className="text-3xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
-            {format(new Date(), "EEEE, d MMMM")}
-          </h1>
+          <p className="text-[15px]" style={{ color: "#8C7B6B" }}>
+            {timeGreeting()} 🌿
+          </p>
         </div>
 
         {/* ── Letters ── */}
