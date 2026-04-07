@@ -90,7 +90,7 @@ export default function Onboarding() {
     <div className="min-h-screen flex flex-col" style={{ background: "#F7F4EE", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* Header */}
       <header className="px-6 py-8 flex items-center">
-        <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
+        <span className="text-xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
           Phoebe
         </span>
       </header>
@@ -108,22 +108,22 @@ export default function Onboarding() {
             <h1 className="text-3xl font-bold mb-3 leading-tight" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
               Be together with Phoebe.
             </h1>
-            <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
+            <p className="leading-relaxed" style={{ fontSize: "15px", color: "#8C7B6B" }}>
               Letters and gatherings.
             </p>
-            <p className="text-sm leading-relaxed" style={{ color: "#8C7B6B" }}>
+            <p className="leading-relaxed" style={{ fontSize: "15px", color: "#8C7B6B" }}>
               The oldest community technology in the world.
             </p>
           </div>
 
           {/* Mode toggle */}
-          <div className="flex rounded-full p-1 mb-5" style={{ background: "#D8D2C8" }}>
+          <div className="flex rounded-full p-1.5 mb-6" style={{ background: "#D8D2C8" }}>
             {(["signin", "register"] as Mode[]).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => switchMode(m)}
-                className="flex-1 py-2.5 rounded-full text-sm transition-all"
+                className="flex-1 py-3 rounded-full text-sm transition-all"
                 style={{
                   background: mode === m ? "#FFFFFF" : "transparent",
                   color: mode === m ? "#2C1810" : "#8C7B6B",
@@ -144,7 +144,7 @@ export default function Onboarding() {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.2 }}
               onSubmit={handleSubmit}
-              className="flex flex-col gap-3"
+              className="flex flex-col gap-3.5"
             >
               {mode === "register" && (
                 <div className="flex gap-2.5">
@@ -241,7 +241,7 @@ export default function Onboarding() {
           </AnimatePresence>
         </motion.div>
 
-        <p className="text-center text-[11px] italic mt-10" style={{ color: "#C4BAB0" }}>
+        <p className="text-center text-[11px] mt-10" style={{ color: "#B5ADA5" }}>
           Be together with Phoebe.
         </p>
       </main>

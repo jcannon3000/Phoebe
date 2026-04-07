@@ -26,7 +26,7 @@ const stepVariants = {
   exit: { opacity: 0, x: -20 },
 };
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export default function TraditionNew() {
   const [, setLocation] = useLocation();
@@ -41,6 +41,8 @@ export default function TraditionNew() {
   const [newPeople, setNewPeople] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [rhythm, setRhythm] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
+  const [altSlot1, setAltSlot1] = useState("");
+  const [altSlot2, setAltSlot2] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -55,7 +57,7 @@ export default function TraditionNew() {
       value: `${fmtDate(d)}-${time}`,
     });
 
-    // Next Saturday from today (minimum 2 days away so it feels meaningful)
+    // Next Saturday from today (minimum 2 days away)
     const daysUntilSat = ((6 - today.getDay()) + 7) % 7 || 7;
     const sat1 = new Date(today); sat1.setDate(today.getDate() + daysUntilSat);
     const sun1 = new Date(sat1);  sun1.setDate(sat1.getDate() + 1);
@@ -79,12 +81,11 @@ export default function TraditionNew() {
       ];
     }
     if (freq === "monthly") {
-      // First Saturday of each of the next 3 months
       const results: Slot[] = [];
       for (let m = 0; m < 3; m++) {
         const d = new Date(today.getFullYear(), today.getMonth() + m + (today.getDate() > 20 ? 1 : 0), 1);
         while (d.getDay() !== 6) d.setDate(d.getDate() + 1);
-        if (d <= today) d.setDate(d.getDate() + 7); // skip if already past
+        if (d <= today) d.setDate(d.getDate() + 7);
         results.push(slot(d, "10:00 AM"));
         if (m === 0) results.push(slot(d, "2:00 PM"));
       }
@@ -139,8 +140,18 @@ export default function TraditionNew() {
     setStep(3);
   }
 
+  function handleRhythmNext() {
+    if (!rhythm) { setError("Choose a rhythm."); return; }
+    setError("");
+    setSelectedSlot("");
+    setAltSlot1("");
+    setAltSlot2("");
+    setStep(4);
+  }
+
   async function handleCreate() {
     if (!user) return;
+    if (!selectedSlot) { setError("Pick a time for your first gathering."); return; }
     setSubmitting(true);
     setError("");
     try {
@@ -152,6 +163,8 @@ export default function TraditionNew() {
         intention: TEMPLATE_OPTIONS.find((o) => o.value === template)?.tagline || `A ${name} gathering.`,
         ownerId: user.id,
         dayPreference: selectedSlot,
+        altSlot1: altSlot1 || null,
+        altSlot2: altSlot2 || null,
         rhythm,
         hasIntercession: false,
         hasFasting: false,
@@ -189,7 +202,7 @@ export default function TraditionNew() {
           ← {step === 1 ? "Dashboard" : "Back"}
         </button>
         <div className="flex-1 flex gap-1.5">
-          {[1, 2, 3].map((s) => (
+          {[1, 2, 3, 4].map((s) => (
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
@@ -354,7 +367,7 @@ export default function TraditionNew() {
                 {RHYTHM_OPTIONS.map((o) => (
                   <button
                     key={o.value}
-                    onClick={() => { setRhythm(o.value); setSelectedSlot(""); }}
+                    onClick={() => setRhythm(o.value)}
                     className="w-full text-left p-4 rounded-2xl transition-all"
                     style={{
                       background: rhythm === o.value ? "rgba(92,122,95,0.08)" : "#fff",
@@ -367,82 +380,188 @@ export default function TraditionNew() {
                         <p className="font-semibold" style={{ color: "#2C1810" }}>{o.label}</p>
                         <p className="text-sm" style={{ color: "#9a9390" }}>{o.tagline}</p>
                       </div>
+                      {rhythm === o.value && (
+                        <span className="ml-auto text-base font-bold" style={{ color: "#5C7A5F" }}>✓</span>
+                      )}
                     </div>
                   </button>
                 ))}
               </div>
 
-              {/* First gathering time picker */}
-              {rhythm && (
-                <motion.div
-                  key={rhythm}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="mb-8"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color: "#C17F24" }}>
-                    When's your first gathering?
-                  </p>
-                  <div className="space-y-2.5">
-                    {generateSlots(rhythm).map((slot, i) => {
-                      const isSelected = selectedSlot === slot.value;
-                      return (
-                        <button
-                          key={slot.value}
-                          onClick={() => setSelectedSlot(slot.value)}
-                          className="w-full text-left rounded-2xl transition-all active:scale-[0.99]"
-                          style={{
-                            background: isSelected ? "rgba(92,122,95,0.07)" : "#fff",
-                            border: `2px solid ${isSelected ? "#5C7A5F" : "rgba(44,24,16,0.1)"}`,
-                            padding: "14px 16px",
-                          }}
-                        >
-                          {i === 0 && (
-                            <p className="text-[9px] font-bold uppercase tracking-[0.14em] mb-1.5" style={{ color: "#5C7A5F" }}>
-                              ✦ Recommended
-                            </p>
-                          )}
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-base font-bold leading-tight" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                                {slot.day}
-                              </p>
-                              <p className="text-sm mt-0.5" style={{ color: "#9a9390" }}>
-                                {slot.date}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="px-3 py-1.5 rounded-lg text-sm font-semibold"
-                                style={{
-                                  background: isSelected ? "rgba(92,122,95,0.12)" : "rgba(44,24,16,0.05)",
-                                  color: isSelected ? "#5C7A5F" : "#2C1810",
-                                }}
-                              >
-                                {slot.time}
-                              </div>
-                              {isSelected && (
-                                <span className="text-base font-bold" style={{ color: "#5C7A5F" }}>✓</span>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-
               {error && <p className="text-sm mb-4" style={{ color: "#C17F24" }}>{error}</p>}
 
               <button
-                onClick={() => { if (rhythm && selectedSlot) handleCreate(); }}
-                disabled={!rhythm || !selectedSlot || submitting}
+                onClick={handleRhythmNext}
+                disabled={!rhythm}
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                {submitting ? "Starting…" : "Start this tradition 🫱🏻‍🫲🏾"}
+                Continue →
+              </button>
+            </motion.div>
+          )}
+
+          {/* Step 4 — Suggest a time */}
+          {step === 4 && (
+            <motion.div key="s4" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+                Suggest a time 🫱🏻‍🫲🏾
+              </h1>
+              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
+                Pick your first choice, then offer two alternates your group can vote on.
+              </p>
+
+              {(() => {
+                const slots = generateSlots(rhythm);
+
+                return (
+                  <div className="space-y-6">
+
+                    {/* Your pick — prominent */}
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "#C17F24" }}>
+                        Your pick
+                      </p>
+                      <div className="space-y-2.5">
+                        {slots.map((slot) => {
+                          const isSelected = selectedSlot === slot.value;
+                          return (
+                            <button
+                              key={slot.value}
+                              onClick={() => {
+                                setSelectedSlot(slot.value);
+                                // Clear alt slots if they match the new primary
+                                if (altSlot1 === slot.value) setAltSlot1("");
+                                if (altSlot2 === slot.value) setAltSlot2("");
+                              }}
+                              className="w-full text-left rounded-2xl transition-all active:scale-[0.99]"
+                              style={{
+                                background: isSelected ? "#5C7A5F" : "#fff",
+                                border: isSelected ? "2px solid #5C7A5F" : "2px solid rgba(44,24,16,0.1)",
+                                padding: "16px 18px",
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p
+                                    className="text-base font-bold leading-tight"
+                                    style={{
+                                      color: isSelected ? "#fff" : "#2C1810",
+                                      fontFamily: "'Space Grotesk', sans-serif",
+                                    }}
+                                  >
+                                    {slot.day}
+                                  </p>
+                                  <p
+                                    className="text-sm mt-0.5"
+                                    style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "#9a9390" }}
+                                  >
+                                    {slot.date}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="px-3 py-1.5 rounded-lg text-sm font-semibold"
+                                    style={{
+                                      background: isSelected ? "rgba(255,255,255,0.2)" : "rgba(44,24,16,0.05)",
+                                      color: isSelected ? "#fff" : "#2C1810",
+                                    }}
+                                  >
+                                    {slot.time}
+                                  </div>
+                                  {isSelected && (
+                                    <span className="text-base font-bold" style={{ color: "#fff" }}>✓</span>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Alternates — only show after primary is picked */}
+                    {selectedSlot && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#9a9390" }}>
+                          Alternate times (optional)
+                        </p>
+                        <p className="text-xs mb-3" style={{ color: "#9a9390" }}>
+                          Your group can say if one of these works better.
+                        </p>
+                        <div className="space-y-2">
+                          {slots
+                            .filter((s) => s.value !== selectedSlot)
+                            .map((slot) => {
+                              const isAlt1 = altSlot1 === slot.value;
+                              const isAlt2 = altSlot2 === slot.value;
+                              const isAlt = isAlt1 || isAlt2;
+                              const bothFilled = altSlot1 && altSlot2;
+
+                              return (
+                                <button
+                                  key={slot.value}
+                                  onClick={() => {
+                                    if (isAlt1) { setAltSlot1(""); return; }
+                                    if (isAlt2) { setAltSlot2(""); return; }
+                                    if (!altSlot1) { setAltSlot1(slot.value); return; }
+                                    if (!altSlot2) { setAltSlot2(slot.value); return; }
+                                  }}
+                                  disabled={!isAlt && !!bothFilled}
+                                  className="w-full text-left rounded-xl transition-all active:scale-[0.99] disabled:opacity-30"
+                                  style={{
+                                    background: isAlt ? "rgba(92,122,95,0.06)" : "#fff",
+                                    border: `1.5px solid ${isAlt ? "#5C7A5F" : "rgba(44,24,16,0.08)"}`,
+                                    padding: "12px 14px",
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>
+                                        {slot.day}
+                                      </p>
+                                      <p className="text-xs" style={{ color: "#9a9390" }}>
+                                        {slot.date}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="text-xs font-medium px-2 py-1 rounded-md"
+                                        style={{
+                                          background: isAlt ? "rgba(92,122,95,0.1)" : "rgba(44,24,16,0.04)",
+                                          color: isAlt ? "#5C7A5F" : "#9a9390",
+                                        }}
+                                      >
+                                        {slot.time}
+                                      </span>
+                                      {isAlt && (
+                                        <span className="text-sm font-bold" style={{ color: "#5C7A5F" }}>✓</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {error && <p className="text-sm mt-6 mb-2" style={{ color: "#C17F24" }}>{error}</p>}
+
+              <button
+                onClick={handleCreate}
+                disabled={!selectedSlot || submitting}
+                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all mt-8"
+                style={{ background: "#5C7A5F", color: "#fff" }}
+              >
+                {submitting ? "Starting..." : "Start this tradition 🫱🏻‍🫲🏾"}
               </button>
             </motion.div>
           )}
