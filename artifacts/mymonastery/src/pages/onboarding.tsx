@@ -87,7 +87,7 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F0EBE0", backgroundImage: "radial-gradient(ellipse at 50% 0%, #F5EDD8 0%, #F0EBE0 60%)", fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F7F4EE", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* Header */}
       <header className="px-6 py-8 flex items-center">
         <span className="text-3xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
