@@ -208,7 +208,7 @@ function LettersSection() {
                             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
                             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                           >
-                            Write 📮
+                            Write 🖋️
                           </span>
                         </Link>
                       )}

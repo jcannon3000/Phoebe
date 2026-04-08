@@ -383,7 +383,7 @@ function LettersSection() {
                             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
                             style={{ background: C.activeBtnBg, color: C.text }}
                           >
-                            Write 📮
+                            Write 🖋️
                           </span>
                         </Link>
                       )}

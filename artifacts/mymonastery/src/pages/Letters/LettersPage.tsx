@@ -144,7 +144,7 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
             </span>
           ) : item.myTurn ? (
             <span className="text-[12px] font-medium" style={{ color: "#C8D4C0" }}>
-              {isOneToOne ? "Your turn to write 🖋️" : "Write your update 📮"}
+              {isOneToOne ? "Your turn to write 🖋️" : "Write your update 🖋️"}
             </span>
           ) : unread ? (
             <span className="text-[12px] font-medium" style={{ color: "#C8D4C0" }}>
@@ -264,7 +264,7 @@ export default function LettersPage() {
                   style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}
                 >
                   <p className="text-lg font-semibold">
-                    {needsLetter.groupType === "one_to_one" ? "Write your letter 📮" : "Share your update 📮"}
+                    {needsLetter.groupType === "one_to_one" ? "Write your letter 🖋️" : "Share your update 📮"}
                   </p>
                   <p className="text-sm opacity-80 mt-1">
                     {needsLetter.name || needsLetter.members.filter(m => m.email !== user.email).map(m => m.name || m.email?.split("@")[0]).join(", ")}

@@ -227,7 +227,7 @@ export default function ReadLetter() {
               className="px-6 py-3 rounded-xl font-semibold text-sm"
               style={{ backgroundColor: "#5C7A5F", color: "#fff" }}
             >
-              {isOneToOne ? "Write your letter 📮" : "Share your update 📮"}
+              {isOneToOne ? "Write your letter 🖋️" : "Share your update 📮"}
             </button>
           </div>
         )}

@@ -118,7 +118,7 @@ export default function LetterInvitePage() {
           className="px-8 py-4 rounded-2xl font-semibold text-base mb-4"
           style={{ background: "#5C7A5F", color: "#fff" }}
         >
-          Write your first letter ✉️
+          Write your first letter 🖋️
         </button>
         <button
           onClick={() => setLocation(goUrl)}
