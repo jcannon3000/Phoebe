@@ -366,7 +366,7 @@ export default function TraditionNew() {
                 style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}
               >
                 <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  When should you first gather?
+                  When will you first gather? 🌿
                 </h1>
                 <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
                   Pick your first choice and two alternates. Your group will say which works best.
@@ -377,13 +377,20 @@ export default function TraditionNew() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C8D4C0" }}>
                     First Pick
                   </p>
-                  <input
-                    type="datetime-local"
-                    value={firstPick}
-                    onChange={(e) => setFirstPick(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                    style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="datetime-local"
+                      value={firstPick}
+                      onChange={(e) => setFirstPick(e.target.value)}
+                      className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                      style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: firstPick ? "#F0EDE6" : "transparent" }}
+                    />
+                    {!firstPick && (
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none" style={{ color: "#8FAF96" }}>
+                        Pick a date and time
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* First Alternative */}
@@ -391,13 +398,20 @@ export default function TraditionNew() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
                     First Alternative
                   </p>
-                  <input
-                    type="datetime-local"
-                    value={altTime1}
-                    onChange={(e) => setAltTime1(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                    style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="datetime-local"
+                      value={altTime1}
+                      onChange={(e) => setAltTime1(e.target.value)}
+                      className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                      style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: altTime1 ? "#F0EDE6" : "transparent" }}
+                    />
+                    {!altTime1 && (
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none" style={{ color: "rgba(143,175,150,0.5)" }}>
+                        Optional alternative
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Second Alternative */}
@@ -405,13 +419,20 @@ export default function TraditionNew() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
                     Second Alternative
                   </p>
-                  <input
-                    type="datetime-local"
-                    value={altTime2}
-                    onChange={(e) => setAltTime2(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                    style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="datetime-local"
+                      value={altTime2}
+                      onChange={(e) => setAltTime2(e.target.value)}
+                      className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                      style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: altTime2 ? "#F0EDE6" : "transparent" }}
+                    />
+                    {!altTime2 && (
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none" style={{ color: "rgba(143,175,150,0.5)" }}>
+                        Optional alternative
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
