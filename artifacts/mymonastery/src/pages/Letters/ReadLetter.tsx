@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 
+const STATE_ABBR: Record<string, string> = { "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA","Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT","Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","District of Columbia":"DC" };
+
 function parsePostmark(raw: string) {
   const parts = raw.split(", ");
   if (parts.length >= 2) {
@@ -8,9 +10,10 @@ function parsePostmark(raw: string) {
     const tokens = stateZip.split(" ");
     const last = tokens[tokens.length - 1];
     if (/^\d{5}(-\d{4})?$/.test(last)) {
-      return { city, state: tokens.slice(0, -1).join(" "), zip: last };
+      const fullState = tokens.slice(0, -1).join(" ");
+      return { city, state: STATE_ABBR[fullState] || fullState, zip: last };
     }
-    return { city, state: stateZip, zip: "" };
+    return { city, state: STATE_ABBR[stateZip] || stateZip, zip: "" };
   }
   return { city: raw, state: "", zip: "" };
 }
@@ -162,7 +165,7 @@ export default function ReadLetter() {
           const { city, state, zip } = parsePostmark(letter.postmarkCity!);
           return (
             <div
-              className="absolute flex flex-col items-end animate-postmark-pulse"
+              className="absolute flex flex-col items-end "
               style={{ top: "20px", right: "20px", gap: "2px" }}
             >
               <span style={{ color: "#5C7A5F", fontSize: "15px", fontWeight: 700, lineHeight: 1.2 }}>

@@ -59,6 +59,8 @@ function formatShortDate(dateStr: string): string {
   return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 
+const STATE_ABBR: Record<string, string> = { "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA","Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT","Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","District of Columbia":"DC" };
+
 function parsePostmark(raw: string) {
   const parts = raw.split(", ");
   if (parts.length >= 2) {
@@ -67,9 +69,10 @@ function parsePostmark(raw: string) {
     const tokens = stateZip.split(" ");
     const last = tokens[tokens.length - 1];
     if (/^\d{5}(-\d{4})?$/.test(last)) {
-      return { city, state: tokens.slice(0, -1).join(" "), zip: last };
+      const fullState = tokens.slice(0, -1).join(" ");
+      return { city, state: STATE_ABBR[fullState] || fullState, zip: last };
     }
-    return { city, state: stateZip, zip: "" };
+    return { city, state: STATE_ABBR[stateZip] || stateZip, zip: "" };
   }
   return { city: raw, state: "", zip: "" };
 }
@@ -77,7 +80,7 @@ function parsePostmark(raw: string) {
 function PostmarkStamp({ city, date }: { city: string; date: string }) {
   const { city: c, state, zip } = parsePostmark(city);
   return (
-    <div className="inline-flex flex-col items-end flex-shrink-0 animate-postmark-pulse" style={{ gap: "1px" }}>
+    <div className="inline-flex flex-col items-end flex-shrink-0 " style={{ gap: "1px" }}>
       <span style={{ color: "#5C7A5F", fontSize: "13px", fontWeight: 700, lineHeight: 1.2 }}>{formatShortDate(date)}</span>
       <span className="uppercase" style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.08em", lineHeight: 1.3 }}>{c}{state ? `, ${state}` : ""}</span>
       {zip && <span style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.05em", lineHeight: 1.3 }}>{zip}</span>}
