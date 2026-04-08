@@ -95,7 +95,7 @@ export default function Onboarding() {
         </span>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 pb-12">
+      <main className="flex-1 flex flex-col items-center justify-start px-4 pb-12 pt-8">
         <div className="w-full max-w-sm mx-auto">
 
           {/* Hero */}
@@ -105,7 +105,7 @@ export default function Onboarding() {
             transition={{ duration: 0.5 }}
             className="text-center mb-10"
           >
-            <div className="text-5xl mb-5">📮</div>
+            <div className="text-5xl mb-5">🪴</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
               Be together with Phoebe.
             </h1>
