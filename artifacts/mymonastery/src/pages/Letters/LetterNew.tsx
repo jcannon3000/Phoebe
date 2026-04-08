@@ -101,13 +101,13 @@ export default function LetterNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#091A10", fontFamily: "'Space Grotesk', sans-serif" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
           onClick={() => step === 1 ? setLocation("/letters") : setStep((s) => (s - 1) as 1 | 2 | 3)}
           className="text-sm"
-          style={{ color: "#9a9390" }}
+          style={{ color: "#8FAF96" }}
         >
           ← {step === 1 ? "Letters" : "Back"}
         </button>
@@ -116,7 +116,7 @@ export default function LetterNew() {
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#5C7A5F" : "#C8C4B4" }}
+              style={{ background: s <= step ? "#8FAF96" : "rgba(200,212,192,0.2)" }}
             />
           ))}
         </div>
@@ -128,34 +128,34 @@ export default function LetterNew() {
           {/* Step 1 — Type */}
           {step === 1 && (
             <motion.div key="step1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 Who are you writing to? 📮
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
                 Choose how you want to correspond.
               </p>
 
               <div className="space-y-3">
                 <button
                   onClick={() => handleTypeSelect("one_to_one")}
-                  className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99] card-elevated"
-                  style={{ background: "#fff", border: "2px solid rgba(92,122,95,0.35)" }}
+                  className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
+                  style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
-                  <p className="text-base font-semibold mb-2" style={{ color: "#2C1810" }}>📮 A letter</p>
-                  <p className="text-sm font-medium mb-1" style={{ color: "#5C7A5F" }}>Start a dialogue. Stay in touch.</p>
-                  <p className="text-sm leading-relaxed" style={{ color: "#9a9390" }}>
+                  <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 A letter</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Start a dialogue. Stay in touch.</p>
+                  <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
                     Once a week, one letter, one person. A zoom out from the daily noise — not a text, not ambient. A real correspondence, with history. Monks have written this way for centuries. Sacred because it's the only one you send.
                   </p>
                 </button>
 
                 <button
                   onClick={() => handleTypeSelect("group")}
-                  className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99] card-elevated"
-                  style={{ background: "#fff", border: "2px solid rgba(193,127,36,0.3)" }}
+                  className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
+                  style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
-                  <p className="text-base font-semibold mb-2" style={{ color: "#2C1810" }}>✉️ Group updates</p>
-                  <p className="text-sm font-medium mb-1" style={{ color: "#C17F24" }}>Keep a circle close.</p>
-                  <p className="text-sm leading-relaxed" style={{ color: "#9a9390" }}>
+                  <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>✉️ Group updates</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Keep a circle close.</p>
+                  <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
                     3 to 15 people. Everyone shares once a week — 50 words or more. A thread that keeps a community rooted in each other's lives.
                   </p>
                 </button>
@@ -166,10 +166,10 @@ export default function LetterNew() {
           {/* Step 2 — Who */}
           {step === 2 && (
             <motion.div key="step2" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {type === "one_to_one" ? "Who do you want to write to?" : "Who's in this group?"}
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
                 {type === "one_to_one"
                   ? "They'll get an email invitation."
                   : "Add 2–14 people. Everyone gets an invitation."}
@@ -185,10 +185,10 @@ export default function LetterNew() {
                         value={m.name}
                         onChange={(e) => updateMember(i, "name", e.target.value)}
                         className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+                        style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
                       />
                       {type === "group" && i >= 2 && (
-                        <button onClick={() => removeMember(i)} className="text-lg px-1" style={{ color: "#9a9390" }}>×</button>
+                        <button onClick={() => removeMember(i)} className="text-lg px-1" style={{ color: "#8FAF96" }}>×</button>
                       )}
                     </div>
                     <input
@@ -197,7 +197,7 @@ export default function LetterNew() {
                       value={m.email}
                       onChange={(e) => updateMember(i, "email", e.target.value)}
                       className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-                      style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+                      style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
                     />
                   </div>
                 ))}
@@ -206,20 +206,20 @@ export default function LetterNew() {
                   <button
                     onClick={() => setMembers((ms) => [...ms, { email: "", name: "" }])}
                     className="text-sm font-medium"
-                    style={{ color: "#5C7A5F" }}
+                    style={{ color: "#C8D4C0" }}
                   >
                     + Add another person
                   </button>
                 )}
               </div>
 
-              {error && <p className="text-sm mt-4" style={{ color: "#C17F24" }}>{error}</p>}
+              {error && <p className="text-sm mt-4" style={{ color: "#C47A65" }}>{error}</p>}
 
               <button
                 onClick={handleWhoNext}
                 disabled={createMutation.isPending}
-                className="btn-sage w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50"
-                style={{ background: "#5C7A5F", color: "#fff" }}
+                className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
                 {createMutation.isPending ? "Starting…" : type === "one_to_one" ? "Start writing" : "Continue →"}
               </button>
@@ -229,10 +229,10 @@ export default function LetterNew() {
           {/* Step 3 — Name */}
           {step === 3 && (
             <motion.div key="step3" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 Name it
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
                 This is how it'll appear in your letters.
               </p>
 
@@ -244,16 +244,16 @@ export default function LetterNew() {
                 maxLength={60}
                 autoFocus
                 className="w-full px-4 py-4 rounded-xl text-lg font-medium focus:outline-none"
-                style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+                style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
               />
 
-              {error && <p className="text-sm mt-3" style={{ color: "#C17F24" }}>{error}</p>}
+              {error && <p className="text-sm mt-3" style={{ color: "#C47A65" }}>{error}</p>}
 
               <button
                 onClick={handleSubmit}
                 disabled={createMutation.isPending || !name.trim()}
                 className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
-                style={{ background: "#5C7A5F", color: "#fff" }}
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
                 {createMutation.isPending ? "Starting..." : "Start writing 📮"}
               </button>

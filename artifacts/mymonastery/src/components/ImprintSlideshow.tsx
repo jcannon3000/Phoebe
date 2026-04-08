@@ -102,14 +102,14 @@ export default function ImprintSlideshow({
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: "#FAF6F0", fontFamily: "'Space Grotesk', sans-serif" }}
+      style={{ background: "#091A10", fontFamily: "'Space Grotesk', sans-serif" }}
     >
       {/* Skip */}
       <div className="flex justify-end px-6 pt-6">
         <button
           onClick={skip}
           className="text-sm"
-          style={{ color: "#9a9390" }}
+          style={{ color: "#8FAF96" }}
         >
           Skip
         </button>
@@ -129,13 +129,13 @@ export default function ImprintSlideshow({
           >
             <h1
               className="text-2xl font-bold leading-snug mb-5"
-              style={{ color: "#2C1810" }}
+              style={{ color: "#F0EDE6" }}
             >
               {slide.headline}
             </h1>
             <p
               className="text-base leading-relaxed font-normal"
-              style={{ color: "#8C7B6B" }}
+              style={{ color: "#8FAF96" }}
             >
               {slide.body}
             </p>
@@ -154,7 +154,7 @@ export default function ImprintSlideshow({
               style={{
                 width: i === index ? 20 : 8,
                 height: 8,
-                background: i <= index ? "#5C7A5F" : "#D4CFC4",
+                background: i <= index ? "#8FAF96" : "rgba(200,212,192,0.2)",
               }}
             />
           ))}
@@ -166,7 +166,7 @@ export default function ImprintSlideshow({
             onClick={advance}
             disabled={completeMutation.isPending}
             className="w-full max-w-sm py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
-            style={{ background: "#5C7A5F", color: "#fff" }}
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
             {completeMutation.isPending ? "Starting…" : ctaLabel}
           </button>
@@ -174,7 +174,7 @@ export default function ImprintSlideshow({
           <button
             onClick={advance}
             className="w-full max-w-sm py-4 rounded-2xl text-base font-semibold"
-            style={{ background: "transparent", color: "#5C7A5F", border: "1.5px solid #5C7A5F" }}
+            style={{ background: "transparent", color: "#C8D4C0", border: "1.5px solid rgba(200,212,192,0.4)" }}
           >
             Continue →
           </button>
