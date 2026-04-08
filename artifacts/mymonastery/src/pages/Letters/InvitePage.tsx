@@ -86,7 +86,7 @@ export default function LetterInvitePage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: "#FAF6F0" }}>
         <div>
-          <p className="text-4xl mb-4">📮</p>
+          <p className="text-4xl mb-4">✉️</p>
           <p className="text-base" style={{ color: "#6b6460" }}>This invitation is no longer valid.</p>
         </div>
       </div>
@@ -106,7 +106,7 @@ export default function LetterInvitePage() {
       : "/";
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#FAF6F0" }}>
-        <div className="text-5xl mb-6">📮</div>
+        <div className="text-5xl mb-6">✉️</div>
         <h1 className="text-xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
           You're in. 🌿
         </h1>
@@ -118,7 +118,7 @@ export default function LetterInvitePage() {
           className="px-8 py-4 rounded-2xl font-semibold text-base mb-4"
           style={{ background: "#5C7A5F", color: "#fff" }}
         >
-          Write your first letter 📮
+          Write your first letter ✉️
         </button>
         <button
           onClick={() => setLocation(goUrl)}
@@ -135,7 +135,7 @@ export default function LetterInvitePage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: "#FAF6F0" }}>
       <div className="max-w-sm w-full text-center">
-        <div className="text-5xl mb-6">📮</div>
+        <div className="text-5xl mb-6">✉️</div>
 
         <h1
           className="text-[22px] font-bold mb-4"
@@ -182,7 +182,7 @@ export default function LetterInvitePage() {
           className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-opacity"
           style={{ background: "#5C7A5F", color: "#fff" }}
         >
-          {isSubmitting ? "Accepting..." : "Accept and start writing 📮"}
+          {isSubmitting ? "Accepting..." : "Accept and start writing ✉️"}
         </button>
 
         <p className="text-xs mt-10" style={{ color: "#9a9390" }}>

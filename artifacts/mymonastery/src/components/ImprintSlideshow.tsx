@@ -21,7 +21,7 @@ export const correspondenceSlides: ImprintSlide[] = [
     body: "Not through proximity. Not through events. Through letters — steady, unhurried, returned to week after week. The relationships that lasted were the ones that were written down. This is the wisdom Phoebe draws on.",
   },
   {
-    headline: "One letter. One person. Once a week. 📮",
+    headline: "One letter. One person. Once a week. ✉️",
     body: "Because you only get one, it means something. You can't dash it off. You have to slow down and ask: what actually happened this week? What do I want them to know? The limitation is the gift. Sacred because it is set apart from the noise.",
   },
   {

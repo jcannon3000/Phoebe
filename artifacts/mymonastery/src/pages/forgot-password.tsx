@@ -45,7 +45,7 @@ export default function ForgotPassword() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <div className="text-4xl mb-5 text-center">📮</div>
+            <div className="text-4xl mb-5 text-center">✉️</div>
             <h1 className="text-2xl font-bold mb-2 text-center" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
               Forgot your password?
             </h1>

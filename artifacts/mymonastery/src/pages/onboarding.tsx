@@ -105,7 +105,7 @@ export default function Onboarding() {
             transition={{ duration: 0.5 }}
             className="text-center mb-10"
           >
-            <div className="text-5xl mb-5">🪴</div>
+            <div className="text-5xl mb-5">✨</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
               Be together with Phoebe.
             </h1>

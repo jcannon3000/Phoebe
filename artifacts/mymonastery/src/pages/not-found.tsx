@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center px-4" style={{ background: "#091A10" }}>
       <div className="text-center max-w-sm">
-        <div className="text-5xl mb-6">📮</div>
+        <div className="text-5xl mb-6">✉️</div>
         <h1 className="text-2xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
           Lost in the post
         </h1>

@@ -41,7 +41,7 @@ function FAB() {
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📮 Start a correspondence</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>✉️ Start a correspondence</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Write letters with someone</p>
             </button>
             <button
@@ -108,7 +108,7 @@ function LettersSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Letters 📮" />
+        <SectionHeader label="Letters ✉️" />
         <div className="space-y-3 mb-8">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
@@ -122,14 +122,14 @@ function LettersSection() {
 
   return (
     <div className="mb-8">
-      <SectionHeader label="Letters 📮" />
+      <SectionHeader label="Letters ✉️" />
 
       {items.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
           style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No letters yet. Start a correspondence. 📮</p>
+          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No letters yet. Start a correspondence. ✉️</p>
           <Link href="/letters/new">
             <span className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>Start writing →</span>
           </Link>
@@ -158,7 +158,7 @@ function LettersSection() {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
               statusColor = "#9a9390";
             } else if (needsWrite) {
-              statusText = isOneToOne ? `Your turn to write 📮` : `Share your update 📮`;
+              statusText = isOneToOne ? `Your turn to write ✉️` : `Share your update ✉️`;
               statusColor = "#4A6FA5";
             } else {
               statusText = "All written 🌿";
@@ -212,7 +212,7 @@ function LettersSection() {
                             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
                             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                           >
-                            Write 📮
+                            Write ✉️
                           </span>
                         </Link>
                       )}
@@ -337,11 +337,7 @@ export default function Dashboard() {
       <div className="flex flex-col w-full pb-36">
 
         {/* ── Header ── */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {format(new Date(), "EEEE, d MMMM")}
-          </h1>
-        </div>
+        <div className="mb-4" />
 
         {/* ── Letters ── */}
         <LettersSection />

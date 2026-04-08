@@ -183,7 +183,7 @@ export default function CorrespondencePage() {
           <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
         )}
         {memberCities.length > 0 && (
-          <p className="text-xs mb-5" style={{ color: "#8FAF96" }}>📮 {memberCities.join(" · ")}</p>
+          <p className="text-xs mb-5" style={{ color: "#8FAF96" }}>✉️ {memberCities.join(" · ")}</p>
         )}
         {memberCities.length === 0 && <div className="mb-5" />}
 
@@ -230,7 +230,7 @@ export default function CorrespondencePage() {
                     className="w-full py-3 rounded-xl text-base font-semibold"
                     style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                   >
-                    {isOneToOne ? "Write your letter 📮" : "Share your update 📮"}
+                    {isOneToOne ? "Write your letter ✉️" : "Share your update ✉️"}
                   </button>
                 </Link>
               ) : currentPeriod.hasWrittenThisPeriod ? (
@@ -253,7 +253,7 @@ export default function CorrespondencePage() {
             {data.myTurn && (
               <Link href={writeUrl}>
                 <button className="px-6 py-3 rounded-xl font-semibold text-sm" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  Write first 📮
+                  Write first ✉️
                 </button>
               </Link>
             )}

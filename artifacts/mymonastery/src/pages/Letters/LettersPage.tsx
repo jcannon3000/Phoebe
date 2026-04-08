@@ -144,11 +144,11 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
             </span>
           ) : item.myTurn ? (
             <span className="text-[12px] font-medium" style={{ color: "#5C7A5F" }}>
-              {isOneToOne ? "Your turn to write 📮" : "Write your update 📮"}
+              {isOneToOne ? "Your turn to write ✉️" : "Write your update ✉️"}
             </span>
           ) : unread ? (
             <span className="text-[12px] font-medium" style={{ color: "#5C7A5F" }}>
-              New {isOneToOne ? "letter" : "update"} 📮
+              New {isOneToOne ? "letter" : "update"} ✉️
             </span>
           ) : lastLetterDate ? (
             <span className="text-[12px]" style={{ color: "#9a9390" }}>
@@ -210,7 +210,7 @@ export default function LettersPage() {
               className="text-[28px] font-bold"
               style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              Letters 📮
+              Letters ✉️
             </h1>
             {!isEmpty && (
               <Link href="/letters/new">
@@ -240,7 +240,7 @@ export default function LettersPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center text-center py-12"
           >
-            <div className="text-5xl mb-6">📮</div>
+            <div className="text-5xl mb-6">✉️</div>
             <p className="text-base font-medium mb-1" style={{ color: "#2C1810" }}>Letters are how belonging gets cultivated, one week at a time.</p>
             <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
               A real dialogue. A shared history. A relationship that deepens.
@@ -264,7 +264,7 @@ export default function LettersPage() {
                   style={{ backgroundColor: "#5C7A5F", color: "#fff", boxShadow: "0 4px 16px rgba(92,122,95,0.3)" }}
                 >
                   <p className="text-lg font-semibold">
-                    {needsLetter.groupType === "one_to_one" ? "Write your letter 📮" : "Share your update 📮"}
+                    {needsLetter.groupType === "one_to_one" ? "Write your letter ✉️" : "Share your update ✉️"}
                   </p>
                   <p className="text-sm opacity-80 mt-1">
                     {needsLetter.name || needsLetter.members.filter(m => m.email !== user.email).map(m => m.name || m.email?.split("@")[0]).join(", ")}
