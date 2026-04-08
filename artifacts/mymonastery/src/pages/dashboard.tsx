@@ -127,7 +127,7 @@ function LettersSection() {
       {items.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#F7F0E6", border: "1px dashed #C8B99A" }}
+          style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
         >
           <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No letters yet. Start a correspondence. 📮</p>
           <Link href="/letters/new">
@@ -172,8 +172,8 @@ function LettersSection() {
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
+                  className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
+                  style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
                 >
                   <div className="w-1 flex-shrink-0" style={{ background: "#4A6741" }} />
                   <div className="flex-1 p-4">
@@ -256,7 +256,7 @@ function GatheringsSection() {
       {gatherings.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#F7F0E6", border: "1px dashed #C8B99A" }}
+          style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
         >
           <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No gatherings yet. Start one. 🌿</p>
           <Link href="/tradition/new">
@@ -279,8 +279,8 @@ function GatheringsSection() {
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
+                  className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
+                  style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
                 >
                   <div className="w-1 flex-shrink-0" style={{ background: "#4A6741" }} />
                   <div className="flex-1 p-4">

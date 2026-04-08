@@ -122,7 +122,7 @@ export default function People() {
             {/* Compact empty state */}
             <div
               className="rounded-xl px-5 py-5 mb-6 flex items-center gap-4"
-              style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
+              style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
             >
               <span style={{ fontSize: "32px" }}>🌱</span>
               <div>
@@ -140,7 +140,7 @@ export default function People() {
               <Link href="/letters/new">
                 <div
                   className="flex items-center gap-4 px-4 py-4 rounded-xl cursor-pointer hover:shadow-sm transition-shadow"
-                  style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
+                  style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
                 >
                   <span className="text-xl">🌿</span>
                   <span className="flex-1 text-sm font-medium" style={{ color: "#2C1810" }}>Start a letter with someone</span>
@@ -150,7 +150,7 @@ export default function People() {
               <Link href="/tradition/new">
                 <div
                   className="flex items-center gap-4 px-4 py-4 rounded-xl cursor-pointer hover:shadow-sm transition-shadow"
-                  style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
+                  style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
                 >
                   <span className="text-xl">🏡</span>
                   <span className="flex-1 text-sm font-medium" style={{ color: "#2C1810" }}>Create a gathering</span>
