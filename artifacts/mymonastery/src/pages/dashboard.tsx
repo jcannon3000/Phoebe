@@ -339,7 +339,7 @@ export default function Dashboard() {
         {/* ── Header ── */}
         <div className="mb-6">
           <p className="mb-1" style={{ color: "#6b6460", fontSize: "13px", fontWeight: 400, letterSpacing: 0 }}>
-            Cultivate community through writing letters and meeting in person
+            Cultivating community makes life radiant ✨
           </p>
           <h1 className="text-2xl font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
             {format(new Date(), "EEEE, d MMMM")}
