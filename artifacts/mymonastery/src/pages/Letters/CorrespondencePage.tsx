@@ -188,7 +188,7 @@ export default function CorrespondencePage() {
         {memberCities.length === 0 && <div className="mb-5" />}
 
         {/* Period bar */}
-        <div className="rounded-xl overflow-hidden mb-8" style={{ background: "#FAF6F0", border: "1px solid rgba(92,122,95,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
+        <div className={`rounded-xl overflow-hidden mb-8 transition-shadow ${data.myTurn && !currentPeriod.hasWrittenThisPeriod ? "animate-turn-pulse" : ""}`} style={{ background: "#FAF6F0", border: "1px solid rgba(92,122,95,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
           <div className="flex">
             <div className="w-[3px] flex-shrink-0" style={{ background: "#5C7A5F" }} />
             <div className="flex-1 p-5">

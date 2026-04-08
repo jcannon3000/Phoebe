@@ -39,18 +39,18 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#FAF6F0", border: "1px solid rgba(74,111,165,0.25)", minWidth: 220 }}
+              style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>📮 Start a correspondence</p>
-              <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Write letters with someone</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📮 Start a correspondence</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Write letters with someone</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#FAF6F0", border: "1px solid rgba(193,127,36,0.25)", minWidth: 220 }}
+              style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#2C1810" }}>🕯️ Start a gathering</p>
-              <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>Meet together regularly</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ Start a gathering</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Meet together regularly</p>
             </button>
           </motion.div>
         )}
@@ -58,7 +58,7 @@ function FAB() {
       <button
         onClick={() => setOpen(o => !o)}
         className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#4A6741", color: "#F7F0E6" }}
+        style={{ background: "#1A4A2E", color: "#F0EDE6" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open ? <X size={24} /> : <Plus size={24} />}
@@ -73,10 +73,10 @@ function FAB() {
 function SectionHeader({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <h2 className="text-lg font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
         {label}
       </h2>
-      <div className="flex-1 h-px" style={{ background: "#D6CAB8" }} />
+      <div className="flex-1 h-px" style={{ background: "rgba(200, 212, 192, 0.15)" }} />
     </div>
   );
 }
@@ -111,7 +111,7 @@ function LettersSection() {
         <SectionHeader label="Letters 📮" />
         <div className="space-y-3 mb-8">
           {[1, 2].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#F0EAE0" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
           ))}
         </div>
       </>
@@ -127,11 +127,11 @@ function LettersSection() {
       {items.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
+          style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No letters yet. Start a correspondence. 📮</p>
+          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No letters yet. Start a correspondence. 📮</p>
           <Link href="/letters/new">
-            <span className="text-sm font-semibold" style={{ color: "#4A6FA5" }}>Start writing →</span>
+            <span className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>Start writing →</span>
           </Link>
         </div>
       ) : (
@@ -173,23 +173,23 @@ function LettersSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
-                  style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                 >
-                  <div className="w-1 flex-shrink-0" style={{ background: "#4A6741" }} />
+                  <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <span className="text-base font-semibold" style={{ color: "#2C1810" }}>
+                        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
                           {c.name || (isOneToOne ? `Letters with ${otherMembers}` : otherMembers)}
                         </span>
                         {hasUnread && (
                           <span
                             className="ml-2 inline-block w-2 h-2 rounded-full align-middle"
-                            style={{ background: "#4A6FA5" }}
+                            style={{ background: "#C8D4C0" }}
                           />
                         )}
                       </div>
-                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#4A6FA5", letterSpacing: "0.08em" }}>
+                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
                         {isOneToOne ? `Letter ${c.currentPeriod.periodNumber}` : `Week ${c.currentPeriod.periodNumber}`}
                       </span>
                     </div>
@@ -199,7 +199,7 @@ function LettersSection() {
                     </p>
 
                     <div className="flex items-center justify-between gap-2 mt-2">
-                      <span className="text-[11px]" style={{ color: "#9a9390" }}>
+                      <span className="text-[11px]" style={{ color: "#8FAF96" }}>
                         {c.currentPeriod.periodLabel}
                         {lastPostmark?.city ? ` · ${lastPostmark.city}` : ""}
                       </span>
@@ -210,7 +210,7 @@ function LettersSection() {
                         >
                           <span
                             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
-                            style={{ background: "#4A6FA5", color: "#fff" }}
+                            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                           >
                             Write 📮
                           </span>
@@ -240,7 +240,7 @@ function GatheringsSection() {
         <SectionHeader label="Gatherings 🕯️" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#F0EAE0" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
           ))}
         </div>
       </>
@@ -256,11 +256,11 @@ function GatheringsSection() {
       {gatherings.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
+          style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No gatherings yet. Start one. 🕯️</p>
+          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No gatherings yet. Start one. 🕯️</p>
           <Link href="/tradition/new">
-            <span className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>Start a gathering →</span>
+            <span className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>Start a gathering →</span>
           </Link>
         </div>
       ) : (
@@ -280,34 +280,34 @@ function GatheringsSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
-                  style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                 >
-                  <div className="w-1 flex-shrink-0" style={{ background: "#4A6741" }} />
+                  <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className="text-base font-semibold" style={{ color: "#2C1810" }}>{ritual.name}</span>
-                      <span className="text-[11px]" style={{ color: "#9a9390" }}>{rhythmLabel}</span>
+                      <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{ritual.name}</span>
+                      <span className="text-[11px]" style={{ color: "#8FAF96" }}>{rhythmLabel}</span>
                     </div>
 
                     {ritual.participants && (ritual.participants as any[]).length > 0 && (
-                      <p className="text-sm mb-1" style={{ color: "#6b6460" }}>
+                      <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>
                         with {(ritual.participants as any[]).slice(0, 3).map((p: any) => (p.name || p.email || "").split(" ")[0]).join(", ")}
                         {(ritual.participants as any[]).length > 3 && ` +${(ritual.participants as any[]).length - 3}`}
                       </p>
                     )}
 
                     {next && (
-                      <p className="text-sm" style={{ color: "#6b6460" }}>
+                      <p className="text-sm" style={{ color: "#8FAF96" }}>
                         {dayLabel(next)} · {format(next, "h:mm a")}
                         {ritual.location && <> · {ritual.location}</>}
                       </p>
                     )}
 
                     {r.intercessionIntention && (
-                      <p className="text-xs mt-1" style={{ color: "#9a9390" }}>🙏 Praying for {r.intercessionIntention}</p>
+                      <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>🙏 Praying for {r.intercessionIntention}</p>
                     )}
                     {r.fastingDescription && (
-                      <p className="text-xs mt-0.5" style={{ color: "#9a9390" }}>🌿 Fasting together</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>🌿 Fasting together</p>
                     )}
                   </div>
                 </motion.div>
@@ -338,12 +338,9 @@ export default function Dashboard() {
 
         {/* ── Header ── */}
         <div className="mb-6">
-          <p className="mb-1" style={{ color: "#6b6460", fontSize: "13px", fontWeight: 400, letterSpacing: 0 }}>
+          <p className="mb-1" style={{ color: "#8FAF96", fontSize: "13px", fontWeight: 400, letterSpacing: 0 }}>
             Cultivating community makes life radiant ✨
           </p>
-          <h1 className="text-2xl font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {format(new Date(), "EEEE, d MMMM")}
-          </h1>
         </div>
 
         {/* ── Letters ── */}
@@ -356,7 +353,7 @@ export default function Dashboard() {
         <PrayerSection />
 
         {/* Footer */}
-        <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "#C8B99A" }}>
+        <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
           Inspired by Monastic Wisdom
         </p>
 

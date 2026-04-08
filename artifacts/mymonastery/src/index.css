@@ -51,45 +51,46 @@
 }
 
 :root {
-  /* Phoebe — a monastery garden at dawn */
-  /* soil   #2C1810 — primary text, headings           */
-  /* ground #F0EBE0 — page background, warm parchment  */
-  /* card   #E8E2D5 — one step darker, same family     */
-  /* sage   #5C7A5F — living color, CTAs, progress     */
+  /* Phoebe — a forest chapel at dusk */
+  /* deep   #091A10 — page background, deep forest     */
+  /* card   #0F2818 — card surface, dark emerald        */
+  /* hover  #1F4A33 — card hover, lighter forest        */
+  /* cream  #F0EDE6 — primary text, warm off-white      */
+  /* sage   #8FAF96 — secondary text, muted sage        */
+  /* accent #C8D4C0 — interactive, sage accent          */
   /* amber  #C17F24 — traditions accent                */
-  /* blush  #D4896A — prayer, warmth                   */
-  /* ink    #4A6FA5 — letters-specific UI only         */
-  /* muted  #8C7B6B — secondary text, warm grey-brown  */
+  /* prayer #C47A65 — prayer, warmth                   */
+  /* button #2D5E3F — active button bg                 */
 
-  --background: 37 47% 96%;         /* #FAF6F0 light warm parchment */
-  --foreground: 17 47% 12%;         /* #2C1810 soil */
+  --background: 144 33% 7%;         /* #091A10 deep forest green */
+  --foreground: 37 20% 93%;         /* #F0EDE6 warm off-white */
 
-  --border: 96 19% 79%;             /* #C8D4C0 sage green tint */
-  --input: 96 19% 79%;
-  --ring: 128 14% 42%;              /* #5C7A5F sage */
+  --border: 144 22% 48%;            /* sage adjusted for dark: rgba(200,212,192,0.25) effect */
+  --input: 144 22% 48%;
+  --ring: 144 22% 35%;
 
-  --card: 38 18% 87%;               /* #E8E2D5 card surface */
-  --card-foreground: 17 47% 12%;
-  --card-border: 96 19% 79%;        /* #C8D4C0 sage green tint */
+  --card: 150 40% 11%;              /* #0F2818 card surface */
+  --card-foreground: 37 20% 93%;    /* #F0EDE6 */
+  --card-border: 144 22% 48%;
 
-  --popover: 40 20% 94%;
-  --popover-foreground: 17 47% 12%;
-  --popover-border: 40 14% 82%;
+  --popover: 150 40% 11%;
+  --popover-foreground: 37 20% 93%;
+  --popover-border: 144 22% 48%;
 
-  --primary: 128 14% 42%;           /* #5C7A5F sage */
-  --primary-foreground: 0 0% 100%;
+  --primary: 144 28% 27%;           /* #2D5E3F active button */
+  --primary-foreground: 37 20% 93%;
 
-  --secondary: 35 46% 93%;          /* cream */
-  --secondary-foreground: 17 47% 12%;
+  --secondary: 150 30% 14%;         /* slightly lighter than card */
+  --secondary-foreground: 37 20% 93%;
 
-  --muted: 35 18% 94%;
-  --muted-foreground: 25 16% 48%;   /* #8C7B6B warm grey-brown */
+  --muted: 150 30% 14%;
+  --muted-foreground: 135 18% 62%;  /* #8FAF96 muted sage */
 
-  --accent: 35 69% 45%;             /* #C17F24 amber */
-  --accent-foreground: 37 50% 96%;
+  --accent: 35 69% 45%;             /* #C17F24 amber — keep */
+  --accent-foreground: 37 20% 93%;
 
-  --destructive: 18 55% 62%;        /* #D4896A blush — warm not alarming */
-  --destructive-foreground: 37 50% 96%;
+  --destructive: 15 42% 58%;        /* #C47A65 warmer terracotta for dark bg */
+  --destructive-foreground: 37 20% 93%;
 
   --app-font-sans: 'Space Grotesk', sans-serif;
   --app-font-serif: Georgia, 'Times New Roman', serif;
@@ -97,16 +98,16 @@
 
   --radius: 1rem;
 
-  --shadow-warm-sm: 0 2px 8px rgba(44, 24, 16, 0.06);
-  --shadow-warm-md: 0 4px 16px rgba(44, 24, 16, 0.08), 0 1px 4px rgba(44, 24, 16, 0.04);
-  --shadow-warm-lg: 0 8px 32px rgba(44, 24, 16, 0.10), 0 2px 8px rgba(44, 24, 16, 0.05);
-  --shadow-warm-xl: 0 20px 48px rgba(44, 24, 16, 0.12), 0 4px 16px rgba(44, 24, 16, 0.06);
+  --shadow-warm-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-warm-md: 0 4px 16px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-warm-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-warm-xl: 0 20px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
 
-  --button-outline: rgba(107, 143, 113, 0.15);
-  --badge-outline: rgba(107, 143, 113, 0.08);
+  --button-outline: rgba(200, 212, 192, 0.15);
+  --badge-outline: rgba(200, 212, 192, 0.08);
   --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(44, 24, 16, 0.03);
-  --elevate-2: rgba(44, 24, 16, 0.06);
+  --elevate-1: rgba(0, 0, 0, 0.15);
+  --elevate-2: rgba(0, 0, 0, 0.25);
 }
 
 /* ── Animations — slow, breathing, unhurried ─────────────────────── */
@@ -116,8 +117,8 @@
   50%      { transform: translateY(-5px); }
 }
 @keyframes card-breathe {
-  0%, 100% { box-shadow: 0 2px 12px rgba(44,24,16,0.06); }
-  50%      { box-shadow: 0 4px 20px rgba(44,24,16,0.10); }
+  0%, 100% { box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+  50%      { box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
 }
 
 .animate-float {
@@ -132,44 +133,44 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 textarea {
-  box-shadow: 0 2px 8px rgba(44, 24, 16, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus,
 textarea:focus {
-  box-shadow: 0 0 0 3px rgba(92, 122, 95, 0.18), 0 2px 12px rgba(44, 24, 16, 0.08);
+  box-shadow: 0 0 0 3px rgba(200, 212, 192, 0.15), 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Primary button — quiet invitation, not demand ───────────────── */
 @keyframes btn-pulse {
-  0%, 100% { box-shadow: 0 2px 12px rgba(92,122,95,0.25), 0 1px 4px rgba(44,24,16,0.06); }
-  50%      { box-shadow: 0 4px 20px rgba(92,122,95,0.40), 0 2px 8px rgba(44,24,16,0.08); }
+  0%, 100% { box-shadow: 0 2px 12px rgba(45,94,63,0.3), 0 1px 4px rgba(0,0,0,0.2); }
+  50%      { box-shadow: 0 4px 20px rgba(45,94,63,0.5), 0 2px 8px rgba(0,0,0,0.3); }
 }
 .btn-sage {
-  background: #5C7A5F;
-  color: #fff;
+  background: #2D5E3F;
+  color: #F0EDE6;
   animation: btn-pulse 4s ease-in-out infinite;
   transform: translateZ(0);
 }
 .btn-sage:hover {
   animation: none;
-  box-shadow: 0 6px 24px rgba(92,122,95,0.45);
+  box-shadow: 0 6px 24px rgba(45,94,63,0.5);
   transform: translateY(-1px);
 }
 .btn-sage:active {
   transform: translateY(0px);
-  box-shadow: 0 2px 8px rgba(92,122,95,0.25);
+  box-shadow: 0 2px 8px rgba(45,94,63,0.3);
 }
 
 /* ── Card — parchment, not plastic ───────────────────────────────── */
 .card-elevated {
-  box-shadow: 0 2px 12px rgba(44,24,16,0.06);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 .card-elevated:hover {
-  box-shadow: 0 4px 20px rgba(44,24,16,0.10);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   transform: translateY(-2px);
 }
 
@@ -179,16 +180,16 @@ textarea:focus {
   }
 
   html {
-    background-color: #FAF6F0;
+    background-color: #091A10;
   }
 
   body {
     @apply font-sans antialiased text-foreground;
-    background-color: #FAF6F0;
+    background-color: #091A10;
   }
 
   #root {
-    background-color: #FAF6F0;
+    background-color: #091A10;
     min-height: 100vh;
   }
 
@@ -204,7 +205,7 @@ textarea:focus {
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(44, 24, 16, 0.7);
+  color: rgba(143, 175, 150, 0.7);
 }
 
 /* ── Presence animations ──────────────────────────────────────────── */
@@ -249,9 +250,9 @@ textarea:focus {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(107, 143, 113, 0.04) 40%,
-    rgba(107, 143, 113, 0.08) 50%,
-    rgba(107, 143, 113, 0.04) 60%,
+    rgba(200, 212, 192, 0.06) 40%,
+    rgba(200, 212, 192, 0.12) 50%,
+    rgba(200, 212, 192, 0.06) 60%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -279,10 +280,17 @@ textarea:focus {
 .animate-rule-sage    { animation: rule-pulse-sage 4s ease-in-out infinite; }
 .animate-border-sage  { animation: border-pulse-sage 5s ease-in-out infinite; }
 
+/* ── Your turn to write — border breathes like a candle ─────────── */
+@keyframes turn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 212, 192, 0); border-color: rgba(200,212,192,0.25); }
+  50%      { box-shadow: 0 0 0 4px rgba(200, 212, 192, 0.12); border-color: rgba(200,212,192,0.7); }
+}
+.animate-turn-pulse { animation: turn-pulse 2.5s ease-in-out infinite; }
+
 /* ── Glow animations (kept for backward compat) ──────────────────── */
 @keyframes glow-breathe {
-  0%, 100% { box-shadow: 0 2px 12px rgba(92, 122, 95, 0.20); }
-  50%      { box-shadow: 0 4px 24px rgba(92, 122, 95, 0.35); }
+  0%, 100% { box-shadow: 0 2px 12px rgba(45, 94, 63, 0.3); }
+  50%      { box-shadow: 0 4px 24px rgba(45, 94, 63, 0.5); }
 }
 @keyframes glow-breathe-amber {
   0%, 100% { box-shadow: 0 2px 12px rgba(193, 127, 36, 0.15); }
