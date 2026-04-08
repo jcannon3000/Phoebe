@@ -334,8 +334,11 @@ export default function Dashboard() {
 
         {/* ── Header ── */}
         <div className="mb-6">
+          <p style={{ color: "#8FAF96", fontSize: "13px", fontWeight: 400 }}>
+            A place set apart for connection
+          </p>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            {format(new Date(), "EEEE, MMMM d")}
+            {format(new Date(), "EEEE, d MMMM")}
           </p>
         </div>
 
