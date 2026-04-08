@@ -292,14 +292,14 @@ textarea:focus {
 
 /* ── Your turn to write — border breathes like a candle ─────────── */
 @keyframes turn-pulse {
-  0%, 100% { border-color: rgba(200,212,192,0.2); }
-  50%      { border-color: rgba(200,212,192,0.7); }
+  0%, 100% { border-color: rgba(200,212,192,0.15); }
+  50%      { border-color: rgba(200,212,192,0.9); }
 }
 .animate-turn-pulse { animation: turn-pulse 2.5s ease-in-out infinite; }
 
 @keyframes bar-pulse {
-  0%, 100% { background-color: rgba(200,212,192,0.3); }
-  50%      { background-color: rgba(200,212,192,0.8); }
+  0%, 100% { background-color: rgba(200,212,192,0.2); }
+  50%      { background-color: rgba(200,212,192,1); }
 }
 .animate-bar-pulse { animation: bar-pulse 2.5s ease-in-out infinite; }
 
