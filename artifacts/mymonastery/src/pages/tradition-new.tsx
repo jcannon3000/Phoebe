@@ -8,10 +8,10 @@ import ImprintSlideshow, { gatheringSlides } from "@/components/ImprintSlideshow
 
 const TEMPLATE_OPTIONS = [
   { value: "coffee", emoji: "☕", label: "Coffee", tagline: "Share your first cup, again and again" },
-  { value: "meal", emoji: "🍽️", label: "A Meal", tagline: "The table is the oldest tradition" },
+  { value: "meal", emoji: "🍽️", label: "A Meal", tagline: "The table is the oldest gathering place" },
   { value: "walk", emoji: "🚶", label: "A Walk", tagline: "Move together on a regular day" },
   { value: "book_club", emoji: "📚", label: "Book Club", tagline: "Read together, think together" },
-  { value: "custom", emoji: "🌿", label: "Something else", tagline: "Name your own tradition" },
+  { value: "custom", emoji: "🌿", label: "Something else", tagline: "Name your own gathering" },
 ];
 
 const RHYTHM_OPTIONS = [
@@ -86,7 +86,7 @@ export default function TraditionNew() {
   }
 
   function handleWhoNext() {
-    if (!name.trim()) { setError("Give your tradition a name."); return; }
+    if (!name.trim()) { setError("Give your gathering a name."); return; }
     if (!hasAtLeastOnePerson) { setError("Add at least one person."); return; }
     setError("");
     setStep(3);
@@ -163,7 +163,7 @@ export default function TraditionNew() {
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#C17F24" : "#C8C4B4" }}
+              style={{ background: s <= step ? "#C17F24" : "#D6CAB8" }}
             />
           ))}
         </div>
@@ -176,9 +176,9 @@ export default function TraditionNew() {
           {step === 1 && (
             <motion.div key="s1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                What will you start? 🫱🏻‍🫲🏾
+                What will you gather for? 🌿
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>Recurring traditions are where belonging forms.</p>
+              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>Recurring gatherings are where belonging forms.</p>
 
               <div className="space-y-3">
                 {TEMPLATE_OPTIONS.map((o) => (
@@ -205,13 +205,13 @@ export default function TraditionNew() {
           {step === 2 && (
             <motion.div key="s2" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-6" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Who are you meeting with? 🫱🏻‍🫲🏾
+                Who are you gathering with? 🌿
               </h1>
 
               {/* Name */}
               <div className="mb-6">
                 <label className="text-xs font-semibold uppercase tracking-widest mb-2 block" style={{ color: "#C17F24" }}>
-                  Name this tradition
+                  Name this gathering
                 </label>
                 <input
                   ref={nameRef}
@@ -220,7 +220,7 @@ export default function TraditionNew() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Morning Coffee, Sunday Dinner"
                   className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none"
-                  style={{ background: "#fff", border: "1.5px solid #C8C4B4", color: "#2C1810" }}
+                  style={{ background: "#fff", border: "1.5px solid #D6CAB8", color: "#2C1810" }}
                 />
               </div>
 
@@ -238,7 +238,7 @@ export default function TraditionNew() {
                           className="w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all"
                           style={{
                             background: sel ? "rgba(193,127,36,0.08)" : "#fff",
-                            border: `1.5px solid ${sel ? "#C17F24" : "#C8C4B4"}`,
+                            border: `1.5px solid ${sel ? "#C17F24" : "#D6CAB8"}`,
                           }}
                         >
                           <div
@@ -274,7 +274,7 @@ export default function TraditionNew() {
                           onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], name: e.target.value }; return c; })}
                           placeholder="Name (optional)"
                           className="flex-1 px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                          style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+                          style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
                         />
                         {newPeople.length > 1 && (
                           <button onClick={() => setNewPeople((p) => p.filter((_, j) => j !== i))} className="text-lg px-1" style={{ color: "#9a9390" }}>×</button>
@@ -286,7 +286,7 @@ export default function TraditionNew() {
                         onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], email: e.target.value }; return c; })}
                         placeholder="Email address"
                         className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+                        style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
                       />
                     </div>
                   ))}
@@ -316,7 +316,7 @@ export default function TraditionNew() {
           {step === 3 && (
             <motion.div key="s3" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-                How often will you gather? 🫱🏻‍🫲🏾
+                How often will you gather? 🌿
               </h1>
               <p className="text-sm mb-8" style={{ color: "#9a9390" }}>The rhythm is the commitment.</p>
 
@@ -382,7 +382,7 @@ export default function TraditionNew() {
                     value={firstPick}
                     onChange={(e) => setFirstPick(e.target.value)}
                     className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
-                    style={{ background: "#fff", border: "1.5px solid #C8C4B4", color: "#2C1810" }}
+                    style={{ background: "#fff", border: "1.5px solid #D6CAB8", color: "#2C1810" }}
                   />
                 </div>
 
@@ -396,7 +396,7 @@ export default function TraditionNew() {
                     value={altTime1}
                     onChange={(e) => setAltTime1(e.target.value)}
                     className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
-                    style={{ background: "#fff", border: "1.5px solid #C8C4B4", color: "#2C1810" }}
+                    style={{ background: "#fff", border: "1.5px solid #D6CAB8", color: "#2C1810" }}
                   />
                 </div>
 
@@ -410,7 +410,7 @@ export default function TraditionNew() {
                     value={altTime2}
                     onChange={(e) => setAltTime2(e.target.value)}
                     className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
-                    style={{ background: "#fff", border: "1.5px solid #C8C4B4", color: "#2C1810" }}
+                    style={{ background: "#fff", border: "1.5px solid #D6CAB8", color: "#2C1810" }}
                   />
                 </div>
               </div>
