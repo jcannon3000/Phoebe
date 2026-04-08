@@ -108,7 +108,7 @@ function LettersSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Letters ✉️" />
+        <SectionHeader label="Letters 📮" />
         <div className="space-y-3 mb-8">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
@@ -122,14 +122,14 @@ function LettersSection() {
 
   return (
     <div className="mb-8">
-      <SectionHeader label="Letters ✉️" />
+      <SectionHeader label="Letters 📮" />
 
       {items.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
           style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No letters yet. Start a correspondence. ✉️</p>
+          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No letters yet. Start a correspondence. 📮</p>
           <Link href="/letters/new">
             <span className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>Start writing →</span>
           </Link>
@@ -158,7 +158,7 @@ function LettersSection() {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
               statusColor = "#9a9390";
             } else if (needsWrite) {
-              statusText = isOneToOne ? `Your turn to write ✉️` : `Share your update ✉️`;
+              statusText = isOneToOne ? `Your turn to write 📮` : `Share your update 📮`;
               statusColor = "#4A6FA5";
             } else {
               statusText = "All written 🌿";
@@ -180,7 +180,7 @@ function LettersSection() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-                          {c.name || (isOneToOne ? `Letters with ${otherMembers}` : otherMembers)}
+                          {c.name || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
                         </span>
                         {hasUnread && (
                           <span
@@ -211,7 +211,7 @@ function LettersSection() {
                             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
                             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                           >
-                            Write ✉️
+                            Write 📮
                           </span>
                         </Link>
                       )}

@@ -40,10 +40,10 @@ export default function WriteLetter() {
 
   const [content, setContent] = useState("");
   const [postmarkCity, setPostmarkCity] = useState("");
-  const [locating, setLocating] = useState(false);
-  const [locationDenied, setLocationDenied] = useState(false);
+  const [postmarkError, setPostmarkError] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [errorState, setErrorState] = useState<{ message: string; nextPeriodStart?: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
@@ -76,38 +76,12 @@ export default function WriteLetter() {
   const isOneToOne = correspondence?.groupType === "one_to_one";
   const minWords = isOneToOne ? 100 : 50;
 
-  // Detect location for postmark
+  // Pre-fill postmark from homeCity
   useEffect(() => {
-    if (!isOneToOne || postmarkCity || locating || locationDenied) return;
-    if (!navigator.geolocation) { setLocationDenied(true); return; }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude, longitude } = pos.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          const data = await res.json();
-          const city =
-            data.address?.city ||
-            data.address?.town ||
-            data.address?.village ||
-            data.address?.county ||
-            data.address?.state ||
-            "";
-          setPostmarkCity(city);
-        } catch {
-          setLocationDenied(true);
-        } finally {
-          setLocating(false);
-        }
-      },
-      () => { setLocating(false); setLocationDenied(true); },
-      { timeout: 8000 }
-    );
-  }, [isOneToOne]);
+    if (!correspondence || !user || postmarkCity) return;
+    const me = correspondence.members?.find((m) => m.email === user.email);
+    if (me?.homeCity) setPostmarkCity(me.homeCity);
+  }, [correspondence, user]);
 
   // Load draft
   useEffect(() => {
@@ -179,6 +153,7 @@ export default function WriteLetter() {
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
   const canSend = wordCount >= minWords && !sendMutation.isPending;
+  const wordCountMet = wordCount >= minWords;
 
   const otherMembers = correspondence?.members
     .filter((m) => m.email !== user?.email)
@@ -186,6 +161,8 @@ export default function WriteLetter() {
     .join(", ") ?? "";
 
   function handleSendClick() {
+    if (isOneToOne && !postmarkCity.trim()) { setPostmarkError(true); return; }
+    setPostmarkError(false);
     setConfirmSend(true);
   }
 
@@ -219,53 +196,59 @@ export default function WriteLetter() {
           {correspondence?.currentPeriod && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? `Letter ${correspondence.currentPeriod.periodNumber}` : `Week ${correspondence.currentPeriod.periodNumber}`}
-              {" · "}{correspondence.currentPeriod.periodLabel}
             </p>
           )}
         </div>
         <div className="w-6" />
       </div>
 
-      {/* Bottom action bar (fixed) */}
-      <div
-        className="px-6 py-3"
-        style={{ borderBottom: "1px solid #C8C4B8" }}
-      >
+      {/* Action bar */}
+      <div className="px-6 py-3" style={{ borderBottom: "1px solid #EDE6D9" }}>
         {!confirmSend ? (
           <div className="flex items-center justify-between">
-            <span className="text-[13px]" style={{ color: wordCount < minWords ? "#9a9390" : "#5C7A5F" }}>
-              {wordCount} word{wordCount !== 1 ? "s" : ""}
-              {!isOneToOne && wordCount < minWords && (
-                <span style={{ color: "#C17F24" }}> · {minWords - wordCount} to go</span>
-              )}
-            </span>
             <div className="flex items-center gap-2">
+              <span
+                className="text-[13px] font-semibold tabular-nums transition-colors"
+                style={{ color: wordCountMet ? "#5C7A5F" : "#9a9390" }}
+              >
+                {wordCount}
+              </span>
+              <span className="text-[13px]" style={{ color: "#9a9390" }}>
+                / {minWords} words
+              </span>
+              {!wordCountMet && (
+                <span className="text-[12px]" style={{ color: "#C17F24" }}>
+                  · {minWords - wordCount} to go
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
               {showSaved && (
                 <span className="text-[12px]" style={{ color: "#5C7A5F" }}>Saved 🌿</span>
               )}
               <button
                 onClick={handleSendClick}
                 disabled={!canSend}
-                className="btn-sage px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity"
+                className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                Send letter
+                Send 📮
               </button>
             </div>
           </div>
         ) : (
           <div>
             <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
-              Send your {isOneToOne ? "letter" : "update"}? It can't be edited after.
+              Send your {isOneToOne ? "letter" : "update"}? Can't be edited after.
             </p>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => sendMutation.mutate()}
                 disabled={sendMutation.isPending}
-                className="btn-sage px-5 py-2.5 rounded-xl text-sm font-semibold"
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                {sendMutation.isPending ? "Sending..." : "Send letter"}
+                {sendMutation.isPending ? "Sending..." : "Send 📮"}
               </button>
               <button onClick={() => setConfirmSend(false)} className="text-sm" style={{ color: "#9a9390" }}>
                 Keep writing
@@ -283,41 +266,65 @@ export default function WriteLetter() {
           </p>
         )}
 
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => { setContent(e.target.value); setConfirmSend(false); }}
-          placeholder={isOneToOne
-            ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
-            : `What's been happening this week?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
-          }
-          className="w-full min-h-[50vh] bg-transparent resize-none focus:outline-none placeholder:italic"
+        {/* Textarea with focus glow */}
+        <div
+          className="rounded-xl transition-all duration-300"
           style={{
-            color: "#2C1810",
-            fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif",
-            fontSize: "18px",
-            lineHeight: "2.1",
-            caretColor: "#5C7A5F",
+            boxShadow: focused
+              ? "0 0 0 1px rgba(92, 122, 95, 0.3), 0 4px 20px rgba(92, 122, 95, 0.15)"
+              : "none",
+            padding: focused ? "12px" : "0",
+            margin: focused ? "-12px" : "0",
           }}
-        />
+        >
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => { setContent(e.target.value); setConfirmSend(false); }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder={isOneToOne
+              ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
+              : `What's been happening this week?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
+            }
+            className="w-full min-h-[50vh] bg-transparent resize-none focus:outline-none placeholder:italic"
+            style={{
+              color: "#2C1810",
+              fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif",
+              fontSize: "18px",
+              lineHeight: "2.1",
+              caretColor: "#5C7A5F",
+            }}
+          />
+        </div>
 
-        {isOneToOne && (
+        {isOneToOne && user?.name && (
           <p className="text-base italic mt-2" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
-            — {user?.name ?? "You"}
+            — {user.name}
           </p>
         )}
 
-        {/* Postmark — location-based, one_to_one only */}
+        {/* Postmark field — one_to_one only */}
         {isOneToOne && (
-          <div className="mt-8 flex items-center gap-2">
-            <span className="text-base">📮</span>
-            {locating ? (
-              <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Finding your location…</span>
-            ) : postmarkCity ? (
-              <span className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>{postmarkCity}</span>
-            ) : locationDenied ? (
-              <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Location unavailable</span>
-            ) : null}
+          <div className="mt-8">
+            <div className="flex items-center gap-2 mb-1">
+              <span>📮</span>
+              <span className="text-[13px]" style={{ color: "#9a9390" }}>Writing from:</span>
+            </div>
+            <input
+              type="text"
+              value={postmarkCity}
+              onChange={(e) => { setPostmarkCity(e.target.value); if (e.target.value.trim()) setPostmarkError(false); }}
+              placeholder="City (e.g. New York, London)"
+              className="w-full px-3 py-2 rounded-lg text-[15px] focus:outline-none transition-colors"
+              style={{
+                color: "#2C1810",
+                background: "transparent",
+                border: postmarkError ? "1px solid #C17F24" : "1px solid #EDE6D9",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            />
+            {postmarkError && <p className="text-[13px] mt-1" style={{ color: "#C17F24" }}>Where are you writing from? 🌿</p>}
           </div>
         )}
       </div>

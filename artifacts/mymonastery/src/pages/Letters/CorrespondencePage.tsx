@@ -177,7 +177,7 @@ export default function CorrespondencePage() {
 
         {/* Header */}
         <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          {data.name || (isOneToOne ? `Letters with ${otherMembers}` : otherMembers)}
+          {data.name || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
         </h1>
         {isOneToOne && otherMembers && (
           <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
@@ -230,7 +230,7 @@ export default function CorrespondencePage() {
                     className="w-full py-3 rounded-xl text-base font-semibold"
                     style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                   >
-                    {isOneToOne ? "Write your letter ✉️" : "Share your update ✉️"}
+                    {isOneToOne ? "Write your letter 📮" : "Share your update 📮"}
                   </button>
                 </Link>
               ) : currentPeriod.hasWrittenThisPeriod ? (

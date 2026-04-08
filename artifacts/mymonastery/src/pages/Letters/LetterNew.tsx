@@ -129,7 +129,7 @@ export default function LetterNew() {
           {step === 1 && (
             <motion.div key="step1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Who are you writing to? ✉️
+                Who are you writing to? 📮
               </h1>
               <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
                 Choose how you want to correspond.
@@ -141,7 +141,7 @@ export default function LetterNew() {
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
                   style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
-                  <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>✉️ A letter</p>
+                  <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 A letter</p>
                   <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Start a dialogue. Stay in touch.</p>
                   <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
                     Once a week, one letter, one person. A zoom out from the daily noise — not a text, not ambient. A real correspondence, with history. Monks have written this way for centuries. Sacred because it's the only one you send.
@@ -153,7 +153,7 @@ export default function LetterNew() {
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
                   style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
-                  <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>✉️ Group updates</p>
+                  <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 Group updates</p>
                   <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Keep a circle close.</p>
                   <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
                     3 to 15 people. Everyone shares once a week — 50 words or more. A thread that keeps a community rooted in each other's lives.
@@ -255,7 +255,7 @@ export default function LetterNew() {
                 className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {createMutation.isPending ? "Starting..." : "Start writing ✉️"}
+                {createMutation.isPending ? "Starting..." : "Start writing 📮"}
               </button>
             </motion.div>
           )}
