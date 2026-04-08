@@ -260,7 +260,7 @@ function GatheringsSection() {
         >
           <p className="text-sm mb-3" style={{ color: "#6b6460" }}>No gatherings yet. Start one. 🌿</p>
           <Link href="/tradition/new">
-            <span className="text-sm font-semibold" style={{ color: "#C17F24" }}>Start a gathering →</span>
+            <span className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>Start a gathering →</span>
           </Link>
         </div>
       ) : (
@@ -280,9 +280,9 @@ function GatheringsSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FAF6F0", border: "1px solid rgba(193,127,36,0.2)" }}
+                  style={{ background: "#FAF6F0", border: "1px solid rgba(92,122,95,0.2)" }}
                 >
-                  <div className="w-1 flex-shrink-0" style={{ background: "#C17F24" }} />
+                  <div className="w-1 flex-shrink-0" style={{ background: "#5C7A5F" }} />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <span className="text-base font-semibold" style={{ color: "#2C1810" }}>{ritual.name}</span>
