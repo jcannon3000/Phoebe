@@ -279,7 +279,7 @@ export default function WriteLetter() {
                 className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                Send a letter
+                Send ✉️
               </button>
             </div>
           </div>
@@ -295,7 +295,7 @@ export default function WriteLetter() {
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                {sendMutation.isPending ? "Sending..." : "Send a letter"}
+                {sendMutation.isPending ? "Sending..." : "Send ✉️"}
               </button>
               <button onClick={() => setConfirmSend(false)} className="text-sm" style={{ color: "#9a9390" }}>
                 Keep writing
