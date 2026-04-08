@@ -101,41 +101,67 @@ export default function People() {
     <Layout>
       <div className="flex flex-col h-full w-full">
         {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-4xl md:text-5xl font-serif text-foreground tracking-tight">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
             Your garden 🌿
           </h1>
-          <p className="mt-3 text-base text-muted-foreground italic">
+          <p className="mt-1" style={{ color: "#6b6460", fontSize: "13px", fontWeight: 400 }}>
             Stay close to your community.
           </p>
         </div>
 
-        <div className="mb-8 h-px bg-border/60 animate-garden-shimmer rounded-full" />
-
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-20 bg-card/50 animate-pulse rounded-lg" />
+              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#F0EAE0" }} />
             ))}
           </div>
         ) : !people || people.length === 0 ? (
           /* ── Empty state ─────────────────────────────────── */
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col items-center justify-center text-center max-w-sm mx-auto py-20"
-          >
-            <div className="text-5xl mb-6">🌱</div>
-            <h3 className="font-serif text-2xl text-foreground mb-3">Your garden is just beginning.</h3>
-            <p className="text-muted-foreground mb-8 leading-relaxed text-sm">
-              Plant a practice or tradition to tend it with someone.
-            </p>
-            <Link
-              href="/moment/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium shadow-[var(--shadow-warm-md)] hover:shadow-[var(--shadow-warm-lg)] hover:-translate-y-0.5 transition-all"
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            {/* Compact empty state */}
+            <div
+              className="rounded-xl px-5 py-5 mb-6 flex items-center gap-4"
+              style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
             >
-              Plant something 🌿
-            </Link>
+              <span style={{ fontSize: "32px" }}>🌱</span>
+              <div>
+                <p className="font-semibold" style={{ color: "#2C1810", fontSize: "16px", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Your garden is empty
+                </p>
+                <p className="mt-0.5" style={{ color: "#6b6460", fontSize: "13px" }}>
+                  Add people you want to stay close to
+                </p>
+              </div>
+            </div>
+
+            {/* Action rows */}
+            <div className="space-y-3">
+              <Link href="/letters/new">
+                <div
+                  className="flex items-center gap-4 px-4 py-4 rounded-xl cursor-pointer hover:shadow-sm transition-shadow"
+                  style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
+                >
+                  <span className="text-xl">🌿</span>
+                  <span className="flex-1 text-sm font-medium" style={{ color: "#2C1810" }}>Start a letter with someone</span>
+                  <span style={{ color: "#C8B99A" }}>→</span>
+                </div>
+              </Link>
+              <Link href="/tradition/new">
+                <div
+                  className="flex items-center gap-4 px-4 py-4 rounded-xl cursor-pointer hover:shadow-sm transition-shadow"
+                  style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
+                >
+                  <span className="text-xl">🏡</span>
+                  <span className="flex-1 text-sm font-medium" style={{ color: "#2C1810" }}>Create a gathering</span>
+                  <span style={{ color: "#C8B99A" }}>→</span>
+                </div>
+              </Link>
+            </div>
+
+            <p className="text-center text-xs mt-12 tracking-wide" style={{ color: "#C8B99A" }}>
+              Inspired by Monastic Wisdom
+            </p>
           </motion.div>
         ) : (
           <motion.div variants={container} initial="hidden" animate="show">
