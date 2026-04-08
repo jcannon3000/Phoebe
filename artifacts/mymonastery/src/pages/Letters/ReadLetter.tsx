@@ -91,6 +91,18 @@ export default function ReadLetter() {
     window.scrollTo(0, 0);
   }, []);
 
+  // Override dark page background for paper theme
+  useEffect(() => {
+    const root = document.getElementById("root");
+    const prev = root?.style.backgroundColor;
+    if (root) root.style.backgroundColor = "#FAF6F0";
+    document.body.style.backgroundColor = "#FAF6F0";
+    return () => {
+      if (root) root.style.backgroundColor = prev || "";
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
+
   if (!letter) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FAF6F0" }}>

@@ -40,11 +40,24 @@ export default function WriteLetter() {
 
   const [content, setContent] = useState("");
   const [postmarkCity, setPostmarkCity] = useState("");
-  const [postmarkError, setPostmarkError] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
   const [focused, setFocused] = useState(false);
   const [errorState, setErrorState] = useState<{ message: string; nextPeriodStart?: string } | null>(null);
+
+  // Override dark page background for paper theme
+  useEffect(() => {
+    const root = document.getElementById("root");
+    const prev = root?.style.backgroundColor;
+    if (root) root.style.backgroundColor = "#FAF6F0";
+    document.body.style.backgroundColor = "#FAF6F0";
+    return () => {
+      if (root) root.style.backgroundColor = prev || "";
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const lastSavedRef = useRef("");
@@ -76,12 +89,38 @@ export default function WriteLetter() {
   const isOneToOne = correspondence?.groupType === "one_to_one";
   const minWords = isOneToOne ? 100 : 50;
 
-  // Pre-fill postmark from homeCity
+  // Detect location for postmark
   useEffect(() => {
-    if (!correspondence || !user || postmarkCity) return;
-    const me = correspondence.members?.find((m) => m.email === user.email);
-    if (me?.homeCity) setPostmarkCity(me.homeCity);
-  }, [correspondence, user]);
+    if (!isOneToOne || postmarkCity || locating || locationDenied) return;
+    if (!navigator.geolocation) { setLocationDenied(true); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          const data = await res.json();
+          const city =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.village ||
+            data.address?.county ||
+            data.address?.state ||
+            "";
+          setPostmarkCity(city);
+        } catch {
+          setLocationDenied(true);
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => { setLocating(false); setLocationDenied(true); },
+      { timeout: 8000 }
+    );
+  }, [isOneToOne]);
 
   // Load draft
   useEffect(() => {
@@ -161,8 +200,6 @@ export default function WriteLetter() {
     .join(", ") ?? "";
 
   function handleSendClick() {
-    if (isOneToOne && !postmarkCity.trim()) { setPostmarkError(true); return; }
-    setPostmarkError(false);
     setConfirmSend(true);
   }
 
@@ -300,34 +337,19 @@ export default function WriteLetter() {
           />
         </div>
 
-        {isOneToOne && user?.name && (
-          <p className="text-base italic mt-2" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
-            — {user.name}
-          </p>
-        )}
+        {/* signature removed — reader sees author name in metadata */}
 
-        {/* Postmark field — one_to_one only */}
+        {/* Postmark — location-based, one_to_one only */}
         {isOneToOne && (
-          <div className="mt-8">
-            <div className="flex items-center gap-2 mb-1">
-              <span>📮</span>
-              <span className="text-[13px]" style={{ color: "#9a9390" }}>Writing from:</span>
-            </div>
-            <input
-              type="text"
-              value={postmarkCity}
-              onChange={(e) => { setPostmarkCity(e.target.value); if (e.target.value.trim()) setPostmarkError(false); }}
-              placeholder="City (e.g. New York, London)"
-              className="w-full px-3 py-2 rounded-lg text-[15px] focus:outline-none transition-colors"
-              style={{
-                color: "#2C1810",
-                backgroundColor: "#FAF6F0",
-                border: postmarkError ? "1px solid #C17F24" : "1px solid #EDE6D9",
-                fontFamily: "'Space Grotesk', sans-serif",
-                boxShadow: "none",
-              }}
-            />
-            {postmarkError && <p className="text-[13px] mt-1" style={{ color: "#C17F24" }}>Where are you writing from? 🌿</p>}
+          <div className="mt-8 flex items-center gap-2">
+            <span className="text-base">📮</span>
+            {locating ? (
+              <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Finding your location…</span>
+            ) : postmarkCity ? (
+              <span className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>{postmarkCity}</span>
+            ) : locationDenied ? (
+              <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Location unavailable</span>
+            ) : null}
           </div>
         )}
       </div>
