@@ -275,14 +275,12 @@ export default function CorrespondencePage() {
                         boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                       }}
                     >
-                      {letter.postmarkCity && isOneToOne && (
-                        <div className="absolute top-4 right-4">
-                          <PostmarkStamp city={letter.postmarkCity} date={letter.sentAt} />
-                        </div>
-                      )}
-
-                      <p className="text-[11px] font-semibold uppercase mb-3 pr-20" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
+                      <p className="text-[11px] font-semibold uppercase mb-3" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
                         {letter.authorName} · {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
+                        {letter.postmarkCity && isOneToOne && (() => {
+                          const { city, state } = parsePostmark(letter.postmarkCity!);
+                          return ` · ${city}, ${state} · ${formatLetterDate(letter.sentAt)}`;
+                        })()}
                       </p>
 
                       <p className="text-[17px] leading-[1.9] whitespace-pre-wrap line-clamp-6" style={{ color: "#F0EDE6", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>

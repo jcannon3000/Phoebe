@@ -160,37 +160,18 @@ export default function ReadLetter() {
           marginTop: "16px",
         }}
       >
-        {/* Postmark stamp — top right */}
-        {letter.postmarkCity && isOneToOne && (() => {
-          const { city, state, zip } = parsePostmark(letter.postmarkCity!);
-          return (
-            <div
-              className="absolute flex flex-col items-end "
-              style={{ top: "20px", right: "20px", gap: "2px" }}
-            >
-              <span style={{ color: "#5C7A5F", fontSize: "15px", fontWeight: 700, lineHeight: 1.2 }}>
-                {formatShortDate(letter.sentAt)}
-              </span>
-              <span className="uppercase" style={{ color: "#5C7A5F", fontSize: "10px", letterSpacing: "0.08em", lineHeight: 1.3 }}>
-                {city}{state ? `, ${state}` : ""}
-              </span>
-              {zip && (
-                <span style={{ color: "#5C7A5F", fontSize: "10px", letterSpacing: "0.05em", lineHeight: 1.3 }}>
-                  {zip}
-                </span>
-              )}
-            </div>
-          );
-        })()}
-
         {/* Letter metadata */}
         <p
-          className="text-[11px] font-semibold uppercase mb-8 pr-24"
+          className="text-[11px] font-semibold uppercase mb-8"
           style={{ color: "#9a9390", letterSpacing: "0.1em" }}
         >
           {letter.authorName}
           {" · "}
           {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
+          {letter.postmarkCity && isOneToOne && (() => {
+            const { city, state } = parsePostmark(letter.postmarkCity!);
+            return ` · ${city}, ${state} · ${formatLetterDate(letter.sentAt)}`;
+          })()}
         </p>
 
 
