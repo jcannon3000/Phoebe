@@ -165,6 +165,15 @@ textarea:focus {
   box-shadow: 0 2px 8px rgba(45,94,63,0.3);
 }
 
+/* ── Input pulse — gentle border glow ────────────────────────────── */
+@keyframes input-pulse {
+  0%, 100% { border-color: rgba(200,212,192,0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  50%      { border-color: rgba(200,212,192,0.45); box-shadow: 0 2px 12px rgba(200,212,192,0.08), 0 2px 8px rgba(0,0,0,0.2); }
+}
+.animate-input-pulse {
+  animation: input-pulse 3s ease-in-out infinite;
+}
+
 /* ── Card — parchment, not plastic ───────────────────────────────── */
 .card-elevated {
   box-shadow: 0 2px 12px rgba(0,0,0,0.3);

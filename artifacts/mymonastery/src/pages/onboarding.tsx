@@ -107,7 +107,7 @@ export default function Onboarding() {
           >
             <div className="text-5xl mb-5">👩🏽‍🌾</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
-              Be together with Phoebe.
+              Be together with Phoebe. ✨
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
               Cultivate connections through writing letters<br />
@@ -157,8 +157,8 @@ export default function Onboarding() {
                       placeholder="First name"
                       value={firstName}
                       onChange={e => { setFirstName(e.target.value); setError(""); }}
-                      className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                      style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
+                      className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors animate-input-pulse"
+                      style={{ background: "#091A10", color: "#F0EDE6" }}
                       autoComplete="given-name"
                       required
                       disabled={submitting}
@@ -168,8 +168,8 @@ export default function Onboarding() {
                       placeholder="Last name"
                       value={lastName}
                       onChange={e => { setLastName(e.target.value); setError(""); }}
-                      className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                      style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
+                      className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors animate-input-pulse"
+                      style={{ background: "#091A10", color: "#F0EDE6" }}
                       autoComplete="family-name"
                       required
                       disabled={submitting}
@@ -182,8 +182,8 @@ export default function Onboarding() {
                   placeholder="Email address"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(""); }}
-                  className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors"
-                  style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
+                  className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors animate-input-pulse"
+                  style={{ background: "#091A10", color: "#F0EDE6" }}
                   autoComplete="email"
                   disabled={submitting}
                 />
@@ -194,8 +194,8 @@ export default function Onboarding() {
                     placeholder="Password"
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(""); }}
-                    className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none transition-colors"
-                    style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
+                    className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none transition-colors animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
                     autoComplete={mode === "register" ? "new-password" : "current-password"}
                     disabled={submitting}
                   />
@@ -231,8 +231,7 @@ export default function Onboarding() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                  className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 btn-sage"
                 >
                   {submitting ? (
                     <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
