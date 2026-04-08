@@ -111,20 +111,20 @@ export function PrayerSection() {
   }, [showModal]);
 
   return (
-    <div className="mt-6">
+    <div className="mt-2">
       {/* Section header */}
       <button
         onClick={() => setIsOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-2 py-2 group"
+        className="w-full flex items-center gap-3 mb-4 group"
         aria-expanded={isOpen}
       >
-        <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-widest">
+        <h2 className="text-lg font-semibold shrink-0" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
           Prayer Requests 🙏
-        </span>
-        <div className="flex-1 h-px bg-border/40 mx-2" />
+        </h2>
+        <div className="flex-1 h-px" style={{ background: "#D6CAB8" }} />
         <span
-          className="text-muted-foreground/40 text-xs transition-transform duration-200"
-          style={{ display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          className="text-xs shrink-0 transition-transform duration-200"
+          style={{ color: "#9a9390", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
         >
           ▾
         </span>
@@ -149,7 +149,7 @@ export function PrayerSection() {
               onClick={handleSendClick}
               disabled={!inputValue.trim()}
               className="px-4 py-2.5 rounded-xl text-[#F7F0E6] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-              style={{ backgroundColor: "#D4896A" }}
+              style={{ backgroundColor: "#2C1810" }}
             >
               🙏
             </button>

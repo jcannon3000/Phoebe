@@ -173,9 +173,9 @@ function LettersSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FAF6F0", border: "1px solid rgba(74,111,165,0.2)" }}
+                  style={{ background: "#FAF6F0", border: "1px solid rgba(74,103,65,0.2)" }}
                 >
-                  <div className="w-1 flex-shrink-0" style={{ background: "#4A6FA5" }} />
+                  <div className="w-1 flex-shrink-0" style={{ background: "#4A6741" }} />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -250,7 +250,7 @@ function GatheringsSection() {
   const gatherings = rituals ?? [];
 
   return (
-    <div className="mb-8">
+    <div className="mb-4">
       <SectionHeader label="Gatherings 🌿" />
 
       {gatherings.length === 0 ? (
@@ -280,9 +280,9 @@ function GatheringsSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FAF6F0", border: "1px solid rgba(92,122,95,0.2)" }}
+                  style={{ background: "#FAF6F0", border: "1px solid rgba(74,103,65,0.2)" }}
                 >
-                  <div className="w-1 flex-shrink-0" style={{ background: "#5C7A5F" }} />
+                  <div className="w-1 flex-shrink-0" style={{ background: "#4A6741" }} />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <span className="text-base font-semibold" style={{ color: "#2C1810" }}>{ritual.name}</span>
@@ -334,12 +334,12 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="flex flex-col w-full pb-24">
+      <div className="flex flex-col w-full pb-36">
 
         {/* ── Header ── */}
         <div className="mb-6">
-          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: "#9a9390" }}>
-            A Place Set Apart for Connection
+          <p className="mb-1" style={{ color: "#6b6460", fontSize: "13px", fontWeight: 400, letterSpacing: 0 }}>
+            A place set apart for connection
           </p>
           <h1 className="text-2xl font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
             {format(new Date(), "EEEE, d MMMM")}
