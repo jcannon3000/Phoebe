@@ -152,7 +152,7 @@ export default function ReadLetter() {
               border: "1.5px solid #5C7A5F",
               borderRadius: "50% / 40%",
               padding: "10px 16px",
-              transform: "rotate(-8deg)",
+              transform: "none",
               minWidth: "80px",
             }}
           >
@@ -176,9 +176,6 @@ export default function ReadLetter() {
           {letter.authorName}
           {" · "}
           {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
-          {letter.postmarkCity ? ` · ${letter.postmarkCity}` : ""}
-          {" · "}
-          {formatLetterDate(letter.sentAt)}
         </p>
 
         {/* Salutation */}
