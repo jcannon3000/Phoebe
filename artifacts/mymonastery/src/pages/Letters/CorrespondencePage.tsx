@@ -63,7 +63,7 @@ function PostmarkStamp({ city, date }: { city: string; date: string }) {
   return (
     <div
       className="inline-flex flex-col items-center justify-center flex-shrink-0"
-      style={{ border: "1.5px solid #5C7A5F", borderRadius: "50% / 40%", padding: "5px 10px", transform: "rotate(-8deg)", minWidth: 64 }}
+      style={{ border: "1.5px solid #5C7A5F", borderRadius: "50% / 40%", padding: "5px 10px", minWidth: 64 }}
     >
       <span className="font-semibold uppercase" style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.1em", lineHeight: 1.2 }}>
         {city}
@@ -292,15 +292,7 @@ export default function CorrespondencePage() {
 
                       <p className="text-[11px] font-semibold uppercase mb-3 pr-20" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
                         {letter.authorName} · {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
-                        {letter.postmarkCity ? ` · ${letter.postmarkCity}` : ""}
-                        {" · "}{formatLetterDate(letter.sentAt)}
                       </p>
-
-                      {isOneToOne && (
-                        <p className="text-sm italic mb-3" style={{ color: "#8FAF96", fontFamily: "Georgia, serif" }}>
-                          Dear {isOwn ? otherMembers : (user?.name || "Friend")},
-                        </p>
-                      )}
 
                       <p className="text-[17px] leading-[1.9] whitespace-pre-wrap line-clamp-6" style={{ color: "#F0EDE6", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>
                         {letter.content}
