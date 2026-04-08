@@ -27,6 +27,48 @@ const C = {
   font: "'Space Grotesk', sans-serif",
 } as const;
 
+// ─── Browser chrome color ────────────────────────────────────────────────────
+
+function useThemeColor() {
+  useEffect(() => {
+    // Set theme-color for Safari/Chrome browser chrome
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    const hadMeta = !!meta;
+    const prevContent = meta?.content;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = C.pageBg;
+
+    // Set status bar style for iOS
+    let statusMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') as HTMLMetaElement | null;
+    const hadStatusMeta = !!statusMeta;
+    const prevStatusContent = statusMeta?.content;
+    if (!statusMeta) {
+      statusMeta = document.createElement("meta");
+      statusMeta.name = "apple-mobile-web-app-status-bar-style";
+      document.head.appendChild(statusMeta);
+    }
+    statusMeta.content = "black-translucent";
+
+    return () => {
+      // Restore on unmount
+      const tc = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+      if (tc) {
+        if (hadMeta && prevContent) tc.content = prevContent;
+        else tc.remove();
+      }
+      const sb = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') as HTMLMetaElement | null;
+      if (sb) {
+        if (hadStatusMeta && prevStatusContent) sb.content = prevStatusContent;
+        else sb.remove();
+      }
+    };
+  }, []);
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function dayLabel(date: Date): string {
@@ -857,6 +899,7 @@ function DarkPrayerSection() {
 export default function HomeDark() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  useThemeColor();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
