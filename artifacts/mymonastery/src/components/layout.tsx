@@ -29,7 +29,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-6">
           <Link href="/dashboard" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md">
             <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#2C1810" }}>
-              Phoebe
+              Phoebe ✨
             </span>
           </Link>
 

@@ -64,13 +64,13 @@
   --background: 37 47% 96%;         /* #FAF6F0 light warm parchment */
   --foreground: 17 47% 12%;         /* #2C1810 soil */
 
-  --border: 40 14% 80%;             /* #D4CFC4 warm parchment rule */
-  --input: 40 14% 80%;
+  --border: 96 19% 79%;             /* #C8D4C0 sage green tint */
+  --input: 96 19% 79%;
   --ring: 128 14% 42%;              /* #5C7A5F sage */
 
   --card: 38 18% 87%;               /* #E8E2D5 card surface */
   --card-foreground: 17 47% 12%;
-  --card-border: 40 14% 80%;
+  --card-border: 96 19% 79%;        /* #C8D4C0 sage green tint */
 
   --popover: 40 20% 94%;
   --popover-foreground: 17 47% 12%;
