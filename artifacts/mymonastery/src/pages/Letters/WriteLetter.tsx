@@ -347,7 +347,7 @@ export default function WriteLetter() {
             backgroundColor: "transparent",
             fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif",
             fontSize: "18px",
-            lineHeight: "2.5",
+            lineHeight: "2",
             caretColor: "#5C7A5F",
             boxShadow: "none",
             whiteSpace: "pre-wrap",
