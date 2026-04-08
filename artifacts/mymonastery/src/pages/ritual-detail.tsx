@@ -333,10 +333,10 @@ export default function RitualDetail() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="animate-pulse space-y-6 max-w-3xl mx-auto w-full pt-8">
-          <div className="h-36 bg-card rounded-3xl" />
-          <div className="h-64 bg-card rounded-3xl" />
-          <div className="h-48 bg-card rounded-3xl" />
+        <div className="animate-pulse space-y-5 max-w-3xl mx-auto w-full pt-8">
+          <div className="h-36 rounded-2xl" style={{ background: "#F0EDE6" }} />
+          <div className="h-64 rounded-2xl" style={{ background: "#F0EDE6" }} />
+          <div className="h-48 rounded-2xl" style={{ background: "#F0EDE6" }} />
         </div>
       </Layout>
     );
@@ -353,23 +353,28 @@ export default function RitualDetail() {
       <div className="max-w-3xl mx-auto w-full pb-16">
 
         {/* Header */}
-        <div className="bg-card rounded-3xl p-6 md:p-8 shadow-[var(--shadow-warm-sm)] border border-card-border mb-6">
+        <div className="rounded-2xl p-5 md:p-6 mb-5" style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              {statusMeta.label && (
-                <div className={`px-3 py-1 rounded-full text-xs font-medium border mb-3 inline-block ${statusMeta.style}`}>
-                  {statusMeta.label}
-                </div>
-              )}
-              <h1 className="text-3xl md:text-4xl font-semibold text-foreground truncate" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{ritual.name}</h1>
-              <p className="text-muted-foreground mt-2 flex items-center gap-2 text-sm flex-wrap">
-                <Sprout size={14} />
+              {/* Status pills */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium" style={{ background: "#E8E4DE", color: "#1C1A17" }}>
+                  <Sprout size={12} />
+                  {statusMeta.label || "Just planted"}
+                </span>
+                <span className="capitalize text-xs font-medium px-3 py-1 rounded-full" style={{ border: "1px solid #C8D4C0", color: "#888078" }}>
+                  {ritual.frequency}
+                </span>
+              </div>
+
+              <h1 className="font-bold leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "26px", color: "#1C1A17" }}>{ritual.name}</h1>
+              <p className="mt-2 flex items-center gap-1.5 flex-wrap" style={{ fontSize: "13px", color: "#888078" }}>
                 <span className="capitalize">{ritual.frequency}</span>
                 {ritual.dayPreference && (
-                  <><span className="opacity-40">·</span><span>{ritual.dayPreference}</span></>
+                  <><span>·</span><span>{ritual.dayPreference}</span></>
                 )}
                 {timeline?.location && (
-                  <><span className="opacity-40">·</span><span>📍 {timeline.location}</span></>
+                  <><span>·</span><span>📍 {timeline.location}</span></>
                 )}
               </p>
             </div>
@@ -379,43 +384,32 @@ export default function RitualDetail() {
               <div className="flex -space-x-2">
                 {ritual.participants.slice(0, 3).map((p, i) => {
                   const isPending = invitedEmails.has(p.email.toLowerCase()) || false;
-                  const isDeclined = declinedEmails.has(p.email.toLowerCase());
-                  const isSynced = calSyncedEmails.has(p.email.toLowerCase());
                   return (
                     <div key={i} className="relative group/avatar">
                       <Link
                         href={`/people/${encodeURIComponent(p.email)}`}
-                        className={clsx(
-                          "w-9 h-9 rounded-full border-2 border-card flex items-center justify-center text-xs font-medium shadow-sm hover:z-10 hover:scale-110 transition-all",
-                          isPending ? "bg-secondary text-muted-foreground" : "bg-primary/10 text-primary"
-                        )}
+                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-medium shadow-sm hover:z-10 hover:scale-110 transition-all"
+                        style={{ borderColor: "#E8E4DE", background: isPending ? "#E8E4DE" : "rgba(74,103,65,0.1)", color: isPending ? "#888078" : "#4A6741" }}
                         title={p.name}
                       >
                         {p.name.charAt(0).toUpperCase()}
                       </Link>
-                      {isSynced && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-blue-500 border border-card flex items-center justify-center">
-                          <Calendar size={8} className="text-white" />
-                        </span>
-                      )}
-                      {isDeclined && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border border-card" title="May have declined" />
-                      )}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-foreground text-background text-xs rounded-lg whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-20">
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-xs rounded-lg whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-20" style={{ background: "#1C1A17", color: "#FFFFFF" }}>
                         {p.name}
                       </div>
                     </div>
                   );
                 })}
                 {ritual.participants.length > 3 && (
-                  <div className="w-9 h-9 rounded-full border-2 border-card bg-secondary flex items-center justify-center text-xs font-medium text-muted-foreground shadow-sm">
+                  <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-medium shadow-sm" style={{ borderColor: "#E8E4DE", background: "#E8E4DE", color: "#888078" }}>
                     +{ritual.participants.length - 3}
                   </div>
                 )}
               </div>
               <button
                 onClick={() => setShowInviteSheet(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#6B8F71]/50 text-[#4a6b50] text-xs font-medium hover:bg-[#6B8F71]/10 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:bg-[#4A6741]/5"
+                style={{ border: "1px solid #C8D4C0", color: "#4A6741", fontSize: "13px" }}
               >
                 <UserPlus size={12} />
                 Add people
@@ -425,7 +419,7 @@ export default function RitualDetail() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-secondary rounded-2xl mb-6">
+        <div className="flex gap-1 p-1 rounded-full mb-5" style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}>
           {[
             { id: "timeline", label: "📅 Timeline" },
             { id: "moments", label: "🌿 Moments" },
@@ -434,12 +428,14 @@ export default function RitualDetail() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as Tab)}
-              className={clsx(
-                "flex-1 py-2.5 px-3 rounded-xl font-medium text-sm transition-all",
-                activeTab === tab.id
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
+              className="flex-1 py-2 px-3 rounded-full transition-all"
+              style={{
+                fontSize: "14px",
+                fontWeight: activeTab === tab.id ? 500 : 400,
+                background: activeTab === tab.id ? "#FFFFFF" : "transparent",
+                color: activeTab === tab.id ? "#1C1A17" : "#888078",
+                boxShadow: activeTab === tab.id ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
             >
               {tab.label}
             </button>
@@ -498,11 +494,9 @@ export default function RitualDetail() {
 
               {/* Upcoming gathering */}
               {timelineLoading ? (
-                <div className="h-40 bg-card rounded-2xl border border-card-border animate-pulse" />
+                <div className="h-40 rounded-2xl animate-pulse" style={{ background: "#F0EDE6" }} />
               ) : timeline?.upcoming ? (
-                <div className={`bg-card rounded-2xl border p-6 shadow-[var(--shadow-warm-sm)] ${
-                  timeline.confirmedTime ? "border-primary/30" : "border-card-border border-dashed"
-                }`}>
+                <div className="rounded-2xl p-6" style={{ background: "#FFFFFF", border: timeline.confirmedTime ? "1px solid #C8D4C0" : "1px dashed #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}>
                   {/* Card header — always includes Reschedule */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -641,26 +635,25 @@ export default function RitualDetail() {
                 </div>
               ) : (
                 /* No gathering scheduled yet */
-                <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center">
-                  <div className="w-12 h-12 bg-primary/8 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Sprout size={22} strokeWidth={1.5} className="text-primary/60" />
-                  </div>
-                  <p className="font-medium text-foreground mb-1">No gathering scheduled yet</p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Set a time and Phoebe will send calendar invites to your tradition.
+                <div className="rounded-2xl p-6 text-center" style={{ background: "#F0EDE6", border: "1px dashed #C8D4C0" }}>
+                  <div className="text-3xl mb-3">🌱</div>
+                  <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#1C1A17", fontFamily: "'Space Grotesk', sans-serif" }}>No gathering scheduled yet</p>
+                  <p className="mx-auto mb-4" style={{ fontSize: "14px", color: "#888078", maxWidth: "260px" }}>
+                    Set a time and Phoebe will send calendar invites to your group.
                   </p>
                   <Link
                     href={`/ritual/${ritualId}/schedule`}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 rounded-full font-medium transition-colors hover:opacity-90"
+                    style={{ background: "#4A6741", color: "#FFFFFF", padding: "12px 24px", fontSize: "15px" }}
                   >
-                    Schedule a gathering 🗓️
+                    Schedule a gathering 📅
                   </Link>
                 </div>
               )}
 
               {/* Suggest a time — non-owner members */}
               {!isOwner && ritual && (
-                <div className="bg-card border border-card-border rounded-2xl p-4">
+                <div className="rounded-2xl p-4" style={{ background: "#FFFFFF", border: "1px solid #C8D4C0" }}>
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-medium text-foreground">Suggest a time</p>
                     {suggestSent && (
@@ -720,7 +713,7 @@ export default function RitualDetail() {
 
               {/* Time suggestions — owner only */}
               {isOwner && suggestionsData && suggestionsData.suggestions.length > 0 && (
-                <div className="bg-card border border-card-border rounded-2xl p-4">
+                <div className="rounded-2xl p-4" style={{ background: "#FFFFFF", border: "1px solid #C8D4C0" }}>
                   <p className="text-sm font-semibold text-foreground mb-3">
                     Time suggestions from members
                   </p>
@@ -763,44 +756,47 @@ export default function RitualDetail() {
 
               {/* Past gatherings */}
               <div>
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-4">
-                  Past Gatherings
-                </h2>
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="font-bold shrink-0" style={{ fontSize: "22px", color: "#1C1A17", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    Past gatherings
+                  </h2>
+                  <div className="flex-1 h-px" style={{ background: "#C8D4C0" }} />
+                </div>
                 {(!timeline || timeline.past.length === 0) ? (
-                  <div className="text-center py-10 text-muted-foreground/50 space-y-2">
-                    <p className="text-sm">No past gatherings yet.</p>
-                    <p className="text-xs">Your history will appear here after you log a gathering.</p>
-                  </div>
+                  <p className="text-center py-6" style={{ fontSize: "14px", color: "#888078" }}>
+                    No past gatherings yet. Your history will appear here after you log a gathering.
+                  </p>
                 ) : (
                   <div className="relative space-y-4">
-                    <div className="absolute left-5 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-border to-transparent" />
+                    <div className="absolute left-5 top-0 bottom-0 w-px" style={{ background: "linear-gradient(to bottom, transparent, #C8D4C0, transparent)" }} />
                     {timeline.past.map((meetup) => (
                       <div key={meetup.id} className="flex items-start gap-4 pl-1">
-                        <div className="relative z-10 w-8 h-8 rounded-full border-2 border-card bg-background flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <div className="relative z-10 w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 shadow-sm" style={{ borderColor: "#E8E4DE", background: "#FFFFFF" }}>
                           {meetup.status === "completed" ? (
-                            <CheckCircle2 size={16} className="text-green-600" />
+                            <CheckCircle2 size={16} style={{ color: "#4A6741" }} />
                           ) : (
-                            <XCircle size={16} className="text-muted-foreground" />
+                            <XCircle size={16} style={{ color: "#888078" }} />
                           )}
                         </div>
-                        <div className="flex-1 bg-background border border-border rounded-2xl p-4 min-w-0">
+                        <div className="flex-1 rounded-2xl p-4 min-w-0" style={{ background: "#FFFFFF", border: "1px solid #C8D4C0" }}>
                           <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="font-medium text-sm text-foreground">
+                            <span className="font-medium text-sm" style={{ color: "#1C1A17" }}>
                               {format(parseISO(meetup.scheduledDate), "EEEE, MMMM d, yyyy")}
                             </span>
-                            <span className={clsx(
-                              "text-xs px-2.5 py-0.5 rounded-full font-medium border",
-                              meetup.status === "completed"
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : "bg-secondary text-muted-foreground border-border"
-                            )}>
+                            <span
+                              className="text-xs px-2.5 py-0.5 rounded-full font-medium"
+                              style={meetup.status === "completed"
+                                ? { background: "rgba(74,103,65,0.08)", color: "#4A6741", border: "1px solid rgba(74,103,65,0.2)" }
+                                : { background: "#E8E4DE", color: "#888078", border: "1px solid #E8E4DE" }
+                              }
+                            >
                               {meetup.status === "completed" ? "Gathered" : "Missed"}
                             </span>
                           </div>
                           {meetup.notes && (
-                            <p className="text-sm text-muted-foreground mt-2">{meetup.notes}</p>
+                            <p className="text-sm mt-2" style={{ color: "#888078" }}>{meetup.notes}</p>
                           )}
-                          <p className="text-xs text-muted-foreground/50 mt-1">
+                          <p className="text-xs mt-1" style={{ color: "#B0A898" }}>
                             {format(parseISO(meetup.scheduledDate), "h:mm a")}
                           </p>
                         </div>
@@ -824,7 +820,8 @@ export default function RitualDetail() {
               {/* Plant CTA */}
               <Link
                 href={`/moment/new?ritualId=${ritualId}`}
-                className="flex items-center justify-between p-5 bg-card rounded-2xl border border-card-border hover:border-primary/30 transition-colors group"
+                className="flex items-center justify-between p-5 rounded-2xl transition-colors group"
+                style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
               >
                 <div>
                   <p className="font-semibold text-foreground">Plant a Shared Moment</p>
@@ -845,7 +842,7 @@ export default function RitualDetail() {
               {/* Moments list */}
               {momentsLoading && (
                 <div className="space-y-3">
-                  {[1, 2].map(i => <div key={i} className="h-32 bg-card rounded-2xl border border-card-border animate-pulse" />)}
+                  {[1, 2].map(i => <div key={i} className="h-32 rounded-2xl animate-pulse" style={{ background: "#F0EDE6" }} />)}
                 </div>
               )}
 
@@ -864,7 +861,7 @@ export default function RitualDetail() {
                 const timeLabel = new Date(0, 0, 0, hh, mm).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
                 return (
-                  <div key={m.id} className="bg-card rounded-2xl border border-card-border p-5 space-y-4">
+                  <div key={m.id} className="rounded-2xl p-5 space-y-4" style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -918,7 +915,8 @@ export default function RitualDetail() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="bg-card rounded-2xl border border-card-border p-6 space-y-6"
+              className="rounded-2xl p-6 space-y-6"
+              style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
             >
               <div>
                 <label className="block text-sm font-medium mb-2 text-foreground">Tradition Name</label>
