@@ -11,18 +11,18 @@ import { format, isToday, isTomorrow, isThisWeek, parseISO } from "date-fns";
 // ─── Palette ─────────────────────────────────────────────────────────────────
 
 const C = {
-  pageBg: "#0D2B1E",
-  card: "#1A3D2B",
+  pageBg: "#091A10",
+  card: "#0F2818",
   cardHover: "#1F4A33",
   text: "#F0EDE6",
   textSecondary: "#8FAF96",
   accent: "#C8D4C0",
-  divider: "rgba(200, 212, 192, 0.2)",
-  cardBorder: "1px solid rgba(200, 212, 192, 0.15)",
-  cardShadow: "0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)",
+  divider: "rgba(200, 212, 192, 0.15)",
+  cardBorder: "1px solid rgba(200, 212, 192, 0.25)",
+  cardShadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3)",
   activeBtnBg: "#2D5E3F",
-  prayer: "#8B5E52",
-  fab: "#2D5E3F",
+  prayer: "#C47A65",
+  fab: "#1A4A2E",
   footer: "rgba(143, 175, 150, 0.5)",
   font: "'Space Grotesk', sans-serif",
 } as const;
