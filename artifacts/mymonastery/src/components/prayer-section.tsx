@@ -111,53 +111,49 @@ export function PrayerSection() {
   }, [showModal]);
 
   return (
-    <div>
+    <div className="mt-6">
       {/* Section header */}
-      <div className="mb-4">
-        <button
-          onClick={() => setIsOpen(o => !o)}
-          className="w-full flex items-center justify-between gap-2 group"
-          aria-expanded={isOpen}
+      <button
+        onClick={() => setIsOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 py-2 group"
+        aria-expanded={isOpen}
+      >
+        <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-widest">
+          Prayer Requests 🙏
+        </span>
+        <div className="flex-1 h-px bg-border/40 mx-2" />
+        <span
+          className="text-muted-foreground/40 text-xs transition-transform duration-200"
+          style={{ display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
         >
-          <span className="section-header">
-            Prayer Requests
-          </span>
-          <div className="flex-1 h-px mx-2 animate-rule-sage" />
-          <span
-            className="text-xs transition-transform duration-200"
-            style={{ display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", color: "#A89E92" }}
-          >
-            ▾
-          </span>
-        </button>
-      </div>
-
-      {/* Input bar — always visible */}
-      <div className="flex gap-2 mb-4">
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={e => setInputValue(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
-          placeholder="What would you like your community to hold? 🙏"
-          maxLength={1000}
-          className="flex-1 px-4 py-2.5 rounded-xl border border-border/60 bg-card placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/50 transition-all"
-          style={{ fontSize: "15px" }}
-        />
-        <button
-          type="button"
-          onClick={handleSendClick}
-          disabled={!inputValue.trim()}
-          className="px-4 py-2.5 rounded-xl text-[#E8E4D8] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-          style={{ backgroundColor: "#D4896A" }}
-        >
-          🙏
-        </button>
-      </div>
+          ▾
+        </span>
+      </button>
 
       {isOpen && (
-        <div>
+        <div className="mt-3">
+          {/* Input area */}
+          <div className="flex gap-2 mb-4">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
+              placeholder="Share a prayer request with your garden... 🌿"
+              maxLength={1000}
+              className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border/60 bg-card placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/50 transition-all"
+            />
+            <button
+              type="button"
+              onClick={handleSendClick}
+              disabled={!inputValue.trim()}
+              className="px-4 py-2.5 rounded-xl text-[#F7F0E6] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              style={{ backgroundColor: "#D4896A" }}
+            >
+              🙏
+            </button>
+          </div>
 
           {/* Loading state */}
           {isLoading && (

@@ -367,7 +367,7 @@ const GOAL_OPTIONS_DAILY = [
   },
   {
     days: 0, emoji: "✨", label: "Just begin", sub: "No goal, tend freely",
-    bg: "#F7F4EE", borderColor: "rgba(0,0,0,0.06)",
+    bg: "#FAF6F0", borderColor: "rgba(0,0,0,0.06)",
     dots: [], dotLabel: "",
     badge: null,
     message: "No pressure. The practice is open. Tend it when you can.",
@@ -391,7 +391,7 @@ const GOAL_OPTIONS_WEEKLY = [
   },
   {
     days: 0, emoji: "✨", label: "Just begin", sub: "No goal, tend freely",
-    bg: "#F7F4EE", borderColor: "rgba(0,0,0,0.06)",
+    bg: "#FAF6F0", borderColor: "rgba(0,0,0,0.06)",
     dots: [], dotLabel: "",
     badge: null,
     message: "No pressure. The practice is open. Tend it when you can.",

@@ -148,7 +148,7 @@ export default function TraditionNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F7F4EE" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button

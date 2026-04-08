@@ -31,7 +31,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F7F4EE" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
       <header className="px-6 py-6">
         <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe

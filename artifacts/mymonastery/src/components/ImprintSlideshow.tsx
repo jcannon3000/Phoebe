@@ -102,7 +102,7 @@ export default function ImprintSlideshow({
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: "#F7F4EE", fontFamily: "'Space Grotesk', sans-serif" }}
+      style={{ background: "#FAF6F0", fontFamily: "'Space Grotesk', sans-serif" }}
     >
       {/* Skip */}
       <div className="flex justify-end px-6 pt-6">
