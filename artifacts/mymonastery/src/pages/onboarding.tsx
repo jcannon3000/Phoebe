@@ -117,20 +117,20 @@ export default function Onboarding() {
           </div>
 
           {/* Mode toggle */}
-          <div className="flex rounded-full p-1.5 mb-6" style={{ background: "#DCD7CE" }}>
+          <div className="flex rounded-full mb-6" style={{ background: "#C8BFB0", padding: "6px" }}>
             {(["signin", "register"] as Mode[]).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => switchMode(m)}
-                className="flex-1 py-3 rounded-full text-sm transition-all"
+                className="flex-1 py-3.5 rounded-full text-sm transition-all"
                 style={{
                   background: mode === m ? "#FFFFFF" : "transparent",
-                  color: mode === m ? "#2C1810" : "#8C7B6B",
-                  fontWeight: mode === m ? 600 : 400,
-                  boxShadow: mode === m ? "0 2px 10px rgba(44,24,16,0.14)" : "none",
+                  color: mode === m ? "#2C1810" : "#5C524A",
+                  fontWeight: mode === m ? 500 : 400,
+                  boxShadow: mode === m ? "0 1px 3px rgba(0,0,0,0.15)" : "none",
                 }}
-              >
+>
                 {m === "signin" ? "Sign in" : "Create account"}
               </button>
             ))}
