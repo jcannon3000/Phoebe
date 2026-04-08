@@ -142,7 +142,8 @@ export function PrayerSection() {
               onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
               placeholder="Share a prayer request with your garden... 🌿"
               maxLength={1000}
-              className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border/60 bg-card placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#E8A898]/40 focus:border-[#E8A898] transition-all"
+              className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border/60 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#E8A898]/40 focus:border-[#E8A898] transition-all"
+              style={{ backgroundColor: "#FAF6F0" }}
             />
             <button
               type="button"
@@ -166,7 +167,7 @@ export function PrayerSection() {
 
           {/* Empty state */}
           {!isLoading && requests.length === 0 && (
-            <p className="text-sm" style={{ color: "#6b6460" }}>
+            <p className="text-sm text-center" style={{ color: "#6b6460" }}>
               Your community is here to carry what you're carrying.
             </p>
           )}
