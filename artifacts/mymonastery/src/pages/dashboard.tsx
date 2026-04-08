@@ -269,10 +269,10 @@ function GatheringsSection() {
             const next = ritual.nextMeetupDate ? parseISO(ritual.nextMeetupDate) : null;
             const r = ritual as any;
             const rhythm = r.rhythm as string | undefined;
-            const rhythmLabel = rhythm === "weekly" ? "Every week"
-              : rhythm === "fortnightly" ? "Every two weeks"
-              : rhythm === "monthly" ? "Once a month"
-              : ritual.frequency ?? "Recurring";
+            const rhythmLabel = rhythm === "weekly" ? "Weekly Tradition"
+              : rhythm === "biweekly" || rhythm === "fortnightly" ? "Biweekly Tradition"
+              : rhythm === "monthly" ? "Monthly Tradition"
+              : ritual.frequency ? `${ritual.frequency} Tradition` : "Recurring Tradition";
 
             return (
               <Link key={ritual.id} href={`/ritual/${ritual.id}`}>
