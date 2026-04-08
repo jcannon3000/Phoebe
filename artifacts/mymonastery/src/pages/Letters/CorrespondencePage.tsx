@@ -150,8 +150,8 @@ export default function CorrespondencePage() {
   const memberCities = members.filter((m) => m.homeCity).map((m) => `${m.name || m.email.split("@")[0]} · ${m.homeCity}`);
 
   const periodLabel = isOneToOne
-    ? `Letter ${currentPeriod.periodNumber} · ${currentPeriod.periodLabel}`
-    : `Week ${currentPeriod.periodNumber} · ${currentPeriod.periodLabel}`;
+    ? `Letter ${currentPeriod.periodNumber}`
+    : `Week ${currentPeriod.periodNumber}`;
 
   return (
     <Layout>

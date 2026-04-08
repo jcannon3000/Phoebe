@@ -200,8 +200,7 @@ function LettersSection() {
 
                     <div className="flex items-center justify-between gap-2 mt-2">
                       <span className="text-[11px]" style={{ color: "#8FAF96" }}>
-                        {c.currentPeriod.periodLabel}
-                        {lastPostmark?.city ? ` · ${lastPostmark.city}` : ""}
+                        {lastPostmark?.city || ""}
                       </span>
                       {needsWrite && (
                         <Link
@@ -337,7 +336,11 @@ export default function Dashboard() {
       <div className="flex flex-col w-full pb-36">
 
         {/* ── Header ── */}
-        <div className="mb-4" />
+        <div className="mb-6">
+          <p className="text-sm" style={{ color: "#8FAF96" }}>
+            {format(new Date(), "EEEE, MMMM d")}
+          </p>
+        </div>
 
         {/* ── Letters ── */}
         <LettersSection />
