@@ -339,7 +339,7 @@ export default function Dashboard() {
         {/* ── Header ── */}
         <div className="mb-6">
           <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: "#9a9390" }}>
-            Phoebe
+            A Place Set Apart for Connection
           </p>
           <h1 className="text-2xl font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
             {format(new Date(), "EEEE, d MMMM")}
