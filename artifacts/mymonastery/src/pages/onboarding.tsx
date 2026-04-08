@@ -95,7 +95,7 @@ export default function Onboarding() {
         </span>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-start px-4 pb-12 pt-8">
+      <main className="flex-1 flex flex-col items-center justify-start px-4 pb-12 pt-16">
         <div className="w-full max-w-sm mx-auto">
 
           {/* Hero */}
