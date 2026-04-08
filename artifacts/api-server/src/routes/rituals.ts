@@ -479,15 +479,10 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
       const appBase = getFrontendUrl();
       const organizerFirstName = (organizer.name ?? organizer.email ?? "Someone").split(" ")[0];
 
-      // Warm one-liner based on tradition name
-      const nameLower = (ritual.name ?? "").toLowerCase();
-      const WARM_LINES: Record<string, string> = {
-        coffee: "A recurring time to share a cup together.",
-        meal: "A standing meal, week after week.",
-        walk: "A regular walk, together.",
-        run: "Keeping the pace, keeping the commitment.",
-      };
-      const warmLine = WARM_LINES[nameLower] ?? "A recurring tradition worth tending.";
+      // Warm one-liner — use the stored intention (tagline) if available
+      const warmLine = (ritual.intention && ritual.intention.trim())
+        ? ritual.intention.trim()
+        : "A recurring tradition worth tending.";
 
       // Frequency label
       const FREQ_LABELS: Record<string, string> = {

@@ -327,8 +327,8 @@ export default function TraditionNew() {
                     onClick={() => setRhythm(o.value)}
                     className="w-full text-left p-4 rounded-2xl transition-all"
                     style={{
-                      background: rhythm === o.value ? "rgba(92,122,95,0.08)" : "#fff",
-                      border: `2px solid ${rhythm === o.value ? "#5C7A5F" : "rgba(92,122,95,0.2)"}`,
+                      background: rhythm === o.value ? "rgba(193,127,36,0.08)" : "#fff",
+                      border: `2px solid ${rhythm === o.value ? "#C17F24" : "rgba(193,127,36,0.2)"}`,
                     }}
                   >
                     <div className="flex items-center gap-3">
@@ -338,7 +338,7 @@ export default function TraditionNew() {
                         <p className="text-sm" style={{ color: "#9a9390" }}>{o.tagline}</p>
                       </div>
                       {rhythm === o.value && (
-                        <span className="ml-auto text-base font-bold" style={{ color: "#5C7A5F" }}>✓</span>
+                        <span className="ml-auto text-base font-bold" style={{ color: "#C17F24" }}>✓</span>
                       )}
                     </div>
                   </button>
@@ -351,7 +351,7 @@ export default function TraditionNew() {
                 onClick={handleRhythmNext}
                 disabled={!rhythm}
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
-                style={{ background: "#5C7A5F", color: "#fff" }}
+                style={{ background: "#C17F24", color: "#fff" }}
               >
                 Continue →
               </button>
