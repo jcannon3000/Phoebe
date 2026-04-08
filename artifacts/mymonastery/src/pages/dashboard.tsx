@@ -176,7 +176,7 @@ function LettersSection() {
                   className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${shouldPulse ? "animate-turn-pulse" : ""}`}
                   style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                 >
-                  <div className={`w-1 flex-shrink-0 ${shouldPulse ? "animate-turn-pulse" : ""}`} style={{ background: shouldPulse ? "#C8D4C0" : "#5C8A5F" }} />
+                  <div className={`w-1 flex-shrink-0 ${shouldPulse ? "animate-bar-pulse" : ""}`} style={{ background: shouldPulse ? undefined : "#5C8A5F" }} />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
