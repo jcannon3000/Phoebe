@@ -31,9 +31,9 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#091A10" }}>
       <header className="px-6 py-6">
-        <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
+        <span className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe
         </span>
       </header>
@@ -46,22 +46,22 @@ export default function ForgotPassword() {
             transition={{ duration: 0.4 }}
           >
             <div className="text-4xl mb-5 text-center">📮</div>
-            <h1 className="text-2xl font-bold mb-2 text-center" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h1 className="text-2xl font-bold mb-2 text-center" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
               Forgot your password?
             </h1>
-            <p className="text-sm text-center mb-8" style={{ color: "#6b6460" }}>
+            <p className="text-sm text-center mb-8" style={{ color: "#8FAF96" }}>
               Enter your email and we'll send a reset link.
             </p>
 
             {sent ? (
               <div className="text-center">
-                <p className="text-base mb-6" style={{ color: "#5C7A5F" }}>
+                <p className="text-base mb-6" style={{ color: "#8FAF96" }}>
                   If that account exists, a reset link is on its way. Check your inbox.
                 </p>
                 <button
                   onClick={() => setLocation("/")}
                   className="text-sm font-semibold"
-                  style={{ color: "#5C7A5F" }}
+                  style={{ color: "#C8D4C0" }}
                 >
                   ← Back to sign in
                 </button>
@@ -74,23 +74,23 @@ export default function ForgotPassword() {
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(""); }}
                   className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-                  style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+                  style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
                   autoComplete="email"
                   disabled={submitting}
                 />
 
                 {error && (
-                  <p className="text-sm px-1" style={{ color: "#C17F24" }}>{error}</p>
+                  <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>
                 )}
 
                 <button
                   type="submit"
                   disabled={submitting}
                   className="btn-sage flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 mt-1"
-                  style={{ background: "#5C7A5F", color: "#fff" }}
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
                   {submitting ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-[#E8E4D8] border-t-transparent animate-spin" />
+                    <div className="w-4 h-4 rounded-full border-2 border-[#F0EDE6] border-t-transparent animate-spin" />
                   ) : "Send reset link"}
                 </button>
 
@@ -98,7 +98,7 @@ export default function ForgotPassword() {
                   type="button"
                   onClick={() => setLocation("/")}
                   className="text-sm text-center mt-1"
-                  style={{ color: "#9a9390" }}
+                  style={{ color: "#8FAF96" }}
                 >
                   ← Back to sign in
                 </button>

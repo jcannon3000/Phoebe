@@ -30,17 +30,17 @@ export default function GatheringsPage() {
       <div className="max-w-2xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
               Traditions 🫱🏻‍🫲🏾
             </h1>
-            <p className="text-sm mt-1" style={{ color: "#9a9390" }}>
+            <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
               Your community, meeting regularly, with intention.
             </p>
           </div>
           <Link href="/tradition/new">
             <button
               className="btn-sage px-4 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: "#5C7A5F", color: "#fff" }}
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
             >
               Start a tradition
             </button>
@@ -50,7 +50,7 @@ export default function GatheringsPage() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2].map(i => (
-              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#DDD9CC" }} />
+              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
             ))}
           </div>
         ) : gatherings.length === 0 ? (
@@ -60,7 +60,7 @@ export default function GatheringsPage() {
             className="flex flex-col items-center text-center py-12"
           >
             <div className="text-5xl mb-6">🫱🏻‍🫲🏾</div>
-            <p className="text-base font-medium mb-1" style={{ color: "#2C1810" }}>Community grows where people keep showing up.</p>
+            <p className="text-base font-medium mb-1" style={{ color: "#F0EDE6" }}>Community grows where people keep showing up.</p>
             <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
               Commit to a rhythm. Phoebe handles the rest.
             </p>
@@ -101,7 +101,7 @@ export default function GatheringsPage() {
                     <div className="w-1 flex-shrink-0" style={{ background: "#5C7A5F" }} />
                     <div className="flex-1 p-4">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <span className="text-base font-semibold" style={{ color: "#2C1810" }}>{ritual.name}</span>
+                        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{ritual.name}</span>
                         <span className="text-[11px]" style={{ color: "#9a9390" }}>{rhythmLabel}</span>
                       </div>
 

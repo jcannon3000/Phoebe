@@ -62,35 +62,35 @@
   /* prayer #C47A65 — prayer, warmth                   */
   /* button #2D5E3F — active button bg                 */
 
-  --background: 144 33% 7%;         /* #091A10 deep forest green */
-  --foreground: 37 20% 93%;         /* #F0EDE6 warm off-white */
+  --background: 145 49% 7%;         /* #091A10 deep forest green */
+  --foreground: 42 25% 92%;         /* #F0EDE6 warm off-white */
 
-  --border: 144 22% 48%;            /* sage adjusted for dark: rgba(200,212,192,0.25) effect */
-  --input: 144 22% 48%;
-  --ring: 144 22% 35%;
+  --border: 133 17% 62%;            /* sage accent */
+  --input: 141 45% 11%;
+  --ring: 96 19% 79%;
 
-  --card: 150 40% 11%;              /* #0F2818 card surface */
-  --card-foreground: 37 20% 93%;    /* #F0EDE6 */
-  --card-border: 144 22% 48%;
+  --card: 141 45% 11%;              /* #0F2818 card surface */
+  --card-foreground: 42 25% 92%;    /* #F0EDE6 */
+  --card-border: 133 17% 62%;
 
-  --popover: 150 40% 11%;
-  --popover-foreground: 37 20% 93%;
-  --popover-border: 144 22% 48%;
+  --popover: 141 45% 11%;
+  --popover-foreground: 42 25% 92%;
+  --popover-border: 133 17% 62%;
 
-  --primary: 144 28% 27%;           /* #2D5E3F active button */
-  --primary-foreground: 37 20% 93%;
+  --primary: 142 35% 27%;           /* #2D5E3F active button */
+  --primary-foreground: 42 25% 92%;
 
-  --secondary: 150 30% 14%;         /* slightly lighter than card */
-  --secondary-foreground: 37 20% 93%;
+  --secondary: 141 45% 13%;
+  --secondary-foreground: 42 25% 92%;
 
-  --muted: 150 30% 14%;
-  --muted-foreground: 135 18% 62%;  /* #8FAF96 muted sage */
+  --muted: 141 45% 9%;
+  --muted-foreground: 133 17% 62%;  /* #8FAF96 muted sage */
 
-  --accent: 35 69% 45%;             /* #C17F24 amber — keep */
-  --accent-foreground: 37 20% 93%;
+  --accent: 96 19% 79%;             /* #C8D4C0 sage accent */
+  --accent-foreground: 145 49% 7%;
 
-  --destructive: 15 42% 58%;        /* #C47A65 warmer terracotta for dark bg */
-  --destructive-foreground: 37 20% 93%;
+  --destructive: 13 45% 58%;        /* #C47A65 warmer terracotta for dark bg */
+  --destructive-foreground: 42 25% 92%;
 
   --app-font-sans: 'Space Grotesk', sans-serif;
   --app-font-serif: Georgia, 'Times New Roman', serif;
@@ -98,10 +98,10 @@
 
   --radius: 1rem;
 
-  --shadow-warm-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-warm-md: 0 4px 16px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-warm-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-warm-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
   --shadow-warm-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-warm-xl: 0 20px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-warm-xl: 0 20px 48px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.3);
 
   --button-outline: rgba(200, 212, 192, 0.15);
   --badge-outline: rgba(200, 212, 192, 0.08);
@@ -133,7 +133,8 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 textarea {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: #091A10;
   transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 input[type="text"]:focus,

@@ -118,10 +118,10 @@ export function PrayerSection() {
         className="w-full flex items-center gap-3 mb-4 group"
         aria-expanded={isOpen}
       >
-        <h2 className="text-lg font-semibold shrink-0" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+        <h2 className="text-lg font-semibold shrink-0" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
           Prayer Requests 🙏
         </h2>
-        <div className="flex-1 h-px" style={{ background: "#D6CAB8" }} />
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
         <span
           className="text-xs shrink-0 transition-transform duration-200"
           style={{ color: "#9a9390", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
@@ -142,15 +142,15 @@ export function PrayerSection() {
               onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
               placeholder="Share a prayer request with your garden... 🌿"
               maxLength={1000}
-              className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border/60 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#E8A898]/40 focus:border-[#E8A898] transition-all"
-              style={{ backgroundColor: "#FAF6F0" }}
+              className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#C47A65]/40 focus:border-[#C47A65] transition-all"
+              style={{ backgroundColor: "#091A10", borderColor: "rgba(200,212,192,0.2)", color: "#F0EDE6" }}
             />
             <button
               type="button"
               onClick={handleSendClick}
               disabled={!inputValue.trim()}
-              className="px-4 py-2.5 rounded-xl text-[#F7F0E6] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-              style={{ backgroundColor: "#E8A898" }}
+              className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              style={{ backgroundColor: "#8B5E52", color: "#F0EDE6" }}
             >
               🙏
             </button>
@@ -167,7 +167,7 @@ export function PrayerSection() {
 
           {/* Empty state */}
           {!isLoading && requests.length === 0 && (
-            <p className="text-sm text-center" style={{ color: "#6b6460" }}>
+            <p className="text-sm text-center" style={{ color: "#8FAF96" }}>
               Your community is here to carry what you're carrying.
             </p>
           )}
@@ -186,13 +186,13 @@ export function PrayerSection() {
                   >
                     {/* Row */}
                     <div
-                      className="flex gap-0 cursor-pointer hover:bg-[#D4896A]/[0.04] transition-colors"
+                      className="flex gap-0 cursor-pointer hover:bg-white/[0.02] transition-colors"
                       onClick={() => handleRowClick(request.id)}
                     >
                       {/* Sage accent bar */}
                       <div
                         className="w-0.5 self-stretch shrink-0"
-                        style={{ backgroundColor: "#C4714A" }}
+                        style={{ backgroundColor: "#C47A65" }}
                       />
 
                       <div className="flex-1 p-4 pl-3 min-w-0">
@@ -203,7 +203,7 @@ export function PrayerSection() {
                               From {request.ownerName ?? "someone"}
                             </p>
                             {/* Body */}
-                            <p className="text-sm leading-relaxed" style={{ color: "#2C1810" }}>
+                            <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6" }}>
                               {request.body}
                             </p>
                           </div>
@@ -227,7 +227,7 @@ export function PrayerSection() {
 
                         {/* Nearing expiry — quiet line */}
                         {request.nearingExpiry && (
-                          <p className="text-xs italic mt-2" style={{ color: "#8C7B6B" }}>
+                          <p className="text-xs italic mt-2" style={{ color: "#8FAF96" }}>
                             Released tomorrow 🌿
                           </p>
                         )}
@@ -284,14 +284,15 @@ export function PrayerSection() {
                               }}
                               placeholder="Leave a word alongside this… 🌿"
                               maxLength={120}
-                              className="flex-1 text-sm px-3 py-2 rounded-lg border border-border/50 bg-card placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/40 transition-all"
+                              className="flex-1 text-sm px-3 py-2 rounded-lg border placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#C47A65]/30 focus:border-[#C47A65]/40 transition-all"
+                              style={{ backgroundColor: "#091A10", borderColor: "rgba(200,212,192,0.2)", color: "#F0EDE6" }}
                             />
                             <button
                               type="button"
                               onClick={() => handleWordSubmit(request.id)}
                               disabled={!(wordInputs[request.id] || "").trim() || wordMutation.isPending}
                               className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-                              style={{ backgroundColor: "#D4896A", color: "#E8E4D8" }}
+                              style={{ backgroundColor: "#8B5E52", color: "#F0EDE6" }}
                             >
                               🙏
                             </button>
@@ -306,7 +307,7 @@ export function PrayerSection() {
                               onClick={() => releaseMutation.mutate(request.id)}
                               disabled={releaseMutation.isPending}
                               className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
-                              style={{ color: "#8C7B6B" }}
+                              style={{ color: "#8FAF96" }}
                             >
                               Release this 🌿
                             </button>
@@ -316,7 +317,7 @@ export function PrayerSection() {
                               onClick={() => deleteMutation.mutate(request.id)}
                               disabled={deleteMutation.isPending}
                               className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
-                              style={{ color: "#8C7B6B" }}
+                              style={{ color: "#8FAF96" }}
                             >
                               Remove from my view
                             </button>
@@ -341,13 +342,13 @@ export function PrayerSection() {
         >
           <div
             className="rounded-t-3xl shadow-2xl px-6 pt-6 pb-10"
-            style={{ backgroundColor: "#E8E2D5" }}
+            style={{ backgroundColor: "#0F2818" }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <h2
               className="text-lg font-serif mb-4"
-              style={{ color: "#2C1810" }}
+              style={{ color: "#F0EDE6" }}
             >
               Hold this with your community 🌿
             </h2>
@@ -355,13 +356,13 @@ export function PrayerSection() {
             {/* Request preview */}
             <div
               className="rounded-xl px-4 py-3 mb-5 text-sm leading-relaxed"
-              style={{ backgroundColor: "rgba(44,24,16,0.05)", color: "#2C1810" }}
+              style={{ backgroundColor: "rgba(200,212,192,0.06)", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.15)" }}
             >
               {pendingBody}
             </div>
 
             {/* Instructional copy */}
-            <p className="text-xs italic mb-6" style={{ color: "#5C7A5F" }}>
+            <p className="text-xs italic mb-6" style={{ color: "#8FAF96" }}>
               Your community will hold this for three days. On the third day it will quietly be released. 🌿
             </p>
 
@@ -371,7 +372,7 @@ export function PrayerSection() {
               onClick={handleModalSubmit}
               disabled={submitMutation.isPending}
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: "#2C1810", color: "#E8E4D8" }}
+              style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
             >
               {submitMutation.isPending ? "Sharing…" : "Share with my community 🙏"}
             </button>

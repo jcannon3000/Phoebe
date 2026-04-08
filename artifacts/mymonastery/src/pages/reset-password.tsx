@@ -15,10 +15,10 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAF6F0" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#091A10" }}>
         <div className="text-center max-w-sm px-4">
-          <p className="text-base mb-4" style={{ color: "#2C1810" }}>This reset link is invalid or has expired.</p>
-          <button onClick={() => setLocation("/")} className="text-sm font-semibold" style={{ color: "#5C7A5F" }}>
+          <p className="text-base mb-4" style={{ color: "#F0EDE6" }}>This reset link is invalid or has expired.</p>
+          <button onClick={() => setLocation("/")} className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>
             Back to sign in
           </button>
         </div>
@@ -53,9 +53,9 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#091A10" }}>
       <header className="px-6 py-6">
-        <span className="text-2xl font-bold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
+        <span className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe
         </span>
       </header>
@@ -68,19 +68,19 @@ export default function ResetPassword() {
             transition={{ duration: 0.4 }}
           >
             <div className="text-4xl mb-5 text-center">🔑</div>
-            <h1 className="text-2xl font-bold mb-2 text-center" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h1 className="text-2xl font-bold mb-2 text-center" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
               Choose a new password
             </h1>
 
             {done ? (
               <div className="text-center mt-6">
-                <p className="text-base mb-6" style={{ color: "#5C7A5F" }}>
+                <p className="text-base mb-6" style={{ color: "#8FAF96" }}>
                   Password updated. You can now sign in.
                 </p>
                 <button
                   onClick={() => setLocation("/")}
                   className="btn-sage px-6 py-3 rounded-xl font-semibold text-sm"
-                  style={{ background: "#5C7A5F", color: "#fff" }}
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
                   Sign in
                 </button>
@@ -94,7 +94,7 @@ export default function ResetPassword() {
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(""); }}
                     className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+                    style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
                     autoComplete="new-password"
                     disabled={submitting}
                   />
@@ -102,7 +102,7 @@ export default function ResetPassword() {
                     type="button"
                     onClick={() => setShowPassword(v => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                    style={{ color: "#9a9390" }}
+                    style={{ color: "#8FAF96" }}
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -110,17 +110,17 @@ export default function ResetPassword() {
                 </div>
 
                 {error && (
-                  <p className="text-sm px-1" style={{ color: "#C17F24" }}>{error}</p>
+                  <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>
                 )}
 
                 <button
                   type="submit"
                   disabled={submitting}
                   className="btn-sage flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 mt-1"
-                  style={{ background: "#5C7A5F", color: "#fff" }}
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
                   {submitting ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-[#E8E4D8] border-t-transparent animate-spin" />
+                    <div className="w-4 h-4 rounded-full border-2 border-[#F0EDE6] border-t-transparent animate-spin" />
                   ) : "Set new password"}
                 </button>
               </form>

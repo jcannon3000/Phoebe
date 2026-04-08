@@ -9,9 +9,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Eleanor palette avatar colors: sage, amber, blush
 const AVATAR_COLORS = [
-  { bg: "#5C7A5F", text: "#E8E4D8" },  // sage
-  { bg: "#C17F24", text: "#E8E4D8" },  // amber
-  { bg: "#D4896A", text: "#E8E4D8" },  // blush
+  { bg: "#2D5E3F", text: "#F0EDE6" },  // sage
+  { bg: "#5A3D10", text: "#F0EDE6" },  // amber
+  { bg: "#5A2E20", text: "#F0EDE6" },  // blush
 ];
 
 function colorFor(email: string) {
@@ -165,7 +165,7 @@ export default function PersonProfile() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.05 }}
           >
-            <div className="h-px w-full" style={{ backgroundColor: "rgba(44,24,16,0.06)" }} />
+            <div className="h-px w-full" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
             <div className="pt-6">
               <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#D4896A" }}>
                 Held in prayer 🙏
@@ -225,7 +225,7 @@ export default function PersonProfile() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
           >
-            <div className="h-px w-full" style={{ backgroundColor: "rgba(44,24,16,0.06)" }} />
+            <div className="h-px w-full" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
             <div className="pt-6">
               <p className="text-[10px] font-semibold tracking-widest uppercase mb-4" style={{ color: "#5C7A5F" }}>
                 Practices together
@@ -270,7 +270,7 @@ export default function PersonProfile() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.15 }}
           >
-            <div className="h-px w-full" style={{ backgroundColor: "rgba(44,24,16,0.06)" }} />
+            <div className="h-px w-full" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
             <div className="pt-6">
               <p className="text-[10px] font-semibold tracking-widest uppercase mb-4" style={{ color: "#C17F24" }}>
                 Traditions together
@@ -314,7 +314,7 @@ export default function PersonProfile() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <div className="h-px w-full mb-6" style={{ backgroundColor: "rgba(44,24,16,0.06)" }} />
+          <div className="h-px w-full mb-6" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
           <Link
             href="/moment/new"
             className="text-[14px] font-medium transition-opacity hover:opacity-70"

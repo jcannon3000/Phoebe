@@ -148,13 +148,13 @@ export default function TraditionNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#091A10" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
           onClick={() => step === 1 ? setLocation("/dashboard") : setStep((s) => (s - 1) as Step)}
           className="text-sm"
-          style={{ color: "#9a9390" }}
+          style={{ color: "#8FAF96" }}
         >
           ← {step === 1 ? "Dashboard" : "Back"}
         </button>
@@ -163,7 +163,7 @@ export default function TraditionNew() {
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#C17F24" : "#D6CAB8" }}
+              style={{ background: s <= step ? "#2D5E3F" : "rgba(200,212,192,0.2)" }}
             />
           ))}
         </div>
@@ -175,10 +175,10 @@ export default function TraditionNew() {
           {/* Step 1 — What */}
           {step === 1 && (
             <motion.div key="s1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 What will you gather for? 🌿
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>Recurring gatherings are where belonging forms.</p>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>Recurring gatherings are where belonging forms.</p>
 
               <div className="space-y-3">
                 {TEMPLATE_OPTIONS.map((o) => (
@@ -186,13 +186,13 @@ export default function TraditionNew() {
                     key={o.value}
                     onClick={() => handleTypeSelect(o.value)}
                     className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-                    style={{ background: "#fff", border: "1.5px solid rgba(193,127,36,0.25)" }}
+                    style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.2)" }}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{o.emoji}</span>
                       <div>
-                        <p className="font-semibold text-base" style={{ color: "#2C1810" }}>{o.label}</p>
-                        <p className="text-sm" style={{ color: "#9a9390" }}>{o.tagline}</p>
+                        <p className="font-semibold text-base" style={{ color: "#F0EDE6" }}>{o.label}</p>
+                        <p className="text-sm" style={{ color: "#8FAF96" }}>{o.tagline}</p>
                       </div>
                     </div>
                   </button>
@@ -204,13 +204,13 @@ export default function TraditionNew() {
           {/* Step 2 — Name + Who */}
           {step === 2 && (
             <motion.div key="s2" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-6" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <h1 className="text-2xl font-bold mb-6" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 Who are you gathering with? 🌿
               </h1>
 
               {/* Name */}
               <div className="mb-6">
-                <label className="text-xs font-semibold uppercase tracking-widest mb-2 block" style={{ color: "#C17F24" }}>
+                <label className="text-xs font-semibold uppercase tracking-widest mb-2 block" style={{ color: "#8FAF96" }}>
                   Name this gathering
                 </label>
                 <input
@@ -220,14 +220,14 @@ export default function TraditionNew() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Morning Coffee, Sunday Dinner"
                   className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none"
-                  style={{ background: "#fff", border: "1.5px solid #D6CAB8", color: "#2C1810" }}
+                  style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
                 />
               </div>
 
               {/* Existing connections */}
               {connections.length > 0 && (
                 <div className="mb-5">
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#9a9390" }}>People you know</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#C8D4C0" }}>People you know</p>
                   <div className="space-y-2">
                     {connections.map((person) => {
                       const sel = selectedPeople.some((p) => p.email === person.email);
@@ -237,21 +237,21 @@ export default function TraditionNew() {
                           onClick={() => togglePerson(person)}
                           className="w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all"
                           style={{
-                            background: sel ? "rgba(193,127,36,0.08)" : "#fff",
-                            border: `1.5px solid ${sel ? "#C17F24" : "#D6CAB8"}`,
+                            background: sel ? "#2D5E3F" : "#0F2818",
+                            border: `1.5px solid ${sel ? "rgba(200,212,192,0.5)" : "rgba(200,212,192,0.2)"}`,
                           }}
                         >
                           <div
                             className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
-                            style={{ background: sel ? "#C17F24" : "#C8C4B8", color: sel ? "#fff" : "#2C1810" }}
+                            style={{ background: sel ? "rgba(200,212,192,0.2)" : "rgba(200,212,192,0.1)", color: sel ? "#F0EDE6" : "#8FAF96" }}
                           >
                             {(person.name || person.email).charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium" style={{ color: "#2C1810" }}>{person.name || person.email}</p>
-                            {person.name && <p className="text-xs truncate" style={{ color: "#9a9390" }}>{person.email}</p>}
+                            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{person.name || person.email}</p>
+                            {person.name && <p className="text-xs truncate" style={{ color: "#8FAF96" }}>{person.email}</p>}
                           </div>
-                          {sel && <span style={{ color: "#C17F24" }}>✓</span>}
+                          {sel && <span style={{ color: "#C8D4C0" }}>✓</span>}
                         </button>
                       );
                     })}
@@ -261,7 +261,7 @@ export default function TraditionNew() {
 
               {/* New people */}
               <div className="mb-5">
-                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#9a9390" }}>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#8FAF96" }}>
                   {connections.length > 0 ? "Or invite someone new" : "Who's coming?"}
                 </p>
                 <div className="space-y-4">
@@ -274,10 +274,10 @@ export default function TraditionNew() {
                           onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], name: e.target.value }; return c; })}
                           placeholder="Name (optional)"
                           className="flex-1 px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                          style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
+                          style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
                         />
                         {newPeople.length > 1 && (
-                          <button onClick={() => setNewPeople((p) => p.filter((_, j) => j !== i))} className="text-lg px-1" style={{ color: "#9a9390" }}>×</button>
+                          <button onClick={() => setNewPeople((p) => p.filter((_, j) => j !== i))} className="text-lg px-1" style={{ color: "#8FAF96" }}>×</button>
                         )}
                       </div>
                       <input
@@ -286,26 +286,26 @@ export default function TraditionNew() {
                         onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], email: e.target.value }; return c; })}
                         placeholder="Email address"
                         className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#fff", border: "1px solid #D6CAB8", color: "#2C1810" }}
+                        style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
                       />
                     </div>
                   ))}
                   <button
                     onClick={() => setNewPeople((p) => [...p, { name: "", email: "" }])}
                     className="text-sm font-medium"
-                    style={{ color: "#C17F24" }}
+                    style={{ color: "#C8D4C0" }}
                   >
                     + Add another person
                   </button>
                 </div>
               </div>
 
-              {error && <p className="text-sm mb-4" style={{ color: "#C17F24" }}>{error}</p>}
+              {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
 
               <button
                 onClick={handleWhoNext}
                 className="w-full py-4 rounded-2xl text-base font-semibold"
-                style={{ background: "#C17F24", color: "#fff" }}
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
                 Continue →
               </button>
@@ -315,10 +315,10 @@ export default function TraditionNew() {
           {/* Step 3 — Rhythm */}
           {step === 3 && (
             <motion.div key="s3" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 How often will you gather? 🌿
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#9a9390" }}>The rhythm is the commitment.</p>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>The rhythm is the commitment.</p>
 
               <div className="space-y-3 mb-8">
                 {RHYTHM_OPTIONS.map((o) => (
@@ -327,31 +327,31 @@ export default function TraditionNew() {
                     onClick={() => setRhythm(o.value)}
                     className="w-full text-left p-4 rounded-2xl transition-all"
                     style={{
-                      background: rhythm === o.value ? "rgba(193,127,36,0.08)" : "#fff",
-                      border: `2px solid ${rhythm === o.value ? "#C17F24" : "rgba(193,127,36,0.2)"}`,
+                      background: rhythm === o.value ? "#2D5E3F" : "#0F2818",
+                      border: `2px solid ${rhythm === o.value ? "rgba(200,212,192,0.5)" : "rgba(200,212,192,0.2)"}`,
                     }}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{o.emoji}</span>
                       <div>
-                        <p className="font-semibold" style={{ color: "#2C1810" }}>{o.label}</p>
-                        <p className="text-sm" style={{ color: "#9a9390" }}>{o.tagline}</p>
+                        <p className="font-semibold" style={{ color: "#F0EDE6" }}>{o.label}</p>
+                        <p className="text-sm" style={{ color: "#8FAF96" }}>{o.tagline}</p>
                       </div>
                       {rhythm === o.value && (
-                        <span className="ml-auto text-base font-bold" style={{ color: "#C17F24" }}>✓</span>
+                        <span className="ml-auto text-base font-bold" style={{ color: "#C8D4C0" }}>✓</span>
                       )}
                     </div>
                   </button>
                 ))}
               </div>
 
-              {error && <p className="text-sm mb-4" style={{ color: "#C17F24" }}>{error}</p>}
+              {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
 
               <button
                 onClick={handleRhythmNext}
                 disabled={!rhythm}
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
-                style={{ background: "#C17F24", color: "#fff" }}
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
                 Continue →
               </button>
@@ -363,66 +363,66 @@ export default function TraditionNew() {
             <motion.div key="s4" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <div
                 className="rounded-2xl p-6"
-                style={{ background: "#fff", border: "1px solid rgba(44,24,16,0.08)" }}
+                style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}
               >
-                <h1 className="text-2xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+                <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                   When should you first gather?
                 </h1>
-                <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
+                <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
                   Pick your first choice and two alternates. Your group will say which works best.
                 </p>
 
                 {/* First Pick */}
                 <div className="mb-6">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C17F24" }}>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C8D4C0" }}>
                     First Pick
                   </p>
                   <input
                     type="datetime-local"
                     value={firstPick}
                     onChange={(e) => setFirstPick(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
-                    style={{ background: "#fff", border: "1.5px solid #D6CAB8", color: "#2C1810" }}
+                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                    style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
                   />
                 </div>
 
                 {/* First Alternative */}
                 <div className="mb-6">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#9a9390" }}>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
                     First Alternative
                   </p>
                   <input
                     type="datetime-local"
                     value={altTime1}
                     onChange={(e) => setAltTime1(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
-                    style={{ background: "#fff", border: "1.5px solid #D6CAB8", color: "#2C1810" }}
+                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                    style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
                   />
                 </div>
 
                 {/* Second Alternative */}
                 <div className="mb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#9a9390" }}>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
                     Second Alternative
                   </p>
                   <input
                     type="datetime-local"
                     value={altTime2}
                     onChange={(e) => setAltTime2(e.target.value)}
-                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#C17F24]/30 focus:border-[#C17F24]/50 transition-all"
-                    style={{ background: "#fff", border: "1.5px solid #D6CAB8", color: "#2C1810" }}
+                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                    style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
                   />
                 </div>
               </div>
 
-              {error && <p className="text-sm mt-4 mb-2" style={{ color: "#C17F24" }}>{error}</p>}
+              {error && <p className="text-sm mt-4 mb-2" style={{ color: "#C47A65" }}>{error}</p>}
 
               <div className="flex justify-end mt-6">
                 <button
                   onClick={handleCreate}
                   disabled={!firstPick || submitting}
                   className="px-10 py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
-                  style={{ background: "#C17F24", color: "#fff" }}
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
                   {submitting ? "Starting..." : "Continue →"}
                 </button>

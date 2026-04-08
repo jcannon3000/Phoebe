@@ -24,16 +24,16 @@ export function Layout({ children }: { children: ReactNode }) {
   });
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#FAF6F0" }}>
-      <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
+      <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center" style={{ background: "#091A10" }}>
         <div className="flex items-center gap-6">
           <Link href="/dashboard" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md">
-            <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#2C1810" }}>
+            <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
               Phoebe 🪴
             </span>
           </Link>
 
-          <Link href="/people" className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary mt-2" style={{ color: "#8C7B6B" }}>
+          <Link href="/people" className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary mt-2" style={{ color: "#8FAF96" }}>
             <Users size={15} />
             People
           </Link>
@@ -52,7 +52,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   className="w-8 h-8 rounded-full border-2 border-primary/20"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#0F2818", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.2)" }}>
                   {user.name.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -63,23 +63,29 @@ export function Layout({ children }: { children: ReactNode }) {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl z-20 overflow-hidden" style={{ background: "#E8E2D5", boxShadow: "0 4px 24px rgba(44,24,16,0.10), 0 1px 6px rgba(44,24,16,0.04)" }}>
-                  <div className="px-4 py-3 border-b border-border/50">
-                    <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl z-20 overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)" }}>
+                  <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(200,212,192,0.15)" }}>
+                    <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>{user.name}</p>
+                    <p className="text-xs truncate" style={{ color: "#8FAF96" }}>{user.email}</p>
                   </div>
                   <button
                     onClick={() => presenceToggle.mutate(!user.showPresence)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm transition-colors"
+                    style={{ color: "#8FAF96" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#1F4A33"; (e.currentTarget as HTMLButtonElement).style.color = "#F0EDE6"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "#8FAF96"; }}
                   >
                     <span>Show when I'm here 🌿</span>
-                    <div className={`w-8 h-[18px] rounded-full transition-colors relative ${user.showPresence ? "bg-[#5C7A5F]" : "bg-border"}`}>
-                      <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform ${user.showPresence ? "left-[16px]" : "left-[2px]"}`} />
+                    <div className={`w-8 h-[18px] rounded-full transition-colors relative ${user.showPresence ? "bg-[#2D5E3F]" : "bg-border"}`}>
+                      <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full shadow-sm transition-transform ${user.showPresence ? "left-[16px]" : "left-[2px]"}`} style={{ background: "#F0EDE6" }} />
                     </div>
                   </button>
                   <button
                     onClick={() => { setMenuOpen(false); logout(); }}
-                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors border-t border-border/30"
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm transition-colors"
+                    style={{ color: "#8FAF96", borderTop: "1px solid rgba(200,212,192,0.15)" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#1F4A33"; (e.currentTarget as HTMLButtonElement).style.color = "#F0EDE6"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "#8FAF96"; }}
                   >
                     <LogOut size={14} />
                     Sign out

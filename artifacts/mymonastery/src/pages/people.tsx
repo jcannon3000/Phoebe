@@ -102,10 +102,10 @@ export default function People() {
       <div className="flex flex-col h-full w-full">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+          <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
             Your garden 🌿
           </h1>
-          <p className="mt-1" style={{ color: "#6b6460", fontSize: "13px", fontWeight: 400 }}>
+          <p className="mt-1" style={{ color: "#8FAF96", fontSize: "13px", fontWeight: 400 }}>
             Stay close to your community.
           </p>
         </div>
@@ -113,7 +113,7 @@ export default function People() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#F0EAE0" }} />
+              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
             ))}
           </div>
         ) : !people || people.length === 0 ? (
@@ -122,14 +122,14 @@ export default function People() {
             {/* Compact empty state */}
             <div
               className="rounded-xl px-5 py-5 mb-6 flex items-center gap-4"
-              style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
+              style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
             >
               <span style={{ fontSize: "32px" }}>🌱</span>
               <div>
-                <p className="font-semibold" style={{ color: "#2C1810", fontSize: "16px", fontFamily: "'Space Grotesk', sans-serif" }}>
+                <p className="font-semibold" style={{ color: "#F0EDE6", fontSize: "16px", fontFamily: "'Space Grotesk', sans-serif" }}>
                   Your garden is empty
                 </p>
-                <p className="mt-0.5" style={{ color: "#6b6460", fontSize: "13px" }}>
+                <p className="mt-0.5" style={{ color: "#8FAF96", fontSize: "13px" }}>
                   Add people you want to stay close to
                 </p>
               </div>
@@ -140,26 +140,26 @@ export default function People() {
               <Link href="/letters/new">
                 <div
                   className="flex items-center gap-4 px-4 py-4 rounded-xl cursor-pointer hover:shadow-sm transition-shadow"
-                  style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                 >
                   <span className="text-xl">🌿</span>
-                  <span className="flex-1 text-sm font-medium" style={{ color: "#2C1810" }}>Start a letter with someone</span>
-                  <span style={{ color: "#C8B99A" }}>→</span>
+                  <span className="flex-1 text-sm font-medium" style={{ color: "#F0EDE6" }}>Start a letter with someone</span>
+                  <span style={{ color: "#8FAF96" }}>→</span>
                 </div>
               </Link>
               <Link href="/tradition/new">
                 <div
                   className="flex items-center gap-4 px-4 py-4 rounded-xl cursor-pointer hover:shadow-sm transition-shadow"
-                  style={{ background: "#FFFFFF", border: "1px solid #C8D4C0", boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                 >
                   <span className="text-xl">🏡</span>
-                  <span className="flex-1 text-sm font-medium" style={{ color: "#2C1810" }}>Create a gathering</span>
-                  <span style={{ color: "#C8B99A" }}>→</span>
+                  <span className="flex-1 text-sm font-medium" style={{ color: "#F0EDE6" }}>Create a gathering</span>
+                  <span style={{ color: "#8FAF96" }}>→</span>
                 </div>
               </Link>
             </div>
 
-            <p className="text-center text-xs mt-12 tracking-wide" style={{ color: "#C8B99A" }}>
+            <p className="text-center text-xs mt-12 tracking-wide" style={{ color: "rgba(143,175,150,0.5)" }}>
               Inspired by Monastic Wisdom
             </p>
           </motion.div>
@@ -367,7 +367,7 @@ export default function People() {
 
                     {/* Bottom divider */}
                     {idx < sorted.length - 1 && (
-                      <div className="h-px mx-4" style={{ backgroundColor: "rgba(44,24,16,0.06)" }} />
+                      <div className="h-px mx-4" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
                     )}
                   </motion.div>
                 );
