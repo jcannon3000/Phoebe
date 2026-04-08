@@ -234,7 +234,7 @@ export default function WriteLetter() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
       {/* Minimal header */}
-      <div className="px-16 pt-6 pb-3 flex items-center justify-between">
+      <div className="px-24 pt-6 pb-3 flex items-center justify-between">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
         <div className="text-center">
           <p className="text-[13px]" style={{ color: "#9a9390" }}>{correspondence?.name}</p>
@@ -248,7 +248,7 @@ export default function WriteLetter() {
       </div>
 
       {/* Action bar */}
-      <div className="px-16 py-3" style={{ borderBottom: "1px solid #EDE6D9" }}>
+      <div className="px-24 py-3" style={{ borderBottom: "1px solid #EDE6D9" }}>
         {!confirmSend ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ export default function WriteLetter() {
       </div>
 
       {/* Writing area */}
-      <div className="flex-1 px-16 pt-6 pb-8">
+      <div className="flex-1 px-24 pt-6 pb-8">
         {isOneToOne && otherMembers && (
           <p className="text-base italic mb-4" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
             Dear {otherMembers},
