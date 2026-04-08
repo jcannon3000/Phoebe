@@ -59,16 +59,28 @@ function formatShortDate(dateStr: string): string {
   return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 
+function parsePostmark(raw: string) {
+  const parts = raw.split(", ");
+  if (parts.length >= 2) {
+    const city = parts[0];
+    const stateZip = parts.slice(1).join(", ");
+    const tokens = stateZip.split(" ");
+    const last = tokens[tokens.length - 1];
+    if (/^\d{5}(-\d{4})?$/.test(last)) {
+      return { city, state: tokens.slice(0, -1).join(" "), zip: last };
+    }
+    return { city, state: stateZip, zip: "" };
+  }
+  return { city: raw, state: "", zip: "" };
+}
+
 function PostmarkStamp({ city, date }: { city: string; date: string }) {
+  const { city: c, state, zip } = parsePostmark(city);
   return (
-    <div
-      className="inline-flex flex-col items-center justify-center flex-shrink-0 animate-postmark-pulse"
-      style={{ border: "1.5px solid #5C7A5F", borderRadius: "50% / 40%", padding: "5px 10px", minWidth: 64 }}
-    >
-      <span className="font-semibold uppercase" style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.1em", lineHeight: 1.2 }}>
-        {city}
-      </span>
-      <span style={{ color: "#5C7A5F", fontSize: "11px", fontWeight: 600, lineHeight: 1.3 }}>{formatShortDate(date)}</span>
+    <div className="inline-flex flex-col items-end flex-shrink-0 animate-postmark-pulse" style={{ gap: "1px" }}>
+      <span style={{ color: "#5C7A5F", fontSize: "13px", fontWeight: 700, lineHeight: 1.2 }}>{formatShortDate(date)}</span>
+      <span className="uppercase" style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.08em", lineHeight: 1.3 }}>{c}{state ? `, ${state}` : ""}</span>
+      {zip && <span style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.05em", lineHeight: 1.3 }}>{zip}</span>}
     </div>
   );
 }

@@ -1,4 +1,19 @@
 import { useEffect } from "react";
+
+function parsePostmark(raw: string) {
+  const parts = raw.split(", ");
+  if (parts.length >= 2) {
+    const city = parts[0];
+    const stateZip = parts.slice(1).join(", ");
+    const tokens = stateZip.split(" ");
+    const last = tokens[tokens.length - 1];
+    if (/^\d{5}(-\d{4})?$/.test(last)) {
+      return { city, state: tokens.slice(0, -1).join(" "), zip: last };
+    }
+    return { city, state: stateZip, zip: "" };
+  }
+  return { city: raw, state: "", zip: "" };
+}
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -143,29 +158,27 @@ export default function ReadLetter() {
         }}
       >
         {/* Postmark stamp — top right */}
-        {letter.postmarkCity && isOneToOne && (
-          <div
-            className="absolute flex flex-col items-center justify-center animate-postmark-pulse"
-            style={{
-              top: "20px",
-              right: "20px",
-              border: "1.5px solid #5C7A5F",
-              borderRadius: "50% / 40%",
-              padding: "10px 16px",
-              minWidth: "80px",
-            }}
-          >
-            <span
-              className="font-semibold uppercase"
-              style={{ color: "#5C7A5F", fontSize: "11px", letterSpacing: "0.08em", lineHeight: 1.3 }}
+        {letter.postmarkCity && isOneToOne && (() => {
+          const { city, state, zip } = parsePostmark(letter.postmarkCity!);
+          return (
+            <div
+              className="absolute flex flex-col items-end animate-postmark-pulse"
+              style={{ top: "20px", right: "20px", gap: "2px" }}
             >
-              {letter.postmarkCity}
-            </span>
-            <span style={{ color: "#5C7A5F", fontSize: "13px", fontWeight: 600, lineHeight: 1.4 }}>
-              {formatShortDate(letter.sentAt)}
-            </span>
-          </div>
-        )}
+              <span style={{ color: "#5C7A5F", fontSize: "15px", fontWeight: 700, lineHeight: 1.2 }}>
+                {formatShortDate(letter.sentAt)}
+              </span>
+              <span className="uppercase" style={{ color: "#5C7A5F", fontSize: "10px", letterSpacing: "0.08em", lineHeight: 1.3 }}>
+                {city}{state ? `, ${state}` : ""}
+              </span>
+              {zip && (
+                <span style={{ color: "#5C7A5F", fontSize: "10px", letterSpacing: "0.05em", lineHeight: 1.3 }}>
+                  {zip}
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Letter metadata */}
         <p
