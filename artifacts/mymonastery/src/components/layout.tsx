@@ -33,7 +33,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </span>
           </Link>
 
-          <Link href="/people" className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary" style={{ color: "#8C7B6B" }}>
+          <Link href="/people" className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary mt-2" style={{ color: "#8C7B6B" }}>
             <Users size={15} />
             People
           </Link>
