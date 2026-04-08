@@ -338,9 +338,9 @@ export default function Dashboard() {
 
         {/* ── Header ── */}
         <div className="mb-6">
-          <p className="mb-1" style={{ color: "#8FAF96", fontSize: "13px", fontWeight: 400, letterSpacing: 0 }}>
-            Cultivating community makes life radiant ✨
-          </p>
+          <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {format(new Date(), "EEEE, d MMMM")}
+          </h1>
         </div>
 
         {/* ── Letters ── */}
@@ -353,7 +353,10 @@ export default function Dashboard() {
         <PrayerSection />
 
         {/* Footer */}
-        <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
+        <p className="text-center text-sm mt-10 mb-2" style={{ color: "#8FAF96" }}>
+          Cultivate community through writing letters and meeting in person
+        </p>
+        <p className="text-center text-xs mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
           Inspired by Monastic Wisdom
         </p>
 

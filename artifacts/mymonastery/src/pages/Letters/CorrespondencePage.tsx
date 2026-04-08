@@ -159,40 +159,43 @@ export default function CorrespondencePage() {
 
         {/* Back row */}
         <div className="flex items-center justify-between mb-4">
-          <button onClick={() => setLocation("/letters")} className="text-sm" style={{ color: "#9a9390" }}>
+          <button onClick={() => setLocation("/letters")} className="text-sm" style={{ color: "#8FAF96" }}>
             ← Letters
           </button>
           {!showArchiveConfirm ? (
-            <button onClick={() => setShowArchiveConfirm(true)} className="text-xs" style={{ color: "#C8C4B4" }}>
+            <button onClick={() => setShowArchiveConfirm(true)} className="text-xs" style={{ color: "#8FAF96" }}>
               Archive
             </button>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="text-xs" style={{ color: "#6b6460" }}>Archive this?</span>
-              <button onClick={() => archiveMutation.mutate()} className="text-xs font-medium" style={{ color: "#C17F24" }}>Yes</button>
-              <button onClick={() => setShowArchiveConfirm(false)} className="text-xs" style={{ color: "#9a9390" }}>Cancel</button>
+              <span className="text-xs" style={{ color: "#8FAF96" }}>Archive this?</span>
+              <button onClick={() => archiveMutation.mutate()} className="text-xs font-medium" style={{ color: "#C8D4C0" }}>Yes</button>
+              <button onClick={() => setShowArchiveConfirm(false)} className="text-xs" style={{ color: "#8FAF96" }}>Cancel</button>
             </div>
           )}
         </div>
 
         {/* Header */}
-        <h1 className="text-2xl font-bold mb-1" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
+        <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
           {data.name || (isOneToOne ? `Letters with ${otherMembers}` : otherMembers)}
         </h1>
         {isOneToOne && otherMembers && (
-          <p className="text-sm mb-1" style={{ color: "#9a9390" }}>with {otherMembers}</p>
+          <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
         )}
         {memberCities.length > 0 && (
-          <p className="text-xs mb-5" style={{ color: "#C8C4B4" }}>📮 {memberCities.join(" · ")}</p>
+          <p className="text-xs mb-5" style={{ color: "#8FAF96" }}>📮 {memberCities.join(" · ")}</p>
         )}
         {memberCities.length === 0 && <div className="mb-5" />}
 
         {/* Period bar */}
-        <div className={`rounded-xl overflow-hidden mb-8 transition-shadow ${data.myTurn && !currentPeriod.hasWrittenThisPeriod ? "animate-turn-pulse" : ""}`} style={{ background: "#FAF6F0", border: "1px solid rgba(92,122,95,0.2)", boxShadow: "0 2px 8px rgba(44,24,16,0.05)" }}>
+        <div
+          className={`rounded-2xl overflow-hidden mb-8 transition-shadow ${data.myTurn && !currentPeriod.hasWrittenThisPeriod ? "animate-turn-pulse" : ""}`}
+          style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+        >
           <div className="flex">
-            <div className="w-[3px] flex-shrink-0" style={{ background: "#5C7A5F" }} />
+            <div className="w-[3px] flex-shrink-0" style={{ background: "#8FAF96" }} />
             <div className="flex-1 p-5">
-              <p className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: "#5C7A5F", letterSpacing: "0.1em" }}>
+              <p className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
                 {periodLabel}
               </p>
 
@@ -205,14 +208,14 @@ export default function CorrespondencePage() {
                       <div
                         className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm"
                         style={{
-                          borderColor: m.hasWritten ? "#5C7A5F" : "#C8C4B4",
-                          background: m.hasWritten ? "#5C7A5F" : "transparent",
-                          color: m.hasWritten ? "#fff" : "#9a9390",
+                          borderColor: m.hasWritten ? "#8FAF96" : "rgba(200,212,192,0.25)",
+                          background: m.hasWritten ? "#2D5E3F" : "transparent",
+                          color: m.hasWritten ? "#F0EDE6" : "#8FAF96",
                         }}
                       >
                         {m.hasWritten ? "✓" : ""}
                       </div>
-                      <span className="text-[11px]" style={{ color: isYou ? "#5C7A5F" : "#2C1810", fontWeight: isYou ? 600 : 400 }}>
+                      <span className="text-[11px]" style={{ color: isYou ? "#C8D4C0" : "#8FAF96", fontWeight: isYou ? 600 : 400 }}>
                         {isYou ? "You" : m.name}
                       </span>
                     </div>
@@ -225,17 +228,17 @@ export default function CorrespondencePage() {
                 <Link href={writeUrl}>
                   <button
                     className="w-full py-3 rounded-xl text-base font-semibold"
-                    style={{ background: "#5C7A5F", color: "#fff" }}
+                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                   >
                     {isOneToOne ? "Write your letter 📮" : "Share your update 📮"}
                   </button>
                 </Link>
               ) : currentPeriod.hasWrittenThisPeriod ? (
-                <p className="text-sm" style={{ color: "#5C7A5F" }}>
+                <p className="text-sm" style={{ color: "#8FAF96" }}>
                   {isOneToOne ? "Your letter is sent. 🌿 Waiting for their response." : "Your update is in for this week. 🌿"}
                 </p>
               ) : isOneToOne ? (
-                <p className="text-sm" style={{ color: "#9a9390" }}>
+                <p className="text-sm" style={{ color: "#8FAF96" }}>
                   Waiting for {otherMembers} to write... 🌿
                 </p>
               ) : null}
@@ -246,10 +249,10 @@ export default function CorrespondencePage() {
         {/* Letter thread */}
         {letters.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-base mb-2" style={{ color: "#6b6460" }}>No letters yet.</p>
+            <p className="text-base mb-2" style={{ color: "#8FAF96" }}>No letters yet.</p>
             {data.myTurn && (
               <Link href={writeUrl}>
-                <button className="px-6 py-3 rounded-xl font-semibold text-sm" style={{ background: "#5C7A5F", color: "#fff" }}>
+                <button className="px-6 py-3 rounded-xl font-semibold text-sm" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
                   Write first 📮
                 </button>
               </Link>
@@ -271,14 +274,14 @@ export default function CorrespondencePage() {
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="relative cursor-pointer transition-shadow hover:shadow-sm"
+                      className="relative cursor-pointer"
                       style={{
-                        background: "#FAF6F0",
-                        border: `1px solid rgba(92,122,95,${isOwn ? "0.2" : "0.12"})`,
-                        borderLeft: `3px solid ${isOwn ? "#5C7A5F" : "#C8C4B4"}`,
-                        borderRadius: "4px",
+                        background: "#0F2818",
+                        border: `1px solid rgba(200,212,192,${isOwn ? "0.25" : "0.15"})`,
+                        borderLeft: `3px solid ${isOwn ? "#8FAF96" : "rgba(200,212,192,0.3)"}`,
+                        borderRadius: "16px",
                         padding: "24px 28px",
-                        boxShadow: "0 2px 8px rgba(44,24,16,0.04)",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                       }}
                     >
                       {letter.postmarkCity && isOneToOne && (
@@ -287,24 +290,24 @@ export default function CorrespondencePage() {
                         </div>
                       )}
 
-                      <p className="text-[11px] font-semibold uppercase mb-3 pr-20" style={{ color: "#9a9390", letterSpacing: "0.1em" }}>
+                      <p className="text-[11px] font-semibold uppercase mb-3 pr-20" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
                         {letter.authorName} · {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
                         {letter.postmarkCity ? ` · ${letter.postmarkCity}` : ""}
                         {" · "}{formatLetterDate(letter.sentAt)}
                       </p>
 
                       {isOneToOne && (
-                        <p className="text-sm italic mb-3" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
+                        <p className="text-sm italic mb-3" style={{ color: "#8FAF96", fontFamily: "Georgia, serif" }}>
                           Dear {isOwn ? otherMembers : (user?.name || "Friend")},
                         </p>
                       )}
 
-                      <p className="text-[17px] leading-[1.9] whitespace-pre-wrap line-clamp-6" style={{ color: "#2C1810", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>
+                      <p className="text-[17px] leading-[1.9] whitespace-pre-wrap line-clamp-6" style={{ color: "#F0EDE6", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>
                         {letter.content}
                       </p>
 
                       {isOwn && readByOthers.length > 0 && (
-                        <p className="text-xs mt-3" style={{ color: "#9a9390" }}>
+                        <p className="text-xs mt-3" style={{ color: "#8FAF96" }}>
                           Read by {readByOthers.join(", ")} 🌿
                         </p>
                       )}
@@ -312,7 +315,7 @@ export default function CorrespondencePage() {
                   </Link>
 
                   {index < letters.length - 1 && (
-                    <div className="flex items-center justify-center py-4" style={{ color: "rgba(92,122,95,0.25)" }}>
+                    <div className="flex items-center justify-center py-4" style={{ color: "rgba(200,212,192,0.2)" }}>
                       <span className="text-sm tracking-[0.5em]">· · ·</span>
                     </div>
                   )}
