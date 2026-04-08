@@ -337,7 +337,7 @@ export default function Dashboard() {
           <p style={{ color: "#8FAF96", fontSize: "13px", fontWeight: 400 }}>
             A place set apart for connection
           </p>
-          <p className="text-sm" style={{ color: "#8FAF96" }}>
+          <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </p>
         </div>
