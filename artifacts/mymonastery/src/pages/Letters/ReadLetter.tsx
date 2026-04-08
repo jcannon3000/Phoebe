@@ -220,7 +220,7 @@ export default function ReadLetter() {
         {!isOwnLetter && myTurn && !hasWrittenThisPeriod && (
           <div className="mt-8">
             <p className="text-[15px] italic mb-4" style={{ color: "#5C7A5F" }}>
-              {isOneToOne ? "Your turn to write. 📮" : "Share your update. 📮"}
+              {isOneToOne ? "Your turn to write. 🖋️" : "Share your update. 📮"}
             </p>
             <button
               onClick={() => setLocation(writeUrl)}

@@ -144,7 +144,7 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
             </span>
           ) : item.myTurn ? (
             <span className="text-[12px] font-medium" style={{ color: "#C8D4C0" }}>
-              {isOneToOne ? "Your turn to write 📮" : "Write your update 📮"}
+              {isOneToOne ? "Your turn to write 🖋️" : "Write your update 📮"}
             </span>
           ) : unread ? (
             <span className="text-[12px] font-medium" style={{ color: "#C8D4C0" }}>

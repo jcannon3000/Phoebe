@@ -158,7 +158,7 @@ function LettersSection() {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
               statusColor = "#8FAF96";
             } else if (needsWrite) {
-              statusText = isOneToOne ? `Your turn to write 📮` : `Share your update 📮`;
+              statusText = isOneToOne ? `Your turn to write 🖋️` : `Share your update 📮`;
               statusColor = "#F0EDE6";
             } else {
               statusText = "All written 🌿";

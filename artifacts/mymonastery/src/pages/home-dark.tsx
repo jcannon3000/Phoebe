@@ -329,7 +329,7 @@ function LettersSection() {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
               statusColor = C.textSecondary;
             } else if (needsWrite) {
-              statusText = isOneToOne ? `Your turn to write 📮` : `Share your update 📮`;
+              statusText = isOneToOne ? `Your turn to write 🖋️` : `Share your update 📮`;
               statusColor = C.accent;
             } else {
               statusText = "All written 🌿";
