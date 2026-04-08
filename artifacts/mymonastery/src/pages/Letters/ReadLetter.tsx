@@ -145,14 +145,13 @@ export default function ReadLetter() {
         {/* Postmark stamp — top right */}
         {letter.postmarkCity && isOneToOne && (
           <div
-            className="absolute flex flex-col items-center justify-center"
+            className="absolute flex flex-col items-center justify-center animate-postmark-pulse"
             style={{
               top: "20px",
               right: "20px",
               border: "1.5px solid #5C7A5F",
               borderRadius: "50% / 40%",
               padding: "10px 16px",
-              transform: "none",
               minWidth: "80px",
             }}
           >
@@ -162,7 +161,7 @@ export default function ReadLetter() {
             >
               {letter.postmarkCity}
             </span>
-            <span style={{ color: "#5C7A5F", fontSize: "10px", lineHeight: 1.3 }}>
+            <span style={{ color: "#5C7A5F", fontSize: "13px", fontWeight: 600, lineHeight: 1.4 }}>
               {formatShortDate(letter.sentAt)}
             </span>
           </div>

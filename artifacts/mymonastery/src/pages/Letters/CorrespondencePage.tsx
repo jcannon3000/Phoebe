@@ -62,13 +62,13 @@ function formatShortDate(dateStr: string): string {
 function PostmarkStamp({ city, date }: { city: string; date: string }) {
   return (
     <div
-      className="inline-flex flex-col items-center justify-center flex-shrink-0"
+      className="inline-flex flex-col items-center justify-center flex-shrink-0 animate-postmark-pulse"
       style={{ border: "1.5px solid #5C7A5F", borderRadius: "50% / 40%", padding: "5px 10px", minWidth: 64 }}
     >
       <span className="font-semibold uppercase" style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.1em", lineHeight: 1.2 }}>
         {city}
       </span>
-      <span style={{ color: "#5C7A5F", fontSize: "8px", lineHeight: 1.3 }}>{formatShortDate(date)}</span>
+      <span style={{ color: "#5C7A5F", fontSize: "11px", fontWeight: 600, lineHeight: 1.3 }}>{formatShortDate(date)}</span>
     </div>
   );
 }
