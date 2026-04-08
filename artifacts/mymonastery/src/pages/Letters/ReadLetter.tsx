@@ -121,7 +121,7 @@ export default function ReadLetter() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FAF6F0" }}>
       {/* Header */}
-      <div className="px-6 pt-8 pb-4 max-w-[600px] mx-auto">
+      <div className="px-6 pt-8 pb-4 max-w-3xl mx-auto">
         <button
           onClick={() => setLocation(backUrl)}
           className="text-sm"
@@ -133,7 +133,7 @@ export default function ReadLetter() {
 
       {/* Letter paper */}
       <div
-        className="max-w-[560px] mx-auto relative"
+        className="max-w-3xl mx-auto relative"
         style={{
           backgroundColor: "#FAF6F0",
           boxShadow: "inset 0 0 0 1px rgba(92,122,95,0.1), 0 4px 24px rgba(44,24,16,0.08)",
@@ -178,12 +178,6 @@ export default function ReadLetter() {
           {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
         </p>
 
-        {/* Salutation */}
-        {isOneToOne && (
-          <p className="text-base italic mb-6" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
-            Dear {isOwnLetter ? otherMembers : (user?.name || "Friend")},
-          </p>
-        )}
 
         {/* Letter body */}
         <div
