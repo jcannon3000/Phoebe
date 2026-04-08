@@ -142,14 +142,14 @@ export function PrayerSection() {
               onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
               placeholder="Share a prayer request with your garden... 🌿"
               maxLength={1000}
-              className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border/60 bg-card placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#D4896A]/30 focus:border-[#D4896A]/50 transition-all"
+              className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border/60 bg-card placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#E8A898]/40 focus:border-[#E8A898] transition-all"
             />
             <button
               type="button"
               onClick={handleSendClick}
               disabled={!inputValue.trim()}
               className="px-4 py-2.5 rounded-xl text-[#F7F0E6] text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-              style={{ backgroundColor: "#2C1810" }}
+              style={{ backgroundColor: "#E8A898" }}
             >
               🙏
             </button>
@@ -196,7 +196,7 @@ export function PrayerSection() {
                       {/* Sage accent bar */}
                       <div
                         className="w-0.5 self-stretch shrink-0"
-                        style={{ backgroundColor: "#5C7A5F" }}
+                        style={{ backgroundColor: "#C4714A" }}
                       />
 
                       <div className="flex-1 p-4 pl-3 min-w-0">

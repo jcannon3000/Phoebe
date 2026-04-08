@@ -58,7 +58,7 @@ function FAB() {
       <button
         onClick={() => setOpen(o => !o)}
         className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#2C1810", color: "#F7F0E6" }}
+        style={{ background: "#4A6741", color: "#F7F0E6" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open ? <X size={24} /> : <Plus size={24} />}
@@ -269,10 +269,10 @@ function GatheringsSection() {
             const next = ritual.nextMeetupDate ? parseISO(ritual.nextMeetupDate) : null;
             const r = ritual as any;
             const rhythm = r.rhythm as string | undefined;
-            const rhythmLabel = rhythm === "weekly" ? "Weekly Tradition"
-              : rhythm === "biweekly" || rhythm === "fortnightly" ? "Biweekly Tradition"
-              : rhythm === "monthly" ? "Monthly Tradition"
-              : ritual.frequency ? `${ritual.frequency} Tradition` : "Recurring Tradition";
+            const rhythmLabel = rhythm === "weekly" ? "weekly tradition"
+              : rhythm === "biweekly" || rhythm === "fortnightly" ? "biweekly tradition"
+              : rhythm === "monthly" ? "monthly tradition"
+              : ritual.frequency ? `${ritual.frequency} tradition` : "recurring tradition";
 
             return (
               <Link key={ritual.id} href={`/ritual/${ritual.id}`}>
