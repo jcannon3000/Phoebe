@@ -107,7 +107,7 @@ export default function Onboarding() {
           >
             <div className="text-5xl mb-5">👩🏽‍🌾</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
-              Be together with Phoebe. ✨
+              Be together with Phoebe.
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
               Cultivate connections through writing letters<br />
