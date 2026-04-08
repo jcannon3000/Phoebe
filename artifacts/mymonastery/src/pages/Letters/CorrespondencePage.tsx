@@ -199,30 +199,6 @@ export default function CorrespondencePage() {
                 {periodLabel}
               </p>
 
-              {/* Member status circles */}
-              <div className="flex items-center gap-6 mb-4">
-                {currentPeriod.membersWritten.map((m) => {
-                  const isYou = m.email === userEmail;
-                  return (
-                    <div key={m.email} className="flex flex-col items-center gap-1">
-                      <div
-                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm"
-                        style={{
-                          borderColor: m.hasWritten ? "#8FAF96" : "rgba(200,212,192,0.25)",
-                          background: m.hasWritten ? "#2D5E3F" : "transparent",
-                          color: m.hasWritten ? "#F0EDE6" : "#8FAF96",
-                        }}
-                      >
-                        {m.hasWritten ? "✓" : ""}
-                      </div>
-                      <span className="text-[11px]" style={{ color: isYou ? "#C8D4C0" : "#8FAF96", fontWeight: isYou ? 600 : 400 }}>
-                        {isYou ? "You" : m.name}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
               {/* CTA */}
               {data.myTurn && !currentPeriod.hasWrittenThisPeriod ? (
                 <Link href={writeUrl}>
