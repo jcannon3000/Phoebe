@@ -349,10 +349,7 @@ export default function Dashboard() {
         <PrayerSection />
 
         {/* Footer */}
-        <p className="text-center text-sm mt-10 mb-2" style={{ color: "#8FAF96" }}>
-          Cultivate community through writing letters and meeting in person
-        </p>
-        <p className="text-center text-xs mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
+        <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
           Inspired by Monastic Wisdom
         </p>
 

@@ -44,7 +44,7 @@ export default function WriteLetter() {
   const [locationDenied, setLocationDenied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
-  const [focused, setFocused] = useState(false);
+
   const [errorState, setErrorState] = useState<{ message: string; nextPeriodStart?: string } | null>(null);
 
   // Override dark page background for paper theme
@@ -88,6 +88,7 @@ export default function WriteLetter() {
 
   const isOneToOne = correspondence?.groupType === "one_to_one";
   const minWords = isOneToOne ? 100 : 50;
+  const maxWords = 1000;
 
   // Detect location for postmark
   useEffect(() => {
@@ -191,7 +192,7 @@ export default function WriteLetter() {
   });
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-  const canSend = wordCount >= minWords && !sendMutation.isPending;
+  const canSend = wordCount >= minWords && wordCount <= maxWords && !sendMutation.isPending;
   const wordCountMet = wordCount >= minWords;
 
   const otherMembers = correspondence?.members
@@ -251,11 +252,16 @@ export default function WriteLetter() {
                 {wordCount}
               </span>
               <span className="text-[13px]" style={{ color: "#9a9390" }}>
-                / {minWords} words
+                / {maxWords} words
               </span>
               {!wordCountMet && (
                 <span className="text-[12px]" style={{ color: "#C17F24" }}>
                   · {minWords - wordCount} to go
+                </span>
+              )}
+              {wordCount > maxWords && (
+                <span className="text-[12px]" style={{ color: "#C47A65" }}>
+                  · {wordCount - maxWords} over
                 </span>
               )}
             </div>
@@ -303,39 +309,25 @@ export default function WriteLetter() {
           </p>
         )}
 
-        {/* Textarea with focus glow */}
-        <div
-          className="rounded-xl transition-all duration-300"
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={(e) => { setContent(e.target.value); setConfirmSend(false); }}
+          placeholder={isOneToOne
+            ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
+            : `What's been happening this week?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
+          }
+          className="w-full min-h-[50vh] resize-none focus:outline-none placeholder:italic"
           style={{
-            boxShadow: focused
-              ? "0 0 0 1px rgba(92, 122, 95, 0.3), 0 4px 20px rgba(92, 122, 95, 0.15)"
-              : "none",
-            padding: focused ? "12px" : "0",
-            margin: focused ? "-12px" : "0",
+            color: "#2C1810",
+            backgroundColor: "transparent",
+            fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif",
+            fontSize: "18px",
+            lineHeight: "2.1",
+            caretColor: "#5C7A5F",
+            boxShadow: "none",
           }}
-        >
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => { setContent(e.target.value); setConfirmSend(false); }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            placeholder={isOneToOne
-              ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
-              : `What's been happening this week?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
-            }
-            className="w-full min-h-[50vh] resize-none focus:outline-none placeholder:italic"
-            style={{
-              color: "#2C1810",
-              backgroundColor: "transparent",
-              fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif",
-              fontSize: "18px",
-              lineHeight: "2.1",
-              caretColor: "#5C7A5F",
-              boxShadow: "none",
-            }}
-          />
-        </div>
+        />
 
         {/* signature removed — reader sees author name in metadata */}
 
