@@ -173,7 +173,7 @@ function LettersSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FAF6F0", border: "1px solid rgba(74,103,65,0.2)" }}
+                  style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
                 >
                   <div className="w-1 flex-shrink-0" style={{ background: "#4A6741" }} />
                   <div className="flex-1 p-4">
@@ -280,7 +280,7 @@ function GatheringsSection() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ background: "#FAF6F0", border: "1px solid rgba(74,103,65,0.2)" }}
+                  style={{ background: "#FFFFFF", border: "1px solid #E8E4DE" }}
                 >
                   <div className="w-1 flex-shrink-0" style={{ background: "#4A6741" }} />
                   <div className="flex-1 p-4">
