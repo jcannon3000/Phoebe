@@ -149,33 +149,34 @@ function LettersSection() {
             const needsWrite = !iWrote;
 
             let statusText = "";
-            let statusColor = "#9a9390";
+            let statusColor = "#8FAF96";
 
             if (hasUnread) {
               statusText = `${otherMembers} wrote 🌿`;
-              statusColor = "#4A6FA5";
+              statusColor = "#F0EDE6";
             } else if (iWrote && !theyWrote) {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
-              statusColor = "#9a9390";
+              statusColor = "#8FAF96";
             } else if (needsWrite) {
               statusText = isOneToOne ? `Your turn to write 📮` : `Share your update 📮`;
-              statusColor = "#4A6FA5";
+              statusColor = "#F0EDE6";
             } else {
               statusText = "All written 🌿";
-              statusColor = "#6B8F71";
+              statusColor = "#8FAF96";
             }
 
             const lastPostmark = c.recentPostmarks[0];
+            const shouldPulse = needsWrite || hasUnread;
 
             return (
               <Link key={c.id} href={`/letters/${c.id}`}>
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
+                  className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${shouldPulse ? "animate-turn-pulse" : ""}`}
                   style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                 >
-                  <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
+                  <div className={`w-1 flex-shrink-0 ${shouldPulse ? "animate-turn-pulse" : ""}`} style={{ background: shouldPulse ? "#C8D4C0" : "#5C8A5F" }} />
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -194,14 +195,10 @@ function LettersSection() {
                       </span>
                     </div>
 
-                    <p className="text-sm mt-1 font-medium" style={{ color: statusColor }}>
-                      {statusText}
-                    </p>
-
-                    <div className="flex items-center justify-between gap-2 mt-2">
-                      <span className="text-[11px]" style={{ color: "#8FAF96" }}>
-                        {lastPostmark?.city || ""}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 mt-1.5">
+                      <p className="text-sm font-medium" style={{ color: statusColor }}>
+                        {statusText}
+                      </p>
                       {needsWrite && (
                         <Link
                           href={`/letters/${c.id}/write`}
