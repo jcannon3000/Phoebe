@@ -178,7 +178,7 @@ function DarkFAB() {
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: C.card, border: C.cardBorder, boxShadow: C.cardShadow, minWidth: 220 }}
             >
-              <p className="text-sm font-semibold" style={{ color: C.text }}>📅 Start a gathering</p>
+              <p className="text-sm font-semibold" style={{ color: C.text }}>🕯️ Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>Meet together regularly</p>
             </button>
           </motion.div>
@@ -366,7 +366,7 @@ function GatheringsSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Gatherings 📅" />
+        <SectionHeader label="Gatherings 🕯️" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ background: C.card }} />
@@ -380,7 +380,7 @@ function GatheringsSection() {
 
   return (
     <div className="mb-4">
-      <SectionHeader label="Gatherings 📅" />
+      <SectionHeader label="Gatherings 🕯️" />
 
       {gatherings.length === 0 ? (
         <div
