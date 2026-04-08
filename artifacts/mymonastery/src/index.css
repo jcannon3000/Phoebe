@@ -167,10 +167,11 @@ textarea:focus {
 
 /* ── Input pulse — gentle border glow ────────────────────────────── */
 @keyframes input-pulse {
-  0%, 100% { border-color: rgba(200,212,192,0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-  50%      { border-color: rgba(200,212,192,0.45); box-shadow: 0 2px 12px rgba(200,212,192,0.08), 0 2px 8px rgba(0,0,0,0.2); }
+  0%, 100% { border-color: rgba(200,212,192,0.3); }
+  50%      { border-color: rgba(200,212,192,0.6); }
 }
 .animate-input-pulse {
+  border: 1.5px solid rgba(200,212,192,0.3);
   animation: input-pulse 3s ease-in-out infinite;
 }
 
