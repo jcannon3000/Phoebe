@@ -110,10 +110,8 @@ export default function Onboarding() {
               Be together with Phoebe.
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
-              Letters have connected people for centuries.<br />
-              Phoebe sets apart a place to keep that tradition —<br />
-              one letter every other week, a shared history<br />
-              with the people who matter most.
+              Cultivate connections through writing letters<br />
+              and finding time to gather in person.
             </p>
           </motion.div>
 

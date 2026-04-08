@@ -220,8 +220,8 @@ export default function LettersPage() {
               </Link>
             )}
           </div>
-          <p className="text-[14px] mt-1" style={{ color: "#8FAF96" }}>
-            Be together with Phoebe.
+          <p className="text-[14px] mt-1 leading-relaxed" style={{ color: "#8FAF96" }}>
+            Letters have connected people for centuries. Phoebe sets apart a place to keep that tradition — one letter every other week, a shared history with the people who matter most.
           </p>
         </div>
 
