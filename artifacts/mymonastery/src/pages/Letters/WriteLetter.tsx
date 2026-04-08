@@ -50,12 +50,16 @@ export default function WriteLetter() {
   // Override dark page background for paper theme
   useEffect(() => {
     const root = document.getElementById("root");
-    const prev = root?.style.backgroundColor;
+    const prevRoot = root?.style.backgroundColor;
+    const prevBody = document.body.style.backgroundColor;
+    const prevHtml = document.documentElement.style.backgroundColor;
     if (root) root.style.backgroundColor = "#FAF6F0";
     document.body.style.backgroundColor = "#FAF6F0";
+    document.documentElement.style.backgroundColor = "#FAF6F0";
     return () => {
-      if (root) root.style.backgroundColor = prev || "";
-      document.body.style.backgroundColor = "";
+      if (root) root.style.backgroundColor = prevRoot || "";
+      document.body.style.backgroundColor = prevBody || "";
+      document.documentElement.style.backgroundColor = prevHtml || "";
     };
   }, []);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -227,7 +231,7 @@ export default function WriteLetter() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
       {/* Minimal header */}
-      <div className="px-6 pt-6 pb-3 flex items-center justify-between">
+      <div className="px-10 pt-6 pb-3 flex items-center justify-between">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
         <div className="text-center">
           <p className="text-[13px]" style={{ color: "#9a9390" }}>{correspondence?.name}</p>
@@ -241,7 +245,7 @@ export default function WriteLetter() {
       </div>
 
       {/* Action bar */}
-      <div className="px-6 py-3" style={{ borderBottom: "1px solid #EDE6D9" }}>
+      <div className="px-10 py-3" style={{ borderBottom: "1px solid #EDE6D9" }}>
         {!confirmSend ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -275,7 +279,7 @@ export default function WriteLetter() {
                 className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                Send 📮
+                Send a letter
               </button>
             </div>
           </div>
@@ -291,7 +295,7 @@ export default function WriteLetter() {
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                {sendMutation.isPending ? "Sending..." : "Send 📮"}
+                {sendMutation.isPending ? "Sending..." : "Send a letter"}
               </button>
               <button onClick={() => setConfirmSend(false)} className="text-sm" style={{ color: "#9a9390" }}>
                 Keep writing
@@ -302,7 +306,7 @@ export default function WriteLetter() {
       </div>
 
       {/* Writing area */}
-      <div className="flex-1 px-6 pt-6 pb-8">
+      <div className="flex-1 px-10 pt-6 pb-8">
         {isOneToOne && otherMembers && (
           <p className="text-base italic mb-4" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
             Dear {otherMembers},

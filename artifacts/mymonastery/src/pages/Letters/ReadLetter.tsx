@@ -94,12 +94,16 @@ export default function ReadLetter() {
   // Override dark page background for paper theme
   useEffect(() => {
     const root = document.getElementById("root");
-    const prev = root?.style.backgroundColor;
+    const prevRoot = root?.style.backgroundColor;
+    const prevBody = document.body.style.backgroundColor;
+    const prevHtml = document.documentElement.style.backgroundColor;
     if (root) root.style.backgroundColor = "#FAF6F0";
     document.body.style.backgroundColor = "#FAF6F0";
+    document.documentElement.style.backgroundColor = "#FAF6F0";
     return () => {
-      if (root) root.style.backgroundColor = prev || "";
-      document.body.style.backgroundColor = "";
+      if (root) root.style.backgroundColor = prevRoot || "";
+      document.body.style.backgroundColor = prevBody || "";
+      document.documentElement.style.backgroundColor = prevHtml || "";
     };
   }, []);
 
