@@ -244,8 +244,8 @@ export default function Onboarding() {
 
           </motion.div>
 
-          <p className="text-center text-xs mt-8" style={{ color: "#9a9390" }}>
-            Be together with Phoebe.
+          <p className="text-center text-xs mt-8 tracking-wide" style={{ color: "#C8B99A" }}>
+            Inspired by Monastic Wisdom
           </p>
         </div>
       </main>

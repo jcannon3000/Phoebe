@@ -355,6 +355,11 @@ export default function Dashboard() {
         {/* ── Prayer Requests ── */}
         <PrayerSection />
 
+        {/* Footer */}
+        <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "#C8B99A" }}>
+          Inspired by Monastic Wisdom
+        </p>
+
         {/* FAB */}
         <FAB />
       </div>
