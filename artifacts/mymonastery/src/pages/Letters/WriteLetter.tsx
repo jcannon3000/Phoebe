@@ -53,9 +53,9 @@ export default function WriteLetter() {
     const prevRoot = root?.style.backgroundColor;
     const prevBody = document.body.style.backgroundColor;
     const prevHtml = document.documentElement.style.backgroundColor;
-    if (root) root.style.backgroundColor = "#FAF6F0";
-    document.body.style.backgroundColor = "#FAF6F0";
-    document.documentElement.style.backgroundColor = "#FAF6F0";
+    if (root) root.style.backgroundColor = "#F8F3EC";
+    document.body.style.backgroundColor = "#F8F3EC";
+    document.documentElement.style.backgroundColor = "#F8F3EC";
     return () => {
       if (root) root.style.backgroundColor = prevRoot || "";
       document.body.style.backgroundColor = prevBody || "";
@@ -218,7 +218,7 @@ export default function WriteLetter() {
 
   if (errorState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#FAF6F0" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#F8F3EC" }}>
         <p className="text-4xl mb-4">📮</p>
         <p className="text-base mb-2" style={{ color: "#2C1810" }}>{errorState.message}</p>
         {errorState.nextPeriodStart && (
@@ -232,9 +232,9 @@ export default function WriteLetter() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F8F3EC" }}>
       {/* Minimal header */}
-      <div className="px-24 pt-6 pb-3 flex items-center justify-between">
+      <div className="px-6 pt-6 pb-3 flex items-center justify-between max-w-3xl mx-auto w-full">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
         <div className="text-center">
           <p className="text-[13px]" style={{ color: "#9a9390" }}>{correspondence?.name}</p>
@@ -248,7 +248,7 @@ export default function WriteLetter() {
       </div>
 
       {/* Action bar */}
-      <div className="px-24 py-3" style={{ borderBottom: "1px solid #EDE6D9" }}>
+      <div className="px-6 py-3 max-w-3xl mx-auto w-full" style={{ borderBottom: "1px solid #EDE6D9" }}>
         {!confirmSend ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -326,13 +326,7 @@ export default function WriteLetter() {
       </div>
 
       {/* Writing area */}
-      <div className="flex-1 px-24 pt-6 pb-8">
-        {isOneToOne && otherMembers && (
-          <p className="text-base italic mb-4" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
-            Dear {otherMembers},
-          </p>
-        )}
-
+      <div className="flex-1 px-6 pt-6 pb-8 max-w-3xl mx-auto w-full">
         <textarea
           ref={textareaRef}
           value={content}
@@ -345,7 +339,7 @@ export default function WriteLetter() {
           style={{
             color: "#2C1810",
             backgroundColor: "transparent",
-            fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif",
+            fontFamily: "'Space Grotesk', sans-serif",
             fontSize: "18px",
             lineHeight: "2",
             caretColor: "#5C7A5F",
