@@ -311,6 +311,10 @@ export default function CorrespondencePage() {
                           Read by {readByOthers.join(", ")} 🌿
                         </p>
                       )}
+
+                      <p className="text-xs mt-4 font-medium" style={{ color: "#8FAF96" }}>
+                        Read full letter →
+                      </p>
                     </motion.div>
                   </Link>
 
