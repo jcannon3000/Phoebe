@@ -94,8 +94,8 @@ export default function WriteLetter() {
   const minWords = isOneToOne ? 100 : 50;
   const maxWords = 1000;
 
-  // Detect location for postmark
-  useEffect(() => {
+  // Detect location for postmark — called when user hits Send
+  const detectLocation = useCallback(() => {
     if (!isOneToOne || postmarkCity || locating || locationDenied) return;
     if (!navigator.geolocation) { setLocationDenied(true); return; }
     setLocating(true);
@@ -113,9 +113,11 @@ export default function WriteLetter() {
             data.address?.town ||
             data.address?.village ||
             data.address?.county ||
-            data.address?.state ||
             "";
-          setPostmarkCity(city);
+          const state = data.address?.state || "";
+          const postcode = data.address?.postcode || "";
+          const parts = [city, state && postcode ? `${state} ${postcode}` : state || postcode].filter(Boolean);
+          setPostmarkCity(parts.join(", "));
         } catch {
           setLocationDenied(true);
         } finally {
@@ -125,7 +127,7 @@ export default function WriteLetter() {
       () => { setLocating(false); setLocationDenied(true); },
       { timeout: 8000 }
     );
-  }, [isOneToOne]);
+  }, [isOneToOne, postmarkCity, locating, locationDenied]);
 
   // Load draft
   useEffect(() => {
@@ -206,6 +208,7 @@ export default function WriteLetter() {
 
   function handleSendClick() {
     setConfirmSend(true);
+    if (isOneToOne) detectLocation();
   }
 
   function handleBack() {
@@ -285,14 +288,31 @@ export default function WriteLetter() {
           </div>
         ) : (
           <div>
+            {isOneToOne && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">📮</span>
+                {locating ? (
+                  <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Finding your location…</span>
+                ) : (
+                  <input
+                    type="text"
+                    value={postmarkCity}
+                    onChange={e => setPostmarkCity(e.target.value)}
+                    placeholder="City, State ZIP"
+                    className="text-[13px] font-medium bg-transparent border-b focus:outline-none"
+                    style={{ color: "#5C7A5F", borderColor: "#C8BFB0", minWidth: 180 }}
+                  />
+                )}
+              </div>
+            )}
             <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
               Send your {isOneToOne ? "letter" : "update"}? Can't be edited after.
             </p>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => sendMutation.mutate()}
-                disabled={sendMutation.isPending}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold"
+                disabled={sendMutation.isPending || (isOneToOne && locating)}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
                 {sendMutation.isPending ? "Sending..." : "Send ✉️"}
@@ -330,24 +350,11 @@ export default function WriteLetter() {
             lineHeight: "2.1",
             caretColor: "#5C7A5F",
             boxShadow: "none",
+            whiteSpace: "pre-wrap",
           }}
         />
 
         {/* signature removed — reader sees author name in metadata */}
-
-        {/* Postmark — location-based, one_to_one only */}
-        {isOneToOne && (
-          <div className="mt-8 flex items-center gap-2">
-            <span className="text-base">📮</span>
-            {locating ? (
-              <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Finding your location…</span>
-            ) : postmarkCity ? (
-              <span className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>{postmarkCity}</span>
-            ) : locationDenied ? (
-              <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Location unavailable</span>
-            ) : null}
-          </div>
-        )}
       </div>
     </div>
   );
