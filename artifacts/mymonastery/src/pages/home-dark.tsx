@@ -923,7 +923,7 @@ export default function HomeDark() {
             {/* Header */}
             <div className="mb-6">
               <p className="mb-1" style={{ color: C.textSecondary, fontSize: "13px", fontWeight: 400, letterSpacing: 0 }}>
-                A place set apart for connection
+                Cultivate community through writing letters and meeting in person
               </p>
               <h1 className="text-2xl font-semibold" style={{ color: C.text, fontFamily: C.font }}>
                 {format(new Date(), "EEEE, d MMMM")}
