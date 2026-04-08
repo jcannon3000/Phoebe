@@ -107,7 +107,7 @@ function DarkNav() {
             className="text-3xl font-bold transition-colors"
             style={{ letterSpacing: "-0.03em", fontFamily: C.font, color: C.text }}
           >
-            Phoebe ✨
+            Phoebe 🪴
           </span>
         </Link>
 
