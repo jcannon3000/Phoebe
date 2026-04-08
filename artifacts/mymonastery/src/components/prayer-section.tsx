@@ -142,7 +142,7 @@ export function PrayerSection() {
               onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
               placeholder="Share a prayer request with your garden... 🌿"
               maxLength={1000}
-              className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#C47A65]/40 focus:border-[#C47A65] transition-all"
+              className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
               style={{ backgroundColor: "#091A10", borderColor: "rgba(200,212,192,0.2)", color: "#F0EDE6" }}
             />
             <button
@@ -150,7 +150,7 @@ export function PrayerSection() {
               onClick={handleSendClick}
               disabled={!inputValue.trim()}
               className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-              style={{ backgroundColor: "#8B5E52", color: "#F0EDE6" }}
+              style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
             >
               🙏
             </button>
@@ -192,7 +192,7 @@ export function PrayerSection() {
                       {/* Sage accent bar */}
                       <div
                         className="w-0.5 self-stretch shrink-0"
-                        style={{ backgroundColor: "#C47A65" }}
+                        style={{ backgroundColor: "#8FAF96" }}
                       />
 
                       <div className="flex-1 p-4 pl-3 min-w-0">
@@ -284,7 +284,7 @@ export function PrayerSection() {
                               }}
                               placeholder="Leave a word alongside this… 🌿"
                               maxLength={120}
-                              className="flex-1 text-sm px-3 py-2 rounded-lg border placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#C47A65]/30 focus:border-[#C47A65]/40 transition-all"
+                              className="flex-1 text-sm px-3 py-2 rounded-lg border placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/40 transition-all"
                               style={{ backgroundColor: "#091A10", borderColor: "rgba(200,212,192,0.2)", color: "#F0EDE6" }}
                             />
                             <button
@@ -292,7 +292,7 @@ export function PrayerSection() {
                               onClick={() => handleWordSubmit(request.id)}
                               disabled={!(wordInputs[request.id] || "").trim() || wordMutation.isPending}
                               className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-                              style={{ backgroundColor: "#8B5E52", color: "#F0EDE6" }}
+                              style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
                             >
                               🙏
                             </button>
