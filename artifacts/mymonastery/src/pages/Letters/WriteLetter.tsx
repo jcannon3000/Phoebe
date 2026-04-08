@@ -287,13 +287,15 @@ export default function WriteLetter() {
               ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
               : `What's been happening this week?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
             }
-            className="w-full min-h-[50vh] bg-transparent resize-none focus:outline-none placeholder:italic"
+            className="w-full min-h-[50vh] resize-none focus:outline-none placeholder:italic"
             style={{
               color: "#2C1810",
+              backgroundColor: "transparent",
               fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif",
               fontSize: "18px",
               lineHeight: "2.1",
               caretColor: "#5C7A5F",
+              boxShadow: "none",
             }}
           />
         </div>
@@ -319,9 +321,10 @@ export default function WriteLetter() {
               className="w-full px-3 py-2 rounded-lg text-[15px] focus:outline-none transition-colors"
               style={{
                 color: "#2C1810",
-                background: "transparent",
+                backgroundColor: "#FAF6F0",
                 border: postmarkError ? "1px solid #C17F24" : "1px solid #EDE6D9",
                 fontFamily: "'Space Grotesk', sans-serif",
+                boxShadow: "none",
               }}
             />
             {postmarkError && <p className="text-[13px] mt-1" style={{ color: "#C17F24" }}>Where are you writing from? 🌿</p>}

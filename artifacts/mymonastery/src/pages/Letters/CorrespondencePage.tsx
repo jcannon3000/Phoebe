@@ -177,13 +177,13 @@ export default function CorrespondencePage() {
 
         {/* Header */}
         <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          {data.name || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
+          {(data.name?.replace(/^Letters with\b/, "Dialogue with")) || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
         </h1>
         {isOneToOne && otherMembers && (
           <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
         )}
         {memberCities.length > 0 && (
-          <p className="text-xs mb-5" style={{ color: "#8FAF96" }}>✉️ {memberCities.join(" · ")}</p>
+          <p className="text-xs mb-5" style={{ color: "#8FAF96" }}>📮 {memberCities.join(" · ")}</p>
         )}
         {memberCities.length === 0 && <div className="mb-5" />}
 

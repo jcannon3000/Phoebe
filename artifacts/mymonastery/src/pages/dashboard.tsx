@@ -180,7 +180,7 @@ function LettersSection() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-                          {c.name || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
+                          {(c.name?.replace(/^Letters with\b/, "Dialogue with")) || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
                         </span>
                         {hasUnread && (
                           <span
