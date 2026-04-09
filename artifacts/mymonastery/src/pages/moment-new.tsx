@@ -9,7 +9,7 @@ import { InviteStep } from "@/components/InviteStep";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type StepId = "template" | "daily-office-choice" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "invite"
-  | "bcp-commitment" | "bcp-frequency" | "bcp-time" | "bcp-invite" | "intercession-frequency"
+  | "bcp-commitment" | "bcp-frequency" | "bcp-days" | "bcp-time" | "bcp-invite" | "intercession-frequency"
   | "contemplative-duration" | "fasting-what" | "fasting-why" | "fasting-when"
   | "listening-what";
 type LoggingType = "photo" | "reflection" | "both" | "checkin";
@@ -23,11 +23,11 @@ const BCP_FREQ_OPTIONS: {
   dots: number; daysPerWeek: number; badge: string | null;
   bg: string; message: string;
 }[] = [
-  { id: "once",  emoji: "🌱", label: "Once a week",       sub: "A gentle beginning",  dots: 1, daysPerWeek: 1, badge: null,          bg: "#0F2818", message: "One office together each week. A beginning." },
-  { id: "twice", emoji: "🌿", label: "Twice a week",       sub: "Taking root",         dots: 2, daysPerWeek: 2, badge: null,          bg: "#E8F0EA", message: "Two offices. Enough to find a rhythm." },
-  { id: "three", emoji: "🌸", label: "Three times a week", sub: "A real rhythm",       dots: 3, daysPerWeek: 3, badge: "Most chosen 🌿", bg: "#E0EBE2", message: "Three times. This is where something real takes root." },
-  { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",  dots: 5, daysPerWeek: 5, badge: null,          bg: "#E8E4D8", message: "The weekday office. A serious commitment." },
-  { id: "daily", emoji: "✨", label: "Daily",              sub: "The full Daily Office", dots: 7, daysPerWeek: 7, badge: null,         bg: "#E8E4D8", message: "Every day. The full practice of the Daily Office." },
+  { id: "once",  emoji: "🌱", label: "Once a week",       sub: "A gentle beginning",    dots: 1, daysPerWeek: 1, badge: null,             bg: "#0F2818",              message: "One office together each week. A beginning." },
+  { id: "twice", emoji: "🌿", label: "Twice a week",       sub: "Taking root",           dots: 2, daysPerWeek: 2, badge: null,             bg: "rgba(46,107,64,0.18)", message: "Two offices. Enough to find a rhythm." },
+  { id: "three", emoji: "🌸", label: "Three times a week", sub: "A real rhythm",         dots: 3, daysPerWeek: 3, badge: "Most chosen 🌿", bg: "rgba(46,107,64,0.25)", message: "Three times. This is where something real takes root." },
+  { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",    dots: 5, daysPerWeek: 5, badge: null,             bg: "rgba(46,107,64,0.32)", message: "The weekday office. A serious commitment." },
+  { id: "daily", emoji: "✨", label: "Daily",              sub: "The full Daily Office",  dots: 7, daysPerWeek: 7, badge: null,             bg: "rgba(46,107,64,0.40)", message: "Every day. The full practice of the Daily Office." },
 ];
 
 const WEEK_DAYS = [
@@ -789,7 +789,7 @@ export default function MomentNew() {
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
   const isBcpTemplate = templateId === "morning-prayer" || templateId === "evening-prayer";
-  const BCP_STEP_ORDER: StepId[] = ["template", "bcp-commitment", "bcp-frequency", "bcp-invite"];
+  const BCP_STEP_ORDER: StepId[] = ["template", "bcp-commitment", "bcp-frequency", "bcp-days", "bcp-invite"];
   const STEP_ORDER: StepId[] = isBcpTemplate
     ? BCP_STEP_ORDER
     : templateId === "intercession"
@@ -805,6 +805,11 @@ export default function MomentNew() {
       : ["template", "name", "intention", "logging", "schedule", "commitment", "invite"];
 
   function goNext() {
+    // Skip bcp-days for daily (no specific days to choose)
+    if (step === "bcp-frequency" && bcpFreqType === "daily") {
+      setStep("bcp-invite");
+      return;
+    }
     const idx = STEP_ORDER.indexOf(step);
     if (idx < STEP_ORDER.length - 1) setStep(STEP_ORDER[idx + 1]);
     else if (isBcpTemplate) handleSubmitBcp();
@@ -848,10 +853,10 @@ export default function MomentNew() {
       return false;
     }
     if (step === "bcp-commitment") return true;
-    if (step === "bcp-frequency") {
-      if (!bcpFreqType) return false;
-      if (bcpFreqType !== "daily") return bcpPracticeDays.length === BCP_FREQ_OPTIONS.find(f => f.id === bcpFreqType)!.daysPerWeek;
-      return true;
+    if (step === "bcp-frequency") return !!bcpFreqType;
+    if (step === "bcp-days") {
+      if (bcpFreqType === "daily") return true;
+      return bcpPracticeDays.length === (BCP_FREQ_OPTIONS.find(f => f.id === bcpFreqType)?.daysPerWeek ?? 0);
     }
     if (step === "bcp-time") {
       return bcpTimeSlot !== null;
@@ -1414,32 +1419,60 @@ export default function MomentNew() {
                         {freqOpt.message}
                       </motion.p>
                     )}
-                    {/* Day selector for non-daily */}
-                    {bcpFreqType && bcpFreqType !== "daily" && requiredDays > 0 && (
-                      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                        <p className="text-sm font-medium text-foreground">Which days? 🌿</p>
-                        <p className="text-xs text-muted-foreground">Choose {requiredDays} day{requiredDays > 1 ? "s" : ""}</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {WEEK_DAYS.map(d => {
-                            const sel = bcpPracticeDays.includes(d.id);
-                            const atMax = bcpPracticeDays.length >= requiredDays && !sel;
-                            return (
-                              <button key={d.id}
-                                disabled={atMax}
-                                onClick={() => {
-                                  if (sel) setBcpPracticeDays(prev => prev.filter(x => x !== d.id));
-                                  else if (!atMax) setBcpPracticeDays(prev => [...prev, d.id]);
-                                }}
-                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                  sel ? "bg-[#5C7A5F] text-white" : "bg-secondary text-foreground hover:bg-[#5C7A5F]/10"
-                                } ${atMax ? "opacity-30 cursor-not-allowed" : ""}`}
-                              >
-                                {d.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
+                  </div>
+                );
+              })()}
+
+              {/* ── BCP: Which days ─────────────────────────────────── */}
+              {step === "bcp-days" && (() => {
+                const freqOpt = BCP_FREQ_OPTIONS.find(f => f.id === bcpFreqType);
+                const requiredDays = freqOpt?.daysPerWeek ?? 0;
+                const chosen = bcpPracticeDays.length;
+                return (
+                  <div className="flex-1 space-y-6">
+                    <div>
+                      <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                        Which days? 🌿
+                      </h2>
+                      <p className="text-sm italic" style={{ color: "#8FAF96" }}>
+                        Choose {requiredDays} day{requiredDays > 1 ? "s" : ""} — you'll both pray on these days.
+                      </p>
+                    </div>
+                    <div className="flex gap-3 flex-wrap">
+                      {WEEK_DAYS.map(d => {
+                        const sel = bcpPracticeDays.includes(d.id);
+                        const atMax = chosen >= requiredDays && !sel;
+                        return (
+                          <button
+                            key={d.id}
+                            disabled={atMax}
+                            onClick={() => {
+                              if (sel) setBcpPracticeDays(prev => prev.filter(x => x !== d.id));
+                              else if (!atMax) setBcpPracticeDays(prev => [...prev, d.id]);
+                            }}
+                            className="px-5 py-3 rounded-2xl text-sm font-semibold transition-all"
+                            style={{
+                              background: sel ? "#5C7A5F" : "rgba(200,212,192,0.08)",
+                              color: sel ? "#F0EDE6" : "#8FAF96",
+                              border: sel ? "1px solid rgba(92,122,95,0.6)" : "1px solid rgba(200,212,192,0.15)",
+                              opacity: atMax ? 0.3 : 1,
+                              cursor: atMax ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {d.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {chosen > 0 && (
+                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                        className="text-sm font-medium italic text-center"
+                        style={{ color: "#5C7A5F" }}
+                      >
+                        {chosen === requiredDays
+                          ? `${bcpPracticeDays.map(d => WEEK_DAYS.find(w => w.id === d)?.label).join(", ")} — well chosen. 🌿`
+                          : `${requiredDays - chosen} more day${requiredDays - chosen > 1 ? "s" : ""} to go`}
+                      </motion.p>
                     )}
                   </div>
                 );
