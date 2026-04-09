@@ -6,6 +6,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Sprout } from "lucide-react";
 import clsx from "clsx";
+import { MorningPrayerSlideshow } from "@/components/MorningPrayer/MorningPrayerSlideshow";
+import type { Slide } from "@/components/MorningPrayer/types";
+import { SlideView } from "@/components/MorningPrayer/Slide";
+import { ProgressBar } from "@/components/MorningPrayer/ProgressBar";
+import { useSlideshow } from "@/components/MorningPrayer/useSlideshow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type LoggingType = "photo" | "reflection" | "both" | "checkin";
@@ -98,6 +103,217 @@ type MomentData = {
 };
 
 // ─── Presence dots ────────────────────────────────────────────────────────────
+// ── BCP Practice View — launches slideshow inline ──────────────────────────
+function BcpPracticeView({
+  isMorning, officeName, bgColor, accentColor,
+  momentId, memberToken, intention,
+  alreadyPosted, posted,
+  actualTodayCount, actualMemberCount,
+  postMutation, onBack,
+}: {
+  isMorning: boolean; officeName: string; bgColor: string; accentColor: string;
+  momentId: number; memberToken: string; intention?: string;
+  alreadyPosted: boolean; posted: boolean;
+  actualTodayCount: number; actualMemberCount: number;
+  postMutation: any; onBack: () => void;
+}) {
+  const [showSlideshow, setShowSlideshow] = useState(false);
+
+  // Evening Prayer inline slideshow state
+  const [epSlides, setEpSlides] = useState<Slide[]>([]);
+  const [epLoading, setEpLoading] = useState(false);
+  const [epError, setEpError] = useState<string | null>(null);
+  const epScrollableSet = useRef<Set<number>>(new Set());
+
+  const startSlideshow = useCallback(() => {
+    if (isMorning) {
+      setShowSlideshow(true);
+    } else {
+      // Load EP slides
+      setEpLoading(true);
+      setEpError(null);
+      fetch("/api/office/evening")
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(data => {
+          const fetched: Slide[] = data.slides ?? [];
+          setEpSlides(fetched);
+          const set = new Set<number>();
+          fetched.forEach((s, i) => { if (s.isScrollable) set.add(i); });
+          epScrollableSet.current = set;
+          setShowSlideshow(true);
+          setEpLoading(false);
+        })
+        .catch(() => { setEpError("Evening Prayer is not available right now."); setEpLoading(false); });
+    }
+  }, [isMorning]);
+
+  const handleSlideshowBack = useCallback(() => {
+    setShowSlideshow(false);
+    // Auto-log after completing the office
+    if (!alreadyPosted && !posted) {
+      postMutation.mutate({ isCheckin: true });
+    }
+  }, [alreadyPosted, posted, postMutation]);
+
+  // Morning Prayer slideshow
+  if (showSlideshow && isMorning) {
+    return (
+      <MorningPrayerSlideshow
+        momentId={momentId}
+        memberToken={memberToken}
+        onBack={handleSlideshowBack}
+      />
+    );
+  }
+
+  // Evening Prayer slideshow
+  if (showSlideshow && !isMorning && epSlides.length > 0) {
+    return (
+      <EpSlideshowInline
+        slides={epSlides}
+        scrollableSlides={epScrollableSet.current}
+        onBack={handleSlideshowBack}
+        momentId={momentId}
+        memberToken={memberToken}
+      />
+    );
+  }
+
+  // Landing page
+  return (
+    <div className="min-h-screen pb-24" style={{ background: bgColor }}>
+      <div className="max-w-md mx-auto px-5 pt-8">
+        {/* Back to practice */}
+        <button onClick={onBack} className="text-sm mb-6 inline-flex items-center gap-1 transition-colors" style={{ color: `${accentColor}99` }}>
+          ← Back
+        </button>
+
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="text-4xl mb-3">{isMorning ? "🌅" : "🌙"}</div>
+          <h1 className="text-2xl font-bold text-[#E8E4D8]">{officeName}</h1>
+          {intention && <p className="text-[#E8E4D8]/50 text-sm mt-1 font-serif italic">{intention}</p>}
+        </div>
+
+        {/* Presence count */}
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <PresenceDots count={actualTodayCount} total={actualMemberCount} />
+          <span className="text-sm text-[#E8E4D8]/60">{actualTodayCount} of {actualMemberCount} prayed today</span>
+        </div>
+
+        {/* Already prayed */}
+        {(alreadyPosted || posted) && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="text-center py-6">
+            <p className="text-lg font-bold text-[#E8E4D8] mb-1">🌿 You prayed today.</p>
+            <p className="text-[#E8E4D8]/50 text-sm">
+              {actualTodayCount} of {actualMemberCount} prayed {officeName} today.
+            </p>
+            <p className="font-serif italic text-[#E8E4D8]/40 text-xs leading-relaxed mt-4">
+              {isMorning
+                ? '"Let my prayer be set forth in thy sight as incense." — Psalm 141'
+                : '"O gracious Light, pure brightness of the everliving Father." — Phos Hilaron'}
+            </p>
+            {/* Can still pray again / review */}
+            <button onClick={startSlideshow}
+              className="mt-6 px-6 py-3 rounded-xl text-sm font-medium transition-all"
+              style={{ background: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}30` }}>
+              Pray {officeName} again
+            </button>
+          </motion.div>
+        )}
+
+        {epError && (
+          <div className="text-center py-4">
+            <p className="text-sm text-red-400">{epError}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Start prayer button */}
+      {!alreadyPosted && !posted && (
+        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: bgColor, borderTop: `1px solid rgba(247,240,230,0.12)` }}>
+          <div className="max-w-md mx-auto py-4">
+            <button
+              onClick={startSlideshow}
+              disabled={epLoading}
+              className="w-full py-5 rounded-2xl text-lg font-bold transition-all active:scale-95 disabled:opacity-40"
+              style={{ background: accentColor, color: "#2C1810" }}
+            >
+              {epLoading ? "Loading..." : `Pray ${officeName} 🌿`}
+            </button>
+            <p className="text-center text-xs text-[#E8E4D8]/30 mt-3 font-serif italic">
+              Takes 15–20 minutes
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── EP Slideshow (inline for practice flow) ────────────────────────────────
+function EpSlideshowInline({
+  slides, scrollableSlides, onBack, momentId, memberToken,
+}: {
+  slides: Slide[]; scrollableSlides: Set<number>; onBack: () => void;
+  momentId: number; memberToken: string;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const {
+    currentIndex, direction, scrollBlocked,
+    handleClick, handleTouchStart, handleTouchEnd, handleTouchMove, handleScroll,
+  } = useSlideshow({ total: slides.length, scrollableSlides });
+
+  const currentSlide = slides[currentIndex];
+  if (!currentSlide) return null;
+  const isForward = direction === "forward";
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, background: "#1A1C2E", overflow: "hidden", touchAction: "pan-y", userSelect: "none", WebkitUserSelect: "none" }}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
+    >
+      <ProgressBar current={currentIndex} total={slides.length} currentType={currentSlide.type} />
+
+      {currentSlide.type !== "opening" && currentSlide.type !== "closing" && (
+        <div style={{ position: "fixed", top: 12, right: 16, fontSize: 12, color: "rgba(139,157,195,0.4)", fontFamily: "Space Grotesk, sans-serif", zIndex: 90, pointerEvents: "none" }}>
+          {currentIndex + 1} of {slides.length}
+        </div>
+      )}
+
+      <style>{`
+        .ep-p-slide-enter-forward { animation: ep-p-enter-forward 300ms ease forwards; }
+        .ep-p-slide-enter-back { animation: ep-p-enter-back 300ms ease forwards; }
+        @keyframes ep-p-enter-forward { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes ep-p-enter-back { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+      `}</style>
+
+      <div
+        key={currentSlide.id}
+        className={direction ? (isForward ? "ep-p-slide-enter-forward" : "ep-p-slide-enter-back") : undefined}
+        style={{ width: "100%", height: "100%" }}
+      >
+        <SlideView
+          ref={contentRef}
+          slide={currentSlide}
+          scrollBlocked={scrollBlocked}
+          onScroll={handleScroll}
+          presenceData={[]}
+          hasLogged={false}
+          onLog={() => {}}
+          onBack={onBack}
+          momentId={momentId}
+          memberToken={memberToken}
+        />
+      </div>
+    </div>
+  );
+}
+
 function PresenceDots({ count, total }: { count: number; total: number }) {
   const shown = Math.min(total, 8);
   return (
@@ -999,84 +1215,25 @@ export default function MomentPostPage() {
   if (isBcp) {
     const isMorning = moment.templateType === "morning-prayer";
     const officeName = isMorning ? "Morning Prayer" : "Evening Prayer";
-    const bcpPage = isMorning ? "75" : "115";
-    const bcpUrl = isMorning ? "https://bcponline.org/DailyOffice/mp2.html" : "https://bcponline.org/DailyOffice/ep2.html";
     const bgColor = isMorning ? "#2C1810" : "#1A1C2E";
     const accentColor = isMorning ? "#C8975A" : "#7B9EBE";
 
-    // Single unified BCP view — page number and link always visible, bottom state changes after logging
     return (
-      <div className="min-h-screen pb-24" style={{ background: bgColor }}>
-        <div className="max-w-md mx-auto px-5 pt-8">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="text-4xl mb-3">{isMorning ? "🌅" : "🌙"}</div>
-            <h1 className="text-2xl font-bold text-[#E8E4D8]">{officeName}</h1>
-            <p className="text-[#E8E4D8]/50 text-sm mt-1 font-serif italic">{moment.intention}</p>
-          </div>
-
-          {/* Presence count */}
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <PresenceDots count={actualTodayCount} total={actualMemberCount} />
-            <span className="text-sm text-[#E8E4D8]/60">{actualTodayCount} of {actualMemberCount} prayed today</span>
-          </div>
-
-          {/* The BCP link — always visible */}
-          <div className="rounded-2xl border border-[#E8E4D8]/20 p-6 mb-5 text-center"
-            style={{ background: "rgba(247,240,230,0.07)" }}>
-            <p className="text-[#E8E4D8]/50 text-xs uppercase tracking-widest mb-3">Open your Book of Common Prayer</p>
-            <p className="text-[#E8E4D8] font-bold text-xl mb-1">📖 Page {bcpPage}</p>
-            <p className="text-[#E8E4D8]/60 text-sm mb-4">{officeName} Rite II</p>
-            <div className="border-t border-[#E8E4D8]/10 pt-4">
-              <p className="text-[#E8E4D8]/50 text-xs mb-2">No BCP? Pray online:</p>
-              <button
-                onClick={() => window.open(bcpUrl, "_blank", "noopener,noreferrer")}
-                className="inline-block px-5 py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer"
-                style={{ background: accentColor, color: "#2C1810" }}>
-                Open {officeName} online →
-              </button>
-            </div>
-          </div>
-
-          {/* Logged state */}
-          {alreadyPosted && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="text-center py-6">
-              <p className="text-lg font-bold text-[#E8E4D8] mb-1">🌿 You prayed today.</p>
-              <p className="text-[#E8E4D8]/50 text-sm">
-                {actualTodayCount} of {actualMemberCount} prayed {officeName} today.
-              </p>
-              <p className="font-serif italic text-[#E8E4D8]/40 text-xs leading-relaxed mt-4">
-                {isMorning
-                  ? '"Let my prayer be set forth in thy sight as incense." — Psalm 141'
-                  : '"O gracious Light, pure brightness of the everliving Father." — Phos Hilaron'}
-              </p>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Fixed bottom log button */}
-        {!alreadyPosted && !posted && (
-          <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: bgColor, borderTop: `1px solid rgba(247,240,230,0.12)` }}>
-            <div className="max-w-md mx-auto py-4">
-              <button
-                onClick={() => postMutation.mutate({ isCheckin: true })}
-                disabled={postMutation.isPending}
-                className="w-full py-5 rounded-2xl text-[#2C1810] text-lg font-bold transition-all active:scale-95 disabled:opacity-40"
-                style={{ background: accentColor }}
-              >
-                {postMutation.isPending
-                  ? "Marking..."
-                  : isMorning ? "I prayed Morning Prayer 🌿" : "I prayed Evening Prayer 🌿"
-                }
-              </button>
-              <p className="text-center text-xs text-[#E8E4D8]/30 mt-3 font-serif italic">
-                Tap after you pray. Takes 15–20 minutes.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+      <BcpPracticeView
+        isMorning={isMorning}
+        officeName={officeName}
+        bgColor={bgColor}
+        accentColor={accentColor}
+        momentId={moment.id}
+        memberToken={memberToken}
+        intention={moment.intention}
+        alreadyPosted={alreadyPosted}
+        posted={posted}
+        actualTodayCount={actualTodayCount}
+        actualMemberCount={actualMemberCount}
+        postMutation={postMutation}
+        onBack={() => setLocation(`/moments/${moment.id}`)}
+      />
     );
   }
 
