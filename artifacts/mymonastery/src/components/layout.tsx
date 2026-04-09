@@ -232,11 +232,21 @@ export function Layout({ children }: { children: ReactNode }) {
         {user && (
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex items-center justify-center w-9 h-9 rounded-xl transition-colors"
-            style={{ color: "#F0EDE6" }}
+            className="flex items-center justify-center transition-colors"
+            style={{ color: "#F0EDE6", background: "none", border: "none", padding: 0 }}
             aria-label="Open menu"
           >
-            <Menu size={22} />
+            {/* Desktop: word "Menu" */}
+            <span
+              className="hidden md:inline"
+              style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em" }}
+            >
+              Menu
+            </span>
+            {/* Mobile: hamburger icon */}
+            <span className="md:hidden">
+              <Menu size={22} />
+            </span>
           </button>
         )}
       </header>
