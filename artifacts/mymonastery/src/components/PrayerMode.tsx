@@ -63,7 +63,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
             className="text-[9px] uppercase tracking-[0.14em] mt-3"
             style={{ color: "rgba(143,175,150,0.3)" }}
           >
-            Book of Common Prayer
+            From the Book of Common Prayer
           </p>
         </div>
       )}
@@ -201,7 +201,7 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
               className="text-[10px] uppercase tracking-[0.14em]"
               style={{ color: "rgba(143,175,150,0.32)" }}
             >
-              Book of Common Prayer · Compline
+              From the Book of Common Prayer · Compline
             </p>
 
             <div className="h-px w-12" style={{ background: "rgba(200,212,192,0.15)" }} />
