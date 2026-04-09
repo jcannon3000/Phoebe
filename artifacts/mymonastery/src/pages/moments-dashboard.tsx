@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { milestoneLabel, milestoneProgress } from "@/lib/utils";
 import { format, parseISO, addDays, startOfDay, isToday, isBefore } from "date-fns";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -109,169 +108,73 @@ function bcpWeeksLabel(streak: number): string {
   return `${weeks} week${weeks !== 1 ? "s" : ""} together`;
 }
 
-// ─── Moment Card ─────────────────────────────────────────────────────────────
+// ─── Moment Card (matches dashboard BarCard style) ───────────────────────────
 
 function MomentCard({ moment }: { moment: MomentData }) {
+  const emoji = TEMPLATE_EMOJI[moment.templateType ?? "custom"] ?? "✨";
+  const shouldPulse = moment.windowOpen && moment.todayPostCount === 0;
   const memberNames = moment.members
-    .slice(0, 3)
+    .filter(m => m.email !== undefined)
+    .slice(0, 5)
     .map(m => (m.name ?? m.email).split(" ")[0])
     .join(", ");
-  const extraMembers = moment.members.length > 3 ? ` +${moment.members.length - 3}` : "";
+
+  const subtitle = memberNames ? `with ${memberNames}` : moment.intention;
+
+  const isMorningPrayer = moment.templateType === "morning-prayer";
+  const isIntercession = moment.templateType === "intercession";
+  const href = (shouldPulse && isMorningPrayer && moment.myUserToken)
+    ? `/morning-prayer/${moment.id}/${moment.myUserToken}`
+    : (shouldPulse && isIntercession && moment.momentToken && moment.myUserToken)
+    ? `/moment/${moment.momentToken}/${moment.myUserToken}`
+    : `/moments/${moment.id}`;
+
   const nextWindow = !moment.windowOpen ? nextWindowDate(moment) : null;
-  const templateEmoji = TEMPLATE_EMOJI[moment.templateType ?? "custom"] ?? "✨";
-  const sessionsGoal = moment.commitmentSessionsGoal ?? null;
-  const sessionsLogged = moment.commitmentSessionsLogged ?? 0;
-  const tendFreely = moment.commitmentTendFreely ?? false;
-  const hasSessionGoal = sessionsGoal !== null && sessionsGoal > 0 && !tendFreely;
-  const hasGoal = hasSessionGoal || (moment.goalDays ?? 0) > 0;
-  const mLabel = hasSessionGoal
-    ? (sessionsLogged >= sessionsGoal ? `🌸 Goal reached!` : `🌿 ${sessionsLogged} of ${sessionsGoal}`)
-    : milestoneLabel(moment.currentStreak);
-  const mProgress = hasSessionGoal
-    ? Math.min(sessionsLogged / sessionsGoal, 1)
-    : milestoneProgress(moment.currentStreak);
-  const isSpiritual = SPIRITUAL_TEMPLATE_IDS_DASH.has(moment.templateType ?? "");
-  const isBcp = BCP_TEMPLATE_IDS_DASH.has(moment.templateType ?? "");
-  const bcpPage = moment.templateType === "morning-prayer" ? "75" : "115";
-  const isMorning = moment.templateType === "morning-prayer";
+  const nextLabel = nextWindow
+    ? (moment.frequency === "daily" ? "Tomorrow" : format(nextWindow, "EEE"))
+    : null;
 
   return (
-    <Link href={`/moments/${moment.id}`}>
+    <Link href={href} className="block">
       <motion.div
-        whileHover={{ y: -1 }}
-        className={`relative flex rounded-2xl overflow-hidden border transition-all duration-200 ${
-          moment.windowOpen
-            ? isBcp
-              ? isMorning
-                ? "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
-                : "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
-              : isSpiritual
-                ? "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
-                : "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
-            : "border-[rgba(200,151,90,0.25)] hover:shadow-md"
-        }`}
-        style={{ background: "#0F2818" }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${shouldPulse ? "animate-turn-pulse-practices" : ""}`}
+        style={{
+          background: "#0F2818",
+          border: `1px solid rgba(200,151,90,${shouldPulse ? "0.5" : "0.25"})`,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
       >
-        {/* Left accent bar */}
-        <div className={`w-1.5 flex-shrink-0 ${
-          moment.windowOpen
-            ? isBcp
-              ? isMorning ? "bg-[#C8975A] animate-pulse" : "bg-[#C8975A] animate-pulse"
-              : "bg-[#C8975A] animate-pulse"
-            : isBcp ? (isMorning ? "bg-[#C8975A]" : "bg-[#C8975A]") : "bg-[#C8975A]"
-        }`} />
-
-        <div className="flex-1 p-4">
-          {/* Top row */}
-          <div className="flex items-start gap-2 mb-1">
-            <span className="text-xl leading-none mt-0.5">{templateEmoji}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-base font-semibold leading-snug" style={{ color: "#F0EDE6" }}>{moment.name}</span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {isBcp && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: "#C8975A", background: "rgba(200,151,90,0.12)", border: "1px solid rgba(200,151,90,0.25)" }}>
-                      Daily Office
-                    </span>
-                  )}
-                  {moment.windowOpen && (
-                    isBcp ? (
-                      <span className={`text-[11px] font-bold uppercase tracking-wide ${isMorning ? "text-[#C8975A]" : "text-[#C8975A]"}`}>
-                        {isMorning ? "Morning 🌅" : "Evening 🌙"}
-                      </span>
-                    ) : isSpiritual ? (
-                      <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#C8975A" }}>
-                        Practice day 🌿
-                      </span>
-                    ) : (
-                      <span className="text-[11px] font-bold uppercase tracking-wide animate-pulse" style={{ color: "#C8975A" }}>
-                        Open now
-                      </span>
-                    )
-                  )}
-                </div>
-              </div>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>with {memberNames}{extraMembers}</p>
+        <div
+          className={`w-1 flex-shrink-0 ${shouldPulse ? "animate-bar-pulse-practices" : ""}`}
+          style={{ background: shouldPulse ? undefined : "#C8975A" }}
+        />
+        <div className="flex-1 px-4 py-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {moment.name}</span>
             </div>
+            {moment.currentStreak > 0 && (
+              <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+                {moment.currentStreak} day streak
+              </span>
+            )}
           </div>
-
-          {/* BCP page reference */}
-          {isBcp && (
-            <p className="text-xs font-medium mb-1.5" style={{ color: "#8FAF96" }}>
-              📖 Page {bcpPage} · {isMorning ? "Morning Prayer Rite II" : "Evening Prayer Rite II"}
-            </p>
-          )}
-
-          {/* Intention (skip for BCP — page ref is more useful) */}
-          {!isBcp && moment.templateType === "listening" && moment.listeningTitle ? (
-            <p className="text-sm mb-2 line-clamp-1" style={{ color: "#A8C5A0" }}>
-              {moment.listeningTitle}{moment.listeningArtist ? ` · ${moment.listeningArtist}` : ""}
-            </p>
-          ) : !isBcp && (
-            <p className="text-sm italic font-serif mb-2 line-clamp-1" style={{ color: "rgba(240,237,230,0.65)" }}>"{moment.intention}"</p>
-          )}
-
-          {/* Time info */}
-          {moment.windowOpen ? (
-            isBcp ? (
-              <p className="text-sm font-medium mb-2" style={{ color: isMorning ? "#C8975A" : "#C8975A" }}>
-                {moment.todayPostCount} of {moment.memberCount} prayed today
-              </p>
-            ) : moment.templateType === "listening" ? (
-              <p className="text-sm mb-2 line-clamp-2" style={{ color: "#A8C5A0" }}>
-                A {moment.frequency === "daily" ? "daily" : "weekly"} practice of listening to{" "}
-                <span className="font-medium">{moment.listeningTitle ?? moment.listeningArtist ?? "music"}</span> together
-              </p>
-            ) : isSpiritual ? (
-              <p className="text-sm font-medium mb-2" style={{ color: "#C8975A" }}>
-                {moment.todayPostCount} of {moment.memberCount} practiced today
-              </p>
-            ) : (
-              <p className="text-sm font-medium mb-2" style={{ color: "#C8975A" }}>
-                {moment.minutesLeft} min left · {moment.todayPostCount} of {moment.memberCount} posted
-              </p>
-            )
-          ) : moment.templateType === "listening" ? (
-            <p className="text-sm mb-2 line-clamp-2" style={{ color: "#A8C5A0" }}>
-              A {moment.frequency === "daily" ? "daily" : "weekly"} practice of listening to{" "}
-              <span className="font-medium">{moment.listeningTitle ?? moment.listeningArtist ?? "music"}</span> together
-            </p>
-          ) : (
-            <p className="text-xs mb-2" style={{ color: "rgba(143,175,150,0.7)" }}>
-              {isBcp || isSpiritual
-                ? nextWindow ? `Next practice: ${format(nextWindow, "EEE")}` : scheduleLabel(moment)
-                : nextWindow ? `Next: ${format(nextWindow, "EEE h:mm a")}` : scheduleLabel(moment)
-              }
-            </p>
-          )}
-
-          {/* BCP streak / weeks together */}
-          {isBcp ? (
-            <div className="flex items-center gap-3">
-              {moment.currentStreak > 0 && (
-                <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)" }}>
-                  🌿 {bcpWeeksLabel(moment.currentStreak)}
-                </span>
-              )}
-              {moment.todayPostCount > 0 && moment.memberCount > 1 && (
-                <span className="text-[11px]" style={{ color: "rgba(200,151,90,0.8)" }}>
-                  · {moment.todayPostCount} of {moment.memberCount} this week
-                </span>
-              )}
-            </div>
-          ) : hasGoal ? (
-            <div className="mt-1">
-              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.8)" }}>{mLabel}</span>
-              <div className="mt-1 w-full h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(200,151,90,0.2)" }}>
-                <div className="h-full rounded-full transition-all"
-                  style={{ width: `${Math.round(mProgress * 100)}%`, background: "#C8975A" }} />
-              </div>
-            </div>
-          ) : (
-            moment.currentStreak > 0 && (
-              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)" }}>🌿 {moment.currentStreak} in a row</span>
-            )
-          )}
+          <div className="flex items-center justify-between gap-2 mt-1.5">
+            <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle}</p>
+            {shouldPulse && (
+              <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                Open
+              </span>
+            )}
+            {!shouldPulse && moment.todayPostCount > 0 && nextLabel && (
+              <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>Next Prayer {nextLabel}</span>
+            )}
+            {!shouldPulse && moment.todayPostCount === 0 && nextLabel && (
+              <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>{nextLabel}</span>
+            )}
+          </div>
         </div>
       </motion.div>
     </Link>

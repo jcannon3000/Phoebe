@@ -498,13 +498,15 @@ export default function Dashboard() {
     // ── Moments placement
     for (const m of allMoments) {
       if (m.windowOpen && m.todayPostCount === 0) {
-        // Window is open and not yet logged → show today
+        // Window open, not yet logged → Today
         todayItems.push({ kind: "moment", data: m });
-      } else if (!m.windowOpen && m.todayPostCount === 0) {
-        // Not logged today, no open window → upcoming (this month)
+      } else if (m.todayPostCount > 0) {
+        // Already logged today → This Week (next occurrence coming up)
+        weekItems.push({ kind: "moment", data: m, nextWindow: nextWindowLabel(m) });
+      } else {
+        // No open window, not logged → This Month
         monthItems.push({ kind: "moment", data: m });
       }
-      // todayPostCount > 0 → already done today, skip from dashboard entirely
     }
 
     // ── Gatherings placement
@@ -585,7 +587,7 @@ export default function Dashboard() {
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
-          A Sanctuary for Fellowship Inspired by Monastic Wisdom
+          Inspired by Monastic Wisdom
         </p>
 
         <FAB />
