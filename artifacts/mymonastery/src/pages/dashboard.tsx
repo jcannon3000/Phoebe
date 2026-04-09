@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,16 +8,60 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
-import { format, isToday, isTomorrow, isThisWeek, parseISO } from "date-fns";
+import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
+
+// ─── Shared types ───────────────────────────────────────────────────────────
+
+type Correspondence = {
+  id: number;
+  name: string;
+  groupType: string;
+  unreadCount: number;
+  members: Array<{ name: string | null; email: string; homeCity: string | null }>;
+  recentPostmarks: Array<{ authorName: string; city: string; sentAt: string }>;
+  currentPeriod: {
+    periodNumber: number;
+    periodLabel: string;
+    hasWrittenThisPeriod: boolean;
+    isLastThreeDays: boolean;
+    membersWritten: Array<{ name: string; hasWritten: boolean }>;
+  };
+};
+
+type Moment = {
+  id: number;
+  name: string;
+  templateType: string | null;
+  intention: string;
+  currentStreak: number;
+  totalBlooms: number;
+  state: string;
+  memberCount: number;
+  members: Array<{ name: string; email: string }>;
+  todayPostCount: number;
+  windowOpen: boolean;
+  intercessionTopic?: string | null;
+  fastingFrom?: string | null;
+  myUserToken: string | null;
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function dayLabel(date: Date): string {
   if (isToday(date)) return "Today";
-  if (isTomorrow(date)) return "Tomorrow";
-  if (isThisWeek(date)) return format(date, "EEEE");
-  return format(date, "EEE, MMM d");
+  const tomorrow = addDays(startOfDay(new Date()), 1);
+  if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
+  return format(date, "EEEE");
 }
+
+const CARD_STYLE = {
+  background: "#0F2818",
+  border: "1px solid rgba(200, 212, 192, 0.25)",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+  padding: "18px",
+} as const;
+
+const PILL_STYLE = { background: "#2D5E3F", color: "#F0EDE6" } as const;
 
 // ─── FAB ─────────────────────────────────────────────────────────────────────
 
@@ -96,51 +140,14 @@ const PRACTICE_EMOJI: Record<string, string> = {
 // ─── Today Section ───────────────────────────────────────────────────────────
 
 function TodaySection({
-  correspondences,
-  moments,
-  rituals,
-  userEmail,
-  userName,
+  letterItems,
+  openMoments,
+  todayGatherings,
 }: {
-  correspondences: Array<any> | undefined;
-  moments: Array<any> | undefined;
-  rituals: Array<any> | undefined;
-  userEmail: string;
-  userName: string;
+  letterItems: Array<{ id: number; title: string; subtitle: string; writeHref: string; readHref?: string; isUnread: boolean }>;
+  openMoments: Array<any>;
+  todayGatherings: Array<any>;
 }) {
-  const today = new Date();
-
-  // Letters ready to write or unread
-  const letterItems: Array<{ id: number; title: string; subtitle: string; writeHref: string; readHref?: string; isUnread: boolean }> = [];
-  for (const c of correspondences ?? []) {
-    const isOneToOne = c.groupType === "one_to_one";
-    const otherMembers = (c.members as Array<any>)
-      .filter((m: any) => m.email !== userEmail)
-      .map((m: any) => m.name || m.email.split("@")[0])
-      .join(", ");
-    const title = (c.name?.replace(/^Letters with\b/, "Letters with")) || (isOneToOne ? `Letters with ${otherMembers}` : `Sharing with ${otherMembers}`);
-
-    const iWrote = (c.currentPeriod.membersWritten as Array<any>).find((m: any) => m.name === userName)?.hasWritten ?? false;
-    const hasUnread = c.unreadCount > 0;
-    const needsWrite = !iWrote;
-
-    if (hasUnread) {
-      letterItems.push({ id: c.id, title, subtitle: "New letter arrived", writeHref: `/letters/${c.id}`, readHref: `/letters/${c.id}`, isUnread: true });
-    } else if (needsWrite) {
-      letterItems.push({ id: c.id, title, subtitle: "Your turn to write", writeHref: `/letters/${c.id}/write`, isUnread: false });
-    }
-  }
-
-  // Open moments (window is open and not yet logged)
-  const openMoments = (moments ?? []).filter((m: any) => m.windowOpen && m.todayPostCount === 0);
-
-  // Gatherings happening today
-  const todayGatherings = (rituals ?? []).filter((r: any) => {
-    if (!r.nextMeetupDate) return false;
-    const d = parseISO(r.nextMeetupDate);
-    return isToday(d);
-  });
-
   const hasItems = letterItems.length > 0 || openMoments.length > 0 || todayGatherings.length > 0;
   if (!hasItems) return null;
 
@@ -154,12 +161,7 @@ function TodaySection({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               className="rounded-2xl cursor-pointer"
-              style={{
-                background: "#0F2818",
-                border: "1px solid rgba(200, 212, 192, 0.25)",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-                padding: "18px",
-              }}
+              style={CARD_STYLE}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -167,8 +169,8 @@ function TodaySection({
                   <p className="text-sm mt-0.5" style={{ color: "#A8C5A0" }}>{item.subtitle}</p>
                 </div>
                 <span
-                  className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                  className="text-sm font-semibold rounded-full px-4 py-2 shrink-0"
+                  style={PILL_STYLE}
                 >
                   {item.isUnread ? "Read →" : "Write →"}
                 </span>
@@ -189,14 +191,14 @@ function TodaySection({
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-2xl cursor-pointer"
-                style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)", padding: "18px" }}
+                style={CARD_STYLE}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{m.name}</p>
                     <p className="text-sm mt-0.5" style={{ color: "#A8C5A0" }}>Open now</p>
                   </div>
-                  <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                  <span className="text-sm font-semibold rounded-full px-4 py-2 shrink-0" style={PILL_STYLE}>
                     {cta}
                   </span>
                 </div>
@@ -215,12 +217,7 @@ function TodaySection({
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-2xl cursor-pointer"
-                style={{
-                  background: "#0F2818",
-                  border: "1px solid rgba(200, 212, 192, 0.25)",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-                  padding: "18px",
-                }}
+                style={CARD_STYLE}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -245,97 +242,117 @@ function TodaySection({
   );
 }
 
-// ─── Practices Section (letters + moments unified) ───────────────────────────
+// ─── This Week Section ───────────────────────────────────────────────────────
 
-function PracticesSection() {
-  const { user } = useAuth();
-
-  const { data: correspondences, isLoading: lettersLoading } = useQuery<Array<{
-    id: number;
-    name: string;
-    groupType: string;
-    unreadCount: number;
-    members: Array<{ name: string | null; email: string; homeCity: string | null }>;
-    recentPostmarks: Array<{ authorName: string; city: string; sentAt: string }>;
-    currentPeriod: {
-      periodNumber: number;
-      periodLabel: string;
-      hasWrittenThisPeriod: boolean;
-      isLastThreeDays: boolean;
-      membersWritten: Array<{ name: string; hasWritten: boolean }>;
-    };
-  }>>({
-    queryKey: ["/api/letters/correspondences"],
-    queryFn: () => apiRequest("GET", "/api/letters/correspondences"),
-    enabled: !!user,
-  });
-
-  const { data: momentsData, isLoading: momentsLoading } = useQuery<{ moments: Array<{
-    id: number;
-    name: string;
-    templateType: string | null;
-    intention: string;
-    currentStreak: number;
-    totalBlooms: number;
-    state: string;
-    memberCount: number;
-    members: Array<{ name: string; email: string }>;
-    todayPostCount: number;
-    windowOpen: boolean;
-    intercessionTopic?: string | null;
-    fastingFrom?: string | null;
-    myUserToken: string | null;
-  }> }>({
-    queryKey: ["/api/moments"],
-    queryFn: () => apiRequest("GET", "/api/moments"),
-    enabled: !!user,
-  });
-
-  const isLoading = lettersLoading || momentsLoading;
-
-  if (isLoading) {
-    return (
-      <>
-        <SectionHeader label="Practices 🕯️" />
-        <div className="space-y-6 mb-8">
-          {[1, 2].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
-          ))}
-        </div>
-      </>
-    );
-  }
-
-  const letters = correspondences ?? [];
-  const moments = momentsData?.moments ?? [];
-  const hasAny = letters.length > 0 || moments.length > 0;
+function ThisWeekSection({
+  letterItems,
+  weekGatherings,
+}: {
+  letterItems: Array<{ id: number; title: string; subtitle: string; href: string; isUnread: boolean }>;
+  weekGatherings: Array<any>;
+}) {
+  const hasItems = letterItems.length > 0 || weekGatherings.length > 0;
+  if (!hasItems) return null;
 
   return (
     <div className="mb-8">
-      <SectionHeader label="Practices 🕯️" />
+      <SectionHeader label="This week" />
+      <div className="space-y-6">
+        {letterItems.map((item) => (
+          <Link key={`week-letter-${item.id}`} href={item.href}>
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl cursor-pointer"
+              style={CARD_STYLE}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{item.title}</p>
+                  <p className="text-sm mt-0.5" style={{ color: "#A8C5A0" }}>{item.subtitle}</p>
+                </div>
+                <span
+                  className="text-sm font-semibold rounded-full px-4 py-2 shrink-0"
+                  style={PILL_STYLE}
+                >
+                  {item.isUnread ? "Read →" : "Write →"}
+                </span>
+              </div>
+            </motion.div>
+          </Link>
+        ))}
 
-      {!hasAny ? (
+        {weekGatherings.map((r: any) => {
+          const next = parseISO(r.nextMeetupDate);
+          const participants: Array<any> = r.participants ?? [];
+          const names = participants.slice(0, 3).map((p: any) => (p.name || p.email || "").split(" ")[0]).join(", ");
+          return (
+            <Link key={`week-gathering-${r.id}`} href={`/ritual/${r.id}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl cursor-pointer"
+                style={CARD_STYLE}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{r.name}</p>
+                    <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
+                      {format(next, "EEEE")} · {format(next, "h:mm a")}{names ? ` · ${names}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
+                    style={{ background: "rgba(45,94,63,0.4)", color: "#A8C5A0", border: "1px solid rgba(168,197,160,0.3)" }}
+                  >
+                    {format(next, "EEEE")}
+                  </span>
+                </div>
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Letters Section ─────────────────────────────────────────────────────────
+
+function LettersSection({
+  letters,
+  userEmail,
+  userName,
+}: {
+  letters: Correspondence[];
+  userEmail: string;
+  userName: string;
+}) {
+  return (
+    <div className="mb-8">
+      <SectionHeader label="Letters" />
+
+      {letters.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+          style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No practices yet. Start one.</p>
-          <Link href="/moment/new">
-            <span className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>Start a practice →</span>
+          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No letters yet. Start a correspondence. 📮</p>
+          <Link href="/letters/new">
+            <span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start writing →</span>
           </Link>
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Letter cards */}
           {letters.map((c) => {
             const isOneToOne = c.groupType === "one_to_one";
             const otherMembers = c.members
-              .filter(m => m.email !== user?.email)
+              .filter(m => m.email !== userEmail)
               .map(m => m.name || m.email.split("@")[0])
               .join(", ");
 
-            const iWrote = c.currentPeriod.membersWritten.find(m => m.name === user?.name)?.hasWritten ?? false;
-            const theyWrote = c.currentPeriod.membersWritten.find(m => m.name !== user?.name)?.hasWritten ?? false;
+            const iWrote = c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false;
+            const theyWrote = c.currentPeriod.membersWritten.find(m => m.name !== userName)?.hasWritten ?? false;
             const hasUnread = c.unreadCount > 0;
             const needsWrite = !iWrote;
 
@@ -408,102 +425,102 @@ function PracticesSection() {
               </Link>
             );
           })}
-
-          {/* Moment cards */}
-          {moments.map((m) => {
-            const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
-            const shouldPulse = m.windowOpen && m.todayPostCount === 0;
-            const memberNames = m.members
-              .filter(p => p.email !== user?.email)
-              .map(p => p.name || p.email.split("@")[0])
-              .slice(0, 2)
-              .join(", ");
-
-            let subtitle = "";
-            if (m.intercessionTopic) subtitle = m.intercessionTopic;
-            else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
-            else if (memberNames) subtitle = `with ${memberNames}`;
-
-            const isMorningPrayer = m.templateType === "morning-prayer";
-            const openHref = (shouldPulse && isMorningPrayer && m.myUserToken)
-              ? `/morning-prayer/${m.id}/${m.myUserToken}`
-              : `/moments/${m.id}`;
-
-            return (
-              <Link key={`moment-${m.id}`} href={`/moments/${m.id}`}>
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${shouldPulse ? "animate-turn-pulse" : ""}`}
-                  style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
-                >
-                  <div className={`w-1 flex-shrink-0 ${shouldPulse ? "animate-bar-pulse" : ""}`} style={{ background: shouldPulse ? undefined : "#5C8A5F" }} />
-                  <div className="flex-1 p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-                          {m.name}
-                        </span>
-                      </div>
-                      {m.currentStreak > 0 && (
-                        <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-                          {m.currentStreak} day streak
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 mt-1.5">
-                      <p className="text-sm" style={{ color: "#8FAF96" }}>
-                        {subtitle || m.intention}
-                      </p>
-                      {m.windowOpen && m.todayPostCount === 0 && (
-                        <Link href={openHref} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                          <span
-                            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
-                            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                          >
-                            {emoji} Open
-                          </span>
-                        </Link>
-                      )}
-                      {m.todayPostCount > 0 && (
-                        <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>
-                          {m.todayPostCount} today 🌿
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              </Link>
-            );
-          })}
         </div>
       )}
     </div>
   );
 }
 
+// ─── Practices Section (moments only) ────────────────────────────────────────
+
+function PracticesSection({
+  moments,
+  userEmail,
+}: {
+  moments: Moment[];
+  userEmail: string;
+}) {
+  if (moments.length === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <SectionHeader label="Practices 🕯️" />
+      <div className="space-y-6">
+        {moments.map((m) => {
+          const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
+          const shouldPulse = m.windowOpen && m.todayPostCount === 0;
+          const memberNames = m.members
+            .filter(p => p.email !== userEmail)
+            .map(p => p.name || p.email.split("@")[0])
+            .slice(0, 2)
+            .join(", ");
+
+          let subtitle = "";
+          if (m.intercessionTopic) subtitle = m.intercessionTopic;
+          else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
+          else if (memberNames) subtitle = `with ${memberNames}`;
+
+          const isMorningPrayer = m.templateType === "morning-prayer";
+          const openHref = (shouldPulse && isMorningPrayer && m.myUserToken)
+            ? `/morning-prayer/${m.id}/${m.myUserToken}`
+            : `/moments/${m.id}`;
+
+          return (
+            <Link key={`moment-${m.id}`} href={`/moments/${m.id}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${shouldPulse ? "animate-turn-pulse" : ""}`}
+                style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+              >
+                <div className={`w-1 flex-shrink-0 ${shouldPulse ? "animate-bar-pulse" : ""}`} style={{ background: shouldPulse ? undefined : "#5C8A5F" }} />
+                <div className="flex-1 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+                        {m.name}
+                      </span>
+                    </div>
+                    {m.currentStreak > 0 && (
+                      <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+                        {m.currentStreak} day streak
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 mt-1.5">
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>
+                      {subtitle || m.intention}
+                    </p>
+                    {m.windowOpen && m.todayPostCount === 0 && (
+                      <Link href={openHref} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                        <span
+                          className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
+                          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                        >
+                          {emoji} Open
+                        </span>
+                      </Link>
+                    )}
+                    {m.todayPostCount > 0 && (
+                      <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>
+                        {m.todayPostCount} today 🌿
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Gatherings Section ───────────────────────────────────────────────────────
 
-function GatheringsSection() {
-  const { user } = useAuth();
-  const { data: rituals, isLoading } = useListRituals({ ownerId: user?.id });
-
-  if (isLoading) {
-    return (
-      <>
-        <SectionHeader label="Gatherings 🤝" />
-        <div className="space-y-6 mb-8">
-          {[1].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
-          ))}
-        </div>
-      </>
-    );
-  }
-
-  const gatherings = rituals ?? [];
-
+function GatheringsSection({ gatherings }: { gatherings: Array<any> }) {
   return (
     <div className="mb-4">
       <SectionHeader label="Gatherings 🤝" />
@@ -511,19 +528,18 @@ function GatheringsSection() {
       {gatherings.length === 0 ? (
         <div
           className="rounded-xl p-5 text-center"
-          style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+          style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No gatherings yet. Start one. 🕯️</p>
+          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No gatherings yet. Start one.</p>
           <Link href="/tradition/new">
-            <span className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>Start a gathering →</span>
+            <span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a gathering →</span>
           </Link>
         </div>
       ) : (
         <div className="space-y-6">
-          {gatherings.map((ritual) => {
+          {gatherings.map((ritual: any) => {
             const next = ritual.nextMeetupDate ? parseISO(ritual.nextMeetupDate) : null;
-            const r = ritual as any;
-            const rhythm = r.rhythm as string | undefined;
+            const rhythm = ritual.rhythm as string | undefined;
             const rhythmLabel = rhythm === "weekly" ? "weekly tradition"
               : rhythm === "biweekly" || rhythm === "fortnightly" ? "biweekly tradition"
               : rhythm === "monthly" ? "monthly tradition"
@@ -558,10 +574,10 @@ function GatheringsSection() {
                       </p>
                     )}
 
-                    {r.intercessionIntention && (
-                      <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>🙏 Praying for {r.intercessionIntention}</p>
+                    {ritual.intercessionIntention && (
+                      <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>🙏 Praying for {ritual.intercessionIntention}</p>
                     )}
-                    {r.fastingDescription && (
+                    {ritual.fastingDescription && (
                       <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>🌿 Fasting together</p>
                     )}
                   </div>
@@ -581,20 +597,130 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
 
-  // Counts for header subtitle — queries are deduplicated by TanStack Query
-  const { data: correspondences } = useQuery<Array<any>>({
+  // ── All data fetched at the top level ──────────────────────────────────────
+
+  const { data: correspondences, isLoading: lettersLoading } = useQuery<Correspondence[]>({
     queryKey: ["/api/letters/correspondences"],
     queryFn: () => apiRequest("GET", "/api/letters/correspondences"),
     enabled: !!user,
   });
-  const { data: momentsData } = useQuery<{ moments: Array<any> }>({
+
+  const { data: momentsData, isLoading: momentsLoading } = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
     enabled: !!user,
   });
-  const { data: rituals } = useListRituals({ ownerId: user?.id });
 
-  const totalCount = (correspondences?.length ?? 0) + (momentsData?.moments?.length ?? 0) + (rituals?.length ?? 0);
+  const { data: rituals, isLoading: ritualsLoading } = useListRituals({ ownerId: user?.id });
+
+  const isLoading = lettersLoading || momentsLoading || ritualsLoading;
+
+  // ── Deduplication logic ────────────────────────────────────────────────────
+
+  const {
+    todayLetterItems,
+    todayMoments,
+    todayGatherings,
+    thisWeekLetterItems,
+    thisWeekGatherings,
+    filteredLetters,
+    filteredGatherings,
+    moments,
+    totalCount,
+  } = useMemo(() => {
+    const allLetters = correspondences ?? [];
+    const allMoments = momentsData?.moments ?? [];
+    const allGatherings = (rituals ?? []) as Array<any>;
+    const userEmail = user?.email ?? "";
+    const userName = user?.name ?? "";
+
+    const totalCount = allLetters.length + allMoments.length + allGatherings.length;
+
+    // ── Today: letters ──────────────────────────────────────────────────────
+    const todayLetterItems: Array<{ id: number; title: string; subtitle: string; writeHref: string; readHref?: string; isUnread: boolean }> = [];
+    for (const c of allLetters) {
+      const isOneToOne = c.groupType === "one_to_one";
+      const otherMembers = c.members
+        .filter(m => m.email !== userEmail)
+        .map(m => m.name || m.email.split("@")[0])
+        .join(", ");
+      const title = (c.name?.replace(/^Letters with\b/, "Letters with")) || (isOneToOne ? `Letters with ${otherMembers}` : `Sharing with ${otherMembers}`);
+
+      const iWrote = c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false;
+      const hasUnread = c.unreadCount > 0;
+      const needsWrite = !iWrote;
+
+      if (hasUnread) {
+        todayLetterItems.push({ id: c.id, title, subtitle: "New letter arrived", writeHref: `/letters/${c.id}`, readHref: `/letters/${c.id}`, isUnread: true });
+      } else if (needsWrite) {
+        todayLetterItems.push({ id: c.id, title, subtitle: "Your turn to write", writeHref: `/letters/${c.id}/write`, isUnread: false });
+      }
+    }
+
+    // ── Today: moments (window open, not yet logged) ────────────────────────
+    const todayMoments = allMoments.filter(m => m.windowOpen && m.todayPostCount === 0);
+
+    // ── Today: gatherings ───────────────────────────────────────────────────
+    const todayGatherings = allGatherings.filter(r => {
+      if (!r.nextMeetupDate) return false;
+      return isToday(parseISO(r.nextMeetupDate));
+    });
+
+    // ── This week: gatherings (next 7 days, not today) ──────────────────────
+    const endOfWeek = addDays(startOfDay(new Date()), 7);
+    const todayGatheringIds = new Set(todayGatherings.map((r: any) => r.id));
+
+    const thisWeekGatherings = allGatherings.filter(r => {
+      if (!r.nextMeetupDate || todayGatheringIds.has(r.id)) return false;
+      const d = parseISO(r.nextMeetupDate);
+      return isBefore(d, endOfWeek) && !isToday(d);
+    });
+
+    // ── This week: letters (unread that weren't shown in Today — covers
+    //    "letter arrived this week" case; skip turn-based since we can't
+    //    determine "due this week" from the API) ─────────────────────────────
+    const todayLetterIds = new Set(todayLetterItems.map(l => l.id));
+    const thisWeekLetterItems: Array<{ id: number; title: string; subtitle: string; href: string; isUnread: boolean }> = [];
+    // Letters not already surfaced in Today but unread → show in This Week
+    for (const c of allLetters) {
+      if (todayLetterIds.has(c.id)) continue;
+      if (c.unreadCount > 0) {
+        const isOneToOne = c.groupType === "one_to_one";
+        const otherMembers = c.members
+          .filter(m => m.email !== userEmail)
+          .map(m => m.name || m.email.split("@")[0])
+          .join(", ");
+        const title = (c.name?.replace(/^Letters with\b/, "Letters with")) || (isOneToOne ? `Letters with ${otherMembers}` : `Sharing with ${otherMembers}`);
+        thisWeekLetterItems.push({ id: c.id, title, subtitle: "New letter", href: `/letters/${c.id}`, isUnread: true });
+      }
+    }
+
+    // ── Surfaced IDs for deduplication ───────────────────────────────────────
+    const surfacedLetterIds = new Set([
+      ...todayLetterItems.map(l => l.id),
+      ...thisWeekLetterItems.map(l => l.id),
+    ]);
+    const surfacedGatheringIds = new Set([
+      ...todayGatherings.map((r: any) => r.id),
+      ...thisWeekGatherings.map((r: any) => r.id),
+    ]);
+
+    // ── Filtered sections ───────────────────────────────────────────────────
+    const filteredLetters = allLetters.filter(c => !surfacedLetterIds.has(c.id));
+    const filteredGatherings = allGatherings.filter((r: any) => !surfacedGatheringIds.has(r.id));
+
+    return {
+      todayLetterItems,
+      todayMoments,
+      todayGatherings,
+      thisWeekLetterItems,
+      thisWeekGatherings,
+      filteredLetters,
+      filteredGatherings,
+      moments: allMoments,
+      totalCount,
+    };
+  }, [correspondences, momentsData, rituals, user]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -618,20 +744,44 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ── Today ── */}
-        <TodaySection
-          correspondences={correspondences}
-          moments={momentsData?.moments}
-          rituals={rituals}
-          userEmail={user.email}
-          userName={user.name ?? ""}
-        />
+        {/* ── Loading skeleton ── */}
+        {isLoading && (
+          <div className="space-y-6 mb-8">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
+            ))}
+          </div>
+        )}
 
-        {/* ── Practices ── */}
-        <PracticesSection />
+        {!isLoading && (
+          <>
+            {/* ── 1. Today ── */}
+            <TodaySection
+              letterItems={todayLetterItems}
+              openMoments={todayMoments}
+              todayGatherings={todayGatherings}
+            />
 
-        {/* ── Gatherings ── */}
-        <GatheringsSection />
+            {/* ── 2. This week ── */}
+            <ThisWeekSection
+              letterItems={thisWeekLetterItems}
+              weekGatherings={thisWeekGatherings}
+            />
+
+            {/* ── 3. Letters (filtered) ── */}
+            <LettersSection
+              letters={filteredLetters}
+              userEmail={user.email}
+              userName={user.name ?? ""}
+            />
+
+            {/* ── 4. Gatherings (filtered) ── */}
+            <GatheringsSection gatherings={filteredGatherings} />
+
+            {/* ── 5. Practices (moments — never deduplicated) ── */}
+            <PracticesSection moments={moments} userEmail={user.email} />
+          </>
+        )}
 
         {/* ── Prayer Requests ── */}
         <PrayerSection />

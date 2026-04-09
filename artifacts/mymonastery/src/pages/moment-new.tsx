@@ -968,7 +968,9 @@ export default function MomentNew() {
       : isFasting
       ? `Fasting from ${fastingFrom.trim()}`
       : name.trim();
-    const finalIntention = isFasting ? fastingIntention.trim() : intention.trim();
+    const finalIntention = isFasting
+      ? fastingIntention.trim()
+      : intention.trim() || intercessionTopic.trim() || name.trim() || "Praying together";
 
     // Fasting frequency/day mapping
     const fastingFreqForApi = isFasting
