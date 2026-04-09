@@ -108,7 +108,7 @@ function BarCard({
   children: React.ReactNode;
 }) {
   return (
-    <Link href={href}>
+    <Link href={href} className="block">
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
