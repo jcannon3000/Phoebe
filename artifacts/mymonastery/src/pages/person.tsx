@@ -5,14 +5,21 @@ import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersonProfile } from "@/hooks/usePeople";
 import { Layout } from "@/components/layout";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
-// Eleanor palette avatar colors: sage, amber, blush
+// ─── Colors ───────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
-  { bg: "#2D5E3F", text: "#F0EDE6" },  // sage
-  { bg: "#5A3D10", text: "#F0EDE6" },  // amber
-  { bg: "#5A2E20", text: "#F0EDE6" },  // blush
+  { bg: "#2D5E3F", text: "#F0EDE6" },
+  { bg: "#5A3D10", text: "#F0EDE6" },
+  { bg: "#5A2E20", text: "#F0EDE6" },
 ];
+
+const CATEGORY = {
+  letters:   { bar: "#8E9E42", border: "rgba(142,158,66,0.3)" },
+  practices: { bar: "#2E6B40", border: "rgba(46,107,64,0.3)"  },
+  gatherings:{ bar: "#6FAF85", border: "rgba(111,175,133,0.3)"},
+};
 
 function colorFor(email: string) {
   let hash = 0;
@@ -26,12 +33,13 @@ function initials(name: string) {
 
 function practiceEmoji(templateType: string | null): string {
   switch (templateType) {
-    case "intercession": return "🙏";
-    case "morning-prayer": return "✨";
-    case "evening-prayer": return "🌙";
-    case "contemplative": return "🕯️";
-    case "fasting": return "🌿";
-    default: return "🌱";
+    case "intercession":    return "🙏";
+    case "morning-prayer":  return "🌅";
+    case "evening-prayer":  return "🌙";
+    case "contemplative":   return "🕯️";
+    case "fasting":         return "✦";
+    case "listening":       return "🎵";
+    default:                return "🌱";
   }
 }
 
@@ -41,6 +49,72 @@ function daysRemaining(expiresAt: string | null): number | null {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 }
 
+// ─── Correspondence type (mirrors LettersPage) ────────────────────────────────
+interface CorrespondenceItem {
+  id: number;
+  name: string;
+  groupType: string;
+  members: Array<{ name: string | null; email: string; lastLetterAt: string | null }>;
+  letterCount: number;
+  unreadCount: number;
+  myTurn: boolean;
+  currentPeriod: {
+    periodNumber: number;
+    hasWrittenThisPeriod: boolean;
+  };
+}
+
+// ─── BarCard ──────────────────────────────────────────────────────────────────
+function BarCard({
+  href,
+  barColor,
+  borderColor,
+  pulse = false,
+  children,
+}: {
+  href: string;
+  barColor: string;
+  borderColor: string;
+  pulse?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link href={href} className="block">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? "animate-turn-pulse" : ""}`}
+        style={{
+          background: "#0F2818",
+          border: `1px solid ${pulse ? borderColor.replace("0.3", "0.55") : borderColor}`,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div
+          className="w-1 flex-shrink-0"
+          style={{ background: barColor }}
+        />
+        <div className="flex-1 px-4 py-3 min-w-0">
+          {children}
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
+// ─── Section header ───────────────────────────────────────────────────────────
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-3 mt-6 first:mt-0">
+      <span className="text-[10px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "rgba(200,212,192,0.4)" }}>
+        {label}
+      </span>
+      <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function PersonProfile() {
   const [, params] = useRoute("/people/:email");
   const [, setLocation] = useLocation();
@@ -51,6 +125,23 @@ export default function PersonProfile() {
 
   const [prayerWord, setPrayerWord] = useState("");
   const [wordSent, setWordSent] = useState(false);
+
+  // Fetch all correspondences and filter to ones that include this person
+  const { data: correspondencesData } = useQuery<CorrespondenceItem[]>({
+    queryKey: ["/api/phoebe/correspondences"],
+    queryFn: async () => {
+      try {
+        return await apiRequest("GET", "/api/phoebe/correspondences");
+      } catch {
+        return await apiRequest("GET", "/api/letters/correspondences");
+      }
+    },
+    enabled: !!user && !!email,
+  });
+
+  const sharedLetters = (correspondencesData ?? []).filter(c =>
+    c.members.some(m => m.email.toLowerCase() === (email ?? "").toLowerCase())
+  );
 
   const sendWordMutation = useMutation({
     mutationFn: async ({ requestId, content }: { requestId: number; content: string }) => {
@@ -79,10 +170,11 @@ export default function PersonProfile() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto w-full pt-8 space-y-8">
-          <div className="h-6 w-40 bg-card/50 animate-pulse rounded" />
-          <div className="h-20 bg-card/50 animate-pulse rounded-lg" />
-          <div className="h-48 bg-card/50 animate-pulse rounded-lg" />
+        <div className="max-w-2xl mx-auto w-full pt-8 space-y-4">
+          <div className="h-6 w-32 rounded animate-pulse" style={{ background: "#0F2818" }} />
+          <div className="h-24 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
+          <div className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
+          <div className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
         </div>
       </Layout>
     );
@@ -93,9 +185,8 @@ export default function PersonProfile() {
       <Layout>
         <div className="max-w-2xl mx-auto w-full pt-16 text-center">
           <div className="text-4xl mb-4">🌱</div>
-          <h2 className="font-serif text-2xl mb-2">Person not found</h2>
-          <p className="text-muted-foreground mb-6 text-sm">This person isn't in any of your traditions or practices.</p>
-          <Link href="/people" className="text-sm font-medium" style={{ color: "#5C7A5F" }}>← Back to Your People</Link>
+          <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>This person isn't in any of your practices or gatherings yet.</p>
+          <Link href="/people" className="text-sm font-medium" style={{ color: "#5C7A5F" }}>← Back</Link>
         </div>
       </Layout>
     );
@@ -103,226 +194,250 @@ export default function PersonProfile() {
 
   const firstName = person.name.split(" ")[0];
   const color = colorFor(person.email);
-  const totalTogether = person.stats.sharedCircleCount + person.stats.sharedPracticesCount;
   const prayer = person.activePrayerRequest;
   const prayerDaysLeft = prayer ? daysRemaining(prayer.expiresAt) : null;
 
-  // Relationship summary line
-  let relationshipLine = "";
-  if (person.stats.sharedPracticesCount > 0 && person.stats.sharedCircleCount > 0) {
-    relationshipLine = `🌿 ${person.stats.sharedPracticesCount} practice${person.stats.sharedPracticesCount !== 1 ? "s" : ""} · 🌱 ${person.stats.sharedCircleCount} tradition${person.stats.sharedCircleCount !== 1 ? "s" : ""}`;
-  } else if (person.stats.sharedPracticesCount > 0) {
-    relationshipLine = `🌿 ${person.stats.sharedPracticesCount} practice${person.stats.sharedPracticesCount !== 1 ? "s" : ""} together`;
-  } else if (person.stats.sharedCircleCount > 0) {
-    relationshipLine = `🌱 ${person.stats.sharedCircleCount} tradition${person.stats.sharedCircleCount !== 1 ? "s" : ""} together`;
-  } else {
-    relationshipLine = "🌱 Just connected";
-  }
-
-  // Stats summary
-  const score = person.stats.score;
-  const scoreLabel = score > 0
-    ? `${score} session${score !== 1 ? "s" : ""} together 🌿`
-    : "Just beginning 🌱";
+  const totalTogether =
+    sharedLetters.length +
+    (person.sharedPractices?.length ?? 0) +
+    (person.sharedRituals?.length ?? 0);
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto w-full flex flex-col gap-8 pt-4 pb-12">
+      <div className="max-w-2xl mx-auto w-full pb-16 pt-2">
 
         {/* Back */}
-        <Link href="/people" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm w-fit">
-          ← Back to Your People
+        <Link href="/people" className="inline-flex items-center gap-1 text-xs mb-5 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
+          ← People
         </Link>
 
-        {/* ── Header ────────────────────────────────────── */}
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.35 }}
+          className="flex items-center gap-4 mb-6"
         >
-          <div className="flex items-center gap-5">
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold flex-shrink-0"
-              style={{ backgroundColor: color.bg, color: color.text }}
-            >
-              {initials(person.name)}
-            </div>
-            <div>
-              <h1 className="font-serif text-[28px] text-foreground leading-tight">{person.name}</h1>
-              <p className="text-sm text-muted-foreground mt-1">{relationshipLine}</p>
-            </div>
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0"
+            style={{ backgroundColor: color.bg, color: color.text }}
+          >
+            {initials(person.name)}
           </div>
-
-          <p className="mt-4 text-sm italic" style={{ color: "#5C7A5F" }}>
-            {scoreLabel}
-          </p>
+          <div>
+            <h1 className="font-semibold text-2xl leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+              {person.name}
+            </h1>
+            <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
+              {totalTogether === 0
+                ? "Nothing shared yet"
+                : `${totalTogether} thing${totalTogether !== 1 ? "s" : ""} together`}
+            </p>
+          </div>
         </motion.div>
 
-        {/* ── Prayer Request ─────────────────────────────── */}
+        {/* ── Prayer Request ──────────────────────────────────────────────── */}
         {prayer && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 }}
+            transition={{ duration: 0.35, delay: 0.05 }}
+            className="mb-6 rounded-xl px-4 py-4"
+            style={{ background: "rgba(212,137,106,0.06)", border: "1px solid rgba(212,137,106,0.25)" }}
           >
-            <div className="h-px w-full" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
-            <div className="pt-6">
-              <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: "#D4896A" }}>
-                Held in prayer 🙏
-              </p>
-
-              <div
-                className="border-l-[3px] pl-4 py-1"
-                style={{ borderLeftColor: "#D4896A" }}
-              >
-                <p className="text-base text-foreground leading-relaxed">
-                  {prayer.body}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {prayerDaysLeft !== null && `${prayerDaysLeft} day${prayerDaysLeft !== 1 ? "s" : ""} remaining · `}
-                  {formatDistanceToNow(parseISO(prayer.createdAt), { addSuffix: true })}
-                </p>
+            <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: "#D4896A" }}>
+              Held in prayer 🙏
+            </p>
+            <p className="text-sm leading-relaxed mb-1" style={{ color: "#F0EDE6" }}>{prayer.body}</p>
+            <p className="text-xs mb-3" style={{ color: "rgba(212,137,106,0.6)" }}>
+              {prayerDaysLeft !== null && `${prayerDaysLeft} day${prayerDaysLeft !== 1 ? "s" : ""} remaining · `}
+              {formatDistanceToNow(parseISO(prayer.createdAt), { addSuffix: true })}
+            </p>
+            {wordSent ? (
+              <p className="text-xs italic" style={{ color: "#8FAF96" }}>🌿 You left a word</p>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={prayerWord}
+                  onChange={e => setPrayerWord(e.target.value.slice(0, 120))}
+                  placeholder="Leave a word alongside this…"
+                  className="flex-1 text-sm px-3 py-2 rounded-lg border focus:outline-none transition-colors placeholder:text-muted-foreground/40"
+                  style={{ background: "rgba(0,0,0,0.2)", borderColor: "rgba(212,137,106,0.25)", color: "#F0EDE6" }}
+                />
+                <button
+                  onClick={() => {
+                    if (prayerWord.trim()) sendWordMutation.mutate({ requestId: prayer.id, content: prayerWord.trim() });
+                  }}
+                  disabled={!prayerWord.trim() || sendWordMutation.isPending}
+                  className="px-3 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-30"
+                  style={{ background: "rgba(212,137,106,0.15)", color: "#D4896A" }}
+                >
+                  🙏
+                </button>
               </div>
-
-              {/* Response input */}
-              <div className="mt-4">
-                {wordSent ? (
-                  <p className="text-sm italic" style={{ color: "#5C7A5F" }}>
-                    🌿 You left a word
-                  </p>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={prayerWord}
-                      onChange={e => setPrayerWord(e.target.value.slice(0, 120))}
-                      placeholder="Leave a word alongside this... 🌿"
-                      className="flex-1 text-sm px-3 py-2.5 rounded-lg border border-border/60 bg-background focus:outline-none focus:border-[#D4896A]/40 transition-colors placeholder:text-muted-foreground/40"
-                    />
-                    <button
-                      onClick={() => {
-                        if (prayerWord.trim()) {
-                          sendWordMutation.mutate({ requestId: prayer.id, content: prayerWord.trim() });
-                        }
-                      }}
-                      disabled={!prayerWord.trim() || sendWordMutation.isPending}
-                      className="px-3 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-30"
-                      style={{ backgroundColor: "rgba(212,137,106,0.1)", color: "#D4896A" }}
-                    >
-                      🙏
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
           </motion.div>
         )}
 
-        {/* ── Shared Practices ───────────────────────────── */}
-        {person.sharedPractices && person.sharedPractices.length > 0 && (
+        {/* ── Timeline ────────────────────────────────────────────────────── */}
+        {totalTogether === 0 ? (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
+            transition={{ duration: 0.35, delay: 0.1 }}
+            className="text-center py-12"
           >
-            <div className="h-px w-full" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
-            <div className="pt-6">
-              <p className="text-[10px] font-semibold tracking-widest uppercase mb-4" style={{ color: "#5C7A5F" }}>
-                Practices together
-              </p>
-
-              <div className="space-y-1">
-                {person.sharedPractices.map(practice => (
-                  <Link key={practice.id} href={`/moments/${practice.id}`} className="block group">
-                    <div
-                      className="flex items-center gap-4 py-3 pl-4 border-l-[3px] hover:bg-card/30 transition-colors rounded-r-lg"
-                      style={{ borderLeftColor: "#5C7A5F" }}
-                    >
-                      <span className="text-lg flex-shrink-0">{practiceEmoji(practice.templateType)}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[15px] text-foreground group-hover:text-[#5C7A5F] transition-colors truncate">
-                          {practice.name}
+            <div className="text-4xl mb-4">🌱</div>
+            <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
+              Nothing shared yet. Start something together.
+            </p>
+            <Link
+              href="/moment/new"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium"
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            >
+              + Invite {firstName} to a practice
+            </Link>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.08 }}
+          >
+            {/* Letters */}
+            {sharedLetters.length > 0 && (
+              <>
+                <SectionHeader label="Letters" />
+                <div className="space-y-3">
+                  {sharedLetters.map(c => {
+                    const isOneToOne = c.groupType === "one_to_one";
+                    const needsLetter = c.myTurn && !c.currentPeriod.hasWrittenThisPeriod;
+                    const hasUnread = c.unreadCount > 0;
+                    const statusText = c.currentPeriod.hasWrittenThisPeriod
+                      ? "Sent · awaiting reply 🌿"
+                      : c.myTurn
+                      ? "Your turn to write 🖋️"
+                      : hasUnread
+                      ? "New letter 📮"
+                      : `Letter ${c.currentPeriod.periodNumber}`;
+                    const href = needsLetter
+                      ? `/letters/${c.id}/write`
+                      : `/letters/${c.id}`;
+                    return (
+                      <BarCard
+                        key={c.id}
+                        href={href}
+                        barColor={CATEGORY.letters.bar}
+                        borderColor={CATEGORY.letters.border}
+                        pulse={needsLetter}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
+                            📮 {isOneToOne ? `Letters with ${firstName}` : c.name}
+                          </p>
+                          {c.letterCount > 0 && (
+                            <span className="text-[10px] shrink-0 mt-0.5" style={{ color: "rgba(200,212,192,0.4)" }}>
+                              {c.letterCount} letter{c.letterCount !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs mt-1" style={{ color: needsLetter ? "#C8D4C0" : "#8FAF96", fontWeight: needsLetter ? 500 : 400 }}>
+                          {statusText}
                         </p>
-                        <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                      </BarCard>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Practices */}
+            {person.sharedPractices && person.sharedPractices.length > 0 && (
+              <>
+                <SectionHeader label="Practices" />
+                <div className="space-y-3">
+                  {person.sharedPractices.map(practice => {
+                    const streakText = practice.currentStreak > 0
+                      ? `${practice.currentStreak} day streak`
+                      : practice.totalBlooms > 0
+                      ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
+                      : "Just beginning";
+                    return (
+                      <BarCard
+                        key={practice.id}
+                        href={`/moments/${practice.id}`}
+                        barColor={CATEGORY.practices.bar}
+                        borderColor={CATEGORY.practices.border}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
+                            {practiceEmoji(practice.templateType)} {practice.name}
+                          </p>
+                          {practice.currentStreak > 0 && (
+                            <span className="text-[10px] font-semibold shrink-0 mt-0.5 uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.06em" }}>
+                              {practice.currentStreak} day streak
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs mt-1 capitalize" style={{ color: "#8FAF96" }}>
                           {practice.frequency}
-                          {practice.totalBlooms > 0
-                            ? ` · ${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
-                            : " · Not yet prayed together 🌱"}
+                          {practice.currentStreak === 0 && ` · ${streakText}`}
                         </p>
-                      </div>
-                      {practice.currentStreak > 0 && (
-                        <span className="text-xs font-medium flex-shrink-0 animate-streak-glow" style={{ color: "#C17F24" }}>
-                          🔥 {practice.currentStreak}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                      </BarCard>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Gatherings */}
+            {person.sharedRituals && person.sharedRituals.length > 0 && (
+              <>
+                <SectionHeader label="Gatherings" />
+                <div className="space-y-3">
+                  {person.sharedRituals.map(({ ritual }) => {
+                    const nextText = ritual.nextMeetupDate
+                      ? `Next: ${format(parseISO(ritual.nextMeetupDate), "EEE, MMM d")}`
+                      : "No date set yet";
+                    return (
+                      <BarCard
+                        key={ritual.id}
+                        href={`/ritual/${ritual.id}`}
+                        barColor={CATEGORY.gatherings.bar}
+                        borderColor={CATEGORY.gatherings.border}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
+                            🤝 {ritual.name}
+                          </p>
+                          {ritual.status === "on_track" && (
+                            <span className="text-[10px] shrink-0 mt-0.5" style={{ color: "rgba(111,175,133,0.7)" }}>✓</span>
+                          )}
+                        </div>
+                        <p className="text-xs mt-1 capitalize" style={{ color: "#8FAF96" }}>
+                          {ritual.frequency} · {nextText}
+                        </p>
+                      </BarCard>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* CTA */}
+            <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(200,212,192,0.1)" }}>
+              <Link
+                href="/moment/new"
+                className="text-sm font-medium transition-opacity hover:opacity-70"
+                style={{ color: "#8FAF96" }}
+              >
+                + Invite {firstName} to something new 🌿
+              </Link>
             </div>
           </motion.div>
         )}
-
-        {/* ── Shared Traditions ──────────────────────────── */}
-        {person.sharedRituals && person.sharedRituals.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
-          >
-            <div className="h-px w-full" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
-            <div className="pt-6">
-              <p className="text-[10px] font-semibold tracking-widest uppercase mb-4" style={{ color: "#C17F24" }}>
-                Traditions together
-              </p>
-
-              <div className="space-y-1">
-                {person.sharedRituals.map(({ ritual }) => (
-                  <Link key={ritual.id} href={`/ritual/${ritual.id}`} className="block group">
-                    <div
-                      className="flex items-center gap-4 py-3 pl-4 border-l-[3px] hover:bg-card/30 transition-colors rounded-r-lg"
-                      style={{ borderLeftColor: "#C17F24" }}
-                    >
-                      <span className="text-lg flex-shrink-0">🌱</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[15px] text-foreground group-hover:text-[#C17F24] transition-colors truncate">
-                          {ritual.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground capitalize mt-0.5">
-                          {ritual.frequency}
-                          {ritual.nextMeetupDate
-                            ? ` · Next: ${format(parseISO(ritual.nextMeetupDate), "EEEE, MMMM d")}`
-                            : " · No upcoming date set 🌱"}
-                        </p>
-                      </div>
-                      {ritual.status === "on_track" && (
-                        <span className="text-xs flex-shrink-0" style={{ color: "#5C7A5F" }}>
-                          ✓ On track
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Bottom action ──────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
-          <div className="h-px w-full mb-6" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
-          <Link
-            href="/moment/new"
-            className="text-[14px] font-medium transition-opacity hover:opacity-70"
-            style={{ color: "#5C7A5F" }}
-          >
-            + Invite {firstName} to something new 🌿
-          </Link>
-        </motion.div>
       </div>
     </Layout>
   );
