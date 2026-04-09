@@ -68,6 +68,8 @@ import PrayerListPage from "./pages/prayer-list";
 import SettingsPage from "./pages/settings";
 import AboutPage from "./pages/about";
 import InvitationsPage from "./pages/invitations";
+import BcpPage from "./pages/bcp";
+import BcpIntercessionsPage from "./pages/bcp-intercessions";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -109,6 +111,8 @@ function Router() {
       <Route path="/settings" component={SettingsPage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/invitations" component={InvitationsPage} />
+      <Route path="/bcp" component={BcpPage} />
+      <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route component={NotFound} />
     </Switch>

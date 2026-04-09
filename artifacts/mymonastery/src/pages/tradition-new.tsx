@@ -361,93 +361,112 @@ export default function TraditionNew() {
           {/* Step 4 — When */}
           {step === 4 && (
             <motion.div key="s4" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <div
-                className="rounded-2xl p-6"
-                style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}
-              >
-                <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  When will you first gather? 🌿
-                </h1>
-                <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-                  Pick your first choice and two alternates. Your group will say which works best.
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                When will you first gather? 🌿
+              </h1>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
+                Pick your first choice and two alternates. Your group will say which works best.
+              </p>
+
+              {/* First Pick */}
+              <div className="mb-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C8D4C0" }}>
+                  First Pick
                 </p>
-
-                {/* First Pick */}
-                <div className="mb-6">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C8D4C0" }}>
-                    First Pick
-                  </p>
-                  <div className="relative">
-                    <input
-                      type="datetime-local"
-                      value={firstPick}
-                      onChange={(e) => setFirstPick(e.target.value)}
-                      className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                      style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: firstPick ? "#F0EDE6" : "transparent" }}
-                    />
-                    {!firstPick && (
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none" style={{ color: "#8FAF96" }}>
-                        Pick a date and time
-                      </span>
-                    )}
-                  </div>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={firstPick ? firstPick.split("T")[0] : ""}
+                    onChange={(e) => {
+                      const time = firstPick ? firstPick.split("T")[1] || "12:00" : "12:00";
+                      setFirstPick(e.target.value ? `${e.target.value}T${time}` : "");
+                    }}
+                    className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
+                  />
+                  <input
+                    type="time"
+                    value={firstPick ? firstPick.split("T")[1] || "" : ""}
+                    onChange={(e) => {
+                      const date = firstPick ? firstPick.split("T")[0] : "";
+                      if (date) setFirstPick(`${date}T${e.target.value}`);
+                    }}
+                    className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
+                  />
                 </div>
+              </div>
 
-                {/* First Alternative */}
-                <div className="mb-6">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
-                    First Alternative
-                  </p>
-                  <div className="relative">
-                    <input
-                      type="datetime-local"
-                      value={altTime1}
-                      onChange={(e) => setAltTime1(e.target.value)}
-                      className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                      style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: altTime1 ? "#F0EDE6" : "transparent" }}
-                    />
-                    {!altTime1 && (
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none" style={{ color: "rgba(143,175,150,0.5)" }}>
-                        Optional alternative
-                      </span>
-                    )}
-                  </div>
+              {/* First Alternative */}
+              <div className="mb-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
+                  First Alternative
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={altTime1 ? altTime1.split("T")[0] : ""}
+                    onChange={(e) => {
+                      const time = altTime1 ? altTime1.split("T")[1] || "12:00" : "12:00";
+                      setAltTime1(e.target.value ? `${e.target.value}T${time}` : "");
+                    }}
+                    placeholder="Optional"
+                    className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.18)", color: "#F0EDE6", colorScheme: "dark" }}
+                  />
+                  <input
+                    type="time"
+                    value={altTime1 ? altTime1.split("T")[1] || "" : ""}
+                    onChange={(e) => {
+                      const date = altTime1 ? altTime1.split("T")[0] : "";
+                      if (date) setAltTime1(`${date}T${e.target.value}`);
+                    }}
+                    className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.18)", color: "#F0EDE6", colorScheme: "dark" }}
+                  />
                 </div>
+              </div>
 
-                {/* Second Alternative */}
-                <div className="mb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
-                    Second Alternative
-                  </p>
-                  <div className="relative">
-                    <input
-                      type="datetime-local"
-                      value={altTime2}
-                      onChange={(e) => setAltTime2(e.target.value)}
-                      className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                      style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: altTime2 ? "#F0EDE6" : "transparent" }}
-                    />
-                    {!altTime2 && (
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base pointer-events-none" style={{ color: "rgba(143,175,150,0.5)" }}>
-                        Optional alternative
-                      </span>
-                    )}
-                  </div>
+              {/* Second Alternative */}
+              <div className="mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
+                  Second Alternative
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={altTime2 ? altTime2.split("T")[0] : ""}
+                    onChange={(e) => {
+                      const time = altTime2 ? altTime2.split("T")[1] || "12:00" : "12:00";
+                      setAltTime2(e.target.value ? `${e.target.value}T${time}` : "");
+                    }}
+                    placeholder="Optional"
+                    className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.18)", color: "#F0EDE6", colorScheme: "dark" }}
+                  />
+                  <input
+                    type="time"
+                    value={altTime2 ? altTime2.split("T")[1] || "" : ""}
+                    onChange={(e) => {
+                      const date = altTime2 ? altTime2.split("T")[0] : "";
+                      if (date) setAltTime2(`${date}T${e.target.value}`);
+                    }}
+                    className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.18)", color: "#F0EDE6", colorScheme: "dark" }}
+                  />
                 </div>
               </div>
 
               {error && <p className="text-sm mt-4 mb-2" style={{ color: "#C47A65" }}>{error}</p>}
 
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={handleCreate}
-                  disabled={!firstPick || submitting}
-                  className="px-10 py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                >
-                  {submitting ? "Starting..." : "Continue →"}
-                </button>
-              </div>
+              <button
+                onClick={handleCreate}
+                disabled={!firstPick || submitting}
+                className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                {submitting ? "Starting..." : "Continue →"}
+              </button>
             </motion.div>
           )}
 

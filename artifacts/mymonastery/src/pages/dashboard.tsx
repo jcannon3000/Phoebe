@@ -65,9 +65,9 @@ const CATEGORY_COLORS: Record<Category, {
   barPulseClass: string;
 }> = {
   letters: {
-    bar: "#1D5232",
-    border: "rgba(29,82,50,0.4)",
-    bg: "rgba(29,82,50,0.18)",
+    bar: "#14402A",
+    border: "rgba(20,64,42,0.5)",
+    bg: "rgba(20,64,42,0.25)",
     pulseClass: "animate-turn-pulse-letters",
     barPulseClass: "animate-bar-pulse-letters",
   },
@@ -397,42 +397,47 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; badge?: string }) {
   const next = r.nextMeetupDate ? parseISO(r.nextMeetupDate) : null;
   const rhythm = r.rhythm as string | undefined;
-  const rhythmLabel = rhythm === "weekly" ? "weekly tradition"
-    : rhythm === "biweekly" || rhythm === "fortnightly" ? "biweekly tradition"
-    : rhythm === "monthly" ? "monthly tradition"
-    : r.frequency ? `${r.frequency} tradition` : "recurring tradition";
+  const rhythmLabel = rhythm === "weekly" ? "Weekly tradition"
+    : rhythm === "biweekly" || rhythm === "fortnightly" ? "Biweekly tradition"
+    : rhythm === "monthly" ? "Monthly tradition"
+    : rhythm === "one-time" ? "One-time gathering"
+    : r.frequency ? `${r.frequency} tradition` : "Recurring tradition";
   const participants: Array<any> = r.participants ?? [];
   const gatheringEmoji = r.intercessionIntention ? "🙏" : r.fastingDescription ? "✦" : "🤝";
 
+  // Check confirmation status — if 2+ participants haven't confirmed
+  const unconfirmed = participants.filter((p: any) => p.status === "pending" || p.status === "invited");
+  const waitingForConfirmation = unconfirmed.length >= 2;
+
   return (
     <BarCard key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} pulse={false} category="gatherings">
-      <div className="flex items-start justify-between gap-2 mb-1">
+      <div className="flex items-start justify-between gap-2">
         <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{gatheringEmoji} {r.name}</span>
-        {badge ? (
-          <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "rgba(45,94,63,0.4)", color: "#A8C5A0", border: "1px solid rgba(168,197,160,0.3)" }}>
-            {badge}
-          </span>
-        ) : (
-          <span className="text-[11px] shrink-0" style={{ color: "#8FAF96" }}>{rhythmLabel}</span>
+        <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+          {rhythmLabel}
+        </span>
+      </div>
+      <div className="mt-1.5">
+        {next ? (
+          <p className="text-sm" style={{ color: "#8FAF96" }}>
+            {nextDayLabel(next)} · {format(next, "h:mm a")}
+          </p>
+        ) : waitingForConfirmation ? (
+          <p className="text-sm" style={{ color: "rgba(143,175,150,0.7)" }}>
+            Waiting for confirmation
+          </p>
+        ) : null}
+        {r.location && (
+          <p className="text-xs mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+            📍 {r.location}
+          </p>
         )}
       </div>
       {participants.length > 0 && (
-        <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>
+        <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
           with {participants.slice(0, 3).map((p: any) => (p.name || p.email || "").split(" ")[0]).join(", ")}
           {participants.length > 3 && ` +${participants.length - 3}`}
         </p>
-      )}
-      {next && (
-        <p className="text-sm" style={{ color: "#8FAF96" }}>
-          {badge ? format(next, "h:mm a") : `${nextDayLabel(next)} · ${format(next, "h:mm a")}`}
-          {r.location && <> · {r.location}</>}
-        </p>
-      )}
-      {r.intercessionIntention && r.intercessionIntention.trim().toLowerCase() !== (r.name ?? "").trim().toLowerCase() && (
-        <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>🙏 Praying for {r.intercessionIntention}</p>
-      )}
-      {r.fastingDescription && (
-        <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>🌿 Fasting together</p>
       )}
     </BarCard>
   );
@@ -595,12 +600,13 @@ export default function Dashboard() {
           </p>
           {(() => {
             const PILLS = [
-              { label: "📮 Letters",      href: "/letters",      fg: "#3A8A50", bg: "rgba(29,82,50,0.15)",    border: "rgba(29,82,50,0.3)"    },
+              { label: "📮 Letters",      href: "/letters",      fg: "#3A7A48", bg: "rgba(29,82,50,0.15)",    border: "rgba(29,82,50,0.3)"    },
               { label: "🙏 Practices",    href: "/practices",    fg: "#4A9E5C", bg: "rgba(46,107,64,0.15)",   border: "rgba(46,107,64,0.3)"   },
               { label: "🤝 Gatherings",   href: "/gatherings",   fg: "#6FAF85", bg: "rgba(111,175,133,0.15)", border: "rgba(111,175,133,0.3)" },
-              { label: "👥 People",       href: "/people",       fg: "#4E9B8F", bg: "rgba(78,155,143,0.15)",  border: "rgba(78,155,143,0.3)"  },
-              { label: "🏘️ Communities",  href: "/gatherings",   fg: "#C17F24", bg: "rgba(193,127,36,0.15)",  border: "rgba(193,127,36,0.3)"  },
-              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#9B8AC1", bg: "rgba(155,138,193,0.15)", border: "rgba(155,138,193,0.3)" },
+              { label: "👥 People",       href: "/people",       fg: "#5CAE80", bg: "rgba(92,174,128,0.15)",  border: "rgba(92,174,128,0.3)"  },
+              { label: "🏘️ Communities",  href: "/gatherings",   fg: "#82C4A0", bg: "rgba(130,196,160,0.15)", border: "rgba(130,196,160,0.3)" },
+              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#3D8B6A", bg: "rgba(61,139,106,0.15)",  border: "rgba(61,139,106,0.3)"  },
+              { label: "📖 BCP",          href: "/bcp",          fg: "#8BAE6E", bg: "rgba(139,174,110,0.15)", border: "rgba(139,174,110,0.3)" },
             ];
             const pillStyle = (p: typeof PILLS[0]) => ({
               background: p.bg, color: p.fg, border: `1px solid ${p.border}`,

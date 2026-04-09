@@ -388,11 +388,8 @@ function IntercessionPrayerPage({
 
         {/* Amen / state section */}
         {alreadyPosted && confirmStep === "prayer" ? (
-          /* Already prayed today — full prayer always readable, no Amen button */
+          /* Already prayed today — full prayer always readable, Amen button in fixed bar below */
           <div className="text-center py-6">
-            <p className="font-medium text-base mb-3" style={{ fontFamily: "Space Grotesk, sans-serif", color: "rgba(200,230,210,0.8)" }}>
-              🙏 You prayed this today.
-            </p>
             <button onClick={onBack} className="text-sm transition-colors" style={{ color: "rgba(200,230,210,0.5)" }}>
               ← Back to practice
             </button>
@@ -432,8 +429,8 @@ function IntercessionPrayerPage({
         )}
       </div>
 
-      {/* Fixed bottom Amen button */}
-      {canPray && !alreadyPosted && confirmStep === "prayer" && (
+      {/* Fixed bottom Amen button — always visible when on prayer screen */}
+      {confirmStep === "prayer" && (
         <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ backgroundColor: "#1C3527", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="max-w-md mx-auto py-4">
             {postFailed && (
@@ -441,19 +438,35 @@ function IntercessionPrayerPage({
                 Couldn't save — check your connection and try again.
               </p>
             )}
-            <motion.button
-              onClick={handleAmen}
-              disabled={isPraying}
-              animate={amenPulse && !postFailed ? { backgroundColor: ["#F0EDE6", "#c9b99a", "#F0EDE6"] } : { backgroundColor: "#F0EDE6" }}
-              transition={{ duration: 0.3 }}
-              className="w-full py-5 rounded-2xl text-lg font-bold hover:opacity-90 disabled:opacity-40"
-              style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527" }}
-            >
-              {isPraying ? "Marking…" : postFailed ? "Try again 🙏" : "Amen 🙏"}
-            </motion.button>
-            <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
-              Tapping Amen marks that you have prayed this together.
-            </p>
+            {alreadyPosted ? (
+              <>
+                <div
+                  className="w-full py-5 rounded-2xl text-lg font-bold text-center"
+                  style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527", background: "rgba(240,237,230,0.4)" }}
+                >
+                  Amen 🙏
+                </div>
+                <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
+                  You prayed this today.
+                </p>
+              </>
+            ) : canPray ? (
+              <>
+                <motion.button
+                  onClick={handleAmen}
+                  disabled={isPraying}
+                  animate={amenPulse && !postFailed ? { backgroundColor: ["#F0EDE6", "#c9b99a", "#F0EDE6"] } : { backgroundColor: "#F0EDE6" }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full py-5 rounded-2xl text-lg font-bold hover:opacity-90 disabled:opacity-40"
+                  style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527" }}
+                >
+                  {isPraying ? "Marking…" : postFailed ? "Try again 🙏" : "Amen 🙏"}
+                </motion.button>
+                <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
+                  Tapping Amen marks that you have prayed this together.
+                </p>
+              </>
+            ) : null}
           </div>
         </div>
       )}
