@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { findBcpPrayer } from "@/lib/bcp-prayers";
 
 const CLOSING_COLLECT =
   "Keep watch, dear Lord, with those who work, or watch, or weep this night, and give thine angels charge over those who sleep. Tend the sick, Lord Christ; give rest to the weary, bless the dying, soothe the suffering, pity the afflicted, shield the joyous; and all for thy love's sake.";
@@ -7,6 +8,80 @@ interface PrayerSlide {
   kind: "intercession" | "request";
   text: string;
   attribution: string;
+}
+
+function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () => void }) {
+  const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
+
+  return (
+    <div className="w-full flex flex-col items-center text-center gap-5">
+      {/* Kind label */}
+      <p
+        className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+        style={{ color: "rgba(143,175,150,0.45)" }}
+      >
+        {slide.kind === "intercession" ? "Your Intercession" : "Prayer Request"}
+      </p>
+
+      {/* Topic / intention title */}
+      <p
+        className="text-[22px] leading-[1.5] font-medium italic"
+        style={{
+          color: "#E8E4D8",
+          fontFamily: "Playfair Display, Georgia, serif",
+        }}
+      >
+        {slide.text}
+      </p>
+
+      {/* Attribution */}
+      {slide.attribution && (
+        <p className="text-sm" style={{ color: "#8FAF96" }}>
+          {slide.attribution}
+        </p>
+      )}
+
+      {/* BCP prayer text card */}
+      {bcpPrayer && (
+        <div
+          className="w-full rounded-2xl px-6 py-5 text-left mt-1"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(200,212,192,0.1)",
+          }}
+        >
+          <p
+            className="text-[13px] leading-[1.85] italic"
+            style={{
+              color: "#C8D4C0",
+              fontFamily: "Playfair Display, Georgia, serif",
+            }}
+          >
+            {bcpPrayer.text}
+          </p>
+          <p
+            className="text-[9px] uppercase tracking-[0.14em] mt-3"
+            style={{ color: "rgba(143,175,150,0.3)" }}
+          >
+            Book of Common Prayer
+          </p>
+        </div>
+      )}
+
+      {/* Amen button */}
+      <button
+        onClick={onAdvance}
+        className="mt-4 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-80 active:scale-[0.98]"
+        style={{
+          background: "rgba(46,107,64,0.28)",
+          border: "1px solid rgba(46,107,64,0.5)",
+          color: "#C8D4C0",
+        }}
+      >
+        Amen →
+      </button>
+    </div>
+  );
 }
 
 interface PrayerModeProps {
@@ -82,50 +157,14 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
       <div className="flex-1 flex flex-col items-center justify-center px-8 w-full" style={{ maxWidth: 560, margin: "0 auto" }}>
         {phase === "prayer" && slide && (
           <div
-            className="w-full flex flex-col items-center text-center gap-6"
+            className="w-full overflow-y-auto"
             style={{
               opacity: slideVisible ? 1 : 0,
               transition: "opacity 0.22s ease",
+              maxHeight: "calc(100vh - 140px)",
             }}
           >
-            {/* Kind label */}
-            <p
-              className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-              style={{ color: "rgba(143,175,150,0.45)" }}
-            >
-              {slide.kind === "intercession" ? "Your Intercession" : "Prayer Request"}
-            </p>
-
-            {/* Prayer text */}
-            <p
-              className="text-[22px] leading-[1.7] font-medium italic"
-              style={{
-                color: "#E8E4D8",
-                fontFamily: "Playfair Display, Georgia, serif",
-              }}
-            >
-              {slide.text}
-            </p>
-
-            {/* Attribution */}
-            {slide.attribution && (
-              <p className="text-sm" style={{ color: "#8FAF96" }}>
-                {slide.attribution}
-              </p>
-            )}
-
-            {/* Amen button */}
-            <button
-              onClick={advance}
-              className="mt-6 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-80 active:scale-[0.98]"
-              style={{
-                background: "rgba(46,107,64,0.28)",
-                border: "1px solid rgba(46,107,64,0.5)",
-                color: "#C8D4C0",
-              }}
-            >
-              Amen →
-            </button>
+            <SlideContent slide={slide} onAdvance={advance} />
           </div>
         )}
 
