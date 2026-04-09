@@ -130,9 +130,9 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
         className="relative cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99] transition-transform"
         style={{
           backgroundColor: "#0F2818",
-          border: `1px solid rgba(200,212,192,${unread ? "0.35" : "0.2"})`,
+          border: `1px solid ${unread ? "rgba(196,75,79,0.4)" : "rgba(200,212,192,0.2)"}`,
           borderRadius: "12px",
-          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#5C7A5F" : "rgba(200,212,192,0.2)"}`,
+          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#C44B4F" : "rgba(196,75,79,0.25)"}`,
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
           padding: "16px 20px",
           marginBottom: "12px",

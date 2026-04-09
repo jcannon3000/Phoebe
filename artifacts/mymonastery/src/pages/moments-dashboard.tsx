@@ -143,20 +143,22 @@ function MomentCard({ moment }: { moment: MomentData }) {
           moment.windowOpen
             ? isBcp
               ? isMorning
-                ? "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.15)] bg-[#FDFCF8]"
-                : "border-[#7B9EBE]/60 shadow-[0_0_18px_rgba(123,158,190,0.15)] bg-[#FDFCF8]"
+                ? "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
+                : "border-[#4A7FB5]/60 shadow-[0_0_18px_rgba(74,127,181,0.18)]"
               : isSpiritual
-                ? "border-[#5C7A5F]/60 shadow-[0_0_18px_rgba(92,122,95,0.18)] bg-[#FDFCF8]"
-                : "border-amber-400/60 shadow-[0_0_18px_rgba(193,127,36,0.18)] bg-[#FDFCF8]"
-            : "border-[#c9b99a]/40 bg-[#FDFCF8] hover:shadow-md"
-        }`}>
+                ? "border-[#4A7FB5]/60 shadow-[0_0_18px_rgba(74,127,181,0.18)]"
+                : "border-[#4A7FB5]/60 shadow-[0_0_18px_rgba(74,127,181,0.18)]"
+            : "border-[rgba(74,127,181,0.25)] hover:shadow-md"
+        }`}
+        style={{ background: "#0F2818" }}
+      >
         {/* Left accent bar */}
         <div className={`w-1.5 flex-shrink-0 ${
           moment.windowOpen
             ? isBcp
-              ? isMorning ? "bg-[#C8975A] animate-pulse" : "bg-[#7B9EBE] animate-pulse"
-              : isSpiritual ? "bg-[#5C7A5F] animate-pulse" : "bg-amber-400 animate-pulse"
-            : isBcp ? (isMorning ? "bg-[#C8975A]" : "bg-[#7B9EBE]") : "bg-[#5C7A5F]"
+              ? isMorning ? "bg-[#C8975A] animate-pulse" : "bg-[#4A7FB5] animate-pulse"
+              : "bg-[#4A7FB5] animate-pulse"
+            : isBcp ? (isMorning ? "bg-[#C8975A]" : "bg-[#4A7FB5]") : "bg-[#4A7FB5]"
         }`} />
 
         <div className="flex-1 p-4">
@@ -165,77 +167,77 @@ function MomentCard({ moment }: { moment: MomentData }) {
             <span className="text-xl leading-none mt-0.5">{templateEmoji}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-base font-semibold text-[#2C1A0E] leading-snug">{moment.name}</span>
+                <span className="text-base font-semibold leading-snug" style={{ color: "#F0EDE6" }}>{moment.name}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {isBcp && (
-                    <span className="text-[10px] font-semibold text-[#5C7A5F] bg-[#5C7A5F]/10 border border-[#5C7A5F]/20 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: "#4A7FB5", background: "rgba(74,127,181,0.12)", border: "1px solid rgba(74,127,181,0.25)" }}>
                       Daily Office
                     </span>
                   )}
                   {moment.windowOpen && (
                     isBcp ? (
-                      <span className={`text-[11px] font-bold uppercase tracking-wide ${isMorning ? "text-[#C8975A]" : "text-[#7B9EBE]"}`}>
+                      <span className={`text-[11px] font-bold uppercase tracking-wide ${isMorning ? "text-[#C8975A]" : "text-[#4A7FB5]"}`}>
                         {isMorning ? "Morning 🌅" : "Evening 🌙"}
                       </span>
                     ) : isSpiritual ? (
-                      <span className="text-[11px] font-bold text-[#5C7A5F] uppercase tracking-wide">
+                      <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#4A7FB5" }}>
                         Practice day 🌿
                       </span>
                     ) : (
-                      <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wide animate-pulse">
+                      <span className="text-[11px] font-bold uppercase tracking-wide animate-pulse" style={{ color: "#4A7FB5" }}>
                         Open now
                       </span>
                     )
                   )}
                 </div>
               </div>
-              <p className="text-xs text-[#6b5c4a]/70 mt-0.5">with {memberNames}{extraMembers}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>with {memberNames}{extraMembers}</p>
             </div>
           </div>
 
           {/* BCP page reference */}
           {isBcp && (
-            <p className="text-xs text-[#6b5c4a]/70 font-medium mb-1.5">
+            <p className="text-xs font-medium mb-1.5" style={{ color: "#8FAF96" }}>
               📖 Page {bcpPage} · {isMorning ? "Morning Prayer Rite II" : "Evening Prayer Rite II"}
             </p>
           )}
 
           {/* Intention (skip for BCP — page ref is more useful) */}
           {!isBcp && moment.templateType === "listening" && moment.listeningTitle ? (
-            <p className="text-sm text-[#4a6b50] mb-2 line-clamp-1">
+            <p className="text-sm mb-2 line-clamp-1" style={{ color: "#A8C5A0" }}>
               {moment.listeningTitle}{moment.listeningArtist ? ` · ${moment.listeningArtist}` : ""}
             </p>
           ) : !isBcp && (
-            <p className="text-sm italic text-[#6b5c4a]/80 font-serif mb-2 line-clamp-1">"{moment.intention}"</p>
+            <p className="text-sm italic font-serif mb-2 line-clamp-1" style={{ color: "rgba(240,237,230,0.65)" }}>"{moment.intention}"</p>
           )}
 
           {/* Time info */}
           {moment.windowOpen ? (
             isBcp ? (
-              <p className="text-sm font-medium mb-2" style={{ color: isMorning ? "#C8975A" : "#7B9EBE" }}>
+              <p className="text-sm font-medium mb-2" style={{ color: isMorning ? "#C8975A" : "#4A7FB5" }}>
                 {moment.todayPostCount} of {moment.memberCount} prayed today
               </p>
             ) : moment.templateType === "listening" ? (
-              <p className="text-sm text-[#4a6b50] mb-2 line-clamp-2">
+              <p className="text-sm mb-2 line-clamp-2" style={{ color: "#A8C5A0" }}>
                 A {moment.frequency === "daily" ? "daily" : "weekly"} practice of listening to{" "}
                 <span className="font-medium">{moment.listeningTitle ?? moment.listeningArtist ?? "music"}</span> together
               </p>
             ) : isSpiritual ? (
-              <p className="text-sm text-[#5C7A5F] font-medium mb-2">
+              <p className="text-sm font-medium mb-2" style={{ color: "#4A7FB5" }}>
                 {moment.todayPostCount} of {moment.memberCount} practiced today
               </p>
             ) : (
-              <p className="text-sm text-amber-700 font-medium mb-2">
+              <p className="text-sm font-medium mb-2" style={{ color: "#4A7FB5" }}>
                 {moment.minutesLeft} min left · {moment.todayPostCount} of {moment.memberCount} posted
               </p>
             )
           ) : moment.templateType === "listening" ? (
-            <p className="text-sm text-[#4a6b50] mb-2 line-clamp-2">
+            <p className="text-sm mb-2 line-clamp-2" style={{ color: "#A8C5A0" }}>
               A {moment.frequency === "daily" ? "daily" : "weekly"} practice of listening to{" "}
               <span className="font-medium">{moment.listeningTitle ?? moment.listeningArtist ?? "music"}</span> together
             </p>
           ) : (
-            <p className="text-xs text-[#6b5c4a]/60 mb-2">
+            <p className="text-xs mb-2" style={{ color: "rgba(143,175,150,0.7)" }}>
               {isBcp || isSpiritual
                 ? nextWindow ? `Next practice: ${format(nextWindow, "EEE")}` : scheduleLabel(moment)
                 : nextWindow ? `Next: ${format(nextWindow, "EEE h:mm a")}` : scheduleLabel(moment)
@@ -247,27 +249,27 @@ function MomentCard({ moment }: { moment: MomentData }) {
           {isBcp ? (
             <div className="flex items-center gap-3">
               {moment.currentStreak > 0 && (
-                <span className="text-[11px] text-[#6b5c4a]/70">
+                <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)" }}>
                   🌿 {bcpWeeksLabel(moment.currentStreak)}
                 </span>
               )}
               {moment.todayPostCount > 0 && moment.memberCount > 1 && (
-                <span className="text-[11px] text-[#5C7A5F]/80">
+                <span className="text-[11px]" style={{ color: "rgba(74,127,181,0.8)" }}>
                   · {moment.todayPostCount} of {moment.memberCount} this week
                 </span>
               )}
             </div>
           ) : hasGoal ? (
             <div className="mt-1">
-              <span className="text-[11px] text-[#6b5c4a]/80">{mLabel}</span>
-              <div className="mt-1 w-full h-0.5 bg-[#c9b99a]/30 rounded-full overflow-hidden">
-                <div className="h-full bg-[#5C7A5F] rounded-full transition-all"
-                  style={{ width: `${Math.round(mProgress * 100)}%` }} />
+              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.8)" }}>{mLabel}</span>
+              <div className="mt-1 w-full h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(74,127,181,0.2)" }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${Math.round(mProgress * 100)}%`, background: "#4A7FB5" }} />
               </div>
             </div>
           ) : (
             moment.currentStreak > 0 && (
-              <span className="text-[11px] text-[#6b5c4a]/70">🌿 {moment.currentStreak} in a row</span>
+              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)" }}>🌿 {moment.currentStreak} in a row</span>
             )
           )}
         </div>
