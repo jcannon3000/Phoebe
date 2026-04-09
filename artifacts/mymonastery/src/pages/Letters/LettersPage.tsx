@@ -58,7 +58,32 @@ function formatShortDate(dateStr: string): string {
   return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 
-function PostmarkStamp({ city, date, rotation = -8 }: { city: string; date: string; rotation?: number }) {
+const STATE_ABBR: Record<string, string> = {
+  Alabama:"AL",Alaska:"AK",Arizona:"AZ",Arkansas:"AR",California:"CA",Colorado:"CO",
+  Connecticut:"CT",Delaware:"DE",Florida:"FL",Georgia:"GA",Hawaii:"HI",Idaho:"ID",
+  Illinois:"IL",Indiana:"IN",Iowa:"IA",Kansas:"KS",Kentucky:"KY",Louisiana:"LA",
+  Maine:"ME",Maryland:"MD",Massachusetts:"MA",Michigan:"MI",Minnesota:"MN",
+  Mississippi:"MS",Missouri:"MO",Montana:"MT",Nebraska:"NE",Nevada:"NV",
+  "New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY",
+  "North Carolina":"NC","North Dakota":"ND",Ohio:"OH",Oklahoma:"OK",Oregon:"OR",
+  Pennsylvania:"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD",
+  Tennessee:"TN",Texas:"TX",Utah:"UT",Vermont:"VT",Virginia:"VA",Washington:"WA",
+  "West Virginia":"WV",Wisconsin:"WI",Wyoming:"WY","District of Columbia":"DC",
+};
+
+function parsePostmark(raw: string): { city: string; state: string } {
+  // Expected format: "City, State ZIP" or "City, ST ZIP"
+  const match = raw.match(/^(.+?),\s*([^,\d]+?)\s*(\d{5}(-\d{4})?)?$/);
+  if (!match) return { city: raw, state: "" };
+  const city = match[1].trim();
+  const stateRaw = match[2].trim();
+  const state = STATE_ABBR[stateRaw] ?? stateRaw.slice(0, 2).toUpperCase();
+  return { city, state };
+}
+
+function PostmarkStamp({ cityRaw, date, rotation = -8 }: { cityRaw: string; date: string; rotation?: number }) {
+  const { city, state } = parsePostmark(cityRaw);
+  const label = state ? `${city}, ${state}` : city;
   return (
     <div
       className="inline-flex flex-col items-center justify-center flex-shrink-0"
@@ -74,7 +99,7 @@ function PostmarkStamp({ city, date, rotation = -8 }: { city: string; date: stri
         className="font-semibold uppercase"
         style={{ color: "#C8D4C0", fontSize: "9px", letterSpacing: "0.08em", lineHeight: 1.2 }}
       >
-        {city}
+        {label}
       </span>
       <span style={{ color: "#8FAF96", fontSize: "8px", lineHeight: 1.2 }}>
         {formatShortDate(date)}
@@ -116,7 +141,7 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
         {/* Postmark stamps */}
         {isOneToOne && lastPostmark?.city && (
           <div className="absolute top-3 right-3">
-            <PostmarkStamp city={lastPostmark.city} date={lastPostmark.sentAt} />
+            <PostmarkStamp cityRaw={lastPostmark.city} date={lastPostmark.sentAt} />
           </div>
         )}
 
