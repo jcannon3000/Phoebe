@@ -324,18 +324,6 @@ const TEMPLATES = [
     },
   },
   {
-    id: "listening", emoji: "🎵", name: "Listening Together",
-    desc: "Commit to the same song, album, or artist on the same day",
-    prefill: {
-      name: "Listening Together 🎵",
-      intention: "We listen to the same thing, on the same day — knowing the other is too.",
-      loggingType: "checkin" as LoggingType,
-      reflectionPrompt: "",
-      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
-      frequency: "daily" as Frequency,
-    },
-  },
-  {
     id: "custom", emoji: "🌱", name: "Create your own",
     desc: "Build your own practice from scratch",
     prefill: null,
