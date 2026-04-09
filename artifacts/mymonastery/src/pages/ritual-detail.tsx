@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRoute, useLocation, Link } from "wouter";
-import { format, parseISO, formatDistanceToNow, isPast } from "date-fns";
+import { format, parseISO, formatDistanceToNow, isPast, addDays, differenceInDays, isFuture } from "date-fns";
 import { CheckCircle2, XCircle, Settings, Sprout, CalendarCheck, RefreshCw, Flower2, Plus, UserPlus, X, Copy, Link2, Calendar } from "lucide-react";
 import { clsx } from "clsx";
 import {
@@ -348,6 +348,21 @@ export default function RitualDetail() {
   const upcomingDate = timeline?.upcoming ? new Date(timeline.upcoming.scheduledDate) : null;
   const upcomingIsPast = upcomingDate ? isPast(upcomingDate) : false;
 
+  // ── Rhythm health ────────────────────────────────────────────────────────────
+  const lastCompletedMeetup = timeline?.past.find(m => m.status === "completed") ?? null;
+  const rhythmDays = ritual.frequency === "biweekly" ? 14 : ritual.frequency === "monthly" ? 30 : 7;
+  const nextDueDate = lastCompletedMeetup
+    ? addDays(parseISO(lastCompletedMeetup.scheduledDate), rhythmDays)
+    : null;
+  const daysUntilDue = nextDueDate ? differenceInDays(nextDueDate, new Date()) : null;
+  const isRhythmOverdue = daysUntilDue !== null && daysUntilDue < 0;
+  // Dots: up to 5 past cycles + 1 upcoming slot
+  const pastDots = (timeline?.past ?? []).slice(0, 5).map(m =>
+    m.status === "completed" ? "completed" as const : "missed" as const
+  );
+  const rhythmDots: ("completed" | "missed" | "upcoming")[] =
+    [...pastDots, "upcoming" as const].slice(0, 6);
+
   return (
     <Layout>
       <div className="max-w-3xl mx-auto w-full pb-16">
@@ -356,27 +371,25 @@ export default function RitualDetail() {
         <div className="rounded-2xl p-5 md:p-6 mb-5" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              {/* Status pills */}
+              {/* Rhythm + since */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium" style={{ background: "rgba(200,212,192,0.1)", color: "#C8D4C0" }}>
-                  <Sprout size={12} />
-                  {statusMeta.label || "Just planted"}
+                <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ border: "1px solid rgba(200,212,192,0.2)", color: "#8FAF96" }}>
+                  {ritual.frequency === "biweekly" ? "Biweekly" : ritual.frequency.charAt(0).toUpperCase() + ritual.frequency.slice(1)}
                 </span>
-                <span className="capitalize text-xs font-medium px-3 py-1 rounded-full" style={{ border: "1px solid rgba(200,212,192,0.25)", color: "#8FAF96" }}>
-                  {ritual.frequency}
-                </span>
+                {(ritual as any).createdAt && (
+                  <span className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
+                    Together since {format(parseISO((ritual as any).createdAt), "MMMM yyyy")}
+                  </span>
+                )}
               </div>
 
               <h1 className="font-bold leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "26px", color: "#F0EDE6" }}>{ritual.name}</h1>
-              <p className="mt-2 flex items-center gap-1.5 flex-wrap" style={{ fontSize: "13px", color: "#8FAF96" }}>
-                <span className="capitalize">{ritual.frequency}</span>
-                {ritual.dayPreference && (
-                  <><span>·</span><span>{ritual.dayPreference}</span></>
-                )}
-                {timeline?.location && (
-                  <><span>·</span><span>📍 {timeline.location}</span></>
-                )}
-              </p>
+              {ritual.intention && (
+                <p className="mt-1.5 text-sm italic" style={{ color: "#8FAF96", maxWidth: "340px" }}>{ritual.intention}</p>
+              )}
+              {timeline?.location && (
+                <p className="mt-2 text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>📍 {timeline.location}</p>
+              )}
             </div>
 
             {/* Member avatars + Add people */}
@@ -421,9 +434,8 @@ export default function RitualDetail() {
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-full mb-5" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
           {[
-            { id: "timeline", label: "📅 Timeline" },
-            { id: "moments", label: "🌿 Moments" },
-            { id: "settings", label: "⚙️ Settings" },
+            { id: "timeline", label: "🤝 Gatherings" },
+            { id: "settings", label: "About" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -452,6 +464,78 @@ export default function RitualDetail() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
+              {/* ── Rhythm Health ──────────────────────────────────────── */}
+              {!timelineLoading && (
+                <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color: "rgba(200,212,192,0.4)" }}>
+                    Rhythm
+                  </p>
+
+                  {/* Last met */}
+                  {lastCompletedMeetup ? (
+                    <div className="mb-1">
+                      <p className="text-sm" style={{ color: "#F0EDE6" }}>
+                        Last met{" "}
+                        <span style={{ color: "#C8D4C0", fontWeight: 500 }}>
+                          {format(parseISO(lastCompletedMeetup.scheduledDate), "EEEE, MMMM d")}
+                        </span>
+                        <span style={{ color: "#8FAF96" }}>
+                          {" "}· {formatDistanceToNow(parseISO(lastCompletedMeetup.scheduledDate), { addSuffix: true })}
+                        </span>
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>
+                      No gatherings logged yet — the first one is the hardest to schedule.
+                    </p>
+                  )}
+
+                  {/* Next due / overdue */}
+                  {nextDueDate && (
+                    <p className="text-sm mt-0.5" style={{ color: isRhythmOverdue ? "#C47A65" : "rgba(143,175,150,0.7)" }}>
+                      {isRhythmOverdue
+                        ? `You're overdue — ${Math.abs(daysUntilDue!)} day${Math.abs(daysUntilDue!) !== 1 ? "s" : ""} past your ${ritual.frequency} rhythm`
+                        : daysUntilDue === 0
+                        ? "Next gathering due today"
+                        : `Next gathering due by ${format(nextDueDate, "MMMM d")}`}
+                    </p>
+                  )}
+                  {!nextDueDate && lastCompletedMeetup === null && (
+                    <p className="text-sm mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
+                      Commit to a {ritual.frequency} rhythm by scheduling your first gathering.
+                    </p>
+                  )}
+
+                  {/* Gentle rhythm dots */}
+                  {rhythmDots.length > 0 && (
+                    <div className="flex items-center gap-2 mt-4">
+                      {rhythmDots.map((dot, i) => (
+                        <div
+                          key={i}
+                          className="rounded-full transition-all"
+                          style={{
+                            width: "10px", height: "10px",
+                            background: dot === "completed"
+                              ? "#4A9E84"
+                              : dot === "missed"
+                              ? "rgba(200,212,192,0.12)"
+                              : "transparent",
+                            border: dot === "upcoming"
+                              ? "1.5px solid rgba(200,212,192,0.25)"
+                              : dot === "missed"
+                              ? "1.5px solid rgba(200,212,192,0.08)"
+                              : "none",
+                          }}
+                        />
+                      ))}
+                      <span className="text-[10px] ml-1" style={{ color: "rgba(143,175,150,0.4)" }}>
+                        {rhythmDots.filter(d => d === "completed").length} of {rhythmDots.length} gathered
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Calendar sync notifications */}
               <AnimatePresence>
                 {calSyncNotifs.map((m, i) => (
@@ -506,7 +590,7 @@ export default function RitualDetail() {
                       <span className={`text-sm font-semibold uppercase tracking-wide ${
                         timeline.confirmedTime ? "text-primary" : "text-muted-foreground"
                       }`}>
-                        {timeline.confirmedTime ? "Next Gathering" : "Awaiting Responses"}
+                        {timeline.confirmedTime ? "Next Gathering" : "Finding a Time"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -549,7 +633,7 @@ export default function RitualDetail() {
                     <div className="flex items-center gap-2 mb-4">
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ background: "rgba(196,122,101,0.1)", border: "1px solid rgba(196,122,101,0.3)", color: "#C47A65" }}>
                         <RefreshCw size={11} />
-                        Time will confirm when 2+ people agree
+                        Waiting for everyone to respond
                       </span>
                     </div>
                   )}
@@ -572,21 +656,26 @@ export default function RitualDetail() {
 
                   {/* Bottom action zone */}
                   {upcomingIsPast ? (
-                    <div className="flex gap-3 pt-2 border-t border-border/50">
-                      <button
-                        onClick={() => handleLog(timeline.upcoming!.id, "skipped")}
-                        disabled={loggingId !== null}
-                        className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all disabled:opacity-50"
-                      >
-                        We missed this one 🌿
-                      </button>
-                      <button
-                        onClick={() => handleLog(timeline.upcoming!.id, "completed")}
-                        disabled={loggingId !== null}
-                        className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 shadow-sm transition-all disabled:opacity-50"
-                      >
-                        {loggingId ? "Logging..." : "We gathered ✓"}
-                      </button>
+                    <div className="space-y-3 pt-3 border-t border-border/50">
+                      <p className="text-xs italic text-center" style={{ color: "rgba(143,175,150,0.6)" }}>
+                        Did you gather?
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleLog(timeline.upcoming!.id, "skipped")}
+                          disabled={loggingId !== null}
+                          className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all disabled:opacity-50"
+                        >
+                          Life got in the way
+                        </button>
+                        <button
+                          onClick={() => handleLog(timeline.upcoming!.id, "completed")}
+                          disabled={loggingId !== null}
+                          className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 shadow-sm transition-all disabled:opacity-50"
+                        >
+                          {loggingId ? "Logging…" : "We gathered ✓"}
+                        </button>
+                      </div>
                     </div>
                   ) : timeline.confirmedTime ? (
                     /* Fixed future event — RSVP */
@@ -612,12 +701,12 @@ export default function RitualDetail() {
                           }`}
                           style={rsvp === "not-going" ? { background: "rgba(196,122,101,0.12)" } : {}}
                         >
-                          Can't make it
+                          I can't make it
                         </button>
                       </div>
                       {rsvp && (
                         <p className="text-xs text-muted-foreground/60 text-center mt-2 italic">
-                          {rsvp === "going" ? "Marked as attending 🌱" : "Noted — maybe next time."}
+                          {rsvp === "going" ? "See you there 🌱" : "Noted — we'll keep meeting."}
                         </p>
                       )}
                     </div>
@@ -625,46 +714,50 @@ export default function RitualDetail() {
                     /* Flexible pending event */
                     <div className="pt-2 border-t border-border/50 flex items-center justify-between">
                       <p className="text-xs text-muted-foreground italic">
-                        Waiting for tradition responses via invite links
+                        Members can respond via their invite link
                       </p>
                       <Link
                         href={`/ritual/${ritualId}/schedule`}
                         className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                       >
-                        Change times →
+                        Change options →
                       </Link>
                     </div>
                   )}
                 </div>
               ) : (
                 /* No gathering scheduled yet */
-                <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: "1px dashed rgba(200,212,192,0.25)" }}>
-                  <div className="text-3xl mb-3">🌱</div>
-                  <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>No gathering scheduled yet</p>
-                  <p className="mx-auto mb-4" style={{ fontSize: "14px", color: "#8FAF96", maxWidth: "260px" }}>
-                    Set a time and Phoebe will send calendar invites to your group.
+                <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: isRhythmOverdue ? "1px dashed rgba(196,122,101,0.4)" : "1px dashed rgba(200,212,192,0.2)" }}>
+                  <div className="text-3xl mb-3">{isRhythmOverdue ? "🕯️" : "🤝"}</div>
+                  <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {isRhythmOverdue ? "It's time to find a time" : "No gathering scheduled yet"}
+                  </p>
+                  <p className="mx-auto mb-5" style={{ fontSize: "14px", color: "#8FAF96", maxWidth: "280px" }}>
+                    {isRhythmOverdue
+                      ? `You're past your ${ritual.frequency} rhythm. Propose a few options and let everyone weigh in.`
+                      : "Propose a few times and let your people respond. Phoebe will send calendar invites once you confirm."}
                   </p>
                   <Link
                     href={`/ritual/${ritualId}/schedule`}
                     className="inline-flex items-center gap-2 rounded-full font-medium transition-colors hover:opacity-90"
                     style={{ background: "#2D5E3F", color: "#F0EDE6", padding: "12px 24px", fontSize: "15px" }}
                   >
-                    Schedule a gathering 📅
+                    Find a time →
                   </Link>
                 </div>
               )}
 
               {/* Suggest a time — non-owner members */}
               {!isOwner && ritual && (
-                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}>
+                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)" }}>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium text-foreground">Suggest a time</p>
+                    <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Propose a time</p>
                     {suggestSent && (
-                      <span className="text-xs text-[#6B8F71]">Suggestion sent ✓</span>
+                      <span className="text-xs" style={{ color: "#6B8F71" }}>Sent ✓</span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Propose an alternative time for {ritual.name} — the organizer will see it.
+                  <p className="text-xs mb-3" style={{ color: "#8FAF96" }}>
+                    Let {ritual.name.split(" ")[0] || "the organizer"} know when you're free — they'll see your suggestion.
                   </p>
                   {showSuggestTime ? (
                     <div className="space-y-2">
@@ -716,9 +809,9 @@ export default function RitualDetail() {
 
               {/* Time suggestions — owner only */}
               {isOwner && suggestionsData && suggestionsData.suggestions.length > 0 && (
-                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}>
-                  <p className="text-sm font-semibold text-foreground mb-3">
-                    Time suggestions from members
+                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)" }}>
+                  <p className="text-sm font-semibold mb-3" style={{ color: "#F0EDE6" }}>
+                    When your people are free
                   </p>
                   <div className="space-y-3">
                     {suggestionsData.suggestions.map(s => (
@@ -760,51 +853,64 @@ export default function RitualDetail() {
               {/* Past gatherings */}
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <h2 className="font-bold shrink-0" style={{ fontSize: "22px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    Past gatherings
+                  <h2 className="font-semibold shrink-0 text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.4)" }}>
+                    History
                   </h2>
-                  <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+                  <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
                 </div>
                 {(!timeline || timeline.past.length === 0) ? (
-                  <p className="text-center py-6" style={{ fontSize: "14px", color: "#8FAF96" }}>
-                    No past gatherings yet. Your history will appear here after you log a gathering.
+                  <p className="text-center py-8 italic" style={{ fontSize: "14px", color: "#8FAF96" }}>
+                    Your history will grow here. The first one is the hardest to schedule.
                   </p>
                 ) : (
                   <div className="relative space-y-4">
-                    <div className="absolute left-5 top-0 bottom-0 w-px" style={{ background: "linear-gradient(to bottom, transparent, rgba(200,212,192,0.4), transparent)" }} />
-                    {timeline.past.map((meetup) => (
-                      <div key={meetup.id} className="flex items-start gap-4 pl-1">
-                        <div className="relative z-10 w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 shadow-sm" style={{ borderColor: "rgba(200,212,192,0.2)", background: "#0F2818" }}>
-                          {meetup.status === "completed" ? (
-                            <CheckCircle2 size={16} style={{ color: "#4A6741" }} />
-                          ) : (
-                            <XCircle size={16} style={{ color: "#8FAF96" }} />
-                          )}
-                        </div>
-                        <div className="flex-1 rounded-2xl p-4 min-w-0" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}>
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="font-medium text-sm" style={{ color: "#F0EDE6" }}>
-                              {format(parseISO(meetup.scheduledDate), "EEEE, MMMM d, yyyy")}
-                            </span>
-                            <span
-                              className="text-xs px-2.5 py-0.5 rounded-full font-medium"
-                              style={meetup.status === "completed"
-                                ? { background: "rgba(74,103,65,0.08)", color: "#4A6741", border: "1px solid rgba(74,103,65,0.2)" }
-                                : { background: "rgba(200,212,192,0.08)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }
-                              }
-                            >
-                              {meetup.status === "completed" ? "Gathered" : "Missed"}
-                            </span>
+                    <div className="absolute left-5 top-0 bottom-0 w-px" style={{ background: "linear-gradient(to bottom, transparent, rgba(200,212,192,0.25), transparent)" }} />
+                    {timeline.past.map((meetup, idx) => {
+                      const prevMeetup = timeline.past[idx + 1] ?? null;
+                      const daysBetween = prevMeetup && meetup.status === "completed" && prevMeetup.status === "completed"
+                        ? differenceInDays(parseISO(meetup.scheduledDate), parseISO(prevMeetup.scheduledDate))
+                        : null;
+                      return (
+                        <div key={meetup.id} className="flex items-start gap-4 pl-1">
+                          <div className="relative z-10 w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 shadow-sm mt-1" style={{ borderColor: "rgba(200,212,192,0.15)", background: "#0F2818" }}>
+                            {meetup.status === "completed" ? (
+                              <CheckCircle2 size={16} style={{ color: "#4A9E84" }} />
+                            ) : (
+                              <XCircle size={16} style={{ color: "rgba(143,175,150,0.4)" }} />
+                            )}
                           </div>
-                          {meetup.notes && (
-                            <p className="text-sm mt-2" style={{ color: "#8FAF96" }}>{meetup.notes}</p>
-                          )}
-                          <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>
-                            {format(parseISO(meetup.scheduledDate), "h:mm a")}
-                          </p>
+                          <div className="flex-1 rounded-2xl p-4 min-w-0" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.12)" }}>
+                            <div className="flex items-start justify-between flex-wrap gap-2">
+                              <div>
+                                <p className="font-medium text-sm" style={{ color: "#F0EDE6" }}>
+                                  {format(parseISO(meetup.scheduledDate), "EEEE, MMMM d")}
+                                </p>
+                                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                                  {format(parseISO(meetup.scheduledDate), "h:mm a · yyyy")}
+                                </p>
+                                {daysBetween !== null && (
+                                  <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
+                                    {daysBetween} days since previous
+                                  </p>
+                                )}
+                              </div>
+                              <span
+                                className="text-xs px-2.5 py-0.5 rounded-full font-medium shrink-0"
+                                style={meetup.status === "completed"
+                                  ? { background: "rgba(74,158,132,0.08)", color: "#4A9E84", border: "1px solid rgba(74,158,132,0.2)" }
+                                  : { background: "rgba(200,212,192,0.05)", color: "rgba(143,175,150,0.5)", border: "1px solid rgba(200,212,192,0.1)" }
+                                }
+                              >
+                                {meetup.status === "completed" ? "Gathered ✓" : "Missed"}
+                              </span>
+                            </div>
+                            {meetup.notes && (
+                              <p className="text-sm mt-2 italic" style={{ color: "#8FAF96" }}>{meetup.notes}</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -922,7 +1028,7 @@ export default function RitualDetail() {
               style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
             >
               <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Tradition Name</label>
+                <label className="block text-sm font-medium mb-2 text-foreground">Gathering Name</label>
                 {isEditing ? (
                   <input
                     type="text"
@@ -1036,13 +1142,13 @@ export default function RitualDetail() {
 
               {user?.id === ritual.ownerId && (
                 <div className="pt-8 border-t border-destructive/20">
-                  <h3 className="text-destructive font-medium mb-2">Delete this tradition</h3>
+                  <h3 className="text-destructive font-medium mb-2">Remove this gathering</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     This will permanently remove all history and cannot be undone.
                   </p>
                   <button
                     onClick={() => {
-                      if (window.confirm("Are you sure you want to delete this tradition? This cannot be undone.")) {
+                      if (window.confirm("Are you sure you want to remove this gathering? This cannot be undone.")) {
                         deleteMutation.mutate({ id: ritualId }, {
                           onSuccess: () => {
                             queryClient.invalidateQueries({ queryKey: [`/api/rituals`] });
@@ -1053,7 +1159,7 @@ export default function RitualDetail() {
                     }}
                     className="px-4 py-2 bg-destructive/10 text-destructive rounded-xl font-medium hover:bg-destructive hover:text-destructive-foreground transition-colors"
                   >
-                    Delete tradition
+                    Remove gathering
                   </button>
                 </div>
               )}

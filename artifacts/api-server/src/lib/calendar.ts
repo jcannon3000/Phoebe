@@ -113,6 +113,8 @@ export async function createAllDayCalendarEvent(
     dateStr: string;
     attendees?: string[];
     recurrence?: string[];
+    reminders?: Array<{ method: string; minutes: number }>;
+    transparency?: string;
   }
 ): Promise<string | null> {
   const auth = await getSchedulerClient();
@@ -136,7 +138,11 @@ export async function createAllDayCalendarEvent(
         end: { date: endDateStr },
         attendees: attendeeList.length > 0 ? attendeeList : undefined,
         recurrence: opts.recurrence,
-        reminders: { useDefault: false, overrides: [] },
+        transparency: opts.transparency,
+        reminders: {
+          useDefault: false,
+          overrides: opts.reminders ?? [],
+        },
       },
     });
     return event.data.id ?? null;

@@ -601,9 +601,9 @@ router.post("/moments", async (req, res): Promise<void> => {
   function buildEventTitle(): string {
     if (templateType === "morning-prayer") return `✨ Morning Prayer with ${creatorFirstName}`;
     if (templateType === "evening-prayer") return `🌙 Evening Prayer with ${creatorFirstName}`;
-    if (templateType === "intercession") return `🙏 ${name}`;
+    if (templateType === "intercession") return `🙏 ${name} — today`;
     if (templateType === "contemplative") return `🕯️ ${name}`;
-    if (templateType === "fasting") return `🌿 ${name}`;
+    if (templateType === "fasting") return `✦ ${name}`;
     if (templateType === "listening") return `🎵 Listening to ${listeningArtist ?? listeningTitle ?? name} together`;
     return `🌱 ${name} with ${creatorFirstName}`;
   }
@@ -786,6 +786,31 @@ router.post("/moments", async (req, res): Promise<void> => {
         dateStr: fastingDateStr,
         attendees: attendeeEmails,
         recurrence: fastingRec,
+        reminders: [
+          { method: "popup", minutes: 240 }, // 8pm evening before (4h before midnight)
+          { method: "popup", minutes: 0 },   // morning of
+        ],
+        transparency: "transparent",
+      }).catch(() => null);
+
+      if (eventId) {
+        if (orgToken) {
+          await db.update(momentUserTokensTable)
+            .set({ googleCalendarEventId: eventId })
+            .where(eq(momentUserTokensTable.id, orgToken.id));
+        }
+        gcalCreated = true;
+      }
+    } else if (templateType === "intercession") {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const eventId = await createAllDayCalendarEvent(sessionUserId, {
+        summary: eventTitle,
+        description: orgDescription,
+        dateStr: todayStr,
+        attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
+        recurrence: recurrenceRule,
+        reminders: [{ method: "popup", minutes: 0 }], // morning of
+        transparency: "transparent",
       }).catch(() => null);
 
       if (eventId) {

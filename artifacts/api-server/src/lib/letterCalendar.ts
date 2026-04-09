@@ -1,4 +1,4 @@
-import { createCalendarEvent } from "./calendar";
+import { createAllDayCalendarEvent } from "./calendar";
 import { formatHumanDate } from "./letterPeriods";
 
 export async function sendLetterCalendarEvent(params: {
@@ -23,12 +23,8 @@ export async function sendLetterCalendarEvent(params: {
   const humanDate = formatHumanDate(letterDate);
   const postmarkLine = postmarkCity ? `Postmarked: ${postmarkCity} · ${humanDate}` : `Sent: ${humanDate}`;
 
-  // Schedule for 8am today, or 1 hour from now if past 8am
-  const now = new Date();
-  const eightAm = new Date(now);
-  eightAm.setHours(8, 0, 0, 0);
-  const startDate = now > eightAm ? new Date(now.getTime() + 60 * 60 * 1000) : eightAm;
-  const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+  // All-day event on the date the letter was sent
+  const dateStr = letterDate.toISOString().split("T")[0];
 
   const description = [
     `${authorName} has written their letter in ${correspondenceName}.`,
@@ -45,16 +41,13 @@ export async function sendLetterCalendarEvent(params: {
   ].join("\n");
 
   try {
-    const eventId = await createCalendarEvent(0, {
+    const eventId = await createAllDayCalendarEvent(0, {
       summary: `📮 ${authorName} wrote you a letter`,
-      organizer: { displayName: "Phoebe", email: "eleanorscheduler@gmail.com" },
       description,
-      startDate,
-      endDate,
+      dateStr,
       attendees: [recipientEmail],
-      colorId: "7",
-      status: "confirmed",
       reminders: [{ method: "popup", minutes: 0 }],
+      transparency: "transparent",
     });
     return eventId;
   } catch (err) {

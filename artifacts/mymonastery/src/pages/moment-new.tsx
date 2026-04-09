@@ -259,8 +259,13 @@ const BCP_PRAYERS: BcpPrayer[] = [
 // ─── Templates ───────────────────────────────────────────────────────────────
 const TEMPLATES = [
   {
-    id: "letters", emoji: "✉️", name: "Letters",
-    desc: "Stay in touch in a way that doesn't get lost in the noise of text and email",
+    id: "morning-prayer", emoji: "🌅", name: "Morning Prayer",
+    desc: "Pray the Daily Office together — each morning, wherever you are",
+    prefill: null,
+  },
+  {
+    id: "evening-prayer", emoji: "🌙", name: "Evening Prayer",
+    desc: "Close the day in prayer together, wherever you are",
     prefill: null,
   },
   {
@@ -698,11 +703,6 @@ export default function MomentNew() {
 
   // ─── Template selection handler ─────────────────────────────────────────────
   function selectTemplate(t: typeof TEMPLATES[0]) {
-    // Letters: redirect to existing letter creation wizard
-    if (t.id === "letters") {
-      setLocation("/letters/new");
-      return;
-    }
     setTemplateId(t.id);
     // Morning Prayer and Evening Prayer use a completely separate BCP flow
     if (t.id === "morning-prayer" || t.id === "evening-prayer") {
@@ -738,11 +738,11 @@ export default function MomentNew() {
       setStep("listening-what");
       return;
     }
-    // Fasting: dedicated 3-step flow
+    // Fasting: dedicated flow — weekly only
     if (t.id === "fasting") {
       setFastingFrom("");
       setFastingIntention("");
-      setFastingFrequency(null);
+      setFastingFrequency("weekly");
       setFastingDate("");
       setFastingDay("");
       setFastingDayOfMonth(null);
@@ -1753,13 +1753,18 @@ export default function MomentNew() {
               {/* ── Commitment (progressive goal picker) ─────────── */}
               {step === "commitment" && (() => {
                 const isFastingFlow = templateId === "fasting";
+                const isIntercessionFlow = templateId === "intercession";
                 const timesPerWeek = frequency === "daily" ? 7
                   : isFastingFlow ? 1
                   : Math.max(1, scheduledDays.length);
 
                 type GoalOpt = { sessions: number; emoji: string; label: string; sub: string };
                 const isWeekly = frequency === "weekly";
-                const goalOptions: GoalOpt[] = isWeekly ? [
+                const goalOptions: GoalOpt[] = isIntercessionFlow ? [
+                  { sessions: 3,  emoji: "🌱", label: "3 days",    sub: "A first act of prayer" },
+                  { sessions: 7,  emoji: "🌿", label: "7 days",    sub: "One week of holding them" },
+                  { sessions: 14, emoji: "🌳", label: "14 days",   sub: "Two weeks of faithful intercession" },
+                ] : isWeekly ? [
                   { sessions: 1,  emoji: "🌱", label: "1 week",    sub: "A first tender step" },
                   { sessions: 3,  emoji: "🌿", label: "3 weeks",   sub: "Finding your rhythm" },
                   { sessions: 7,  emoji: "🌳", label: "7 weeks",   sub: "A rooted practice" },
@@ -1769,15 +1774,25 @@ export default function MomentNew() {
                   { sessions: 14, emoji: "🌳", label: "14 days",   sub: "Two weeks · a rooted practice" },
                 ];
 
+                const commitTitle = isIntercessionFlow
+                  ? "How long will you hold this intention? 🙏"
+                  : "What's your first goal? 🌱";
+                const commitSubtitle = isIntercessionFlow
+                  ? "Begin where you are. You can always continue."
+                  : "Start small. Eleanor will nudge you higher when you get there.";
+                const footerNote = isIntercessionFlow
+                  ? "Longer commitments unlock as you go. 🌿"
+                  : "Longer goals unlock when you get there. 🌿";
+
                 return (
                   <div className="flex-1 flex flex-col gap-4">
                     <div>
                       <h2 className="text-[1.6rem] font-bold leading-tight mb-1"
                         style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                        What's your first goal? 🌱
+                        {commitTitle}
                       </h2>
                       <p className="text-sm italic" style={{ color: "#8FAF96" }}>
-                        Start small. Eleanor will nudge you higher when you get there.
+                        {commitSubtitle}
                       </p>
                     </div>
                     <div className="space-y-2.5">
@@ -1821,7 +1836,7 @@ export default function MomentNew() {
                       })}
                     </div>
                     <p className="text-xs text-center italic" style={{ color: "rgba(143,175,150,0.5)" }}>
-                      Longer goals unlock when you get there. 🌿
+                      {footerNote}
                     </p>
                     <AnimatePresence mode="wait">
                       {commitmentSessionsGoal && (
@@ -2037,73 +2052,26 @@ export default function MomentNew() {
 
               {/* ── Fasting — when: date, weekly, or monthly ─────── */}
               {step === "fasting-when" && (() => {
-                const ordinal = (n: number) => n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
-                const FASTING_FREQ_OPTS = [
-                  { id: "specific" as const, emoji: "📅", label: "A specific date", sub: "Choose one day on the calendar" },
-                  { id: "weekly" as const, emoji: "🗓", label: "Weekly", sub: "The same day every week" },
-                  { id: "monthly" as const, emoji: "📆", label: "Monthly", sub: "The same day every month" },
-                ];
                 const FAST_DAYS = [
                   { id: "monday", label: "Mon" }, { id: "tuesday", label: "Tue" }, { id: "wednesday", label: "Wed" },
                   { id: "thursday", label: "Thu" }, { id: "friday", label: "Fri" }, { id: "saturday", label: "Sat" }, { id: "sunday", label: "Sun" },
                 ];
                 return (
                   <div className="flex-1 flex flex-col">
-                    <h2 className="text-2xl font-semibold mb-1">When will you fast together? 📅</h2>
-                    <p className="text-sm text-muted-foreground italic mb-5">Fasting is a full day practice. Choose the day or days.</p>
-                    <div className="grid gap-3 mb-5">
-                      {FASTING_FREQ_OPTS.map(opt => (
-                        <button key={opt.id}
-                          onClick={() => { setFastingFrequency(opt.id); setFastingDate(""); setFastingDay(""); setFastingDayOfMonth(null); }}
-                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${fastingFrequency === opt.id ? "border-[#5C7A5F] bg-[#5C7A5F]/5" : "border-border/60 hover:border-[#5C7A5F]/40"}`}>
-                          <span className="text-2xl">{opt.emoji}</span>
-                          <div>
-                            <p className={`font-semibold text-sm ${fastingFrequency === opt.id ? "text-[#4a6b50]" : ""}`}>{opt.label}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{opt.sub}</p>
-                          </div>
+                    <h2 className="text-2xl font-semibold mb-1">Which day will you fast? 📅</h2>
+                    <p className="text-sm text-muted-foreground italic mb-6">Fasting is a full-day practice — the same day each week.</p>
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {FAST_DAYS.map(d => (
+                        <button key={d.id} onClick={() => setFastingDay(d.id)}
+                          className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${fastingDay === d.id ? "bg-[#5C7A5F] text-white border-[#5C7A5F]" : "border-border text-muted-foreground hover:border-[#5C7A5F]/40"}`}>
+                          {d.label}
                         </button>
                       ))}
                     </div>
-                    {fastingFrequency === "specific" && (
-                      <div className="mt-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Choose a date</p>
-                        <input type="date" value={fastingDate}
-                          onChange={e => setFastingDate(e.target.value)}
-                          min={new Date().toISOString().split("T")[0]}
-                          className="w-full px-4 py-3 rounded-2xl border border-border focus:border-[#5C7A5F] outline-none bg-background text-base"
-                        />
-                      </div>
-                    )}
-                    {fastingFrequency === "weekly" && (
-                      <div className="mt-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Which day?</p>
-                        <div className="grid grid-cols-7 gap-1.5">
-                          {FAST_DAYS.map(d => (
-                            <button key={d.id} onClick={() => setFastingDay(d.id)}
-                              className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${fastingDay === d.id ? "bg-[#5C7A5F] text-white border-[#5C7A5F]" : "border-border text-muted-foreground hover:border-[#5C7A5F]/40"}`}>
-                              {d.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {fastingFrequency === "monthly" && (
-                      <div className="mt-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Which day of the month?</p>
-                        <div className="grid grid-cols-7 gap-1.5">
-                          {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-                            <button key={d} onClick={() => setFastingDayOfMonth(d)}
-                              className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${fastingDayOfMonth === d ? "bg-[#5C7A5F] text-white border-[#5C7A5F]" : "border-border text-muted-foreground hover:border-[#5C7A5F]/40"}`}>
-                              {d}
-                            </button>
-                          ))}
-                        </div>
-                        {fastingDayOfMonth && (
-                          <p className="text-xs text-muted-foreground/60 mt-2 text-center">
-                            Fasting on the {ordinal(fastingDayOfMonth)} of each month
-                          </p>
-                        )}
-                      </div>
+                    {fastingDay && (
+                      <p className="text-xs text-muted-foreground/60 mt-4 text-center italic">
+                        Fasting together every {fastingDay.charAt(0).toUpperCase() + fastingDay.slice(1)} 🌿
+                      </p>
                     )}
                   </div>
                 );
