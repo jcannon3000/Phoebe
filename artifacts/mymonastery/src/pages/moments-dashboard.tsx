@@ -255,7 +255,7 @@ export default function MomentsDashboard() {
 
   return (
     <Layout>
-      <div className="pb-20">
+      <div className="max-w-2xl mx-auto w-full pb-20">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <div>

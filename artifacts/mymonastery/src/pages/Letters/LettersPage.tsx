@@ -122,76 +122,65 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
 
   const unread = item.unreadCount > 0;
 
+  const accentColor = item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#8E9E42" : "rgba(142,158,66,0.35)";
+
   return (
-    <Link href={`/letters/${item.id}`}>
+    <Link href={`/letters/${item.id}`} className="block">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99] transition-transform"
+        whileHover={{ y: -2 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        className="relative flex rounded-xl overflow-hidden cursor-pointer"
         style={{
-          backgroundColor: "#0F2818",
-          border: `1px solid ${unread ? "rgba(142,158,66,0.4)" : "rgba(200,212,192,0.2)"}`,
-          borderRadius: "12px",
-          borderLeft: `3px solid ${item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#8E9E42" : "rgba(142,158,66,0.25)"}`,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-          padding: "16px 20px",
-          marginBottom: "12px",
+          background: "#0F2818",
+          border: `1px solid rgba(142,158,66,${unread ? "0.35" : "0.2"})`,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2)",
         }}
       >
-        {/* Postmark stamps */}
-        {isOneToOne && lastPostmark?.city && (
-          <div className="absolute top-3 right-3">
-            <PostmarkStamp cityRaw={lastPostmark.city} date={lastPostmark.sentAt} />
-          </div>
-        )}
+        {/* Left accent bar */}
+        <div className="w-1 flex-shrink-0" style={{ background: accentColor }} />
 
-        <p className="text-[16px] font-semibold pr-16" style={{ color: "#F0EDE6" }}>
-          {(item.name?.replace(/^Letters with\b/, "Dialogue with")) || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
-        </p>
+        <div className="flex-1 p-4 min-w-0">
+          {/* Postmark stamp */}
+          {isOneToOne && lastPostmark?.city && (
+            <div className="absolute top-3 right-3">
+              <PostmarkStamp cityRaw={lastPostmark.city} date={lastPostmark.sentAt} />
+            </div>
+          )}
 
-        {isOneToOne && otherMembers && (
-          <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>
-            with {otherMembers}
+          <p className="text-base font-semibold pr-16" style={{ color: "#F0EDE6" }}>
+            📮 {(item.name?.replace(/^Letters with\b/, "Dialogue with")) || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
           </p>
-        )}
 
-        <div className="flex items-center gap-2 mt-2">
-          {/* Period pill */}
-          <span className="text-[11px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-            {isOneToOne ? `Letter ${currentPeriod.periodNumber}` : `Week ${currentPeriod.periodNumber}`}
-          </span>
-          <span style={{ color: "rgba(200,212,192,0.3)" }}>·</span>
+          {isOneToOne && otherMembers && (
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
+          )}
 
-          {/* Status */}
-          {currentPeriod.hasWrittenThisPeriod ? (
-            <span className="text-[12px]" style={{ color: "#8FAF96" }}>
-              {isOneToOne ? "Sent · awaiting reply 🌿" : "Update sent 🌿"}
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-[11px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+              {isOneToOne ? `Letter ${currentPeriod.periodNumber}` : `Week ${currentPeriod.periodNumber}`}
             </span>
-          ) : item.myTurn ? (
-            <span className="text-[12px] font-medium" style={{ color: "#C8D4C0" }}>
-              {isOneToOne ? "Your turn to write 🖋️" : "Write your update 🖋️"}
-            </span>
-          ) : unread ? (
-            <span className="text-[12px] font-medium" style={{ color: "#C8D4C0" }}>
-              New {isOneToOne ? "letter" : "update"} 📮
-            </span>
-          ) : lastLetterDate ? (
-            <span className="text-[12px]" style={{ color: "#8FAF96" }}>
-              Last: {lastLetterDate}
-            </span>
-          ) : (
-            <span className="text-[12px]" style={{ color: "#8FAF96" }}>
-              No letters yet
-            </span>
+            <span style={{ color: "rgba(200,212,192,0.3)" }}>·</span>
+            {currentPeriod.hasWrittenThisPeriod ? (
+              <span className="text-xs" style={{ color: "#8FAF96" }}>{isOneToOne ? "Sent · awaiting reply 🌿" : "Update sent 🌿"}</span>
+            ) : item.myTurn ? (
+              <span className="text-xs font-medium" style={{ color: "#C8D4C0" }}>{isOneToOne ? "Your turn to write 🖋️" : "Write your update 🖋️"}</span>
+            ) : unread ? (
+              <span className="text-xs font-medium" style={{ color: "#C8D4C0" }}>New {isOneToOne ? "letter" : "update"} 📮</span>
+            ) : lastLetterDate ? (
+              <span className="text-xs" style={{ color: "#8FAF96" }}>Last: {lastLetterDate}</span>
+            ) : (
+              <span className="text-xs" style={{ color: "#8FAF96" }}>No letters yet</span>
+            )}
+          </div>
+
+          {unread && item.unreadPreview && (
+            <p className="text-sm mt-2 line-clamp-2 italic" style={{ color: "#8FAF96", fontFamily: isOneToOne ? "Georgia, serif" : undefined }}>
+              {item.unreadPreview.content}
+            </p>
           )}
         </div>
-
-        {/* Unread preview */}
-        {unread && item.unreadPreview && (
-          <p className="text-[13px] mt-2 line-clamp-2 italic" style={{ color: "#8FAF96", fontFamily: isOneToOne ? "Georgia, serif" : undefined }}>
-            {item.unreadPreview.content}
-          </p>
-        )}
       </motion.div>
     </Link>
   );
@@ -227,31 +216,27 @@ export default function LettersPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col w-full pb-24">
+      <div className="max-w-2xl mx-auto w-full pb-24">
         {/* Header */}
-        <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <h1
-              className="text-[28px] font-bold"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
               Letters 📮
             </h1>
-            {!isEmpty && (
-              <Link href="/letters/new">
-                <span className="text-[13px] font-semibold" style={{ color: "#C8D4C0" }}>
-                  + New
-                </span>
-              </Link>
-            )}
+            <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
+              Letters have connected people for centuries. One letter every other week.
+            </p>
           </div>
-          <p className="text-[14px] mt-1 leading-relaxed" style={{ color: "#8FAF96" }}>
-            Letters have connected people for centuries. Phoebe sets apart a place to keep that tradition — one letter every other week, a shared history with the people who matter most.
-          </p>
+          {!isEmpty && (
+            <Link href="/letters/new">
+              <button className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                + New
+              </button>
+            </Link>
+          )}
         </div>
 
-        {/* Rule */}
-        <div className="mb-6" style={{ borderTop: "1px solid rgba(200,212,192,0.15)" }} />
+        <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 
         {isLoading ? (
           <div className="space-y-3">
@@ -300,9 +285,11 @@ export default function LettersPage() {
               </Link>
             )}
 
-            {items.map((item) => (
-              <CorrespondenceCard key={item.id} item={item} userEmail={user.email} />
-            ))}
+            <div className="space-y-3">
+              {items.map((item) => (
+                <CorrespondenceCard key={item.id} item={item} userEmail={user.email} />
+              ))}
+            </div>
           </motion.div>
         )}
       </div>
