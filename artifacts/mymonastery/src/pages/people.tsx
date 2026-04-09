@@ -21,6 +21,17 @@ const AVATAR_COLORS = [
   { bg: "rgba(212,137,106,0.15)", text: "#9a5a3a" },  // blush
 ];
 
+const PRACTICE_EMOJI: Record<string, string> = {
+  "morning-prayer": "🌅",
+  "evening-prayer": "🌙",
+  "intercession": "🙏",
+  "contemplative": "🕯️",
+  "fasting": "🌿",
+  "listening": "🎵",
+  "custom": "🌱",
+  "letters": "✉️",
+};
+
 function colorFor(email: string) {
   let hash = 0;
   for (const c of email) hash = (hash * 31 + c.charCodeAt(0)) & 0xffff;
@@ -172,12 +183,6 @@ export default function People() {
                 const isExpanded = expandedEmail === person.email;
                 const isPresent = presentEmails.has(person.email);
                 const color = colorFor(person.email);
-                const allItems = [
-                  ...person.sharedPractices.map(p => ({ type: "practice" as const, ...p })),
-                  ...person.sharedTraditions.map(t => ({ type: "tradition" as const, ...t, currentStreak: 0, templateType: null })),
-                ];
-                const visiblePills = allItems.slice(0, 3);
-                const moreCount = allItems.length - 3;
                 const inactiveDays = daysSince(person.lastActiveDate);
 
                 return (
@@ -208,27 +213,35 @@ export default function People() {
                           {person.name}
                         </h3>
 
-                        {/* Line 2: Practice/tradition pills */}
-                        {visiblePills.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-1.5">
-                            {visiblePills.map((item, i) => (
-                              <span
-                                key={i}
-                                className="inline-flex items-center gap-1 text-xs rounded-md px-2.5 py-0.5"
-                                style={{
-                                  backgroundColor: item.type === "practice" ? "rgba(92,122,95,0.1)" : "rgba(193,127,36,0.1)",
-                                  color: item.type === "practice" ? "#4a6e50" : "#8a5a18",
-                                }}
-                              >
-                                {item.type === "practice" ? "🌿" : "🌱"}
-                                <span className="truncate max-w-[130px]">{truncate(item.name, 18)}</span>
-                              </span>
+                        {/* Shared practices */}
+                        {person.sharedPractices.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {person.sharedPractices.map(p => (
+                              <div key={p.id} className="flex items-center justify-between gap-2">
+                                <span className="text-sm" style={{ color: "#A8C5A0" }}>
+                                  {PRACTICE_EMOJI[p.templateType ?? "custom"] ?? "🌱"}{" "}
+                                  {p.name}
+                                </span>
+                                {p.currentStreak > 0 && (
+                                  <span className="text-xs shrink-0" style={{ color: "#C17F24" }}>
+                                    🔥 {p.currentStreak}d
+                                  </span>
+                                )}
+                              </div>
                             ))}
-                            {moreCount > 0 && (
-                              <span className="text-xs text-muted-foreground/50 self-center">
-                                +{moreCount} more
-                              </span>
-                            )}
+                          </div>
+                        )}
+
+                        {/* Shared gatherings */}
+                        {person.sharedTraditions.length > 0 && (
+                          <div className={`space-y-1 ${person.sharedPractices.length > 0 ? "mt-1" : "mt-2"}`}>
+                            {person.sharedTraditions.map(t => (
+                              <div key={t.id} className="flex items-center gap-2">
+                                <span className="text-sm" style={{ color: "#C8B47A" }}>
+                                  🤝 {t.name}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         )}
 
