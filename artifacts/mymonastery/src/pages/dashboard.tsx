@@ -544,6 +544,9 @@ export default function Dashboard() {
 
         {/* ── Header ── */}
         <div className="mb-6">
+          <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+            A Place Set Apart for Connection
+          </p>
           <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </p>
