@@ -33,15 +33,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+          {/* Invisible tap-to-close area */}
+          <div
             className="fixed inset-0 z-40"
-            style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
             onClick={onClose}
           />
 
@@ -53,7 +47,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
             className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
-            style={{ width: "min(340px, 90vw)", background: "#0A1F12", borderLeft: "1px solid rgba(200,212,192,0.12)" }}
+            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(200,212,192,0.1)" }}
           >
             {/* Close button */}
             <div className="flex justify-end p-4 pb-2">
