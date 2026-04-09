@@ -479,10 +479,16 @@ export default function MomentPostPage() {
   const [memberCount, setMemberCount] = useState<number | null>(null);
 
   // Welcome screen — shown once per member per moment (localStorage-gated)
+  // Skipped entirely for logged-in users navigating from the dashboard
   const welcomeKey = `eleanor-seen-${momentToken}-${userToken}`;
   const [showWelcome, setShowWelcome] = useState(() => {
     try { return !localStorage.getItem(welcomeKey); } catch { return false; }
   });
+
+  // Once auth resolves and user is confirmed, skip the welcome screen
+  useEffect(() => {
+    if (user) setShowWelcome(false);
+  }, [user]);
 
   function dismissWelcome() {
     try { localStorage.setItem(welcomeKey, "1"); } catch { /* ignore */ }
