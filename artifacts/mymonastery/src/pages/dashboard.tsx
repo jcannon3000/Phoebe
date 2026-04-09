@@ -97,11 +97,13 @@ const PRACTICE_EMOJI: Record<string, string> = {
 
 function TodaySection({
   correspondences,
+  moments,
   rituals,
   userEmail,
   userName,
 }: {
   correspondences: Array<any> | undefined;
+  moments: Array<any> | undefined;
   rituals: Array<any> | undefined;
   userEmail: string;
   userName: string;
@@ -129,6 +131,9 @@ function TodaySection({
     }
   }
 
+  // Open moments (window is open and not yet logged)
+  const openMoments = (moments ?? []).filter((m: any) => m.windowOpen && m.todayPostCount === 0);
+
   // Gatherings happening today
   const todayGatherings = (rituals ?? []).filter((r: any) => {
     if (!r.nextMeetupDate) return false;
@@ -136,7 +141,7 @@ function TodaySection({
     return isToday(d);
   });
 
-  const hasItems = letterItems.length > 0 || todayGatherings.length > 0;
+  const hasItems = letterItems.length > 0 || openMoments.length > 0 || todayGatherings.length > 0;
   if (!hasItems) return null;
 
   return (
@@ -171,6 +176,34 @@ function TodaySection({
             </motion.div>
           </Link>
         ))}
+
+        {openMoments.map((m: any) => {
+          const isMorningPrayer = m.templateType === "morning-prayer";
+          const href = (isMorningPrayer && m.myUserToken)
+            ? `/morning-prayer/${m.id}/${m.myUserToken}`
+            : `/moments/${m.id}`;
+          const cta = isMorningPrayer ? "Open Office →" : "Pray →";
+          return (
+            <Link key={`today-moment-${m.id}`} href={href}>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl cursor-pointer"
+                style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)", padding: "18px" }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{m.name}</p>
+                    <p className="text-sm mt-0.5" style={{ color: "#A8C5A0" }}>Open now</p>
+                  </div>
+                  <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                    {cta}
+                  </span>
+                </div>
+              </motion.div>
+            </Link>
+          );
+        })}
 
         {todayGatherings.map((r: any) => {
           const next = parseISO(r.nextMeetupDate);
@@ -391,6 +424,11 @@ function PracticesSection() {
             else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
             else if (memberNames) subtitle = `with ${memberNames}`;
 
+            const isMorningPrayer = m.templateType === "morning-prayer";
+            const openHref = (shouldPulse && isMorningPrayer && m.myUserToken)
+              ? `/morning-prayer/${m.id}/${m.myUserToken}`
+              : `/moments/${m.id}`;
+
             return (
               <Link key={`moment-${m.id}`} href={`/moments/${m.id}`}>
                 <motion.div
@@ -419,12 +457,14 @@ function PracticesSection() {
                         {subtitle || m.intention}
                       </p>
                       {m.windowOpen && m.todayPostCount === 0 && (
-                        <span
-                          className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
-                          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                        >
-                          {emoji} Open
-                        </span>
+                        <Link href={openHref} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                          <span
+                            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
+                            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                          >
+                            {emoji} Open
+                          </span>
+                        </Link>
                       )}
                       {m.todayPostCount > 0 && (
                         <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>
@@ -581,6 +621,7 @@ export default function Dashboard() {
         {/* ── Today ── */}
         <TodaySection
           correspondences={correspondences}
+          moments={momentsData?.moments}
           rituals={rituals}
           userEmail={user.email}
           userName={user.name ?? ""}

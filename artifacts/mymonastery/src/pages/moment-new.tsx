@@ -588,7 +588,7 @@ export default function MomentNew() {
   const [scheduledAmPm, setScheduledAmPm] = useState<"AM" | "PM">("AM");
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay | null>(null);
   const [commitmentDays, setCommitmentDays] = useState(30);
-  const [commitmentSessionsGoal, setCommitmentSessionsGoal] = useState<number | null>(null);
+  const [commitmentSessionsGoal, setCommitmentSessionsGoal] = useState<number | null>(3);
   const [invitedPeople, setInvitedPeople] = useState<{ name: string; email: string }[]>([]);
   const [showInviteDisabledMsg, setShowInviteDisabledMsg] = useState(false);
 
@@ -1092,14 +1092,14 @@ export default function MomentNew() {
           className="max-w-sm w-full text-center text-[#F5EDD8]"
         >
           <div className="text-6xl mb-6">🌱</div>
-          <h2 className="text-3xl font-semibold mb-3">{name} is planted.</h2>
-          <p className="text-[#c9b99a] mb-2">{frequency === "daily" ? "Every day" : frequency === "weekly" ? "Weekly" : "Monthly"} at {timeLabel}</p>
+          <h2 className="text-3xl font-semibold mb-3" style={{ color: "#F0EDE6" }}>{name} is planted.</h2>
+          <p className="mb-2" style={{ color: "#8FAF96" }}>{frequency === "daily" ? "Every day" : frequency === "weekly" ? "Weekly" : "Monthly"} at {timeLabel}</p>
           {commitmentLabel && (
-            <p className="text-[#c9b99a] mb-6">{commitmentLabel.emoji} {commitmentLabel.label}</p>
+            <p className="mb-6" style={{ color: "#8FAF96" }}>{commitmentLabel.emoji} {commitmentLabel.label}</p>
           )}
-          <p className="text-[#c9b99a] mb-8 text-sm leading-relaxed">
+          <p className="mb-8 text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
             Invites are on their way.<br />
-            Eleanor will ring the bell when it's time.<br />
+            Phoebe will ring the bell when it's time.<br />
             You just have to practice.
           </p>
           <button
@@ -1797,29 +1797,25 @@ export default function MomentNew() {
                   : Math.max(1, scheduledDays.length);
 
                 type GoalOpt = { sessions: number; emoji: string; label: string; sub: string };
-                const goalOptions: GoalOpt[] =
-                  timesPerWeek >= 7   ? [
-                    { sessions: 7,  emoji: "🌱", label: "7 days",       sub: "One week · A first tender step" },
-                    { sessions: 14, emoji: "🌿", label: "14 days",      sub: "Two weeks · Finding your rhythm" },
-                  ] : timesPerWeek >= 3 ? [
-                    { sessions: 12, emoji: "🌱", label: "12 sessions",  sub: "One month · A first tender step" },
-                    { sessions: 18, emoji: "🌿", label: "18 sessions",  sub: "Six weeks · Finding your rhythm" },
-                  ] : timesPerWeek >= 2 ? [
-                    { sessions: 8,  emoji: "🌱", label: "8 sessions",   sub: "One month · A first tender step" },
-                    { sessions: 12, emoji: "🌿", label: "12 sessions",  sub: "Six weeks · Finding your rhythm" },
-                  ] : [
-                    { sessions: 4,  emoji: "🌱", label: "4 sessions",   sub: "One month · A first tender step" },
-                    { sessions: 8,  emoji: "🌿", label: "8 sessions",   sub: "Two months · Finding your rhythm" },
-                  ];
+                const isWeekly = frequency === "weekly";
+                const goalOptions: GoalOpt[] = isWeekly ? [
+                  { sessions: 1,  emoji: "🌱", label: "1 week",    sub: "A first tender step" },
+                  { sessions: 3,  emoji: "🌿", label: "3 weeks",   sub: "Finding your rhythm" },
+                  { sessions: 7,  emoji: "🌳", label: "7 weeks",   sub: "A rooted practice" },
+                ] : [
+                  { sessions: 3,  emoji: "🌱", label: "3 days",    sub: "A first tender step" },
+                  { sessions: 7,  emoji: "🌿", label: "7 days",    sub: "One week · finding your rhythm" },
+                  { sessions: 14, emoji: "🌳", label: "14 days",   sub: "Two weeks · a rooted practice" },
+                ];
 
                 return (
                   <div className="flex-1 flex flex-col gap-4">
                     <div>
-                      <h2 className="text-[1.6rem] font-bold text-[#F0EDE6] leading-tight mb-1"
-                        style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                      <h2 className="text-[1.6rem] font-bold leading-tight mb-1"
+                        style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
                         What's your first goal? 🌱
                       </h2>
-                      <p className="text-sm text-muted-foreground italic">
+                      <p className="text-sm italic" style={{ color: "#8FAF96" }}>
                         Start small. Eleanor will nudge you higher when you get there.
                       </p>
                     </div>
@@ -1832,28 +1828,29 @@ export default function MomentNew() {
                             onClick={() => setCommitmentSessionsGoal(opt.sessions)}
                             animate={{ y: sel ? -2 : 0 }}
                             transition={{ duration: 0.15 }}
-                            className="relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200"
+                            className={`relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200 ${sel ? "animate-turn-pulse" : ""}`}
                             style={{
-                              background: sel ? "#5C7A5F" : "#0F2818",
-                              border: `1.5px solid ${sel ? "#5C7A5F" : "#c8dac9"}`,
-                              boxShadow: sel ? "0 4px 14px rgba(92,122,95,0.22)" : undefined,
+                              background: sel ? "#1A4A2E" : "#0F2818",
+                              border: `1.5px solid ${sel ? "rgba(200,212,192,0.4)" : "rgba(200,212,192,0.15)"}`,
+                              boxShadow: sel ? "0 4px 14px rgba(45,94,63,0.3)" : undefined,
                             }}
                           >
                             {sel && (
                               <motion.div
                                 initial={{ opacity: 0, scale: 0.6 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="absolute top-3 right-3 text-[#F5EDD8] font-bold text-base"
+                                className="absolute top-3 right-3 font-bold text-base"
+                                style={{ color: "#C8D4C0" }}
                               >✓</motion.div>
                             )}
                             <div className="flex items-center gap-4 px-5 py-4">
                               <span className="text-3xl leading-none shrink-0">{opt.emoji}</span>
                               <div className="flex-1 min-w-0">
-                                <p className={`font-bold text-[15px] leading-snug ${sel ? "text-[#F5EDD8]" : "text-[#F0EDE6]"}`}
-                                  style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                                <p className="font-bold text-[15px] leading-snug"
+                                  style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
                                   {opt.label}
                                 </p>
-                                <p className={`text-xs mt-0.5 ${sel ? "text-[#F5EDD8]/75" : "text-muted-foreground"}`}>
+                                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
                                   {opt.sub}
                                 </p>
                               </div>
@@ -1862,7 +1859,7 @@ export default function MomentNew() {
                         );
                       })}
                     </div>
-                    <p className="text-xs text-center text-muted-foreground/50 italic">
+                    <p className="text-xs text-center italic" style={{ color: "rgba(143,175,150,0.5)" }}>
                       Longer goals unlock when you get there. 🌿
                     </p>
                     <AnimatePresence mode="wait">

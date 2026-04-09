@@ -562,10 +562,11 @@ export default function MomentDetail() {
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-5 flex items-center justify-between bg-[#FFF8EC] border border-[#C17F24]/30 rounded-2xl px-4 py-3"
+            className="mb-5 flex items-center justify-between rounded-2xl px-4 py-3"
+            style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}
           >
             <div>
-              <p className="text-sm font-semibold text-[#C17F24]">
+              <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>
                 {isMorningPrayer
                   ? "📖 Morning Prayer · Today's office"
                   : isIntercession
@@ -574,7 +575,7 @@ export default function MomentDetail() {
                       ? "🎵 Listening today"
                       : "🌿 Open today"}
               </p>
-              <p className="text-xs text-[#C17F24]/70 mt-0.5">
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
                 {isMorningPrayer
                   ? `${todayPostCount} of ${memberCount} have prayed`
                   : `${todayPostCount} of ${memberCount} ${isIntercession ? "have prayed" : isListening ? "listened" : "logged"}`}
@@ -582,7 +583,8 @@ export default function MomentDetail() {
             </div>
             {postUrl && !isListening && (
               <Link href={postUrl}>
-                <span className="text-sm font-medium text-white bg-[#5C7A5F] rounded-full px-4 py-2 hover:bg-[#5a7a60] transition-colors whitespace-nowrap">
+                <span className="text-sm font-semibold rounded-full px-4 py-2 whitespace-nowrap transition-colors"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
                   {actionLabel}
                 </span>
               </Link>
