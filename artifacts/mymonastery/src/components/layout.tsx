@@ -4,9 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import {
-  X, Bell, User, Lock, Info, LogOut, ChevronRight,
-} from "lucide-react";
+import { X, LogOut, ChevronRight } from "lucide-react";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -46,12 +44,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "🤝", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "👥", label: "People",      path: "/people"      },
     { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
-  ];
-
-  const settingsItems = [
-    { icon: Bell,  label: "Notification preferences", onClick: () => {} },
-    { icon: User,  label: "Account settings",          onClick: () => {} },
-    { icon: Lock,  label: "Privacy settings",          onClick: () => {} },
+    { emoji: "📩", label: "Invitations", path: "/invitations" },
+    { emoji: "⚙️", label: "Settings",    path: "/settings"    },
+    { emoji: "ℹ️", label: "About",       path: "/about"       },
   ];
 
   return (
@@ -150,54 +145,18 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </nav>
             </div>
 
-            {/* ── Settings ── */}
-            <div className="px-5 py-4 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
-                Settings
-              </p>
-              <div className="space-y-1">
-                {settingsItems.map(({ icon: Icon, label, onClick }) => (
-                  <button
-                    key={label}
-                    onClick={onClick}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm"
-                    style={{ color: "#8FAF96" }}
-                    onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                    onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-                  >
-                    <Icon size={15} />
-                    {label}
-                  </button>
-                ))}
-
-                <button
-                  onClick={() => { onClose(); logout(); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm"
-                  style={{ color: "#8FAF96" }}
-                  onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                  onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-                >
-                  <LogOut size={15} />
-                  Sign out
-                </button>
-              </div>
-
-              {/* About */}
-              <div
-                className="mt-5 rounded-xl px-4 py-3"
-                style={{ background: "rgba(200,212,192,0.04)", border: "1px solid rgba(200,212,192,0.08)" }}
+            {/* ── Sign out ── */}
+            <div className="px-5 py-4 flex-1 flex flex-col justify-end">
+              <button
+                onClick={() => { onClose(); logout(); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm"
+                style={{ color: "#8FAF96" }}
+                onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <Info size={12} style={{ color: "rgba(143,175,150,0.5)" }} />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.4)" }}>About</span>
-                </div>
-                <p className="text-xs leading-relaxed" style={{ color: "rgba(143,175,150,0.55)" }}>
-                  Phoebe is a sanctuary for fellowship — letters, practices, and gatherings for the people who matter most.
-                </p>
-                <p className="text-[10px] mt-2 tracking-wide" style={{ color: "rgba(143,175,150,0.35)" }}>
-                  Inspired by Monastic Wisdom
-                </p>
-              </div>
+                <LogOut size={15} />
+                Sign out
+              </button>
             </div>
           </motion.div>
         </>

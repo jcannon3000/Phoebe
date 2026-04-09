@@ -43,6 +43,8 @@ type Moment = {
   intercessionTopic?: string | null;
   fastingFrom?: string | null;
   goalDays?: number | null;
+  commitmentSessionsGoal?: number | null;
+  commitmentSessionsLogged?: number | null;
   myUserToken: string | null;
   momentToken: string | null;
   frequency: string;
@@ -328,17 +330,16 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
 
-  // Never repeat the card title as a fallback
-  const norm = (s: string) => s.trim().toLowerCase();
-  const safeIntention = (m.intention && norm(m.intention) !== norm(m.name)) ? m.intention : null;
-  const safeIntercessionTopic = (m.intercessionTopic && norm(m.intercessionTopic) !== norm(m.name)) ? m.intercessionTopic : null;
+  // Never repeat the card title as a fallback — also strip leading emoji + "For "
+  const norm = (s: string) => s.trim().toLowerCase().replace(/^(for\s+)/i, "");
+  const nameNorm = norm(m.name);
+  const safeIntention = (m.intention && norm(m.intention) !== nameNorm) ? m.intention : null;
+  const safeIntercessionTopic = (m.intercessionTopic && norm(m.intercessionTopic) !== nameNorm) ? m.intercessionTopic : null;
 
-  // Goal label for the top-right badge
-  const goalLabel = (() => {
-    if (!m.goalDays || m.goalDays <= 0) return null;
-    if (m.goalDays % 7 === 0) return `${m.goalDays / 7}wk goal`;
-    return `${m.goalDays}d goal`;
-  })();
+  // Progress badge — show "1/3 days" when goal is set
+  const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
+  const logged = m.commitmentSessionsLogged ?? 0;
+  const progressLabel = goal ? `${logged}/${goal} ${goal === 1 ? "day" : "days"}` : null;
 
   const openHref = (shouldPulse && isMorningPrayer && m.myUserToken)
     ? `/morning-prayer/${m.id}/${m.myUserToken}`
@@ -352,13 +353,13 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {m.name}</span>
         </div>
-        {m.currentStreak > 0 ? (
+        {progressLabel ? (
+          <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+            {progressLabel}
+          </span>
+        ) : m.currentStreak > 0 ? (
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
             {m.currentStreak} day streak
-          </span>
-        ) : goalLabel ? (
-          <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#8FAF96", letterSpacing: "0.08em" }}>
-            {goalLabel}
           </span>
         ) : null}
       </div>

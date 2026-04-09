@@ -359,8 +359,8 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
           >
             {/* Header */}
             <h2
-              className="text-lg font-serif mb-4"
-              style={{ color: "#F0EDE6" }}
+              className="text-lg font-semibold mb-4"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
               Hold this with your community 🌿
             </h2>

@@ -1002,8 +1002,8 @@ export default function MomentNew() {
       practiceDays: isSpiritual && frequency === "weekly" && scheduledDays.length > 0
         ? JSON.stringify(scheduledDays)
         : undefined,
-      goalDays: commitmentDays,
-      commitmentDuration: commitmentDays,
+      goalDays: commitmentSessionsGoal ?? commitmentDays,
+      commitmentDuration: commitmentSessionsGoal ?? commitmentDays,
       commitmentSessionsGoal: commitmentSessionsGoal,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       timeOfDay: undefined,
@@ -1830,14 +1830,16 @@ export default function MomentNew() {
                 type GoalOpt = { sessions: number; emoji: string; label: string; sub: string };
                 const isWeekly = frequency === "weekly";
                 const goalOptions: GoalOpt[] = isIntercessionFlow ? [
+                  { sessions: 1,  emoji: "🕊️", label: "One time",  sub: "A single act of prayer" },
                   { sessions: 3,  emoji: "🌱", label: "3 days",    sub: "A first act of prayer" },
                   { sessions: 7,  emoji: "🌿", label: "7 days",    sub: "One week of holding them" },
                   { sessions: 14, emoji: "🌳", label: "14 days",   sub: "Two weeks of faithful intercession" },
                 ] : isWeekly ? [
-                  { sessions: 1,  emoji: "🌱", label: "1 week",    sub: "A first tender step" },
+                  { sessions: 1,  emoji: "🕊️", label: "One time",  sub: "A single practice together" },
                   { sessions: 3,  emoji: "🌿", label: "3 weeks",   sub: "Finding your rhythm" },
                   { sessions: 7,  emoji: "🌳", label: "7 weeks",   sub: "A rooted practice" },
                 ] : [
+                  { sessions: 1,  emoji: "🕊️", label: "One time",  sub: "A single practice together" },
                   { sessions: 3,  emoji: "🌱", label: "3 days",    sub: "A first tender step" },
                   { sessions: 7,  emoji: "🌿", label: "7 days",    sub: "One week · finding your rhythm" },
                   { sessions: 14, emoji: "🌳", label: "14 days",   sub: "Two weeks · a rooted practice" },

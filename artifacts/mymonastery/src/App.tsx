@@ -65,6 +65,9 @@ import MorningPrayerPage from "./pages/morning-prayer";
 import MomentsDashboard from "./pages/moments-dashboard";
 import MomentRedirect from "./pages/moment-redirect";
 import PrayerListPage from "./pages/prayer-list";
+import SettingsPage from "./pages/settings";
+import AboutPage from "./pages/about";
+import InvitationsPage from "./pages/invitations";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,6 +106,9 @@ function Router() {
       <Route path="/letters/:id" component={CorrespondencePage} />
       <Route path="/people" component={People} />
       <Route path="/prayer-list" component={PrayerListPage} />
+      <Route path="/settings" component={SettingsPage} />
+      <Route path="/about" component={AboutPage} />
+      <Route path="/invitations" component={InvitationsPage} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route component={NotFound} />
     </Switch>
