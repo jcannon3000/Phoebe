@@ -42,11 +42,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   }
 
   const navItems = [
-    { icon: Mail,           label: "Letters",     path: "/letters",     color: SECTION_COLORS.letters },
-    { icon: Flame,          label: "Practices",   path: "/practices",   color: SECTION_COLORS.practices },
-    { icon: HeartHandshake, label: "Gatherings",  path: "/gatherings",  color: SECTION_COLORS.gatherings },
-    { icon: Users,          label: "People",      path: "/people",      color: SECTION_COLORS.people },
-    { icon: HandHeart,      label: "Prayer List", path: "/prayer-list", color: SECTION_COLORS.prayer },
+    { emoji: "📮", label: "Letters",     path: "/letters"     },
+    { emoji: "🙏", label: "Practices",   path: "/practices"   },
+    { emoji: "🤝", label: "Gatherings",  path: "/gatherings"  },
+    { emoji: "👤", label: "People",      path: "/people"      },
+    { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
   ];
 
   const settingsItems = [
@@ -133,7 +133,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 Navigate
               </p>
               <nav className="space-y-1">
-                {navItems.map(({ icon: Icon, label, path, color }) => (
+                {navItems.map(({ emoji, label, path }) => (
                   <button
                     key={path}
                     onClick={() => navigate(path)}
@@ -142,7 +142,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
                   >
                     <div className="flex items-center gap-3">
-                      <Icon size={16} style={{ color }} />
+                      <span className="text-base leading-none w-5 text-center">{emoji}</span>
                       <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{label}</span>
                     </div>
                     <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
