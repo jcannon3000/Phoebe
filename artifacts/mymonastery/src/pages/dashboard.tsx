@@ -340,7 +340,7 @@ function TodaySection({
   return (
     <div className="mb-8">
       <SectionHeader label="Today" />
-      <div className="space-y-5">
+      <div className="space-y-6">
         {letters.map(c => <LetterCard key={`today-l-${c.id}`} c={c} userEmail={userEmail} userName={userName} keyPrefix="today" />)}
         {moments.map(m => <MomentCard key={`today-m-${m.id}`} m={m} userEmail={userEmail} keyPrefix="today" />)}
         {gatherings.map(r => <GatheringCard key={`today-g-${r.id}`} r={r} keyPrefix="today" badge="Today" />)}
@@ -360,7 +360,7 @@ function ThisWeekSection({
   return (
     <div className="mb-8">
       <SectionHeader label="This week" />
-      <div className="space-y-5">
+      <div className="space-y-6">
         {letters.map(c => <LetterCard key={`week-l-${c.id}`} c={c} userEmail={userEmail} userName={userName} keyPrefix="week" />)}
         {gatherings.map(r => (
           <GatheringCard key={`week-g-${r.id}`} r={r} keyPrefix="week" badge={format(parseISO(r.nextMeetupDate), "EEEE")} />
@@ -390,7 +390,7 @@ function PracticesSection({
           </Link>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {letters.map(c => <LetterCard key={`practices-l-${c.id}`} c={c} userEmail={userEmail} userName={userName} keyPrefix="practices" />)}
           {moments.map(m => <MomentCard key={`practices-m-${m.id}`} m={m} userEmail={userEmail} keyPrefix="practices" />)}
         </div>
@@ -413,7 +413,7 @@ function GatheringsSection({ gatherings }: { gatherings: any[] }) {
           </Link>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-6">
           {gatherings.map(r => <GatheringCard key={`g-${r.id}`} r={r} keyPrefix="g" />)}
         </div>
       )}
@@ -535,7 +535,7 @@ export default function Dashboard() {
 
         {/* ── Loading skeleton ── */}
         {isLoading && (
-          <div className="space-y-5 mb-8">
+          <div className="space-y-6 mb-8">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
             ))}
