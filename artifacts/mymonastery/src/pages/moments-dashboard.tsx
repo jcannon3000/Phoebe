@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { milestoneLabel, milestoneProgress } from "@/lib/utils";
-import { format, parseISO, addDays, startOfDay } from "date-fns";
+import { format, parseISO, addDays, startOfDay, isToday, isBefore } from "date-fns";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -317,8 +317,38 @@ export default function MomentsDashboard() {
   if (authLoading || !user) return null;
 
   const moments: MomentData[] = data?.moments ?? [];
-  const openNow = moments.filter(m => m.windowOpen);
-  const rest = moments.filter(m => !m.windowOpen);
+
+  // ── Time bucket bucketing ─────────────────────────────────────────────────
+  const endOfWeek = addDays(startOfDay(new Date()), 7);
+  const todayMoments: MomentData[] = [];
+  const weekMoments: MomentData[] = [];
+  const monthMoments: MomentData[] = [];
+
+  for (const m of moments) {
+    if (m.windowOpen) {
+      todayMoments.push(m);
+    } else {
+      const next = nextWindowDate(m);
+      if (isToday(next)) {
+        todayMoments.push(m);
+      } else if (isBefore(next, endOfWeek)) {
+        weekMoments.push(m);
+      } else {
+        monthMoments.push(m);
+      }
+    }
+  }
+
+  function SectionHeader({ label }: { label: string }) {
+    return (
+      <div className="flex items-center gap-3 mb-3 mt-6 first:mt-0">
+        <span className="text-xs font-semibold uppercase tracking-widest shrink-0" style={{ color: "rgba(200,212,192,0.45)" }}>
+          {label}
+        </span>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+      </div>
+    );
+  }
 
   return (
     <Layout>
@@ -326,26 +356,27 @@ export default function MomentsDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <div>
-            <Link href="/dashboard" className="text-xs text-muted-foreground hover:text-foreground mb-3 flex items-center gap-1 transition-colors">
+            <Link href="/dashboard" className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
               ← Dashboard
             </Link>
-            <h1 className="text-2xl font-semibold text-foreground">Your practices 🌿</h1>
-            <p className="text-sm text-muted-foreground italic mt-1">For the distance between gatherings</p>
+            <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Practices 🙏</h1>
+            <p className="text-sm italic mt-1" style={{ color: "#8FAF96" }}>For the distance between gatherings</p>
           </div>
           <Link
             href="/moment/new"
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-full font-medium text-sm shadow-[var(--shadow-warm-md)] hover:shadow-[var(--shadow-warm-lg)] transition-all"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-medium text-sm transition-opacity hover:opacity-80"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            + Plant
+            + New
           </Link>
         </div>
 
-        <div className="my-5 h-px bg-border/40" />
+        <div className="my-5 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
 
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-28 rounded-2xl bg-card border border-border animate-pulse" />
+              <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: "#0F2818", border: "1px solid rgba(74,127,181,0.15)" }} />
             ))}
           </div>
         ) : moments.length === 0 ? (
@@ -355,39 +386,39 @@ export default function MomentsDashboard() {
             className="text-center py-16"
           >
             <div className="text-4xl mb-4">🌱</div>
-            <p className="text-foreground/70 mb-2 font-medium">No practices yet</p>
-            <p className="text-sm text-muted-foreground mb-8">Plant a spiritual practice that you and someone you love do together — even across the distance.</p>
+            <p className="mb-2 font-medium" style={{ color: "#F0EDE6" }}>No practices yet</p>
+            <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>Plant a spiritual practice that you and someone you love do together — even across the distance.</p>
             <Link
               href="/moment/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium shadow-[var(--shadow-warm-md)]"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium"
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
             >
               🌿 Plant your first practice
             </Link>
           </motion.div>
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
-            {openNow.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            {todayMoments.length > 0 && (
               <>
-                <div className="flex items-center gap-2 mb-3 mt-1">
-                  <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-widest">Open now</span>
-                  <div className="flex-1 h-px bg-border/40" />
-                </div>
-                <div className="space-y-3 mb-5">
-                  {openNow.map(m => <MomentCard key={m.id} moment={m} />)}
+                <SectionHeader label="Today" />
+                <div className="space-y-3 mb-2">
+                  {todayMoments.map(m => <MomentCard key={m.id} moment={m} />)}
                 </div>
               </>
             )}
-
-            {rest.length > 0 && (
+            {weekMoments.length > 0 && (
               <>
-                {openNow.length > 0 && (
-                  <div className="flex items-center gap-2 mb-3 mt-2">
-                    <span className="text-xs font-medium text-muted-foreground/60 uppercase tracking-widest">Your practices</span>
-                    <div className="flex-1 h-px bg-border/40" />
-                  </div>
-                )}
+                <SectionHeader label="This Week" />
+                <div className="space-y-3 mb-2">
+                  {weekMoments.map(m => <MomentCard key={m.id} moment={m} />)}
+                </div>
+              </>
+            )}
+            {monthMoments.length > 0 && (
+              <>
+                <SectionHeader label="This Month" />
                 <div className="space-y-3">
-                  {rest.map(m => <MomentCard key={m.id} moment={m} />)}
+                  {monthMoments.map(m => <MomentCard key={m.id} moment={m} />)}
                 </div>
               </>
             )}
