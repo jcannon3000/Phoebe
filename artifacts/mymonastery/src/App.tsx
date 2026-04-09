@@ -60,6 +60,7 @@ import GatheringsPage from "./pages/gatherings";
 import HomeDark from "./pages/home-dark";
 import MomentNew from "./pages/moment-new";
 import MomentDetail from "./pages/moment-detail";
+import MomentPostPage from "./pages/moment-post";
 import MorningPrayerPage from "./pages/morning-prayer";
 
 const queryClient = new QueryClient({
@@ -83,6 +84,7 @@ function Router() {
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />
       <Route path="/moment/new" component={MomentNew} />
+      <Route path="/moment/:momentToken/:userToken" component={MomentPostPage} />
       <Route path="/moments/:id" component={MomentDetail} />
       <Route path="/morning-prayer/:momentId/:token" component={MorningPrayerPage} />
       <Route path="/ritual/:id" component={RitualDetail} />

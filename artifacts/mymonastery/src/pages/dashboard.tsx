@@ -147,7 +147,7 @@ function TodaySection({
   return (
     <div className="mb-8">
       <SectionHeader label="Today" />
-      <div className="space-y-4">
+      <div className="space-y-6">
         {letterItems.map((item) => (
           <Link key={`today-letter-${item.id}`} href={item.isUnread ? item.readHref! : item.writeHref}>
             <motion.div
@@ -297,7 +297,7 @@ function PracticesSection() {
     return (
       <>
         <SectionHeader label="Practices 🕯️" />
-        <div className="space-y-4 mb-8">
+        <div className="space-y-6 mb-8">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
           ))}
@@ -325,7 +325,7 @@ function PracticesSection() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Letter cards */}
           {letters.map((c) => {
             const isOneToOne = c.groupType === "one_to_one";
@@ -493,7 +493,7 @@ function GatheringsSection() {
     return (
       <>
         <SectionHeader label="Gatherings 🤝" />
-        <div className="space-y-4 mb-8">
+        <div className="space-y-6 mb-8">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
           ))}
@@ -519,7 +519,7 @@ function GatheringsSection() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {gatherings.map((ritual) => {
             const next = ritual.nextMeetupDate ? parseISO(ritual.nextMeetupDate) : null;
             const r = ritual as any;

@@ -321,50 +321,49 @@ function IntercessionPrayerPage({
     <motion.div
       key="prayer"
       exit={{ y: "-100%", transition: { duration: 0.35, ease: [0.4, 0, 1, 1] } }}
-      className="min-h-screen bg-[#F5EDD8]"
+      className="min-h-screen"
+      style={{ backgroundColor: "#1C3527" }}
     >
       <div className="max-w-md mx-auto px-5 py-10 pb-24">
 
-
         {/* Header — staggered fade-in */}
-        <motion.div variants={headerContainer} initial="hidden" animate="visible" className="text-center mb-5">
-          <motion.p variants={headerItem} className="text-[11px] uppercase tracking-widest text-[#5C7A5F]/60 mb-2">
+        <motion.div variants={headerContainer} initial="hidden" animate="visible" className="text-center mb-6">
+          <motion.p variants={headerItem} className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "rgba(200,230,210,0.5)" }}>
             {intercessionSource === "bcp" ? "Intercession Prayer" : "Prayer Together"}
           </motion.p>
-          <motion.h1 variants={headerItem} className="text-[22px] font-bold text-[#2C1A0E] leading-snug mb-2"
-            style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+          <motion.h1 variants={headerItem} className="text-[22px] font-bold leading-snug mb-2"
+            style={{ fontFamily: "Space Grotesk, sans-serif", color: "#F0EDE6" }}>
             {topic}
           </motion.h1>
           {intention && intention !== topic && (
-            <motion.p variants={headerItem} className="text-[#5C7A5F] text-[13px]">
+            <motion.p variants={headerItem} className="text-[13px]" style={{ color: "rgba(200,230,210,0.7)" }}>
               Praying for: {intention}
             </motion.p>
           )}
         </motion.div>
 
-        <div className="w-full h-px bg-[#5C7A5F]/20 mb-6" />
-
-        {/* Prayer text — subtle upward settle, 400ms after header */}
+        {/* Prayer text card */}
         {fullText && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-            className="mb-6"
+            className="mb-6 rounded-2xl px-6 py-6"
+            style={{ backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
-            <p className="font-serif text-[#2C1A0E] text-base leading-[1.9] whitespace-pre-wrap italic"
-              style={{ fontFamily: "Playfair Display, Georgia, serif" }}>
+            <p className="font-serif text-base leading-[1.9] whitespace-pre-wrap italic"
+              style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#F0EDE6" }}>
               {fullText}
             </p>
             {intercessionSource === "bcp" && (
-              <p className="text-[12px] text-[#6b5c4a]/50 mt-5 italic border-t border-[#c9b99a]/20 pt-3">
+              <p className="text-[12px] mt-5 italic border-t pt-3" style={{ color: "rgba(200,230,210,0.4)", borderColor: "rgba(255,255,255,0.1)" }}>
                 📖 From the Book of Common Prayer
               </p>
             )}
           </motion.div>
         )}
 
-        <div className="w-full h-px bg-[#5C7A5F]/20 mb-6" />
+        <div className="w-full h-px mb-6" style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
 
         {/* Presence — with ambient glow when two have prayed */}
         <motion.div
@@ -376,7 +375,7 @@ function IntercessionPrayerPage({
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mb-4 text-center rounded-2xl p-3"
         >
-          <p className="text-sm text-[#6b5c4a]/70 mb-4">{todayPostCount} of {memberCount} have prayed this 🙏</p>
+          <p className="text-sm mb-4" style={{ color: "rgba(200,230,210,0.6)" }}>{todayPostCount} of {memberCount} have prayed this 🙏</p>
           <NamedPresenceWithBloom members={members} myToken={myToken} justBloomed={justBloomed} />
         </motion.div>
 
@@ -386,10 +385,10 @@ function IntercessionPrayerPage({
         {alreadyPosted && confirmStep === "prayer" ? (
           /* Already prayed today — full prayer always readable, no Amen button */
           <div className="text-center py-6">
-            <p className="text-[#5C7A5F] font-medium text-base mb-3" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+            <p className="font-medium text-base mb-3" style={{ fontFamily: "Space Grotesk, sans-serif", color: "rgba(200,230,210,0.8)" }}>
               🙏 You prayed this today.
             </p>
-            <button onClick={onBack} className="text-sm text-[#5C7A5F]/60 hover:text-[#5C7A5F] transition-colors">
+            <button onClick={onBack} className="text-sm transition-colors" style={{ color: "rgba(200,230,210,0.5)" }}>
               ← Back to practice
             </button>
           </div>
@@ -400,27 +399,28 @@ function IntercessionPrayerPage({
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-4"
             >
-              <p className="text-4xl font-bold text-[#5C7A5F]">🙏 Amen</p>
+              <p className="text-4xl font-bold" style={{ color: "#F0EDE6" }}>🙏 Amen</p>
             </motion.div>
           ) : (
             <>
               <div className="mb-5">
-                <p className="font-serif italic text-[#5C7A5F] text-sm mb-2 text-center">"{reflectionPrompt}"</p>
+                <p className="font-serif italic text-sm mb-2 text-center" style={{ color: "rgba(200,230,210,0.6)" }}>"{reflectionPrompt}"</p>
                 <textarea
                   value={reflection}
                   onChange={e => setReflection(e.target.value.slice(0, 280))}
                   placeholder="What is on your heart today?"
                   rows={3}
-                  className="w-full px-4 py-4 rounded-2xl border border-[#c9b99a]/40 focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-white resize-none text-base leading-relaxed"
+                  className="w-full px-4 py-4 rounded-2xl outline-none resize-none text-base leading-relaxed"
+                  style={{ backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", color: "#F0EDE6" }}
                 />
-                <p className="text-xs text-[#6b5c4a]/40 mt-1.5 italic text-center">optional</p>
+                <p className="text-xs mt-1.5 italic text-center" style={{ color: "rgba(200,230,210,0.3)" }}>optional</p>
               </div>
             </>
           )
         ) : (
           /* Window closed — prayer always readable, back link */
           <div className="text-center py-6">
-            <button onClick={onBack} className="text-sm text-[#5C7A5F]/70 hover:text-[#5C7A5F] transition-colors">
+            <button onClick={onBack} className="text-sm transition-colors" style={{ color: "rgba(200,230,210,0.5)" }}>
               ← Back to practice
             </button>
           </div>
@@ -429,24 +429,24 @@ function IntercessionPrayerPage({
 
       {/* Fixed bottom Amen button */}
       {canPray && !alreadyPosted && confirmStep === "prayer" && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#F5EDD8] border-t border-[#c9b99a]/30 px-5 pb-[env(safe-area-inset-bottom)] z-50">
+        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ backgroundColor: "#1C3527", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="max-w-md mx-auto py-4">
             {postFailed && (
-              <p className="text-center text-sm text-red-600 mb-2">
+              <p className="text-center text-sm text-red-400 mb-2">
                 Couldn't save — check your connection and try again.
               </p>
             )}
             <motion.button
               onClick={handleAmen}
               disabled={isPraying}
-              animate={amenPulse && !postFailed ? { backgroundColor: ["#2C1A0E", "#B45309", "#2C1A0E"] } : { backgroundColor: "#2C1A0E" }}
+              animate={amenPulse && !postFailed ? { backgroundColor: ["#F0EDE6", "#c9b99a", "#F0EDE6"] } : { backgroundColor: "#F0EDE6" }}
               transition={{ duration: 0.3 }}
-              className="w-full py-5 rounded-2xl text-[#F5EDD8] text-lg font-bold hover:opacity-90 disabled:opacity-40"
-              style={{ fontFamily: "Space Grotesk, sans-serif" }}
+              className="w-full py-5 rounded-2xl text-lg font-bold hover:opacity-90 disabled:opacity-40"
+              style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527" }}
             >
               {isPraying ? "Marking…" : postFailed ? "Try again 🙏" : "Amen 🙏"}
             </motion.button>
-            <p className="text-center text-xs text-[#6b5c4a]/40 mt-3 font-serif italic">
+            <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
               Tapping Amen marks that you have prayed this together.
             </p>
           </div>
