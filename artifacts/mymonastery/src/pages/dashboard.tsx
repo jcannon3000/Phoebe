@@ -545,17 +545,6 @@ export default function Dashboard() {
           <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </p>
-          <div className="flex items-center gap-5 mt-2">
-            <Link href="/letters" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#C44B4F" }}>
-              📮 Letters
-            </Link>
-            <Link href="/practices" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#C8975A" }}>
-              🙏 Practices
-            </Link>
-            <Link href="/gatherings" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#5C8A5F" }}>
-              🤝 Gatherings
-            </Link>
-          </div>
         </div>
 
         {/* ── Loading skeleton ── */}
