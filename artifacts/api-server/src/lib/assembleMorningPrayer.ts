@@ -443,10 +443,10 @@ export async function assembleMorningPrayer(
 
   // First Lesson
   slides.push(
-    slide(id(), "lesson", "📜", "FIRST LESSON", lesson1Result.text + "\n\nHere ends the Reading.", {
+    slide(id(), "lesson", "📜", "FIRST LESSON", lesson1, {
       title: lesson1,
-      isScrollable: true,
-      scrollHint: "↓ continue · tap when ready",
+      isScrollable: false,
+      scrollHint: null,
       metadata: { reference: lesson1 },
     }),
   );
@@ -468,10 +468,10 @@ export async function assembleMorningPrayer(
 
   // Second Lesson
   slides.push(
-    slide(id(), "lesson", "✉️", "SECOND LESSON", lesson2Result.text + "\n\nHere ends the Reading.", {
+    slide(id(), "lesson", "✉️", "SECOND LESSON", lesson2, {
       title: lesson2,
-      isScrollable: true,
-      scrollHint: "↓ continue · tap when ready",
+      isScrollable: false,
+      scrollHint: null,
       metadata: { reference: lesson2 },
     }),
   );
