@@ -1818,6 +1818,7 @@ const EditMomentSchema = z.object({
   dayOfWeek: z.enum(["MO","TU","WE","TH","FR","SA","SU"]).nullable().optional(),
   practiceDays: z.string().optional(),
   goalDays: z.number().int().min(0).max(365).optional(),
+  commitmentSessionsGoal: z.number().int().min(1).max(365).nullable().optional(),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   intercessionTopic: z.string().max(300).nullable().optional(),
   contemplativeDurationMinutes: z.number().int().min(1).max(60).nullable().optional(),

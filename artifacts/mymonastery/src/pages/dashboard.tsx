@@ -237,7 +237,7 @@ function LetterCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-            {displayName}
+            📬 {displayName}
           </span>
           {hasUnread && (
             <span className="ml-2 inline-block w-2 h-2 rounded-full align-middle" style={{ background: "#C8D4C0" }} />
@@ -289,7 +289,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{m.name}</span>
+          <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {m.name}</span>
         </div>
         {m.currentStreak > 0 && (
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
@@ -301,7 +301,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle || m.intention}</p>
         {m.windowOpen && m.todayPostCount === 0 && (
           <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-            {emoji} Open
+            Open
           </span>
         )}
         {nextWindow && (

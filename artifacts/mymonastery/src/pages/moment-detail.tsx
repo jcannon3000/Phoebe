@@ -1014,7 +1014,10 @@ export default function MomentDetail() {
                         const payload: Record<string, unknown> = {};
                         if (editName.trim() && editName !== moment.name) payload.name = editName.trim();
                         if (editIntention !== (moment.intention ?? "")) payload.intention = editIntention;
-                        if (editGoalDays !== moment.goalDays) payload.goalDays = editGoalDays;
+                        if (editGoalDays !== moment.goalDays) {
+                          payload.goalDays = editGoalDays;
+                          payload.commitmentSessionsGoal = editGoalDays;
+                        }
                         if (editScheduledTime && editScheduledTime !== moment.scheduledTime) payload.scheduledTime = editScheduledTime;
                         if (Object.keys(payload).length > 0) {
                           editMutation.mutate(payload);
