@@ -119,6 +119,7 @@ function EveningPrayerViewer({ onBack }: { onBack: () => void }) {
           onBack={onBack}
           momentId={0}
           memberToken=""
+          theme="evening"
         />
       </div>
     </div>

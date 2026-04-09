@@ -8,11 +8,10 @@
  * the appointed reading and encouraged to read in their own translation.
  */
 
-import { eq, inArray } from "drizzle-orm";
-import { db, bcpTextsTable } from "@workspace/db";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getEveningCanticles } from "./eveningCanticleSelector";
 import { getLectionaryReadings } from "./lectionary";
+import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -111,40 +110,7 @@ function pickSuffragesKey(weekInSeason: number): string {
   return weekInSeason % 2 === 1 ? "suffrages_a" : "suffrages_b";
 }
 
-// ── Evening Prayer-specific texts (hardcoded, from BCP) ─────────────────────
-
-const EP_TEXTS: Record<string, { content: string; title: string; bcpReference: string }> = {
-  phos_hilaron: {
-    title: "O Gracious Light",
-    bcpReference: "BCP p. 118",
-    content:
-      "O gracious light,\npure brightness of the everliving Father in heaven,\nO Jesus Christ, holy and blessed!\n\nNow as we come to the setting of the sun,\nand our eyes behold the vesper light,\nwe sing your praises, O God: Father, Son, and Holy Spirit.\n\nYou are worthy at all times to be praised by happy voices,\nO Son of God, O Giver of Life,\nand to be glorified through all the worlds.",
-  },
-  canticle_15: {
-    title: "The Song of Mary · Magnificat",
-    bcpReference: "BCP p. 119",
-    content:
-      "My soul proclaims the greatness of the Lord,\nmy spirit rejoices in God my Savior; *\n  for he has looked with favor on his lowly servant.\nFrom this day all generations will call me blessed: *\n  the Almighty has done great things for me,\n  and holy is his Name.\nHe has mercy on those who fear him *\n  in every generation.\nHe has shown the strength of his arm, *\n  he has scattered the proud in their conceit.\nHe has cast down the mighty from their thrones, *\n  and has lifted up the lowly.\nHe has filled the hungry with good things, *\n  and the rich he has sent away empty.\nHe has come to the help of his servant Israel, *\n  for he has remembered his promise of mercy,\nThe promise he made to our fathers, *\n  to Abraham and his children for ever.\n\nGlory to the Father, and to the Son, and to the Holy Spirit: *\n  as it was in the beginning, is now, and will be for ever. Amen.",
-  },
-  canticle_17: {
-    title: "The Song of Simeon · Nunc dimittis",
-    bcpReference: "BCP p. 120",
-    content:
-      "Lord, you now have set your servant free *\n  to go in peace as you have promised;\nFor these eyes of mine have seen the Savior, *\n  whom you have prepared for all the world to see:\nA Light to enlighten the nations, *\n  and the glory of your people Israel.\n\nGlory to the Father, and to the Son, and to the Holy Spirit: *\n  as it was in the beginning, is now, and will be for ever. Amen.",
-  },
-  collect_for_peace_ep: {
-    title: "A Collect for Peace",
-    bcpReference: "BCP p. 123",
-    content:
-      "Most holy God, the source of all good desires, all right judgements, and all just works: Give to us, your servants, that peace which the world cannot give, so that our minds may be fixed on the doing of your will, and that we, being delivered from the fear of all enemies, may live in peace and quietness; through the mercies of Christ Jesus our Savior. Amen.",
-  },
-  collect_for_aid_ep: {
-    title: "A Collect for Aid against Perils",
-    bcpReference: "BCP p. 123",
-    content:
-      "Be our light in the darkness, O Lord, and in your great mercy defend us from all perils and dangers of this night; for the love of your only Son, our Savior Jesus Christ. Amen.",
-  },
-};
+// All BCP texts now come from ../data/bcpEveningPrayerTexts.ts (EP_BCP_TEXTS)
 
 // ── Main Assembly ────────────────────────────────────────────────────────────
 
@@ -164,52 +130,17 @@ export async function assembleEveningPrayer(
   const suffragesKey = pickSuffragesKey(liturgicalDay.weekInSeason);
   const missionPrayerKey = pickMissionPrayerKey(liturgicalDay.dayOfWeek);
 
-  // Keys to fetch from DB
-  const keysNeeded = [
-    openingSentenceKey,
-    "confession_text",
-    "confession_absolution",
-    afterOT,
-    afterNT,
-    "apostles_creed",
-    "lords_prayer_contemporary",
-    suffragesKey,
-    liturgicalDay.collectKey,
-    missionPrayerKey,
-    "general_thanksgiving",
-  ];
-
-  // Psalm keys for EP appointed psalms
+  // Psalm numbers for EP
   const appointedPsalmNums = readings.psalms
     .map(p => { const num = parseInt(p.split(":")[0], 10); return isNaN(num) ? null : num; })
     .filter((n): n is number => n !== null);
 
-  const psalmKeys = [...new Set(appointedPsalmNums.map(n => `psalm_${n}`))];
-
-  // Fetch BCP texts from DB
-  const [bcpRows, psalmRows] = await Promise.all([
-    db.select().from(bcpTextsTable).where(inArray(bcpTextsTable.textKey, keysNeeded)),
-    psalmKeys.length > 0
-      ? db.select().from(bcpTextsTable).where(inArray(bcpTextsTable.textKey, psalmKeys))
-      : Promise.resolve([]),
-  ]);
-
-  const texts: Record<string, { content: string; title: string; bcpReference: string | null; metadata: Record<string, unknown> }> = {};
-  for (const row of [...bcpRows, ...psalmRows]) {
-    texts[row.textKey] = {
-      content: row.content,
-      title: row.title,
-      bcpReference: row.bcpReference ?? null,
-      metadata: (row.metadata as Record<string, unknown>) ?? {},
-    };
-  }
-
+  /** Look up a text from embedded data */
   function getText(key: string): string {
-    return texts[key]?.content ?? `[${key} — see BCP]`;
+    return EP_BCP_TEXTS[key]?.content ?? "";
   }
-
-  function getEPText(key: string): { content: string; title: string; bcpReference: string } {
-    return EP_TEXTS[key] ?? { content: `[${key}]`, title: key, bcpReference: "" };
+  function getTextData(key: string) {
+    return EP_BCP_TEXTS[key] ?? { content: "", title: key, bcpReference: "" };
   }
 
   // ── Build slides ────────────────────────────────────────────────────────────
@@ -279,39 +210,32 @@ export async function assembleEveningPrayer(
   );
 
   // 6. O Gracious Light (Phos hilaron) — unique to Evening Prayer
-  const phosData = getEPText("phos_hilaron");
+  const phosData = getTextData("phos_hilaron");
   slides.push(
-    slide(id(), "invitatory_psalm", "🕯️", "O GRACIOUS LIGHT · PHOS HILARON", phosData.content, {
+    slide(id(), "invitatory_psalm", "🕯️", "O GRACIOUS LIGHT", phosData.content, {
       bcpReference: phosData.bcpReference,
       isScrollable: true,
       scrollHint: "↓ continue · tap when ready",
     }),
   );
 
-  // 7. Appointed Psalms (EP psalms)
-  const gloriaPatri =
-    "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
-
+  // 7. Appointed Psalms — shown as reference (psalms are too long to embed)
   for (const psalmNum of appointedPsalmNums) {
-    const psalmKey = `psalm_${psalmNum}`;
-    const psalmData = texts[psalmKey];
-    const content = psalmData
-      ? psalmData.content + gloriaPatri
-      : `[Psalm ${psalmNum} — see BCP Psalter]${gloriaPatri}`;
-
     slides.push(
-      slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", `PSALM ${psalmNum}`, content, {
-        isScrollable: true,
-        scrollHint: "↓ continue · tap when ready",
-        metadata: psalmData?.metadata ?? {},
+      slide(id(), "lesson", PSALM_EMOJI[psalmNum] ?? "📖", `PSALM ${psalmNum}`, `Psalm ${psalmNum}`, {
+        title: `Psalm ${psalmNum}`,
+        metadata: {
+          reference: `Psalm ${psalmNum}`,
+          readingNote: "Pray this psalm from your BCP Psalter or Bible.",
+        },
       }),
     );
   }
 
-  // 8. First Lesson — reference only, no full text
+  // 8. First Lesson — reference only
   const lesson1 = readings.lesson1;
   slides.push(
-    slide(id(), "lesson", "📜", "FIRST LESSON", lesson1, {
+    slide(id(), "lesson", "📜", "THE FIRST LESSON", lesson1, {
       title: lesson1,
       metadata: {
         reference: lesson1,
@@ -321,19 +245,13 @@ export async function assembleEveningPrayer(
   );
 
   // 9. Canticle after OT lesson
-  // Check if EP-specific canticle exists in our hardcoded texts first
-  const afterOTEP = EP_TEXTS[afterOT];
-  const afterOTDB = texts[afterOT];
-  const afterOTContent = afterOTEP?.content ?? afterOTDB?.content ?? `[${afterOT} — see BCP]`;
-  const afterOTTitle = afterOTEP?.title ?? afterOTDB?.title ?? afterOT;
-  const afterOTRef = afterOTEP?.bcpReference ?? afterOTDB?.bcpReference ?? null;
-
+  const afterOTData = getTextData(afterOT);
   slides.push(
     slide(id(), "canticle", CANTICLE_EMOJI[afterOT] ?? "🌟",
-      `CANTICLE · ${afterOTTitle.toUpperCase()}`,
-      afterOTContent,
+      afterOTData.title.toUpperCase(),
+      afterOTData.content,
       {
-        bcpReference: afterOTRef,
+        bcpReference: afterOTData.bcpReference,
         isScrollable: true,
         scrollHint: "↓ continue · tap when ready",
       },
@@ -343,7 +261,7 @@ export async function assembleEveningPrayer(
   // 10. Second Lesson — reference only
   const lesson2 = readings.lesson2;
   slides.push(
-    slide(id(), "lesson", "✉️", "SECOND LESSON", lesson2, {
+    slide(id(), "lesson", "✉️", "THE SECOND LESSON", lesson2, {
       title: lesson2,
       metadata: {
         reference: lesson2,
@@ -353,69 +271,67 @@ export async function assembleEveningPrayer(
   );
 
   // 11. Canticle after NT lesson
-  const afterNTEP = EP_TEXTS[afterNT];
-  const afterNTDB = texts[afterNT];
-  const afterNTContent = afterNTEP?.content ?? afterNTDB?.content ?? `[${afterNT} — see BCP]`;
-  const afterNTTitle = afterNTEP?.title ?? afterNTDB?.title ?? afterNT;
-  const afterNTRef = afterNTEP?.bcpReference ?? afterNTDB?.bcpReference ?? null;
-
+  const afterNTData = getTextData(afterNT);
   slides.push(
     slide(id(), "canticle", CANTICLE_EMOJI[afterNT] ?? "🌟",
-      `CANTICLE · ${afterNTTitle.toUpperCase()}`,
-      afterNTContent,
+      afterNTData.title.toUpperCase(),
+      afterNTData.content,
       {
-        bcpReference: afterNTRef,
+        bcpReference: afterNTData.bcpReference,
         isScrollable: true,
         scrollHint: "↓ continue · tap when ready",
       },
     ),
   );
 
-  // 12. Apostles' Creed
+  // 12. The Apostles' Creed
+  const creedData = getTextData("apostles_creed");
   slides.push(
-    slide(id(), "creed", "✝️", "THE APOSTLES' CREED", getText("apostles_creed"), {
-      bcpReference: "BCP p. 120",
+    slide(id(), "creed", "✝️", creedData.title.toUpperCase(), creedData.content, {
+      bcpReference: creedData.bcpReference,
       metadata: { prompt: "We say together what we believe." },
     }),
   );
 
-  // 13. Lord's Prayer
+  // 13. The Lord's Prayer
+  const lpData = getTextData("lords_prayer_contemporary");
   slides.push(
-    slide(id(), "lords_prayer", "🙏", "THE LORD'S PRAYER", getText("lords_prayer_contemporary"), {
-      bcpReference: "BCP p. 121",
+    slide(id(), "lords_prayer", "🙏", lpData.title.toUpperCase(), lpData.content, {
+      bcpReference: lpData.bcpReference,
     }),
   );
 
   // 14. Suffrages
   const suffrageText = getText(suffragesKey);
-  const suffrageLabel = suffragesKey === "suffrages_a" ? "A" : "B";
+  const suffrageData = getTextData(suffragesKey);
   slides.push(
-    slide(id(), "suffrages", "🕊️", `THE PRAYERS · SUFFRAGES ${suffrageLabel}`, suffrageText, {
-      bcpReference: "BCP p. 121",
+    slide(id(), "suffrages", "🕊️", `SUFFRAGES ${suffragesKey === "suffrages_a" ? "A" : "B"}`, suffrageText, {
+      bcpReference: suffrageData.bcpReference,
       isCallAndResponse: true,
       callAndResponseLines: parseSuffrages(suffrageText),
     }),
   );
 
   // 15. Collect of the Day
-  const collectData = texts[liturgicalDay.collectKey];
+  const collectContent = getText(liturgicalDay.collectKey) || getText("collect_fallback");
+  const collectRef = getTextData(liturgicalDay.collectKey).bcpReference || getTextData("collect_fallback").bcpReference;
   slides.push(
-    slide(id(), "collect", "📅", "COLLECT OF THE DAY", getText(liturgicalDay.collectKey), {
+    slide(id(), "collect", "📅", "COLLECT OF THE DAY", collectContent, {
       title: liturgicalDay.sundayLabel,
-      bcpReference: collectData?.bcpReference ?? "BCP p. 211",
+      bcpReference: collectRef,
     }),
   );
 
-  // 16. Collect for Peace (EP-specific)
-  const peaceData = getEPText("collect_for_peace_ep");
+  // 16. A Collect for Peace (EP)
+  const peaceData = getTextData("collect_for_peace_ep");
   slides.push(
     slide(id(), "collect", "☮️", "A COLLECT FOR PEACE", peaceData.content, {
       bcpReference: peaceData.bcpReference,
     }),
   );
 
-  // 17. Collect for Aid against Perils (EP-specific)
-  const aidData = getEPText("collect_for_aid_ep");
+  // 17. A Collect for Aid against Perils (EP)
+  const aidData = getTextData("collect_for_aid_ep");
   slides.push(
     slide(id(), "collect", "🛡️", "A COLLECT FOR AID AGAINST PERILS", aidData.content, {
       bcpReference: aidData.bcpReference,
@@ -423,16 +339,20 @@ export async function assembleEveningPrayer(
   );
 
   // 18. Prayer for Mission
+  const missionData = getTextData(missionPrayerKey);
   slides.push(
-    slide(id(), "prayer_for_mission", "🌍", "A PRAYER FOR MISSION", getText(missionPrayerKey), {
-      bcpReference: "BCP p. 124",
+    slide(id(), "prayer_for_mission", "🌍", "A PRAYER FOR MISSION", missionData.content, {
+      bcpReference: missionData.bcpReference,
     }),
   );
 
   // 19. General Thanksgiving
+  const gtData = getTextData("general_thanksgiving");
   slides.push(
-    slide(id(), "general_thanksgiving", "🌾", "THE GENERAL THANKSGIVING", getText("general_thanksgiving"), {
-      bcpReference: "BCP p. 125",
+    slide(id(), "general_thanksgiving", "🌾", gtData.title.toUpperCase(), gtData.content, {
+      bcpReference: gtData.bcpReference,
+      isScrollable: true,
+      scrollHint: "↓ continue · tap when ready",
       metadata: { prompt: "This is often said aloud together." },
     }),
   );

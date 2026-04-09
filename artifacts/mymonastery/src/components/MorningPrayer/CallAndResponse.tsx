@@ -2,23 +2,19 @@ import type { CallAndResponseLine } from "./types";
 
 interface CallAndResponseProps {
   lines: CallAndResponseLine[];
+  theme?: "morning" | "evening";
 }
 
-const SPEAKER_STYLES: Record<CallAndResponseLine["speaker"], React.CSSProperties> = {
-  officiant: {
-    color: "#2C1810",
-    fontWeight: 400,
-    paddingLeft: 0,
-  },
-  people: {
-    color: "#D4896A",
-    fontWeight: 400,
-    paddingLeft: 0,
-  },
-  both: {
-    color: "#2C1810",
-    fontWeight: 500,
-  },
+const MORNING_STYLES: Record<CallAndResponseLine["speaker"], React.CSSProperties> = {
+  officiant: { color: "#2C1810", fontWeight: 400, paddingLeft: 0 },
+  people: { color: "#D4896A", fontWeight: 400, paddingLeft: 0 },
+  both: { color: "#2C1810", fontWeight: 500 },
+};
+
+const EVENING_STYLES: Record<CallAndResponseLine["speaker"], React.CSSProperties> = {
+  officiant: { color: "#E8E4D8", fontWeight: 400, paddingLeft: 0 },
+  people: { color: "#8FAF96", fontWeight: 400, paddingLeft: 0 },
+  both: { color: "#E8E4D8", fontWeight: 500 },
 };
 
 const SPEAKER_LABEL: Record<CallAndResponseLine["speaker"], string | null> = {
@@ -27,7 +23,10 @@ const SPEAKER_LABEL: Record<CallAndResponseLine["speaker"], string | null> = {
   both: null,
 };
 
-export function CallAndResponse({ lines }: CallAndResponseProps) {
+export function CallAndResponse({ lines, theme = "morning" }: CallAndResponseProps) {
+  const styles = theme === "evening" ? EVENING_STYLES : MORNING_STYLES;
+  const labelColor = theme === "evening" ? "rgba(143,175,150,0.6)" : "#9B8577";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {lines.map((line, i) => {
@@ -38,7 +37,7 @@ export function CallAndResponse({ lines }: CallAndResponseProps) {
               <span
                 style={{
                   fontSize: 11,
-                  color: "#9B8577",
+                  color: labelColor,
                   fontFamily: "Space Grotesk, sans-serif",
                   letterSpacing: "0.05em",
                   minWidth: 18,
@@ -55,7 +54,7 @@ export function CallAndResponse({ lines }: CallAndResponseProps) {
                 fontSize: 18,
                 lineHeight: 1.85,
                 fontFamily: "Space Grotesk, sans-serif",
-                ...SPEAKER_STYLES[line.speaker],
+                ...styles[line.speaker],
                 paddingLeft: !label ? 26 : 0,
               }}
             >

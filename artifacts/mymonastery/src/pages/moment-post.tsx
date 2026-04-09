@@ -308,6 +308,7 @@ function EpSlideshowInline({
           onBack={onBack}
           momentId={momentId}
           memberToken={memberToken}
+          theme="evening"
         />
       </div>
     </div>
