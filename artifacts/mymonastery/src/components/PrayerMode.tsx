@@ -158,15 +158,20 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
         ×
       </button>
 
-      {/* Main content — centered */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 w-full" style={{ maxWidth: 560, margin: "0 auto" }}>
+      {/* Scroll container — flex-1 so it fills between × and progress */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Inner wrapper: min-h-full + justify-center keeps content vertically centered
+            when short, and lets it scroll naturally when tall */}
+        <div
+          className="min-h-full flex flex-col items-center justify-center px-8 py-16 w-full"
+          style={{ maxWidth: 560, margin: "0 auto" }}
+        >
         {phase === "prayer" && slide && (
           <div
-            className="w-full overflow-y-auto"
+            className="w-full"
             style={{
               opacity: slideVisible ? 1 : 0,
               transition: "opacity 0.22s ease",
-              maxHeight: "calc(100vh - 140px)",
             }}
           >
             <SlideContent slide={slide} onAdvance={advance} />
@@ -225,6 +230,7 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Progress indicator */}
