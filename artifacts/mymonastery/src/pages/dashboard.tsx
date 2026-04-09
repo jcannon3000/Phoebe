@@ -269,13 +269,12 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const memberNames = m.members
     .filter(p => p.email !== userEmail)
     .map(p => p.name || p.email.split("@")[0])
-    .slice(0, 2)
+    .slice(0, 5)
     .join(", ");
 
   let subtitle = "";
-  if (m.intercessionTopic) subtitle = m.intercessionTopic;
+  if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
-  else if (memberNames) subtitle = `with ${memberNames}`;
 
   const isMorningPrayer = m.templateType === "morning-prayer";
   const isIntercession = m.templateType === "intercession";
