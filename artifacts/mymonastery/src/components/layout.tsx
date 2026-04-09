@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Menu, X, Users, Mail, Calendar, BookOpen, Settings, LogOut, ChevronRight } from "lucide-react";
+import { Menu, X, Users, Mail, Calendar, BookOpen, Settings, LogOut, ChevronRight, HandHeart } from "lucide-react";
 
 // ─── Hamburger Drawer ─────────────────────────────────────────────────────────
 
@@ -115,6 +115,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   { icon: BookOpen, label: "Practices", path: "/practices", color: "#C8975A" },
                   { icon: Users, label: "Gatherings", path: "/gatherings", color: "#5C8A5F" },
                   { icon: Users, label: "People", path: "/people", color: "#8FAF96" },
+                  { icon: HandHeart, label: "Prayer List", path: "/prayer-list", color: "#A8C5A0" },
                 ].map(({ icon: Icon, label, path, color }) => (
                   <button
                     key={path}

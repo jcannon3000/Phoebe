@@ -63,6 +63,7 @@ import MomentDetail from "./pages/moment-detail";
 import MomentPostPage from "./pages/moment-post";
 import MorningPrayerPage from "./pages/morning-prayer";
 import MomentsDashboard from "./pages/moments-dashboard";
+import PrayerListPage from "./pages/prayer-list";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,6 +100,7 @@ function Router() {
       <Route path="/letters/:id/read/:letterId" component={ReadLetter} />
       <Route path="/letters/:id" component={CorrespondencePage} />
       <Route path="/people" component={People} />
+      <Route path="/prayer-list" component={PrayerListPage} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route component={NotFound} />
     </Switch>
