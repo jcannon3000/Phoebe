@@ -304,6 +304,42 @@ textarea:focus {
 }
 .animate-bar-pulse { animation: bar-pulse 2.5s ease-in-out infinite; }
 
+/* ── Category-specific pulse: Letters (red) ────────────────────────── */
+@keyframes turn-pulse-letters {
+  0%, 100% { border-color: rgba(196,75,79,0.15); }
+  50%      { border-color: rgba(196,75,79,0.7); }
+}
+@keyframes bar-pulse-letters {
+  0%, 100% { background-color: rgba(196,75,79,0.2); }
+  50%      { background-color: rgba(196,75,79,1); }
+}
+.animate-turn-pulse-letters { animation: turn-pulse-letters 2.5s ease-in-out infinite; }
+.animate-bar-pulse-letters  { animation: bar-pulse-letters 2.5s ease-in-out infinite; }
+
+/* ── Category-specific pulse: Practices (blue) ─────────────────────── */
+@keyframes turn-pulse-practices {
+  0%, 100% { border-color: rgba(74,127,181,0.15); }
+  50%      { border-color: rgba(74,127,181,0.7); }
+}
+@keyframes bar-pulse-practices {
+  0%, 100% { background-color: rgba(74,127,181,0.2); }
+  50%      { background-color: rgba(74,127,181,1); }
+}
+.animate-turn-pulse-practices { animation: turn-pulse-practices 2.5s ease-in-out infinite; }
+.animate-bar-pulse-practices  { animation: bar-pulse-practices 2.5s ease-in-out infinite; }
+
+/* ── Category-specific pulse: Gatherings (green) ───────────────────── */
+@keyframes turn-pulse-gatherings {
+  0%, 100% { border-color: rgba(92,138,95,0.15); }
+  50%      { border-color: rgba(92,138,95,0.7); }
+}
+@keyframes bar-pulse-gatherings {
+  0%, 100% { background-color: rgba(92,138,95,0.2); }
+  50%      { background-color: rgba(92,138,95,1); }
+}
+.animate-turn-pulse-gatherings { animation: turn-pulse-gatherings 2.5s ease-in-out infinite; }
+.animate-bar-pulse-gatherings  { animation: bar-pulse-gatherings 2.5s ease-in-out infinite; }
+
 /* ── Glow animations (kept for backward compat) ──────────────────── */
 @keyframes glow-breathe {
   0%, 100% { box-shadow: 0 2px 12px rgba(45, 94, 63, 0.3); }

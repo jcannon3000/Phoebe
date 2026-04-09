@@ -62,6 +62,7 @@ import MomentNew from "./pages/moment-new";
 import MomentDetail from "./pages/moment-detail";
 import MomentPostPage from "./pages/moment-post";
 import MorningPrayerPage from "./pages/morning-prayer";
+import MomentsDashboard from "./pages/moments-dashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,7 @@ function Router() {
       <Route path="/moment/new" component={MomentNew} />
       <Route path="/moment/:momentToken/:userToken" component={MomentPostPage} />
       <Route path="/moments/:id" component={MomentDetail} />
+      <Route path="/practices" component={MomentsDashboard} />
       <Route path="/morning-prayer/:momentId/:token" component={MorningPrayerPage} />
       <Route path="/ritual/:id" component={RitualDetail} />
       <Route path="/schedule/:token" component={GuestSchedule} />

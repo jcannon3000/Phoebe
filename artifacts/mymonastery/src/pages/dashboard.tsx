@@ -6,7 +6,6 @@ import { useListRituals } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
-import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
 import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
 
@@ -50,6 +49,36 @@ type Moment = {
   timeOfDay: string | null;
 };
 
+// ─── Category color system ──────────────────────────────────────────────────
+
+type Category = "letters" | "practices" | "gatherings";
+
+const CATEGORY_COLORS: Record<Category, {
+  bar: string;
+  border: string;
+  pulseClass: string;
+  barPulseClass: string;
+}> = {
+  letters: {
+    bar: "#C44B4F",
+    border: "rgba(196, 75, 79, 0.4)",
+    pulseClass: "animate-turn-pulse-letters",
+    barPulseClass: "animate-bar-pulse-letters",
+  },
+  practices: {
+    bar: "#4A7FB5",
+    border: "rgba(74, 127, 181, 0.4)",
+    pulseClass: "animate-turn-pulse-practices",
+    barPulseClass: "animate-bar-pulse-practices",
+  },
+  gatherings: {
+    bar: "#5C8A5F",
+    border: "rgba(92, 138, 95, 0.4)",
+    pulseClass: "animate-turn-pulse-gatherings",
+    barPulseClass: "animate-bar-pulse-gatherings",
+  },
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function nextDayLabel(date: Date): string {
@@ -66,7 +95,6 @@ const DAY_NAMES: Record<number, string> = { 0: "Sunday", 1: "Monday", 2: "Tuesda
 function nextWindowLabel(m: Pick<Moment, "frequency" | "dayOfWeek" | "practiceDays" | "timeOfDay">): string {
   if (m.frequency === "daily") return "Tomorrow";
   if (m.frequency === "monthly") return "Next month";
-  // weekly — find next matching day
   let rawDays: string[] = [];
   try { rawDays = m.practiceDays ? (JSON.parse(m.practiceDays) as string[]) : []; } catch { /* */ }
   if (!rawDays.length && m.dayOfWeek) rawDays = [m.dayOfWeek];
@@ -83,8 +111,6 @@ function nextWindowLabel(m: Pick<Moment, "frequency" | "dayOfWeek" | "practiceDa
   return "Next week";
 }
 
-const CARD_BASE = "background: #0F2818; border: 1px solid rgba(200, 212, 192, 0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)";
-
 const PRACTICE_EMOJI: Record<string, string> = {
   "morning-prayer": "🌅",
   "evening-prayer": "🌙",
@@ -95,29 +121,38 @@ const PRACTICE_EMOJI: Record<string, string> = {
   "custom": "🌱",
 };
 
+// ─── Dashboard item union type ──────────────────────────────────────────────
+
+type DashboardItem =
+  | { kind: "letter"; data: Correspondence }
+  | { kind: "moment"; data: Moment; nextWindow?: string }
+  | { kind: "gathering"; data: any; badge?: string };
+
 // ─── Reusable card sub-components ────────────────────────────────────────────
 
-// The bar-style card used everywhere (left accent strip, optional pulse)
 function BarCard({
   href,
   pulse,
+  category = "gatherings",
   children,
 }: {
   href: string;
   pulse: boolean;
+  category?: Category;
   children: React.ReactNode;
 }) {
+  const colors = CATEGORY_COLORS[category];
   return (
     <Link href={href} className="block">
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? "animate-turn-pulse" : ""}`}
-        style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? colors.pulseClass : ""}`}
+        style={{ background: "#0F2818", border: `1px solid ${colors.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
       >
         <div
-          className={`w-1 flex-shrink-0 ${pulse ? "animate-bar-pulse" : ""}`}
-          style={{ background: pulse ? undefined : "#5C8A5F" }}
+          className={`w-1 flex-shrink-0 ${pulse ? colors.barPulseClass : ""}`}
+          style={{ background: pulse ? undefined : colors.bar }}
         />
         <div className="flex-1 px-4 py-3">
           {children}
@@ -189,7 +224,7 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-// ─── Letter card (reused in Today, This week, and Practices) ─────────────────
+// ─── Letter card ─────────────────────────────────────────────────────────────
 
 function LetterCard({
   c,
@@ -233,7 +268,7 @@ function LetterCard({
   }
 
   return (
-    <BarCard key={`${keyPrefix}-${c.id}`} href={`/letters/${c.id}`} pulse={shouldPulse}>
+    <BarCard key={`${keyPrefix}-${c.id}`} href={`/letters/${c.id}`} pulse={shouldPulse} category="letters">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
@@ -261,7 +296,7 @@ function LetterCard({
   );
 }
 
-// ─── Moment card (reused in Today and Practices) ──────────────────────────────
+// ─── Moment card ─────────────────────────────────────────────────────────────
 
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
   const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
@@ -285,7 +320,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     : `/moments/${m.id}`;
 
   return (
-    <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse}>
+    <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse} category="practices">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {m.name}</span>
@@ -314,7 +349,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   );
 }
 
-// ─── Gathering card (reused in Today, This week, Gatherings) ─────────────────
+// ─── Gathering card ─────────────────────────────────────────────────────────
 
 function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; badge?: string }) {
   const next = r.nextMeetupDate ? parseISO(r.nextMeetupDate) : null;
@@ -326,9 +361,9 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   const participants: Array<any> = r.participants ?? [];
 
   return (
-    <BarCard key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} pulse={false}>
+    <BarCard key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} pulse={false} category="gatherings">
       <div className="flex items-start justify-between gap-2 mb-1">
-        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{r.name}</span>
+        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>🤝 {r.name}</span>
         {badge ? (
           <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "rgba(45,94,63,0.4)", color: "#A8C5A0", border: "1px solid rgba(168,197,160,0.3)" }}>
             {badge}
@@ -359,94 +394,49 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   );
 }
 
-// ─── Today Section ────────────────────────────────────────────────────────────
+// ─── Generic time section (Today / This week / This month) ──────────────────
 
-function TodaySection({
-  letters, moments, gatherings, userEmail, userName,
+function TimeSection({
+  label,
+  items,
+  userEmail,
+  userName,
+  maxItems = 3,
 }: {
-  letters: Correspondence[]; moments: Moment[]; gatherings: any[]; userEmail: string; userName: string;
+  label: string;
+  items: DashboardItem[];
+  userEmail: string;
+  userName: string;
+  maxItems?: number;
 }) {
-  if (letters.length === 0 && moments.length === 0 && gatherings.length === 0) return null;
+  const [expanded, setExpanded] = useState(false);
+  if (items.length === 0) return null;
+  const visible = expanded ? items : items.slice(0, maxItems);
+  const hasMore = items.length > maxItems;
+
   return (
     <div className="mb-8">
-      <SectionHeader label="Today" />
+      <SectionHeader label={label} />
       <div className="space-y-6">
-        {letters.map(c => <LetterCard key={`today-l-${c.id}`} c={c} userEmail={userEmail} userName={userName} keyPrefix="today" />)}
-        {moments.map(m => <MomentCard key={`today-m-${m.id}`} m={m} userEmail={userEmail} keyPrefix="today" />)}
-        {gatherings.map(r => <GatheringCard key={`today-g-${r.id}`} r={r} keyPrefix="today" badge="Today" />)}
+        {visible.map((item, i) => {
+          switch (item.kind) {
+            case "letter":
+              return <LetterCard key={`${label}-l-${item.data.id}`} c={item.data} userEmail={userEmail} userName={userName} keyPrefix={label} />;
+            case "moment":
+              return <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />;
+            case "gathering":
+              return <GatheringCard key={`${label}-g-${item.data.id}`} r={item.data} keyPrefix={label} badge={item.badge} />;
+          }
+        })}
       </div>
-    </div>
-  );
-}
-
-// ─── This Week Section ────────────────────────────────────────────────────────
-
-function ThisWeekSection({
-  letters, moments, gatherings, userEmail, userName,
-}: {
-  letters: Correspondence[]; moments: Moment[]; gatherings: any[]; userEmail: string; userName: string;
-}) {
-  if (letters.length === 0 && moments.length === 0 && gatherings.length === 0) return null;
-  return (
-    <div className="mb-8">
-      <SectionHeader label="This week" />
-      <div className="space-y-6">
-        {letters.map(c => <LetterCard key={`week-l-${c.id}`} c={c} userEmail={userEmail} userName={userName} keyPrefix="week" />)}
-        {moments.map(m => <MomentCard key={`week-m-${m.id}`} m={m} userEmail={userEmail} keyPrefix="week" nextWindow={nextWindowLabel(m)} />)}
-        {gatherings.map(r => (
-          <GatheringCard key={`week-g-${r.id}`} r={r} keyPrefix="week" badge={format(parseISO(r.nextMeetupDate), "EEEE")} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Practices Section (letters + moments merged) ─────────────────────────────
-
-function PracticesSection({
-  letters, moments, userEmail, userName,
-}: {
-  letters: Correspondence[]; moments: Moment[]; userEmail: string; userName: string;
-}) {
-  const hasAny = letters.length > 0 || moments.length > 0;
-
-  return (
-    <div className="mb-8">
-      <SectionHeader label="Practices 🕯️" />
-      {!hasAny ? (
-        <div className="rounded-xl p-5 text-center" style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}>
-          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No practices yet. Start one. 🌱</p>
-          <Link href="/moment/new">
-            <span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a practice →</span>
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {letters.map(c => <LetterCard key={`practices-l-${c.id}`} c={c} userEmail={userEmail} userName={userName} keyPrefix="practices" />)}
-          {moments.map(m => <MomentCard key={`practices-m-${m.id}`} m={m} userEmail={userEmail} keyPrefix="practices" />)}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Gatherings Section ───────────────────────────────────────────────────────
-
-function GatheringsSection({ gatherings }: { gatherings: any[] }) {
-  return (
-    <div className="mb-4">
-      <SectionHeader label="Gatherings 🤝" />
-      {gatherings.length === 0 ? (
-        <div className="rounded-xl p-5 text-center" style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}>
-          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No gatherings yet. Start one.</p>
-          <Link href="/tradition/new">
-            <span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a gathering →</span>
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {gatherings.map(r => <GatheringCard key={`g-${r.id}`} r={r} keyPrefix="g" />)}
-        </div>
+      {hasMore && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="mt-4 text-sm font-medium transition-opacity hover:opacity-80"
+          style={{ color: "#A8C5A0" }}
+        >
+          View all ({items.length}) →
+        </button>
       )}
     </div>
   );
@@ -474,30 +464,21 @@ export default function Dashboard() {
 
   const isLoading = lettersLoading || momentsLoading || ritualsLoading;
 
-  // ── Placement + deduplication ─────────────────────────────────────────────
+  // ── Placement + deduplication → three time buckets ────────────────────────
 
-  const {
-    todayLetters, todayMoments, todayGatherings,
-    weekLetters, weekMoments, weekGatherings,
-    practicesLetters, practicesMoments,
-    filteredGatherings,
-    totalCount,
-  } = useMemo(() => {
+  const { todayItems, weekItems, monthItems, totalCount } = useMemo(() => {
     const allLetters = correspondences ?? [];
     const allMoments = momentsData?.moments ?? [];
     const allGatherings = (rituals ?? []) as any[];
-    const userEmail = user?.email ?? "";
     const userName = user?.name ?? "";
 
     const totalCount = allLetters.length + allMoments.length + allGatherings.length;
 
-    // ── Letters: Today = deadline (isLastThreeDays && not yet written)
-    //            This week = window open (not yet written) or unread
-    //            Practices = everything else
-    const todayLetters: Correspondence[] = [];
-    const weekLetters: Correspondence[] = [];
-    const practicesLetters: Correspondence[] = [];
+    const todayItems: DashboardItem[] = [];
+    const weekItems: DashboardItem[] = [];
+    const monthItems: DashboardItem[] = [];
 
+    // ── Letters placement
     for (const c of allLetters) {
       const iWrote = c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false;
       const hasUnread = c.unreadCount > 0;
@@ -505,42 +486,43 @@ export default function Dashboard() {
       const isOpenTurn = !iWrote && !c.currentPeriod.isLastThreeDays;
 
       if (isDeadline) {
-        todayLetters.push(c);
+        todayItems.push({ kind: "letter", data: c });
       } else if (isOpenTurn || hasUnread) {
-        weekLetters.push(c);
+        weekItems.push({ kind: "letter", data: c });
       } else {
-        practicesLetters.push(c);
+        monthItems.push({ kind: "letter", data: c });
       }
     }
 
-    // ── Moments: Today = window open & not yet logged
-    //            This week = logged today (next window tomorrow/later)
-    //            Practices = not open, not logged today
-    const todayMoments = allMoments.filter(m => m.windowOpen && m.todayPostCount === 0);
-    const todayMomentIds = new Set(todayMoments.map(m => m.id));
-    const weekMoments = allMoments.filter(m => !todayMomentIds.has(m.id) && m.todayPostCount > 0);
-    const weekMomentIds = new Set(weekMoments.map(m => m.id));
-    const practicesMoments = allMoments.filter(m => !todayMomentIds.has(m.id) && !weekMomentIds.has(m.id));
+    // ── Moments placement
+    for (const m of allMoments) {
+      if (m.windowOpen && m.todayPostCount === 0) {
+        todayItems.push({ kind: "moment", data: m });
+      } else if (m.todayPostCount > 0) {
+        weekItems.push({ kind: "moment", data: m, nextWindow: nextWindowLabel(m) });
+      } else {
+        monthItems.push({ kind: "moment", data: m });
+      }
+    }
 
-    // ── Gatherings: Today = today; This week = next 7 days; Gatherings = rest
+    // ── Gatherings placement
     const endOfWeek = addDays(startOfDay(new Date()), 7);
-    const todayGatherings = allGatherings.filter(r => r.nextMeetupDate && isToday(parseISO(r.nextMeetupDate)));
-    const todayGatheringIds = new Set(todayGatherings.map(r => r.id));
-    const weekGatherings = allGatherings.filter(r => {
-      if (!r.nextMeetupDate || todayGatheringIds.has(r.id)) return false;
-      const d = parseISO(r.nextMeetupDate);
-      return isBefore(d, endOfWeek) && !isToday(d);
-    });
-    const weekGatheringIds = new Set(weekGatherings.map(r => r.id));
-    const filteredGatherings = allGatherings.filter(r => !todayGatheringIds.has(r.id) && !weekGatheringIds.has(r.id));
+    for (const r of allGatherings) {
+      if (r.nextMeetupDate && isToday(parseISO(r.nextMeetupDate))) {
+        todayItems.push({ kind: "gathering", data: r, badge: "Today" });
+      } else if (r.nextMeetupDate) {
+        const d = parseISO(r.nextMeetupDate);
+        if (isBefore(d, endOfWeek) && !isToday(d)) {
+          weekItems.push({ kind: "gathering", data: r, badge: format(d, "EEEE") });
+        } else {
+          monthItems.push({ kind: "gathering", data: r });
+        }
+      } else {
+        monthItems.push({ kind: "gathering", data: r });
+      }
+    }
 
-    return {
-      todayLetters, todayMoments, todayGatherings,
-      weekLetters, weekMoments, weekGatherings,
-      practicesLetters, practicesMoments,
-      filteredGatherings,
-      totalCount,
-    };
+    return { todayItems, weekItems, monthItems, totalCount };
   }, [correspondences, momentsData, rituals, user]);
 
   useEffect(() => {
@@ -561,11 +543,17 @@ export default function Dashboard() {
           <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </p>
-          {totalCount > 0 && (
-            <p style={{ color: "#8FAF96", fontSize: "13px", fontWeight: 400 }}>
-              {totalCount} {totalCount === 1 ? "thing" : "things"} happening this week
-            </p>
-          )}
+          <div className="flex items-center gap-5 mt-2">
+            <Link href="/letters" className="text-sm font-medium transition-opacity hover:opacity-80" style={{ color: "#C44B4F" }}>
+              📮 Letters
+            </Link>
+            <Link href="/practices" className="text-sm font-medium transition-opacity hover:opacity-80" style={{ color: "#4A7FB5" }}>
+              🙏 Practices
+            </Link>
+            <Link href="/gatherings" className="text-sm font-medium transition-opacity hover:opacity-80" style={{ color: "#5C8A5F" }}>
+              🤝 Gatherings
+            </Link>
+          </div>
         </div>
 
         {/* ── Loading skeleton ── */}
@@ -580,38 +568,26 @@ export default function Dashboard() {
         {!isLoading && (
           <>
             {/* 1. Today */}
-            <TodaySection
-              letters={todayLetters}
-              moments={todayMoments}
-              gatherings={todayGatherings}
-              userEmail={userEmail}
-              userName={userName}
-            />
+            <TimeSection label="Today" items={todayItems} userEmail={userEmail} userName={userName} />
 
             {/* 2. This week */}
-            <ThisWeekSection
-              letters={weekLetters}
-              moments={weekMoments}
-              gatherings={weekGatherings}
-              userEmail={userEmail}
-              userName={userName}
-            />
+            <TimeSection label="This week" items={weekItems} userEmail={userEmail} userName={userName} />
 
-            {/* 3. Practices (letters + moments) */}
-            <PracticesSection
-              letters={practicesLetters}
-              moments={practicesMoments}
-              userEmail={userEmail}
-              userName={userName}
-            />
+            {/* 3. This month */}
+            <TimeSection label="This month" items={monthItems} userEmail={userEmail} userName={userName} />
 
-            {/* 4. Gatherings */}
-            <GatheringsSection gatherings={filteredGatherings} />
+            {/* Empty state */}
+            {totalCount === 0 && (
+              <div className="rounded-xl p-5 text-center" style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}>
+                <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No practices or gatherings yet. 🌱</p>
+                <div className="flex justify-center gap-4">
+                  <Link href="/moment/new"><span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a practice →</span></Link>
+                  <Link href="/tradition/new"><span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a gathering →</span></Link>
+                </div>
+              </div>
+            )}
           </>
         )}
-
-        {/* Prayer Requests */}
-        <PrayerSection />
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>

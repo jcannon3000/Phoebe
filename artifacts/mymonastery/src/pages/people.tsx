@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { useGardenSocket } from "@/hooks/useGardenSocket";
 import { Layout } from "@/components/layout";
+import { PrayerSection } from "@/components/prayer-section";
 
 function initials(name: string) {
   return name
@@ -388,6 +389,11 @@ export default function People() {
             </div>
           </motion.div>
         )}
+
+        {/* Prayer Requests */}
+        <div className="mt-8">
+          <PrayerSection />
+        </div>
       </div>
     </Layout>
   );
