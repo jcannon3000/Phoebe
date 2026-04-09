@@ -93,6 +93,125 @@ const PRACTICE_EMOJI: Record<string, string> = {
   "custom": "🌱",
 };
 
+// ─── Today Section ───────────────────────────────────────────────────────────
+
+function TodaySection({
+  correspondences,
+  rituals,
+  userEmail,
+  userName,
+}: {
+  correspondences: Array<any> | undefined;
+  rituals: Array<any> | undefined;
+  userEmail: string;
+  userName: string;
+}) {
+  const today = new Date();
+
+  // Letters ready to write or unread
+  const letterItems: Array<{ id: number; title: string; subtitle: string; writeHref: string; readHref?: string; isUnread: boolean }> = [];
+  for (const c of correspondences ?? []) {
+    const isOneToOne = c.groupType === "one_to_one";
+    const otherMembers = (c.members as Array<any>)
+      .filter((m: any) => m.email !== userEmail)
+      .map((m: any) => m.name || m.email.split("@")[0])
+      .join(", ");
+    const title = (c.name?.replace(/^Letters with\b/, "Letters with")) || (isOneToOne ? `Letters with ${otherMembers}` : `Sharing with ${otherMembers}`);
+
+    const iWrote = (c.currentPeriod.membersWritten as Array<any>).find((m: any) => m.name === userName)?.hasWritten ?? false;
+    const hasUnread = c.unreadCount > 0;
+    const needsWrite = !iWrote;
+
+    if (hasUnread) {
+      letterItems.push({ id: c.id, title, subtitle: "New letter arrived", writeHref: `/letters/${c.id}`, readHref: `/letters/${c.id}`, isUnread: true });
+    } else if (needsWrite) {
+      letterItems.push({ id: c.id, title, subtitle: "Your turn to write", writeHref: `/letters/${c.id}/write`, isUnread: false });
+    }
+  }
+
+  // Gatherings happening today
+  const todayGatherings = (rituals ?? []).filter((r: any) => {
+    if (!r.nextMeetupDate) return false;
+    const d = parseISO(r.nextMeetupDate);
+    return isToday(d);
+  });
+
+  const hasItems = letterItems.length > 0 || todayGatherings.length > 0;
+  if (!hasItems) return null;
+
+  return (
+    <div className="mb-8">
+      <SectionHeader label="Today" />
+      <div className="space-y-3">
+        {letterItems.map((item) => (
+          <Link key={`today-letter-${item.id}`} href={item.isUnread ? item.readHref! : item.writeHref}>
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl cursor-pointer"
+              style={{
+                background: "#0F2818",
+                border: "1px solid rgba(200, 212, 192, 0.25)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+                padding: "18px",
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{item.title}</p>
+                  <p className="text-sm mt-0.5" style={{ color: "#A8C5A0" }}>{item.subtitle}</p>
+                </div>
+                <span
+                  className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                >
+                  {item.isUnread ? "Read →" : "Write →"}
+                </span>
+              </div>
+            </motion.div>
+          </Link>
+        ))}
+
+        {todayGatherings.map((r: any) => {
+          const next = parseISO(r.nextMeetupDate);
+          const participants: Array<any> = r.participants ?? [];
+          const names = participants.slice(0, 3).map((p: any) => (p.name || p.email || "").split(" ")[0]).join(", ");
+          return (
+            <Link key={`today-gathering-${r.id}`} href={`/ritual/${r.id}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl cursor-pointer"
+                style={{
+                  background: "#0F2818",
+                  border: "1px solid rgba(200, 212, 192, 0.25)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+                  padding: "18px",
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{r.name}</p>
+                    <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
+                      {format(next, "h:mm a")}{names ? ` · ${names}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
+                    style={{ background: "rgba(45,94,63,0.4)", color: "#A8C5A0", border: "1px solid rgba(168,197,160,0.3)" }}
+                  >
+                    Today
+                  </span>
+                </div>
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Practices Section (letters + moments unified) ───────────────────────────
 
 function PracticesSection() {
@@ -458,6 +577,14 @@ export default function Dashboard() {
             </p>
           )}
         </div>
+
+        {/* ── Today ── */}
+        <TodaySection
+          correspondences={correspondences}
+          rituals={rituals}
+          userEmail={user.email}
+          userName={user.name ?? ""}
+        />
 
         {/* ── Practices ── */}
         <PracticesSection />
