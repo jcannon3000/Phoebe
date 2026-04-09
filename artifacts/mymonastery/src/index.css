@@ -304,26 +304,26 @@ textarea:focus {
 }
 .animate-bar-pulse { animation: bar-pulse 2.5s ease-in-out infinite; }
 
-/* ── Category-specific pulse: Letters (red) ────────────────────────── */
+/* ── Category-specific pulse: Letters (olive green) ────────────────── */
 @keyframes turn-pulse-letters {
-  0%, 100% { border-color: rgba(196,75,79,0.15); }
-  50%      { border-color: rgba(196,75,79,0.7); }
+  0%, 100% { border-color: rgba(142,158,66,0.15); }
+  50%      { border-color: rgba(142,158,66,0.7); }
 }
 @keyframes bar-pulse-letters {
-  0%, 100% { background-color: rgba(196,75,79,0.2); }
-  50%      { background-color: rgba(196,75,79,1); }
+  0%, 100% { background-color: rgba(142,158,66,0.2); }
+  50%      { background-color: rgba(142,158,66,1); }
 }
 .animate-turn-pulse-letters { animation: turn-pulse-letters 2.5s ease-in-out infinite; }
 .animate-bar-pulse-letters  { animation: bar-pulse-letters 2.5s ease-in-out infinite; }
 
-/* ── Category-specific pulse: Practices (gold) ─────────────────────── */
+/* ── Category-specific pulse: Practices (deep forest) ──────────────── */
 @keyframes turn-pulse-practices {
-  0%, 100% { border-color: rgba(200,151,90,0.15); }
-  50%      { border-color: rgba(200,151,90,0.7); }
+  0%, 100% { border-color: rgba(46,107,64,0.15); }
+  50%      { border-color: rgba(46,107,64,0.7); }
 }
 @keyframes bar-pulse-practices {
-  0%, 100% { background-color: rgba(200,151,90,0.2); }
-  50%      { background-color: rgba(200,151,90,1); }
+  0%, 100% { background-color: rgba(46,107,64,0.2); }
+  50%      { background-color: rgba(46,107,64,1); }
 }
 .animate-turn-pulse-practices { animation: turn-pulse-practices 2.5s ease-in-out infinite; }
 .animate-bar-pulse-practices  { animation: bar-pulse-practices 2.5s ease-in-out infinite; }

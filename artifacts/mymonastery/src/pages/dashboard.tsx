@@ -61,20 +61,20 @@ const CATEGORY_COLORS: Record<Category, {
   barPulseClass: string;
 }> = {
   letters: {
-    bar: "#C44B4F",
-    border: "rgba(196, 75, 79, 0.4)",
+    bar: "#8E9E42",
+    border: "rgba(142,158,66,0.4)",
     pulseClass: "animate-turn-pulse-letters",
     barPulseClass: "animate-bar-pulse-letters",
   },
   practices: {
-    bar: "#C8975A",
-    border: "rgba(200,151,90,0.4)",
+    bar: "#2E6B40",
+    border: "rgba(46,107,64,0.4)",
     pulseClass: "animate-turn-pulse-practices",
     barPulseClass: "animate-bar-pulse-practices",
   },
   gatherings: {
-    bar: "#5C8A5F",
-    border: "rgba(92, 138, 95, 0.4)",
+    bar: "#6FAF85",
+    border: "rgba(111,175,133,0.4)",
     pulseClass: "animate-turn-pulse-gatherings",
     barPulseClass: "animate-bar-pulse-gatherings",
   },
@@ -547,14 +547,26 @@ export default function Dashboard() {
           <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </p>
-          <div className="flex items-center gap-5 mt-2">
-            <Link href="/letters" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#C44B4F" }}>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <Link
+              href="/letters"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
+              style={{ background: "rgba(142,158,66,0.15)", color: "#8E9E42", border: "1px solid rgba(142,158,66,0.3)" }}
+            >
               📮 Letters
             </Link>
-            <Link href="/practices" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#C8975A" }}>
+            <Link
+              href="/practices"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
+              style={{ background: "rgba(46,107,64,0.15)", color: "#4A9E5C", border: "1px solid rgba(46,107,64,0.3)" }}
+            >
               🙏 Practices
             </Link>
-            <Link href="/gatherings" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#5C8A5F" }}>
+            <Link
+              href="/gatherings"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
+              style={{ background: "rgba(111,175,133,0.15)", color: "#6FAF85", border: "1px solid rgba(111,175,133,0.3)" }}
+            >
               🤝 Gatherings
             </Link>
           </div>

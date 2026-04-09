@@ -142,13 +142,13 @@ function MomentCard({ moment }: { moment: MomentData }) {
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${shouldPulse ? "animate-turn-pulse-practices" : ""}`}
         style={{
           background: "#0F2818",
-          border: `1px solid rgba(200,151,90,${shouldPulse ? "0.5" : "0.25"})`,
+          border: `1px solid rgba(46,107,64,${shouldPulse ? "0.5" : "0.25"})`,
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >
         <div
           className={`w-1 flex-shrink-0 ${shouldPulse ? "animate-bar-pulse-practices" : ""}`}
-          style={{ background: shouldPulse ? undefined : "#C8975A" }}
+          style={{ background: shouldPulse ? undefined : "#2E6B40" }}
         />
         <div className="flex-1 px-4 py-3">
           <div className="flex items-start justify-between gap-2">
@@ -279,7 +279,7 @@ export default function MomentsDashboard() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: "#0F2818", border: "1px solid rgba(200,151,90,0.15)" }} />
+              <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.15)" }} />
             ))}
           </div>
         ) : moments.length === 0 ? (
