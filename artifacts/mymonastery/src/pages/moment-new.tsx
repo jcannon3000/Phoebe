@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { InviteStep } from "@/components/InviteStep";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type StepId = "template" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "invite"
+type StepId = "template" | "daily-office-choice" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "invite"
   | "bcp-commitment" | "bcp-frequency" | "bcp-time" | "bcp-invite" | "intercession-frequency"
   | "contemplative-duration" | "fasting-what" | "fasting-why" | "fasting-when"
   | "listening-what";
@@ -259,18 +259,8 @@ const BCP_PRAYERS: BcpPrayer[] = [
 // ─── Templates ───────────────────────────────────────────────────────────────
 const TEMPLATES = [
   {
-    id: "morning-prayer", emoji: "🌅", name: "Morning Prayer",
-    desc: "Pray the Daily Office together — each morning, wherever you are",
-    prefill: null,
-  },
-  {
-    id: "evening-prayer", emoji: "🌙", name: "Evening Prayer",
-    desc: "Close the day in prayer together, wherever you are",
-    prefill: null,
-  },
-  {
     id: "intercession", emoji: "🙏", name: "Intercession",
-    desc: "Start a practice of prayer together",
+    desc: "Hold someone or something in prayer together",
     prefill: {
       name: "Intercession 🙏",
       intention: "",
@@ -281,8 +271,8 @@ const TEMPLATES = [
     },
   },
   {
-    id: "fasting", emoji: "🌿", name: "Fasting",
-    desc: "Keep a shared fast as a discipline",
+    id: "fasting", emoji: "✦", name: "Fasting",
+    desc: "Keep a shared fast as a discipline — the same day, each week",
     prefill: {
       name: "Fasting 🌿",
       intention: "We fast together — not alone. A shared discipline, a shared surrender.",
@@ -291,6 +281,11 @@ const TEMPLATES = [
       scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
       frequency: "weekly" as Frequency,
     },
+  },
+  {
+    id: "daily-office", emoji: "📖", name: "Daily Office",
+    desc: "Pray the Book of Common Prayer together — morning or evening",
+    prefill: null,
   },
 ];
 
@@ -704,6 +699,11 @@ export default function MomentNew() {
   // ─── Template selection handler ─────────────────────────────────────────────
   function selectTemplate(t: typeof TEMPLATES[0]) {
     setTemplateId(t.id);
+    // Daily Office: choose Morning or Evening first
+    if (t.id === "daily-office") {
+      setStep("daily-office-choice");
+      return;
+    }
     // Morning Prayer and Evening Prayer use a completely separate BCP flow
     if (t.id === "morning-prayer" || t.id === "evening-prayer") {
       setStep("bcp-commitment");
@@ -1198,7 +1198,7 @@ export default function MomentNew() {
         {step !== "template" && (
           <div className="mb-8">
             <button onClick={goBack} className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 mb-6 transition-colors">
-              ← {(step === "name" || step === "contemplative-duration" || step === "fasting-what" || step === "listening-what") ? "Templates" : "Previous"}
+              ← {(step === "name" || step === "contemplative-duration" || step === "fasting-what" || step === "listening-what" || step === "daily-office-choice") ? "Templates" : "Previous"}
             </button>
             <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
               <motion.div
@@ -1234,6 +1234,42 @@ export default function MomentNew() {
                           <div>
                             <p className="font-semibold text-base" style={{ color: "#F0EDE6" }}>{t.name}</p>
                             <p className="text-sm" style={{ color: "#8FAF96" }}>{t.desc}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Daily Office choice ─────────────────────────── */}
+              {step === "daily-office-choice" && (
+                <div className="flex-1">
+                  <h2 className="text-2xl font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    Which Office will you pray? 📖
+                  </h2>
+                  <p className="text-sm italic mb-8" style={{ color: "#8FAF96" }}>
+                    Each morning or evening, wherever you are — knowing the other is doing the same.
+                  </p>
+                  <div className="space-y-3">
+                    {[
+                      { id: "morning-prayer", emoji: "🌅", name: "Morning Prayer", desc: "Begin the day together in the Daily Office" },
+                      { id: "evening-prayer", emoji: "🌙", name: "Evening Prayer", desc: "Close the day together in the Daily Office" },
+                    ].map(office => (
+                      <button
+                        key={office.id}
+                        onClick={() => {
+                          setTemplateId(office.id);
+                          setStep("bcp-commitment");
+                        }}
+                        className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+                        style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.2)" }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{office.emoji}</span>
+                          <div>
+                            <p className="font-semibold text-base" style={{ color: "#F0EDE6" }}>{office.name}</p>
+                            <p className="text-sm" style={{ color: "#8FAF96" }}>{office.desc}</p>
                           </div>
                         </div>
                       </button>
@@ -2080,8 +2116,8 @@ export default function MomentNew() {
             </motion.div>
           </AnimatePresence>
 
-          {/* ── Next button (not shown for template, intercession main, bcp-commitment, or contemplative-duration) ── */}
-          {step !== "template" && step !== "intercession" && step !== "bcp-commitment" && step !== "contemplative-duration" && (
+          {/* ── Next button (not shown for template, daily-office-choice, intercession main, bcp-commitment, or contemplative-duration) ── */}
+          {step !== "template" && step !== "daily-office-choice" && step !== "intercession" && step !== "bcp-commitment" && step !== "contemplative-duration" && (
             <div className="mt-6 pt-4 border-t border-border/30">
               {/* Disabled inline message for invite step */}
               {step === "invite" && showInviteDisabledMsg && invitedPeople.length === 0 && (
