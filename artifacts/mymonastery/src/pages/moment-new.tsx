@@ -276,18 +276,6 @@ const TEMPLATES = [
     },
   },
   {
-    id: "contemplative", emoji: "🕯️", name: "Contemplative Prayer",
-    desc: "Sit in silence together, wherever you are",
-    prefill: {
-      name: "Contemplative Prayer 🕯️",
-      intention: "We sit together in the silence. No agenda. Just presence.",
-      loggingType: "checkin" as LoggingType,
-      reflectionPrompt: "",
-      scheduledHour: 7, scheduledAmPm: "AM" as "AM" | "PM",
-      frequency: "daily" as Frequency,
-    },
-  },
-  {
     id: "fasting", emoji: "🌿", name: "Fasting",
     desc: "Keep a shared fast as a discipline",
     prefill: {
@@ -320,6 +308,18 @@ const TEMPLATES = [
       loggingType: "checkin" as LoggingType,
       reflectionPrompt: "",
       scheduledHour: 9, scheduledAmPm: "PM" as "AM" | "PM",
+      frequency: "daily" as Frequency,
+    },
+  },
+  {
+    id: "contemplative", emoji: "🕯️", name: "Contemplative Prayer",
+    desc: "Sit in silence together, wherever you are",
+    prefill: {
+      name: "Contemplative Prayer 🕯️",
+      intention: "We sit together in the silence. No agenda. Just presence.",
+      loggingType: "checkin" as LoggingType,
+      reflectionPrompt: "",
+      scheduledHour: 7, scheduledAmPm: "AM" as "AM" | "PM",
       frequency: "daily" as Frequency,
     },
   },
