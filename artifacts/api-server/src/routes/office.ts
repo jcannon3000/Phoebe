@@ -7,6 +7,7 @@
 
 import { Router } from "express";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
+import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { seedBcpTexts } from "../seeds/bcpTexts";
 
@@ -117,6 +118,78 @@ router.get("/office/morning", async (req, res) => {
         feastName: officeDay.feastName,
         isMajorFeast: officeDay.isMajorFeast,
         useAlleluia: officeDay.useAlleluia,
+        totalSlides: emergencySlides.length,
+      },
+      fromCache: false,
+      cacheDate: date.toISOString().slice(0, 10),
+      isEmergency: true,
+    });
+  }
+});
+
+// GET /office/evening — public, no auth required
+router.get("/office/evening", async (req, res) => {
+  let date: Date;
+  try {
+    date = req.query.date ? new Date(req.query.date as string) : new Date();
+    if (isNaN(date.getTime())) throw new Error("Invalid date");
+  } catch {
+    date = new Date();
+  }
+
+  try {
+    const userId = (req.user as { id: number } | undefined)?.id ?? 0;
+    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId);
+
+    return res.json({
+      slides,
+      officeDay: { ...officeDay, totalSlides: slides.length },
+      fromCache,
+      cacheDate: date.toISOString().slice(0, 10),
+    });
+  } catch (err) {
+    console.error("Evening Prayer assembly failed:", err);
+
+    const officeDay = getOfficeDay(date);
+    const emergencySlides = [
+      {
+        id: "ep_emergency_0", type: "opening", emoji: "🌙", eyebrow: "",
+        title: null, content: officeDay.weekdayLabel,
+        isCallAndResponse: false, callAndResponseLines: null,
+        bcpReference: null, isScrollable: false, scrollHint: null,
+        metadata: { season: officeDay.season, date: date.toISOString(), office: "evening" },
+      },
+      {
+        id: "ep_emergency_1", type: "invitatory_psalm", emoji: "🕯️",
+        eyebrow: "O GRACIOUS LIGHT · PHOS HILARON", title: null,
+        content: "O gracious light,\npure brightness of the everliving Father in heaven,\nO Jesus Christ, holy and blessed!\n\nNow as we come to the setting of the sun,\nand our eyes behold the vesper light,\nwe sing your praises, O God: Father, Son, and Holy Spirit.\n\nYou are worthy at all times to be praised by happy voices,\nO Son of God, O Giver of Life,\nand to be glorified through all the worlds.",
+        isCallAndResponse: false, callAndResponseLines: null,
+        bcpReference: "BCP p. 118", isScrollable: false, scrollHint: null, metadata: {},
+      },
+      {
+        id: "ep_emergency_2", type: "general_thanksgiving", emoji: "🌾",
+        eyebrow: "THE GENERAL THANKSGIVING", title: null,
+        content: "Almighty God, Father of all mercies,\nwe your unworthy servants give you humble thanks\nfor all your goodness and loving-kindness\nto us and to all whom you have made.\nWe bless you for our creation, preservation,\nand all the blessings of this life;\nbut above all for your immeasurable love\nin the redemption of the world by our Lord Jesus Christ;\nfor the means of grace, and for the hope of glory.\nAnd, we pray, give us such an awareness of your mercies,\nthat with truly thankful hearts we may show forth your praise,\nnot only with our lips, but in our lives,\nby giving up our selves to your service,\nand by walking before you\nin holiness and righteousness all our days;\nthrough Jesus Christ our Lord,\nto whom, with you and the Holy Spirit,\nbe honor and glory throughout all ages. Amen.",
+        isCallAndResponse: false, callAndResponseLines: null,
+        bcpReference: "BCP p. 125", isScrollable: true,
+        scrollHint: "↓ continue · tap when ready", metadata: {},
+      },
+      {
+        id: "ep_emergency_3", type: "closing", emoji: "🌙", eyebrow: "",
+        title: null, content: "Evening Prayer",
+        isCallAndResponse: false, callAndResponseLines: null,
+        bcpReference: null, isScrollable: false, scrollHint: null,
+        metadata: { date: date.toISOString(), office: "evening" },
+      },
+    ];
+
+    return res.json({
+      slides: emergencySlides,
+      officeDay: {
+        season: officeDay.season, liturgicalYear: officeDay.liturgicalYear,
+        sundayLabel: officeDay.sundayLabel, weekdayLabel: officeDay.weekdayLabel,
+        properNumber: officeDay.properNumber, feastName: officeDay.feastName,
+        isMajorFeast: officeDay.isMajorFeast, useAlleluia: officeDay.useAlleluia,
         totalSlides: emergencySlides.length,
       },
       fromCache: false,

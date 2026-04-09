@@ -17,6 +17,7 @@ export interface LectionaryReadings {
 
 export function getLectionaryReadings(
   officeDay: LiturgicalDay,
+  office: "morning" | "evening" = "morning",
 ): LectionaryReadings {
   const key = officeDay.lectionaryWeekKey;
   const entry = lectionary[key];
@@ -35,7 +36,7 @@ export function getLectionaryReadings(
   const isYear1 = officeDay.liturgicalYear === 1;
 
   return {
-    psalms: entry.psalms_mp,
+    psalms: office === "evening" ? (entry.psalms_ep ?? entry.psalms_mp) : entry.psalms_mp,
     lesson1: isYear1 ? entry.lesson1_y1 : entry.lesson1_y2,
     lesson2: isYear1 ? entry.lesson2_y1 : entry.lesson2_y2,
     weekKey: key,
