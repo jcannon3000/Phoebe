@@ -422,6 +422,21 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
 
+  // Counts for header subtitle — queries are deduplicated by TanStack Query
+  const { data: correspondences } = useQuery<Array<any>>({
+    queryKey: ["/api/letters/correspondences"],
+    queryFn: () => apiRequest("GET", "/api/letters/correspondences"),
+    enabled: !!user,
+  });
+  const { data: momentsData } = useQuery<{ moments: Array<any> }>({
+    queryKey: ["/api/moments"],
+    queryFn: () => apiRequest("GET", "/api/moments"),
+    enabled: !!user,
+  });
+  const { data: rituals } = useListRituals({ ownerId: user?.id });
+
+  const totalCount = (correspondences?.length ?? 0) + (momentsData?.moments?.length ?? 0) + (rituals?.length ?? 0);
+
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
@@ -434,12 +449,14 @@ export default function Dashboard() {
 
         {/* ── Header ── */}
         <div className="mb-6">
-          <p style={{ color: "#8FAF96", fontSize: "13px", fontWeight: 400 }}>
-            A place set apart for connection
-          </p>
           <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </p>
+          {totalCount > 0 && (
+            <p style={{ color: "#8FAF96", fontSize: "13px", fontWeight: 400 }}>
+              {totalCount} {totalCount === 1 ? "thing" : "things"} happening this week
+            </p>
+          )}
         </div>
 
         {/* ── Practices ── */}
