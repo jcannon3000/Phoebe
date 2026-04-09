@@ -260,7 +260,7 @@ const BCP_PRAYERS: BcpPrayer[] = [
 const TEMPLATES = [
   {
     id: "letters", emoji: "✉️", name: "Letters",
-    desc: "Write letters with someone, one every other week",
+    desc: "Stay in touch in a way that doesn't get lost in the noise of text and email",
     prefill: null,
   },
   {

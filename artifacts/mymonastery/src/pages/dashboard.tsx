@@ -154,7 +154,7 @@ function TodaySection({
   return (
     <div className="mb-8">
       <SectionHeader label="Today" />
-      <div className="space-y-6">
+      <div className="space-y-5">
         {letterItems.map((item) => (
           <Link key={`today-letter-${item.id}`} href={item.isUnread ? item.readHref! : item.writeHref}>
             <motion.div
@@ -257,7 +257,7 @@ function ThisWeekSection({
   return (
     <div className="mb-8">
       <SectionHeader label="This week" />
-      <div className="space-y-6">
+      <div className="space-y-5">
         {letterItems.map((item) => (
           <Link key={`week-letter-${item.id}`} href={item.href}>
             <motion.div
@@ -343,7 +343,7 @@ function LettersSection({
           </Link>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {letters.map((c) => {
             const isOneToOne = c.groupType === "one_to_one";
             const otherMembers = c.members
@@ -445,7 +445,7 @@ function PracticesSection({
   return (
     <div className="mb-8">
       <SectionHeader label="Practices 🕯️" />
-      <div className="space-y-6">
+      <div className="space-y-5">
         {moments.map((m) => {
           const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
           const shouldPulse = m.windowOpen && m.todayPostCount === 0;
@@ -536,7 +536,7 @@ function GatheringsSection({ gatherings }: { gatherings: Array<any> }) {
           </Link>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {gatherings.map((ritual: any) => {
             const next = ritual.nextMeetupDate ? parseISO(ritual.nextMeetupDate) : null;
             const rhythm = ritual.rhythm as string | undefined;
@@ -706,8 +706,10 @@ export default function Dashboard() {
     ]);
 
     // ── Filtered sections ───────────────────────────────────────────────────
+    const surfacedMomentIds = new Set(todayMoments.map(m => m.id));
     const filteredLetters = allLetters.filter(c => !surfacedLetterIds.has(c.id));
     const filteredGatherings = allGatherings.filter((r: any) => !surfacedGatheringIds.has(r.id));
+    const filteredMoments = allMoments.filter(m => !surfacedMomentIds.has(m.id));
 
     return {
       todayLetterItems,
@@ -717,7 +719,7 @@ export default function Dashboard() {
       thisWeekGatherings,
       filteredLetters,
       filteredGatherings,
-      moments: allMoments,
+      moments: filteredMoments,
       totalCount,
     };
   }, [correspondences, momentsData, rituals, user]);
@@ -746,7 +748,7 @@ export default function Dashboard() {
 
         {/* ── Loading skeleton ── */}
         {isLoading && (
-          <div className="space-y-6 mb-8">
+          <div className="space-y-5 mb-8">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
             ))}
