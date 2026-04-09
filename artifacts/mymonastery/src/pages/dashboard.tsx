@@ -6,6 +6,7 @@ import { useListRituals } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
+import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
 import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
 
@@ -417,7 +418,7 @@ function TimeSection({
   return (
     <div className="mb-8">
       <SectionHeader label={label} />
-      <div className="space-y-6">
+      <div className="space-y-3">
         {visible.map((item, i) => {
           switch (item.kind) {
             case "letter":
@@ -588,6 +589,9 @@ export default function Dashboard() {
             )}
           </>
         )}
+
+        {/* Prayer Requests */}
+        <PrayerSection maxVisible={3} />
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>

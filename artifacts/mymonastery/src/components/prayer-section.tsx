@@ -19,7 +19,8 @@ interface PrayerRequest {
   createdAt: string;
 }
 
-export function PrayerSection() {
+export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
+  // maxVisible: 0 = show all, N = show N then "See all" button
   const queryClient = useQueryClient();
   useAuth();
 
@@ -29,6 +30,7 @@ export function PrayerSection() {
   const [pendingBody, setPendingBody] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [wordInputs, setWordInputs] = useState<Record<number, string>>({});
+  const [showAll, setShowAll] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -175,9 +177,9 @@ export function PrayerSection() {
           {/* Prayer request rows */}
           {!isLoading && requests.length > 0 && (
             <div>
-              {requests.map((request, idx) => {
+              {(maxVisible > 0 && !showAll ? requests.slice(0, maxVisible) : requests).map((request, idx, arr) => {
                 const isExpanded = expandedId === request.id;
-                const isLast = idx === requests.length - 1;
+                const isLast = idx === arr.length - 1;
 
                 return (
                   <div
@@ -328,6 +330,16 @@ export function PrayerSection() {
                   </div>
                 );
               })}
+              {/* See all / collapse */}
+              {maxVisible > 0 && requests.length > maxVisible && (
+                <button
+                  onClick={() => setShowAll(v => !v)}
+                  className="mt-3 text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ color: "#A8C5A0" }}
+                >
+                  {showAll ? "Show less" : `See all (${requests.length}) →`}
+                </button>
+              )}
             </div>
           )}
         </div>
