@@ -59,6 +59,7 @@ import ResetPassword from "./pages/reset-password";
 import GatheringsPage from "./pages/gatherings";
 import HomeDark from "./pages/home-dark";
 import MomentNew from "./pages/moment-new";
+import MomentDetail from "./pages/moment-detail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />
       <Route path="/moment/new" component={MomentNew} />
+      <Route path="/moments/:id" component={MomentDetail} />
       <Route path="/ritual/:id" component={RitualDetail} />
       <Route path="/schedule/:token" component={GuestSchedule} />
       <Route path="/invite/:token" component={InvitePage} />

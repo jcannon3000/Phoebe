@@ -259,6 +259,11 @@ const BCP_PRAYERS: BcpPrayer[] = [
 // ─── Templates ───────────────────────────────────────────────────────────────
 const TEMPLATES = [
   {
+    id: "letters", emoji: "✉️", name: "Letters",
+    desc: "Write letters with someone, one every other week",
+    prefill: null,
+  },
+  {
     id: "intercession", emoji: "🙏", name: "Intercession",
     desc: "Start a practice of prayer together",
     prefill: {
@@ -746,6 +751,11 @@ export default function MomentNew() {
 
   // ─── Template selection handler ─────────────────────────────────────────────
   function selectTemplate(t: typeof TEMPLATES[0]) {
+    // Letters: redirect to existing letter creation wizard
+    if (t.id === "letters") {
+      setLocation("/letters/new");
+      return;
+    }
     setTemplateId(t.id);
     // Morning Prayer and Evening Prayer use a completely separate BCP flow
     if (t.id === "morning-prayer" || t.id === "evening-prayer") {

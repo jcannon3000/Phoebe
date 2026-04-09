@@ -10,6 +10,7 @@ import inviteRouter from "./invite";
 import prayerRouter from "./prayer";
 import lettersRouter from "./letters";
 import phoebeRouter from "./phoebe";
+import momentsRouter from "./moments";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(inviteRouter);
 router.use(prayerRouter);
 router.use(lettersRouter);
 router.use(phoebeRouter);
+router.use(momentsRouter);
 
 export default router;

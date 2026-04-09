@@ -37,12 +37,12 @@ function FAB() {
             className="flex flex-col gap-2 mb-1"
           >
             <button
-              onClick={() => { setOpen(false); setLocation("/letters/new"); }}
+              onClick={() => { setOpen(false); setLocation("/moment/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>✉️ Start a correspondence</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Write letters with someone</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌱 Start a practice</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Letters, prayer, fasting & more</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
@@ -81,11 +81,24 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-// ─── Letters Section ──────────────────────────────────────────────────────────
+// ─── Practice type emoji lookup ──────────────────────────────────────────────
 
-function LettersSection() {
+const PRACTICE_EMOJI: Record<string, string> = {
+  "morning-prayer": "🌅",
+  "evening-prayer": "🌙",
+  "intercession": "🙏",
+  "contemplative": "🕯️",
+  "fasting": "🌿",
+  "listening": "🎵",
+  "custom": "🌱",
+};
+
+// ─── Practices Section (letters + moments unified) ───────────────────────────
+
+function PracticesSection() {
   const { user } = useAuth();
-  const { data: correspondences, isLoading } = useQuery<Array<{
+
+  const { data: correspondences, isLoading: lettersLoading } = useQuery<Array<{
     id: number;
     name: string;
     groupType: string;
@@ -105,10 +118,33 @@ function LettersSection() {
     enabled: !!user,
   });
 
+  const { data: momentsData, isLoading: momentsLoading } = useQuery<{ moments: Array<{
+    id: number;
+    name: string;
+    templateType: string | null;
+    intention: string;
+    currentStreak: number;
+    totalBlooms: number;
+    state: string;
+    memberCount: number;
+    members: Array<{ name: string; email: string }>;
+    todayPostCount: number;
+    windowOpen: boolean;
+    intercessionTopic?: string | null;
+    fastingFrom?: string | null;
+    myUserToken: string | null;
+  }> }>({
+    queryKey: ["/api/moments"],
+    queryFn: () => apiRequest("GET", "/api/moments"),
+    enabled: !!user,
+  });
+
+  const isLoading = lettersLoading || momentsLoading;
+
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Letters 📮" />
+        <SectionHeader label="Practices" />
         <div className="space-y-3 mb-8">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
@@ -118,25 +154,28 @@ function LettersSection() {
     );
   }
 
-  const items = correspondences ?? [];
+  const letters = correspondences ?? [];
+  const moments = momentsData?.moments ?? [];
+  const hasAny = letters.length > 0 || moments.length > 0;
 
   return (
     <div className="mb-8">
-      <SectionHeader label="Letters 📮" />
+      <SectionHeader label="Practices" />
 
-      {items.length === 0 ? (
+      {!hasAny ? (
         <div
           className="rounded-xl p-5 text-center"
           style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
         >
-          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No letters yet. Start a correspondence. 📮</p>
-          <Link href="/letters/new">
-            <span className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>Start writing →</span>
+          <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No practices yet. Start one.</p>
+          <Link href="/moment/new">
+            <span className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>Start a practice →</span>
           </Link>
         </div>
       ) : (
         <div className="space-y-3">
-          {items.map((c) => {
+          {/* Letter cards */}
+          {letters.map((c) => {
             const isOneToOne = c.groupType === "one_to_one";
             const otherMembers = c.members
               .filter(m => m.email !== user?.email)
@@ -158,18 +197,17 @@ function LettersSection() {
               statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
               statusColor = "#8FAF96";
             } else if (needsWrite) {
-              statusText = isOneToOne ? `Your turn to write 🖋️` : `Share your update 📮`;
+              statusText = isOneToOne ? `Your turn to write 🖋️` : `Share your update 🖋️`;
               statusColor = "#F0EDE6";
             } else {
               statusText = "All written 🌿";
               statusColor = "#8FAF96";
             }
 
-            const lastPostmark = c.recentPostmarks[0];
             const shouldPulse = needsWrite || hasUnread;
 
             return (
-              <Link key={c.id} href={`/letters/${c.id}`}>
+              <Link key={`letter-${c.id}`} href={`/letters/${c.id}`}>
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -211,6 +249,68 @@ function LettersSection() {
                             Write 🖋️
                           </span>
                         </Link>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </Link>
+            );
+          })}
+
+          {/* Moment cards */}
+          {moments.map((m) => {
+            const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
+            const shouldPulse = m.windowOpen && m.todayPostCount === 0;
+            const memberNames = m.members
+              .filter(p => p.email !== user?.email)
+              .map(p => p.name || p.email.split("@")[0])
+              .slice(0, 2)
+              .join(", ");
+
+            let subtitle = "";
+            if (m.intercessionTopic) subtitle = m.intercessionTopic;
+            else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
+            else if (memberNames) subtitle = `with ${memberNames}`;
+
+            return (
+              <Link key={`moment-${m.id}`} href={`/moments/${m.id}`}>
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${shouldPulse ? "animate-turn-pulse" : ""}`}
+                  style={{ background: "#0F2818", border: "1px solid rgba(200, 212, 192, 0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                >
+                  <div className={`w-1 flex-shrink-0 ${shouldPulse ? "animate-bar-pulse" : ""}`} style={{ background: shouldPulse ? undefined : "#5C8A5F" }} />
+                  <div className="flex-1 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+                          {m.name}
+                        </span>
+                      </div>
+                      {m.currentStreak > 0 && (
+                        <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+                          {m.currentStreak} day streak
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 mt-1.5">
+                      <p className="text-sm" style={{ color: "#8FAF96" }}>
+                        {subtitle || m.intention}
+                      </p>
+                      {m.windowOpen && m.todayPostCount === 0 && (
+                        <span
+                          className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0"
+                          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                        >
+                          {emoji} Open
+                        </span>
+                      )}
+                      {m.todayPostCount > 0 && (
+                        <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>
+                          {m.todayPostCount} today 🌿
+                        </span>
                       )}
                     </div>
                   </div>
@@ -342,8 +442,8 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* ── Letters ── */}
-        <LettersSection />
+        {/* ── Practices ── */}
+        <PracticesSection />
 
         {/* ── Gatherings ── */}
         <GatheringsSection />
