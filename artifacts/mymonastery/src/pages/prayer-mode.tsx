@@ -200,24 +200,25 @@ export default function PrayerModePage() {
 
   return (
     <div
-      className="fixed inset-0 z-[200] overflow-y-auto"
       style={{
         background: "#0C1F12",
+        minHeight: "100dvh",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",
+        position: "relative",
       }}
     >
       {/* Exit button */}
       <button
         onClick={() => setLocation("/prayer-list")}
         aria-label="Exit prayer mode"
-        className="fixed top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
+        className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
         style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
       >
         ×
       </button>
 
-      {/* Content — margin:auto centers it vertically when there's room, scrolls when tall */}
+      {/* Content — flex column centered vertically in the full viewport height */}
       <div
         className="flex flex-col items-center text-center px-8 py-20 w-full"
         style={{ maxWidth: 560, margin: "0 auto", minHeight: "100dvh", justifyContent: "center" }}
@@ -268,7 +269,7 @@ export default function PrayerModePage() {
 
       {/* Progress */}
       {phase === "prayer" && slides.length > 0 && (
-        <div className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none">
+        <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none">
           <p className="text-xs" style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em" }}>
             {index + 1} of {slides.length}
           </p>
