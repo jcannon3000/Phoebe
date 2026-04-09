@@ -112,7 +112,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <nav className="space-y-1">
                 {[
                   { icon: Mail, label: "Letters", path: "/letters", color: "#C44B4F" },
-                  { icon: BookOpen, label: "Practices", path: "/practices", color: "#4A7FB5" },
+                  { icon: BookOpen, label: "Practices", path: "/practices", color: "#C8975A" },
                   { icon: Users, label: "Gatherings", path: "/gatherings", color: "#5C8A5F" },
                   { icon: Users, label: "People", path: "/people", color: "#8FAF96" },
                 ].map(({ icon: Icon, label, path, color }) => (

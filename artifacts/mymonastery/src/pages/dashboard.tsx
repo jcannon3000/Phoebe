@@ -67,8 +67,8 @@ const CATEGORY_COLORS: Record<Category, {
     barPulseClass: "animate-bar-pulse-letters",
   },
   practices: {
-    bar: "#4A7FB5",
-    border: "rgba(74, 127, 181, 0.4)",
+    bar: "#C8975A",
+    border: "rgba(200,151,90,0.4)",
     pulseClass: "animate-turn-pulse-practices",
     barPulseClass: "animate-bar-pulse-practices",
   },
@@ -549,7 +549,7 @@ export default function Dashboard() {
             <Link href="/letters" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#C44B4F" }}>
               📮 Letters
             </Link>
-            <Link href="/practices" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#4A7FB5" }}>
+            <Link href="/practices" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#C8975A" }}>
               🙏 Practices
             </Link>
             <Link href="/gatherings" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#5C8A5F" }}>

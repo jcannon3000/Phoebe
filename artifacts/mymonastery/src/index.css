@@ -316,14 +316,14 @@ textarea:focus {
 .animate-turn-pulse-letters { animation: turn-pulse-letters 2.5s ease-in-out infinite; }
 .animate-bar-pulse-letters  { animation: bar-pulse-letters 2.5s ease-in-out infinite; }
 
-/* ── Category-specific pulse: Practices (blue) ─────────────────────── */
+/* ── Category-specific pulse: Practices (gold) ─────────────────────── */
 @keyframes turn-pulse-practices {
-  0%, 100% { border-color: rgba(74,127,181,0.15); }
-  50%      { border-color: rgba(74,127,181,0.7); }
+  0%, 100% { border-color: rgba(200,151,90,0.15); }
+  50%      { border-color: rgba(200,151,90,0.7); }
 }
 @keyframes bar-pulse-practices {
-  0%, 100% { background-color: rgba(74,127,181,0.2); }
-  50%      { background-color: rgba(74,127,181,1); }
+  0%, 100% { background-color: rgba(200,151,90,0.2); }
+  50%      { background-color: rgba(200,151,90,1); }
 }
 .animate-turn-pulse-practices { animation: turn-pulse-practices 2.5s ease-in-out infinite; }
 .animate-bar-pulse-practices  { animation: bar-pulse-practices 2.5s ease-in-out infinite; }

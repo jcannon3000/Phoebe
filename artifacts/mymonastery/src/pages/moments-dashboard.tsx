@@ -144,11 +144,11 @@ function MomentCard({ moment }: { moment: MomentData }) {
             ? isBcp
               ? isMorning
                 ? "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
-                : "border-[#4A7FB5]/60 shadow-[0_0_18px_rgba(74,127,181,0.18)]"
+                : "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
               : isSpiritual
-                ? "border-[#4A7FB5]/60 shadow-[0_0_18px_rgba(74,127,181,0.18)]"
-                : "border-[#4A7FB5]/60 shadow-[0_0_18px_rgba(74,127,181,0.18)]"
-            : "border-[rgba(74,127,181,0.25)] hover:shadow-md"
+                ? "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
+                : "border-[#C8975A]/60 shadow-[0_0_18px_rgba(200,151,90,0.18)]"
+            : "border-[rgba(200,151,90,0.25)] hover:shadow-md"
         }`}
         style={{ background: "#0F2818" }}
       >
@@ -156,9 +156,9 @@ function MomentCard({ moment }: { moment: MomentData }) {
         <div className={`w-1.5 flex-shrink-0 ${
           moment.windowOpen
             ? isBcp
-              ? isMorning ? "bg-[#C8975A] animate-pulse" : "bg-[#4A7FB5] animate-pulse"
-              : "bg-[#4A7FB5] animate-pulse"
-            : isBcp ? (isMorning ? "bg-[#C8975A]" : "bg-[#4A7FB5]") : "bg-[#4A7FB5]"
+              ? isMorning ? "bg-[#C8975A] animate-pulse" : "bg-[#C8975A] animate-pulse"
+              : "bg-[#C8975A] animate-pulse"
+            : isBcp ? (isMorning ? "bg-[#C8975A]" : "bg-[#C8975A]") : "bg-[#C8975A]"
         }`} />
 
         <div className="flex-1 p-4">
@@ -170,21 +170,21 @@ function MomentCard({ moment }: { moment: MomentData }) {
                 <span className="text-base font-semibold leading-snug" style={{ color: "#F0EDE6" }}>{moment.name}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {isBcp && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: "#4A7FB5", background: "rgba(74,127,181,0.12)", border: "1px solid rgba(74,127,181,0.25)" }}>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: "#C8975A", background: "rgba(200,151,90,0.12)", border: "1px solid rgba(200,151,90,0.25)" }}>
                       Daily Office
                     </span>
                   )}
                   {moment.windowOpen && (
                     isBcp ? (
-                      <span className={`text-[11px] font-bold uppercase tracking-wide ${isMorning ? "text-[#C8975A]" : "text-[#4A7FB5]"}`}>
+                      <span className={`text-[11px] font-bold uppercase tracking-wide ${isMorning ? "text-[#C8975A]" : "text-[#C8975A]"}`}>
                         {isMorning ? "Morning 🌅" : "Evening 🌙"}
                       </span>
                     ) : isSpiritual ? (
-                      <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#4A7FB5" }}>
+                      <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "#C8975A" }}>
                         Practice day 🌿
                       </span>
                     ) : (
-                      <span className="text-[11px] font-bold uppercase tracking-wide animate-pulse" style={{ color: "#4A7FB5" }}>
+                      <span className="text-[11px] font-bold uppercase tracking-wide animate-pulse" style={{ color: "#C8975A" }}>
                         Open now
                       </span>
                     )
@@ -214,7 +214,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
           {/* Time info */}
           {moment.windowOpen ? (
             isBcp ? (
-              <p className="text-sm font-medium mb-2" style={{ color: isMorning ? "#C8975A" : "#4A7FB5" }}>
+              <p className="text-sm font-medium mb-2" style={{ color: isMorning ? "#C8975A" : "#C8975A" }}>
                 {moment.todayPostCount} of {moment.memberCount} prayed today
               </p>
             ) : moment.templateType === "listening" ? (
@@ -223,11 +223,11 @@ function MomentCard({ moment }: { moment: MomentData }) {
                 <span className="font-medium">{moment.listeningTitle ?? moment.listeningArtist ?? "music"}</span> together
               </p>
             ) : isSpiritual ? (
-              <p className="text-sm font-medium mb-2" style={{ color: "#4A7FB5" }}>
+              <p className="text-sm font-medium mb-2" style={{ color: "#C8975A" }}>
                 {moment.todayPostCount} of {moment.memberCount} practiced today
               </p>
             ) : (
-              <p className="text-sm font-medium mb-2" style={{ color: "#4A7FB5" }}>
+              <p className="text-sm font-medium mb-2" style={{ color: "#C8975A" }}>
                 {moment.minutesLeft} min left · {moment.todayPostCount} of {moment.memberCount} posted
               </p>
             )
@@ -254,7 +254,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
                 </span>
               )}
               {moment.todayPostCount > 0 && moment.memberCount > 1 && (
-                <span className="text-[11px]" style={{ color: "rgba(74,127,181,0.8)" }}>
+                <span className="text-[11px]" style={{ color: "rgba(200,151,90,0.8)" }}>
                   · {moment.todayPostCount} of {moment.memberCount} this week
                 </span>
               )}
@@ -262,9 +262,9 @@ function MomentCard({ moment }: { moment: MomentData }) {
           ) : hasGoal ? (
             <div className="mt-1">
               <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.8)" }}>{mLabel}</span>
-              <div className="mt-1 w-full h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(74,127,181,0.2)" }}>
+              <div className="mt-1 w-full h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(200,151,90,0.2)" }}>
                 <div className="h-full rounded-full transition-all"
-                  style={{ width: `${Math.round(mProgress * 100)}%`, background: "#4A7FB5" }} />
+                  style={{ width: `${Math.round(mProgress * 100)}%`, background: "#C8975A" }} />
               </div>
             </div>
           ) : (
@@ -376,7 +376,7 @@ export default function MomentsDashboard() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: "#0F2818", border: "1px solid rgba(74,127,181,0.15)" }} />
+              <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: "#0F2818", border: "1px solid rgba(200,151,90,0.15)" }} />
             ))}
           </div>
         ) : moments.length === 0 ? (
