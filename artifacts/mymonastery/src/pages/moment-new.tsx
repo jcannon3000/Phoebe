@@ -1498,18 +1498,18 @@ export default function MomentNew() {
                       )}
                     </div>
                     {/* BCP info card */}
-                    <div className="bg-[#EEF3EF] border border-[#5C7A5F]/20 rounded-2xl p-4 space-y-1">
-                      <p className="text-sm font-semibold text-[#2C1A0E]">📖 About {isMorning ? "Morning Prayer" : "Evening Prayer"}</p>
-                      <p className="text-sm text-[#6b5c4a]">
+                    <div className="rounded-2xl p-4 space-y-1" style={{ background: "rgba(200,212,192,0.08)", border: "1px solid rgba(200,212,192,0.2)" }}>
+                      <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>📖 About {isMorning ? "Morning Prayer" : "Evening Prayer"}</p>
+                      <p className="text-sm" style={{ color: "#8FAF96" }}>
                         {isMorning ? "Morning Prayer Rite II takes 15–20 minutes." : "Evening Prayer Rite II takes 15–20 minutes."}<br />
                         It begins on page {isMorning ? "75" : "115"} of the Book of Common Prayer.
                       </p>
                       <a href={isMorning ? "https://bcponline.org/DailyOffice/mp2.html" : "https://bcponline.org/DailyOffice/ep2.html"}
                         target="_blank" rel="noopener noreferrer"
-                        className="text-sm text-[#5C7A5F] underline underline-offset-2 block">
+                        className="text-sm underline underline-offset-2 block" style={{ color: "#8FAF96" }}>
                         No BCP? Pray online: {isMorning ? "bcponline.org/DailyOffice/mp2.html" : "bcponline.org/DailyOffice/ep2.html"}
                       </a>
-                      <p className="text-xs text-[#6b5c4a]/70 italic mt-1">Everyone chooses their own time. You are together in spirit.</p>
+                      <p className="text-xs italic mt-1" style={{ color: "rgba(143,175,150,0.7)" }}>Everyone chooses their own time. You are together in spirit.</p>
                     </div>
                     {bcpPlantMutation.isError && (
                       <p className="text-xs text-destructive text-center">Something went wrong. Please try again.</p>
