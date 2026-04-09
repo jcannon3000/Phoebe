@@ -900,6 +900,7 @@ export default function MomentNew() {
     if (step === "bcp-invite") return true;
     if (step === "name") return name.trim().length >= 2;
     if (step === "intention") {
+      if (selectedBcpPrayer) return true; // intention is optional when a BCP prayer is selected
       if (templateId === "intercession" && intercessionSource === "custom") return intention.trim().length >= 3;
       return intention.trim().length >= 4;
     }
@@ -1364,7 +1365,7 @@ export default function MomentNew() {
                 return (
                   <div className="flex-1 space-y-4">
                     <div>
-                      <h2 className="text-2xl font-bold mb-1">How many times a week will you pray together? 🌿</h2>
+                      <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>How often will you pray together? 🌿</h2>
                       <p className="text-sm text-muted-foreground italic">This is your commitment to each other. Choose what you can sustain.</p>
                     </div>
                     <div className="space-y-3">
@@ -1542,41 +1543,33 @@ export default function MomentNew() {
               {step === "intention" && selectedBcpPrayer ? (
                 <div className="space-y-5 flex-1">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-1.5">Who are you praying for? 🙏</h2>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      This is the intention your group will hold together. It appears when everyone opens their link.
+                    <h2 className="text-2xl font-bold mb-1.5" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                      Is there a specific intention? 🙏
+                    </h2>
+                    <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
+                      Optional. If you name one, it appears for everyone when they open the prayer.
                     </p>
                   </div>
                   <div className="relative">
                     <textarea autoFocus value={intention}
                       onChange={e => setIntention(e.target.value.slice(0, 200))}
                       rows={4}
-                      className="w-full px-4 py-4 bg-card border-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors resize-none text-base placeholder:text-muted-foreground/40 font-serif rounded-2xl"
+                      placeholder="e.g. Our enemies and those with whom we are in conflict…"
+                      className="w-full px-4 py-4 rounded-2xl resize-none text-base focus:outline-none transition-colors"
+                      style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
                     />
                     {intention.length > 150 && (
-                      <p className="text-right text-xs text-muted-foreground/50 mt-1">{intention.length}/200</p>
+                      <p className="text-right text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>{intention.length}/200</p>
                     )}
                   </div>
-                  <AnimatePresence mode="wait">
-                    <motion.p
-                      key={exampleIdx}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.4 }}
-                      className="text-xs text-muted-foreground/50 italic"
-                    >
-                      e.g. "{INTERCESSION_EXAMPLES[exampleIdx]}"
-                    </motion.p>
-                  </AnimatePresence>
-                  <div className="bg-[#0F2818] border border-[rgba(200,212,192,0.2)] rounded-2xl overflow-hidden">
+                  <div style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.2)", borderRadius: "16px", overflow: "hidden" }}>
                     <details>
-                      <summary className="px-4 py-3 text-xs font-semibold text-[#C8D4C0] cursor-pointer flex items-center gap-2 list-none">
+                      <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2" style={{ color: "#C8D4C0", fontSize: "13px", fontWeight: 600 }}>
                         📖 The full prayer
                       </summary>
-                      <div className="px-4 pb-4 pt-1">
-                        <p className="text-sm text-[#C8D4C0] italic leading-[1.85] font-serif">{selectedBcpPrayer.text}</p>
-                        <p className="text-xs text-[#C8D4C0]/50 mt-3">From the Book of Common Prayer</p>
+                      <div className="px-4 pb-4 pt-1" style={{ background: "#0F2818" }}>
+                        <p className="text-sm italic leading-[1.85] font-serif" style={{ color: "#8FAF96" }}>{selectedBcpPrayer.text}</p>
+                        <p className="text-xs mt-3" style={{ color: "rgba(143,175,150,0.5)" }}>From the Book of Common Prayer</p>
                       </div>
                     </details>
                   </div>
@@ -1584,8 +1577,8 @@ export default function MomentNew() {
               ) : step === "intention" && templateId === "intercession" && intercessionSource === "custom" ? (
                 <div className="space-y-7 flex-1">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-1">Who are you praying for? 🙏</h2>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who are you praying for? 🙏</h2>
+                    <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
                       This will be shown to everyone in the practice when they open their link to pray.
                     </p>
                   </div>
@@ -1700,17 +1693,22 @@ export default function MomentNew() {
               {step === "schedule" && (
                 <div className="space-y-6 flex-1">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-1">When do you want to be reminded? 🔔</h2>
-                    <p className="text-sm text-muted-foreground">Eleanor will send a calendar reminder to everyone at this time each day. One tap and you're in the practice.</p>
+                    <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                      How often would you like to pray? 🌿
+                    </h2>
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>Set a time and rhythm. Eleanor will send a reminder — one tap and you're in the practice.</p>
                   </div>
 
                   {/* Frequency */}
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">How often</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>How often</label>
                     <div className="flex gap-3">
                       {(["daily", "weekly"] as Frequency[]).map(f => (
                         <button key={f} onClick={() => { setFrequency(f); setScheduledDays([]); }}
-                          className={`flex-1 py-3 rounded-xl border-2 font-medium text-sm capitalize transition-all ${frequency === f ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/30 text-foreground"}`}>
+                          className={`flex-1 py-3 rounded-xl font-semibold text-sm capitalize transition-all ${frequency === f ? "animate-turn-pulse" : ""}`}
+                          style={frequency === f
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
                           {f === "daily" ? "Every day" : "Once a week"}
                         </button>
                       ))}
@@ -1720,7 +1718,7 @@ export default function MomentNew() {
                   {/* Day picker for weekly */}
                   {frequency === "weekly" && (
                     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-                      <label className="block text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">
+                      <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
                         {templateId === "intercession" ? "Which day?" : "Which days"}
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -1730,7 +1728,10 @@ export default function MomentNew() {
                               ? setScheduledDays([val])
                               : setScheduledDays(prev => prev.includes(val) ? prev.filter(d => d !== val) : [...prev, val])
                             }
-                            className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all ${scheduledDays.includes(val) ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/30 text-foreground"}`}>
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${scheduledDays.includes(val) ? "animate-turn-pulse" : ""}`}
+                            style={scheduledDays.includes(val)
+                              ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
+                              : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
                             {label}
                           </button>
                         ))}
@@ -1740,11 +1741,14 @@ export default function MomentNew() {
 
                   {/* Hour */}
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">Hour</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>Hour</label>
                     <div className="grid grid-cols-6 gap-1.5">
                       {[1,2,3,4,5,6,7,8,9,10,11,12].map(h => (
                         <button key={h} onClick={() => setScheduledHour(h)}
-                          className={`py-2 rounded-lg border text-sm font-medium transition-all ${scheduledHour === h ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/20 text-foreground"}`}>
+                          className={`py-2 rounded-lg text-sm font-semibold transition-all ${scheduledHour === h ? "animate-turn-pulse" : ""}`}
+                          style={scheduledHour === h
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
                           {h}
                         </button>
                       ))}
@@ -1753,11 +1757,14 @@ export default function MomentNew() {
 
                   {/* Minute */}
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">Minute</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>Minute</label>
                     <div className="flex gap-2">
                       {[0, 15, 30, 45].map(m => (
                         <button key={m} onClick={() => setScheduledMinute(m)}
-                          className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${scheduledMinute === m ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/20 text-foreground"}`}>
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${scheduledMinute === m ? "animate-turn-pulse" : ""}`}
+                          style={scheduledMinute === m
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
                           :{String(m).padStart(2, "0")}
                         </button>
                       ))}
@@ -1768,14 +1775,17 @@ export default function MomentNew() {
                   <div className="flex gap-3">
                     {(["AM", "PM"] as const).map(p => (
                       <button key={p} onClick={() => setScheduledAmPm(p)}
-                        className={`flex-1 py-3 rounded-xl border-2 font-medium text-sm transition-all ${scheduledAmPm === p ? "border-[#5C7A5F] bg-[#5C7A5F]/5 text-[#4a6b50]" : "border-border hover:border-[#5C7A5F]/20 text-foreground"}`}>
+                        className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all ${scheduledAmPm === p ? "animate-turn-pulse" : ""}`}
+                        style={scheduledAmPm === p
+                          ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
+                          : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
                         {p}
                       </button>
                     ))}
                   </div>
 
-                  <p className="text-xs text-[#5C7A5F] italic">The reminder fires at this time for everyone. 🔔</p>
-                  <p className="text-xs text-muted-foreground/60">You can log any time that day — the whole day counts. 🌿</p>
+                  <p className="text-xs italic" style={{ color: "#8FAF96" }}>The reminder fires at this time for everyone. 🔔</p>
+                  <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>You can log any time that day — the whole day counts. 🌿</p>
                 </div>
               )}
 
