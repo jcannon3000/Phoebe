@@ -5,7 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  Menu, X, Bell, User, Lock, Info, LogOut, ChevronRight,
+  X, Bell, User, Lock, Info, LogOut, ChevronRight,
 } from "lucide-react";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
@@ -230,9 +230,8 @@ export function Layout({ children }: { children: ReactNode }) {
             style={{ background: "none", border: "none", padding: 0 }}
             aria-label="Open menu"
           >
-            {/* Desktop: pill-styled "Menu" */}
             <span
-              className="hidden md:inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+              className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
                 letterSpacing: "-0.01em",
@@ -242,10 +241,6 @@ export function Layout({ children }: { children: ReactNode }) {
               }}
             >
               Menu
-            </span>
-            {/* Mobile: hamburger icon */}
-            <span className="md:hidden" style={{ color: "#F0EDE6" }}>
-              <Menu size={22} />
             </span>
           </button>
         )}
