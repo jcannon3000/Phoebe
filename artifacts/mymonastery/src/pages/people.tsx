@@ -193,8 +193,8 @@ export default function People() {
                     ref={isHighlighted ? highlightRef : null}
                   >
                     {/* Row */}
-                    <button
-                      onClick={() => setExpandedEmail(isExpanded ? null : person.email)}
+                    <Link
+                      href={`/people/${encodeURIComponent(person.email)}`}
                       className={`w-full text-left flex items-start gap-4 py-5 px-4 transition-colors duration-150 hover:bg-card/40 ${
                         isHighlighted ? "bg-primary/5" : ""
                       }`}
@@ -285,7 +285,7 @@ export default function People() {
                           <span className="text-muted-foreground/30 text-lg">→</span>
                         )}
                       </div>
-                    </button>
+                    </Link>
 
                     {/* Expanded accordion */}
                     <AnimatePresence>
