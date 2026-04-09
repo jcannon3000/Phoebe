@@ -498,12 +498,13 @@ export default function Dashboard() {
     // ── Moments placement
     for (const m of allMoments) {
       if (m.windowOpen && m.todayPostCount === 0) {
+        // Window is open and not yet logged → show today
         todayItems.push({ kind: "moment", data: m });
-      } else if (m.todayPostCount > 0) {
-        weekItems.push({ kind: "moment", data: m, nextWindow: nextWindowLabel(m) });
-      } else {
+      } else if (!m.windowOpen && m.todayPostCount === 0) {
+        // Not logged today, no open window → upcoming (this month)
         monthItems.push({ kind: "moment", data: m });
       }
+      // todayPostCount > 0 → already done today, skip from dashboard entirely
     }
 
     // ── Gatherings placement
