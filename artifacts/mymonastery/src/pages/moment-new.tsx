@@ -287,47 +287,6 @@ const TEMPLATES = [
       frequency: "weekly" as Frequency,
     },
   },
-  {
-    id: "morning-prayer", emoji: "🌅", name: "Morning Prayer",
-    desc: "Pray the Daily Office together each morning",
-    prefill: {
-      name: "Morning Prayer 🌅",
-      intention: "We open the day together. Before the world begins, we pray.",
-      loggingType: "checkin" as LoggingType,
-      reflectionPrompt: "",
-      scheduledHour: 7, scheduledAmPm: "AM" as "AM" | "PM",
-      frequency: "daily" as Frequency,
-    },
-  },
-  {
-    id: "evening-prayer", emoji: "🌙", name: "Evening Prayer",
-    desc: "Pray the Daily Office together each evening",
-    prefill: {
-      name: "Evening Prayer 🌙",
-      intention: "Before we rest, we release the day together. We pray.",
-      loggingType: "checkin" as LoggingType,
-      reflectionPrompt: "",
-      scheduledHour: 9, scheduledAmPm: "PM" as "AM" | "PM",
-      frequency: "daily" as Frequency,
-    },
-  },
-  {
-    id: "contemplative", emoji: "🕯️", name: "Contemplative Prayer",
-    desc: "Sit in silence together, wherever you are",
-    prefill: {
-      name: "Contemplative Prayer 🕯️",
-      intention: "We sit together in the silence. No agenda. Just presence.",
-      loggingType: "checkin" as LoggingType,
-      reflectionPrompt: "",
-      scheduledHour: 7, scheduledAmPm: "AM" as "AM" | "PM",
-      frequency: "daily" as Frequency,
-    },
-  },
-  {
-    id: "custom", emoji: "🌱", name: "Create your own",
-    desc: "Build your own practice from scratch",
-    prefill: null,
-  },
 ];
 
 // ─── Milestone goal options ───────────────────────────────────────────────────
