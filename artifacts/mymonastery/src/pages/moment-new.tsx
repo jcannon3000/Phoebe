@@ -1102,7 +1102,7 @@ export default function MomentNew() {
             You just have to practice.
           </p>
           <button
-            onClick={() => createdMomentId ? setLocation(`/moments/${createdMomentId}`) : setLocation("/moments")}
+            onClick={() => createdMomentId ? setLocation(`/moments/${createdMomentId}`) : setLocation("/dashboard")}
             className="px-8 py-3 bg-[#5C7A5F] text-white rounded-full font-medium hover:bg-[#5a7a60] transition-colors"
           >
             Done 🌿
@@ -1248,7 +1248,7 @@ export default function MomentNew() {
           </div>
         )}
 
-        <div className={`bg-card rounded-[2rem] ${step === "template" ? "p-6 pt-8" : "p-8 md:p-12"} shadow-[var(--shadow-warm-lg)] border border-card-border min-h-[440px] flex flex-col`}>
+        <div className={step === "template" ? "flex flex-col" : `bg-card rounded-[2rem] p-8 md:p-12 shadow-[var(--shadow-warm-lg)] border border-card-border min-h-[440px] flex flex-col`}>
           <AnimatePresence mode="wait">
             <motion.div key={step} variants={sv} initial="initial" animate="animate" exit="exit"
               transition={{ duration: 0.22 }} className="flex-1 flex flex-col">
@@ -1256,20 +1256,24 @@ export default function MomentNew() {
               {/* ── Template selection ──────────────────────────── */}
               {step === "template" && (
                 <div className="flex-1">
-                  <div className="mb-5">
-                    <h2 className="text-2xl font-semibold text-foreground mb-1">What will you tend together? 🌿</h2>
-                    <p className="text-sm text-muted-foreground italic">Spiritual practices for when you can't be in the same place. Everything can be edited.</p>
-                  </div>
-                  <div className="grid gap-3">
+                  <h2 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    What will you tend together? 🌿
+                  </h2>
+                  <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
+                    Spiritual practices for when you can't be in the same place.
+                  </p>
+                  <div className="space-y-3">
                     {TEMPLATES.map(t => (
                       <button key={t.id} onClick={() => selectTemplate(t)}
-                        className="w-full text-left p-4 rounded-2xl border border-border/60 hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all flex items-center gap-4 group">
-                        <span className="text-3xl">{t.emoji}</span>
-                        <div>
-                          <p className="font-semibold text-foreground text-sm group-hover:text-[#4a6b50]">{t.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
+                        className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+                        style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.2)" }}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{t.emoji}</span>
+                          <div>
+                            <p className="font-semibold text-base" style={{ color: "#F0EDE6" }}>{t.name}</p>
+                            <p className="text-sm" style={{ color: "#8FAF96" }}>{t.desc}</p>
+                          </div>
                         </div>
-                        <span className="ml-auto text-muted-foreground/40 text-sm">→</span>
                       </button>
                     ))}
                   </div>

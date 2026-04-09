@@ -418,7 +418,7 @@ export default function MomentDetail() {
 
         {/* Back */}
         <Link
-          href="/moments"
+          href="/dashboard"
           className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mb-5 transition-colors"
         >
           ← Your practices

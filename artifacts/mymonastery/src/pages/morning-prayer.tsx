@@ -9,7 +9,7 @@ export default function MorningPrayerPage() {
   const memberToken = params.token ?? "";
 
   if (!momentId || !memberToken) {
-    setLocation("/moments");
+    setLocation("/dashboard");
     return null;
   }
 
