@@ -546,13 +546,13 @@ export default function Dashboard() {
             {format(new Date(), "EEEE, d MMMM")}
           </p>
           <div className="flex items-center gap-5 mt-2">
-            <Link href="/letters" className="text-sm font-medium transition-opacity hover:opacity-70" style={{ color: "#C8D4C0" }}>
+            <Link href="/letters" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#C44B4F" }}>
               📮 Letters
             </Link>
-            <Link href="/practices" className="text-sm font-medium transition-opacity hover:opacity-70" style={{ color: "#C8D4C0" }}>
+            <Link href="/practices" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#4A7FB5" }}>
               🙏 Practices
             </Link>
-            <Link href="/gatherings" className="text-sm font-medium transition-opacity hover:opacity-70" style={{ color: "#C8D4C0" }}>
+            <Link href="/gatherings" className="text-sm font-medium transition-opacity hover:opacity-75" style={{ color: "#5C8A5F" }}>
               🤝 Gatherings
             </Link>
           </div>
