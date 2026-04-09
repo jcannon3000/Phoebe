@@ -65,6 +65,7 @@ import MorningPrayerPage from "./pages/morning-prayer";
 import MomentsDashboard from "./pages/moments-dashboard";
 import MomentRedirect from "./pages/moment-redirect";
 import PrayerListPage from "./pages/prayer-list";
+import PrayerModePage from "./pages/prayer-mode";
 import SettingsPage from "./pages/settings";
 import AboutPage from "./pages/about";
 import InvitationsPage from "./pages/invitations";
@@ -109,6 +110,7 @@ function Router() {
       <Route path="/letters/:id" component={CorrespondencePage} />
       <Route path="/people" component={People} />
       <Route path="/prayer-list" component={PrayerListPage} />
+      <Route path="/prayer-mode" component={PrayerModePage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/invitations" component={InvitationsPage} />
