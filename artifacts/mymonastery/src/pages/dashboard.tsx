@@ -305,7 +305,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           </span>
         )}
         {nextWindow && (
-          <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>{nextWindow} →</span>
+          <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>Next Prayer {nextWindow}</span>
         )}
         {!nextWindow && m.todayPostCount > 0 && (
           <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>{m.todayPostCount} today 🌿</span>
