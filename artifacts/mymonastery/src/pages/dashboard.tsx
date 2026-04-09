@@ -42,6 +42,7 @@ type Moment = {
   windowOpen: boolean;
   intercessionTopic?: string | null;
   fastingFrom?: string | null;
+  goalDays?: number | null;
   myUserToken: string | null;
   momentToken: string | null;
   frequency: string;
@@ -320,12 +321,20 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     .slice(0, 5)
     .join(", ");
 
+  const isIntercession = m.templateType === "intercession";
+  const isMorningPrayer = m.templateType === "morning-prayer";
+
   let subtitle = "";
   if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
 
-  const isMorningPrayer = m.templateType === "morning-prayer";
-  const isIntercession = m.templateType === "intercession";
+  // Goal label for the top-right badge
+  const goalLabel = (() => {
+    if (!m.goalDays || m.goalDays <= 0) return null;
+    if (m.goalDays % 7 === 0) return `${m.goalDays / 7}wk goal`;
+    return `${m.goalDays}d goal`;
+  })();
+
   const openHref = (shouldPulse && isMorningPrayer && m.myUserToken)
     ? `/morning-prayer/${m.id}/${m.myUserToken}`
     : (shouldPulse && isIntercession && m.momentToken && m.myUserToken)
@@ -338,25 +347,38 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {m.name}</span>
         </div>
-        {m.currentStreak > 0 && (
+        {m.currentStreak > 0 ? (
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
             {m.currentStreak} day streak
           </span>
-        )}
-      </div>
-      <div className="flex items-center justify-between gap-2 mt-1.5">
-        <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle || m.intention}</p>
-        {m.windowOpen && m.todayPostCount === 0 && (
-          <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-            Open
+        ) : goalLabel ? (
+          <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#8FAF96", letterSpacing: "0.08em" }}>
+            {goalLabel}
           </span>
-        )}
-        {nextWindow && (
-          <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>Next Prayer {nextWindow}</span>
-        )}
-        {!nextWindow && m.todayPostCount > 0 && (
-          <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>{m.todayPostCount} today 🌿</span>
-        )}
+        ) : null}
+      </div>
+      <div className="flex items-start justify-between gap-2 mt-1.5">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle || m.intention}</p>
+          {isIntercession && m.intercessionTopic && (
+            <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
+              🙏 {m.intercessionTopic}
+            </p>
+          )}
+        </div>
+        <div className="shrink-0 flex items-center">
+          {m.windowOpen && m.todayPostCount === 0 && (
+            <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+              Open
+            </span>
+          )}
+          {nextWindow && (
+            <span className="text-xs" style={{ color: "#8FAF96" }}>Next Prayer {nextWindow}</span>
+          )}
+          {!nextWindow && m.todayPostCount > 0 && (
+            <span className="text-xs" style={{ color: "#8FAF96" }}>{m.todayPostCount} today 🌿</span>
+          )}
+        </div>
       </div>
     </BarCard>
   );

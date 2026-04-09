@@ -207,7 +207,18 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
               <input
                 type="email"
                 value={p.email}
-                onChange={e => updateManual(i, "email", e.target.value)}
+                onChange={e => {
+                  const val = e.target.value;
+                  updateManual(i, "email", val);
+                  if (isValidEmail(val)) {
+                    const match = connections.find(
+                      c => c.email.toLowerCase() === val.trim().toLowerCase()
+                    );
+                    if (match && !p.name) {
+                      updateManual(i, "name", match.name);
+                    }
+                  }
+                }}
                 placeholder="Email"
                 className="flex-1 px-3 py-2.5 rounded-xl border border-border focus:border-[#5C7A5F] outline-none bg-background text-sm"
               />
