@@ -803,12 +803,17 @@ router.post("/moments", async (req, res): Promise<void> => {
       }
     } else if (templateType === "intercession") {
       const todayStr = new Date().toISOString().split("T")[0];
+      // Cap the recurrence at goalDays so the event disappears from the calendar
+      // after the commitment period ends (e.g. RRULE:FREQ=DAILY;COUNT=3)
+      const intercessionRecurrence = goalDays > 0
+        ? [`RRULE:FREQ=DAILY;COUNT=${goalDays}`]
+        : recurrenceRule;
       const eventId = await createAllDayCalendarEvent(sessionUserId, {
         summary: eventTitle,
         description: orgDescription,
         dateStr: todayStr,
         attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
-        recurrence: recurrenceRule,
+        recurrence: intercessionRecurrence,
         reminders: [{ method: "popup", minutes: 0 }], // morning of
         transparency: "transparent",
       }).catch(() => null);
