@@ -5,8 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  Menu, X, Users, Mail, Flame, HeartHandshake, HandHeart,
-  Bell, User, Lock, Info, LogOut, ChevronRight,
+  Menu, X, Bell, User, Lock, Info, LogOut, ChevronRight,
 } from "lucide-react";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
@@ -45,7 +44,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "📮", label: "Letters",     path: "/letters"     },
     { emoji: "🙏", label: "Practices",   path: "/practices"   },
     { emoji: "🤝", label: "Gatherings",  path: "/gatherings"  },
-    { emoji: "👤", label: "People",      path: "/people"      },
+    { emoji: "👥", label: "People",      path: "/people"      },
     { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
   ];
 
@@ -222,24 +221,31 @@ export function Layout({ children }: { children: ReactNode }) {
               Phoebe
             </span>
           </Link>
-
-          <Link href="/people" className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary mt-2" style={{ color: "#8FAF96" }}>
-            <Users size={15} />
-            People
-          </Link>
         </div>
 
         {user && (
           <button
             onClick={() => setDrawerOpen(true)}
             className="flex items-center justify-center transition-colors"
-            style={{ color: "#F0EDE6", background: "none", border: "none", padding: 0 }}
+            style={{ background: "none", border: "none", padding: 0 }}
             aria-label="Open menu"
           >
+            {/* Desktop: pill-styled "Menu" */}
             <span
-              style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em" }}
+              className="hidden md:inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                letterSpacing: "-0.01em",
+                background: "rgba(200,212,192,0.08)",
+                color: "#C8D4C0",
+                border: "1px solid rgba(200,212,192,0.2)",
+              }}
             >
               Menu
+            </span>
+            {/* Mobile: hamburger icon */}
+            <span className="md:hidden" style={{ color: "#F0EDE6" }}>
+              <Menu size={22} />
             </span>
           </button>
         )}
