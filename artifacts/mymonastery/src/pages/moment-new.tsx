@@ -830,7 +830,7 @@ export default function MomentNew() {
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
   const isBcpTemplate = templateId === "morning-prayer" || templateId === "evening-prayer";
-  const BCP_STEP_ORDER: StepId[] = ["template", "bcp-commitment", "bcp-frequency", "bcp-time", "bcp-invite"];
+  const BCP_STEP_ORDER: StepId[] = ["template", "bcp-commitment", "bcp-frequency", "bcp-invite"];
   const STEP_ORDER: StepId[] = isBcpTemplate
     ? BCP_STEP_ORDER
     : templateId === "intercession"
@@ -1436,89 +1436,6 @@ export default function MomentNew() {
                               </button>
                             );
                           })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* ── BCP: When in morning/evening ────────────────────── */}
-              {step === "bcp-time" && (() => {
-                const isMorning = templateId === "morning-prayer";
-                const slots = isMorning
-                  ? [
-                      { id: "early-morning" as const, emoji: "🌅", label: "Early morning", sub: "Before the day begins", range: "5am – 8am", minH: 5, maxH: 8, defaultH: 6, defaultM: 0, amPm: "AM" as const },
-                      { id: "morning" as const, emoji: "☀️", label: "Morning", sub: "As the day opens", range: "8am – 11am", minH: 8, maxH: 11, defaultH: 8, defaultM: 0, amPm: "AM" as const },
-                    ]
-                  : [
-                      { id: "late-afternoon" as const, emoji: "🌤", label: "Late afternoon", sub: "Before the evening meal", range: "4pm – 7pm", minH: 4, maxH: 7, defaultH: 5, defaultM: 0, amPm: "PM" as const },
-                      { id: "evening" as const, emoji: "🌙", label: "Evening", sub: "As the day releases", range: "7pm – 10pm", minH: 7, maxH: 10, defaultH: 7, defaultM: 0, amPm: "PM" as const },
-                    ];
-                const activeSlot = slots.find(s => s.id === bcpTimeSlot);
-                return (
-                  <div className="flex-1 space-y-5">
-                    <div>
-                      <h2 className="text-2xl font-bold mb-1">
-                        {isMorning ? "When in the morning? 🌅" : "When in the evening? 🌙"}
-                      </h2>
-                      <p className="text-sm text-muted-foreground italic">
-                        You choose your time. Everyone in this practice sets their own.<br />
-                        You will all be praying at the same time of day, wherever you are.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {slots.map(s => {
-                        const sel = bcpTimeSlot === s.id;
-                        return (
-                          <button key={s.id} onClick={() => {
-                            setBcpTimeSlot(s.id);
-                            setBcpPersonalHour(s.defaultH);
-                            setBcpPersonalMinute(s.defaultM);
-                            setBcpPersonalAmPm(s.amPm);
-                          }}
-                            className={`rounded-2xl p-4 text-left transition-all ${
-                              sel ? "bg-[#5C7A5F] text-white" : "bg-secondary/50 border border-border hover:border-[#5C7A5F]/40"
-                            }`}>
-                            <div className="text-2xl mb-2">{s.emoji}</div>
-                            <p className={`font-bold text-sm ${sel ? "text-white" : "text-foreground"}`}>{s.label}</p>
-                            <p className={`text-xs mt-0.5 ${sel ? "text-white/70" : "text-muted-foreground"}`}>{s.sub}</p>
-                            <p className={`text-xs mt-1 ${sel ? "text-white/60" : "text-muted-foreground/60"}`}>({s.range})</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {/* Time picker constrained to slot range */}
-                    {activeSlot && (
-                      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                        <p className="text-sm font-medium text-foreground">Your time</p>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1 bg-secondary/50 rounded-xl px-4 py-3 border border-border">
-                            <button onClick={() => {
-                              let h = bcpPersonalHour - 1;
-                              if (h < activeSlot.minH) h = activeSlot.maxH - 1;
-                              setBcpPersonalHour(h);
-                            }} className="text-muted-foreground hover:text-foreground px-1">−</button>
-                            <span className="text-xl font-bold w-8 text-center">{String(bcpPersonalHour).padStart(2, "0")}</span>
-                            <button onClick={() => {
-                              let h = bcpPersonalHour + 1;
-                              if (h >= activeSlot.maxH) h = activeSlot.minH;
-                              setBcpPersonalHour(h);
-                            }} className="text-muted-foreground hover:text-foreground px-1">+</button>
-                          </div>
-                          <span className="text-xl font-bold text-muted-foreground">:</span>
-                          <div className="flex items-center gap-1 bg-secondary/50 rounded-xl px-4 py-3 border border-border">
-                            <button onClick={() => setBcpPersonalMinute(m => m === 0 ? 45 : m - 15)} className="text-muted-foreground hover:text-foreground px-1">−</button>
-                            <span className="text-xl font-bold w-8 text-center">{String(bcpPersonalMinute).padStart(2, "0")}</span>
-                            <button onClick={() => setBcpPersonalMinute(m => (m + 15) % 60)} className="text-muted-foreground hover:text-foreground px-1">+</button>
-                          </div>
-                          <span className="text-sm font-medium text-muted-foreground">{activeSlot.amPm}</span>
-                        </div>
-                        {/* Timezone */}
-                        <div>
-                          <label className="text-xs text-muted-foreground">Timezone</label>
-                          <input type="text" value={bcpTimezone} onChange={e => setBcpTimezone(e.target.value)}
-                            className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:border-[#5C7A5F] focus:outline-none" />
                         </div>
                       </motion.div>
                     )}
