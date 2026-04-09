@@ -70,6 +70,7 @@ import AboutPage from "./pages/about";
 import InvitationsPage from "./pages/invitations";
 import BcpPage from "./pages/bcp";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
+import BcpDailyOfficePage from "./pages/bcp-daily-office";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,6 +114,7 @@ function Router() {
       <Route path="/invitations" component={InvitationsPage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
+      <Route path="/bcp/daily-office" component={BcpDailyOfficePage} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route component={NotFound} />
     </Switch>

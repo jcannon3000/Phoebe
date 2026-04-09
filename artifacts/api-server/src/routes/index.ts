@@ -11,6 +11,7 @@ import prayerRouter from "./prayer";
 import lettersRouter from "./letters";
 import phoebeRouter from "./phoebe";
 import momentsRouter from "./moments";
+import officeRouter from "./office";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(prayerRouter);
 router.use(lettersRouter);
 router.use(phoebeRouter);
 router.use(momentsRouter);
+router.use(officeRouter);
 
 export default router;
