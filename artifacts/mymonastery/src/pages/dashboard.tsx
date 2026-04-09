@@ -63,9 +63,9 @@ const CATEGORY_COLORS: Record<Category, {
   barPulseClass: string;
 }> = {
   letters: {
-    bar: "#8E9E42",
-    border: "rgba(142,158,66,0.4)",
-    bg: "rgba(142,158,66,0.15)",
+    bar: "#1D5232",
+    border: "rgba(29,82,50,0.4)",
+    bg: "rgba(29,82,50,0.18)",
     pulseClass: "animate-turn-pulse-letters",
     barPulseClass: "animate-bar-pulse-letters",
   },
@@ -401,11 +401,12 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
     : rhythm === "monthly" ? "monthly tradition"
     : r.frequency ? `${r.frequency} tradition` : "recurring tradition";
   const participants: Array<any> = r.participants ?? [];
+  const gatheringEmoji = r.intercessionIntention ? "🙏" : r.fastingDescription ? "✦" : "🤝";
 
   return (
     <BarCard key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} pulse={false} category="gatherings">
       <div className="flex items-start justify-between gap-2 mb-1">
-        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>🤝 {r.name}</span>
+        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{gatheringEmoji} {r.name}</span>
         {badge ? (
           <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "rgba(45,94,63,0.4)", color: "#A8C5A0", border: "1px solid rgba(168,197,160,0.3)" }}>
             {badge}
@@ -591,29 +592,48 @@ export default function Dashboard() {
           <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </p>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Link
-              href="/letters"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
-              style={{ background: "rgba(142,158,66,0.15)", color: "#8E9E42", border: "1px solid rgba(142,158,66,0.3)" }}
-            >
-              📮 Letters
-            </Link>
-            <Link
-              href="/practices"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
-              style={{ background: "rgba(46,107,64,0.15)", color: "#4A9E5C", border: "1px solid rgba(46,107,64,0.3)" }}
-            >
-              🙏 Practices
-            </Link>
-            <Link
-              href="/gatherings"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
-              style={{ background: "rgba(111,175,133,0.15)", color: "#6FAF85", border: "1px solid rgba(111,175,133,0.3)" }}
-            >
-              🤝 Gatherings
-            </Link>
-          </div>
+          {(() => {
+            const PILLS = [
+              { label: "📮 Letters",      href: "/letters",      fg: "#3A8A50", bg: "rgba(29,82,50,0.15)",    border: "rgba(29,82,50,0.3)"    },
+              { label: "🙏 Practices",    href: "/practices",    fg: "#4A9E5C", bg: "rgba(46,107,64,0.15)",   border: "rgba(46,107,64,0.3)"   },
+              { label: "🤝 Gatherings",   href: "/gatherings",   fg: "#6FAF85", bg: "rgba(111,175,133,0.15)", border: "rgba(111,175,133,0.3)" },
+              { label: "👥 People",       href: "/people",       fg: "#4E9B8F", bg: "rgba(78,155,143,0.15)",  border: "rgba(78,155,143,0.3)"  },
+              { label: "🏘️ Communities",  href: "/gatherings",   fg: "#C17F24", bg: "rgba(193,127,36,0.15)",  border: "rgba(193,127,36,0.3)"  },
+              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#9B8AC1", bg: "rgba(155,138,193,0.15)", border: "rgba(155,138,193,0.3)" },
+            ];
+            const pillStyle = (p: typeof PILLS[0]) => ({
+              background: p.bg, color: p.fg, border: `1px solid ${p.border}`,
+            });
+            return (
+              <>
+                {/* Mobile: scrolling ticker */}
+                <div className="md:hidden mt-2 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
+                  <style>{`@keyframes dash-pills { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
+                  <div style={{ display: "flex", gap: 8, width: "max-content", animation: "dash-pills 20s linear infinite" }}>
+                    {[...PILLS, ...PILLS].map((p, i) => (
+                      <Link key={i} href={p.href}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap"
+                        style={pillStyle(p)}
+                      >
+                        {p.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+                {/* Desktop: static flex wrap */}
+                <div className="hidden md:flex items-center gap-2 mt-2 flex-wrap">
+                  {PILLS.map((p, i) => (
+                    <Link key={i} href={p.href}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
+                      style={pillStyle(p)}
+                    >
+                      {p.label}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* ── Loading skeleton ── */}
