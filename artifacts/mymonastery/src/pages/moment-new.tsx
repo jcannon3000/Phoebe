@@ -23,7 +23,7 @@ const BCP_FREQ_OPTIONS: {
   dots: number; daysPerWeek: number; badge: string | null;
   bg: string; message: string;
 }[] = [
-  { id: "once",  emoji: "🌱", label: "Once a week",       sub: "A gentle beginning",  dots: 1, daysPerWeek: 1, badge: null,          bg: "#EEF3EF", message: "One office together each week. A beginning." },
+  { id: "once",  emoji: "🌱", label: "Once a week",       sub: "A gentle beginning",  dots: 1, daysPerWeek: 1, badge: null,          bg: "#0F2818", message: "One office together each week. A beginning." },
   { id: "twice", emoji: "🌿", label: "Twice a week",       sub: "Taking root",         dots: 2, daysPerWeek: 2, badge: null,          bg: "#E8F0EA", message: "Two offices. Enough to find a rhythm." },
   { id: "three", emoji: "🌸", label: "Three times a week", sub: "A real rhythm",       dots: 3, daysPerWeek: 3, badge: "Most chosen 🌿", bg: "#E0EBE2", message: "Three times. This is where something real takes root." },
   { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",  dots: 5, daysPerWeek: 5, badge: null,          bg: "#E8E4D8", message: "The weekday office. A serious commitment." },
@@ -339,7 +339,7 @@ const TO_RRULE: Record<string, string> = {
 const GOAL_OPTIONS_DAILY = [
   {
     days: 3, emoji: "🌱", label: "3 days", sub: "A first tender",
-    bg: "#EEF3EF", borderColor: "#c8dac9",
+    bg: "#0F2818", borderColor: "#c8dac9",
     dots: Array(3).fill(0), dotLabel: "3 practices together",
     badge: null,
     message: "A gentle beginning. Three practices to find your rhythm.",
@@ -1084,7 +1084,7 @@ export default function MomentNew() {
 
     // ── Organizer personal time prompt (spiritual templates only) ────────────
     return (
-      <div className="min-h-screen bg-[#2C1A0E] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#091A10] flex items-center justify-center px-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -1118,7 +1118,7 @@ export default function MomentNew() {
     const freqOpt = BCP_FREQ_OPTIONS.find(f => f.id === bcpFreqType);
     const freqLabel = freqOpt?.label ?? "Daily";
     return (
-      <div className="min-h-screen bg-[#2C1810] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-[#091A10] flex items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
           className="max-w-sm w-full text-center text-[#E8E4D8]">
           <div className="text-6xl mb-6">{isMorning ? "🌅" : "🌙"}</div>
@@ -1142,7 +1142,7 @@ export default function MomentNew() {
               ? '"Let my prayer be set forth in thy sight as incense, and the lifting up of my hands as the evening sacrifice." — Psalm 141:2'
               : '"O gracious Light, pure brightness of the everliving Father in heaven." — Phos Hilaron'}
           </p>
-          <button onClick={() => setLocation("/moments")}
+          <button onClick={() => setLocation("/dashboard")}
             className="px-10 py-4 bg-[#5C7A5F] text-white rounded-full text-base font-semibold hover:bg-[#5a7a60] transition-colors">
             Done 🌿
           </button>
@@ -1155,7 +1155,7 @@ export default function MomentNew() {
   if (step === "bcp-commitment" && isBcpTemplate) {
     const isMorning = templateId === "morning-prayer";
     return (
-      <div className="min-h-screen bg-[#2C1810] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-[#091A10] flex items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           className="max-w-sm w-full text-center text-[#E8E4D8]">
           <div className="text-6xl mb-6">{isMorning ? "🌅" : "🌙"}</div>
@@ -1214,9 +1214,9 @@ export default function MomentNew() {
             transition={{ duration: 0.35 }}
             className="w-full max-w-sm mx-auto"
           >
-            <div className="bg-[#EEF3EF] border border-[#5C7A5F]/20 rounded-[2rem] p-10 text-center shadow-[var(--shadow-warm-lg)]">
+            <div className="bg-[#0F2818] border border-[#5C7A5F]/20 rounded-[2rem] p-10 text-center shadow-[var(--shadow-warm-lg)]">
               <div className="text-5xl mb-5">🌿</div>
-              <p className="text-[#2C1A0E] font-serif text-[1.1rem] leading-relaxed italic">
+              <p className="text-[#F0EDE6] font-serif text-[1.1rem] leading-relaxed italic">
                 "Practices are for the distance between gatherings.
                 <br /><br />
                 You're not in the same room — but you're doing the same thing, at the same time, together."
@@ -1383,20 +1383,20 @@ export default function MomentNew() {
                               <span className="text-3xl">{opt.emoji}</span>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`font-bold text-base ${sel ? "text-[#E8E4D8]" : "text-[#2C1A0E]"}`}>{opt.label}</span>
+                                  <span className={`font-bold text-base ${sel ? "text-[#E8E4D8]" : "text-[#F0EDE6]"}`}>{opt.label}</span>
                                   {opt.badge && !sel && (
                                     <span className="text-xs font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">{opt.badge}</span>
                                   )}
                                   {sel && <span className="ml-auto text-[#E8E4D8] text-lg">✓</span>}
                                 </div>
-                                <p className={`text-xs mt-0.5 ${sel ? "text-[#E8E4D8]/80" : "text-[#6b5c4a]/70"}`}>{opt.sub}</p>
+                                <p className={`text-xs mt-0.5 ${sel ? "text-[#E8E4D8]/80" : "text-[#8FAF96]/70"}`}>{opt.sub}</p>
                                 <div className="flex gap-1 mt-2">
                                   {Array.from({ length: 7 }).map((_, i) => (
                                     <div key={i} className="w-2.5 h-2.5 rounded-full transition-all duration-300"
                                       style={{ background: i < opt.dots ? (sel ? "#E8E4D8" : "#5C7A5F") : "rgba(92,122,95,0.2)" }} />
                                   ))}
                                 </div>
-                                <p className={`text-xs mt-1 ${sel ? "text-[#E8E4D8]/60" : "text-[#6b5c4a]/50"}`}>
+                                <p className={`text-xs mt-1 ${sel ? "text-[#E8E4D8]/60" : "text-[#8FAF96]/50"}`}>
                                   {opt.dots} office{opt.dots > 1 ? "s" : ""} together each week
                                 </p>
                               </div>
@@ -1565,14 +1565,14 @@ export default function MomentNew() {
                       e.g. "{INTERCESSION_EXAMPLES[exampleIdx]}"
                     </motion.p>
                   </AnimatePresence>
-                  <div className="bg-[#F5EDD8] border border-[#c9b99a]/40 rounded-2xl overflow-hidden">
+                  <div className="bg-[#0F2818] border border-[rgba(200,212,192,0.2)] rounded-2xl overflow-hidden">
                     <details>
-                      <summary className="px-4 py-3 text-xs font-semibold text-[#4a3728] cursor-pointer flex items-center gap-2 list-none">
+                      <summary className="px-4 py-3 text-xs font-semibold text-[#C8D4C0] cursor-pointer flex items-center gap-2 list-none">
                         📖 The full prayer
                       </summary>
                       <div className="px-4 pb-4 pt-1">
-                        <p className="text-sm text-[#4a3728] italic leading-[1.85] font-serif">{selectedBcpPrayer.text}</p>
-                        <p className="text-xs text-[#4a3728]/50 mt-3">From the Book of Common Prayer</p>
+                        <p className="text-sm text-[#C8D4C0] italic leading-[1.85] font-serif">{selectedBcpPrayer.text}</p>
+                        <p className="text-xs text-[#C8D4C0]/50 mt-3">From the Book of Common Prayer</p>
                       </div>
                     </details>
                   </div>
@@ -1801,7 +1801,7 @@ export default function MomentNew() {
                 return (
                   <div className="flex-1 flex flex-col gap-4">
                     <div>
-                      <h2 className="text-[1.6rem] font-bold text-[#2C1A0E] leading-tight mb-1"
+                      <h2 className="text-[1.6rem] font-bold text-[#F0EDE6] leading-tight mb-1"
                         style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                         What's your first goal? 🌱
                       </h2>
@@ -1820,7 +1820,7 @@ export default function MomentNew() {
                             transition={{ duration: 0.15 }}
                             className="relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200"
                             style={{
-                              background: sel ? "#5C7A5F" : "#EEF3EF",
+                              background: sel ? "#5C7A5F" : "#0F2818",
                               border: `1.5px solid ${sel ? "#5C7A5F" : "#c8dac9"}`,
                               boxShadow: sel ? "0 4px 14px rgba(92,122,95,0.22)" : undefined,
                             }}
@@ -1835,7 +1835,7 @@ export default function MomentNew() {
                             <div className="flex items-center gap-4 px-5 py-4">
                               <span className="text-3xl leading-none shrink-0">{opt.emoji}</span>
                               <div className="flex-1 min-w-0">
-                                <p className={`font-bold text-[15px] leading-snug ${sel ? "text-[#F5EDD8]" : "text-[#2C1A0E]"}`}
+                                <p className={`font-bold text-[15px] leading-snug ${sel ? "text-[#F5EDD8]" : "text-[#F0EDE6]"}`}
                                   style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                                   {opt.label}
                                 </p>
