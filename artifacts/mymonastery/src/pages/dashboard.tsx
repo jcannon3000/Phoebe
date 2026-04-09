@@ -57,24 +57,28 @@ type Category = "letters" | "practices" | "gatherings";
 const CATEGORY_COLORS: Record<Category, {
   bar: string;
   border: string;
+  bg: string;
   pulseClass: string;
   barPulseClass: string;
 }> = {
   letters: {
     bar: "#8E9E42",
     border: "rgba(142,158,66,0.4)",
+    bg: "rgba(142,158,66,0.15)",
     pulseClass: "animate-turn-pulse-letters",
     barPulseClass: "animate-bar-pulse-letters",
   },
   practices: {
     bar: "#2E6B40",
     border: "rgba(46,107,64,0.4)",
+    bg: "rgba(46,107,64,0.15)",
     pulseClass: "animate-turn-pulse-practices",
     barPulseClass: "animate-bar-pulse-practices",
   },
   gatherings: {
     bar: "#6FAF85",
     border: "rgba(111,175,133,0.4)",
+    bg: "rgba(111,175,133,0.15)",
     pulseClass: "animate-turn-pulse-gatherings",
     barPulseClass: "animate-bar-pulse-gatherings",
   },
@@ -149,7 +153,7 @@ function BarCard({
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? colors.pulseClass : ""}`}
-        style={{ background: "#0F2818", border: `1px solid ${colors.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+        style={{ background: colors.bg, border: `1px solid ${colors.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
       >
         <div
           className={`w-1 flex-shrink-0 ${pulse ? colors.barPulseClass : ""}`}
