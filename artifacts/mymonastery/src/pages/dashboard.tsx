@@ -263,7 +263,7 @@ function PracticesSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Practices" />
+        <SectionHeader label="Practices 🕯️" />
         <div className="space-y-3 mb-8">
           {[1, 2].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
@@ -279,7 +279,7 @@ function PracticesSection() {
 
   return (
     <div className="mb-8">
-      <SectionHeader label="Practices" />
+      <SectionHeader label="Practices 🕯️" />
 
       {!hasAny ? (
         <div
@@ -452,7 +452,7 @@ function GatheringsSection() {
   if (isLoading) {
     return (
       <>
-        <SectionHeader label="Gatherings 🕯️" />
+        <SectionHeader label="Gatherings 🤝" />
         <div className="space-y-3 mb-8">
           {[1].map(i => (
             <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
@@ -466,7 +466,7 @@ function GatheringsSection() {
 
   return (
     <div className="mb-4">
-      <SectionHeader label="Gatherings 🕯️" />
+      <SectionHeader label="Gatherings 🤝" />
 
       {gatherings.length === 0 ? (
         <div
