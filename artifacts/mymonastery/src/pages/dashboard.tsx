@@ -44,6 +44,10 @@ type Moment = {
   fastingFrom?: string | null;
   myUserToken: string | null;
   momentToken: string | null;
+  frequency: string;
+  dayOfWeek: string | null;
+  practiceDays: string | null;
+  timeOfDay: string | null;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -53,6 +57,30 @@ function nextDayLabel(date: Date): string {
   const tomorrow = addDays(startOfDay(new Date()), 1);
   if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
   return format(date, "EEEE");
+}
+
+const DOW_LC: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+const RRULE_DOW: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+const DAY_NAMES: Record<number, string> = { 0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday" };
+
+function nextWindowLabel(m: Pick<Moment, "frequency" | "dayOfWeek" | "practiceDays" | "timeOfDay">): string {
+  if (m.frequency === "daily") return "Tomorrow";
+  if (m.frequency === "monthly") return "Next month";
+  // weekly — find next matching day
+  let rawDays: string[] = [];
+  try { rawDays = m.practiceDays ? (JSON.parse(m.practiceDays) as string[]) : []; } catch { /* */ }
+  if (!rawDays.length && m.dayOfWeek) rawDays = [m.dayOfWeek];
+  const today = new Date().getDay();
+  for (let i = 1; i <= 7; i++) {
+    const check = (today + i) % 7;
+    const match = rawDays.some(d => {
+      const up = d.toUpperCase();
+      if (RRULE_DOW[up] !== undefined) return RRULE_DOW[up] === check;
+      return DOW_LC[d.toLowerCase()] === check;
+    });
+    if (match) return i === 1 ? "Tomorrow" : DAY_NAMES[check] ?? "Next week";
+  }
+  return "Next week";
 }
 
 const CARD_BASE = "background: #0F2818; border: 1px solid rgba(200, 212, 192, 0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)";
@@ -91,7 +119,7 @@ function BarCard({
           className={`w-1 flex-shrink-0 ${pulse ? "animate-bar-pulse" : ""}`}
           style={{ background: pulse ? undefined : "#5C8A5F" }}
         />
-        <div className="flex-1 p-4">
+        <div className="flex-1 px-4 py-3">
           {children}
         </div>
       </motion.div>
@@ -235,7 +263,7 @@ function LetterCard({
 
 // ─── Moment card (reused in Today and Practices) ──────────────────────────────
 
-function MomentCard({ m, userEmail, keyPrefix }: { m: Moment; userEmail: string; keyPrefix: string }) {
+function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
   const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
   const shouldPulse = m.windowOpen && m.todayPostCount === 0;
   const memberNames = m.members
@@ -276,7 +304,10 @@ function MomentCard({ m, userEmail, keyPrefix }: { m: Moment; userEmail: string;
             {emoji} Open
           </span>
         )}
-        {m.todayPostCount > 0 && (
+        {nextWindow && (
+          <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>{nextWindow} →</span>
+        )}
+        {!nextWindow && m.todayPostCount > 0 && (
           <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>{m.todayPostCount} today 🌿</span>
         )}
       </div>
@@ -352,16 +383,17 @@ function TodaySection({
 // ─── This Week Section ────────────────────────────────────────────────────────
 
 function ThisWeekSection({
-  letters, gatherings, userEmail, userName,
+  letters, moments, gatherings, userEmail, userName,
 }: {
-  letters: Correspondence[]; gatherings: any[]; userEmail: string; userName: string;
+  letters: Correspondence[]; moments: Moment[]; gatherings: any[]; userEmail: string; userName: string;
 }) {
-  if (letters.length === 0 && gatherings.length === 0) return null;
+  if (letters.length === 0 && moments.length === 0 && gatherings.length === 0) return null;
   return (
     <div className="mb-8">
       <SectionHeader label="This week" />
       <div className="space-y-6">
         {letters.map(c => <LetterCard key={`week-l-${c.id}`} c={c} userEmail={userEmail} userName={userName} keyPrefix="week" />)}
+        {moments.map(m => <MomentCard key={`week-m-${m.id}`} m={m} userEmail={userEmail} keyPrefix="week" nextWindow={nextWindowLabel(m)} />)}
         {gatherings.map(r => (
           <GatheringCard key={`week-g-${r.id}`} r={r} keyPrefix="week" badge={format(parseISO(r.nextMeetupDate), "EEEE")} />
         ))}
@@ -447,7 +479,7 @@ export default function Dashboard() {
 
   const {
     todayLetters, todayMoments, todayGatherings,
-    weekLetters, weekGatherings,
+    weekLetters, weekMoments, weekGatherings,
     practicesLetters, practicesMoments,
     filteredGatherings,
     totalCount,
@@ -482,10 +514,14 @@ export default function Dashboard() {
       }
     }
 
-    // ── Moments: Today = window open & not yet logged; Practices = rest
+    // ── Moments: Today = window open & not yet logged
+    //            This week = logged today (next window tomorrow/later)
+    //            Practices = not open, not logged today
     const todayMoments = allMoments.filter(m => m.windowOpen && m.todayPostCount === 0);
     const todayMomentIds = new Set(todayMoments.map(m => m.id));
-    const practicesMoments = allMoments.filter(m => !todayMomentIds.has(m.id));
+    const weekMoments = allMoments.filter(m => !todayMomentIds.has(m.id) && m.todayPostCount > 0);
+    const weekMomentIds = new Set(weekMoments.map(m => m.id));
+    const practicesMoments = allMoments.filter(m => !todayMomentIds.has(m.id) && !weekMomentIds.has(m.id));
 
     // ── Gatherings: Today = today; This week = next 7 days; Gatherings = rest
     const endOfWeek = addDays(startOfDay(new Date()), 7);
@@ -501,7 +537,7 @@ export default function Dashboard() {
 
     return {
       todayLetters, todayMoments, todayGatherings,
-      weekLetters, weekGatherings,
+      weekLetters, weekMoments, weekGatherings,
       practicesLetters, practicesMoments,
       filteredGatherings,
       totalCount,
@@ -556,6 +592,7 @@ export default function Dashboard() {
             {/* 2. This week */}
             <ThisWeekSection
               letters={weekLetters}
+              moments={weekMoments}
               gatherings={weekGatherings}
               userEmail={userEmail}
               userName={userName}
