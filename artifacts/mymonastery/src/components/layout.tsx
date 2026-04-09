@@ -188,7 +188,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <button
             onClick={() => setDrawerOpen(true)}
             className="flex items-center justify-center w-9 h-9 rounded-xl transition-colors"
-            style={{ color: "#8FAF96" }}
+            style={{ color: "#F0EDE6" }}
             aria-label="Open menu"
           >
             <Menu size={22} />
