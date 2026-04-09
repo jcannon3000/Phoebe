@@ -600,13 +600,13 @@ export default function Dashboard() {
           </p>
           {(() => {
             const PILLS = [
-              { label: "📮 Letters",      href: "/letters",      fg: "#3A7A48", bg: "rgba(29,82,50,0.15)",    border: "rgba(29,82,50,0.3)"    },
-              { label: "🙏 Practices",    href: "/practices",    fg: "#4A9E5C", bg: "rgba(46,107,64,0.15)",   border: "rgba(46,107,64,0.3)"   },
-              { label: "🤝 Gatherings",   href: "/gatherings",   fg: "#6FAF85", bg: "rgba(111,175,133,0.15)", border: "rgba(111,175,133,0.3)" },
-              { label: "👥 People",       href: "/people",       fg: "#5CAE80", bg: "rgba(92,174,128,0.15)",  border: "rgba(92,174,128,0.3)"  },
-              { label: "🏘️ Communities",  href: "/gatherings",   fg: "#82C4A0", bg: "rgba(130,196,160,0.15)", border: "rgba(130,196,160,0.3)" },
-              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#3D8B6A", bg: "rgba(61,139,106,0.15)",  border: "rgba(61,139,106,0.3)"  },
-              { label: "📖 BCP",          href: "/bcp",          fg: "#8BAE6E", bg: "rgba(139,174,110,0.15)", border: "rgba(139,174,110,0.3)" },
+              { label: "📮 Letters",      href: "/letters",      fg: "#5C8A5F", bg: "rgba(92,138,95,0.14)",   border: "rgba(92,138,95,0.28)"   },
+              { label: "🙏 Practices",    href: "/practices",    fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
+              { label: "🤝 Gatherings",   href: "/gatherings",   fg: "#7AAF7D", bg: "rgba(122,175,125,0.14)", border: "rgba(122,175,125,0.28)" },
+              { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
+              { label: "🏘️ Communities",  href: "/gatherings",   fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
+              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
+              { label: "📖 BCP",          href: "/bcp",          fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
             ];
             const pillStyle = (p: typeof PILLS[0]) => ({
               background: p.bg, color: p.fg, border: `1px solid ${p.border}`,
