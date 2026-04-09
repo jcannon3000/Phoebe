@@ -470,7 +470,7 @@ export default function Dashboard() {
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
-          Inspired by Monastic Wisdom
+          A Sanctuary for Fellowship Inspired by Monastic Wisdom
         </p>
 
         {/* FAB */}
