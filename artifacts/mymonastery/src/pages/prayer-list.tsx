@@ -81,6 +81,7 @@ export default function PrayerListPage() {
     setPrayedIds(new Set(unprayed.map((m) => m.id)));
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
     setPrayerModeOpen(false);
+    setLocation("/dashboard");
   };
 
   return (

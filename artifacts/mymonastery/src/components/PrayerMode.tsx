@@ -120,6 +120,11 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
     };
   }, []);
 
+  const handleDone = () => {
+    setVisible(false);
+    setTimeout(onComplete, 500);
+  };
+
   const advance = () => {
     setSlideVisible(false);
     setTimeout(() => {
@@ -209,7 +214,7 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
 
             {/* Done button */}
             <button
-              onClick={onComplete}
+              onClick={handleDone}
               className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{
                 background: "#2D5E3F",
