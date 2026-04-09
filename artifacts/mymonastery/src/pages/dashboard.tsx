@@ -328,6 +328,11 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
 
+  // Never repeat the card title as a fallback
+  const norm = (s: string) => s.trim().toLowerCase();
+  const safeIntention = (m.intention && norm(m.intention) !== norm(m.name)) ? m.intention : null;
+  const safeIntercessionTopic = (m.intercessionTopic && norm(m.intercessionTopic) !== norm(m.name)) ? m.intercessionTopic : null;
+
   // Goal label for the top-right badge
   const goalLabel = (() => {
     if (!m.goalDays || m.goalDays <= 0) return null;
@@ -359,10 +364,12 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       </div>
       <div className="flex items-start justify-between gap-2 mt-1.5">
         <div className="min-w-0 flex-1">
-          <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle || m.intention}</p>
-          {isIntercession && m.intercessionTopic && (
+          {(subtitle || safeIntention) && (
+            <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle || safeIntention}</p>
+          )}
+          {isIntercession && safeIntercessionTopic && (
             <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
-              🙏 {m.intercessionTopic}
+              🙏 {safeIntercessionTopic}
             </p>
           )}
         </div>
@@ -419,7 +426,7 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
           {r.location && <> · {r.location}</>}
         </p>
       )}
-      {r.intercessionIntention && (
+      {r.intercessionIntention && r.intercessionIntention.trim().toLowerCase() !== (r.name ?? "").trim().toLowerCase() && (
         <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>🙏 Praying for {r.intercessionIntention}</p>
       )}
       {r.fastingDescription && (
