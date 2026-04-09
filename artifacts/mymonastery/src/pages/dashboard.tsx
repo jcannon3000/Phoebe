@@ -43,6 +43,7 @@ type Moment = {
   intercessionTopic?: string | null;
   fastingFrom?: string | null;
   myUserToken: string | null;
+  momentToken: string | null;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -249,12 +250,15 @@ function MomentCard({ m, userEmail, keyPrefix }: { m: Moment; userEmail: string;
   else if (memberNames) subtitle = `with ${memberNames}`;
 
   const isMorningPrayer = m.templateType === "morning-prayer";
+  const isIntercession = m.templateType === "intercession";
   const openHref = (shouldPulse && isMorningPrayer && m.myUserToken)
     ? `/morning-prayer/${m.id}/${m.myUserToken}`
+    : (shouldPulse && isIntercession && m.momentToken && m.myUserToken)
+    ? `/moment/${m.momentToken}/${m.myUserToken}`
     : `/moments/${m.id}`;
 
   return (
-    <BarCard key={`${keyPrefix}-${m.id}`} href={`/moments/${m.id}`} pulse={shouldPulse}>
+    <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{m.name}</span>
@@ -268,11 +272,9 @@ function MomentCard({ m, userEmail, keyPrefix }: { m: Moment; userEmail: string;
       <div className="flex items-center justify-between gap-2 mt-1.5">
         <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle || m.intention}</p>
         {m.windowOpen && m.todayPostCount === 0 && (
-          <Link href={openHref} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-              {emoji} Open
-            </span>
-          </Link>
+          <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+            {emoji} Open
+          </span>
         )}
         {m.todayPostCount > 0 && (
           <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>{m.todayPostCount} today 🌿</span>

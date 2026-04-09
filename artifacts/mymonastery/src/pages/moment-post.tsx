@@ -153,36 +153,41 @@ function NamedPresence({ members, myToken }: { members: MomentMember[]; myToken?
 function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: MomentMember[]; myToken?: string; justBloomed: Set<string> }) {
   const shown = Math.min(members.length, 8);
   return (
-    <div className="flex flex-wrap justify-center gap-4">
+    <div className="flex flex-wrap justify-center gap-5">
       {members.slice(0, shown).map((m, i) => {
         const initial = (m.name ?? "?")[0].toUpperCase();
         const isMe = m.userToken === myToken;
         const isBloomin = justBloomed.has(m.userToken);
+        const firstName = isMe ? "you" : (m.name ?? "?").split(" ")[0];
         return (
-          <div key={i} className="flex flex-col items-center gap-1">
+          <div key={i} className="flex flex-col items-center gap-2">
             <motion.div
               animate={{
                 scale: isBloomin ? [0, 1.3, 1] : 1,
-                backgroundColor: m.prayed ? "#5C7A5F" : "#E8E4D8",
-                borderColor: m.prayed ? "#5C7A5F" : "rgba(92,122,95,0.4)",
+                backgroundColor: m.prayed ? "rgba(92,152,95,0.9)" : "rgba(255,255,255,0.06)",
+                borderColor: m.prayed ? "rgba(92,152,95,0.9)" : "rgba(200,230,210,0.2)",
               }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className={clsx(
-                "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2",
-                m.prayed ? "text-white" : "text-[#5C7A5F]/60"
-              )}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold border-2"
+              style={{ color: m.prayed ? "#fff" : "rgba(200,230,210,0.5)" }}
             >
               {initial}
             </motion.div>
-            <span className="text-[10px] text-[#6b5c4a]/60 max-w-[3rem] text-center leading-tight">
-              {isMe ? "you" : (m.name ?? "?").split(" ")[0]}
-            </span>
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-sm font-medium" style={{ color: m.prayed ? "rgba(200,230,210,0.9)" : "rgba(200,230,210,0.45)" }}>
+                {firstName}
+              </span>
+              {m.prayed && (
+                <span className="text-[10px]" style={{ color: "rgba(200,230,210,0.5)" }}>prayed</span>
+              )}
+            </div>
           </div>
         );
       })}
       {members.length > shown && (
-        <div className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold border-2 border-[#5C7A5F]/30 text-[#5C7A5F]/50">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold border-2"
+            style={{ border: "2px solid rgba(200,230,210,0.2)", color: "rgba(200,230,210,0.4)" }}>
             +{members.length - shown}
           </div>
         </div>
@@ -329,7 +334,7 @@ function IntercessionPrayerPage({
         {/* Header — staggered fade-in */}
         <motion.div variants={headerContainer} initial="hidden" animate="visible" className="text-center mb-6">
           <motion.p variants={headerItem} className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "rgba(200,230,210,0.5)" }}>
-            {intercessionSource === "bcp" ? "Intercession Prayer" : "Prayer Together"}
+            Intercession
           </motion.p>
           <motion.h1 variants={headerItem} className="text-[22px] font-bold leading-snug mb-2"
             style={{ fontFamily: "Space Grotesk, sans-serif", color: "#F0EDE6" }}>
@@ -497,11 +502,9 @@ export default function MomentPostPage() {
       setPosted(true);
       setTodayCount(res.todayPostCount);
       setMemberCount(res.memberCount);
-      // Redirect back to the practice detail page after showing the success animation
+      // Redirect back to dashboard after showing the success animation
       setTimeout(() => {
-        if (data?.moment?.id) {
-          setLocation(`/moments/${data.moment.id}`);
-        }
+        setLocation("/dashboard");
       }, 2500);
     },
     onError: () => {
