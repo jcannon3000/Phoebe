@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
-import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
+import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek } from "date-fns";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -490,12 +490,15 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? `${m.todayPostCount} today 🌿`
     : "";
   // Lectio cycles through three lines: who you're with → the gospel reference
-  // → when the next reflection is.
+  // → when the next reflection day is (Mon/Wed/Fri, the three reflection
+  // days — so on Friday the next is Monday, not Sunday).
   const lectioFlapLines: string[] = isLectio
     ? (() => {
         const whoLine = subtitle;
         const verseLine = m.lectioGospelReference || "";
-        const nextLine = m.lectioNextStageLabel ? `Next: ${m.lectioNextStageLabel}` : "";
+        const nextLine = m.lectioNextStageLabel
+          ? `Next reflection ${m.lectioNextStageLabel}`
+          : "";
         return [whoLine, verseLine, nextLine];
       })()
     : [];
@@ -730,13 +733,17 @@ export default function Dashboard() {
     }
 
     // ── Gatherings placement
-    const endOfWeek = addDays(startOfDay(new Date()), 7);
+    // "This week" is the calendar week Sunday → next Sunday, not a rolling
+    // next-7-days window. So on Wednesday, "This week" still includes
+    // Thursday/Friday/Saturday of this week, and nothing from next Monday.
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
+    const nextWeekStart = addDays(weekStart, 7);
     for (const r of allGatherings) {
       if (r.nextMeetupDate && isToday(parseISO(r.nextMeetupDate))) {
         todayItems.push({ kind: "gathering", data: r, badge: "Today" });
       } else if (r.nextMeetupDate) {
         const d = parseISO(r.nextMeetupDate);
-        if (isBefore(d, endOfWeek) && !isToday(d)) {
+        if (isBefore(d, nextWeekStart) && !isToday(d)) {
           weekItems.push({ kind: "gathering", data: r, badge: format(d, "EEEE") });
         } else {
           monthItems.push({ kind: "gathering", data: r });

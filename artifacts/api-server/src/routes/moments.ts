@@ -1026,13 +1026,13 @@ router.get("/moments", async (req, res): Promise<void> => {
             // Friendly labels for the dashboard card.
             const STAGE_LABEL = { lectio: "Lectio", meditatio: "Meditatio", oratio: "Oratio" } as const;
             lectioCurrentStageLabel = currentStage ? STAGE_LABEL[currentStage] : "Sunday";
-            // Next stage hint: where the practice is heading after today.
-            // Sunday → Mon Lectio, Mon/Tue → Wed Meditatio, Wed/Thu → Fri Oratio,
-            // Fri/Sat → Sun gathering.
-            if (dow === 0) lectioNextStageLabel = "Mon · Lectio";
-            else if (dow === 1 || dow === 2) lectioNextStageLabel = "Wed · Meditatio";
-            else if (dow === 3 || dow === 4) lectioNextStageLabel = "Fri · Oratio";
-            else lectioNextStageLabel = "Sun · Gathering";
+            // Next reflection day — Lectio Divina only reflects on Mon/Wed/Fri,
+            // so this is the next of those three days strictly after today.
+            // Friday → Monday (not Sunday, since Sunday has no reflection).
+            if (dow === 0) lectioNextStageLabel = "Monday";            // Sun → Mon
+            else if (dow === 1 || dow === 2) lectioNextStageLabel = "Wednesday"; // Mon/Tue → Wed
+            else if (dow === 3 || dow === 4) lectioNextStageLabel = "Friday";    // Wed/Thu → Fri
+            else lectioNextStageLabel = "Monday";                       // Fri/Sat → next Mon
           } catch (reflErr) {
             console.warn(`[moments] lectio reflections count failed for moment ${m.id}:`, reflErr);
             lectioResponseCount = 0;

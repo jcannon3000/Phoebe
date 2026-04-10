@@ -28,6 +28,30 @@ import { apiRequest } from "@/lib/queryClient";
 type Stage = "lectio" | "meditatio" | "oratio";
 const STAGE_ORDER: Stage[] = ["lectio", "meditatio", "oratio"];
 
+// Stage naming: the slideshow speaks in plain English ("First Stage") so
+// newcomers aren't tripped up by Latin. The Latin name still appears as a
+// quieter subtitle for those who recognize the tradition.
+const STAGE_ORDINAL: Record<Stage, string> = {
+  lectio: "First Stage",
+  meditatio: "Second Stage",
+  oratio: "Third Stage",
+};
+const STAGE_LATIN: Record<Stage, string> = {
+  lectio: "Lectio",
+  meditatio: "Meditatio",
+  oratio: "Oratio",
+};
+// Instructive prompt text. More hand-holding than a bare question — the user
+// is told how to *approach* the passage at this stage, then what to notice.
+const STAGE_PROMPT_TEXT: Record<Stage, string> = {
+  lectio:
+    "As you read this Sunday's gospel, notice the word or phrase that is speaking to you. Let it rise on its own; don't chase it.",
+  meditatio:
+    "Return to the passage. Sit with the word or phrase you noticed. What is it stirring in you?",
+  oratio:
+    "Read the passage one last time. Listen for how it is calling you to act, to pray, or to become.",
+};
+
 type StageReveal = {
   label: string;
   prompt: string;
@@ -103,13 +127,48 @@ async function fetchLectio(momentToken: string, userToken: string): Promise<Lect
 }
 
 // ─── Palette ────────────────────────────────────────────────────────────────
-const BG = "#0A1F11";
+// Background matches the app's standard body color (#091A10) so the Safari
+// chrome (which reads the <meta name="theme-color"> value) blends with the
+// page. Cards on top of it are a slightly lighter green to float visually.
+const BG = "#091A10";
+const CARD_BG = "#132C1D";
 const WARM_TEXT = "#F0EDE6";
 const MUTED_GREEN = "#8FAF96";
 const FAINT_GREEN = "rgba(143,175,150,0.55)";
 const ACCENT = "#6FAF85";
 const BORDER = "rgba(200,212,192,0.15)";
 const BUTTON_BG = "#2D5E3F";
+
+// Shared card wrapper for every slide. Keeps the slides visually consistent
+// — a lighter rounded panel sitting on the standard background — and gives
+// individual slides (like the gospel reading) a fixed height they can scroll
+// inside without moving the page.
+function SlideCard({
+  children,
+  padded = true,
+  scrollable = false,
+}: {
+  children: React.ReactNode;
+  padded?: boolean;
+  scrollable?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        background: CARD_BG,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 20,
+        boxShadow: "0 4px 24px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25)",
+        padding: padded ? "28px 24px" : 0,
+        maxHeight: scrollable ? "min(64vh, 560px)" : undefined,
+        overflowY: scrollable ? "auto" : undefined,
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 // ─── Slide model ────────────────────────────────────────────────────────────
 
@@ -271,7 +330,7 @@ export default function LectioPage() {
         </Link>
         <div className="text-right">
           <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
-            {stageData.label}
+            {STAGE_ORDINAL[current.stage]}
           </p>
           <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2 }}>
             {data.reading.gospelReference}
@@ -280,7 +339,10 @@ export default function LectioPage() {
       </header>
 
       {/* Slide content */}
-      <main className="flex-1 flex items-center justify-center px-5 py-6">
+      <main
+        className="flex-1 flex items-center justify-center px-5 py-6"
+        style={{ paddingBottom: 112 /* room for floating nav pill */ }}
+      >
         <div className="max-w-2xl w-full">
           <AnimatePresence mode="wait">
             <motion.div
@@ -290,40 +352,71 @@ export default function LectioPage() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
             >
-              {current.kind === "prompt" && <PromptSlide stageData={stageData} />}
-              {current.kind === "reading" && <ReadingSlide reading={data.reading} />}
+              {current.kind === "prompt" && (
+                <SlideCard>
+                  <PromptSlide stage={current.stage} />
+                </SlideCard>
+              )}
+              {current.kind === "reading" && (
+                <SlideCard scrollable>
+                  <ReadingSlide reading={data.reading} />
+                </SlideCard>
+              )}
               {current.kind === "entry" && (
-                <EntrySlide
-                  stageData={stageData}
-                  submitting={
-                    submitMutation.isPending &&
-                    submitMutation.variables?.stage === current.stage
-                  }
-                  onSubmit={(text) => {
-                    submitMutation.mutate(
-                      { stage: current.stage, reflectionText: text },
-                      {
-                        onSuccess: () => {
-                          // Advance to the Responses slide once the reflection
-                          // is saved.
-                          next();
+                <SlideCard>
+                  <EntrySlide
+                    stage={current.stage}
+                    stageData={stageData}
+                    submitting={
+                      submitMutation.isPending &&
+                      submitMutation.variables?.stage === current.stage
+                    }
+                    onSubmit={(text) => {
+                      submitMutation.mutate(
+                        { stage: current.stage, reflectionText: text },
+                        {
+                          onSuccess: () => {
+                            // Advance to the Responses slide once the reflection
+                            // is saved.
+                            next();
+                          },
                         },
-                      },
-                    );
-                  }}
-                />
+                      );
+                    }}
+                  />
+                </SlideCard>
               )}
               {current.kind === "responses" && (
-                <ResponsesSlide stageData={stageData} memberCount={data.memberCount} />
+                <SlideCard>
+                  <ResponsesSlide stageData={stageData} memberCount={data.memberCount} />
+                </SlideCard>
               )}
             </motion.div>
           </AnimatePresence>
         </div>
       </main>
 
-      {/* Footer: dots + nav */}
-      <footer className="max-w-2xl mx-auto w-full px-5 pb-8 pt-2">
-        <div className="flex items-center justify-between">
+      {/* Floating nav pill at the bottom of the viewport. Fixed so scrolling
+          inside a slide (e.g. the gospel card) doesn't move the nav. */}
+      <nav
+        aria-label="Slide navigation"
+        style={{
+          position: "fixed",
+          left: "50%",
+          bottom: 24,
+          transform: "translateX(-50%)",
+          zIndex: 50,
+          background: "rgba(19,44,29,0.92)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: `1px solid ${BORDER}`,
+          borderRadius: 999,
+          padding: "8px 12px",
+          boxShadow: "0 8px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.35)",
+          maxWidth: "calc(100vw - 32px)",
+        }}
+      >
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={prev}
@@ -389,39 +482,50 @@ export default function LectioPage() {
             →
           </button>
         </div>
-      </footer>
+      </nav>
     </div>
   );
 }
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
 
-function PromptSlide({ stageData }: { stageData: StageReveal }) {
+function PromptSlide({ stage }: { stage: Stage }) {
   return (
-    <div className="text-center py-10">
+    <div className="text-center py-4">
       <p
         style={{
           color: FAINT_GREEN,
           fontSize: 11,
           letterSpacing: "0.22em",
           textTransform: "uppercase",
-          marginBottom: 24,
+          marginBottom: 6,
         }}
       >
-        {stageData.label}
+        {STAGE_ORDINAL[stage]}
+      </p>
+      <p
+        style={{
+          color: "rgba(143,175,150,0.45)",
+          fontSize: 12,
+          fontStyle: "italic",
+          letterSpacing: "0.04em",
+          marginBottom: 26,
+        }}
+      >
+        {STAGE_LATIN[stage]}
       </p>
       <p
         style={{
           color: WARM_TEXT,
-          fontSize: 26,
-          lineHeight: 1.4,
-          fontWeight: 500,
-          letterSpacing: "-0.01em",
+          fontSize: 22,
+          lineHeight: 1.5,
+          fontWeight: 400,
+          letterSpacing: "-0.005em",
           maxWidth: 520,
           margin: "0 auto",
         }}
       >
-        {stageData.prompt}
+        {STAGE_PROMPT_TEXT[stage]}
       </p>
     </div>
   );
@@ -429,7 +533,7 @@ function PromptSlide({ stageData }: { stageData: StageReveal }) {
 
 function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
   return (
-    <div className="py-6">
+    <div className="py-2">
       <p
         style={{
           color: FAINT_GREEN,
@@ -470,10 +574,12 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
 }
 
 function EntrySlide({
+  stage,
   stageData,
   submitting,
   onSubmit,
 }: {
+  stage: Stage;
   stageData: StageReveal;
   submitting: boolean;
   onSubmit: (text: string) => void;
@@ -488,7 +594,7 @@ function EntrySlide({
   }, [stageData.myReflection]);
 
   return (
-    <div className="py-6">
+    <div className="py-2">
       <p
         style={{
           color: FAINT_GREEN,
@@ -498,7 +604,7 @@ function EntrySlide({
           marginBottom: 10,
         }}
       >
-        {stageData.label}
+        {STAGE_ORDINAL[stage]}
       </p>
       <p
         style={{
@@ -508,7 +614,7 @@ function EntrySlide({
           marginBottom: 20,
         }}
       >
-        {stageData.prompt}
+        {STAGE_PROMPT_TEXT[stage]}
       </p>
       <textarea
         value={draft}
@@ -567,7 +673,7 @@ function ResponsesSlide({
 
   if (!hasSubmitted) {
     return (
-      <div className="py-12 text-center">
+      <div className="py-6 text-center">
         <p
           style={{
             color: FAINT_GREEN,
@@ -589,7 +695,7 @@ function ResponsesSlide({
   const reflections = stageData.reflections ?? [];
 
   return (
-    <div className="py-6">
+    <div className="py-2">
       <p
         style={{
           color: FAINT_GREEN,

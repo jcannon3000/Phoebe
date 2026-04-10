@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
-import { parseISO, format, isToday, isBefore, addDays, startOfDay } from "date-fns";
+import { parseISO, format, isToday, isBefore, addDays, startOfWeek } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { useListRituals } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
@@ -27,7 +27,10 @@ export default function GatheringsPage() {
   const gatherings = rituals ?? [];
 
   // ── Time buckets ────────────────────────────────────────────────────────────
-  const endOfWeek = addDays(startOfDay(new Date()), 7);
+  // "This week" is the calendar week Sunday → next Sunday, not a rolling
+  // next-7-days window.
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
+  const nextWeekStart = addDays(weekStart, 7);
   const todayGatherings: typeof gatherings = [];
   const weekGatherings: typeof gatherings = [];
   const monthGatherings: typeof gatherings = [];
@@ -39,7 +42,7 @@ export default function GatheringsPage() {
       const d = parseISO(r.nextMeetupDate);
       if (isToday(d)) {
         todayGatherings.push(r);
-      } else if (isBefore(d, endOfWeek)) {
+      } else if (isBefore(d, nextWeekStart)) {
         weekGatherings.push(r);
       } else {
         monthGatherings.push(r);
