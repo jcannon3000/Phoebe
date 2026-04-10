@@ -20,7 +20,7 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase();
 }
 
-const CARD_W = 148;
+const CARD_W = 160;
 const CARD_GAP = 12;
 const CARD_STEP = CARD_W + CARD_GAP;
 const SCROLL_SPEED = 35; // px per second
@@ -101,9 +101,9 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
       <button
         key={`${c.email}-${idx}`}
         onClick={() => toggleConnection(c.email)}
-        style={{ width: CARD_W, minWidth: CARD_W }}
-        className={`flex-shrink-0 p-3 rounded-2xl border text-left transition-all ${
-          sel ? "bg-[#5C7A5F] border-[#5C7A5F]" : "bg-card border-border/60 hover:border-[#5C7A5F]/40 hover:bg-[#5C7A5F]/5"
+        style={inTicker ? { width: CARD_W, minWidth: CARD_W } : { width: "100%" }}
+        className={`p-3 rounded-2xl border text-left transition-all ${inTicker ? "flex-shrink-0" : "w-full"} ${
+          sel ? "bg-[#5C7A5F] border-[#5C7A5F]" : "bg-card border-[#5C7A5F]/35 hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5"
         }`}
       >
         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold mb-2 ${
@@ -174,9 +174,11 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
             </div>
           ) : (
             <div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 w-full">
                 {connections.map((c, i) => (
-                  <ConnectionCard key={c.email} c={c} inTicker={false} idx={i} />
+                  <div key={c.email} className="flex-1 min-w-0">
+                    <ConnectionCard c={c} inTicker={false} idx={i} />
+                  </div>
                 ))}
               </div>
               {selectedEmails.size > 0 && (
@@ -202,7 +204,7 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
                 value={p.name}
                 onChange={e => updateManual(i, "name", e.target.value)}
                 placeholder="Name (optional)"
-                className="flex-1 px-3 py-2.5 rounded-xl border border-border focus:border-[#5C7A5F] outline-none bg-background text-sm"
+                className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#5C7A5F]/35 focus:border-[#5C7A5F] outline-none bg-background text-sm"
               />
               <input
                 type="email"
@@ -220,7 +222,7 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
                   }
                 }}
                 placeholder="Email"
-                className="flex-1 px-3 py-2.5 rounded-xl border border-border focus:border-[#5C7A5F] outline-none bg-background text-sm"
+                className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#5C7A5F]/35 focus:border-[#5C7A5F] outline-none bg-background text-sm"
               />
               {manualPeople.length > 1 && (
                 <button

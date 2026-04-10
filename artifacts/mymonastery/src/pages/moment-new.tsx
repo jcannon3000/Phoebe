@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { InviteStep } from "@/components/InviteStep";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type StepId = "template" | "daily-office-choice" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "invite"
+type StepId = "template" | "daily-office-choice" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "duration" | "invite"
   | "bcp-commitment" | "bcp-frequency" | "bcp-days" | "bcp-time" | "bcp-invite" | "intercession-frequency"
   | "contemplative-duration" | "fasting-what" | "fasting-why" | "fasting-when"
   | "listening-what";
@@ -555,6 +555,7 @@ export default function MomentNew() {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay | null>(null);
   const [commitmentDays, setCommitmentDays] = useState(30);
   const [commitmentSessionsGoal, setCommitmentSessionsGoal] = useState<number | null>(3);
+  const [practiceDurationDays, setPracticeDurationDays] = useState<number | null>(null);
   const [invitedPeople, setInvitedPeople] = useState<{ name: string; email: string }[]>([]);
   const [showInviteDisabledMsg, setShowInviteDisabledMsg] = useState(false);
 
@@ -815,17 +816,17 @@ export default function MomentNew() {
     ? BCP_STEP_ORDER
     : templateId === "intercession"
       ? selectedBcpPrayer !== null
-        ? ["template", "intercession", "intention", "schedule", "commitment", "invite"]
-        : ["template", "intercession", "name", "intention", "logging", "schedule", "commitment", "invite"]
+        ? ["template", "intercession", "intention", "schedule", "duration", "invite"]
+        : ["template", "intercession", "name", "intention", "logging", "schedule", "duration", "invite"]
     : templateId === "contemplative"
-      ? ["template", "contemplative-duration", "name", "intention", "logging", "schedule", "commitment", "invite"]
+      ? ["template", "contemplative-duration", "name", "intention", "logging", "schedule", "invite"]
     : templateId === "fasting"
-      ? ["template", "fasting-what", "fasting-why", "fasting-when", "commitment", "invite"]
+      ? ["template", "fasting-what", "fasting-why", "fasting-when", "duration", "invite"]
     : templateId === "listening"
-      ? ["template", "listening-what", "schedule", "commitment", "invite"]
+      ? ["template", "listening-what", "schedule", "invite"]
     : templateId === "lectio-divina"
       ? ["template", "invite"]
-      : ["template", "name", "intention", "logging", "schedule", "commitment", "invite"];
+      : ["template", "name", "intention", "logging", "schedule", "invite"];
 
   function goNext() {
     // Skip bcp-days for daily (no specific days to choose)
@@ -901,6 +902,7 @@ export default function MomentNew() {
       return true;
     }
     if (step === "commitment") return commitmentSessionsGoal !== null;
+    if (step === "duration") return practiceDurationDays !== null;
     if (step === "invite") return invitedPeople.length > 0;
     return false;
   };
@@ -1028,9 +1030,9 @@ export default function MomentNew() {
         : isSpiritual && frequency === "weekly" && scheduledDays.length > 0
         ? JSON.stringify(scheduledDays)
         : undefined,
-      goalDays: isLectio ? 0 : (commitmentSessionsGoal ?? commitmentDays),
-      commitmentDuration: isLectio ? 0 : (commitmentSessionsGoal ?? commitmentDays),
-      commitmentSessionsGoal: commitmentSessionsGoal,
+      goalDays: isLectio ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
+      commitmentDuration: isLectio ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
+      commitmentSessionsGoal: (isFasting || templateId === "intercession") ? practiceDurationDays : null,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       timeOfDay: undefined,
       participants: validParticipants,
@@ -1069,8 +1071,10 @@ export default function MomentNew() {
     const templateInfo = TEMPLATES.find(t => t.id === templateId);
     const [h, m] = scheduledTime.split(":").map(Number);
     const timeLabel = new Date(0, 0, 0, h, m).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    const commitmentLabel = commitmentSessionsGoal
-      ? { emoji: "🌱", label: `${commitmentSessionsGoal} sessions together` }
+    const isFastingDone = templateId === "fasting";
+    const isIntercessionDone = templateId === "intercession";
+    const commitmentLabel = practiceDurationDays && (isFastingDone || isIntercessionDone)
+      ? { emoji: "🌿", label: practiceDurationDays % 7 === 0 ? `${practiceDurationDays / 7} week${practiceDurationDays / 7 !== 1 ? "s" : ""}` : `${practiceDurationDays} days` }
       : null;
     const todEmoji = TIME_OF_DAY_OPTIONS.find(o => o.id === timeOfDay)?.emoji ?? "🌿";
     const todLabel = TIME_OF_DAY_OPTIONS.find(o => o.id === timeOfDay)?.label?.toLowerCase() ?? "morning";
@@ -1259,7 +1263,7 @@ export default function MomentNew() {
                     {TEMPLATES.map(t => (
                       <button key={t.id} onClick={() => selectTemplate(t)}
                         className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-                        style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.2)" }}>
+                        style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)" }}>
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{t.emoji}</span>
                           <div>
@@ -1294,7 +1298,7 @@ export default function MomentNew() {
                           setStep("bcp-commitment");
                         }}
                         className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-                        style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.2)" }}
+                        style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)" }}
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{office.emoji}</span>
@@ -1480,7 +1484,7 @@ export default function MomentNew() {
                             style={{
                               background: sel ? "#5C7A5F" : "rgba(200,212,192,0.08)",
                               color: sel ? "#F0EDE6" : "#8FAF96",
-                              border: sel ? "1px solid rgba(92,122,95,0.6)" : "1px solid rgba(200,212,192,0.15)",
+                              border: sel ? "1px solid rgba(92,122,95,0.6)" : "1px solid rgba(92,122,95,0.3)",
                               opacity: atMax ? 0.3 : 1,
                               cursor: atMax ? "not-allowed" : "pointer",
                             }}
@@ -1559,7 +1563,7 @@ export default function MomentNew() {
                       )}
                     </div>
                     {/* BCP info card */}
-                    <div className="rounded-2xl p-4 space-y-1" style={{ background: "rgba(200,212,192,0.08)", border: "1px solid rgba(200,212,192,0.2)" }}>
+                    <div className="rounded-2xl p-4 space-y-1" style={{ background: "rgba(200,212,192,0.08)", border: "1px solid rgba(92,122,95,0.35)" }}>
                       <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>📖 About {isMorning ? "Morning Prayer" : "Evening Prayer"}</p>
                       <p className="text-sm" style={{ color: "#8FAF96" }}>
                         {isMorning ? "Morning Prayer Rite II takes 15–20 minutes." : "Evening Prayer Rite II takes 15–20 minutes."}<br />
@@ -1612,13 +1616,13 @@ export default function MomentNew() {
                       rows={4}
                       placeholder="e.g. Our enemies and those with whom we are in conflict…"
                       className="w-full px-4 py-4 rounded-2xl resize-none text-base focus:outline-none transition-colors"
-                      style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
+                      style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.4)", color: "#F0EDE6" }}
                     />
                     {intention.length > 150 && (
                       <p className="text-right text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>{intention.length}/200</p>
                     )}
                   </div>
-                  <div style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.2)", borderRadius: "16px", overflow: "hidden" }}>
+                  <div style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", borderRadius: "16px", overflow: "hidden" }}>
                     <details>
                       <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2" style={{ color: "#C8D4C0", fontSize: "13px", fontWeight: 600 }}>
                         📖 The full prayer
@@ -1763,8 +1767,8 @@ export default function MomentNew() {
                         <button key={f} onClick={() => { setFrequency(f); setScheduledDays([]); }}
                           className={`flex-1 py-3 rounded-xl font-semibold text-sm capitalize transition-all ${frequency === f ? "animate-turn-pulse" : ""}`}
                           style={frequency === f
-                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
-                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
                           {f === "daily" ? "Every day" : "Once a week"}
                         </button>
                       ))}
@@ -1786,8 +1790,8 @@ export default function MomentNew() {
                             }
                             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${scheduledDays.includes(val) ? "animate-turn-pulse" : ""}`}
                             style={scheduledDays.includes(val)
-                              ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
-                              : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
+                              ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
+                              : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
                             {label}
                           </button>
                         ))}
@@ -1803,8 +1807,8 @@ export default function MomentNew() {
                         <button key={h} onClick={() => setScheduledHour(h)}
                           className={`py-2 rounded-lg text-sm font-semibold transition-all ${scheduledHour === h ? "animate-turn-pulse" : ""}`}
                           style={scheduledHour === h
-                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
-                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
                           {h}
                         </button>
                       ))}
@@ -1819,8 +1823,8 @@ export default function MomentNew() {
                         <button key={m} onClick={() => setScheduledMinute(m)}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${scheduledMinute === m ? "animate-turn-pulse" : ""}`}
                           style={scheduledMinute === m
-                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
-                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
                           :{String(m).padStart(2, "0")}
                         </button>
                       ))}
@@ -1833,8 +1837,8 @@ export default function MomentNew() {
                       <button key={p} onClick={() => setScheduledAmPm(p)}
                         className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all ${scheduledAmPm === p ? "animate-turn-pulse" : ""}`}
                         style={scheduledAmPm === p
-                          ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(200,212,192,0.4)" }
-                          : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.15)" }}>
+                          ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
+                          : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
                         {p}
                       </button>
                     ))}
@@ -1845,66 +1849,55 @@ export default function MomentNew() {
                 </div>
               )}
 
-              {/* ── Commitment (progressive goal picker) ─────────── */}
-              {step === "commitment" && (() => {
+              {/* ── Duration (for intercession and fasting) ──────── */}
+              {step === "duration" && (() => {
                 const isFastingFlow = templateId === "fasting";
-                const isIntercessionFlow = templateId === "intercession";
-                const timesPerWeek = frequency === "daily" ? 7
-                  : isFastingFlow ? 1
-                  : Math.max(1, scheduledDays.length);
+                // Fasting is always weekly; intercession can be daily or weekly
+                const useWeeks = isFastingFlow || frequency === "weekly";
 
-                type GoalOpt = { sessions: number; emoji: string; label: string; sub: string };
-                const isWeekly = frequency === "weekly";
-                const goalOptions: GoalOpt[] = isIntercessionFlow ? [
-                  { sessions: 1,  emoji: "🕊️", label: "One time",  sub: "A single act of prayer" },
-                  { sessions: 3,  emoji: "🌱", label: "3 days",    sub: "A first act of prayer" },
-                  { sessions: 7,  emoji: "🌿", label: "7 days",    sub: "One week of holding them" },
-                  { sessions: 14, emoji: "🌳", label: "14 days",   sub: "Two weeks of faithful intercession" },
-                ] : isWeekly ? [
-                  { sessions: 1,  emoji: "🕊️", label: "One time",  sub: "A single practice together" },
-                  { sessions: 3,  emoji: "🌿", label: "3 weeks",   sub: "Finding your rhythm" },
-                  { sessions: 7,  emoji: "🌳", label: "7 weeks",   sub: "A rooted practice" },
+                type DurationOpt = { days: number; emoji: string; label: string; sub: string };
+                const durationOptions: DurationOpt[] = useWeeks ? [
+                  { days: 7,  emoji: "🌱", label: "1 week",  sub: "A tender beginning" },
+                  { days: 14, emoji: "🌿", label: "2 weeks", sub: "Finding a rhythm" },
+                  { days: 28, emoji: "🌳", label: "4 weeks", sub: "A month together" },
+                  { days: 56, emoji: "✨", label: "8 weeks", sub: "A rooted season" },
                 ] : [
-                  { sessions: 1,  emoji: "🕊️", label: "One time",  sub: "A single practice together" },
-                  { sessions: 3,  emoji: "🌱", label: "3 days",    sub: "A first tender step" },
-                  { sessions: 7,  emoji: "🌿", label: "7 days",    sub: "One week · finding your rhythm" },
-                  { sessions: 14, emoji: "🌳", label: "14 days",   sub: "Two weeks · a rooted practice" },
+                  { days: 7,  emoji: "🌱", label: "7 days",  sub: "A tender beginning" },
+                  { days: 14, emoji: "🌿", label: "14 days", sub: "Two weeks of holding them" },
+                  { days: 30, emoji: "🌳", label: "30 days", sub: "A month of faithful prayer" },
                 ];
 
-                const commitTitle = isIntercessionFlow
-                  ? "How long will you hold this intention? 🙏"
-                  : "What's your first goal? 🌱";
-                const commitSubtitle = isIntercessionFlow
-                  ? "Begin where you are. You can always continue."
-                  : "Start small. Eleanor will nudge you higher when you get there.";
-                const footerNote = isIntercessionFlow
-                  ? "Longer commitments unlock as you go. 🌿"
-                  : "Longer goals unlock when you get there. 🌿";
+                const title = isFastingFlow
+                  ? "How long will you fast together? 🌾"
+                  : "How long will you hold this intention? 🙏";
+                const subtitle = isFastingFlow
+                  ? "A shared fast. Begin where you can."
+                  : "Begin where you are. You can always continue.";
 
                 return (
                   <div className="flex-1 flex flex-col gap-4">
                     <div>
                       <h2 className="text-[1.6rem] font-bold leading-tight mb-1"
                         style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                        {commitTitle}
+                        {title}
                       </h2>
                       <p className="text-sm italic" style={{ color: "#8FAF96" }}>
-                        {commitSubtitle}
+                        {subtitle}
                       </p>
                     </div>
                     <div className="space-y-2.5">
-                      {goalOptions.map(opt => {
-                        const sel = commitmentSessionsGoal === opt.sessions;
+                      {durationOptions.map(opt => {
+                        const sel = practiceDurationDays === opt.days;
                         return (
                           <motion.button
-                            key={opt.sessions}
-                            onClick={() => setCommitmentSessionsGoal(opt.sessions)}
+                            key={opt.days}
+                            onClick={() => setPracticeDurationDays(opt.days)}
                             animate={{ y: sel ? -2 : 0 }}
                             transition={{ duration: 0.15 }}
                             className={`relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200 ${sel ? "animate-turn-pulse" : ""}`}
                             style={{
                               background: sel ? "#1A4A2E" : "#0F2818",
-                              border: `1.5px solid ${sel ? "rgba(200,212,192,0.4)" : "rgba(200,212,192,0.15)"}`,
+                              border: `1.5px solid ${sel ? "rgba(92,122,95,0.7)" : "rgba(92,122,95,0.3)"}`,
                               boxShadow: sel ? "0 4px 14px rgba(45,94,63,0.3)" : undefined,
                             }}
                           >
@@ -1932,24 +1925,6 @@ export default function MomentNew() {
                         );
                       })}
                     </div>
-                    <p className="text-xs text-center italic" style={{ color: "rgba(143,175,150,0.5)" }}>
-                      {footerNote}
-                    </p>
-                    <AnimatePresence mode="wait">
-                      {commitmentSessionsGoal && (
-                        <motion.p
-                          key={commitmentSessionsGoal}
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
-                          transition={{ duration: 0.2 }}
-                          className="text-sm text-center text-[#5C7A5F] italic px-2"
-                          style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                        >
-                          {commitmentSessionsGoal} sessions together. A good place to begin. 🌱
-                        </motion.p>
-                      )}
-                    </AnimatePresence>
                   </div>
                 );
               })()}
