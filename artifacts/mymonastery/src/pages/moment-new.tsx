@@ -283,11 +283,6 @@ const TEMPLATES = [
     },
   },
   {
-    id: "daily-office", emoji: "📖", name: "Daily Office",
-    desc: "Pray the Book of Common Prayer together — morning or evening",
-    prefill: null,
-  },
-  {
     id: "lectio-divina", emoji: "📜", name: "Lectio Divina",
     desc: "Slowly read and reflect on the upcoming Sunday Gospel together — Mon, Wed, Fri",
     prefill: {
