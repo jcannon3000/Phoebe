@@ -1073,8 +1073,12 @@ export default function MomentNew() {
     const timeLabel = new Date(0, 0, 0, h, m).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     const isFastingDone = templateId === "fasting";
     const isIntercessionDone = templateId === "intercession";
-    const commitmentLabel = practiceDurationDays && (isFastingDone || isIntercessionDone)
-      ? { emoji: "🌿", label: practiceDurationDays % 7 === 0 ? `${practiceDurationDays / 7} week${practiceDurationDays / 7 !== 1 ? "s" : ""}` : `${practiceDurationDays} days` }
+    const commitmentLabel = practiceDurationDays !== null && (isFastingDone || isIntercessionDone)
+      ? practiceDurationDays === 0
+        ? { emoji: "✨", label: "Ongoing" }
+        : practiceDurationDays % 7 === 0
+          ? { emoji: "🌿", label: `${practiceDurationDays / 7} week${practiceDurationDays / 7 !== 1 ? "s" : ""}` }
+          : { emoji: "🌿", label: `${practiceDurationDays} days` }
       : null;
     const todEmoji = TIME_OF_DAY_OPTIONS.find(o => o.id === timeOfDay)?.emoji ?? "🌿";
     const todLabel = TIME_OF_DAY_OPTIONS.find(o => o.id === timeOfDay)?.label?.toLowerCase() ?? "morning";
@@ -1857,14 +1861,14 @@ export default function MomentNew() {
 
                 type DurationOpt = { days: number; emoji: string; label: string; sub: string };
                 const durationOptions: DurationOpt[] = useWeeks ? [
-                  { days: 7,  emoji: "🌱", label: "1 week",  sub: "A tender beginning" },
-                  { days: 14, emoji: "🌿", label: "2 weeks", sub: "Finding a rhythm" },
-                  { days: 28, emoji: "🌳", label: "4 weeks", sub: "A month together" },
-                  { days: 56, emoji: "✨", label: "8 weeks", sub: "A rooted season" },
+                  { days: 7,  emoji: "🌱", label: "1 week",    sub: "A tender beginning" },
+                  { days: 14, emoji: "🌿", label: "2 weeks",   sub: "Finding a rhythm" },
+                  { days: 28, emoji: "🌳", label: "4 weeks",   sub: "A month together" },
+                  { days: 0,  emoji: "✨", label: "Ongoing",   sub: "Until you feel released" },
                 ] : [
-                  { days: 7,  emoji: "🌱", label: "7 days",  sub: "A tender beginning" },
-                  { days: 14, emoji: "🌿", label: "14 days", sub: "Two weeks of holding them" },
-                  { days: 30, emoji: "🌳", label: "30 days", sub: "A month of faithful prayer" },
+                  { days: 3,  emoji: "🕊️", label: "3 days",  sub: "A first act of prayer" },
+                  { days: 7,  emoji: "🌱", label: "7 days",   sub: "One week of holding them" },
+                  { days: 14, emoji: "🌿", label: "14 days",  sub: "Two weeks of faithful intercession" },
                 ];
 
                 const title = isFastingFlow
