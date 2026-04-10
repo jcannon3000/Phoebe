@@ -126,6 +126,7 @@ const PRACTICE_EMOJI: Record<string, string> = {
   "contemplative": "🕯️",
   "fasting": "🌿",
   "listening": "🎵",
+  "lectio-divina": "📜",
   "custom": "🌱",
 };
 
@@ -422,6 +423,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 
   const isIntercession = m.templateType === "intercession";
   const isMorningPrayer = m.templateType === "morning-prayer";
+  const isLectio = m.templateType === "lectio-divina";
 
   let subtitle = "";
   if (memberNames) subtitle = `with ${memberNames}`;
@@ -438,7 +440,9 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const logged = m.commitmentSessionsLogged ?? 0;
   const progressLabel = goal ? `${logged}/${goal} ${goal === 1 ? "day" : "days"}` : null;
 
-  const openHref = (shouldPulse && isMorningPrayer && m.myUserToken)
+  const openHref = (isLectio && m.momentToken && m.myUserToken)
+    ? `/lectio/${m.momentToken}/${m.myUserToken}`
+    : (shouldPulse && isMorningPrayer && m.myUserToken)
     ? `/morning-prayer/${m.id}/${m.myUserToken}`
     : (shouldPulse && isIntercession && m.momentToken && m.myUserToken)
     ? `/moment/${m.momentToken}/${m.myUserToken}`
