@@ -312,58 +312,60 @@ function LetterCard({
   );
 }
 
-// ─── Split-flap subtitle ─────────────────────────────────────────────────────
+// ─── Ticker-style subtitle line ──────────────────────────────────────────────
 
 const SPLIT_FLAP_CSS = `
-.sf-root { perspective: 400px; position: relative; width: 100%; height: 20px; font-size: 14px; line-height: 20px; color: #8FAF96; }
-.sf-half { position: absolute; left: 0; right: 0; height: 10px; overflow: hidden; backface-visibility: hidden; }
-.sf-top { top: 0; transform-origin: 50% 100%; }
-.sf-bottom { bottom: 0; transform-origin: 50% 0%; }
-.sf-half > span { position: absolute; left: 0; right: 0; display: block; font-size: 14px; line-height: 20px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sf-top > span { top: 0; }
-.sf-bottom > span { bottom: 0; }
-@keyframes sf-bottom-out { from { transform: rotateX(0deg); } to { transform: rotateX(90deg); } }
-@keyframes sf-bottom-in  { from { transform: rotateX(90deg); } to { transform: rotateX(0deg); } }
-@keyframes sf-top-out    { from { transform: rotateX(0deg); } to { transform: rotateX(-90deg); } }
-@keyframes sf-top-in     { from { transform: rotateX(-90deg); } to { transform: rotateX(0deg); } }
-.sf-cur-bottom-anim { animation: sf-bottom-out 100ms ease-in 0ms forwards; }
-.sf-new-bottom-anim { animation: sf-bottom-in 100ms ease-out 100ms forwards; }
-.sf-cur-top-anim    { animation: sf-top-out 100ms ease-in 200ms forwards; }
-.sf-new-top-anim    { animation: sf-top-in 100ms ease-out 300ms forwards; }
+.sf-root { position: relative; width: 100%; height: 20px; overflow: hidden; }
+.sf-line { position: absolute; left: 0; right: 0; top: 0; height: 20px; line-height: 20px; font-size: 14px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: transform; }
+/* Current line lifts up and out — heavy start, then accelerates away */
+@keyframes sf-line-out {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -22px, 0); }
+}
+/* New line rides up from below — fast entry, firm landing (slight overshoot) */
+@keyframes sf-line-in {
+  0%   { transform: translate3d(0, 22px, 0); }
+  70%  { transform: translate3d(0, -1px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+.sf-line-out { animation: sf-line-out 220ms cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+.sf-line-in  { animation: sf-line-in  280ms cubic-bezier(0.2, 0.85, 0.25, 1) forwards; }
 `;
+
+type FlapPhase = "show" | "out" | "blank" | "in";
 
 function SplitFlapLine({ lines }: { lines: string[] }) {
   const [idx, setIdx] = useState(0);
-  const [displayed, setDisplayed] = useState(lines[0] ?? "");
-  const [incoming, setIncoming] = useState<string | null>(null);
+  const [phase, setPhase] = useState<FlapPhase>("show");
 
-  // Reset when the set of lines changes (e.g. different card)
+  // Reset when the set of lines changes (e.g. different card, or content updated)
   useEffect(() => {
     setIdx(0);
-    setDisplayed(lines[0] ?? "");
-    setIncoming(null);
+    setPhase("show");
   }, [lines.join("|")]);
 
-  // Advance the index on a 2500ms hold + 400ms flip cadence
+  // Phase machine: show (2500ms) → out (220ms) → blank (180ms) → in (280ms) → show
   useEffect(() => {
     if (lines.length <= 1) return;
-    const t = setTimeout(() => {
-      setIdx(i => (i + 1) % lines.length);
-    }, 2900);
-    return () => clearTimeout(t);
-  }, [idx, lines.length]);
+    let delay: number;
+    if (phase === "show") delay = 2500;
+    else if (phase === "out") delay = 220;
+    else if (phase === "blank") delay = 180;
+    else delay = 280; // "in"
 
-  // When idx changes, run the flip
-  useEffect(() => {
-    const target = lines[idx] ?? "";
-    if (target === displayed) return;
-    setIncoming(target);
     const t = setTimeout(() => {
-      setDisplayed(target);
-      setIncoming(null);
-    }, 400);
+      if (phase === "show") setPhase("out");
+      else if (phase === "out") setPhase("blank");
+      else if (phase === "blank") {
+        setIdx(i => (i + 1) % lines.length);
+        setPhase("in");
+      } else {
+        setPhase("show");
+      }
+    }, delay);
+
     return () => clearTimeout(t);
-  }, [idx, lines, displayed]);
+  }, [phase, lines.length]);
 
   if (lines.length === 0) return null;
 
@@ -375,25 +377,15 @@ function SplitFlapLine({ lines }: { lines: string[] }) {
     );
   }
 
-  const flipping = incoming !== null;
+  const text = lines[idx] ?? "";
+  const visible = phase !== "blank";
+  const animClass = phase === "out" ? "sf-line-out" : phase === "in" ? "sf-line-in" : "";
+
   return (
     <div className="sf-root">
       <style>{SPLIT_FLAP_CSS}</style>
-      <div className={`sf-half sf-top ${flipping ? "sf-cur-top-anim" : ""}`}>
-        <span>{displayed}</span>
-      </div>
-      <div className={`sf-half sf-bottom ${flipping ? "sf-cur-bottom-anim" : ""}`}>
-        <span>{displayed}</span>
-      </div>
-      {flipping && incoming !== null && (
-        <>
-          <div className="sf-half sf-top sf-new-top-anim" style={{ transform: "rotateX(-90deg)" }}>
-            <span>{incoming}</span>
-          </div>
-          <div className="sf-half sf-bottom sf-new-bottom-anim" style={{ transform: "rotateX(90deg)" }}>
-            <span>{incoming}</span>
-          </div>
-        </>
+      {visible && (
+        <div className={`sf-line ${animClass}`}>{text}</div>
       )}
     </div>
   );
