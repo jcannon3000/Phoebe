@@ -14,6 +14,7 @@ interface PrayerRequest {
   closedAt: string | null;
   expiresAt: string | null;
   nearingExpiry: boolean;
+  needsRenewal: boolean;
   words: Array<{ authorName: string; content: string }>;
   myWord: string | null;
   createdAt: string;
@@ -68,6 +69,13 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/prayer-requests/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
+  const renewMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
@@ -228,10 +236,35 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                         </div>
 
                         {/* Nearing expiry — quiet line */}
-                        {request.nearingExpiry && (
+                        {request.nearingExpiry && !request.needsRenewal && (
                           <p className="text-xs italic mt-2" style={{ color: "#8FAF96" }}>
-                            Released tomorrow 🌿
+                            Past three days soon 🌿
                           </p>
+                        )}
+
+                        {/* Past 3-day mark — owner can renew */}
+                        {request.isOwnRequest && request.needsRenewal && (
+                          <div className="flex items-center gap-3 mt-2">
+                            <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.65)" }}>
+                              Carried for three days 🌿
+                            </p>
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                renewMutation.mutate(request.id);
+                              }}
+                              disabled={renewMutation.isPending}
+                              className="text-xs font-semibold px-3 py-1 rounded-full transition-opacity disabled:opacity-40"
+                              style={{
+                                background: "rgba(46,107,64,0.25)",
+                                color: "#C8D4C0",
+                                border: "1px solid rgba(143,175,150,0.35)",
+                              }}
+                            >
+                              🔄 Renew
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

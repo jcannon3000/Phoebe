@@ -935,9 +935,8 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     .where(eq(momentUserTokensTable.momentId, momentId));
 
   // All windows sorted newest first
-  const windows = await db.select().from(momentWindowsTable)
+  let windows = await db.select().from(momentWindowsTable)
     .where(eq(momentWindowsTable.momentId, momentId));
-  const sortedWindows = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate));
 
   // All posts ever
   const allPosts = await db.select().from(momentPostsTable)
@@ -954,6 +953,38 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
       postsByDate[post.windowDate].push(post);
     }
   }
+
+  // ── Back-fill missing past windows ──────────────────────────────────────
+  // evaluateWindow only runs when a post closes a window or hits the bloom
+  // threshold. If a user logs during an open window that never gets another
+  // post, no window record is ever created — which meant yesterday's log
+  // would vanish from the timeline and break the streak. Retroactively
+  // evaluate any past date that has posts but no window record.
+  {
+    const tzForBackfill = moment.timezone || "UTC";
+    const todayStrForBackfill = todayDateInTz(tzForBackfill);
+    const existingWindowDates = new Set(windows.map(w => w.windowDate));
+    const missingPastDates = Object.keys(postsByDate).filter(
+      d => d < todayStrForBackfill && !existingWindowDates.has(d),
+    );
+    if (missingPastDates.length > 0) {
+      for (const d of missingPastDates) {
+        try {
+          await evaluateWindow(momentId, d);
+        } catch (err) {
+          console.warn("Back-fill evaluateWindow failed for", d, err);
+        }
+      }
+      // Re-fetch windows so the synthesized entries are included
+      windows = await db.select().from(momentWindowsTable)
+        .where(eq(momentWindowsTable.momentId, momentId));
+      // Refresh moment because evaluateWindow may have mutated streak/state
+      const [refreshedMoment] = await db.select().from(sharedMomentsTable)
+        .where(eq(sharedMomentsTable.id, momentId));
+      if (refreshedMoment) Object.assign(moment, refreshedMoment);
+    }
+  }
+  const sortedWindows = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate));
 
   const windowsWithPosts = sortedWindows.map(w => ({
     ...w,

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, or, sql, inArray, and, isNull, gt } from "drizzle-orm";
+import { eq, desc, or, sql, inArray, and, isNull } from "drizzle-orm";
 import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
@@ -102,7 +102,8 @@ router.get("/people", async (req, res): Promise<void> => {
     const gardenUserIds = gardenUsers.map(u => u.id);
     const emailByUserId = new Map(gardenUsers.map(u => [u.id, u.email]));
     if (gardenUserIds.length > 0) {
-      const now = new Date();
+      // Prayer requests are retained until explicitly released/answered —
+      // we no longer auto-filter by expiresAt.
       const activeRequests = await db.select({
         id: prayerRequestsTable.id,
         ownerId: prayerRequestsTable.ownerId,
@@ -113,7 +114,6 @@ router.get("/people", async (req, res): Promise<void> => {
           inArray(prayerRequestsTable.ownerId, gardenUserIds),
           eq(prayerRequestsTable.isAnswered, false),
           isNull(prayerRequestsTable.closedAt),
-          or(isNull(prayerRequestsTable.expiresAt), gt(prayerRequestsTable.expiresAt, now)),
         )
       ).orderBy(desc(prayerRequestsTable.createdAt));
       for (const r of activeRequests) {
@@ -398,11 +398,12 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     ? new Date(Math.min(...sharedRituals.map(r => r.createdAt.getTime()))).toISOString()
     : null;
 
-  // Fetch active prayer request for this person
+  // Fetch active prayer request for this person. Prayer requests are
+  // retained until the owner releases/answers/deletes them — we no longer
+  // hide them automatically after expiresAt.
   let activePrayerRequest: { id: number; body: string; createdAt: string; expiresAt: string | null } | null = null;
   const [personUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
   if (personUser) {
-    const now = new Date();
     const [req] = await db.select({
       id: prayerRequestsTable.id,
       body: prayerRequestsTable.body,
@@ -413,7 +414,6 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         eq(prayerRequestsTable.ownerId, personUser.id),
         eq(prayerRequestsTable.isAnswered, false),
         isNull(prayerRequestsTable.closedAt),
-        or(isNull(prayerRequestsTable.expiresAt), gt(prayerRequestsTable.expiresAt, now)),
       )
     ).orderBy(desc(prayerRequestsTable.createdAt)).limit(1);
     if (req) {

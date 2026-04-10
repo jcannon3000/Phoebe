@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, inArray, and, isNull, or, gt } from "drizzle-orm";
+import { eq, desc, inArray, and, isNull, or } from "drizzle-orm";
 import { db, prayerRequestsTable, prayerWordsTable, usersTable, ritualsTable, momentUserTokensTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -58,11 +58,14 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
 
   const now = new Date();
 
+  // Prayer requests are retained (not auto-filtered by expiry). They stay
+  // visible until the owner explicitly releases, answers, or deletes them.
+  // `expiresAt` is used only as a freshness marker — once past, the owner
+  // sees a "Renew" affordance they can tap to bump it forward three days.
   const requests = await db.select().from(prayerRequestsTable)
     .where(and(
       inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
       isNull(prayerRequestsTable.closedAt),
-      or(isNull(prayerRequestsTable.expiresAt), gt(prayerRequestsTable.expiresAt, now))
     ))
     .orderBy(desc(prayerRequestsTable.createdAt));
 
@@ -78,11 +81,18 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     const myWordRow = words.find(w => w.authorUserId === sessionUserId);
     const isOwnRequest = r.ownerId === sessionUserId;
 
-    // nearingExpiry: within 12 hours of expiry and is own request
+    // Freshness flags based on expiresAt (which we no longer hard-filter on)
     let nearingExpiry = false;
+    let needsRenewal = false;
     if (isOwnRequest && r.expiresAt) {
       const msUntilExpiry = r.expiresAt.getTime() - now.getTime();
-      nearingExpiry = msUntilExpiry > 0 && msUntilExpiry <= 12 * 60 * 60 * 1000;
+      if (msUntilExpiry <= 0) {
+        // Past the 3-day mark — owner can renew
+        needsRenewal = true;
+      } else if (msUntilExpiry <= 12 * 60 * 60 * 1000) {
+        // Within 12 hours of the 3-day mark
+        nearingExpiry = true;
+      }
     }
 
     return {
@@ -92,6 +102,7 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       words: words.map(w => ({ authorName: w.authorName, content: w.content })),
       myWord: myWordRow?.content ?? null,
       nearingExpiry,
+      needsRenewal,
     };
   }));
 
