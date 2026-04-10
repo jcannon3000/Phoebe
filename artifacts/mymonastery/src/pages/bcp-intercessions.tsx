@@ -29,6 +29,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
   "For Social Justice": "⚖️",
   "For the Environment": "🌎",
   "For Families": "👨‍👩‍👧‍👦",
+  "Thanksgivings": "🌾",
 };
 
 export default function BcpIntercessionsPage() {
@@ -67,7 +68,7 @@ export default function BcpIntercessionsPage() {
             Intercessions 🙏
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Collects from the Book of Common Prayer
+            Prayers from the Book of Common Prayer
           </p>
         </div>
 

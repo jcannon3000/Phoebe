@@ -322,16 +322,16 @@ function LetterCard({
 const SPLIT_FLAP_CSS = `
 .sf-root { position: relative; width: 100%; height: 20px; overflow: hidden; }
 .sf-line { position: absolute; left: 0; right: 0; top: 0; height: 20px; line-height: 20px; font-size: 14px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: transform; }
-/* Current line snaps up and out — mechanical, held then released */
+/* Current line slides off to the left — held, then released sideways */
 @keyframes sf-line-out {
   0%   { transform: translate3d(0, 0, 0); }
-  55%  { transform: translate3d(0, -2px, 0); }
-  100% { transform: translate3d(0, -24px, 0); }
+  55%  { transform: translate3d(-2px, 0, 0); }
+  100% { transform: translate3d(-110%, 0, 0); }
 }
-/* New line slams up from below — fast arrival, tiny settle like a flap landing */
+/* New line slams in from the right — fast arrival, tiny settle */
 @keyframes sf-line-in {
-  0%   { transform: translate3d(0, 24px, 0); }
-  80%  { transform: translate3d(0, -1px, 0); }
+  0%   { transform: translate3d(110%, 0, 0); }
+  80%  { transform: translate3d(-1px, 0, 0); }
   100% { transform: translate3d(0, 0, 0); }
 }
 .sf-line-out { animation: sf-line-out 200ms cubic-bezier(0.85, 0, 0.9, 0.2) forwards; }
@@ -522,7 +522,9 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           </span>
         ) : null}
       </div>
-      <div className="flex items-start justify-between gap-2 mt-1.5">
+      {/* minHeight = 28 so the row always matches a card with a Pray badge,
+          even when there's no right-side badge (e.g. non-pulsing Lectio). */}
+      <div className="flex items-start justify-between gap-2 mt-1.5" style={{ minHeight: 28 }}>
         <div className="min-w-0 flex-1">
           {shouldPulse && !isLectio ? (
             subtitle ? (
@@ -752,7 +754,20 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="flex flex-col w-full pb-36">
+      {/* Desktop: narrower shell (80% width) + 20% zoom, so practice cards
+          feel more intimate and everything inside reads 20% bigger. Mobile
+          is untouched. */}
+      <style>{`
+        @media (min-width: 768px) {
+          .dash-shell {
+            max-width: 56rem;
+            margin-left: auto;
+            margin-right: auto;
+            zoom: 1.2;
+          }
+        }
+      `}</style>
+      <div className="dash-shell flex flex-col w-full pb-36">
 
         {/* ── Header ── */}
         <div className="mb-6">
@@ -826,16 +841,12 @@ export default function Dashboard() {
             }
             return (
               <>
-                {/* Mobile: scrolling ticker */}
-                <div className="md:hidden mt-2 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
+                {/* Scrolling ticker — shown on both mobile and desktop. */}
+                <div className="mt-2 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
                   <style>{`@keyframes dash-pills { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
                   <div style={{ display: "flex", gap: 8, width: "max-content", animation: "dash-pills 20s linear infinite" }}>
                     {[...PILLS, ...PILLS].map((p, i) => renderPill(p, i))}
                   </div>
-                </div>
-                {/* Desktop: static flex wrap */}
-                <div className="hidden md:flex items-center gap-2 mt-2 flex-wrap">
-                  {PILLS.map((p, i) => renderPill(p, i))}
                 </div>
               </>
             );
