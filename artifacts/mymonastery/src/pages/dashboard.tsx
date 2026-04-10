@@ -335,6 +335,22 @@ const SPLIT_FLAP_CSS = `
 
 type FlapPhase = "show" | "out" | "blank" | "in";
 
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isDesktop;
+}
+
 function SplitFlapLine({ lines }: { lines: string[] }) {
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<FlapPhase>("show");
@@ -397,6 +413,7 @@ function SplitFlapLine({ lines }: { lines: string[] }) {
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
   const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
   const shouldPulse = m.windowOpen && m.todayPostCount === 0;
+  const isDesktop = useIsDesktop();
   const memberNames = m.members
     .filter(p => p.email !== userEmail)
     .map(p => p.name || p.email.split("@")[0])
@@ -427,21 +444,30 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? `/moment/${m.momentToken}/${m.myUserToken}`
     : `/moments/${m.id}`;
 
-  // Cycling subtitle lines:
-  //   participants → next prayer / today count → log count
+  // Cycling subtitle lines.
+  //   Mobile: participants → next prayer → log count (no right-side status)
+  //   Desktop: participants → log count → intention (status stays on the right)
   // Any empty line is skipped entirely so we never flip to nothing.
   const logCountLine =
     m.memberCount > 0
       ? `${m.todayPostCount} of ${m.memberCount} have prayed today`
       : "";
-  const statusLine = nextWindow
-    ? `Next prayer ${nextWindow.toLowerCase()}`
+  const intentionLine = safeIntention ? `For: ${safeIntention}` : "";
+  const nextPrayerLine = nextWindow ? `Next prayer ${nextWindow.toLowerCase()}` : "";
+  const todayCountLine = !nextWindow && m.todayPostCount > 0 ? `${m.todayPostCount} today 🌿` : "";
+  const mobileStatusLine = nextPrayerLine || todayCountLine;
+  const desktopStatusText = nextWindow
+    ? `Next Prayer ${nextWindow}`
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
-  const flapLines: string[] = [subtitle, statusLine, logCountLine]
+  const mobileFlapLines: string[] = [subtitle, mobileStatusLine, logCountLine]
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
+  const desktopFlapLines: string[] = [subtitle, logCountLine, intentionLine]
+    .map(s => (s ?? "").trim())
+    .filter(s => s.length > 0);
+  const flapLines = isDesktop ? desktopFlapLines : mobileFlapLines;
 
   return (
     <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse} category="practices">
@@ -477,10 +503,14 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           )}
         </div>
         <div className="shrink-0 flex items-center">
-          {shouldPulse && (
+          {shouldPulse ? (
             <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
               Pray 🙏
             </span>
+          ) : (
+            isDesktop && desktopStatusText && (
+              <span className="text-xs" style={{ color: "#8FAF96" }}>{desktopStatusText}</span>
+            )
           )}
         </div>
       </div>
