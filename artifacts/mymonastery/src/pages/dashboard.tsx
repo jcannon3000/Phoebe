@@ -192,10 +192,13 @@ function FAB() {
             transition={{ duration: 0.15 }}
             className="flex flex-col gap-2 mb-1"
           >
+            {/* FAB menu buttons use solid opaque backgrounds so the list
+                doesn't bleed through content behind it. Category identity
+                comes from the border color. */}
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: CATEGORY_COLORS.letters.bg, border: `1px solid ${CATEGORY_COLORS.letters.border}`, minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+              style={{ background: "#14322C", border: `1px solid ${CATEGORY_COLORS.letters.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📮 Write a letter</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Start a new correspondence</p>
@@ -203,7 +206,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/moment/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: CATEGORY_COLORS.practices.bg, border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+              style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏 Start a practice</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Prayer, fasting, intercession & more</p>
@@ -211,7 +214,7 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: CATEGORY_COLORS.gatherings.bg, border: `1px solid ${CATEGORY_COLORS.gatherings.border}`, minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+              style={{ background: "#1E4B32", border: `1px solid ${CATEGORY_COLORS.gatherings.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝 Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Meet together regularly</p>
