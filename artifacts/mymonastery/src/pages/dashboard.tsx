@@ -538,7 +538,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
             </p>
           )}
         </div>
-        <div className="shrink-0 flex items-center">
+        <div className="shrink-0 flex items-center self-start -mt-1">
           {shouldPulse ? (
             <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
               {isLectio ? "Practice 🌿" : "Pray 🙏"}

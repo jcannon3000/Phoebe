@@ -161,8 +161,9 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
   try {
     reading = await getReadingForSunday(sundayDate);
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error("[lectio] fetch failed:", err);
-    res.status(502).json({ error: "lectionary_fetch_failed" });
+    res.status(502).json({ error: "lectionary_fetch_failed", detail: msg });
     return;
   }
   const sundayIso = reading.sundayDate;

@@ -27,6 +27,15 @@
 import { db, lectionaryReadingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { LectionaryReading } from "@workspace/db";
+import { SEED_READINGS, type SeedReading } from "../data/lectionary/seed";
+
+// ─── Pre-seeded readings ────────────────────────────────────────────────────
+// 12 weeks of Sunday Gospel readings baked into the repo so the app works
+// even if lectionarypage.net blocks our server IP. Refresh by running
+// scripts/fetch-lectionary-seed.mjs from a machine that can reach the site.
+const SEED: Map<string, SeedReading> = new Map(
+  SEED_READINGS.map((r) => [r.sundayDate, r])
+);
 
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -299,19 +308,25 @@ async function fetchText(url: string): Promise<string> {
 
 /**
  * Fetch (and cache) the RCL Gospel reading for a specific Sunday.
- * The first caller for a given Sunday triggers the network request;
- * every later caller gets the cached DB row.
  *
- * We also invalidate any cached row that was written before we switched
- * to lectionarypage.net — old Vanderbilt rows have `source_url` pointing
- * at `lectionary.library.vanderbilt.edu` and are no longer authoritative.
+ * Resolution order:
+ *   1. DB cache (row from lectionarypage.net — either previously fetched
+ *      live or previously seeded).
+ *   2. Bundled seed.json (12 weeks of pre-fetched readings; inserted into
+ *      the DB on first use).
+ *   3. Live network fetch of lectionarypage.net. This is the fallback when
+ *      a user asks for a date we didn't pre-seed. Railway's outbound IP may
+ *      be blocked by the site's mod_security, which is why (2) exists.
+ *
+ * Old Vanderbilt rows (source_url pointing at vanderbilt.edu) are dropped
+ * on first encounter so they can be replaced.
  */
 export async function getReadingForSunday(
   sundayDate: Date
 ): Promise<LectionaryReading> {
   const iso = ymd(sundayDate);
 
-  // 1. Cache hit? (Ignore any row whose sourceUrl isn't from lectionarypage.net.)
+  // 1. DB cache hit (only trust rows from lectionarypage.net).
   const existing = await db
     .select()
     .from(lectionaryReadingsTable)
@@ -321,14 +336,27 @@ export async function getReadingForSunday(
     return existing[0];
   }
   if (existing[0]) {
-    // Stale row from the old Vanderbilt source — drop it so the fresh
-    // fetch below can replace it.
+    // Stale row from the old Vanderbilt source — drop it.
     await db
       .delete(lectionaryReadingsTable)
       .where(eq(lectionaryReadingsTable.sundayDate, iso));
   }
 
-  // 2. Fetch the home page once to find THIS Sunday's URL.
+  // 2. Seed hit — store it in the DB and return.
+  const seeded = SEED.get(iso);
+  if (seeded) {
+    return upsertReading({
+      sundayDate: seeded.sundayDate,
+      sundayName: seeded.sundayName,
+      liturgicalSeason: seeded.liturgicalSeason,
+      liturgicalYear: seeded.liturgicalYear,
+      gospelReference: seeded.gospelReference,
+      gospelText: seeded.gospelText,
+      sourceUrl: seeded.sourceUrl,
+    });
+  }
+
+  // 3. Live network fetch fallback.
   const homeHtml = await fetchText(HOME_URL);
   const links = parseHomeLinks(homeHtml);
   const link = pickForSunday(links, iso);
@@ -337,8 +365,6 @@ export async function getReadingForSunday(
       `No lectionary link found on or after ${iso} (parsed ${links.length} cells)`
     );
   }
-
-  // 3. Fetch that one Sunday's page.
   const pageHtml = await fetchText(link.url);
   const parsed = parseTextsPage(pageHtml, link.url);
   if (!parsed) {
@@ -346,31 +372,40 @@ export async function getReadingForSunday(
       `Failed to parse lectionary page for ${iso} (${link.url})`
     );
   }
+  return upsertReading({
+    sundayDate: link.iso, // the site's canonical date for this reading
+    sundayName: parsed.sundayName,
+    liturgicalSeason: parsed.liturgicalSeason,
+    liturgicalYear: parsed.liturgicalYear,
+    gospelReference: parsed.gospelReference,
+    gospelText: parsed.gospelText,
+    sourceUrl: link.url,
+  });
+}
 
-  // 4. Store. Use the link's date (what the site says the Sunday is).
-  const storeIso = link.iso;
-
-  // Another caller may have raced us — upsert-ish behavior.
+async function upsertReading(row: {
+  sundayDate: string;
+  sundayName: string;
+  liturgicalSeason: string | null;
+  liturgicalYear: string | null;
+  gospelReference: string;
+  gospelText: string;
+  sourceUrl: string;
+}): Promise<LectionaryReading> {
+  // Another caller may have raced us.
   const again = await db
     .select()
     .from(lectionaryReadingsTable)
-    .where(eq(lectionaryReadingsTable.sundayDate, storeIso))
+    .where(eq(lectionaryReadingsTable.sundayDate, row.sundayDate))
     .limit(1);
-  if (again[0]) return again[0];
-
-  const [row] = await db
+  if (again[0] && again[0].sourceUrl && /lectionarypage\.net/i.test(again[0].sourceUrl)) {
+    return again[0];
+  }
+  const [inserted] = await db
     .insert(lectionaryReadingsTable)
-    .values({
-      sundayDate: storeIso,
-      sundayName: parsed.sundayName,
-      liturgicalSeason: parsed.liturgicalSeason,
-      liturgicalYear: parsed.liturgicalYear,
-      gospelReference: parsed.gospelReference,
-      gospelText: parsed.gospelText,
-      sourceUrl: link.url,
-    })
+    .values(row)
     .returning();
-  return row;
+  return inserted;
 }
 
 /** Convenience: cached reading for the upcoming Sunday. */
