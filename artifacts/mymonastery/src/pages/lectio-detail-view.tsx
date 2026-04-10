@@ -179,6 +179,10 @@ export default function LectioDetailView({ id, data }: LectioDetailViewProps) {
       apiRequest("POST", `/api/lectio/${moment.momentToken}/${myUserToken}/reflect`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: lectioQueryKey });
+      // Refresh the dashboard list so the practice card moves out of "today"
+      // (lectioMyStageDone flips on the server).
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+      qc.invalidateQueries({ queryKey: [`/api/moments/${id}`] });
       setActiveReflectStage(null);
       setDraftReflection("");
     },

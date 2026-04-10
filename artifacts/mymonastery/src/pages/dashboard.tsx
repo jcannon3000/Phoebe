@@ -57,6 +57,7 @@ type Moment = {
   lectioGospelReference?: string | null;
   lectioGospelText?: string | null;
   lectioResponseCount?: number | null;
+  lectioMyStageDone?: boolean | null;
 };
 
 // ─── Category color system ──────────────────────────────────────────────────
@@ -723,7 +724,12 @@ export default function Dashboard() {
     // practices are either actionable today, already-done today, or upcoming
     // this week.
     for (const m of allMoments) {
-      if (m.isActionableToday && m.todayPostCount === 0) {
+      // Lectio reflections don't write to moment_posts, so we use the
+      // server-computed `lectioMyStageDone` flag (current user has submitted
+      // the current stage's reflection this week) as the "logged" signal.
+      const isLectio = m.templateType === "lectio-divina";
+      const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
+      if (m.isActionableToday && !userDone) {
         todayItems.push({ kind: "moment", data: m });
       } else {
         weekItems.push({ kind: "moment", data: m, nextWindow: nextWindowLabel(m) });

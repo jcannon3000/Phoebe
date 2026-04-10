@@ -981,6 +981,11 @@ router.get("/moments", async (req, res): Promise<void> => {
         let lectioGospelReference: string | null = null;
         let lectioGospelText: string | null = null;
         let lectioResponseCount = 0;
+        // Whether *this user* has submitted the current stage's reflection for
+        // this week. Used by the dashboard to move the card out of "today" once
+        // they've reflected (since lectio reflections don't write to
+        // moment_posts, todayPostCount alone never moves it).
+        let lectioMyStageDone = false;
         if (m.templateType === "lectio-divina" && lectioReadingMeta) {
           lectioSundayName = lectioReadingMeta.sundayName;
           lectioGospelReference = lectioReadingMeta.gospelReference;
@@ -996,6 +1001,23 @@ router.get("/moments", async (req, res): Promise<void> => {
                 eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
               ));
             lectioResponseCount = new Set(weekReflections.map(r => r.userToken)).size;
+
+            // Determine the current stage for this practice's timezone:
+            // Mon/Tue → lectio, Wed/Thu → meditatio, Fri/Sat → oratio,
+            // Sun → no current stage (gathering day, nothing for the card).
+            const dow = getCurrentDayOfWeekInTz(m.timezone || "UTC");
+            const currentStage =
+              dow === 1 || dow === 2 ? "lectio" :
+              dow === 3 || dow === 4 ? "meditatio" :
+              dow === 5 || dow === 6 ? "oratio" : null;
+            if (currentStage && myToken) {
+              lectioMyStageDone = weekReflections.some(
+                r => r.userToken === myToken.userToken && r.stage === currentStage,
+              );
+            } else if (!currentStage) {
+              // Sunday: not actionable; treat as done so it doesn't sit in "today".
+              lectioMyStageDone = true;
+            }
           } catch (reflErr) {
             console.warn(`[moments] lectio reflections count failed for moment ${m.id}:`, reflErr);
             lectioResponseCount = 0;
@@ -1016,6 +1038,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           lectioGospelReference,
           lectioGospelText,
           lectioResponseCount,
+          lectioMyStageDone,
         };
       } catch (err) {
         console.error(`[moments] enrichment failed for moment ${m.id} (${m.templateType}):`, err);
@@ -1040,6 +1063,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           lectioGospelReference: null,
           lectioGospelText: null,
           lectioResponseCount: 0,
+          lectioMyStageDone: false,
         };
       }
     }));
