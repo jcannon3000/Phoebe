@@ -428,19 +428,18 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     : `/moments/${m.id}`;
 
   // Cycling subtitle lines:
-  //   participants → next prayer / today count → intention → log count
+  //   participants → next prayer / today count → log count
   // Any empty line is skipped entirely so we never flip to nothing.
   const logCountLine =
     m.memberCount > 0
       ? `${m.todayPostCount} of ${m.memberCount} have prayed today`
       : "";
-  const intentionLine = safeIntention ? `For: ${safeIntention}` : "";
   const statusLine = nextWindow
     ? `Next prayer ${nextWindow.toLowerCase()}`
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
-  const flapLines: string[] = [subtitle, statusLine, intentionLine, logCountLine]
+  const flapLines: string[] = [subtitle, statusLine, logCountLine]
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
 
