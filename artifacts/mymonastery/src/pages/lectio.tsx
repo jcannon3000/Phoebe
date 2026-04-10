@@ -399,16 +399,9 @@ function CurrentStageBlock({
         </p>
       </div>
 
-      {/* Write / edit */}
-      <div
-        className="rounded-xl"
-        style={{
-          background: CARD_BG,
-          border: `1px solid ${BORDER}`,
-          padding: "20px 20px 16px 20px",
-          marginBottom: 16,
-        }}
-      >
+      {/* Write / edit — bare textarea on the page background. No bordered
+          container, no focus outline. Just space to write. */}
+      <div style={{ marginBottom: 16 }}>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -419,12 +412,14 @@ function CurrentStageBlock({
             background: "transparent",
             border: "none",
             outline: "none",
+            boxShadow: "none",
             resize: "none",
+            padding: 0,
             color: WARM_TEXT,
             fontSize: 16,
             lineHeight: 1.6,
             fontFamily:
-              "'Georgia', 'Iowan Old Style', 'Palatino', 'Times New Roman', serif",
+              "'Space Grotesk', system-ui, -apple-system, Segoe UI, sans-serif",
           }}
         />
         <div className="flex items-center justify-between mt-2">

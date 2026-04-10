@@ -986,6 +986,10 @@ router.get("/moments", async (req, res): Promise<void> => {
         // they've reflected (since lectio reflections don't write to
         // moment_posts, todayPostCount alone never moves it).
         let lectioMyStageDone = false;
+        // Current stage label ("Lectio" / "Meditatio" / "Oratio") and a short
+        // "next time" hint ("Wed · Meditatio") for the dashboard card.
+        let lectioCurrentStageLabel: string | null = null;
+        let lectioNextStageLabel: string | null = null;
         if (m.templateType === "lectio-divina" && lectioReadingMeta) {
           lectioSundayName = lectioReadingMeta.sundayName;
           lectioGospelReference = lectioReadingMeta.gospelReference;
@@ -1018,6 +1022,17 @@ router.get("/moments", async (req, res): Promise<void> => {
               // Sunday: not actionable; treat as done so it doesn't sit in "today".
               lectioMyStageDone = true;
             }
+
+            // Friendly labels for the dashboard card.
+            const STAGE_LABEL = { lectio: "Lectio", meditatio: "Meditatio", oratio: "Oratio" } as const;
+            lectioCurrentStageLabel = currentStage ? STAGE_LABEL[currentStage] : "Sunday";
+            // Next stage hint: where the practice is heading after today.
+            // Sunday → Mon Lectio, Mon/Tue → Wed Meditatio, Wed/Thu → Fri Oratio,
+            // Fri/Sat → Sun gathering.
+            if (dow === 0) lectioNextStageLabel = "Mon · Lectio";
+            else if (dow === 1 || dow === 2) lectioNextStageLabel = "Wed · Meditatio";
+            else if (dow === 3 || dow === 4) lectioNextStageLabel = "Fri · Oratio";
+            else lectioNextStageLabel = "Sun · Gathering";
           } catch (reflErr) {
             console.warn(`[moments] lectio reflections count failed for moment ${m.id}:`, reflErr);
             lectioResponseCount = 0;
@@ -1039,6 +1054,8 @@ router.get("/moments", async (req, res): Promise<void> => {
           lectioGospelText,
           lectioResponseCount,
           lectioMyStageDone,
+          lectioCurrentStageLabel,
+          lectioNextStageLabel,
         };
       } catch (err) {
         console.error(`[moments] enrichment failed for moment ${m.id} (${m.templateType}):`, err);
@@ -1064,6 +1081,8 @@ router.get("/moments", async (req, res): Promise<void> => {
           lectioGospelText: null,
           lectioResponseCount: 0,
           lectioMyStageDone: false,
+          lectioCurrentStageLabel: null,
+          lectioNextStageLabel: null,
         };
       }
     }));

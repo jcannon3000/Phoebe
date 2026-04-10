@@ -58,6 +58,8 @@ type Moment = {
   lectioGospelText?: string | null;
   lectioResponseCount?: number | null;
   lectioMyStageDone?: boolean | null;
+  lectioCurrentStageLabel?: string | null;
+  lectioNextStageLabel?: string | null;
 };
 
 // ─── Category color system ──────────────────────────────────────────────────
@@ -453,10 +455,14 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const safeIntention = (m.intention && norm(m.intention) !== nameNorm) ? m.intention : null;
   const safeIntercessionTopic = (m.intercessionTopic && norm(m.intercessionTopic) !== nameNorm) ? m.intercessionTopic : null;
 
-  // Progress badge — show "1/3 days" when goal is set
+  // Progress badge — show "1/3 days" when goal is set.
+  // For lectio, the badge shows the current stage instead (Lectio/Meditatio/Oratio)
+  // since the practice has its own weekly stage rhythm rather than a day count.
   const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
   const logged = m.commitmentSessionsLogged ?? 0;
-  const progressLabel = goal ? `${logged}/${goal} ${goal === 1 ? "day" : "days"}` : null;
+  const progressLabel = isLectio
+    ? (m.lectioCurrentStageLabel ?? null)
+    : (goal ? `${logged}/${goal} ${goal === 1 ? "day" : "days"}` : null);
 
   const openHref = (isLectio && m.momentToken && m.myUserToken)
     ? `/lectio/${m.momentToken}/${m.myUserToken}`
@@ -483,27 +489,14 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
-  // Lectio has its own rotating rhythm: who you're with → the reading →
-  // the opening verses → how many have responded this week.
+  // Lectio cycles between just the gospel reference and a "next time" hint.
+  // Verses, sunday name, and response count have moved off the card —
+  // they live on the practice page instead.
   const lectioFlapLines: string[] = isLectio
     ? (() => {
-        const whoLine = subtitle;
-        const readingLine = m.lectioGospelReference
-          ? m.lectioSundayName
-            ? `${m.lectioSundayName} · ${m.lectioGospelReference}`
-            : `Reading: ${m.lectioGospelReference}`
-          : "";
-        // First-sentence excerpt of the Gospel. The row clips with ellipsis,
-        // so we keep the raw text and let CSS truncate — this way the slide
-        // still ends on a clean word boundary at any viewport width.
-        const versesLine = m.lectioGospelText
-          ? m.lectioGospelText.replace(/\s+/g, " ").trim()
-          : "";
-        const responses = m.lectioResponseCount ?? 0;
-        const responseLine = m.memberCount > 0
-          ? `${responses} of ${m.memberCount} have responded`
-          : "";
-        return [whoLine, readingLine, versesLine, responseLine];
+        const verseLine = m.lectioGospelReference || "";
+        const nextLine = m.lectioNextStageLabel ? `Next: ${m.lectioNextStageLabel}` : "";
+        return [verseLine, nextLine];
       })()
     : [];
   const mobileFlapLines: string[] = (isLectio ? lectioFlapLines : [subtitle, mobileStatusLine, logCountLine])
@@ -550,7 +543,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         <div className="shrink-0 flex items-center self-start -mt-1">
           {shouldPulse ? (
             <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-              {isLectio ? "Practice 🌿" : "Pray 🙏"}
+              {isLectio ? "Reflect 🌿" : "Pray 🙏"}
             </span>
           ) : (
             isDesktop && desktopStatusText && (
