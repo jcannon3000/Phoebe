@@ -317,19 +317,22 @@ function LetterCard({
 const SPLIT_FLAP_CSS = `
 .sf-root { position: relative; width: 100%; height: 20px; overflow: hidden; }
 .sf-line { position: absolute; left: 0; right: 0; top: 0; height: 20px; line-height: 20px; font-size: 14px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: transform; }
-/* Current line lifts up and out — heavy start, then accelerates away */
+/* Current line snaps up and out — mechanical, held then released */
 @keyframes sf-line-out {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(0, -22px, 0); }
+  0%   { transform: translate3d(0, 0, 0); }
+  55%  { transform: translate3d(0, -2px, 0); }
+  100% { transform: translate3d(0, -24px, 0); }
 }
-/* New line rides up from below — fast entry, firm landing (slight overshoot) */
+/* New line slams up from below — fast arrival, tiny settle like a flap landing */
 @keyframes sf-line-in {
-  0%   { transform: translate3d(0, 22px, 0); }
-  70%  { transform: translate3d(0, -1px, 0); }
+  0%   { transform: translate3d(0, 24px, 0); }
+  45%  { transform: translate3d(0, 1px, 0); }
+  65%  { transform: translate3d(0, -2px, 0); }
+  85%  { transform: translate3d(0, 1px, 0); }
   100% { transform: translate3d(0, 0, 0); }
 }
-.sf-line-out { animation: sf-line-out 220ms cubic-bezier(0.7, 0, 0.84, 0) forwards; }
-.sf-line-in  { animation: sf-line-in  280ms cubic-bezier(0.2, 0.85, 0.25, 1) forwards; }
+.sf-line-out { animation: sf-line-out 200ms cubic-bezier(0.85, 0, 0.9, 0.2) forwards; }
+.sf-line-in  { animation: sf-line-in 260ms cubic-bezier(0.15, 0.9, 0.2, 1) forwards; }
 `;
 
 type FlapPhase = "show" | "out" | "blank" | "in";
@@ -344,14 +347,14 @@ function SplitFlapLine({ lines }: { lines: string[] }) {
     setPhase("show");
   }, [lines.join("|")]);
 
-  // Phase machine: show (2500ms) → out (220ms) → blank (180ms) → in (280ms) → show
+  // Phase machine: show (4000ms) → out (200ms) → blank (140ms) → in (260ms) → show
   useEffect(() => {
     if (lines.length <= 1) return;
     let delay: number;
-    if (phase === "show") delay = 2500;
-    else if (phase === "out") delay = 220;
-    else if (phase === "blank") delay = 180;
-    else delay = 280; // "in"
+    if (phase === "show") delay = 4000;
+    else if (phase === "out") delay = 200;
+    else if (phase === "blank") delay = 140;
+    else delay = 260; // "in"
 
     const t = setTimeout(() => {
       if (phase === "show") setPhase("out");
@@ -426,13 +429,20 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? `/moment/${m.momentToken}/${m.myUserToken}`
     : `/moments/${m.id}`;
 
-  // Split-flap subtitle lines: participants → intention → log count.
-  // Any empty line is skipped entirely.
+  // Cycling subtitle lines:
+  //   participants → intention → log count → next prayer / today count
+  // Any empty line is skipped entirely so we never flip to nothing.
   const logCountLine =
     m.memberCount > 0
       ? `${m.todayPostCount} of ${m.memberCount} have prayed today`
       : "";
-  const flapLines: string[] = [subtitle, safeIntention ?? "", logCountLine]
+  const intentionLine = safeIntention ? `For: ${safeIntention}` : "";
+  const statusLine = nextWindow
+    ? `Next prayer ${nextWindow.toLowerCase()}`
+    : !nextWindow && m.todayPostCount > 0
+    ? `${m.todayPostCount} today 🌿`
+    : "";
+  const flapLines: string[] = [subtitle, intentionLine, logCountLine, statusLine]
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
 
@@ -466,12 +476,6 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
             <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
               Open
             </span>
-          )}
-          {nextWindow && (
-            <span className="text-xs" style={{ color: "#8FAF96" }}>Next Prayer {nextWindow}</span>
-          )}
-          {!nextWindow && m.todayPostCount > 0 && (
-            <span className="text-xs" style={{ color: "#8FAF96" }}>{m.todayPostCount} today 🌿</span>
           )}
         </div>
       </div>
