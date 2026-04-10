@@ -804,7 +804,7 @@ export default function MomentDetail() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Log Timeline</span>
-            <div className="flex-1 h-px bg-border/40" />
+            <div className="flex-1 h-px" style={{ background: "rgba(92,122,95,0.35)" }} />
           </div>
 
           {/* TODAY — per-member status (only on practice days) */}

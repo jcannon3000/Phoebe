@@ -856,7 +856,7 @@ export default function RitualDetail() {
                   <h2 className="font-semibold shrink-0 text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.4)" }}>
                     History
                   </h2>
-                  <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+                  <div className="flex-1 h-px" style={{ background: "rgba(92,122,95,0.35)" }} />
                 </div>
                 {(!timeline || timeline.past.length === 0) ? (
                   <p className="text-center py-8 italic" style={{ fontSize: "14px", color: "#8FAF96" }}>
@@ -864,7 +864,7 @@ export default function RitualDetail() {
                   </p>
                 ) : (
                   <div className="relative space-y-4">
-                    <div className="absolute left-5 top-0 bottom-0 w-px" style={{ background: "linear-gradient(to bottom, transparent, rgba(200,212,192,0.25), transparent)" }} />
+                    <div className="absolute left-5 top-0 bottom-0 w-px" style={{ background: "linear-gradient(to bottom, transparent, rgba(92,122,95,0.45), transparent)" }} />
                     {timeline.past.map((meetup, idx) => {
                       const prevMeetup = timeline.past[idx + 1] ?? null;
                       const daysBetween = prevMeetup && meetup.status === "completed" && prevMeetup.status === "completed"
@@ -879,7 +879,7 @@ export default function RitualDetail() {
                               <XCircle size={16} style={{ color: "rgba(143,175,150,0.4)" }} />
                             )}
                           </div>
-                          <div className="flex-1 rounded-2xl p-4 min-w-0" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.12)" }}>
+                          <div className="flex-1 rounded-2xl p-4 min-w-0" style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.25)" }}>
                             <div className="flex items-start justify-between flex-wrap gap-2">
                               <div>
                                 <p className="font-medium text-sm" style={{ color: "#F0EDE6" }}>
