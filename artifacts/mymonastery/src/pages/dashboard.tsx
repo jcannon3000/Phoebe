@@ -312,6 +312,93 @@ function LetterCard({
   );
 }
 
+// ─── Split-flap subtitle ─────────────────────────────────────────────────────
+
+const SPLIT_FLAP_CSS = `
+.sf-root { perspective: 400px; position: relative; width: 100%; height: 20px; font-size: 14px; line-height: 20px; color: #8FAF96; }
+.sf-half { position: absolute; left: 0; right: 0; height: 10px; overflow: hidden; backface-visibility: hidden; }
+.sf-top { top: 0; transform-origin: 50% 100%; }
+.sf-bottom { bottom: 0; transform-origin: 50% 0%; }
+.sf-half > span { position: absolute; left: 0; right: 0; display: block; font-size: 14px; line-height: 20px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sf-top > span { top: 0; }
+.sf-bottom > span { bottom: 0; }
+@keyframes sf-bottom-out { from { transform: rotateX(0deg); } to { transform: rotateX(90deg); } }
+@keyframes sf-bottom-in  { from { transform: rotateX(90deg); } to { transform: rotateX(0deg); } }
+@keyframes sf-top-out    { from { transform: rotateX(0deg); } to { transform: rotateX(-90deg); } }
+@keyframes sf-top-in     { from { transform: rotateX(-90deg); } to { transform: rotateX(0deg); } }
+.sf-cur-bottom-anim { animation: sf-bottom-out 100ms ease-in 0ms forwards; }
+.sf-new-bottom-anim { animation: sf-bottom-in 100ms ease-out 100ms forwards; }
+.sf-cur-top-anim    { animation: sf-top-out 100ms ease-in 200ms forwards; }
+.sf-new-top-anim    { animation: sf-top-in 100ms ease-out 300ms forwards; }
+`;
+
+function SplitFlapLine({ lines }: { lines: string[] }) {
+  const [idx, setIdx] = useState(0);
+  const [displayed, setDisplayed] = useState(lines[0] ?? "");
+  const [incoming, setIncoming] = useState<string | null>(null);
+
+  // Reset when the set of lines changes (e.g. different card)
+  useEffect(() => {
+    setIdx(0);
+    setDisplayed(lines[0] ?? "");
+    setIncoming(null);
+  }, [lines.join("|")]);
+
+  // Advance the index on a 2500ms hold + 400ms flip cadence
+  useEffect(() => {
+    if (lines.length <= 1) return;
+    const t = setTimeout(() => {
+      setIdx(i => (i + 1) % lines.length);
+    }, 2900);
+    return () => clearTimeout(t);
+  }, [idx, lines.length]);
+
+  // When idx changes, run the flip
+  useEffect(() => {
+    const target = lines[idx] ?? "";
+    if (target === displayed) return;
+    setIncoming(target);
+    const t = setTimeout(() => {
+      setDisplayed(target);
+      setIncoming(null);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [idx, lines, displayed]);
+
+  if (lines.length === 0) return null;
+
+  if (lines.length === 1) {
+    return (
+      <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {lines[0]}
+      </p>
+    );
+  }
+
+  const flipping = incoming !== null;
+  return (
+    <div className="sf-root">
+      <style>{SPLIT_FLAP_CSS}</style>
+      <div className={`sf-half sf-top ${flipping ? "sf-cur-top-anim" : ""}`}>
+        <span>{displayed}</span>
+      </div>
+      <div className={`sf-half sf-bottom ${flipping ? "sf-cur-bottom-anim" : ""}`}>
+        <span>{displayed}</span>
+      </div>
+      {flipping && incoming !== null && (
+        <>
+          <div className="sf-half sf-top sf-new-top-anim" style={{ transform: "rotateX(-90deg)" }}>
+            <span>{incoming}</span>
+          </div>
+          <div className="sf-half sf-bottom sf-new-bottom-anim" style={{ transform: "rotateX(90deg)" }}>
+            <span>{incoming}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Moment card ─────────────────────────────────────────────────────────────
 
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
@@ -347,6 +434,12 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? `/moment/${m.momentToken}/${m.myUserToken}`
     : `/moments/${m.id}`;
 
+  // Split-flap subtitle lines: participants → intention → log count
+  const flapLines: string[] = [];
+  if (subtitle) flapLines.push(subtitle);
+  if (safeIntention) flapLines.push(safeIntention);
+  flapLines.push(`${m.todayPostCount} of ${m.memberCount} have prayed today`);
+
   return (
     <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse} category="practices">
       <div className="flex items-start justify-between gap-2">
@@ -365,9 +458,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       </div>
       <div className="flex items-start justify-between gap-2 mt-1.5">
         <div className="min-w-0 flex-1">
-          {(subtitle || safeIntention) && (
-            <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle || safeIntention}</p>
-          )}
+          <SplitFlapLine lines={flapLines} />
           {isIntercession && safeIntercessionTopic && (
             <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
               🙏 {safeIntercessionTopic}
