@@ -98,9 +98,18 @@ export default function LectioPage() {
       <div style={{ minHeight: "100vh", background: BG }} className="flex items-center justify-center px-6">
         <div className="text-center" style={{ color: MUTED_GREEN }}>
           <p className="mb-4">We couldn't load this reading.</p>
-          <Link href="/dashboard">
-            <span style={{ color: ACCENT, textDecoration: "underline" }}>Back to dashboard</span>
-          </Link>
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={() => qc.refetchQueries({ queryKey })}
+              className="text-sm font-semibold rounded-full px-4 py-2"
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            >
+              Try again
+            </button>
+            <Link href="/dashboard">
+              <span style={{ color: ACCENT, textDecoration: "underline", fontSize: 13 }}>Back to dashboard</span>
+            </Link>
+          </div>
         </div>
       </div>
     );
