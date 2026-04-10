@@ -496,6 +496,7 @@ function TimeSection({
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  const [filter, setFilter] = useState<"practices" | "gatherings" | null>(null);
 
   const { data: correspondences, isLoading: lettersLoading } = useQuery<Correspondence[]>({
     queryKey: ["/api/letters/correspondences"],
@@ -599,50 +600,118 @@ export default function Dashboard() {
             {format(new Date(), "EEEE, d MMMM")}
           </p>
           {(() => {
-            const PILLS = [
+            type Pill = {
+              label: string;
+              href?: string;
+              filterKey?: "practices" | "gatherings";
+              fg: string;
+              bg: string;
+              border: string;
+            };
+            const PILLS: Pill[] = [
               { label: "📮 Letters",      href: "/letters",      fg: "#5C8A5F", bg: "rgba(92,138,95,0.14)",   border: "rgba(92,138,95,0.28)"   },
-              { label: "🙏 Practices",    href: "/practices",    fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
-              { label: "🤝 Gatherings",   href: "/gatherings",   fg: "#7AAF7D", bg: "rgba(122,175,125,0.14)", border: "rgba(122,175,125,0.28)" },
+              { label: "🙏 Practices",    filterKey: "practices",fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
+              { label: "🤝 Gatherings",   filterKey: "gatherings",fg: "#7AAF7D", bg: "rgba(122,175,125,0.14)", border: "rgba(122,175,125,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
               { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
               { label: "🙏 Intercessions", href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
               { label: "📖 Learn",        href: "/learn",        fg: "#A8C5A0", bg: "rgba(168,197,160,0.12)", border: "rgba(168,197,160,0.28)" },
             ];
-            const pillStyle = (p: typeof PILLS[0]) => ({
+            const pillStyle = (p: Pill) => ({
               background: p.bg, color: p.fg, border: `1px solid ${p.border}`,
             });
+            const pillClass = "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80";
+            const renderPill = (p: Pill, key: string | number) => {
+              if (p.filterKey) {
+                const fk = p.filterKey;
+                return (
+                  <button key={key} type="button"
+                    onClick={() => setFilter(prev => prev === fk ? null : fk)}
+                    className={pillClass}
+                    style={pillStyle(p)}
+                  >
+                    {p.label}
+                  </button>
+                );
+              }
+              return (
+                <Link key={key} href={p.href!} className={pillClass} style={pillStyle(p)}>
+                  {p.label}
+                </Link>
+              );
+            };
             return (
               <>
                 {/* Mobile: scrolling ticker */}
                 <div className="md:hidden mt-2 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
                   <style>{`@keyframes dash-pills { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
                   <div style={{ display: "flex", gap: 8, width: "max-content", animation: "dash-pills 20s linear infinite" }}>
-                    {[...PILLS, ...PILLS].map((p, i) => (
-                      <Link key={i} href={p.href}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap"
-                        style={pillStyle(p)}
-                      >
-                        {p.label}
-                      </Link>
-                    ))}
+                    {[...PILLS, ...PILLS].map((p, i) => renderPill(p, i))}
                   </div>
                 </div>
                 {/* Desktop: static flex wrap */}
                 <div className="hidden md:flex items-center gap-2 mt-2 flex-wrap">
-                  {PILLS.map((p, i) => (
-                    <Link key={i} href={p.href}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
-                      style={pillStyle(p)}
-                    >
-                      {p.label}
-                    </Link>
-                  ))}
+                  {PILLS.map((p, i) => renderPill(p, i))}
                 </div>
               </>
             );
           })()}
         </div>
+
+        {/* ── Inline filter pills ── */}
+        {!isLoading && totalCount > 0 && (
+          <div className="flex items-center gap-2 mb-5">
+            {filter === null ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setFilter("practices")}
+                  className="rounded-full transition-colors hover:opacity-80"
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(200, 212, 192, 0.2)",
+                    color: "#8FAF96",
+                    fontSize: 13,
+                    padding: "4px 12px",
+                  }}
+                >
+                  Practices
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter("gatherings")}
+                  className="rounded-full transition-colors hover:opacity-80"
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(200, 212, 192, 0.2)",
+                    color: "#8FAF96",
+                    fontSize: 13,
+                    padding: "4px 12px",
+                  }}
+                >
+                  Gatherings
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setFilter(null)}
+                className="rounded-full transition-colors hover:opacity-80 inline-flex items-center gap-1.5"
+                style={{
+                  background: "rgba(200, 212, 192, 0.12)",
+                  border: "1px solid rgba(200, 212, 192, 0.4)",
+                  color: "#C8D4C0",
+                  fontSize: 13,
+                  padding: "4px 12px",
+                }}
+                aria-label={`Clear ${filter} filter`}
+              >
+                {filter === "practices" ? "Practices" : "Gatherings"} ×
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ── Loading skeleton ── */}
         {isLoading && (
@@ -653,32 +722,65 @@ export default function Dashboard() {
           </div>
         )}
 
-        {!isLoading && (
-          <>
-            {/* 1. Today */}
-            <TimeSection label="Today" items={todayItems} userEmail={userEmail} userName={userName} />
+        {!isLoading && (() => {
+          const byFilter = (item: DashboardItem) => {
+            if (filter === "practices") return item.kind === "moment";
+            if (filter === "gatherings") return item.kind === "gathering";
+            return true;
+          };
+          const fToday = todayItems.filter(byFilter);
+          const fWeek = weekItems.filter(byFilter);
+          const fMonth = monthItems.filter(byFilter);
+          const filteredEmpty = filter !== null && fToday.length === 0 && fWeek.length === 0 && fMonth.length === 0;
 
-            {/* 2. This week */}
-            <TimeSection label="This week" items={weekItems} userEmail={userEmail} userName={userName} />
+          return (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={filter ?? "all"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {/* 1. Today */}
+                <TimeSection label="Today" items={fToday} userEmail={userEmail} userName={userName} />
 
-            {/* 3. This month */}
-            <TimeSection label="This month" items={monthItems} userEmail={userEmail} userName={userName} />
+                {/* 2. This week */}
+                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} />
 
-            {/* Empty state */}
-            {totalCount === 0 && (
-              <div className="rounded-xl p-5 text-center" style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}>
-                <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No practices or gatherings yet. 🌱</p>
-                <div className="flex justify-center gap-4">
-                  <Link href="/moment/new"><span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a practice →</span></Link>
-                  <Link href="/tradition/new"><span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a gathering →</span></Link>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+                {/* 3. This month */}
+                <TimeSection label="This month" items={fMonth} userEmail={userEmail} userName={userName} />
 
-        {/* Prayer Requests */}
-        <PrayerSection maxVisible={3} />
+                {/* Filtered empty state */}
+                {filteredEmpty && (
+                  <div className="py-12 text-center">
+                    <Link
+                      href={filter === "practices" ? "/moment/new" : "/tradition/new"}
+                      className="text-sm transition-opacity hover:opacity-80"
+                      style={{ color: "#8FAF96", fontSize: 14 }}
+                    >
+                      {filter === "practices" ? "No practices yet. Start one. →" : "No gatherings yet. Start one. →"}
+                    </Link>
+                  </div>
+                )}
+
+                {/* Unfiltered empty state */}
+                {filter === null && totalCount === 0 && (
+                  <div className="rounded-xl p-5 text-center" style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}>
+                    <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No practices or gatherings yet. 🌱</p>
+                    <div className="flex justify-center gap-4">
+                      <Link href="/moment/new"><span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a practice →</span></Link>
+                      <Link href="/tradition/new"><span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a gathering →</span></Link>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          );
+        })()}
+
+        {/* Prayer Requests — hidden when filter active */}
+        {filter === null && <PrayerSection maxVisible={3} />}
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
