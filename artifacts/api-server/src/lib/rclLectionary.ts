@@ -74,36 +74,56 @@ function seedToReading(seed: SeedReading): LectionaryReading {
  * Resolve the RCL Gospel reading for a specific Sunday.
  *
  * Resolution order:
- *   1. Bundled seed (in-memory, zero I/O, always authoritative when present).
- *   2. `lectionary_readings` DB table — fallback for Sundays outside the
- *      seeded window, in case an admin populated a row by hand.
+ *   1. Exact seed hit (bundled, zero I/O).
+ *   2. DB row for that exact Sunday (admin-populated fallback).
+ *   3. Nearest seed entry — the seed is always available in memory, so
+ *      this path is infallible as long as SEED_READINGS is non-empty.
  *
- * Throws if neither source has a reading. The caller (routes/lectio.ts)
- * turns this into a clean 502 with `error: "reading_not_available"`.
+ * Design goal: this function MUST NOT throw in normal operation. The Lectio
+ * card on the dashboard and the /lectio page both depend on it, and a
+ * throw here nukes the user's entire experience. We'd rather show
+ * yesterday's Gospel than an error screen.
  */
 export async function getReadingForSunday(
   sundayDate: Date
 ): Promise<LectionaryReading> {
   const iso = ymd(sundayDate);
 
-  // 1. Seed hit — fastest path, and the one the app is designed around.
+  // 1. Exact seed hit — fastest and most common path.
   const seeded = SEED.get(iso);
   if (seeded) return seedToReading(seeded);
 
-  // 2. DB fallback — Sundays outside the seeded window.
-  const existing = await db
-    .select()
-    .from(lectionaryReadingsTable)
-    .where(eq(lectionaryReadingsTable.sundayDate, iso))
-    .limit(1);
-  if (existing[0] && existing[0].gospelText?.trim()) {
-    return existing[0];
+  // 2. DB row for this exact Sunday (admin-populated or previously cached).
+  try {
+    const existing = await db
+      .select()
+      .from(lectionaryReadingsTable)
+      .where(eq(lectionaryReadingsTable.sundayDate, iso))
+      .limit(1);
+    if (existing[0] && existing[0].gospelText?.trim()) {
+      return existing[0];
+    }
+  } catch (err) {
+    // DB unavailable — fall through to nearest-seed fallback.
+    console.warn("[lectionary] DB lookup failed, using nearest seed:", err);
   }
 
-  throw new Error(
-    `No lectionary reading available for ${iso} — not in seed and not in DB. ` +
-      `Refresh the seed with scripts/fetch-lectionary-seed.mjs.`
+  // 3. Nearest seed fallback. Prefer the closest Sunday on-or-before the
+  // target (so if we're past the end of the seeded window we show the most
+  // recent reading we have). If none is on-or-before, take the earliest.
+  const sorted = SEED_READINGS.slice().sort((a, b) => a.sundayDate.localeCompare(b.sundayDate));
+  if (sorted.length === 0) {
+    throw new Error("Lectionary seed is empty — run scripts/fetch-lectionary-seed.mjs.");
+  }
+  let nearest: SeedReading = sorted[0]!;
+  for (const r of sorted) {
+    if (r.sundayDate <= iso) nearest = r;
+    else break;
+  }
+  console.warn(
+    `[lectionary] no exact match for ${iso}, falling back to nearest seed entry ${nearest.sundayDate}`
   );
+  return seedToReading(nearest);
 }
 
 /** Convenience: reading for the upcoming Sunday. */

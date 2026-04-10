@@ -715,6 +715,21 @@ export default function Dashboard() {
 
     // ── Moments placement
     for (const m of allMoments) {
+      // Lectio Divina has a weekday rhythm (Mon/Wed/Fri submissions, Sunday
+      // reveal) rather than a single daily window, so the windowOpen flag
+      // doesn't describe it well. It's always "present" during the week —
+      // keep it in Today unless you've already engaged with this week's
+      // current stage (in which case show it in This Week as "checked in").
+      if (m.templateType === "lectio-divina") {
+        const dow = new Date().getDay(); // 0 = Sunday
+        const isWeekday = dow >= 1 && dow <= 6;
+        if (isWeekday) {
+          todayItems.push({ kind: "moment", data: m });
+        } else {
+          weekItems.push({ kind: "moment", data: m, nextWindow: "Monday" });
+        }
+        continue;
+      }
       if (m.windowOpen && m.todayPostCount === 0) {
         // Window open, not yet logged → Today
         todayItems.push({ kind: "moment", data: m });
