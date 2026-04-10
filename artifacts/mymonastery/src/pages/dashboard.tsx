@@ -167,7 +167,7 @@ function BarCard({
           className={`w-1 flex-shrink-0 ${pulse ? colors.barPulseClass : ""}`}
           style={{ background: pulse ? undefined : colors.bar }}
         />
-        <div className="flex-1 px-4 py-3">
+        <div className="flex-1 px-4 pt-3 pb-2">
           {children}
         </div>
       </motion.div>
@@ -324,21 +324,19 @@ function LetterCard({
 
 const SPLIT_FLAP_CSS = `
 .sf-root { position: relative; width: 100%; height: 20px; overflow: hidden; }
-.sf-line { position: absolute; left: 0; right: 0; top: 0; height: 20px; line-height: 20px; font-size: 14px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: transform; }
-/* Current line slides off to the left — held, then released sideways */
+.sf-line { position: absolute; left: 0; right: 0; top: 0; height: 20px; line-height: 20px; font-size: 14px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: transform, opacity; }
+/* Gentle fade + small slide out to the left */
 @keyframes sf-line-out {
-  0%   { transform: translate3d(0, 0, 0); }
-  55%  { transform: translate3d(-2px, 0, 0); }
-  100% { transform: translate3d(-110%, 0, 0); }
+  0%   { transform: translate3d(0, 0, 0); opacity: 1; }
+  100% { transform: translate3d(-8px, 0, 0); opacity: 0; }
 }
-/* New line slams in from the right — fast arrival, tiny settle */
+/* Gentle fade + small slide in from the right */
 @keyframes sf-line-in {
-  0%   { transform: translate3d(110%, 0, 0); }
-  80%  { transform: translate3d(-1px, 0, 0); }
-  100% { transform: translate3d(0, 0, 0); }
+  0%   { transform: translate3d(8px, 0, 0); opacity: 0; }
+  100% { transform: translate3d(0, 0, 0); opacity: 1; }
 }
-.sf-line-out { animation: sf-line-out 200ms cubic-bezier(0.85, 0, 0.9, 0.2) forwards; }
-.sf-line-in  { animation: sf-line-in 260ms cubic-bezier(0.15, 0.9, 0.2, 1) forwards; }
+.sf-line-out { animation: sf-line-out 260ms ease-in forwards; }
+.sf-line-in  { animation: sf-line-in 300ms ease-out forwards; }
 `;
 
 type FlapPhase = "show" | "out" | "blank" | "in";

@@ -272,47 +272,81 @@ function parseTextsPage(html: string, sourceUrl: string): ParsedReading | null {
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-  });
-  if (!res.ok) throw new Error(`Lectionary fetch failed: ${res.status} ${url}`);
-  return await res.text();
+  // Full browser-like header set. lectionarypage.net sits behind
+  // mod_security which returns 406 Not Acceptable if the request doesn't
+  // look like a real browser (e.g. missing Accept or Accept-Language).
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+        "Upgrade-Insecure-Requests": "1",
+      },
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    if (!res.ok) throw new Error(`Lectionary fetch failed: ${res.status} ${url}`);
+    return await res.text();
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**
  * Fetch (and cache) the RCL Gospel reading for a specific Sunday.
  * The first caller for a given Sunday triggers the network request;
  * every later caller gets the cached DB row.
+ *
+ * We also invalidate any cached row that was written before we switched
+ * to lectionarypage.net — old Vanderbilt rows have `source_url` pointing
+ * at `lectionary.library.vanderbilt.edu` and are no longer authoritative.
  */
 export async function getReadingForSunday(
   sundayDate: Date
 ): Promise<LectionaryReading> {
   const iso = ymd(sundayDate);
 
-  // 1. Cache hit?
+  // 1. Cache hit? (Ignore any row whose sourceUrl isn't from lectionarypage.net.)
   const existing = await db
     .select()
     .from(lectionaryReadingsTable)
     .where(eq(lectionaryReadingsTable.sundayDate, iso))
     .limit(1);
-  if (existing[0]) return existing[0];
+  if (existing[0] && existing[0].sourceUrl && /lectionarypage\.net/i.test(existing[0].sourceUrl)) {
+    return existing[0];
+  }
+  if (existing[0]) {
+    // Stale row from the old Vanderbilt source — drop it so the fresh
+    // fetch below can replace it.
+    await db
+      .delete(lectionaryReadingsTable)
+      .where(eq(lectionaryReadingsTable.sundayDate, iso));
+  }
 
   // 2. Fetch the home page once to find THIS Sunday's URL.
   const homeHtml = await fetchText(HOME_URL);
   const links = parseHomeLinks(homeHtml);
   const link = pickForSunday(links, iso);
   if (!link) {
-    throw new Error(`No lectionary link found on or after ${iso}`);
+    throw new Error(
+      `No lectionary link found on or after ${iso} (parsed ${links.length} cells)`
+    );
   }
 
   // 3. Fetch that one Sunday's page.
   const pageHtml = await fetchText(link.url);
   const parsed = parseTextsPage(pageHtml, link.url);
-  if (!parsed) throw new Error(`Failed to parse lectionary page for ${iso}`);
+  if (!parsed) {
+    throw new Error(
+      `Failed to parse lectionary page for ${iso} (${link.url})`
+    );
+  }
 
   // 4. Store. Use the link's date (what the site says the Sunday is).
   const storeIso = link.iso;

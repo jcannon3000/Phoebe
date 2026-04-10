@@ -1,17 +1,1 @@
-{
-  "version": "0.0.1",
-  "configurations": [
-    {
-      "name": "api-server",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@workspace/api-server", "run", "dev"],
-      "port": 3001
-    },
-    {
-      "name": "frontend",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@workspace/mymonastery", "run", "dev"],
-      "port": 23896
-    }
-  ]
-}
+{"version":"0.0.1","configurations":[]}
