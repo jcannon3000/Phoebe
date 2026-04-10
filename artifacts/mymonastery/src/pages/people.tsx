@@ -177,8 +177,8 @@ export default function People() {
         ) : (
           <motion.div variants={container} initial="hidden" animate="show">
             {/* ── People list ────────────────────────────────── */}
-            <div>
-              {sorted.map((person, idx) => {
+            <div className="space-y-3">
+              {sorted.map((person) => {
                 const isHighlighted = highlightEmail === person.email;
                 const isExpanded = expandedEmail === person.email;
                 const isPresent = presentEmails.has(person.email);
@@ -190,13 +190,17 @@ export default function People() {
                     key={person.email}
                     variants={item}
                     ref={isHighlighted ? highlightRef : null}
+                    className="rounded-2xl overflow-hidden transition-shadow hover:shadow-lg"
+                    style={{
+                      background: "#0F2818",
+                      border: `1px solid ${isHighlighted ? "rgba(111,175,133,0.5)" : "rgba(200,212,192,0.15)"}`,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2)",
+                    }}
                   >
                     {/* Row */}
                     <Link
                       href={`/people/${encodeURIComponent(person.email)}`}
-                      className={`w-full text-left flex items-start gap-4 py-5 px-4 transition-colors duration-150 hover:bg-card/40 ${
-                        isHighlighted ? "bg-primary/5" : ""
-                      }`}
+                      className="w-full text-left flex items-start gap-4 py-5 px-4 transition-colors duration-150 hover:bg-white/[0.02]"
                     >
                       {/* Avatar */}
                       <div
@@ -378,10 +382,6 @@ export default function People() {
                       )}
                     </AnimatePresence>
 
-                    {/* Bottom divider */}
-                    {idx < sorted.length - 1 && (
-                      <div className="h-px mx-4" style={{ backgroundColor: "rgba(200,212,192,0.15)" }} />
-                    )}
                   </motion.div>
                 );
               })}

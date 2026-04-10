@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -257,21 +258,12 @@ export default function MomentsDashboard() {
     <Layout>
       <div className="max-w-2xl mx-auto w-full pb-20">
         {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <Link href="/dashboard" className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
-              ← Dashboard
-            </Link>
-            <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Practices 🙏</h1>
-            <p className="text-sm italic mt-1" style={{ color: "#8FAF96" }}>For the distance between gatherings</p>
-          </div>
-          <Link
-            href="/moment/new"
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-medium text-sm transition-opacity hover:opacity-80"
-            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-          >
-            + New
+        <div className="mb-2">
+          <Link href="/dashboard" className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
+            ← Dashboard
           </Link>
+          <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Practices 🙏</h1>
+          <p className="text-sm italic mt-1" style={{ color: "#8FAF96" }}>For the distance between gatherings</p>
         </div>
 
         <div className="my-5 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
@@ -328,6 +320,16 @@ export default function MomentsDashboard() {
           </motion.div>
         )}
       </div>
+
+      {/* Floating + FAB */}
+      <Link
+        href="/moment/new"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
+        style={{ background: "#1A4A2E", color: "#F0EDE6" }}
+        aria-label="New practice"
+      >
+        <Plus size={24} />
+      </Link>
     </Layout>
   );
 }

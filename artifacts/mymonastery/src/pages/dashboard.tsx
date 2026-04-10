@@ -190,25 +190,25 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#0F2818", border: "1px solid rgba(142,158,66,0.3)", minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+              style={{ background: CATEGORY_COLORS.letters.bg, border: `1px solid ${CATEGORY_COLORS.letters.border}`, minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#8E9E42" }}>📮 Write a letter</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📮 Write a letter</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Start a new correspondence</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/moment/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)", minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+              style={{ background: CATEGORY_COLORS.practices.bg, border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#4A9E5C" }}>🙏 Start a practice</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏 Start a practice</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Prayer, fasting, intercession & more</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#0F2818", border: "1px solid rgba(111,175,133,0.3)", minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+              style={{ background: CATEGORY_COLORS.gatherings.bg, border: `1px solid ${CATEGORY_COLORS.gatherings.border}`, minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#6FAF85" }}>🤝 Start a gathering</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝 Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Meet together regularly</p>
             </button>
           </motion.div>
