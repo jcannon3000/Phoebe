@@ -326,9 +326,7 @@ const SPLIT_FLAP_CSS = `
 /* New line slams up from below — fast arrival, tiny settle like a flap landing */
 @keyframes sf-line-in {
   0%   { transform: translate3d(0, 24px, 0); }
-  45%  { transform: translate3d(0, 1px, 0); }
-  65%  { transform: translate3d(0, -2px, 0); }
-  85%  { transform: translate3d(0, 1px, 0); }
+  80%  { transform: translate3d(0, -1px, 0); }
   100% { transform: translate3d(0, 0, 0); }
 }
 .sf-line-out { animation: sf-line-out 200ms cubic-bezier(0.85, 0, 0.9, 0.2) forwards; }
