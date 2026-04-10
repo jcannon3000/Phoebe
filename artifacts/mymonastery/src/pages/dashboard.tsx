@@ -497,9 +497,9 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
-  // Lectio cycles through three lines: who you're with → the gospel reference
-  // → when the next reflection day is (Mon/Wed/Fri, the three reflection
-  // days — so on Friday the next is Monday, not Sunday).
+  // Lectio cycles through three lines: who you're with → when the next
+  // reflection day is (Mon/Wed/Fri, the three reflection days — so on
+  // Friday the next is Monday, not Sunday) → the gospel reference.
   const lectioFlapLines: string[] = isLectio
     ? (() => {
         const whoLine = subtitle;
@@ -507,7 +507,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         const nextLine = m.lectioNextStageLabel
           ? `Next reflection ${m.lectioNextStageLabel}`
           : "";
-        return [whoLine, verseLine, nextLine];
+        return [whoLine, nextLine, verseLine];
       })()
     : [];
   const mobileFlapLines: string[] = (isLectio ? lectioFlapLines : [subtitle, mobileStatusLine, logCountLine])
@@ -560,9 +560,10 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
               style={{
                 background: "#2D5E3F",
                 color: "#F0EDE6",
-                padding: "8px 16px",
+                padding: "4px 14px",
                 letterSpacing: "0.01em",
                 whiteSpace: "nowrap",
+                lineHeight: "20px",
               }}
               animate={isLectioCaughtUp ? undefined : { scale: [1, 1.05, 1] }}
               transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
@@ -575,9 +576,10 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
               style={{
                 background: "#2D5E3F",
                 color: "#F0EDE6",
-                padding: "8px 16px",
+                padding: "4px 14px",
                 letterSpacing: "0.01em",
                 whiteSpace: "nowrap",
+                lineHeight: "20px",
               }}
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
