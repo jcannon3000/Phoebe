@@ -474,6 +474,45 @@ export async function migrate() {
       )
     `);
 
+    // ── Lectio Divina tables ─────────────────────────────────────────────────
+    // These were originally created via drizzle-kit push during development
+    // and were never added to the runtime migration, so fresh deploys (or any
+    // deploy where the column set has drifted) would blow up on the first
+    // lectio read. Idempotent DDL so it's safe to run on every boot.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS lectionary_readings (
+        id SERIAL PRIMARY KEY,
+        sunday_date DATE NOT NULL UNIQUE,
+        sunday_name TEXT NOT NULL,
+        liturgical_season TEXT,
+        liturgical_year TEXT,
+        gospel_reference TEXT NOT NULL,
+        gospel_text TEXT NOT NULL,
+        source_url TEXT,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS lectio_reflections (
+        id SERIAL PRIMARY KEY,
+        moment_id INTEGER NOT NULL REFERENCES shared_moments(id) ON DELETE CASCADE,
+        sunday_date DATE NOT NULL,
+        user_token TEXT NOT NULL,
+        user_name TEXT NOT NULL,
+        user_email TEXT,
+        stage TEXT NOT NULL,
+        reflection_text TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    // Column added to the schema after the table was first created — add it
+    // on existing deployments that missed the original drizzle-kit push.
+    await run(client, `ALTER TABLE lectio_reflections ADD COLUMN IF NOT EXISTS user_email TEXT`);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS lectio_reflections_unique_stage
+      ON lectio_reflections (moment_id, sunday_date, user_token, stage)
+    `);
+
     // ── Postmark columns ─────────────────────────────────────────────────────
     await run(client, `ALTER TABLE letters ADD COLUMN IF NOT EXISTS postmark_city TEXT`);
     await run(client, `ALTER TABLE letters ADD COLUMN IF NOT EXISTS postmark_country TEXT`);
