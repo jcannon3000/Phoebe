@@ -622,6 +622,13 @@ export default function MomentPostPage() {
     refetchInterval: 15_000,
   });
 
+  // Lectio Divina has its own dedicated page — bounce there if we land here.
+  useEffect(() => {
+    if (data?.moment?.templateType === "lectio-divina" && momentToken && userToken) {
+      setLocation(`/lectio/${momentToken}/${userToken}`, { replace: true });
+    }
+  }, [data?.moment?.templateType, momentToken, userToken, setLocation]);
+
   const postMutation = useMutation({
     mutationFn: (body: object) => apiRequest("POST", `/api/moment/${momentToken}/${userToken}/post`, body),
     onSuccess: (res: { todayPostCount: number; memberCount: number }) => {

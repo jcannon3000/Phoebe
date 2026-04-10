@@ -9,7 +9,7 @@
  *   3. On Sunday, a read-only scrollable "This week's journey" of all three stages.
  */
 
-import { useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -76,29 +76,13 @@ export default function LectioPage() {
     refetchOnWindowFocus: false,
   });
 
-  const [draft, setDraft] = useState("");
-  const [hasEditedDraft, setHasEditedDraft] = useState(false);
-
   const submitMutation = useMutation({
     mutationFn: (body: { stage: Stage; reflectionText: string }) =>
       apiRequest("POST", `/api/lectio/${momentToken}/${userToken}/reflect`, body),
     onSuccess: () => {
-      setDraft("");
-      setHasEditedDraft(false);
       qc.invalidateQueries({ queryKey });
     },
   });
-
-  const currentStage = data?.week.currentStage ?? null;
-  const currentStageData = currentStage ? data?.stages[currentStage] : null;
-
-  // Prefill draft with existing reflection when switching contexts.
-  const prefill = useMemo(() => {
-    if (!currentStageData) return "";
-    return currentStageData.myReflection ?? "";
-  }, [currentStageData]);
-
-  const effectiveDraft = hasEditedDraft ? draft : prefill;
 
   if (isLoading) {
     return (
@@ -198,26 +182,33 @@ export default function LectioPage() {
           </div>
         </section>
 
-        {/* Body: either this-stage reflection box, or the Sunday journey */}
+        {/* Body: either this-week's unlocked stages, or the Sunday journey */}
         {isSunday ? (
           <SundayJourney stages={stages} />
-        ) : currentStage && currentStageData ? (
-          <CurrentStageBlock
-            stageData={currentStageData}
-            draft={effectiveDraft}
-            setDraft={(v) => {
-              setHasEditedDraft(true);
-              setDraft(v);
-            }}
-            onSubmit={() =>
-              submitMutation.mutate({
-                stage: currentStage,
-                reflectionText: effectiveDraft.trim(),
-              })
-            }
-            submitting={submitMutation.isPending}
-            memberCount={data.memberCount}
-          />
+        ) : week.unlockedStages.length > 0 ? (
+          <div className="space-y-10">
+            {week.unlockedStages.map((s, idx) => {
+              const stageData = stages[s];
+              const isCurrent = s === week.currentStage;
+              return (
+                <CurrentStageBlock
+                  key={s}
+                  stageData={stageData}
+                  isCurrent={isCurrent}
+                  isCatchUp={!isCurrent && !stageData.userHasSubmitted}
+                  dividerAbove={idx > 0}
+                  onSubmit={(text) =>
+                    submitMutation.mutate({ stage: s, reflectionText: text })
+                  }
+                  submitting={
+                    submitMutation.isPending &&
+                    submitMutation.variables?.stage === s
+                  }
+                  memberCount={data.memberCount}
+                />
+              );
+            })}
+          </div>
         ) : (
           <div
             className="rounded-xl"
@@ -242,36 +233,89 @@ export default function LectioPage() {
 
 function CurrentStageBlock({
   stageData,
-  draft,
-  setDraft,
+  isCurrent,
+  isCatchUp,
+  dividerAbove,
   onSubmit,
   submitting,
   memberCount,
 }: {
   stageData: StageReveal;
-  draft: string;
-  setDraft: (v: string) => void;
-  onSubmit: () => void;
+  isCurrent: boolean;
+  isCatchUp: boolean;
+  dividerAbove: boolean;
+  onSubmit: (text: string) => void;
   submitting: boolean;
   memberCount: number;
 }) {
   const hasSubmitted = stageData.userHasSubmitted;
+  const [draft, setDraft] = useState(stageData.myReflection ?? "");
+
+  // Re-sync the draft when the server's copy changes (e.g. after a save or
+  // when a new stage unlocks). Touching the textarea overrides this on
+  // subsequent renders because we only sync when myReflection itself changes.
+  useEffect(() => {
+    setDraft(stageData.myReflection ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageData.myReflection]);
 
   return (
     <section>
+      {dividerAbove && (
+        <div
+          style={{
+            height: 1,
+            background: BORDER,
+            marginBottom: 32,
+          }}
+        />
+      )}
       {/* Stage label */}
       <div className="mb-5">
-        <p
-          style={{
-            color: FAINT_GREEN,
-            fontSize: 11,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}
-        >
-          {stageData.label}
-        </p>
+        <div className="flex items-center gap-2 mb-2" style={{ flexWrap: "wrap" }}>
+          <p
+            style={{
+              color: FAINT_GREEN,
+              fontSize: 11,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+            }}
+          >
+            {stageData.label}
+          </p>
+          {isCurrent && (
+            <span
+              style={{
+                color: ACCENT,
+                background: "rgba(111,175,133,0.12)",
+                border: "1px solid rgba(111,175,133,0.28)",
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                padding: "2px 8px",
+                borderRadius: 999,
+              }}
+            >
+              Today
+            </span>
+          )}
+          {isCatchUp && (
+            <span
+              style={{
+                color: FAINT_GREEN,
+                background: "rgba(143,175,150,0.08)",
+                border: `1px solid ${BORDER}`,
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                padding: "2px 8px",
+                borderRadius: 999,
+              }}
+            >
+              Catch up
+            </span>
+          )}
+        </div>
         <p style={{ color: WARM_TEXT, fontSize: 18, lineHeight: 1.5 }}>
           {stageData.prompt}
         </p>
@@ -311,7 +355,7 @@ function CurrentStageBlock({
           </span>
           <button
             type="button"
-            onClick={onSubmit}
+            onClick={() => onSubmit(draft.trim())}
             disabled={submitting || draft.trim().length === 0}
             className="rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
             style={{
