@@ -434,11 +434,15 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? `/moment/${m.momentToken}/${m.myUserToken}`
     : `/moments/${m.id}`;
 
-  // Split-flap subtitle lines: participants → intention → log count
-  const flapLines: string[] = [];
-  if (subtitle) flapLines.push(subtitle);
-  if (safeIntention) flapLines.push(safeIntention);
-  flapLines.push(`${m.todayPostCount} of ${m.memberCount} have prayed today`);
+  // Split-flap subtitle lines: participants → intention → log count.
+  // Any empty line is skipped entirely.
+  const logCountLine =
+    m.memberCount > 0
+      ? `${m.todayPostCount} of ${m.memberCount} have prayed today`
+      : "";
+  const flapLines: string[] = [subtitle, safeIntention ?? "", logCountLine]
+    .map(s => (s ?? "").trim())
+    .filter(s => s.length > 0);
 
   return (
     <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse} category="practices">
