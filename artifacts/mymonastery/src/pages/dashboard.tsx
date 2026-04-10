@@ -461,7 +461,15 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       </div>
       <div className="flex items-start justify-between gap-2 mt-1.5">
         <div className="min-w-0 flex-1">
-          <SplitFlapLine lines={flapLines} />
+          {shouldPulse ? (
+            subtitle ? (
+              <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {subtitle}
+              </p>
+            ) : null
+          ) : (
+            <SplitFlapLine lines={flapLines} />
+          )}
           {isIntercession && safeIntercessionTopic && (
             <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
               🙏 {safeIntercessionTopic}
@@ -469,9 +477,9 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           )}
         </div>
         <div className="shrink-0 flex items-center">
-          {m.windowOpen && m.todayPostCount === 0 && (
+          {shouldPulse && (
             <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-              Open
+              Pray 🙏
             </span>
           )}
         </div>
