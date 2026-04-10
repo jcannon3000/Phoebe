@@ -326,17 +326,25 @@ export async function getReadingForSunday(
 ): Promise<LectionaryReading> {
   const iso = ymd(sundayDate);
 
-  // 1. DB cache hit (only trust rows from lectionarypage.net).
+  // 1. DB cache hit — only trust rows from lectionarypage.net with real
+  // gospel text. Anything else (old Vanderbilt rows, empty rows from a
+  // partial write, etc.) gets dropped so the seed or live fetch can
+  // replace it.
   const existing = await db
     .select()
     .from(lectionaryReadingsTable)
     .where(eq(lectionaryReadingsTable.sundayDate, iso))
     .limit(1);
-  if (existing[0] && existing[0].sourceUrl && /lectionarypage\.net/i.test(existing[0].sourceUrl)) {
-    return existing[0];
+  const rowIsValid =
+    existing[0] &&
+    existing[0].sourceUrl &&
+    /lectionarypage\.net/i.test(existing[0].sourceUrl) &&
+    typeof existing[0].gospelText === "string" &&
+    existing[0].gospelText.trim().length > 0;
+  if (rowIsValid) {
+    return existing[0]!;
   }
   if (existing[0]) {
-    // Stale row from the old Vanderbilt source — drop it.
     await db
       .delete(lectionaryReadingsTable)
       .where(eq(lectionaryReadingsTable.sundayDate, iso));
@@ -392,18 +400,22 @@ async function upsertReading(row: {
   gospelText: string;
   sourceUrl: string;
 }): Promise<LectionaryReading> {
-  // Another caller may have raced us.
-  const again = await db
-    .select()
-    .from(lectionaryReadingsTable)
-    .where(eq(lectionaryReadingsTable.sundayDate, row.sundayDate))
-    .limit(1);
-  if (again[0] && again[0].sourceUrl && /lectionarypage\.net/i.test(again[0].sourceUrl)) {
-    return again[0];
-  }
+  // True upsert — sundayDate has a unique constraint, so we can ON CONFLICT
+  // overwrite any stale/empty row with the good data.
   const [inserted] = await db
     .insert(lectionaryReadingsTable)
     .values(row)
+    .onConflictDoUpdate({
+      target: lectionaryReadingsTable.sundayDate,
+      set: {
+        sundayName: row.sundayName,
+        liturgicalSeason: row.liturgicalSeason,
+        liturgicalYear: row.liturgicalYear,
+        gospelReference: row.gospelReference,
+        gospelText: row.gospelText,
+        sourceUrl: row.sourceUrl,
+      },
+    })
     .returning();
   return inserted;
 }
