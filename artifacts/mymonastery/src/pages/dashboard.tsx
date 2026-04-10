@@ -772,13 +772,21 @@ export default function Dashboard() {
               );
             };
             // When a filter is active: collapse the whole pill row down to
-            // just the one active pill (which, when clicked, clears the filter).
+            // just the one active pill with an × to clear the filter.
             if (filter !== null) {
               const activePill = PILLS.find(p => p.filterKey === filter);
               if (activePill) {
                 return (
                   <div className="flex items-center gap-2 mt-2">
-                    {renderPill(activePill, "active")}
+                    <button
+                      type="button"
+                      onClick={() => setFilter(null)}
+                      className={pillClass}
+                      style={pillStyle(activePill)}
+                    >
+                      {activePill.label}
+                      <span style={{ opacity: 0.7, fontSize: "0.85em", lineHeight: 1 }}>×</span>
+                    </button>
                   </div>
                 );
               }
