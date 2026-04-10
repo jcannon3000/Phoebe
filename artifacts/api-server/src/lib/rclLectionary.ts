@@ -1,27 +1,17 @@
 /**
- * Revised Common Lectionary (RCL) fetcher — lazy + cached per Sunday.
+ * Revised Common Lectionary (RCL) reading lookup — seed-only, no network.
  *
- * Fetches the Gospel reading for a given Sunday from
- * https://www.lectionarypage.net, parses out the Sunday name,
- * liturgical season/year, Gospel reference, and full plain-text passage,
- * then stores it in the `lectionary_readings` table.
+ * The Gospel reading for a given Sunday is served directly from a bundled
+ * seed file (`src/data/lectionary/seed.ts`) that is pre-fetched locally via
+ * `scripts/fetch-lectionary-seed.mjs` and committed to the repo. The seed
+ * currently covers ~24 weeks of Sundays; refresh it quarterly.
  *
- * Strategy:
- *   1. The first user who needs a given Sunday triggers a fetch.
- *   2. All subsequent users read from the DB cache.
- *   3. Only *one* Sunday is fetched at a time — we never crawl the whole site.
- *
- * Parsing:
- *   - The home page (/) is a month-by-month calendar grid. Each <td> cell
- *     has a day number (<font size="+2">12</font>) and, on Sundays/feasts,
- *     an <a href="YearX_RCL/Season/...html">Title</a>. Month boundaries are
- *     marked by <h3>Month Year</h3> headings. We walk the page in order,
- *     tracking the current month/year, and build {iso, url, title} records.
- *   - Each Sunday page is an <article> with:
- *       <h2 class="lessonHeading" id="gsp1">The Gospel</h2>
- *       <h3 class="lessonCitation">John 20:19-31</h3>
- *       <div><p class="lessonText">…</p>…</div>
- *     Season/year come from the URL path (YearA_RCL/Easter/…).
+ * We do NOT hit lectionarypage.net from the server — Railway's outbound IP
+ * is blocked by their mod_security, and we don't want the Lectio card to
+ * depend on flaky third-party availability anyway. If a user asks for a
+ * Sunday outside the seeded window, we fall through to the lectionary_readings
+ * DB table (in case an admin populated it by hand), and otherwise throw a
+ * clear "reading_not_available" error.
  */
 
 import { db, lectionaryReadingsTable } from "@workspace/db";
@@ -29,18 +19,10 @@ import { eq } from "drizzle-orm";
 import type { LectionaryReading } from "@workspace/db";
 import { SEED_READINGS, type SeedReading } from "../data/lectionary/seed";
 
-// ─── Pre-seeded readings ────────────────────────────────────────────────────
-// 12 weeks of Sunday Gospel readings baked into the repo so the app works
-// even if lectionarypage.net blocks our server IP. Refresh by running
-// scripts/fetch-lectionary-seed.mjs from a machine that can reach the site.
+// In-memory index of the bundled seed. Built once at module load.
 const SEED: Map<string, SeedReading> = new Map(
   SEED_READINGS.map((r) => [r.sundayDate, r])
 );
-
-const USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-const BASE_URL = "https://www.lectionarypage.net";
-const HOME_URL = `${BASE_URL}/`;
 
 // ─── Date helpers ───────────────────────────────────────────────────────────
 
@@ -67,360 +49,64 @@ export function mostRecentSundayDate(today = new Date()): Date {
   return d;
 }
 
-// ─── Parser ─────────────────────────────────────────────────────────────────
-
-function stripTags(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&#8217;|&rsquo;/g, "\u2019")
-    .replace(/&#8216;|&lsquo;/g, "\u2018")
-    .replace(/&#8220;|&ldquo;/g, "\u201C")
-    .replace(/&#8221;|&rdquo;/g, "\u201D")
-    .replace(/&#8211;|&ndash;/g, "\u2013")
-    .replace(/&#8212;|&mdash;/g, "\u2014")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/[ \t]+/g, " ")
-    .replace(/\s+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-const MONTHS: Record<string, number> = {
-  january: 1,
-  february: 2,
-  march: 3,
-  april: 4,
-  may: 5,
-  june: 6,
-  july: 7,
-  august: 8,
-  september: 9,
-  october: 10,
-  november: 11,
-  december: 12,
-};
-
-interface HomeLink {
-  iso: string; // YYYY-MM-DD
-  url: string; // absolute
-  title: string;
-}
-
-/**
- * Walk the home page and build a list of every linked day in the calendar.
- * The page is a sequence of `<h3>Month Year</h3>` sections, each followed by
- * a calendar table. Cells vary a lot:
- *   <td ...><font size="+2">12<br></font><a href="...">Title</a></td>
- *   <td ...><font size="+2">15</font><font size="+2"><br></font><a ...>…</a></td>
- *   <td ...><font size="+2" color="#cc3333">29</font><font size="+2"><br></font><a …
- * Strategy: scan linearly for either a month header or a `<td…>` cell.
- * For each cell, extract the first numeric day out of the first `<font>` tag
- * and the first anchor inside the cell.
- */
-function parseHomeLinks(html: string): HomeLink[] {
-  const out: HomeLink[] = [];
-  // Either a month header, OR an opening <td…> that begins a cell.
-  const tokenRe = new RegExp(
-    String.raw`<h3>[^<]*?(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\s*<\/h3>` +
-      "|" +
-      String.raw`<td\b[^>]*>`,
-    "gi"
-  );
-  const dayRe = /<font[^>]*>\s*(\d{1,2})\b/i;
-  const anchorRe = /<a\s+href="([^"]+\.html)"[^>]*>([\s\S]*?)<\/a>/i;
-
-  let currentMonth = 0;
-  let currentYear = 0;
-  let m: RegExpExecArray | null;
-  while ((m = tokenRe.exec(html)) !== null) {
-    if (m[1] && m[2]) {
-      currentMonth = MONTHS[m[1].toLowerCase()] ?? 0;
-      currentYear = parseInt(m[2], 10);
-      continue;
-    }
-    if (!currentMonth || !currentYear) continue;
-    // Slice out the cell body until the matching `</td>` (naive — first
-    // occurrence; cells don't nest).
-    const cellStart = m.index + m[0].length;
-    const cellEnd = html.indexOf("</td>", cellStart);
-    if (cellEnd === -1) continue;
-    const cell = html.slice(cellStart, cellEnd);
-
-    const dayMatch = cell.match(dayRe);
-    if (!dayMatch) continue;
-    const day = parseInt(dayMatch[1], 10);
-    if (!day || day < 1 || day > 31) continue;
-
-    const anchorMatch = cell.match(anchorRe);
-    if (!anchorMatch) continue;
-    const rawHref = anchorMatch[1];
-    const title = stripTags(anchorMatch[2] ?? "");
-
-    const iso = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const url = rawHref.startsWith("http")
-      ? rawHref
-      : `${BASE_URL}/${rawHref.replace(/^\.?\/?/, "")}`;
-    out.push({ iso, url, title });
-  }
-  return out;
-}
-
-/**
- * Pick the link whose iso matches the target Sunday exactly. lectionarypage.net
- * anchors Sunday readings to the actual calendar date, so this should be an
- * exact hit. We also accept the nearest on-or-after as a defensive fallback.
- * We only consider `_RCL.html` links (skip RSL / older format pages).
- */
-function pickForSunday(links: HomeLink[], targetIso: string): HomeLink | null {
-  const rclOnly = links.filter((l) => /_RCL\.html$/i.test(l.url));
-  // Exact match first.
-  const exact = rclOnly.find((l) => l.iso === targetIso);
-  if (exact) return exact;
-  // Otherwise closest on-or-after (Sunday pages only — heuristic: title
-  // contains "Sunday" or "Pentecost" or "Epiphany" or "Christmas" or "Easter").
-  const sundayish = rclOnly.filter(
-    (l) => /Sunday|Pentecost|Epiphany|Christmas|Easter|Advent|Trinity|Proper|Lent/i.test(l.title)
-  );
-  const sorted = [...sundayish].sort((a, b) => a.iso.localeCompare(b.iso));
-  for (const l of sorted) {
-    if (l.iso >= targetIso) return l;
-  }
-  return null;
-}
-
-interface ParsedReading {
-  sundayName: string;
-  liturgicalSeason: string | null;
-  liturgicalYear: string | null;
-  gospelReference: string;
-  gospelText: string;
-}
-
-/**
- * Extract the liturgical Year (A/B/C) and Season from a path like
- *   /YearA_RCL/Easter/AEaster2_RCL.html
- *   /YearABC_RCL/HolyDays/Annunc_RCL.html
- */
-function inferYearAndSeason(url: string): { year: string | null; season: string | null } {
-  const m = url.match(/\/(Year[ABC]+)_RCL\/([^/]+)\//);
-  if (!m) return { year: null, season: null };
-  const rawYear = m[1]; // YearA, YearABC, etc.
-  const rawSeason = m[2]; // Easter, Advent, HolyWk, Pentecost, HolyDays, Epiphany, Lent, Christmas
-  const year = rawYear === "YearABC" ? null : rawYear.replace(/^Year/, "Year ");
-  const seasonMap: Record<string, string> = {
-    Advent: "Advent",
-    Christmas: "Christmas",
-    Epiphany: "Epiphany",
-    Lent: "Lent",
-    HolyWk: "Holy Week",
-    Easter: "Easter",
-    Pentecost: "Season after Pentecost",
-    HolyDays: "Holy Days",
-  };
-  const season = seasonMap[rawSeason] ?? rawSeason;
-  return { year, season };
-}
-
-function parseTextsPage(html: string, sourceUrl: string): ParsedReading | null {
-  // Sunday name from the <h1 class="sundayTitle">…</h1>
-  const sundayMatch = html.match(/<h1[^>]*class="sundayTitle"[^>]*>([\s\S]*?)<\/h1>/i);
-  const sundayName = sundayMatch ? stripTags(sundayMatch[1]) : "This Sunday";
-
-  // Year/season inferred from URL (more reliable than page chrome).
-  const { year, season } = inferYearAndSeason(sourceUrl);
-
-  // Isolate the <article> that contains "The Gospel". Each lesson lives in its
-  // own <article>; find the one whose heading id is "gsp1" (or text says
-  // "The Gospel").
-  let gospelArticle: string | null = null;
-  const articleRe = /<article\b[\s\S]*?<\/article>/gi;
-  let am: RegExpExecArray | null;
-  while ((am = articleRe.exec(html)) !== null) {
-    const a = am[0];
-    if (/id="gsp1"/i.test(a) || /lessonHeading[^>]*>\s*The Gospel\b/i.test(a)) {
-      gospelArticle = a;
-      break;
-    }
-  }
-  if (!gospelArticle) return null;
-
-  // Reference: <h3 class="lessonCitation">John 20:19-31</h3>
-  const refMatch = gospelArticle.match(
-    /<h3[^>]*class="lessonCitation"[^>]*>([\s\S]*?)<\/h3>/i
-  );
-  const gospelReference = refMatch ? stripTags(refMatch[1]) : "";
-
-  // Text: all <p class="lessonText"> paragraphs inside this article.
-  const paraRe = /<p[^>]*class="lessonText"[^>]*>([\s\S]*?)<\/p>/gi;
-  const paragraphs: string[] = [];
-  let pm: RegExpExecArray | null;
-  while ((pm = paraRe.exec(gospelArticle)) !== null) {
-    const text = stripTags(pm[1]);
-    if (text) paragraphs.push(text);
-  }
-  const gospelText = paragraphs.join("\n\n");
-
-  if (!gospelReference || !gospelText) return null;
-
-  return {
-    sundayName,
-    liturgicalSeason: season,
-    liturgicalYear: year,
-    gospelReference,
-    gospelText,
-  };
-}
-
 // ─── Public API ─────────────────────────────────────────────────────────────
 
-async function fetchText(url: string): Promise<string> {
-  // Full browser-like header set. lectionarypage.net sits behind
-  // mod_security which returns 406 Not Acceptable if the request doesn't
-  // look like a real browser (e.g. missing Accept or Accept-Language).
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-  try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Cache-Control": "no-cache",
-        Pragma: "no-cache",
-        "Upgrade-Insecure-Requests": "1",
-      },
-      signal: controller.signal,
-      redirect: "follow",
-    });
-    if (!res.ok) throw new Error(`Lectionary fetch failed: ${res.status} ${url}`);
-    return await res.text();
-  } finally {
-    clearTimeout(timeout);
-  }
+/**
+ * Shape the seed row into a LectionaryReading. The route consumers only use
+ * sundayDate/sundayName/season/year/reference/text/sourceUrl, but we return
+ * the full DB row shape so callers can treat seed hits and DB hits uniformly.
+ */
+function seedToReading(seed: SeedReading): LectionaryReading {
+  return {
+    id: 0,
+    sundayDate: seed.sundayDate,
+    sundayName: seed.sundayName,
+    liturgicalSeason: seed.liturgicalSeason,
+    liturgicalYear: seed.liturgicalYear,
+    gospelReference: seed.gospelReference,
+    gospelText: seed.gospelText,
+    sourceUrl: seed.sourceUrl,
+    fetchedAt: new Date(),
+  };
 }
 
 /**
- * Fetch (and cache) the RCL Gospel reading for a specific Sunday.
+ * Resolve the RCL Gospel reading for a specific Sunday.
  *
  * Resolution order:
- *   1. DB cache (row from lectionarypage.net — either previously fetched
- *      live or previously seeded).
- *   2. Bundled seed.json (12 weeks of pre-fetched readings; inserted into
- *      the DB on first use).
- *   3. Live network fetch of lectionarypage.net. This is the fallback when
- *      a user asks for a date we didn't pre-seed. Railway's outbound IP may
- *      be blocked by the site's mod_security, which is why (2) exists.
+ *   1. Bundled seed (in-memory, zero I/O, always authoritative when present).
+ *   2. `lectionary_readings` DB table — fallback for Sundays outside the
+ *      seeded window, in case an admin populated a row by hand.
  *
- * Old Vanderbilt rows (source_url pointing at vanderbilt.edu) are dropped
- * on first encounter so they can be replaced.
+ * Throws if neither source has a reading. The caller (routes/lectio.ts)
+ * turns this into a clean 502 with `error: "reading_not_available"`.
  */
 export async function getReadingForSunday(
   sundayDate: Date
 ): Promise<LectionaryReading> {
   const iso = ymd(sundayDate);
 
-  // 1. DB cache hit — only trust rows from lectionarypage.net with real
-  // gospel text. Anything else (old Vanderbilt rows, empty rows from a
-  // partial write, etc.) gets dropped so the seed or live fetch can
-  // replace it.
+  // 1. Seed hit — fastest path, and the one the app is designed around.
+  const seeded = SEED.get(iso);
+  if (seeded) return seedToReading(seeded);
+
+  // 2. DB fallback — Sundays outside the seeded window.
   const existing = await db
     .select()
     .from(lectionaryReadingsTable)
     .where(eq(lectionaryReadingsTable.sundayDate, iso))
     .limit(1);
-  const rowIsValid =
-    existing[0] &&
-    existing[0].sourceUrl &&
-    /lectionarypage\.net/i.test(existing[0].sourceUrl) &&
-    typeof existing[0].gospelText === "string" &&
-    existing[0].gospelText.trim().length > 0;
-  if (rowIsValid) {
-    return existing[0]!;
-  }
-  if (existing[0]) {
-    await db
-      .delete(lectionaryReadingsTable)
-      .where(eq(lectionaryReadingsTable.sundayDate, iso));
+  if (existing[0] && existing[0].gospelText?.trim()) {
+    return existing[0];
   }
 
-  // 2. Seed hit — store it in the DB and return.
-  const seeded = SEED.get(iso);
-  if (seeded) {
-    return upsertReading({
-      sundayDate: seeded.sundayDate,
-      sundayName: seeded.sundayName,
-      liturgicalSeason: seeded.liturgicalSeason,
-      liturgicalYear: seeded.liturgicalYear,
-      gospelReference: seeded.gospelReference,
-      gospelText: seeded.gospelText,
-      sourceUrl: seeded.sourceUrl,
-    });
-  }
-
-  // 3. Live network fetch fallback.
-  const homeHtml = await fetchText(HOME_URL);
-  const links = parseHomeLinks(homeHtml);
-  const link = pickForSunday(links, iso);
-  if (!link) {
-    throw new Error(
-      `No lectionary link found on or after ${iso} (parsed ${links.length} cells)`
-    );
-  }
-  const pageHtml = await fetchText(link.url);
-  const parsed = parseTextsPage(pageHtml, link.url);
-  if (!parsed) {
-    throw new Error(
-      `Failed to parse lectionary page for ${iso} (${link.url})`
-    );
-  }
-  return upsertReading({
-    sundayDate: link.iso, // the site's canonical date for this reading
-    sundayName: parsed.sundayName,
-    liturgicalSeason: parsed.liturgicalSeason,
-    liturgicalYear: parsed.liturgicalYear,
-    gospelReference: parsed.gospelReference,
-    gospelText: parsed.gospelText,
-    sourceUrl: link.url,
-  });
+  throw new Error(
+    `No lectionary reading available for ${iso} — not in seed and not in DB. ` +
+      `Refresh the seed with scripts/fetch-lectionary-seed.mjs.`
+  );
 }
 
-async function upsertReading(row: {
-  sundayDate: string;
-  sundayName: string;
-  liturgicalSeason: string | null;
-  liturgicalYear: string | null;
-  gospelReference: string;
-  gospelText: string;
-  sourceUrl: string;
-}): Promise<LectionaryReading> {
-  // True upsert — sundayDate has a unique constraint, so we can ON CONFLICT
-  // overwrite any stale/empty row with the good data.
-  const [inserted] = await db
-    .insert(lectionaryReadingsTable)
-    .values(row)
-    .onConflictDoUpdate({
-      target: lectionaryReadingsTable.sundayDate,
-      set: {
-        sundayName: row.sundayName,
-        liturgicalSeason: row.liturgicalSeason,
-        liturgicalYear: row.liturgicalYear,
-        gospelReference: row.gospelReference,
-        gospelText: row.gospelText,
-        sourceUrl: row.sourceUrl,
-      },
-    })
-    .returning();
-  return inserted;
-}
-
-/** Convenience: cached reading for the upcoming Sunday. */
+/** Convenience: reading for the upcoming Sunday. */
 export async function getUpcomingSundayReading(): Promise<LectionaryReading> {
   return getReadingForSunday(nextSundayDate());
 }

@@ -162,8 +162,8 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
     reading = await getReadingForSunday(sundayDate);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[lectio] fetch failed:", err);
-    res.status(502).json({ error: "lectionary_fetch_failed", detail: msg });
+    console.error("[lectio] reading lookup failed:", err);
+    res.status(502).json({ error: "reading_not_available", detail: msg });
     return;
   }
   const sundayIso = reading.sundayDate;
@@ -321,7 +321,7 @@ router.post("/lectio/:momentToken/:userToken/reflect", async (req, res): Promise
   try {
     reading = await getReadingForSunday(nextSundayDate());
   } catch {
-    res.status(502).json({ error: "lectionary_fetch_failed" });
+    res.status(502).json({ error: "reading_not_available" });
     return;
   }
   const sundayIso = reading.sundayDate;
