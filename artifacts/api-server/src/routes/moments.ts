@@ -896,89 +896,121 @@ router.post("/moments", async (req, res): Promise<void> => {
 
 // ─── GET /api/moments — list all standalone moments the user participates in ─
 router.get("/moments", async (req, res): Promise<void> => {
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+    if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
-  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
-  // Find all moment_user_tokens for this user's email
-  const userTokenRows = await db.select().from(momentUserTokensTable)
-    .where(eq(momentUserTokensTable.email, user.email));
+    // Find all moment_user_tokens for this user's email
+    const userTokenRows = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.email, user.email));
 
-  const momentIds = [...new Set(userTokenRows.map(t => t.momentId))];
-  if (momentIds.length === 0) { res.json({ moments: [] }); return; }
+    const momentIds = [...new Set(userTokenRows.map(t => t.momentId))];
+    if (momentIds.length === 0) { res.json({ moments: [] }); return; }
 
-  const flatMoments = (await db.select().from(sharedMomentsTable)
-    .where(inArray(sharedMomentsTable.id, momentIds)))
-    .filter(m => m.ritualId === null && m.state !== "archived");
+    const flatMoments = (await db.select().from(sharedMomentsTable)
+      .where(inArray(sharedMomentsTable.id, momentIds)))
+      .filter(m => m.ritualId === null && m.state !== "archived");
 
-  // If any practices are Lectio Divina, fetch the current Sunday's reading
-  // once and reuse it across all of them.
-  const anyLectio = flatMoments.some(m => m.templateType === "lectio-divina");
-  let lectioReadingMeta: { sundayDate: string; sundayName: string | null; gospelReference: string | null; gospelText: string | null } | null = null;
-  if (anyLectio) {
-    try {
-      const reading = await getReadingForSunday(nextSundayDate());
-      lectioReadingMeta = {
-        sundayDate: reading.sundayDate,
-        sundayName: reading.sundayName,
-        gospelReference: reading.gospelReference,
-        gospelText: reading.gospelText,
-      };
-    } catch (err) {
-      console.warn("[moments] lectio reading fetch failed:", err);
+    // If any practices are Lectio Divina, fetch the current Sunday's reading
+    // once and reuse it across all of them.
+    const anyLectio = flatMoments.some(m => m.templateType === "lectio-divina");
+    let lectioReadingMeta: { sundayDate: string; sundayName: string | null; gospelReference: string | null; gospelText: string | null } | null = null;
+    if (anyLectio) {
+      try {
+        const reading = await getReadingForSunday(nextSundayDate());
+        lectioReadingMeta = {
+          sundayDate: reading.sundayDate,
+          sundayName: reading.sundayName,
+          gospelReference: reading.gospelReference,
+          gospelText: reading.gospelText,
+        };
+      } catch (err) {
+        console.warn("[moments] lectio reading fetch failed:", err);
+      }
     }
+
+    // Enrich each moment INDEPENDENTLY. If any single moment's enrichment
+    // throws (bad timezone, computeWindowOpen edge case, a null-dereference
+    // we didn't anticipate, etc.), we log it and fall back to the raw row
+    // so the rest of the user's practices still appear. Without this,
+    // one broken moment takes down the entire dashboard + /practices page.
+    const enriched = await Promise.all(flatMoments.map(async (m) => {
+      try {
+        const allMembers = await db.select().from(momentUserTokensTable)
+          .where(eq(momentUserTokensTable.momentId, m.id));
+
+        const todayPosts = await db.select().from(momentPostsTable)
+          .where(and(eq(momentPostsTable.momentId, m.id), eq(momentPostsTable.windowDate, todayDateInTz(m.timezone || "UTC"))));
+
+        const windows = await db.select().from(momentWindowsTable)
+          .where(eq(momentWindowsTable.momentId, m.id));
+        const latestWindow = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate))[0] ?? null;
+
+        const myToken = userTokenRows.find(t => t.momentId === m.id);
+
+        // Lectio-specific enrichment: this week's reading + how many members have
+        // submitted any reflection for the current Sunday anchor.
+        let lectioSundayName: string | null = null;
+        let lectioGospelReference: string | null = null;
+        let lectioGospelText: string | null = null;
+        let lectioResponseCount = 0;
+        if (m.templateType === "lectio-divina" && lectioReadingMeta) {
+          lectioSundayName = lectioReadingMeta.sundayName;
+          lectioGospelReference = lectioReadingMeta.gospelReference;
+          lectioGospelText = lectioReadingMeta.gospelText;
+          const weekReflections = await db.select().from(lectioReflectionsTable)
+            .where(and(
+              eq(lectioReflectionsTable.momentId, m.id),
+              eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
+            ));
+          lectioResponseCount = new Set(weekReflections.map(r => r.userToken)).size;
+        }
+
+        return {
+          ...m,
+          memberCount: allMembers.length,
+          members: allMembers.map(t => ({ name: t.name, email: t.email })),
+          todayPostCount: todayPosts.length,
+          windowOpen: computeWindowOpen(m),
+          minutesLeft: minutesRemaining(m),
+          latestWindow,
+          myUserToken: myToken?.userToken ?? null,
+          lectioSundayName,
+          lectioGospelReference,
+          lectioGospelText,
+          lectioResponseCount,
+        };
+      } catch (err) {
+        console.error(`[moments] enrichment failed for moment ${m.id} (${m.templateType}):`, err);
+        // Minimal fallback — return the raw row with safe defaults so the
+        // card still renders (missing badges/counts, but visible).
+        const myToken = userTokenRows.find(t => t.momentId === m.id);
+        return {
+          ...m,
+          memberCount: 0,
+          members: [],
+          todayPostCount: 0,
+          windowOpen: false,
+          minutesLeft: 0,
+          latestWindow: null,
+          myUserToken: myToken?.userToken ?? null,
+          lectioSundayName: null,
+          lectioGospelReference: null,
+          lectioGospelText: null,
+          lectioResponseCount: 0,
+        };
+      }
+    }));
+
+    res.json({ moments: enriched });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[GET /api/moments] top-level failure:", err);
+    if (!res.headersSent) res.status(500).json({ error: "moments_list_failed", detail: msg });
   }
-
-  const enriched = await Promise.all(flatMoments.map(async (m) => {
-    const allMembers = await db.select().from(momentUserTokensTable)
-      .where(eq(momentUserTokensTable.momentId, m.id));
-
-    const todayPosts = await db.select().from(momentPostsTable)
-      .where(and(eq(momentPostsTable.momentId, m.id), eq(momentPostsTable.windowDate, todayDateInTz(m.timezone || "UTC"))));
-
-    const windows = await db.select().from(momentWindowsTable)
-      .where(eq(momentWindowsTable.momentId, m.id));
-    const latestWindow = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate))[0] ?? null;
-
-    const myToken = userTokenRows.find(t => t.momentId === m.id);
-
-    // Lectio-specific enrichment: this week's reading + how many members have
-    // submitted any reflection for the current Sunday anchor.
-    let lectioSundayName: string | null = null;
-    let lectioGospelReference: string | null = null;
-    let lectioGospelText: string | null = null;
-    let lectioResponseCount = 0;
-    if (m.templateType === "lectio-divina" && lectioReadingMeta) {
-      lectioSundayName = lectioReadingMeta.sundayName;
-      lectioGospelReference = lectioReadingMeta.gospelReference;
-      lectioGospelText = lectioReadingMeta.gospelText;
-      const weekReflections = await db.select().from(lectioReflectionsTable)
-        .where(and(
-          eq(lectioReflectionsTable.momentId, m.id),
-          eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
-        ));
-      lectioResponseCount = new Set(weekReflections.map(r => r.userToken)).size;
-    }
-
-    return {
-      ...m,
-      memberCount: allMembers.length,
-      members: allMembers.map(t => ({ name: t.name, email: t.email })),
-      todayPostCount: todayPosts.length,
-      windowOpen: computeWindowOpen(m),
-      minutesLeft: minutesRemaining(m),
-      latestWindow,
-      myUserToken: myToken?.userToken ?? null,
-      lectioSundayName,
-      lectioGospelReference,
-      lectioGospelText,
-      lectioResponseCount,
-    };
-  }));
-
-  res.json({ moments: enriched });
 });
 
 // ─── GET /api/moments/:id — full detail for one moment ──────────────────────
