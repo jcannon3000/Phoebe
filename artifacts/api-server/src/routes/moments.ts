@@ -756,6 +756,29 @@ router.post("/moments", async (req, res): Promise<void> => {
     ].join("\n");
   }
 
+  // ─── Helper for Lectio Divina all-day event start date ────────────────────
+  // Returns the next upcoming Mon/Wed/Fri in the target timezone as YYYY-MM-DD,
+  // including today if today is already Mon/Wed/Fri.
+  function getNextLectioDateStr(tz: string): string {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      weekday: "short",
+    }).formatToParts(new Date());
+    const y = parts.find(p => p.type === "year")?.value ?? "2026";
+    const mo = parts.find(p => p.type === "month")?.value ?? "01";
+    const day = parts.find(p => p.type === "day")?.value ?? "01";
+    const wd = parts.find(p => p.type === "weekday")?.value ?? "Mon";
+    const DOW: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+    const LECTIO_DAYS = new Set([1, 3, 5]); // Mon, Wed, Fri
+    const startDow = DOW[wd] ?? 1;
+    let offset = 0;
+    while (!LECTIO_DAYS.has((startDow + offset) % 7)) offset++;
+    const dt = new Date(`${y}-${mo}-${day}T00:00:00Z`);
+    dt.setUTCDate(dt.getUTCDate() + offset);
+    return dt.toISOString().split("T")[0];
+  }
+
   // ─── Helpers for fasting all-day event date ─────────────────────────────────
   function getFastingStartDateStr(): string {
     const today = new Date();
@@ -868,6 +891,29 @@ router.post("/moments", async (req, res): Promise<void> => {
         attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
         recurrence: intercessionRecurrence,
         reminders: [{ method: "popup", minutes: 0 }], // morning of
+        transparency: "transparent",
+      }).catch(() => null);
+
+      if (eventId) {
+        if (orgToken) {
+          await db.update(momentUserTokensTable)
+            .set({ googleCalendarEventId: eventId })
+            .where(eq(momentUserTokensTable.id, orgToken.id));
+        }
+        gcalCreated = true;
+      }
+    } else if (templateType === "lectio-divina") {
+      // Lectio Divina: all-day events on Mon/Wed/Fri.
+      // Day-of only — no day-before reminder.
+      const lectioDateStr = getNextLectioDateStr(tz);
+      const lectioTitle = `📜 ${name} — Lectio Divina`;
+      const eventId = await createAllDayCalendarEvent(sessionUserId, {
+        summary: lectioTitle,
+        description: orgDescription,
+        dateStr: lectioDateStr,
+        attendees: attendeeEmails.length > 0 ? attendeeEmails : undefined,
+        recurrence: ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR"],
+        reminders: [{ method: "popup", minutes: 0 }], // morning of only
         transparency: "transparent",
       }).catch(() => null);
 
