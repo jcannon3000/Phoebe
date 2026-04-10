@@ -767,6 +767,18 @@ export default function Dashboard() {
                 </Link>
               );
             };
+            // When a filter is active: collapse the whole pill row down to
+            // just the one active pill (which, when clicked, clears the filter).
+            if (filter !== null) {
+              const activePill = PILLS.find(p => p.filterKey === filter);
+              if (activePill) {
+                return (
+                  <div className="flex items-center gap-2 mt-2">
+                    {renderPill(activePill, "active")}
+                  </div>
+                );
+              }
+            }
             return (
               <>
                 {/* Mobile: scrolling ticker */}
@@ -784,56 +796,6 @@ export default function Dashboard() {
             );
           })()}
         </div>
-
-        {/* ── Inline filter pills ── */}
-        {!isLoading && totalCount > 0 && (() => {
-          const FILTERS: Array<{ key: "letters" | "practices" | "gatherings"; label: string }> = [
-            { key: "letters",    label: "Letters"    },
-            { key: "practices",  label: "Practices"  },
-            { key: "gatherings", label: "Gatherings" },
-          ];
-          const defaultStyle = {
-            background: "transparent",
-            border: "1px solid rgba(200, 212, 192, 0.2)",
-            color: "#8FAF96",
-            fontSize: 13,
-            padding: "4px 12px",
-          };
-          const activeStyle = {
-            background: "rgba(200, 212, 192, 0.12)",
-            border: "1px solid rgba(200, 212, 192, 0.4)",
-            color: "#C8D4C0",
-            fontSize: 13,
-            padding: "4px 12px",
-          };
-          return (
-            <div className="flex items-center gap-2 mb-5">
-              {filter === null
-                ? FILTERS.map(f => (
-                    <button
-                      key={f.key}
-                      type="button"
-                      onClick={() => setFilter(f.key)}
-                      className="rounded-full transition-colors hover:opacity-80"
-                      style={defaultStyle}
-                    >
-                      {f.label}
-                    </button>
-                  ))
-                : (
-                    <button
-                      type="button"
-                      onClick={() => setFilter(null)}
-                      className="rounded-full transition-colors hover:opacity-80 inline-flex items-center gap-1.5"
-                      style={activeStyle}
-                      aria-label={`Clear ${filter} filter`}
-                    >
-                      {FILTERS.find(f => f.key === filter)?.label} ×
-                    </button>
-                  )}
-            </div>
-          );
-        })()}
 
         {/* ── Loading skeleton ── */}
         {isLoading && (
