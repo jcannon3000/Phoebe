@@ -324,19 +324,17 @@ function LetterCard({
 
 const SPLIT_FLAP_CSS = `
 .sf-root { position: relative; width: 100%; height: 20px; overflow: hidden; }
-.sf-line { position: absolute; left: 0; right: 0; top: 0; height: 20px; line-height: 20px; font-size: 14px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: transform, opacity; }
-/* Gentle fade + small slide out to the left */
+.sf-line { position: absolute; left: 0; right: 0; top: 0; height: 20px; line-height: 20px; font-size: 14px; color: #8FAF96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; will-change: opacity; }
 @keyframes sf-line-out {
-  0%   { transform: translate3d(0, 0, 0); opacity: 1; }
-  100% { transform: translate3d(-8px, 0, 0); opacity: 0; }
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
 }
-/* Gentle fade + small slide in from the right */
 @keyframes sf-line-in {
-  0%   { transform: translate3d(8px, 0, 0); opacity: 0; }
-  100% { transform: translate3d(0, 0, 0); opacity: 1; }
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
 }
-.sf-line-out { animation: sf-line-out 260ms ease-in forwards; }
-.sf-line-in  { animation: sf-line-in 300ms ease-out forwards; }
+.sf-line-out { animation: sf-line-out 200ms ease-in forwards; }
+.sf-line-in  { animation: sf-line-in 250ms ease-out forwards; }
 `;
 
 type FlapPhase = "show" | "out" | "blank" | "in";
@@ -523,9 +521,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           </span>
         ) : null}
       </div>
-      {/* minHeight = 28 so the row always matches a card with a Pray badge,
-          even when there's no right-side badge (e.g. non-pulsing Lectio). */}
-      <div className="flex items-start justify-between gap-2 mt-1.5" style={{ minHeight: 28 }}>
+      <div className="flex items-center justify-between gap-2 mt-1.5">
         <div className="min-w-0 flex-1">
           {shouldPulse && !isLectio ? (
             subtitle ? (
@@ -755,16 +751,12 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      {/* Desktop: narrower shell (80% width) + 20% zoom, so practice cards
-          feel more intimate and everything inside reads 20% bigger. Mobile
-          is untouched. */}
       <style>{`
         @media (min-width: 768px) {
           .dash-shell {
             max-width: 56rem;
             margin-left: auto;
             margin-right: auto;
-            zoom: 1.2;
           }
         }
       `}</style>
