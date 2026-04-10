@@ -489,14 +489,14 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
-  // Lectio cycles between just the gospel reference and a "next time" hint.
-  // Verses, sunday name, and response count have moved off the card —
-  // they live on the practice page instead.
+  // Lectio cycles through three lines: who you're with → the gospel reference
+  // → when the next reflection is.
   const lectioFlapLines: string[] = isLectio
     ? (() => {
+        const whoLine = subtitle;
         const verseLine = m.lectioGospelReference || "";
         const nextLine = m.lectioNextStageLabel ? `Next: ${m.lectioNextStageLabel}` : "";
-        return [verseLine, nextLine];
+        return [whoLine, verseLine, nextLine];
       })()
     : [];
   const mobileFlapLines: string[] = (isLectio ? lectioFlapLines : [subtitle, mobileStatusLine, logCountLine])
@@ -543,7 +543,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         <div className="shrink-0 flex items-center self-start -mt-1">
           {shouldPulse ? (
             <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-              {isLectio ? "Reflect 🌿" : "Pray 🙏"}
+              {isLectio ? "Reflect" : "Pray 🙏"}
             </span>
           ) : (
             isDesktop && desktopStatusText && (

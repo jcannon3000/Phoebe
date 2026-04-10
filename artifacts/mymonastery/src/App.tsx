@@ -62,7 +62,6 @@ import MomentNew from "./pages/moment-new";
 import MomentDetail from "./pages/moment-detail";
 import MomentPostPage from "./pages/moment-post";
 import LectioPage from "./pages/lectio";
-import LectioSundayView from "./pages/lectio-sunday";
 import MorningPrayerPage from "./pages/morning-prayer";
 import MomentsDashboard from "./pages/moments-dashboard";
 import MomentRedirect from "./pages/moment-redirect";
@@ -101,7 +100,6 @@ function Router() {
       <Route path="/m/:userToken" component={MomentRedirect} />
       <Route path="/moment/:momentToken/:userToken" component={MomentPostPage} />
       <Route path="/lectio/:momentToken/:userToken" component={LectioPage} />
-      <Route path="/moments/:id/week/:sundayDate" component={LectioSundayView} />
       <Route path="/moments/:id" component={MomentDetail} />
       <Route path="/practices" component={MomentsDashboard} />
       <Route path="/morning-prayer/:momentId/:token" component={MorningPrayerPage} />

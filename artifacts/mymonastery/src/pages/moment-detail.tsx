@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { InviteStep } from "@/components/InviteStep";
-import LectioDetailView from "./lectio-detail-view";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -359,6 +358,15 @@ export default function MomentDetail() {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
+  // Lectio Divina no longer has a practice detail page — the practice IS the
+  // slideshow at /lectio/:momentToken/:userToken. Any stale link to
+  // /moments/:id for a lectio practice redirects straight there.
+  useEffect(() => {
+    if (data?.moment.templateType === "lectio-divina" && data.moment.momentToken && data.myUserToken) {
+      setLocation(`/lectio/${data.moment.momentToken}/${data.myUserToken}`, { replace: true });
+    }
+  }, [data, setLocation]);
+
   if (authLoading || !user) return null;
 
   if (isLoading) {
@@ -372,12 +380,9 @@ export default function MomentDetail() {
   }
 
   if (!data) return null;
-
-  // Lectio Divina has its own dedicated detail view — short-circuit before
-  // any of the generic streak/log/sessions logic runs.
-  if (data.moment.templateType === "lectio-divina") {
-    return <LectioDetailView id={id!} data={data} />;
-  }
+  // Short-circuit for lectio while the useEffect above does the redirect —
+  // the generic streak/log/sessions logic below doesn't apply.
+  if (data.moment.templateType === "lectio-divina") return null;
 
   const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, isCreator } = data;
 

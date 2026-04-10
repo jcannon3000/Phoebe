@@ -1,21 +1,32 @@
 /**
- * Lectio Divina — reading + reflection + reveal page.
+ * Lectio Divina — slideshow page.
  *
  * /lectio/:momentToken/:userToken
  *
- * Shows:
- *   1. The Sunday Gospel (fetched lazily per week from the RCL source).
- *   2. The current stage prompt + a textarea, gated behind "submit to see others".
- *   3. On Sunday, a read-only scrollable "This week's journey" of all three stages.
+ * The practice is presented as a guided, four-beat slideshow per unlocked
+ * stage (Lectio → Meditatio → Oratio):
+ *
+ *   1. Prompt     — the stage's question, sitting alone in quiet space
+ *   2. Reading    — the Sunday Gospel
+ *   3. Entry      — the user's own reflection (textarea + Share)
+ *   4. Responses  — what others in the circle have heard (gated: share to see)
+ *
+ * If the user is catching up (today is Wed but they haven't done Lectio),
+ * all incomplete unlocked stages are chained — finishing Lectio's responses
+ * slide lands them on Meditatio's prompt slide, and so on.
+ *
+ * There is no separate Sunday gathering view anymore; on Sunday, every stage
+ * is unlocked and the slideshow just walks through all three.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 
 type Stage = "lectio" | "meditatio" | "oratio";
+const STAGE_ORDER: Stage[] = ["lectio", "meditatio", "oratio"];
 
 type StageReveal = {
   label: string;
@@ -91,14 +102,46 @@ async function fetchLectio(momentToken: string, userToken: string): Promise<Lect
   return res.json() as Promise<LectioData>;
 }
 
-// ─── Palette (matches the rest of the app) ──────────────────────────────────
+// ─── Palette ────────────────────────────────────────────────────────────────
 const BG = "#0A1F11";
-const CARD_BG = "#0F2818";
 const WARM_TEXT = "#F0EDE6";
 const MUTED_GREEN = "#8FAF96";
 const FAINT_GREEN = "rgba(143,175,150,0.55)";
 const ACCENT = "#6FAF85";
 const BORDER = "rgba(200,212,192,0.15)";
+const BUTTON_BG = "#2D5E3F";
+
+// ─── Slide model ────────────────────────────────────────────────────────────
+
+type SlideKind = "prompt" | "reading" | "entry" | "responses";
+type Slide = { stage: Stage; kind: SlideKind };
+
+function buildSlides(data: LectioData): Slide[] {
+  const slides: Slide[] = [];
+  for (const s of STAGE_ORDER) {
+    if (!data.stages[s].unlocked) continue;
+    slides.push({ stage: s, kind: "prompt" });
+    slides.push({ stage: s, kind: "reading" });
+    slides.push({ stage: s, kind: "entry" });
+    slides.push({ stage: s, kind: "responses" });
+  }
+  return slides;
+}
+
+// Where to land the user when they first open the page: the prompt slide of
+// the first unlocked stage they haven't submitted yet. Falls back to index 0
+// if everything is already done.
+function initialSlideIndex(data: LectioData, slides: Slide[]): number {
+  for (const s of STAGE_ORDER) {
+    if (data.stages[s].unlocked && !data.stages[s].userHasSubmitted) {
+      const idx = slides.findIndex((sl) => sl.stage === s && sl.kind === "prompt");
+      if (idx >= 0) return idx;
+    }
+  }
+  return 0;
+}
+
+// ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function LectioPage() {
   const { momentToken, userToken } = useParams<{
@@ -120,8 +163,22 @@ export default function LectioPage() {
       apiRequest("POST", `/api/lectio/${momentToken}/${userToken}/reflect`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
+      // Refresh the dashboard bucketing too.
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
     },
   });
+
+  const slides = useMemo<Slide[]>(() => (data ? buildSlides(data) : []), [data]);
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [initialized, setInitialized] = useState(false);
+
+  // Jump to the first incomplete stage on initial data load.
+  useEffect(() => {
+    if (data && !initialized && slides.length > 0) {
+      setSlideIdx(initialSlideIndex(data, slides));
+      setInitialized(true);
+    }
+  }, [data, initialized, slides]);
 
   if (isLoading) {
     return (
@@ -136,8 +193,6 @@ export default function LectioPage() {
     const stage = error?.stage ?? null;
     const detail = error?.detail ?? null;
     const status = error?.status ?? null;
-    // Friendly headline per stage — but always include the raw detail so we
-    // can debug production issues without another round-trip.
     const headline = (() => {
       switch (stage) {
         case "moment_lookup": return "This practice link isn't valid.";
@@ -171,7 +226,7 @@ export default function LectioPage() {
             <button
               onClick={() => qc.refetchQueries({ queryKey })}
               className="text-sm font-semibold rounded-full px-4 py-2"
-              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              style={{ background: BUTTON_BG, color: WARM_TEXT }}
             >
               Try again
             </button>
@@ -184,401 +239,397 @@ export default function LectioPage() {
     );
   }
 
-  const { reading, week, stages } = data;
-  const isSunday = week.isSunday;
-
-  return (
-    <div style={{ minHeight: "100vh", background: BG, color: WARM_TEXT }}>
-      <div className="max-w-2xl mx-auto px-5 pt-8 pb-24">
-        {/* Nav back */}
-        <div className="mb-6">
+  if (slides.length === 0) {
+    return (
+      <div style={{ minHeight: "100vh", background: BG, color: WARM_TEXT }} className="flex items-center justify-center px-6">
+        <div className="text-center max-w-md">
+          <p style={{ color: MUTED_GREEN, fontSize: 14 }}>{data.week.phaseLabel}</p>
           <Link href="/dashboard">
-            <span style={{ color: FAINT_GREEN, fontSize: 13 }}>← Back</span>
+            <span className="inline-block mt-6" style={{ color: ACCENT, textDecoration: "underline", fontSize: 13 }}>
+              Back to dashboard
+            </span>
           </Link>
         </div>
+      </div>
+    );
+  }
 
-        {/* Header: Sunday name + reference */}
-        <header className="mb-8">
-          <p
-            className="uppercase mb-3"
-            style={{
-              color: FAINT_GREEN,
-              fontSize: 11,
-              letterSpacing: "0.18em",
-            }}
-          >
-            {reading.liturgicalSeason ? `${reading.liturgicalSeason} · ` : ""}
-            {reading.sundayName}
-          </p>
-          <h1
-            style={{
-              fontSize: 28,
-              lineHeight: 1.2,
-              fontWeight: 600,
-              color: WARM_TEXT,
-              letterSpacing: "-0.01em",
-              marginBottom: 6,
-            }}
-          >
-            {data.moment.name}
-          </h1>
-          <p style={{ color: MUTED_GREEN, fontSize: 13 }}>
-            {week.phaseLabel}
-          </p>
-        </header>
+  const current = slides[slideIdx];
+  const stageData = data.stages[current.stage];
+  const atStart = slideIdx === 0;
+  const atEnd = slideIdx === slides.length - 1;
 
-        {/* The Gospel reading */}
-        <section
-          className="rounded-2xl mb-10"
-          style={{
-            background: CARD_BG,
-            border: `1px solid ${BORDER}`,
-            padding: "28px 26px",
-          }}
-        >
-          <p
-            style={{
-              color: MUTED_GREEN,
-              fontSize: 13,
-              letterSpacing: "0.04em",
-              marginBottom: 18,
-            }}
-          >
-            {reading.gospelReference}
-          </p>
-          <div
-            style={{
-              color: WARM_TEXT,
-              fontSize: 18,
-              lineHeight: 1.8,
-              fontFamily:
-                "'Georgia', 'Iowan Old Style', 'Palatino', 'Times New Roman', serif",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {reading.gospelText}
-          </div>
-        </section>
+  const next = () => setSlideIdx((i) => Math.min(i + 1, slides.length - 1));
+  const prev = () => setSlideIdx((i) => Math.max(i - 1, 0));
 
-        {/* Body: either this-week's unlocked stages, or the Sunday journey */}
-        {isSunday ? (
-          <SundayJourney stages={stages} />
-        ) : week.unlockedStages.length > 0 ? (
-          <div className="space-y-10">
-            {week.unlockedStages.map((s, idx) => {
-              const stageData = stages[s];
-              const isCurrent = s === week.currentStage;
-              return (
-                <CurrentStageBlock
-                  key={s}
+  return (
+    <div style={{ minHeight: "100vh", background: BG, color: WARM_TEXT, display: "flex", flexDirection: "column" }}>
+      {/* Header */}
+      <header className="max-w-2xl mx-auto w-full px-5 pt-6 pb-2 flex items-center justify-between">
+        <Link href="/dashboard">
+          <span style={{ color: FAINT_GREEN, fontSize: 13 }}>← Back</span>
+        </Link>
+        <div className="text-right">
+          <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+            {stageData.label}
+          </p>
+          <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2 }}>
+            {data.reading.gospelReference}
+          </p>
+        </div>
+      </header>
+
+      {/* Slide content */}
+      <main className="flex-1 flex items-center justify-center px-5 py-6">
+        <div className="max-w-2xl w-full">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${current.stage}-${current.kind}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+            >
+              {current.kind === "prompt" && <PromptSlide stageData={stageData} />}
+              {current.kind === "reading" && <ReadingSlide reading={data.reading} />}
+              {current.kind === "entry" && (
+                <EntrySlide
                   stageData={stageData}
-                  isCurrent={isCurrent}
-                  isCatchUp={!isCurrent && !stageData.userHasSubmitted}
-                  dividerAbove={idx > 0}
-                  onSubmit={(text) =>
-                    submitMutation.mutate({ stage: s, reflectionText: text })
-                  }
                   submitting={
                     submitMutation.isPending &&
-                    submitMutation.variables?.stage === s
+                    submitMutation.variables?.stage === current.stage
                   }
-                  memberCount={data.memberCount}
+                  onSubmit={(text) => {
+                    submitMutation.mutate(
+                      { stage: current.stage, reflectionText: text },
+                      {
+                        onSuccess: () => {
+                          // Advance to the Responses slide once the reflection
+                          // is saved.
+                          next();
+                        },
+                      },
+                    );
+                  }}
                 />
+              )}
+              {current.kind === "responses" && (
+                <ResponsesSlide stageData={stageData} memberCount={data.memberCount} />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
+
+      {/* Footer: dots + nav */}
+      <footer className="max-w-2xl mx-auto w-full px-5 pb-8 pt-2">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={prev}
+            disabled={atStart}
+            aria-label="Previous"
+            className="rounded-full transition-opacity disabled:opacity-20"
+            style={{
+              color: WARM_TEXT,
+              background: "transparent",
+              border: `1px solid ${BORDER}`,
+              padding: "8px 14px",
+              fontSize: 13,
+              cursor: atStart ? "default" : "pointer",
+            }}
+          >
+            ←
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            {slides.map((sl, i) => {
+              const isActive = i === slideIdx;
+              const isStageBreak = i > 0 && slides[i - 1].stage !== sl.stage;
+              return (
+                <div key={i} className="flex items-center gap-1.5">
+                  {isStageBreak && (
+                    <div style={{ width: 10, height: 1, background: BORDER }} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSlideIdx(i)}
+                    aria-label={`${sl.stage} ${sl.kind}`}
+                    style={{
+                      width: isActive ? 10 : 6,
+                      height: isActive ? 10 : 6,
+                      borderRadius: 999,
+                      background: isActive ? ACCENT : "rgba(143,175,150,0.25)",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      transition: "all 0.2s ease",
+                    }}
+                  />
+                </div>
               );
             })}
           </div>
-        ) : (
-          <div
-            className="rounded-xl"
+
+          <button
+            type="button"
+            onClick={next}
+            disabled={atEnd}
+            aria-label="Next"
+            className="rounded-full transition-opacity disabled:opacity-20"
             style={{
-              background: CARD_BG,
+              color: WARM_TEXT,
+              background: "transparent",
               border: `1px solid ${BORDER}`,
-              padding: "24px 22px",
-              color: MUTED_GREEN,
-              fontSize: 14,
-              textAlign: "center",
+              padding: "8px 14px",
+              fontSize: 13,
+              cursor: atEnd ? "default" : "pointer",
             }}
           >
-            {week.phaseLabel}
-          </div>
-        )}
+            →
+          </button>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+// ─── Slides ─────────────────────────────────────────────────────────────────
+
+function PromptSlide({ stageData }: { stageData: StageReveal }) {
+  return (
+    <div className="text-center py-10">
+      <p
+        style={{
+          color: FAINT_GREEN,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          marginBottom: 24,
+        }}
+      >
+        {stageData.label}
+      </p>
+      <p
+        style={{
+          color: WARM_TEXT,
+          fontSize: 26,
+          lineHeight: 1.4,
+          fontWeight: 500,
+          letterSpacing: "-0.01em",
+          maxWidth: 520,
+          margin: "0 auto",
+        }}
+      >
+        {stageData.prompt}
+      </p>
+    </div>
+  );
+}
+
+function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
+  return (
+    <div className="py-6">
+      <p
+        style={{
+          color: FAINT_GREEN,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          marginBottom: 18,
+          textAlign: "center",
+        }}
+      >
+        {reading.sundayName}
+      </p>
+      <p
+        style={{
+          color: MUTED_GREEN,
+          fontSize: 13,
+          letterSpacing: "0.04em",
+          marginBottom: 22,
+          textAlign: "center",
+        }}
+      >
+        {reading.gospelReference}
+      </p>
+      <div
+        style={{
+          color: WARM_TEXT,
+          fontSize: 18,
+          lineHeight: 1.8,
+          fontFamily:
+            "'Georgia', 'Iowan Old Style', 'Palatino', 'Times New Roman', serif",
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {reading.gospelText}
       </div>
     </div>
   );
 }
 
-// ─── Current stage block: prompt + gate + reveal ────────────────────────────
-
-function CurrentStageBlock({
+function EntrySlide({
   stageData,
-  isCurrent,
-  isCatchUp,
-  dividerAbove,
-  onSubmit,
   submitting,
-  memberCount,
+  onSubmit,
 }: {
   stageData: StageReveal;
-  isCurrent: boolean;
-  isCatchUp: boolean;
-  dividerAbove: boolean;
-  onSubmit: (text: string) => void;
   submitting: boolean;
-  memberCount: number;
+  onSubmit: (text: string) => void;
 }) {
   const hasSubmitted = stageData.userHasSubmitted;
   const [draft, setDraft] = useState(stageData.myReflection ?? "");
 
   // Re-sync the draft when the server's copy changes (e.g. after a save or
-  // when a new stage unlocks). Touching the textarea overrides this on
-  // subsequent renders because we only sync when myReflection itself changes.
+  // when a new stage unlocks).
   useEffect(() => {
     setDraft(stageData.myReflection ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stageData.myReflection]);
 
   return (
-    <section>
-      {dividerAbove && (
-        <div
-          style={{
-            height: 1,
-            background: BORDER,
-            marginBottom: 32,
-          }}
-        />
-      )}
-      {/* Stage label */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-2" style={{ flexWrap: "wrap" }}>
-          <p
-            style={{
-              color: FAINT_GREEN,
-              fontSize: 11,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-            }}
-          >
-            {stageData.label}
-          </p>
-          {isCurrent && (
-            <span
-              style={{
-                color: ACCENT,
-                background: "rgba(111,175,133,0.12)",
-                border: "1px solid rgba(111,175,133,0.28)",
-                fontSize: 10,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                padding: "2px 8px",
-                borderRadius: 999,
-              }}
-            >
-              Today
-            </span>
-          )}
-          {isCatchUp && (
-            <span
-              style={{
-                color: FAINT_GREEN,
-                background: "rgba(143,175,150,0.08)",
-                border: `1px solid ${BORDER}`,
-                fontSize: 10,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                padding: "2px 8px",
-                borderRadius: 999,
-              }}
-            >
-              Catch up
-            </span>
-          )}
-        </div>
-        <p style={{ color: WARM_TEXT, fontSize: 18, lineHeight: 1.5 }}>
-          {stageData.prompt}
-        </p>
-      </div>
-
-      {/* Write / edit — bare textarea on the page background. No bordered
-          container, no focus outline. Just space to write. */}
-      <div style={{ marginBottom: 16 }}>
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={6}
-          placeholder="Take your time…"
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            boxShadow: "none",
-            resize: "none",
-            padding: 0,
-            color: WARM_TEXT,
-            fontSize: 16,
-            lineHeight: 1.6,
-            fontFamily:
-              "'Space Grotesk', system-ui, -apple-system, Segoe UI, sans-serif",
-          }}
-        />
-        <div className="flex items-center justify-between mt-2">
-          <span style={{ color: FAINT_GREEN, fontSize: 12 }}>
-            {hasSubmitted ? "You can revise anytime this week." : "Private until you share."}
-          </span>
-          <button
-            type="button"
-            onClick={() => onSubmit(draft.trim())}
-            disabled={submitting || draft.trim().length === 0}
-            className="rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
-            style={{
-              background: "#2D5E3F",
-              color: WARM_TEXT,
-              fontSize: 13,
-              fontWeight: 600,
-              padding: "8px 18px",
-              border: "none",
-              cursor: submitting ? "wait" : "pointer",
-            }}
-          >
-            {submitting ? "Saving…" : hasSubmitted ? "Save" : "Share"}
-          </button>
-        </div>
-      </div>
-
-      {/* Reveal — gated */}
-      <AnimatePresence mode="wait">
-        {hasSubmitted && stageData.reflections ? (
-          <motion.div
-            key="reveal"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-6"
-          >
-            <p
-              style={{
-                color: FAINT_GREEN,
-                fontSize: 11,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                marginBottom: 14,
-              }}
-            >
-              What others heard
-            </p>
-            <div className="space-y-3">
-              {stageData.reflections.map((r, i) => (
-                <ReflectionCard key={i} name={r.userName} text={r.text} isYou={r.isYou} />
-              ))}
-            </div>
-            {stageData.nonSubmitterNames.length > 0 && (
-              <p
-                style={{
-                  color: FAINT_GREEN,
-                  fontSize: 12,
-                  marginTop: 18,
-                  lineHeight: 1.6,
-                }}
-              >
-                Still listening: {stageData.nonSubmitterNames.join(", ")}
-              </p>
-            )}
-            {memberCount <= 1 && (
-              <p style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 18 }}>
-                Invite others to read along with you.
-              </p>
-            )}
-          </motion.div>
-        ) : !hasSubmitted ? (
-          <motion.div
-            key="gate"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="mt-4 text-center"
-          >
-            <p style={{ color: FAINT_GREEN, fontSize: 12, lineHeight: 1.6 }}>
-              Share your reflection to see what others heard.
-            </p>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </section>
-  );
-}
-
-// ─── Sunday view: the three stages unfurled read-only ───────────────────────
-
-function SundayJourney({ stages }: { stages: Record<Stage, StageReveal> }) {
-  const order: Stage[] = ["lectio", "meditatio", "oratio"];
-  return (
-    <section>
+    <div className="py-6">
       <p
         style={{
           color: FAINT_GREEN,
           fontSize: 11,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.22em",
           textTransform: "uppercase",
-          marginBottom: 18,
+          marginBottom: 10,
         }}
       >
-        This week's journey
+        {stageData.label}
       </p>
-      <div className="space-y-10">
-        {order.map((s) => {
-          const stage = stages[s];
-          return (
-            <div key={s}>
-              <p
-                style={{
-                  color: MUTED_GREEN,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  letterSpacing: "0.04em",
-                  marginBottom: 4,
-                }}
-              >
-                {stage.label}
-              </p>
-              <p
-                style={{
-                  color: FAINT_GREEN,
-                  fontSize: 13,
-                  fontStyle: "italic",
-                  marginBottom: 12,
-                }}
-              >
-                {stage.prompt}
-              </p>
-              {stage.reflections && stage.reflections.length > 0 ? (
-                <div className="space-y-3">
-                  {stage.reflections.map((r, i) => (
-                    <ReflectionCard key={i} name={r.userName} text={r.text} isYou={r.isYou} />
-                  ))}
-                </div>
-              ) : (
-                <p style={{ color: FAINT_GREEN, fontSize: 13 }}>
-                  No reflections this week.
-                </p>
-              )}
-              {stage.nonSubmitterNames.length > 0 && (
-                <p
-                  style={{
-                    color: FAINT_GREEN,
-                    fontSize: 12,
-                    marginTop: 10,
-                  }}
-                >
-                  Still listening: {stage.nonSubmitterNames.join(", ")}
-                </p>
-              )}
-            </div>
-          );
-        })}
+      <p
+        style={{
+          color: MUTED_GREEN,
+          fontSize: 15,
+          lineHeight: 1.5,
+          marginBottom: 20,
+        }}
+      >
+        {stageData.prompt}
+      </p>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={7}
+        placeholder="Take your time…"
+        style={{
+          width: "100%",
+          background: "transparent",
+          border: "none",
+          outline: "none",
+          boxShadow: "none",
+          resize: "none",
+          padding: 0,
+          color: WARM_TEXT,
+          fontSize: 16,
+          lineHeight: 1.6,
+          fontFamily:
+            "'Space Grotesk', system-ui, -apple-system, Segoe UI, sans-serif",
+        }}
+      />
+      <div className="flex items-center justify-between mt-3">
+        <span style={{ color: FAINT_GREEN, fontSize: 12 }}>
+          {hasSubmitted ? "You can revise anytime this week." : "Private until you share."}
+        </span>
+        <button
+          type="button"
+          onClick={() => onSubmit(draft.trim())}
+          disabled={submitting || draft.trim().length === 0}
+          className="rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
+          style={{
+            background: BUTTON_BG,
+            color: WARM_TEXT,
+            fontSize: 13,
+            fontWeight: 600,
+            padding: "8px 18px",
+            border: "none",
+            cursor: submitting ? "wait" : "pointer",
+          }}
+        >
+          {submitting ? "Saving…" : hasSubmitted ? "Save" : "Share"}
+        </button>
       </div>
-    </section>
+    </div>
+  );
+}
+
+function ResponsesSlide({
+  stageData,
+  memberCount,
+}: {
+  stageData: StageReveal;
+  memberCount: number;
+}) {
+  const hasSubmitted = stageData.userHasSubmitted;
+
+  if (!hasSubmitted) {
+    return (
+      <div className="py-12 text-center">
+        <p
+          style={{
+            color: FAINT_GREEN,
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            marginBottom: 16,
+          }}
+        >
+          What others heard
+        </p>
+        <p style={{ color: MUTED_GREEN, fontSize: 15, lineHeight: 1.6, maxWidth: 440, margin: "0 auto" }}>
+          Share your own reflection to see what the others in your circle have heard.
+        </p>
+      </div>
+    );
+  }
+
+  const reflections = stageData.reflections ?? [];
+
+  return (
+    <div className="py-6">
+      <p
+        style={{
+          color: FAINT_GREEN,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          marginBottom: 16,
+        }}
+      >
+        What others heard
+      </p>
+      {reflections.length === 0 ? (
+        <p style={{ color: MUTED_GREEN, fontSize: 14 }}>
+          No reflections yet this week.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {reflections.map((r, i) => (
+            <ReflectionCard key={i} name={r.userName} text={r.text} isYou={r.isYou} />
+          ))}
+        </div>
+      )}
+      {stageData.nonSubmitterNames.length > 0 && (
+        <p
+          style={{
+            color: FAINT_GREEN,
+            fontSize: 12,
+            marginTop: 18,
+            lineHeight: 1.6,
+          }}
+        >
+          Still listening: {stageData.nonSubmitterNames.join(", ")}
+        </p>
+      )}
+      {memberCount <= 1 && (
+        <p style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 18 }}>
+          Invite others to read along with you.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -597,7 +648,7 @@ function ReflectionCard({
     <div
       className="rounded-xl"
       style={{
-        background: isYou ? "rgba(111,175,133,0.08)" : CARD_BG,
+        background: isYou ? "rgba(111,175,133,0.08)" : "#0F2818",
         border: `1px solid ${isYou ? "rgba(111,175,133,0.35)" : BORDER}`,
         padding: "16px 18px",
       }}
