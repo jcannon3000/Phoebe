@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { InviteStep } from "@/components/InviteStep";
+import LectioDetailView from "./lectio-detail-view";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -371,6 +372,12 @@ export default function MomentDetail() {
   }
 
   if (!data) return null;
+
+  // Lectio Divina has its own dedicated detail view — short-circuit before
+  // any of the generic streak/log/sessions logic runs.
+  if (data.moment.templateType === "lectio-divina") {
+    return <LectioDetailView id={id!} data={data} />;
+  }
 
   const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, isCreator } = data;
 
