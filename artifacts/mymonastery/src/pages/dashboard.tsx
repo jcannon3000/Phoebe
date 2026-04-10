@@ -496,7 +496,7 @@ function TimeSection({
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
-  const [filter, setFilter] = useState<"practices" | "gatherings" | null>(null);
+  const [filter, setFilter] = useState<"letters" | "practices" | "gatherings" | null>(null);
 
   const { data: correspondences, isLoading: lettersLoading } = useQuery<Correspondence[]>({
     queryKey: ["/api/letters/correspondences"],
@@ -603,14 +603,14 @@ export default function Dashboard() {
             type Pill = {
               label: string;
               href?: string;
-              filterKey?: "practices" | "gatherings";
+              filterKey?: "letters" | "practices" | "gatherings";
               fg: string;
               bg: string;
               border: string;
             };
             const PILLS: Pill[] = [
-              { label: "📮 Letters",      href: "/letters",      fg: "#5C8A5F", bg: "rgba(92,138,95,0.14)",   border: "rgba(92,138,95,0.28)"   },
-              { label: "🙏 Practices",    filterKey: "practices",fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
+              { label: "📮 Letters",      filterKey: "letters",   fg: "#5C8A5F", bg: "rgba(92,138,95,0.14)",   border: "rgba(92,138,95,0.28)"   },
+              { label: "🙏 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
               { label: "🤝 Gatherings",   filterKey: "gatherings",fg: "#7AAF7D", bg: "rgba(122,175,125,0.14)", border: "rgba(122,175,125,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
@@ -660,58 +660,54 @@ export default function Dashboard() {
         </div>
 
         {/* ── Inline filter pills ── */}
-        {!isLoading && totalCount > 0 && (
-          <div className="flex items-center gap-2 mb-5">
-            {filter === null ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setFilter("practices")}
-                  className="rounded-full transition-colors hover:opacity-80"
-                  style={{
-                    background: "transparent",
-                    border: "1px solid rgba(200, 212, 192, 0.2)",
-                    color: "#8FAF96",
-                    fontSize: 13,
-                    padding: "4px 12px",
-                  }}
-                >
-                  Practices
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter("gatherings")}
-                  className="rounded-full transition-colors hover:opacity-80"
-                  style={{
-                    background: "transparent",
-                    border: "1px solid rgba(200, 212, 192, 0.2)",
-                    color: "#8FAF96",
-                    fontSize: 13,
-                    padding: "4px 12px",
-                  }}
-                >
-                  Gatherings
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setFilter(null)}
-                className="rounded-full transition-colors hover:opacity-80 inline-flex items-center gap-1.5"
-                style={{
-                  background: "rgba(200, 212, 192, 0.12)",
-                  border: "1px solid rgba(200, 212, 192, 0.4)",
-                  color: "#C8D4C0",
-                  fontSize: 13,
-                  padding: "4px 12px",
-                }}
-                aria-label={`Clear ${filter} filter`}
-              >
-                {filter === "practices" ? "Practices" : "Gatherings"} ×
-              </button>
-            )}
-          </div>
-        )}
+        {!isLoading && totalCount > 0 && (() => {
+          const FILTERS: Array<{ key: "letters" | "practices" | "gatherings"; label: string }> = [
+            { key: "letters",    label: "Letters"    },
+            { key: "practices",  label: "Practices"  },
+            { key: "gatherings", label: "Gatherings" },
+          ];
+          const defaultStyle = {
+            background: "transparent",
+            border: "1px solid rgba(200, 212, 192, 0.2)",
+            color: "#8FAF96",
+            fontSize: 13,
+            padding: "4px 12px",
+          };
+          const activeStyle = {
+            background: "rgba(200, 212, 192, 0.12)",
+            border: "1px solid rgba(200, 212, 192, 0.4)",
+            color: "#C8D4C0",
+            fontSize: 13,
+            padding: "4px 12px",
+          };
+          return (
+            <div className="flex items-center gap-2 mb-5">
+              {filter === null
+                ? FILTERS.map(f => (
+                    <button
+                      key={f.key}
+                      type="button"
+                      onClick={() => setFilter(f.key)}
+                      className="rounded-full transition-colors hover:opacity-80"
+                      style={defaultStyle}
+                    >
+                      {f.label}
+                    </button>
+                  ))
+                : (
+                    <button
+                      type="button"
+                      onClick={() => setFilter(null)}
+                      className="rounded-full transition-colors hover:opacity-80 inline-flex items-center gap-1.5"
+                      style={activeStyle}
+                      aria-label={`Clear ${filter} filter`}
+                    >
+                      {FILTERS.find(f => f.key === filter)?.label} ×
+                    </button>
+                  )}
+            </div>
+          );
+        })()}
 
         {/* ── Loading skeleton ── */}
         {isLoading && (
@@ -724,6 +720,7 @@ export default function Dashboard() {
 
         {!isLoading && (() => {
           const byFilter = (item: DashboardItem) => {
+            if (filter === "letters") return item.kind === "letter";
             if (filter === "practices") return item.kind === "moment";
             if (filter === "gatherings") return item.kind === "gathering";
             return true;
@@ -752,17 +749,25 @@ export default function Dashboard() {
                 <TimeSection label="This month" items={fMonth} userEmail={userEmail} userName={userName} />
 
                 {/* Filtered empty state */}
-                {filteredEmpty && (
-                  <div className="py-12 text-center">
-                    <Link
-                      href={filter === "practices" ? "/moment/new" : "/tradition/new"}
-                      className="text-sm transition-opacity hover:opacity-80"
-                      style={{ color: "#8FAF96", fontSize: 14 }}
-                    >
-                      {filter === "practices" ? "No practices yet. Start one. →" : "No gatherings yet. Start one. →"}
-                    </Link>
-                  </div>
-                )}
+                {filteredEmpty && (() => {
+                  const emptyConfig = {
+                    letters:    { href: "/letters/new",   text: "No letters yet. Start one. →"    },
+                    practices:  { href: "/moment/new",    text: "No practices yet. Start one. →"  },
+                    gatherings: { href: "/tradition/new", text: "No gatherings yet. Start one. →" },
+                  } as const;
+                  const cfg = emptyConfig[filter!];
+                  return (
+                    <div className="py-12 text-center">
+                      <Link
+                        href={cfg.href}
+                        className="text-sm transition-opacity hover:opacity-80"
+                        style={{ color: "#8FAF96", fontSize: 14 }}
+                      >
+                        {cfg.text}
+                      </Link>
+                    </div>
+                  );
+                })()}
 
                 {/* Unfiltered empty state */}
                 {filter === null && totalCount === 0 && (
