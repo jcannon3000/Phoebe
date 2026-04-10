@@ -51,6 +51,10 @@ type Moment = {
   dayOfWeek: string | null;
   practiceDays: string | null;
   timeOfDay: string | null;
+  // Lectio-specific enrichment (only populated for lectio-divina moments)
+  lectioSundayName?: string | null;
+  lectioGospelReference?: string | null;
+  lectioResponseCount?: number | null;
 };
 
 // ─── Category color system ──────────────────────────────────────────────────
@@ -411,6 +415,14 @@ function SplitFlapLine({ lines }: { lines: string[] }) {
 
 // ─── Moment card ─────────────────────────────────────────────────────────────
 
+// Strip a trailing emoji (or run of emoji-ish chars) from a moment title so
+// we never show the same glyph on both sides when the user's stored name
+// already includes one (e.g. "Lectio Divina 📜" + leading template emoji).
+function stripTrailingEmoji(s: string): string {
+  // eslint-disable-next-line no-misleading-character-class
+  return s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
+}
+
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
   const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
   const shouldPulse = m.windowOpen && m.todayPostCount === 0;
@@ -424,6 +436,10 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const isIntercession = m.templateType === "intercession";
   const isMorningPrayer = m.templateType === "morning-prayer";
   const isLectio = m.templateType === "lectio-divina";
+
+  // Keep the emoji on one side only. Template emoji goes on the left; strip
+  // any trailing emoji that's already in the stored name.
+  const displayName = stripTrailingEmoji(m.name);
 
   let subtitle = "";
   if (memberNames) subtitle = `with ${memberNames}`;
@@ -465,10 +481,27 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
-  const mobileFlapLines: string[] = [subtitle, mobileStatusLine, logCountLine]
+  // Lectio has its own three-line rhythm: who you're with → the reading →
+  // how many have responded this week.
+  const lectioFlapLines: string[] = isLectio
+    ? (() => {
+        const whoLine = subtitle;
+        const readingLine = m.lectioGospelReference
+          ? m.lectioSundayName
+            ? `${m.lectioSundayName} · ${m.lectioGospelReference}`
+            : `Reading: ${m.lectioGospelReference}`
+          : "";
+        const responses = m.lectioResponseCount ?? 0;
+        const responseLine = m.memberCount > 0
+          ? `${responses} of ${m.memberCount} have responded`
+          : "";
+        return [whoLine, readingLine, responseLine];
+      })()
+    : [];
+  const mobileFlapLines: string[] = (isLectio ? lectioFlapLines : [subtitle, mobileStatusLine, logCountLine])
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
-  const desktopFlapLines: string[] = [subtitle, logCountLine, intentionLine]
+  const desktopFlapLines: string[] = (isLectio ? lectioFlapLines : [subtitle, logCountLine, intentionLine])
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
   const flapLines = isDesktop ? desktopFlapLines : mobileFlapLines;
@@ -477,7 +510,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse} category="practices">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {m.name}</span>
+          <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>
         </div>
         {progressLabel ? (
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
@@ -491,7 +524,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       </div>
       <div className="flex items-start justify-between gap-2 mt-1.5">
         <div className="min-w-0 flex-1">
-          {shouldPulse ? (
+          {shouldPulse && !isLectio ? (
             subtitle ? (
               <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {subtitle}
@@ -509,7 +542,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         <div className="shrink-0 flex items-center">
           {shouldPulse ? (
             <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-              Pray 🙏
+              {isLectio ? "Practice 🌿" : "Pray 🙏"}
             </span>
           ) : (
             isDesktop && desktopStatusText && (

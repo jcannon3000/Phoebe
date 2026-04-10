@@ -6,10 +6,17 @@ import {
   db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
+  lectioReflectionsTable,
 } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
+import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
+
+// Monastic wisdom: depth over breadth. A person may only hold three Lectio
+// Divina groups at once — the discipline is to go deep with a few, not shallow
+// with many.
+const LECTIO_GROUP_LIMIT = 3;
 
 const router: IRouter = Router();
 
@@ -454,6 +461,28 @@ router.post("/moments", async (req, res): Promise<void> => {
 
   const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual } = parsed.data;
 
+  // Enforce the Lectio Divina group limit — depth, not breadth.
+  if (templateType === "lectio-divina") {
+    const [creator] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+    if (creator) {
+      const myTokens = await db.select().from(momentUserTokensTable)
+        .where(eq(momentUserTokensTable.email, creator.email));
+      const myMomentIds = [...new Set(myTokens.map(t => t.momentId))];
+      if (myMomentIds.length > 0) {
+        const myLectio = (await db.select().from(sharedMomentsTable)
+          .where(inArray(sharedMomentsTable.id, myMomentIds)))
+          .filter(m => m.templateType === "lectio-divina" && m.state !== "archived");
+        if (myLectio.length >= LECTIO_GROUP_LIMIT) {
+          res.status(400).json({
+            error: "lectio_group_limit",
+            message: `You can hold up to ${LECTIO_GROUP_LIMIT} Lectio Divina groups at a time. The discipline is depth, not breadth — leave one to begin another.`,
+          });
+          return;
+        }
+      }
+    }
+  }
+
   // Compute commitment end date if a duration was provided
   const commitmentEndDate = (commitmentDuration && commitmentDuration > 0)
     ? (() => {
@@ -884,6 +913,23 @@ router.get("/moments", async (req, res): Promise<void> => {
     .where(inArray(sharedMomentsTable.id, momentIds)))
     .filter(m => m.ritualId === null && m.state !== "archived");
 
+  // If any practices are Lectio Divina, fetch the current Sunday's reading
+  // once and reuse it across all of them.
+  const anyLectio = flatMoments.some(m => m.templateType === "lectio-divina");
+  let lectioReadingMeta: { sundayDate: string; sundayName: string | null; gospelReference: string | null } | null = null;
+  if (anyLectio) {
+    try {
+      const reading = await getReadingForSunday(nextSundayDate());
+      lectioReadingMeta = {
+        sundayDate: reading.sundayDate,
+        sundayName: reading.sundayName,
+        gospelReference: reading.gospelReference,
+      };
+    } catch (err) {
+      console.warn("[moments] lectio reading fetch failed:", err);
+    }
+  }
+
   const enriched = await Promise.all(flatMoments.map(async (m) => {
     const allMembers = await db.select().from(momentUserTokensTable)
       .where(eq(momentUserTokensTable.momentId, m.id));
@@ -897,6 +943,22 @@ router.get("/moments", async (req, res): Promise<void> => {
 
     const myToken = userTokenRows.find(t => t.momentId === m.id);
 
+    // Lectio-specific enrichment: this week's reading + how many members have
+    // submitted any reflection for the current Sunday anchor.
+    let lectioSundayName: string | null = null;
+    let lectioGospelReference: string | null = null;
+    let lectioResponseCount = 0;
+    if (m.templateType === "lectio-divina" && lectioReadingMeta) {
+      lectioSundayName = lectioReadingMeta.sundayName;
+      lectioGospelReference = lectioReadingMeta.gospelReference;
+      const weekReflections = await db.select().from(lectioReflectionsTable)
+        .where(and(
+          eq(lectioReflectionsTable.momentId, m.id),
+          eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
+        ));
+      lectioResponseCount = new Set(weekReflections.map(r => r.userToken)).size;
+    }
+
     return {
       ...m,
       memberCount: allMembers.length,
@@ -906,6 +968,9 @@ router.get("/moments", async (req, res): Promise<void> => {
       minutesLeft: minutesRemaining(m),
       latestWindow,
       myUserToken: myToken?.userToken ?? null,
+      lectioSundayName,
+      lectioGospelReference,
+      lectioResponseCount,
     };
   }));
 

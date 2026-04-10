@@ -286,7 +286,7 @@ const TEMPLATES = [
     id: "lectio-divina", emoji: "📜", name: "Lectio Divina",
     desc: "Slowly read and reflect on the upcoming Sunday Gospel together — Mon, Wed, Fri",
     prefill: {
-      name: "Lectio Divina 📜",
+      name: "Lectio Divina",
       intention: "Read together. Listen together. Pray together.",
       loggingType: "reflection" as LoggingType,
       reflectionPrompt: "",
@@ -2218,11 +2218,25 @@ export default function MomentNew() {
                           : `Plant this practice with ${invitedPeople.length} people 🌿`
                       : "Continue →"}
               </button>
-              {plantMutation.isError && (
-                <p className="text-xs text-destructive text-center mt-2">
-                  {plantMutation.error instanceof Error ? plantMutation.error.message : "Something went wrong. Please try again."}
-                </p>
-              )}
+              {plantMutation.isError && (() => {
+                const raw = plantMutation.error instanceof Error ? plantMutation.error.message : "";
+                let friendly = "Something went wrong. Please try again.";
+                if (raw) {
+                  try {
+                    const parsed = JSON.parse(raw);
+                    friendly = typeof parsed?.message === "string" ? parsed.message
+                      : typeof parsed?.error === "string" ? parsed.error
+                      : raw;
+                  } catch {
+                    friendly = raw;
+                  }
+                }
+                return (
+                  <p className="text-xs text-destructive text-center mt-2">
+                    {friendly}
+                  </p>
+                );
+              })()}
             </div>
           )}
         </div>
