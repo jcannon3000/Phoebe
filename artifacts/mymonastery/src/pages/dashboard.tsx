@@ -429,7 +429,16 @@ function stripTrailingEmoji(s: string): string {
 
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
   const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
-  const shouldPulse = m.windowOpen && m.todayPostCount === 0;
+  // Lectio uses its per-user stage-done flag instead of todayPostCount since
+  // reflections don't write to moment_posts. When the user is "caught up"
+  // (has already submitted the current stage's reflection), the card still
+  // shows a CTA — just labeled "Responses" instead of "Reflect 📜" — so
+  // they can jump back in to see what others heard.
+  const isLectio = m.templateType === "lectio-divina";
+  const isLectioCaughtUp = isLectio && !!m.lectioMyStageDone;
+  const shouldPulse = isLectio
+    ? !isLectioCaughtUp
+    : (m.windowOpen && m.todayPostCount === 0);
   const isDesktop = useIsDesktop();
   const memberNames = m.members
     .filter(p => p.email !== userEmail)
@@ -439,7 +448,6 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 
   const isIntercession = m.templateType === "intercession";
   const isMorningPrayer = m.templateType === "morning-prayer";
-  const isLectio = m.templateType === "lectio-divina";
 
   // Keep the emoji on one side only. Template emoji goes on the left; strip
   // any trailing emoji that's already in the stored name.
@@ -526,7 +534,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           </span>
         ) : null}
       </div>
-      <div className="flex items-center justify-between gap-2 mt-1.5">
+      <div className="flex items-center justify-between gap-4 mt-1.5 pr-1">
         <div className="min-w-0 flex-1">
           {shouldPulse && !isLectio ? (
             subtitle ? (
@@ -543,10 +551,34 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
             </p>
           )}
         </div>
-        <div className="shrink-0 flex items-center self-start -mt-1">
-          {shouldPulse ? (
-            <span className="text-xs font-semibold rounded-full px-3 py-1.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-              {isLectio ? "Reflect" : "Pray 🙏"}
+        <div className="shrink-0 flex items-center self-center">
+          {isLectio ? (
+            // Lectio always shows a pill: "Reflect 📜" when there's something
+            // to do this stage, "Responses" once the user has submitted.
+            <span
+              className="text-xs font-semibold rounded-full"
+              style={{
+                background: "#2D5E3F",
+                color: "#F0EDE6",
+                padding: "8px 16px",
+                letterSpacing: "0.01em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {isLectioCaughtUp ? "Responses" : "Reflect 📜"}
+            </span>
+          ) : shouldPulse ? (
+            <span
+              className="text-xs font-semibold rounded-full"
+              style={{
+                background: "#2D5E3F",
+                color: "#F0EDE6",
+                padding: "8px 16px",
+                letterSpacing: "0.01em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Pray 🙏
             </span>
           ) : (
             isDesktop && desktopStatusText && (
