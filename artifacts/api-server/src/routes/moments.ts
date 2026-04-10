@@ -985,12 +985,21 @@ router.get("/moments", async (req, res): Promise<void> => {
           lectioSundayName = lectioReadingMeta.sundayName;
           lectioGospelReference = lectioReadingMeta.gospelReference;
           lectioGospelText = lectioReadingMeta.gospelText;
-          const weekReflections = await db.select().from(lectioReflectionsTable)
-            .where(and(
-              eq(lectioReflectionsTable.momentId, m.id),
-              eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
-            ));
-          lectioResponseCount = new Set(weekReflections.map(r => r.userToken)).size;
+          // Reflections count query is isolated in its own try/catch so a
+          // schema drift (missing column, bad migration) on lectio_reflections
+          // can't wipe out the gospel text on the card. The count is a nice-
+          // to-have; the verses are the point of the card.
+          try {
+            const weekReflections = await db.select().from(lectioReflectionsTable)
+              .where(and(
+                eq(lectioReflectionsTable.momentId, m.id),
+                eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
+              ));
+            lectioResponseCount = new Set(weekReflections.map(r => r.userToken)).size;
+          } catch (reflErr) {
+            console.warn(`[moments] lectio reflections count failed for moment ${m.id}:`, reflErr);
+            lectioResponseCount = 0;
+          }
         }
 
         return {
