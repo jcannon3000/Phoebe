@@ -54,6 +54,7 @@ type Moment = {
   // Lectio-specific enrichment (only populated for lectio-divina moments)
   lectioSundayName?: string | null;
   lectioGospelReference?: string | null;
+  lectioGospelText?: string | null;
   lectioResponseCount?: number | null;
 };
 
@@ -480,8 +481,8 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
-  // Lectio has its own three-line rhythm: who you're with → the reading →
-  // how many have responded this week.
+  // Lectio has its own rotating rhythm: who you're with → the reading →
+  // the opening verses → how many have responded this week.
   const lectioFlapLines: string[] = isLectio
     ? (() => {
         const whoLine = subtitle;
@@ -490,11 +491,17 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
             ? `${m.lectioSundayName} · ${m.lectioGospelReference}`
             : `Reading: ${m.lectioGospelReference}`
           : "";
+        // First-sentence excerpt of the Gospel. The row clips with ellipsis,
+        // so we keep the raw text and let CSS truncate — this way the slide
+        // still ends on a clean word boundary at any viewport width.
+        const versesLine = m.lectioGospelText
+          ? m.lectioGospelText.replace(/\s+/g, " ").trim()
+          : "";
         const responses = m.lectioResponseCount ?? 0;
         const responseLine = m.memberCount > 0
           ? `${responses} of ${m.memberCount} have responded`
           : "";
-        return [whoLine, readingLine, responseLine];
+        return [whoLine, readingLine, versesLine, responseLine];
       })()
     : [];
   const mobileFlapLines: string[] = (isLectio ? lectioFlapLines : [subtitle, mobileStatusLine, logCountLine])

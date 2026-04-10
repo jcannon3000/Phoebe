@@ -916,7 +916,7 @@ router.get("/moments", async (req, res): Promise<void> => {
   // If any practices are Lectio Divina, fetch the current Sunday's reading
   // once and reuse it across all of them.
   const anyLectio = flatMoments.some(m => m.templateType === "lectio-divina");
-  let lectioReadingMeta: { sundayDate: string; sundayName: string | null; gospelReference: string | null } | null = null;
+  let lectioReadingMeta: { sundayDate: string; sundayName: string | null; gospelReference: string | null; gospelText: string | null } | null = null;
   if (anyLectio) {
     try {
       const reading = await getReadingForSunday(nextSundayDate());
@@ -924,6 +924,7 @@ router.get("/moments", async (req, res): Promise<void> => {
         sundayDate: reading.sundayDate,
         sundayName: reading.sundayName,
         gospelReference: reading.gospelReference,
+        gospelText: reading.gospelText,
       };
     } catch (err) {
       console.warn("[moments] lectio reading fetch failed:", err);
@@ -947,10 +948,12 @@ router.get("/moments", async (req, res): Promise<void> => {
     // submitted any reflection for the current Sunday anchor.
     let lectioSundayName: string | null = null;
     let lectioGospelReference: string | null = null;
+    let lectioGospelText: string | null = null;
     let lectioResponseCount = 0;
     if (m.templateType === "lectio-divina" && lectioReadingMeta) {
       lectioSundayName = lectioReadingMeta.sundayName;
       lectioGospelReference = lectioReadingMeta.gospelReference;
+      lectioGospelText = lectioReadingMeta.gospelText;
       const weekReflections = await db.select().from(lectioReflectionsTable)
         .where(and(
           eq(lectioReflectionsTable.momentId, m.id),
@@ -970,6 +973,7 @@ router.get("/moments", async (req, res): Promise<void> => {
       myUserToken: myToken?.userToken ?? null,
       lectioSundayName,
       lectioGospelReference,
+      lectioGospelText,
       lectioResponseCount,
     };
   }));
