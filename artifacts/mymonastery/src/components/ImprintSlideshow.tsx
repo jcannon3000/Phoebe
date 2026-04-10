@@ -11,7 +11,10 @@ export interface ImprintSlide {
 interface ImprintSlideshowProps {
   slides: ImprintSlide[];
   ctaLabel: string;
-  imprintType: "correspondence" | "gathering";
+  // When provided, finishing the slideshow marks that imprint as seen on the
+  // user's profile. Omit it (e.g. from the Learn page) for pure read-only
+  // playback that doesn't touch any server state.
+  imprintType?: "correspondence" | "gathering";
   onComplete: () => void;
 }
 
@@ -31,6 +34,29 @@ export const correspondenceSlides: ImprintSlide[] = [
   {
     headline: "The strength of our relationships is what makes life most vibrant. 🙏",
     body: "In a world of isolation and distraction, Phoebe sets apart a space to stay close to the people who matter most. When something hard happens — to you, to someone you love — there are already people who know you. Who have been reading your words. Who will show up.",
+  },
+];
+
+export const communitySlides: ImprintSlide[] = [
+  {
+    headline: "Community is not an event. It is a rhythm.",
+    body: "The thing a parish or a neighborhood or a house-church has that nothing else does is repetition — the same people, the same practices, on the same week, for years. Phoebe is built to help that rhythm survive contact with modern life.",
+  },
+  {
+    headline: "We are formed by what we return to.",
+    body: "The prayers you pray again and again. The letters you write to the same person every other week. The table you sit around every Sunday evening. These are not filler — they are the things that actually shape who you are and who your community is becoming.",
+  },
+  {
+    headline: "A community is a web, not a list.",
+    body: "It is not the number of people you know. It is the number of people who know each other because of you. Phoebe tries to make that web visible — so you can see where the relationships are thickening and where they need tending.",
+  },
+  {
+    headline: "The digital is for the sake of the in-person.",
+    body: "Phoebe is not a replacement for showing up. It is scaffolding — reminders, rhythms, shared history — so that when you are together, you are actually together, and when you are apart, no one drifts away unnoticed.",
+  },
+  {
+    headline: "Start small. Stay faithful. Watch it grow.",
+    body: "One letter. One practice. One gathering on a rhythm you can actually keep. That is how a community is planted. The roots take years, but they will hold.",
   },
 ];
 
@@ -84,16 +110,24 @@ export default function ImprintSlideshow({
     },
   });
 
+  function finish() {
+    if (imprintType) {
+      completeMutation.mutate();
+    } else {
+      onComplete();
+    }
+  }
+
   function advance() {
     if (index < slides.length - 1) {
       setIndex((i) => i + 1);
     } else {
-      completeMutation.mutate();
+      finish();
     }
   }
 
   function skip() {
-    completeMutation.mutate();
+    finish();
   }
 
   const isLast = index === slides.length - 1;

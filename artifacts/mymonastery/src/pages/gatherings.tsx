@@ -116,8 +116,8 @@ export default function GatheringsPage() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex items-start justify-between gap-3 mb-6">
+          <div className="min-w-0">
             <Link href="/dashboard" className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
               ← Dashboard
             </Link>
@@ -128,13 +128,12 @@ export default function GatheringsPage() {
               Your community, meeting regularly, with intention.
             </p>
           </div>
-          <Link href="/tradition/new">
-            <button
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-            >
-              + New
-            </button>
+          <Link
+            href="/tradition/new"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-medium text-sm transition-opacity hover:opacity-80 shrink-0 mt-6"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            + New
           </Link>
         </div>
 
