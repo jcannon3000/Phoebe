@@ -12,6 +12,7 @@ import lettersRouter from "./letters";
 import phoebeRouter from "./phoebe";
 import momentsRouter from "./moments";
 import officeRouter from "./office";
+import lectioRouter from "./lectio";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(lettersRouter);
 router.use(phoebeRouter);
 router.use(momentsRouter);
 router.use(officeRouter);
+router.use(lectioRouter);
 
 export default router;

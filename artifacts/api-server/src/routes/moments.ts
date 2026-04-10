@@ -393,7 +393,7 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
 });
 
 // ─── POST /api/moments — plant a standalone shared moment ───────────────────
-const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "listening", "custom"]);
+const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "listening", "lectio-divina", "custom"]);
 const BCP_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer"]);
 
 const StandalonePlantSchema = z.object({
@@ -1339,10 +1339,10 @@ router.get("/m/:userToken", async (req, res): Promise<void> => {
   const [tokenRow] = await db.select({ momentId: momentUserTokensTable.momentId, userToken: momentUserTokensTable.userToken })
     .from(momentUserTokensTable).where(eq(momentUserTokensTable.userToken, userToken));
   if (!tokenRow) { res.status(404).json({ error: "Not found" }); return; }
-  const [moment] = await db.select({ momentToken: sharedMomentsTable.momentToken })
+  const [moment] = await db.select({ momentToken: sharedMomentsTable.momentToken, templateType: sharedMomentsTable.templateType })
     .from(sharedMomentsTable).where(eq(sharedMomentsTable.id, tokenRow.momentId));
   if (!moment) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ momentToken: moment.momentToken, userToken: tokenRow.userToken });
+  res.json({ momentToken: moment.momentToken, userToken: tokenRow.userToken, templateType: moment.templateType });
 });
 
 // ─── GET /api/moment/:momentToken/:userToken — public posting page ───────────

@@ -35,7 +35,7 @@ const WEEK_DAYS = [
   { id: "TH", label: "Thu" }, { id: "FR", label: "Fri" }, { id: "SA", label: "Sat" }, { id: "SU", label: "Sun" },
 ];
 
-const SPIRITUAL_TEMPLATES = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "custom"]);
+const SPIRITUAL_TEMPLATES = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "lectio-divina", "custom"]);
 
 const TIME_OF_DAY_OPTIONS: { id: TimeOfDay; emoji: string; label: string; sub: string; range: string }[] = [
   { id: "early-morning",  emoji: "🌄", label: "Early morning",  sub: "Before the day begins",             range: "5am – 8am" },
@@ -286,6 +286,18 @@ const TEMPLATES = [
     id: "daily-office", emoji: "📖", name: "Daily Office",
     desc: "Pray the Book of Common Prayer together — morning or evening",
     prefill: null,
+  },
+  {
+    id: "lectio-divina", emoji: "📜", name: "Lectio Divina",
+    desc: "Slowly read and reflect on the upcoming Sunday Gospel together — Mon, Wed, Fri",
+    prefill: {
+      name: "Lectio Divina 📜",
+      intention: "Read together. Listen together. Pray together.",
+      loggingType: "reflection" as LoggingType,
+      reflectionPrompt: "",
+      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
+      frequency: "weekly" as Frequency,
+    },
   },
 ];
 
@@ -738,6 +750,20 @@ export default function MomentNew() {
       setStep("listening-what");
       return;
     }
+    // Lectio Divina: minimal flow — we just need invitees. Schedule is fixed
+    // (weekly Mon/Wed/Fri) and the gospel text is pulled from the lectionary
+    // automatically each week.
+    if (t.id === "lectio-divina") {
+      if (t.prefill) {
+        setName(t.prefill.name);
+        setIntention(t.prefill.intention);
+        setLoggingType(t.prefill.loggingType);
+        setReflectionPrompt(t.prefill.reflectionPrompt);
+        setFrequency(t.prefill.frequency);
+      }
+      setStep("invite");
+      return;
+    }
     // Fasting: dedicated flow — weekly only
     if (t.id === "fasting") {
       setFastingFrom("");
@@ -802,6 +828,8 @@ export default function MomentNew() {
       ? ["template", "fasting-what", "fasting-why", "fasting-when", "commitment", "invite"]
     : templateId === "listening"
       ? ["template", "listening-what", "schedule", "commitment", "invite"]
+    : templateId === "lectio-divina"
+      ? ["template", "invite"]
       : ["template", "name", "intention", "logging", "schedule", "commitment", "invite"];
 
   function goNext() {
@@ -966,6 +994,7 @@ export default function MomentNew() {
     const validParticipants = invitedPeople;
     const isFasting = templateId === "fasting";
     const isListening = templateId === "listening";
+    const isLectio = templateId === "lectio-divina";
 
     // Fasting: derive name/intention/scheduling from fasting-specific fields
     const finalName = isListening
@@ -996,14 +1025,16 @@ export default function MomentNew() {
       intercessionTopic: intercessionTopic.trim() || undefined,
       intercessionSource: intercessionTopic.trim() ? intercessionSource : undefined,
       intercessionFullText: intercessionFullText.trim() || undefined,
-      frequency: fastingFreqForApi as "daily" | "weekly" | "monthly",
-      scheduledTime: isFasting ? "00:00" : scheduledTime,
+      frequency: (isLectio ? "weekly" : fastingFreqForApi) as "daily" | "weekly" | "monthly",
+      scheduledTime: isFasting || isLectio ? "00:00" : scheduledTime,
       dayOfWeek: isFasting ? (fastingDayOfWeekRrule as "MO"|"TU"|"WE"|"TH"|"FR"|"SA"|"SU" | undefined) : dayOfWeek,
-      practiceDays: isSpiritual && frequency === "weekly" && scheduledDays.length > 0
+      practiceDays: isLectio
+        ? JSON.stringify(["MO", "WE", "FR"])
+        : isSpiritual && frequency === "weekly" && scheduledDays.length > 0
         ? JSON.stringify(scheduledDays)
         : undefined,
-      goalDays: commitmentSessionsGoal ?? commitmentDays,
-      commitmentDuration: commitmentSessionsGoal ?? commitmentDays,
+      goalDays: isLectio ? 0 : (commitmentSessionsGoal ?? commitmentDays),
+      commitmentDuration: isLectio ? 0 : (commitmentSessionsGoal ?? commitmentDays),
       commitmentSessionsGoal: commitmentSessionsGoal,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       timeOfDay: undefined,
