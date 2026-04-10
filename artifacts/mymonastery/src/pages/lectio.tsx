@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
@@ -41,15 +41,17 @@ const STAGE_LATIN: Record<Stage, string> = {
   meditatio: "Meditatio",
   oratio: "Oratio",
 };
-// Instructive prompt text. More hand-holding than a bare question — the user
-// is told how to *approach* the passage at this stage, then what to notice.
+// Instructive prompt text. The three beats of each stage mirror the classic
+// "read · reflect in silence · share aloud" structure of a Lectio Divina
+// circle — adapted for a reading practice (you read the passage; you don't
+// only listen to it read aloud).
 const STAGE_PROMPT_TEXT: Record<Stage, string> = {
   lectio:
-    "As you read this Sunday's gospel, notice the word or phrase that is speaking to you. Let it rise on its own; don't chase it.",
+    "We read God's Word for the first time, listening for a word or phrase that God may speak to us today. We reflect in silence. Then we share the word or phrase that spoke to our heart.",
   meditatio:
-    "Return to the passage. Sit with the word or phrase you noticed. What is it stirring in you?",
+    "We read God's Word for the second time. We reflect in silence on what God may be saying to us through the word or phrase that spoke to our heart. Then we share what it means to us.",
   oratio:
-    "Read the passage one last time. Listen for how it is calling you to act, to pray, or to become.",
+    "We read God's Word for the third time. We reflect in silence on how God may be calling us to act through the word or phrase that spoke to our heart. Then we share how we feel called to respond.",
 };
 
 type StageReveal = {
@@ -65,9 +67,11 @@ type StageReveal = {
 };
 
 type LectioData = {
-  moment: { id: number; name: string; templateType: string; timezone: string };
+  moment: { id: number; name: string; intention: string; templateType: string; timezone: string };
   userName: string;
   userToken: string;
+  isCreator: boolean;
+  members: Array<{ name: string; email: string; isYou: boolean }>;
   memberCount: number;
   week: {
     sundayDate: string;
@@ -129,9 +133,8 @@ async function fetchLectio(momentToken: string, userToken: string): Promise<Lect
 // ─── Palette ────────────────────────────────────────────────────────────────
 // Background matches the app's standard body color (#091A10) so the Safari
 // chrome (which reads the <meta name="theme-color"> value) blends with the
-// page. Cards on top of it are a slightly lighter green to float visually.
+// page. Slide content sits directly on this background — no card wrapping.
 const BG = "#091A10";
-const CARD_BG = "#132C1D";
 const WARM_TEXT = "#F0EDE6";
 const MUTED_GREEN = "#8FAF96";
 const FAINT_GREEN = "rgba(143,175,150,0.55)";
@@ -139,41 +142,23 @@ const ACCENT = "#6FAF85";
 const BORDER = "rgba(200,212,192,0.15)";
 const BUTTON_BG = "#2D5E3F";
 
-// Shared card wrapper for every slide. Keeps the slides visually consistent
-// — a lighter rounded panel sitting on the standard background — and gives
-// individual slides (like the gospel reading) a fixed height they can scroll
-// inside without moving the page.
-function SlideCard({
-  children,
-  padded = true,
-  scrollable = false,
-}: {
-  children: React.ReactNode;
-  padded?: boolean;
-  scrollable?: boolean;
-}) {
-  return (
-    <div
-      style={{
-        background: CARD_BG,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 20,
-        boxShadow: "0 4px 24px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25)",
-        padding: padded ? "28px 24px" : 0,
-        maxHeight: scrollable ? "min(64vh, 560px)" : undefined,
-        overflowY: scrollable ? "auto" : undefined,
-        WebkitOverflowScrolling: "touch",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+// Every bit of copy on this page is Space Grotesk (not Georgia/serif). We
+// set it at the page root so we don't have to restate it on every slide.
+const SPACE_GROTESK =
+  "'Space Grotesk', system-ui, -apple-system, Segoe UI, sans-serif";
 
 // ─── Slide model ────────────────────────────────────────────────────────────
 
-type SlideKind = "prompt" | "reading" | "entry" | "responses";
-type Slide = { stage: Stage; kind: SlideKind };
+type SlideKind = "prompt" | "reading" | "entry" | "responses" | "summary";
+// Summary slide isn't bound to a specific stage — it summarizes the whole
+// week — so `stage` is nullable and readers must check `kind` first.
+type Slide = { stage: Stage | null; kind: SlideKind };
+
+function allStagesSubmitted(data: LectioData): boolean {
+  const unlocked = STAGE_ORDER.filter((s) => data.stages[s].unlocked);
+  if (unlocked.length === 0) return false;
+  return unlocked.every((s) => data.stages[s].userHasSubmitted);
+}
 
 function buildSlides(data: LectioData): Slide[] {
   const slides: Slide[] = [];
@@ -183,6 +168,13 @@ function buildSlides(data: LectioData): Slide[] {
     slides.push({ stage: s, kind: "reading" });
     slides.push({ stage: s, kind: "entry" });
     slides.push({ stage: s, kind: "responses" });
+  }
+  // Tack on a summary slide once the user has submitted every unlocked stage.
+  // This is the "you've finished the week's reading" moment — it lists the
+  // three stages, how many of the circle have responded to each, and lets
+  // the user jump back into the responses to read what others heard.
+  if (allStagesSubmitted(data)) {
+    slides.push({ stage: null, kind: "summary" });
   }
   return slides;
 }
@@ -208,6 +200,7 @@ export default function LectioPage() {
     userToken: string;
   }>();
   const qc = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const queryKey = [`/api/lectio/${momentToken}/${userToken}`];
   const { data, isLoading, error } = useQuery<LectioData, LectioFetchError>({
@@ -226,6 +219,34 @@ export default function LectioPage() {
       qc.invalidateQueries({ queryKey: ["/api/moments"] });
     },
   });
+
+  // Settings menu mutations — these use the session-authenticated moment
+  // endpoints (the user reaches lectio from the dashboard while logged in).
+  const momentId = data?.moment.id;
+  const archiveMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/moments/${momentId}/archive`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+      setLocation("/dashboard");
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/moments/${momentId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+      setLocation("/dashboard");
+    },
+  });
+  const editMutation = useMutation({
+    mutationFn: (body: { name?: string; intention?: string }) =>
+      apiRequest("PATCH", `/api/moments/${momentId}`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+    },
+  });
+
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const slides = useMemo<Slide[]>(() => (data ? buildSlides(data) : []), [data]);
   const [slideIdx, setSlideIdx] = useState(0);
@@ -314,23 +335,68 @@ export default function LectioPage() {
   }
 
   const current = slides[slideIdx];
-  const stageData = data.stages[current.stage];
+  // stageData is only meaningful for stage-bound slides; summary has no stage.
+  const stageData = current.stage ? data.stages[current.stage] : null;
   const atStart = slideIdx === 0;
   const atEnd = slideIdx === slides.length - 1;
 
   const next = () => setSlideIdx((i) => Math.min(i + 1, slides.length - 1));
   const prev = () => setSlideIdx((i) => Math.max(i - 1, 0));
 
+  // Jump back to the first unlocked stage's Responses slide — used by the
+  // summary's "Read the responses" button.
+  const jumpToFirstResponses = () => {
+    const idx = slides.findIndex((sl) => sl.kind === "responses");
+    if (idx >= 0) setSlideIdx(idx);
+  };
+
   return (
-    <div style={{ minHeight: "100vh", background: BG, color: WARM_TEXT, display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <header className="max-w-2xl mx-auto w-full px-5 pt-6 pb-2 flex items-center justify-between">
+    <div
+      style={{
+        minHeight: "100vh",
+        background: BG,
+        color: WARM_TEXT,
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: SPACE_GROTESK,
+      }}
+    >
+      {/* Header: back link on the left, centered menu button, reading ref on
+          the right. The menu button is the one entry point into settings. */}
+      <header
+        className="max-w-2xl mx-auto w-full px-5 pt-6 pb-2"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
         <Link href="/dashboard">
           <span style={{ color: FAINT_GREEN, fontSize: 13 }}>← Back</span>
         </Link>
-        <div className="text-right">
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open settings"
+          className="rounded-full"
+          style={{
+            background: "rgba(19,44,29,0.85)",
+            border: `1px solid ${BORDER}`,
+            color: WARM_TEXT,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            padding: "6px 16px",
+            cursor: "pointer",
+          }}
+        >
+          Menu
+        </button>
+        <div style={{ textAlign: "right" }}>
           <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
-            {STAGE_ORDINAL[current.stage]}
+            {current.stage ? STAGE_ORDINAL[current.stage] : "Summary"}
           </p>
           <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2 }}>
             {data.reading.gospelReference}
@@ -338,7 +404,7 @@ export default function LectioPage() {
         </div>
       </header>
 
-      {/* Slide content */}
+      {/* Slide content — sits directly on the dark background, no card. */}
       <main
         className="flex-1 flex items-center justify-center px-5 py-6"
         style={{ paddingBottom: 112 /* room for floating nav pill */ }}
@@ -352,44 +418,43 @@ export default function LectioPage() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
             >
-              {current.kind === "prompt" && (
-                <SlideCard>
-                  <PromptSlide stage={current.stage} />
-                </SlideCard>
+              {current.kind === "prompt" && current.stage && (
+                <PromptSlide stage={current.stage} />
               )}
-              {current.kind === "reading" && (
-                <SlideCard scrollable>
-                  <ReadingSlide reading={data.reading} />
-                </SlideCard>
-              )}
-              {current.kind === "entry" && (
-                <SlideCard>
-                  <EntrySlide
-                    stage={current.stage}
-                    stageData={stageData}
-                    submitting={
-                      submitMutation.isPending &&
-                      submitMutation.variables?.stage === current.stage
-                    }
-                    onSubmit={(text) => {
-                      submitMutation.mutate(
-                        { stage: current.stage, reflectionText: text },
-                        {
-                          onSuccess: () => {
-                            // Advance to the Responses slide once the reflection
-                            // is saved.
-                            next();
-                          },
+              {current.kind === "reading" && <ReadingSlide reading={data.reading} />}
+              {current.kind === "entry" && current.stage && stageData && (
+                <EntrySlide
+                  stage={current.stage}
+                  stageData={stageData}
+                  submitting={
+                    submitMutation.isPending &&
+                    submitMutation.variables?.stage === current.stage
+                  }
+                  onSubmit={(text) => {
+                    const s = current.stage;
+                    if (!s) return;
+                    submitMutation.mutate(
+                      { stage: s, reflectionText: text },
+                      {
+                        onSuccess: () => {
+                          // Advance to the Responses slide once the reflection
+                          // is saved.
+                          next();
                         },
-                      );
-                    }}
-                  />
-                </SlideCard>
+                      },
+                    );
+                  }}
+                />
               )}
-              {current.kind === "responses" && (
-                <SlideCard>
-                  <ResponsesSlide stageData={stageData} memberCount={data.memberCount} />
-                </SlideCard>
+              {current.kind === "responses" && stageData && (
+                <ResponsesSlide stageData={stageData} memberCount={data.memberCount} />
+              )}
+              {current.kind === "summary" && (
+                <SummarySlide
+                  data={data}
+                  onReadResponses={jumpToFirstResponses}
+                  onDone={() => setLocation("/dashboard")}
+                />
               )}
             </motion.div>
           </AnimatePresence>
@@ -483,6 +548,22 @@ export default function LectioPage() {
           </button>
         </div>
       </nav>
+
+      {/* Settings menu overlay */}
+      <AnimatePresence>
+        {menuOpen && (
+          <SettingsMenu
+            data={data}
+            onClose={() => setMenuOpen(false)}
+            onSaveEdit={(name, intention) => editMutation.mutate({ name, intention })}
+            editPending={editMutation.isPending}
+            onLeave={() => archiveMutation.mutate()}
+            leavePending={archiveMutation.isPending}
+            onDelete={() => deleteMutation.mutate()}
+            deletePending={deleteMutation.isPending}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -557,14 +638,19 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
       >
         {reading.gospelReference}
       </p>
+      {/* The gospel is often long — scroll inside this container so the page
+          (and the floating nav) stay put. */}
       <div
         style={{
           color: WARM_TEXT,
           fontSize: 18,
           lineHeight: 1.8,
-          fontFamily:
-            "'Georgia', 'Iowan Old Style', 'Palatino', 'Times New Roman', serif",
+          fontFamily: SPACE_GROTESK,
           whiteSpace: "pre-wrap",
+          maxHeight: "min(58vh, 520px)",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          paddingRight: 4,
         }}
       >
         {reading.gospelText}
@@ -775,13 +861,459 @@ function ReflectionCard({
           color: WARM_TEXT,
           fontSize: 15,
           lineHeight: 1.65,
-          fontFamily:
-            "'Georgia', 'Iowan Old Style', 'Palatino', 'Times New Roman', serif",
+          fontFamily: SPACE_GROTESK,
           whiteSpace: "pre-wrap",
         }}
       >
         {text}
       </p>
     </div>
+  );
+}
+
+// ─── Summary slide ──────────────────────────────────────────────────────────
+// Shown as the final slide once the user has submitted a reflection for every
+// unlocked stage. Lists the three stages + how many in the circle have
+// responded to each, with a CTA to jump back into the responses and a quiet
+// secondary link to return to the dashboard.
+
+function SummarySlide({
+  data,
+  onReadResponses,
+  onDone,
+}: {
+  data: LectioData;
+  onReadResponses: () => void;
+  onDone: () => void;
+}) {
+  const rows: Array<{ stage: Stage; count: number; unlocked: boolean }> = STAGE_ORDER.map((s) => {
+    const sd = data.stages[s];
+    // Response count = number of distinct members who have submitted that
+    // stage. The server already filters `reflections` to the current user
+    // plus others (gated), so once the user has submitted, `reflections`
+    // is the full list.
+    const count = sd.reflections?.length ?? 0;
+    return { stage: s, count, unlocked: sd.unlocked };
+  });
+
+  return (
+    <div className="py-2 text-center">
+      <p
+        style={{
+          color: FAINT_GREEN,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          marginBottom: 10,
+        }}
+      >
+        You've finished the week
+      </p>
+      <p
+        style={{
+          color: WARM_TEXT,
+          fontSize: 22,
+          lineHeight: 1.4,
+          marginBottom: 28,
+          maxWidth: 480,
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        Each stage of the reading, and who has joined you in it.
+      </p>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          maxWidth: 420,
+          margin: "0 auto 28px auto",
+        }}
+      >
+        {rows.map((r) => (
+          <div
+            key={r.stage}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "14px 18px",
+              borderRadius: 14,
+              border: `1px solid ${BORDER}`,
+              background: "rgba(15,40,24,0.6)",
+              opacity: r.unlocked ? 1 : 0.4,
+            }}
+          >
+            <div style={{ textAlign: "left" }}>
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                }}
+              >
+                {STAGE_ORDINAL[r.stage]}
+              </p>
+              <p style={{ color: WARM_TEXT, fontSize: 15, margin: "2px 0 0 0" }}>
+                {STAGE_LATIN[r.stage]}
+              </p>
+            </div>
+            <p style={{ color: MUTED_GREEN, fontSize: 13, margin: 0 }}>
+              {r.count} {r.count === 1 ? "response" : "responses"}
+            </p>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onReadResponses}
+        className="rounded-full"
+        style={{
+          background: BUTTON_BG,
+          color: WARM_TEXT,
+          fontFamily: SPACE_GROTESK,
+          fontSize: 14,
+          fontWeight: 600,
+          padding: "12px 28px",
+          border: "none",
+          cursor: "pointer",
+        }}
+      >
+        Read the responses
+      </button>
+      <div style={{ marginTop: 16 }}>
+        <button
+          type="button"
+          onClick={onDone}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: FAINT_GREEN,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 13,
+            cursor: "pointer",
+            textDecoration: "underline",
+          }}
+        >
+          Back to dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings menu ──────────────────────────────────────────────────────────
+// Centered modal surfaced by the Menu button in the header. Creator sees
+// name / intention edit + Delete. Non-creator sees member list + Leave.
+
+function SettingsMenu({
+  data,
+  onClose,
+  onSaveEdit,
+  editPending,
+  onLeave,
+  leavePending,
+  onDelete,
+  deletePending,
+}: {
+  data: LectioData;
+  onClose: () => void;
+  onSaveEdit: (name: string, intention: string) => void;
+  editPending: boolean;
+  onLeave: () => void;
+  leavePending: boolean;
+  onDelete: () => void;
+  deletePending: boolean;
+}) {
+  const { isCreator, moment, members } = data;
+  const [name, setName] = useState(moment.name);
+  const [intention, setIntention] = useState(moment.intention ?? "");
+  const [confirming, setConfirming] = useState<null | "leave" | "delete">(null);
+
+  const dirty = name.trim() !== moment.name || intention.trim() !== (moment.intention ?? "");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        background: "rgba(0,0,0,0.65)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        fontFamily: SPACE_GROTESK,
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#0F2818",
+          border: `1px solid ${BORDER}`,
+          borderRadius: 20,
+          boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+          width: "100%",
+          maxWidth: 460,
+          maxHeight: "85vh",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          padding: 24,
+          color: WARM_TEXT,
+        }}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Settings</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: "transparent",
+              border: "none",
+              color: FAINT_GREEN,
+              fontSize: 20,
+              cursor: "pointer",
+              padding: 4,
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Name / intention — editable by creator, read-only otherwise */}
+        <div style={{ marginBottom: 22 }}>
+          <label style={{ display: "block", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, marginBottom: 6 }}>
+            Name
+          </label>
+          {isCreator ? (
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: "100%",
+                background: "rgba(0,0,0,0.25)",
+                border: `1px solid ${BORDER}`,
+                borderRadius: 10,
+                color: WARM_TEXT,
+                fontFamily: SPACE_GROTESK,
+                fontSize: 15,
+                padding: "10px 12px",
+                outline: "none",
+              }}
+            />
+          ) : (
+            <p style={{ color: WARM_TEXT, fontSize: 15, margin: 0 }}>{moment.name}</p>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 22 }}>
+          <label style={{ display: "block", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, marginBottom: 6 }}>
+            Intention
+          </label>
+          {isCreator ? (
+            <textarea
+              value={intention}
+              onChange={(e) => setIntention(e.target.value)}
+              rows={3}
+              style={{
+                width: "100%",
+                background: "rgba(0,0,0,0.25)",
+                border: `1px solid ${BORDER}`,
+                borderRadius: 10,
+                color: WARM_TEXT,
+                fontFamily: SPACE_GROTESK,
+                fontSize: 15,
+                lineHeight: 1.5,
+                padding: "10px 12px",
+                outline: "none",
+                boxShadow: "none",
+                resize: "vertical",
+              }}
+            />
+          ) : (
+            <p style={{ color: MUTED_GREEN, fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+              {moment.intention || "—"}
+            </p>
+          )}
+          {isCreator && dirty && (
+            <button
+              type="button"
+              onClick={() => onSaveEdit(name.trim(), intention.trim())}
+              disabled={editPending || name.trim().length === 0}
+              className="rounded-full mt-3"
+              style={{
+                background: BUTTON_BG,
+                color: WARM_TEXT,
+                fontFamily: SPACE_GROTESK,
+                fontSize: 13,
+                fontWeight: 600,
+                padding: "8px 18px",
+                border: "none",
+                cursor: editPending ? "wait" : "pointer",
+              }}
+            >
+              {editPending ? "Saving…" : "Save changes"}
+            </button>
+          )}
+        </div>
+
+        {/* Members list */}
+        <div style={{ marginBottom: 22 }}>
+          <label style={{ display: "block", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, marginBottom: 8 }}>
+            Members
+          </label>
+          <div className="space-y-1.5">
+            {members.map((m) => (
+              <div key={m.email} style={{ color: m.isYou ? ACCENT : MUTED_GREEN, fontSize: 14 }}>
+                {m.name}{m.isYou ? " · you" : ""}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Danger zone */}
+        <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 18 }}>
+          {!isCreator && (
+            confirming === "leave" ? (
+              <div>
+                <p style={{ color: WARM_TEXT, fontSize: 14, marginBottom: 12 }}>
+                  Leave "{moment.name}"? You'll stop receiving reminders and can be re-invited later.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={onLeave}
+                    disabled={leavePending}
+                    className="rounded-full"
+                    style={{
+                      background: "#8A5A1A",
+                      color: WARM_TEXT,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      padding: "8px 18px",
+                      border: "none",
+                      cursor: leavePending ? "wait" : "pointer",
+                    }}
+                  >
+                    {leavePending ? "Leaving…" : "Yes, leave it"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(null)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: FAINT_GREEN,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirming("leave")}
+                className="rounded-full"
+                style={{
+                  background: "transparent",
+                  color: "#C79A4A",
+                  border: "1px solid rgba(199,154,74,0.5)",
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: "8px 18px",
+                  cursor: "pointer",
+                }}
+              >
+                Leave practice
+              </button>
+            )
+          )}
+          {isCreator && (
+            confirming === "delete" ? (
+              <div>
+                <p style={{ color: WARM_TEXT, fontSize: 14, marginBottom: 12 }}>
+                  Delete "{moment.name}"? This removes it for everyone and cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    disabled={deletePending}
+                    className="rounded-full"
+                    style={{
+                      background: "#8A2A2A",
+                      color: WARM_TEXT,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      padding: "8px 18px",
+                      border: "none",
+                      cursor: deletePending ? "wait" : "pointer",
+                    }}
+                  >
+                    {deletePending ? "Deleting…" : "Yes, delete it"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(null)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: FAINT_GREEN,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirming("delete")}
+                className="rounded-full"
+                style={{
+                  background: "transparent",
+                  color: "#D97A7A",
+                  border: "1px solid rgba(217,122,122,0.5)",
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: "8px 18px",
+                  cursor: "pointer",
+                }}
+              >
+                Delete practice
+              </button>
+            )
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -534,7 +534,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           </span>
         ) : null}
       </div>
-      <div className="flex items-center justify-between gap-4 mt-1.5 pr-1">
+      <div className="flex items-center justify-between gap-4 mt-1.5 -mr-2">
         <div className="min-w-0 flex-1">
           {shouldPulse && !isLectio ? (
             subtitle ? (
@@ -555,8 +555,8 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           {isLectio ? (
             // Lectio always shows a pill: "Reflect 📜" when there's something
             // to do this stage, "Responses" once the user has submitted.
-            <span
-              className="text-xs font-semibold rounded-full"
+            <motion.span
+              className="text-xs font-semibold rounded-full inline-block"
               style={{
                 background: "#2D5E3F",
                 color: "#F0EDE6",
@@ -564,12 +564,14 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
                 letterSpacing: "0.01em",
                 whiteSpace: "nowrap",
               }}
+              animate={isLectioCaughtUp ? undefined : { scale: [1, 1.05, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
             >
               {isLectioCaughtUp ? "Responses" : "Reflect 📜"}
-            </span>
+            </motion.span>
           ) : shouldPulse ? (
-            <span
-              className="text-xs font-semibold rounded-full"
+            <motion.span
+              className="text-xs font-semibold rounded-full inline-block"
               style={{
                 background: "#2D5E3F",
                 color: "#F0EDE6",
@@ -577,9 +579,11 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
                 letterSpacing: "0.01em",
                 whiteSpace: "nowrap",
               }}
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
             >
               Pray 🙏
-            </span>
+            </motion.span>
           ) : (
             isDesktop && desktopStatusText && (
               <span className="text-xs" style={{ color: "#8FAF96" }}>{desktopStatusText}</span>

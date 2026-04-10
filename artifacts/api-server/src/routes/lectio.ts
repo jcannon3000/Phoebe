@@ -269,6 +269,15 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
     .from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.momentId, moment.id));
 
+  // Creator = the member with the smallest token id (same convention as
+  // moments.ts). Used by the frontend settings menu to show Edit vs Leave.
+  const creatorToken = allMembers.length > 0
+    ? allMembers.reduce((min, m) => (m.id < min.id ? m : min), allMembers[0])
+    : null;
+  const isCreator = creatorToken
+    ? creatorToken.userToken === userToken
+    : false;
+
   // 4. Load reflections for this week (all stages, all members).
   const reflections = await db
     .select()
@@ -350,11 +359,18 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
     moment: {
       id: moment.id,
       name: moment.name,
+      intention: moment.intention,
       templateType: moment.templateType,
       timezone: tz,
     },
     userName: userRow.name ?? userRow.email.split("@")[0],
     userToken,
+    isCreator,
+    members: allMembers.map((m) => ({
+      name: m.name ?? m.email.split("@")[0],
+      email: m.email,
+      isYou: m.userToken === userToken,
+    })),
     memberCount: allMembers.length,
     week: {
       sundayDate: sundayIso,
