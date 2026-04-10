@@ -28,8 +28,51 @@ import {
 } from "@workspace/db";
 import type { LectionaryReading } from "@workspace/db";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
+import { SEED_READINGS } from "../data/lectionary/seed";
 
 const router: IRouter = Router();
+
+// Short request ID so log lines can be correlated across steps.
+function rid(): string {
+  return Math.random().toString(36).slice(2, 8);
+}
+
+// ─── GET /api/debug/lectio-self-test — unauthenticated diagnostic ───────────
+// Returns the current resolution of getReadingForSunday(nextSundayDate())
+// plus seed metadata so we can verify the backend reading path in one curl.
+router.get("/debug/lectio-self-test", async (_req, res): Promise<void> => {
+  const seedSize = SEED_READINGS.length;
+  const sorted = SEED_READINGS.slice().sort((a, b) => a.sundayDate.localeCompare(b.sundayDate));
+  const firstSunday = sorted[0]?.sundayDate ?? null;
+  const lastSunday = sorted[sorted.length - 1]?.sundayDate ?? null;
+  const targetSunday = nextSundayDate();
+  try {
+    const reading = await getReadingForSunday(targetSunday);
+    res.json({
+      ok: true,
+      seedSize,
+      firstSunday,
+      lastSunday,
+      target: targetSunday.toISOString().slice(0, 10),
+      resolved: {
+        sundayDate: reading.sundayDate,
+        sundayName: reading.sundayName,
+        gospelReference: reading.gospelReference,
+        gospelTextLength: reading.gospelText?.length ?? 0,
+        gospelTextPreview: reading.gospelText?.slice(0, 120) ?? null,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      seedSize,
+      firstSunday,
+      lastSunday,
+      target: targetSunday.toISOString().slice(0, 10),
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
 
 // ─── Stage / day-of-week helpers ────────────────────────────────────────────
 
@@ -117,19 +160,45 @@ function computeWeekState(tz: string): WeekState {
 
 // ─── Shared loader: resolve moment + user by token pair ─────────────────────
 
+type LoadError = {
+  error: "moment_not_found" | "wrong_template" | "invalid_token";
+  stage: "moment_lookup" | "template_check" | "user_lookup";
+  detail: string;
+};
+
 async function loadMomentAndMember(momentToken: string, userToken: string) {
   const [moment] = await db
     .select()
     .from(sharedMomentsTable)
     .where(eq(sharedMomentsTable.momentToken, momentToken));
-  if (!moment) return { error: "moment_not_found" as const };
-  if (moment.templateType !== "lectio-divina") return { error: "wrong_template" as const };
+  if (!moment) {
+    return {
+      error: "moment_not_found",
+      stage: "moment_lookup",
+      detail: `No shared_moments row for momentToken=${momentToken}`,
+    } satisfies LoadError;
+  }
+  if (moment.templateType !== "lectio-divina") {
+    return {
+      error: "wrong_template",
+      stage: "template_check",
+      detail: `moment.templateType is "${moment.templateType}", expected "lectio-divina"`,
+    } satisfies LoadError;
+  }
 
   const [userRow] = await db
     .select()
     .from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.userToken, userToken));
-  if (!userRow || userRow.momentId !== moment.id) return { error: "invalid_token" as const };
+  if (!userRow || userRow.momentId !== moment.id) {
+    return {
+      error: "invalid_token",
+      stage: "user_lookup",
+      detail: userRow
+        ? `userToken matches but belongs to moment ${userRow.momentId}, not ${moment.id}`
+        : `No moment_user_tokens row for userToken=${userToken}`,
+    } satisfies LoadError;
+  }
 
   return { moment, userRow };
 }
@@ -137,18 +206,26 @@ async function loadMomentAndMember(momentToken: string, userToken: string) {
 // ─── GET /api/lectio/:momentToken/:userToken — full current-week state ──────
 
 router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> => {
+  const id = rid();
   const { momentToken, userToken } = req.params;
+  console.log(`[lectio:GET ${id}] start momentToken=${momentToken.slice(0, 6)}… userToken=${userToken.slice(0, 6)}…`);
+  try {
   const loaded = await loadMomentAndMember(momentToken, userToken);
   if ("error" in loaded) {
-    const map: Record<string, number> = {
-      moment_not_found: 404,
-      wrong_template: 400,
-      invalid_token: 404,
-    };
-    res.status(map[loaded.error] ?? 400).json({ error: loaded.error });
+    const status =
+      loaded.error === "wrong_template" ? 400 :
+      loaded.error === "moment_not_found" ? 404 :
+      loaded.error === "invalid_token" ? 404 : 400;
+    console.warn(`[lectio:GET ${id}] load_failed stage=${loaded.stage} error=${loaded.error} detail=${loaded.detail}`);
+    res.status(status).json({
+      error: loaded.error,
+      stage: loaded.stage,
+      detail: loaded.detail,
+    });
     return;
   }
   const { moment, userRow } = loaded;
+  console.log(`[lectio:GET ${id}] moment_loaded id=${moment.id} tz=${moment.timezone ?? "UTC"}`);
 
   const tz = moment.timezone || "UTC";
 
@@ -157,14 +234,29 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
   const sundayDate = nextSundayDate();
 
   // 1. Fetch (or read from cache) the reading for this Sunday.
+  // getReadingForSunday has an infallible nearest-seed fallback, but if the
+  // seed is somehow missing in a deploy we fall through to an empty shell
+  // so the card can still render and the user's reflections are still usable.
   let reading: LectionaryReading;
   try {
     reading = await getReadingForSunday(sundayDate);
+    console.log(`[lectio:GET ${id}] reading_resolved sundayDate=${reading.sundayDate} ref="${reading.gospelReference}" textLen=${reading.gospelText?.length ?? 0}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[lectio] reading lookup failed:", err);
-    res.status(502).json({ error: "reading_not_available", detail: msg });
-    return;
+    console.error(`[lectio:GET ${id}] reading_lookup_failed — falling back to empty shell:`, err);
+    reading = {
+      id: 0,
+      sundayDate: sundayDate.toISOString().slice(0, 10),
+      sundayName: "Reading temporarily unavailable",
+      liturgicalSeason: null,
+      liturgicalYear: null,
+      gospelReference: "",
+      gospelText: "",
+      sourceUrl: null,
+      fetchedAt: new Date(),
+    } as LectionaryReading;
+    // Annotate reading with a non-schema detail field so the frontend can show a banner
+    (reading as LectionaryReading & { _fallbackReason?: string })._fallbackReason = msg;
   }
   const sundayIso = reading.sundayDate;
 
@@ -279,9 +371,22 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
       gospelReference: reading.gospelReference,
       gospelText: reading.gospelText,
       sourceUrl: reading.sourceUrl,
+      fallbackReason: (reading as LectionaryReading & { _fallbackReason?: string })._fallbackReason ?? null,
     },
     stages: stageReveals,
   });
+  console.log(`[lectio:GET ${id}] done`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[lectio:GET ${id}] unexpected_failure:`, err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "internal_error",
+        stage: "unknown",
+        detail: msg,
+      });
+    }
+  }
 });
 
 // ─── POST /api/lectio/:momentToken/:userToken/reflect — submit a reflection ─

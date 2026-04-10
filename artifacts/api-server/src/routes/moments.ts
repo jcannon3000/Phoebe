@@ -118,6 +118,30 @@ function computeWindowOpen(moment: { scheduledTime: string; windowMinutes: numbe
   return isWindowOpen(moment);
 }
 
+// ─── Is this practice actionable TODAY for dashboard bucketing? ──────────────
+// Separate from windowOpen because: (a) lectio-divina has a weekday-across-the-
+// week rhythm that doesn't map to a single "today" window, and (b) the user's
+// stated intent is "all active practices show up on the home screen today" —
+// so we deliberately don't gate by time-of-day bands here. Time-of-day gating
+// (intercession morning window, etc.) belongs on the detail page, not the card.
+function isActionableToday(moment: {
+  templateType: string | null;
+  frequency: string;
+  dayOfWeek?: string | null;
+  practiceDays?: string | null;
+  timezone?: string | null;
+}): boolean {
+  // Lectio Divina: actionable Mon–Sat in the practice's timezone. Sunday is
+  // the communal reveal ("this week's journey"), which moves to "this week".
+  if (moment.templateType === "lectio-divina") {
+    const dow = getCurrentDayOfWeekInTz(moment.timezone || "UTC");
+    return dow >= 1 && dow <= 6;
+  }
+  // Everything else: actionable iff it's a practice day in the practice's TZ.
+  // Daily practices are always actionable; weekly practices only on their day.
+  return isPracticeDayInTz(moment);
+}
+
 // ─── Intercession window: open during a generous band around time-of-day ─────
 // Intercession stores scheduledTime="00:00"/windowMinutes=1440 so we gate by
 // a real-world time-of-day band instead of the raw window.
@@ -975,6 +999,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           members: allMembers.map(t => ({ name: t.name, email: t.email })),
           todayPostCount: todayPosts.length,
           windowOpen: computeWindowOpen(m),
+          isActionableToday: isActionableToday(m),
           minutesLeft: minutesRemaining(m),
           latestWindow,
           myUserToken: myToken?.userToken ?? null,
@@ -986,7 +1011,11 @@ router.get("/moments", async (req, res): Promise<void> => {
       } catch (err) {
         console.error(`[moments] enrichment failed for moment ${m.id} (${m.templateType}):`, err);
         // Minimal fallback — return the raw row with safe defaults so the
-        // card still renders (missing badges/counts, but visible).
+        // card still renders (missing badges/counts, but visible). We still
+        // compute isActionableToday from the base row because it only needs
+        // templateType/frequency/timezone/practiceDays — none of which require
+        // additional DB reads — so the card lands in the right bucket even
+        // when enrichment fails.
         const myToken = userTokenRows.find(t => t.momentId === m.id);
         return {
           ...m,
@@ -994,6 +1023,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           members: [],
           todayPostCount: 0,
           windowOpen: false,
+          isActionableToday: isActionableToday(m),
           minutesLeft: 0,
           latestWindow: null,
           myUserToken: myToken?.userToken ?? null,

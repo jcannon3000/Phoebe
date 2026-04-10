@@ -6,7 +6,7 @@ import { Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { format, parseISO, addDays, startOfDay, isToday, isBefore } from "date-fns";
+import { format } from "date-fns";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -83,6 +83,7 @@ interface MomentData {
   members: { name: string | null; email: string }[];
   todayPostCount: number;
   windowOpen: boolean;
+  isActionableToday: boolean;
   minutesLeft: number;
   momentToken: string;
   myUserToken: string | null;
@@ -223,23 +224,19 @@ export default function MomentsDashboard() {
   const moments: MomentData[] = data?.moments ?? [];
 
   // ── Time bucket bucketing ─────────────────────────────────────────────────
-  const endOfWeek = addDays(startOfDay(new Date()), 7);
+  // Server-side `isActionableToday` is the single source of truth. This
+  // mirrors dashboard.tsx so the home page and /practices agree. We keep the
+  // `monthMoments` array for the rendering code below but it stays empty —
+  // every practice is either actionable today or upcoming this week.
   const todayMoments: MomentData[] = [];
   const weekMoments: MomentData[] = [];
   const monthMoments: MomentData[] = [];
 
   for (const m of moments) {
-    if (m.windowOpen) {
+    if (m.isActionableToday && m.todayPostCount === 0) {
       todayMoments.push(m);
     } else {
-      const next = nextWindowDate(m);
-      if (isToday(next)) {
-        todayMoments.push(m);
-      } else if (isBefore(next, endOfWeek)) {
-        weekMoments.push(m);
-      } else {
-        monthMoments.push(m);
-      }
+      weekMoments.push(m);
     }
   }
 

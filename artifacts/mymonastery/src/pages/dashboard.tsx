@@ -40,6 +40,7 @@ type Moment = {
   members: Array<{ name: string; email: string }>;
   todayPostCount: number;
   windowOpen: boolean;
+  isActionableToday: boolean;
   intercessionTopic?: string | null;
   fastingFrom?: string | null;
   goalDays?: number | null;
@@ -714,31 +715,18 @@ export default function Dashboard() {
     }
 
     // ── Moments placement
+    // Server-side `isActionableToday` is now the single source of truth for
+    // whether a practice belongs in "Today". It's timezone-aware (uses the
+    // practice's own tz, not the browser's), handles lectio-divina's weekday
+    // rhythm, and ignores time-of-day bands so all active practices show up
+    // on the home screen today. Nothing lands in `monthItems` anymore —
+    // practices are either actionable today, already-done today, or upcoming
+    // this week.
     for (const m of allMoments) {
-      // Lectio Divina has a weekday rhythm (Mon/Wed/Fri submissions, Sunday
-      // reveal) rather than a single daily window, so the windowOpen flag
-      // doesn't describe it well. It's always "present" during the week —
-      // keep it in Today unless you've already engaged with this week's
-      // current stage (in which case show it in This Week as "checked in").
-      if (m.templateType === "lectio-divina") {
-        const dow = new Date().getDay(); // 0 = Sunday
-        const isWeekday = dow >= 1 && dow <= 6;
-        if (isWeekday) {
-          todayItems.push({ kind: "moment", data: m });
-        } else {
-          weekItems.push({ kind: "moment", data: m, nextWindow: "Monday" });
-        }
-        continue;
-      }
-      if (m.windowOpen && m.todayPostCount === 0) {
-        // Window open, not yet logged → Today
+      if (m.isActionableToday && m.todayPostCount === 0) {
         todayItems.push({ kind: "moment", data: m });
-      } else if (m.todayPostCount > 0) {
-        // Already logged today → This Week (next occurrence coming up)
-        weekItems.push({ kind: "moment", data: m, nextWindow: nextWindowLabel(m) });
       } else {
-        // No open window, not logged → This Month
-        monthItems.push({ kind: "moment", data: m });
+        weekItems.push({ kind: "moment", data: m, nextWindow: nextWindowLabel(m) });
       }
     }
 

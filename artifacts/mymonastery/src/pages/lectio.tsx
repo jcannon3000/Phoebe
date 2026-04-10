@@ -49,9 +49,47 @@ type LectioData = {
     gospelReference: string;
     gospelText: string;
     sourceUrl: string | null;
+    fallbackReason?: string | null;
   };
   stages: Record<Stage, StageReveal>;
 };
+
+// Custom error carrying the server's structured error body so the error screen
+// can tell us WHICH step failed (moment_lookup, user_lookup, template_check,
+// reading_fetch, unknown) instead of a generic "couldn't load" message.
+class LectioFetchError extends Error {
+  status: number;
+  stage: string | null;
+  detail: string | null;
+  constructor(status: number, stage: string | null, detail: string | null, message: string) {
+    super(message);
+    this.status = status;
+    this.stage = stage;
+    this.detail = detail;
+  }
+}
+
+async function fetchLectio(momentToken: string, userToken: string): Promise<LectioData> {
+  const res = await fetch(`/api/lectio/${momentToken}/${userToken}`, { credentials: "include" });
+  if (!res.ok) {
+    let stage: string | null = null;
+    let detail: string | null = null;
+    let errCode: string | null = null;
+    try {
+      const body = await res.json();
+      stage = body?.stage ?? null;
+      detail = body?.detail ?? null;
+      errCode = body?.error ?? null;
+    } catch { /* non-JSON body */ }
+    throw new LectioFetchError(
+      res.status,
+      stage,
+      detail,
+      errCode ?? `HTTP ${res.status}`,
+    );
+  }
+  return res.json() as Promise<LectioData>;
+}
 
 // ─── Palette (matches the rest of the app) ──────────────────────────────────
 const BG = "#0A1F11";
@@ -70,10 +108,11 @@ export default function LectioPage() {
   const qc = useQueryClient();
 
   const queryKey = [`/api/lectio/${momentToken}/${userToken}`];
-  const { data, isLoading, error } = useQuery<LectioData>({
+  const { data, isLoading, error } = useQuery<LectioData, LectioFetchError>({
     queryKey,
-    queryFn: () => apiRequest("GET", `/api/lectio/${momentToken}/${userToken}`),
+    queryFn: () => fetchLectio(momentToken, userToken),
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const submitMutation = useMutation({
@@ -94,10 +133,40 @@ export default function LectioPage() {
     );
   }
   if (error || !data) {
+    const stage = error?.stage ?? null;
+    const detail = error?.detail ?? null;
+    const status = error?.status ?? null;
+    // Friendly headline per stage — but always include the raw detail so we
+    // can debug production issues without another round-trip.
+    const headline = (() => {
+      switch (stage) {
+        case "moment_lookup": return "This practice link isn't valid.";
+        case "template_check": return "This practice isn't a Lectio Divina practice.";
+        case "user_lookup": return "Your access link for this practice isn't valid.";
+        default: return "We couldn't load this reading.";
+      }
+    })();
     return (
       <div style={{ minHeight: "100vh", background: BG }} className="flex items-center justify-center px-6">
-        <div className="text-center" style={{ color: MUTED_GREEN }}>
-          <p className="mb-4">We couldn't load this reading.</p>
+        <div className="text-center max-w-md" style={{ color: MUTED_GREEN }}>
+          <p className="mb-2">{headline}</p>
+          {(stage || detail || status) && (
+            <div
+              className="mb-4 mt-2 text-left rounded-lg px-3 py-2 text-xs"
+              style={{
+                background: "rgba(46,107,64,0.12)",
+                border: "1px solid rgba(143,175,150,0.25)",
+                color: FAINT_GREEN,
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {status !== null && <div>status: {status}</div>}
+              {stage && <div>stage: {stage}</div>}
+              {detail && <div>detail: {detail}</div>}
+            </div>
+          )}
           <div className="flex flex-col items-center gap-3">
             <button
               onClick={() => qc.refetchQueries({ queryKey })}
