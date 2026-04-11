@@ -150,7 +150,7 @@ const SPACE_GROTESK =
 
 // ─── Slide model ────────────────────────────────────────────────────────────
 
-type SlideKind = "prompt" | "reading" | "entry" | "responses" | "summary";
+type SlideKind = "prompt" | "reading" | "entry" | "responses" | "summary" | "all-responses";
 // Summary slide isn't bound to a specific stage — it summarizes the whole
 // week — so `stage` is nullable and readers must check `kind` first.
 type Slide = { stage: Stage | null; kind: SlideKind };
@@ -174,8 +174,13 @@ function buildSlides(data: LectioData): Slide[] {
   // This is the "you've finished the week's reading" moment — it lists the
   // three stages, how many of the circle have responded to each, and lets
   // the user jump back into the responses to read what others heard.
+  //
+  // The `all-responses` slide is a single scrollable page that lists the
+  // responses from all three stages together. It's the destination of the
+  // "Read all responses" CTA on the summary slide.
   if (allStagesSubmitted(data)) {
     slides.push({ stage: null, kind: "summary" });
+    slides.push({ stage: null, kind: "all-responses" });
   }
   return slides;
 }
@@ -374,13 +379,6 @@ export default function LectioPage() {
   const next = () => setSlideIdx((i) => Math.min(i + 1, slides.length - 1));
   const prev = () => setSlideIdx((i) => Math.max(i - 1, 0));
 
-  // Jump back to the first unlocked stage's Responses slide — used by the
-  // summary's "Read the responses" button.
-  const jumpToFirstResponses = () => {
-    const idx = slides.findIndex((sl) => sl.kind === "responses");
-    if (idx >= 0) setSlideIdx(idx);
-  };
-
   // Jump to a specific stage's Responses slide — used by each summary row.
   const jumpToStageResponses = (stage: Stage) => {
     const idx = slides.findIndex(
@@ -393,6 +391,15 @@ export default function LectioPage() {
   // shortcut so the creator/invitee can skip past all stages to the recap.
   const jumpToSummary = () => {
     const idx = slides.findIndex((sl) => sl.kind === "summary");
+    if (idx >= 0) setSlideIdx(idx);
+  };
+
+  // Jump to the combined "all responses" slide — the destination of the
+  // "Read all responses" CTA on the summary slide. Unlike
+  // `jumpToStageResponses` (which goes to one stage's Responses slide),
+  // this shows every stage's responses in a single scrollable view.
+  const jumpToAllResponses = () => {
+    const idx = slides.findIndex((sl) => sl.kind === "all-responses");
     if (idx >= 0) setSlideIdx(idx);
   };
 
@@ -442,7 +449,13 @@ export default function LectioPage() {
         </button>
         <div style={{ textAlign: "right" }}>
           <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
-            {data.week.isSunday ? "Completed" : current.stage ? STAGE_ORDINAL[current.stage] : "Summary"}
+            {data.week.isSunday
+              ? "Completed"
+              : current.stage
+                ? STAGE_ORDINAL[current.stage]
+                : current.kind === "all-responses"
+                  ? "All Responses"
+                  : "Summary"}
           </p>
           <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2 }}>
             {data.reading.gospelReference}
@@ -451,20 +464,26 @@ export default function LectioPage() {
       </header>
 
       {/* Slide content — sits directly on the dark background, no card.
-          For the reading slide we drop the bottom padding and let the
-          scrollable text extend behind the floating nav with a fade mask. */}
+          For the reading + all-responses slides we drop the bottom padding
+          and let the scrollable area extend behind the floating nav with
+          a fade overlay. Both slides share the same stretch + flex-column
+          plumbing so the inner div can fill the viewport. */}
+      {(() => {
+        const isFullHeightSlide =
+          current.kind === "reading" || current.kind === "all-responses";
+        return (
       <main
         className={`flex-1 flex px-5 py-6 ${
-          current.kind === "reading"
+          isFullHeightSlide
             ? "items-stretch justify-center"
             : "items-center justify-center"
         }`}
-        style={{ paddingBottom: current.kind === "reading" ? 0 : 112 }}
+        style={{ paddingBottom: isFullHeightSlide ? 0 : 112 }}
       >
         <div
           className="max-w-2xl w-full"
           style={
-            current.kind === "reading"
+            isFullHeightSlide
               ? { display: "flex", flexDirection: "column", minHeight: 0 }
               : undefined
           }
@@ -477,7 +496,7 @@ export default function LectioPage() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
               style={
-                current.kind === "reading"
+                isFullHeightSlide
                   ? { display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }
                   : undefined
               }
@@ -516,15 +535,20 @@ export default function LectioPage() {
               {current.kind === "summary" && (
                 <SummarySlide
                   data={data}
-                  onReadResponses={jumpToFirstResponses}
+                  onReadResponses={jumpToAllResponses}
                   onJumpToStage={jumpToStageResponses}
                   onDone={() => setLocation("/dashboard")}
                 />
+              )}
+              {current.kind === "all-responses" && (
+                <AllResponsesSlide data={data} />
               )}
             </motion.div>
           </AnimatePresence>
         </div>
       </main>
+        );
+      })()}
 
       {/* Floating nav pill at the bottom of the viewport. Fixed so scrolling
           inside a slide (e.g. the gospel card) doesn't move the nav. */}
@@ -556,7 +580,9 @@ export default function LectioPage() {
             ? "Completed"
             : current.stage
               ? `${STAGE_ORDINAL[current.stage]} · ${STAGE_LATIN[current.stage]}`
-              : "Summary";
+              : current.kind === "all-responses"
+                ? "All Responses"
+                : "Summary";
 
           let actionLabel: string | null = null;
           if (current.kind === "prompt") {
@@ -1218,6 +1244,176 @@ function SummarySlide({
           Back to dashboard
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── All responses slide ────────────────────────────────────────────────────
+// Single scrollable page that shows every stage's reflections in one long
+// feed, grouped by stage. This is the destination of the "Read all
+// responses" CTA on the summary slide — users wanted a single view they
+// could scroll through instead of bouncing between three separate
+// per-stage slides.
+
+function AllResponsesSlide({ data }: { data: LectioData }) {
+  type ReflectionRow = NonNullable<StageReveal["reflections"]>[number];
+  const sections: Array<{
+    stage: Stage;
+    reflections: ReflectionRow[];
+    userHasSubmitted: boolean;
+  }> = STAGE_ORDER.filter((s) => data.stages[s].unlocked).map((s) => {
+    const sd = data.stages[s];
+    return {
+      stage: s,
+      reflections: sd.reflections ?? [],
+      userHasSubmitted: sd.userHasSubmitted,
+    };
+  });
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        paddingTop: 8,
+        position: "relative",
+      }}
+    >
+      <p
+        style={{
+          color: FAINT_GREEN,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          marginBottom: 6,
+          textAlign: "center",
+        }}
+      >
+        The week's reading
+      </p>
+      <p
+        style={{
+          color: WARM_TEXT,
+          fontSize: 20,
+          lineHeight: 1.4,
+          marginBottom: 18,
+          textAlign: "center",
+          fontFamily: SPACE_GROTESK,
+        }}
+      >
+        What the circle heard
+      </p>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          paddingBottom: 200,
+        }}
+      >
+        {sections.map((section) => (
+          <div key={section.stage} style={{ marginBottom: 28 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 10,
+                marginBottom: 12,
+                paddingBottom: 8,
+                borderBottom: `1px solid ${BORDER}`,
+              }}
+            >
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                }}
+              >
+                {STAGE_ORDINAL[section.stage]}
+              </p>
+              <p
+                style={{
+                  color: MUTED_GREEN,
+                  fontSize: 13,
+                  letterSpacing: "0.04em",
+                  margin: 0,
+                }}
+              >
+                {STAGE_LATIN[section.stage]}
+              </p>
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 11,
+                  margin: 0,
+                  marginLeft: "auto",
+                }}
+              >
+                {section.reflections.length}{" "}
+                {section.reflections.length === 1 ? "response" : "responses"}
+              </p>
+            </div>
+            {!section.userHasSubmitted ? (
+              <p
+                style={{
+                  color: MUTED_GREEN,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  fontFamily: SPACE_GROTESK,
+                  fontStyle: "italic",
+                }}
+              >
+                Share your own reflection for this stage to see what others
+                heard.
+              </p>
+            ) : section.reflections.length === 0 ? (
+              <p
+                style={{
+                  color: MUTED_GREEN,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  fontFamily: SPACE_GROTESK,
+                }}
+              >
+                No reflections yet this week.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {section.reflections.map((r, i) => (
+                  <ReflectionCard
+                    key={`${section.stage}-${i}`}
+                    name={r.userName}
+                    text={r.text}
+                    isYou={r.isYou}
+                    createdAt={r.createdAt}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Bottom fade overlay — same treatment as the reading slide so the
+          last response fades into the page behind the floating nav pill. */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 180,
+          pointerEvents: "none",
+          background:
+            "linear-gradient(to bottom, rgba(9,26,16,0) 0%, rgba(9,26,16,0.75) 55%, rgba(9,26,16,1) 100%)",
+        }}
+      />
     </div>
   );
 }
