@@ -525,9 +525,19 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   // they can jump back in to see what others heard.
   const isLectio = m.templateType === "lectio-divina";
   const isLectioCaughtUp = isLectio && !!m.lectioMyStageDone;
+  // Goal-reached detection (used by both shouldPulse and the Renew pill below)
+  const sessionsGoalForCard = m.commitmentSessionsGoal ?? m.goalDays ?? null;
+  const goalReachedForMe =
+    !isLectio &&
+    sessionsGoalForCard != null &&
+    sessionsGoalForCard > 0 &&
+    (m.myStreak ?? 0) >= sessionsGoalForCard;
+  const showRenewPill = goalReachedForMe && !!m.isCreator;
   const shouldPulse = isLectio
     ? !isLectioCaughtUp
-    : (m.windowOpen && m.todayPostCount === 0);
+    : showRenewPill
+      ? true
+      : (m.windowOpen && m.todayPostCount === 0);
   const isDesktop = useIsDesktop();
   const memberNames = m.members
     .filter(p => p.email !== userEmail)
@@ -559,17 +569,6 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     : (isIntercession || m.templateType === "fasting")
       ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : m.myStreak > 0 ? `🙏 ${m.myStreak}` : null)
       : null;
-
-  // Goal-reached detection: if a goal is set and the user's personal streak
-  // hits it, the creator gets a "Renew 🌱" pill instead of the normal streak
-  // badge so they can extend or pick a new length.
-  const sessionsGoalForCard = m.commitmentSessionsGoal ?? m.goalDays ?? null;
-  const goalReachedForMe =
-    !isLectio &&
-    sessionsGoalForCard != null &&
-    sessionsGoalForCard > 0 &&
-    (m.myStreak ?? 0) >= sessionsGoalForCard;
-  const showRenewPill = goalReachedForMe && !!m.isCreator;
 
   const openHref = (isLectio && m.momentToken && m.myUserToken)
     ? `/lectio/${m.momentToken}/${m.myUserToken}`
@@ -659,7 +658,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         </div>
         <div className="shrink-0 flex items-center self-center">
           {showRenewPill ? (
-            <motion.span
+            <span
               className="text-xs font-semibold rounded-full inline-block"
               style={{
                 background: "#2D5E3F",
@@ -669,11 +668,9 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
                 whiteSpace: "nowrap",
                 lineHeight: "20px",
               }}
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
             >
               Renew 🌱
-            </motion.span>
+            </span>
           ) : isLectio ? (
             // Lectio always shows a pill: "Reflect 📜" when there's something
             // to do this stage, "Responses" once the user has submitted.
