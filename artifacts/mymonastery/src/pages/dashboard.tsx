@@ -795,8 +795,8 @@ function TimeSection({
           </div>
           {/* Fade out at bottom */}
           <div
-            className="absolute bottom-0 left-0 right-0 h-6 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent, rgba(9,26,16,0.85))" }}
+            className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
+            style={{ background: "linear-gradient(to bottom, transparent, #091A10)" }}
           />
         </div>
       ) : (
