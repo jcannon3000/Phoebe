@@ -243,9 +243,23 @@ export default function Onboarding() {
 
           </motion.div>
 
-          <p className="text-center text-xs mt-8 tracking-wide" style={{ color: "rgba(143,175,150,0.5)" }}>
+          <p className="text-center text-xs mt-8 mb-4 tracking-wide" style={{ color: "rgba(143,175,150,0.5)" }}>
             Inspired by Monastic Wisdom
           </p>
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setLocation("/church-deck")}
+              className="px-5 py-2 rounded-full text-xs font-medium tracking-wide transition-opacity hover:opacity-100"
+              style={{
+                background: "rgba(200,212,192,0.06)",
+                border: "1px solid rgba(200,212,192,0.18)",
+                color: "rgba(200,212,192,0.7)",
+              }}
+            >
+              About
+            </button>
+          </div>
         </div>
       </main>
     </div>
