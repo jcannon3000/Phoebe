@@ -644,7 +644,7 @@ export default function RitualDetail() {
                   <p className="text-2xl font-semibold mb-1" style={{ color: "#F0EDE6" }}>
                     {format(parseISO(timeline.upcoming.scheduledDate), "EEEE, MMMM d")}
                   </p>
-                  <p className="text-lg mb-4" style={{ color: "#C8D4C0" }}>
+                  <p className="text-lg mb-2" style={{ color: "#C8D4C0" }}>
                     {format(parseISO(timeline.upcoming.scheduledDate), "h:mm a")}
                     {!upcomingIsPast && !timeline.confirmedTime && (
                       <span className="text-sm ml-2 text-muted-foreground/50 italic"> · pending</span>
@@ -655,6 +655,12 @@ export default function RitualDetail() {
                       </span>
                     )}
                   </p>
+                  {/* Per-meetup location (falls back to tradition-level for legacy data) */}
+                  {(timeline.upcoming.location ?? timeline.location) && (
+                    <p className="text-sm mb-4" style={{ color: "#8FAF96" }}>
+                      📍 {timeline.upcoming.location ?? timeline.location}
+                    </p>
+                  )}
 
                   {/* Bottom action zone */}
                   {upcomingIsPast ? (
