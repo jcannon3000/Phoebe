@@ -42,7 +42,7 @@ type Slide =
         | "letters"
         | "gatherings"
         | "letter-compose"
-        | "morning-prayer";
+        | "intercession";
     }
   | { kind: "closing"; above: string[]; featured: string };
 
@@ -154,7 +154,7 @@ const SLIDES: Slide[] = [
         label: "Gatherings",
         lines: [
           "Where trust takes root.",
-          "Not one-off events. Intervals. Weekly, fortnightly, monthly.",
+          "Not one-off events. Intervals. Weekly, every other week, monthly.",
           "Phoebe holds the rhythm when life tries to disrupt it.",
           "The goal is that people keep meeting.",
         ],
@@ -170,12 +170,12 @@ const SLIDES: Slide[] = [
     sub: "A shared garden. People share what they're carrying — and others respond, a word at a time. Low friction. Low vulnerability. The doorway into the life of the community.",
   },
 
-  // 8a.1 — Preview: Morning Prayer slideshow (prayer as practice)
+  // 8a.1 — Preview: Intercession slideshow (prayer as practice)
   {
     kind: "preview",
-    variant: "morning-prayer",
+    variant: "intercession",
     caption: "Not just a feed — a practice.",
-    sub: "Morning Prayer, Lectio Divina, Compline — held as guided slideshows the community moves through together. You see who else is praying with you at the same hour.",
+    sub: "Intercession, Lectio Divina, shared silence — held as guided slideshows the community moves through together. You see who else is praying with you at the same hour.",
   },
 
   // 8b — Preview: Letters (the list)
@@ -183,7 +183,7 @@ const SLIDES: Slide[] = [
     kind: "preview",
     variant: "letters",
     caption: "Letters, on a rhythm.",
-    sub: "One person. One letter. Once a fortnight. Phoebe holds the cadence so the friendship can deepen in writing — the way parish friendships used to form before everything sped up.",
+    sub: "One person. One letter. Once every other week. Phoebe holds the cadence so the friendship can deepen in writing — the way parish friendships used to form before everything sped up.",
   },
 
   // 8b.1 — Preview: Letter composition (letters up close)
@@ -637,8 +637,8 @@ function DashboardMock() {
         />
         <MockBarCard
           category="practices"
-          title="🌅 Morning Prayer"
-          status="Tomorrow · 7:00 AM"
+          title="🙏🏽 Intercession"
+          status="Tomorrow · 6 prayers"
         />
         <MockBarCard
           category="gatherings"
@@ -656,7 +656,7 @@ function DashboardMock() {
       <div className="space-y-2">
         <MockBarCard
           category="practices"
-          title="🕯️ Contemplative Hour"
+          title="📜 Lectio Divina"
           status="Every Thursday evening"
         />
       </div>
@@ -758,110 +758,180 @@ function PrayerMock() {
   );
 }
 
+function MockLetterCard({
+  title,
+  periodLabel,
+  statusText,
+  statusColor,
+  postmarkCity,
+  postmarkDate,
+  accentColor,
+  previewText,
+  borderOpacity = 0.2,
+}: {
+  title: string;
+  periodLabel: string;
+  statusText: string;
+  statusColor: string;
+  postmarkCity?: string;
+  postmarkDate?: string;
+  accentColor: string;
+  previewText?: string;
+  borderOpacity?: number;
+}) {
+  return (
+    <div
+      className="relative flex rounded-xl overflow-hidden"
+      style={{
+        background: "#0F2818",
+        border: `1px solid rgba(142,158,66,${borderOpacity})`,
+        boxShadow:
+          "0 2px 8px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2)",
+      }}
+    >
+      <div
+        className="w-1 flex-shrink-0"
+        style={{ background: accentColor }}
+      />
+      <div className="flex-1 p-3 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p
+            className="text-[13px] font-semibold"
+            style={{ color: "#F0EDE6", fontFamily: C.font }}
+          >
+            📮 {title}
+          </p>
+          {postmarkCity && (
+            <div className="text-right shrink-0">
+              <p
+                className="text-[9px] font-semibold uppercase"
+                style={{ color: "#C8D4C0", letterSpacing: "0.06em", fontFamily: C.font }}
+              >
+                {postmarkCity}
+              </p>
+              {postmarkDate && (
+                <p
+                  className="text-[8px]"
+                  style={{ color: "#8FAF96", fontFamily: C.font }}
+                >
+                  {postmarkDate}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 mt-1">
+          <span
+            className="text-[9px] font-semibold uppercase"
+            style={{ color: "#C8D4C0", letterSpacing: "0.08em", fontFamily: C.font }}
+          >
+            {periodLabel}
+          </span>
+          <span style={{ color: "rgba(200,212,192,0.3)" }}>·</span>
+          <span
+            className="text-[10px] font-medium"
+            style={{ color: statusColor, fontFamily: C.font }}
+          >
+            {statusText}
+          </span>
+        </div>
+        {previewText && (
+          <p
+            className="text-[11px] mt-1.5 italic leading-snug"
+            style={{
+              color: "#8FAF96",
+              fontFamily: "Georgia, serif",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {previewText}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LettersMock() {
   return (
     <MockPhone>
+      <h2
+        className="text-lg font-bold mb-1"
+        style={{ color: "#F0EDE6", fontFamily: C.font }}
+      >
+        Letters 📮
+      </h2>
       <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-3"
-        style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
+        className="text-[10px] mb-3"
+        style={{ color: "#8FAF96", fontFamily: C.font }}
       >
-        Your letters
+        Letters have connected people for centuries. One letter every other week.
       </p>
-
       <div
-        className="rounded-2xl p-4 mb-3"
-        style={{
-          background: "rgba(20,64,42,0.35)",
-          border: "1px solid rgba(20,64,42,0.6)",
-        }}
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-            style={{ background: "#14402A", color: "#F0EDE6" }}
-          >
-            M
-          </div>
-          <div>
-            <p
-              className="text-sm font-semibold"
-              style={{ color: "#F0EDE6", fontFamily: C.font }}
-            >
-              Margaret Whitfield
-            </p>
-            <p
-              className="text-[10px]"
-              style={{ color: "#8FAF96", fontFamily: C.font }}
-            >
-              Fortnightly · Sent Apr 3
-            </p>
-          </div>
-        </div>
-        <p
-          className="text-xs leading-relaxed italic mb-2"
-          style={{ color: "rgba(240,237,230,0.85)", fontFamily: C.font }}
+        className="h-px mb-4"
+        style={{ background: "rgba(142,158,66,0.25)" }}
+      />
+
+      {/* Section: Your Turn To Write */}
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="text-[9px] font-semibold uppercase tracking-widest"
+          style={{ color: "#8FAF96", fontFamily: C.font }}
         >
-          "The lilies in the churchyard have come in early this year. I
-          thought of you when I saw them..."
-        </p>
-        <p
-          className="text-[10px] font-semibold"
-          style={{ color: "#C8D4C0", fontFamily: C.font }}
-        >
-          🖋️ Your turn to write
-        </p>
+          Your Turn To Write
+        </span>
+        <div
+          className="flex-1 h-px"
+          style={{ background: "rgba(142,158,66,0.25)" }}
+        />
+      </div>
+      <div className="space-y-2 mb-5">
+        <MockLetterCard
+          title="Dialogue with Margaret"
+          periodLabel="Letter 7"
+          statusText="Your turn to write 🖋️"
+          statusColor="#C8D4C0"
+          postmarkCity="Charleston, SC"
+          postmarkDate="Apr 3"
+          accentColor="#8E9E42"
+          borderOpacity={0.35}
+          previewText="The lilies in the churchyard have come in early this year. I thought of you when I saw them..."
+        />
       </div>
 
-      <div
-        className="rounded-2xl p-4 mb-3"
-        style={{
-          background: "rgba(20,64,42,0.2)",
-          border: "1px solid rgba(20,64,42,0.4)",
-        }}
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-            style={{ background: "#14402A", color: "#F0EDE6" }}
-          >
-            D
-          </div>
-          <div>
-            <p
-              className="text-sm font-semibold"
-              style={{ color: "#F0EDE6", fontFamily: C.font }}
-            >
-              David Reyes
-            </p>
-            <p
-              className="text-[10px]"
-              style={{ color: "#8FAF96", fontFamily: C.font }}
-            >
-              Monthly · Last letter Mar 28
-            </p>
-          </div>
-        </div>
-        <p
-          className="text-[10px]"
-          style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}
+      {/* Section: Waiting for Response */}
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="text-[9px] font-semibold uppercase tracking-widest"
+          style={{ color: "#8FAF96", fontFamily: C.font }}
         >
-          🌿 Waiting for David
-        </p>
+          Waiting for Response
+        </span>
+        <div
+          className="flex-1 h-px"
+          style={{ background: "rgba(142,158,66,0.25)" }}
+        />
       </div>
-
-      <div
-        className="rounded-2xl p-3 text-center"
-        style={{
-          background: "rgba(46,107,64,0.08)",
-          border: "1px dashed rgba(200,212,192,0.25)",
-        }}
-      >
-        <p
-          className="text-xs"
-          style={{ color: "rgba(200,212,192,0.6)", fontFamily: C.font }}
-        >
-          + Begin a new dialogue
-        </p>
+      <div className="space-y-2">
+        <MockLetterCard
+          title="Dialogue with David"
+          periodLabel="Letter 4"
+          statusText="Sent · awaiting reply 🌿"
+          statusColor="#8FAF96"
+          postmarkCity="Raleigh, NC"
+          postmarkDate="Mar 28"
+          accentColor="rgba(142,158,66,0.35)"
+        />
+        <MockLetterCard
+          title="Sharing with Book Circle"
+          periodLabel="Round 3"
+          statusText="Update sent 🌿"
+          statusColor="#8FAF96"
+          accentColor="rgba(142,158,66,0.35)"
+        />
       </div>
     </MockPhone>
   );
@@ -877,11 +947,11 @@ function GatheringsMock() {
       count: "12 going",
     },
     {
-      emoji: "🌅",
-      name: "Morning Prayer",
-      when: "Daily · 7:00 AM",
-      where: "St. Mary's Chapel",
-      count: "8 regulars",
+      emoji: "🫖",
+      name: "Coffee Hour",
+      when: "Sundays · 10:30 AM",
+      where: "Fellowship Hall",
+      count: "22 regulars",
     },
     {
       emoji: "📖",
@@ -976,7 +1046,7 @@ function LetterComposeMock() {
             className="text-[9px]"
             style={{ color: "#8FAF96", fontFamily: C.font }}
           >
-            Fortnightly · Week 2
+            Letter 7 · Every other week
           </p>
         </div>
       </div>
@@ -1003,8 +1073,8 @@ function LetterComposeMock() {
             fontSize: 15,
           }}
         >
-          It's been a strange fortnight. Lent has taken a shape I didn't
-          expect, and I've been thinking about what you said at coffee
+          It's been a strange couple of weeks. Lent has taken a shape I
+          didn't expect, and I've been thinking about what you said at coffee
           after Evensong — about sitting with silence instead of trying
           to fill it.
         </p>
@@ -1049,12 +1119,12 @@ function LetterComposeMock() {
   );
 }
 
-function MorningPrayerMock() {
+function IntercessionMock() {
   return (
     <MockPhone>
       {/* Slideshow top progress bars */}
       <div className="flex gap-1 mb-5">
-        {[1, 0.6, 0, 0, 0].map((f, i) => (
+        {[1, 1, 0.55, 0, 0, 0].map((f, i) => (
           <div
             key={i}
             className="flex-1 h-0.5 rounded-full"
@@ -1074,43 +1144,50 @@ function MorningPrayerMock() {
       </div>
 
       <p
-        className="text-[9px] font-semibold uppercase tracking-widest mb-2 text-center"
+        className="text-[9px] font-semibold uppercase tracking-widest mb-1 text-center"
         style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
       >
-        Morning Prayer · Day 34
+        Intercession · 3 of 6
       </p>
 
-      <div className="text-center my-8">
-        <div className="text-5xl mb-6">🕯️</div>
+      <div className="text-center mt-6 mb-7">
+        <div className="text-4xl mb-4">🙏🏽</div>
         <p
-          className="text-sm italic leading-relaxed mb-4"
-          style={{ color: "rgba(240,237,230,0.85)", fontFamily: C.font }}
+          className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+          style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
         >
-          "O Lord, open thou our lips."
+          Let us pray for
         </p>
         <p
-          className="text-sm italic leading-relaxed"
+          className="text-base font-semibold mb-3"
+          style={{ color: "#F0EDE6", fontFamily: C.font }}
+        >
+          Margaret's mother
+        </p>
+        <p
+          className="text-xs italic leading-relaxed px-2"
           style={{ color: "#8FAF96", fontFamily: C.font }}
         >
-          And our mouth shall shew forth thy praise.
+          "As she begins treatment this week, we hold her in the light.
+          Grant her peace, and those who care for her wisdom."
         </p>
       </div>
 
       <div
-        className="rounded-xl p-3 mb-4"
+        className="rounded-xl p-3 mb-3"
         style={{
           background: "rgba(46,107,64,0.1)",
           border: "1px solid rgba(46,107,64,0.3)",
         }}
       >
         <p
-          className="text-[9px] font-semibold uppercase tracking-widest mb-1"
+          className="text-[9px] font-semibold uppercase tracking-widest mb-1.5"
           style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
         >
-          Praying with you
+          Praying with you right now
         </p>
         <div className="flex -space-x-1.5">
-          {["M", "D", "A", "J", "R"].map((l, i) => (
+          {["D", "A", "J", "R", "E"].map((l, i) => (
             <div
               key={i}
               className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold"
@@ -1145,7 +1222,7 @@ function MorningPrayerMock() {
             fontFamily: C.font,
           }}
         >
-          Continue →
+          Amen. Continue →
         </div>
       </div>
     </MockPhone>
@@ -1169,7 +1246,7 @@ function PreviewSlide({
     ) : slide.variant === "letter-compose" ? (
       <LetterComposeMock />
     ) : (
-      <MorningPrayerMock />
+      <IntercessionMock />
     );
 
   return (
@@ -1340,15 +1417,25 @@ export default function ChurchDeck() {
           <ChevronLeft size={18} />
           Back
         </button>
-        <button
-          onClick={next}
-          disabled={index === SLIDES.length - 1}
-          className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity disabled:opacity-30"
-          style={{ background: "#2D5E3F", color: C.text }}
-        >
-          {index === SLIDES.length - 1 ? "End" : "Next"}
-          <ChevronRight size={18} />
-        </button>
+        {index === SLIDES.length - 1 ? (
+          <button
+            onClick={() => setLocation("/dashboard")}
+            className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "#2D5E3F", color: C.text }}
+          >
+            Enter Phoebe
+            <ChevronRight size={18} />
+          </button>
+        ) : (
+          <button
+            onClick={next}
+            className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity"
+            style={{ background: "#2D5E3F", color: C.text }}
+          >
+            Next
+            <ChevronRight size={18} />
+          </button>
+        )}
       </div>
     </div>
   );
