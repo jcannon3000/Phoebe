@@ -209,7 +209,7 @@ router.post(
         to: m.email,
         creatorName: auth.name,
         correspondenceName: name,
-        inviteUrl: `${frontendUrl}/letters/invite/${inviteToken}`,
+        inviteUrl: `${frontendUrl}/i/${inviteToken}`,
       }).catch((err) => console.error("Failed to send invitation:", err));
     }
 

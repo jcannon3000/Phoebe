@@ -111,6 +111,7 @@ function Router() {
       <Route path="/letters" component={LettersPage} />
       <Route path="/letters/new" component={LetterNew} />
       <Route path="/letters/invite/:token" component={LetterInvitePage} />
+      <Route path="/i/:token" component={LetterInvitePage} />
       <Route path="/letters/:id/write" component={WriteLetter} />
       <Route path="/letters/:id/read/:letterId" component={ReadLetter} />
       <Route path="/letters/:id" component={CorrespondencePage} />

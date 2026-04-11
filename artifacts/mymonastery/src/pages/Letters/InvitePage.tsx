@@ -13,7 +13,9 @@ interface InviteInfo {
 }
 
 export default function LetterInvitePage() {
-  const [, params] = useRoute("/letters/invite/:token");
+  const [matchLong, paramsLong] = useRoute("/letters/invite/:token");
+  const [, paramsShort] = useRoute("/i/:token");
+  const params = matchLong ? paramsLong : paramsShort;
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const inviteToken = params?.token ?? "";

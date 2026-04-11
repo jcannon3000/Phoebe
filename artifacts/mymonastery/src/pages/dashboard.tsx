@@ -189,7 +189,7 @@ function BarCard({
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? colors.pulseClass : ""}`}
         style={{
-          background: `linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(255,255,255,0.04) 100%), ${colors.bg}`,
+          background: colors.bg,
           border: `1px solid ${colors.border}`,
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}

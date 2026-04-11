@@ -24,12 +24,10 @@ export async function sendLetterInvitationCalendarEvent(params: {
 
   const description = type === "group"
     ? [
-        `${creatorName} has invited you to share in ${correspondenceName} on Phoebe.`,
+        `📮 ${creatorName} invited you to ${correspondenceName}.`,
+        inviteUrl,
         "",
         `Once every two weeks, everyone shares what's been happening — 50 words or more. A simple practice of staying in each other's lives.`,
-        "",
-        `Accept the invitation →`,
-        inviteUrl,
         "",
         `You can read letters at the link above. To write back, you'll need a free Phoebe account.`,
         "",
@@ -37,12 +35,10 @@ export async function sendLetterInvitationCalendarEvent(params: {
         `Be together with Phoebe.`,
       ].join("\n")
     : [
-        `${creatorName} has invited you to exchange letters on Phoebe.`,
-        "",
-        `Once every two weeks, you each write one letter — sharing what's been happening, what's on your mind, what matters. You write one week. They respond the next. A conversation with room to breathe.`,
-        "",
-        `Accept ${creatorFirst}'s invitation →`,
+        `📮 ${creatorName} invited you to exchange letters.`,
         inviteUrl,
+        "",
+        `Once every two weeks, you each write one letter — sharing what's been happening, what's on your mind, what matters. You write one week. ${creatorFirst} responds the next. A conversation with room to breathe.`,
         "",
         `You can read letters at the link above. To write back, you'll need a free Phoebe account.`,
         "",

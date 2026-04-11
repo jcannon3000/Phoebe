@@ -173,7 +173,7 @@ router.post(
         name: m.name || null,
         inviteToken,
       });
-      const inviteUrl = `${frontendUrl}/letters/invite/${inviteToken}`;
+      const inviteUrl = `${frontendUrl}/i/${inviteToken}`;
       sendInvitationEmail({
         to: m.email,
         creatorName: auth.name,
