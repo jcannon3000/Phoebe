@@ -82,33 +82,6 @@ function parsePostmark(raw: string): { city: string; state: string } {
   return { city, state };
 }
 
-function PostmarkStamp({ cityRaw, date, rotation = -8 }: { cityRaw: string; date: string; rotation?: number }) {
-  const { city, state } = parsePostmark(cityRaw);
-  const label = state ? `${city}, ${state}` : city;
-  return (
-    <div
-      className="inline-flex flex-col items-center justify-center flex-shrink-0"
-      style={{
-        border: "1px solid rgba(200,212,192,0.4)",
-        borderRadius: "50% / 40%",
-        padding: "4px 10px",
-        transform: `rotate(${rotation}deg)`,
-        minWidth: "60px",
-      }}
-    >
-      <span
-        className="font-semibold uppercase"
-        style={{ color: "#C8D4C0", fontSize: "9px", letterSpacing: "0.08em", lineHeight: 1.2 }}
-      >
-        {label}
-      </span>
-      <span style={{ color: "#8FAF96", fontSize: "8px", lineHeight: 1.2 }}>
-        {formatShortDate(date)}
-      </span>
-    </div>
-  );
-}
-
 function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; userEmail: string }) {
   const { currentPeriod } = item;
   const isOneToOne = item.groupType === "one_to_one";
@@ -120,10 +93,14 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
 
   const lastPostmark = item.recentPostmarks?.[0] ?? null;
   const lastLetterDate = lastPostmark ? formatShortDate(lastPostmark.sentAt) : null;
+  const lastPostmarkCity = lastPostmark?.city ? (() => {
+    const { city, state } = parsePostmark(lastPostmark.city);
+    return state ? `${city}, ${state}` : city;
+  })() : null;
 
   const unread = item.unreadCount > 0;
-
   const accentColor = item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#8E9E42" : "rgba(142,158,66,0.35)";
+  const title = (item.name?.replace(/^Letters with\b/, "Dialogue with")) || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`);
 
   return (
     <Link href={`/letters/${item.id}`} className="block">
@@ -143,20 +120,17 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
         <div className="w-1 flex-shrink-0" style={{ background: accentColor }} />
 
         <div className="flex-1 p-4 min-w-0">
-          {/* Postmark stamp */}
-          {isOneToOne && lastPostmark?.city && (
-            <div className="absolute top-3 right-3">
-              <PostmarkStamp cityRaw={lastPostmark.city} date={lastPostmark.sentAt} />
-            </div>
-          )}
-
-          <p className="text-base font-semibold pr-16" style={{ color: "#F0EDE6" }}>
-            📮 {(item.name?.replace(/^Letters with\b/, "Dialogue with")) || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`)}
-          </p>
-
-          {isOneToOne && otherMembers && (
-            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
-          )}
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+              📮 {title}
+            </p>
+            {lastPostmarkCity && (
+              <div className="flex-shrink-0 text-right">
+                <p className="text-[11px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.06em" }}>{lastPostmarkCity}</p>
+                {lastLetterDate && <p className="text-[10px]" style={{ color: "#8FAF96" }}>{lastLetterDate}</p>}
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-[11px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
@@ -257,31 +231,37 @@ export default function LettersPage() {
             </Link>
           </motion.div>
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-            {/* Prominent write CTA */}
-            {needsLetter && (
-              <Link href={`/letters/${needsLetter.id}/write`}>
-                <div
-                  className="mb-5 p-5 rounded-2xl text-center cursor-pointer hover:shadow-md transition-shadow"
-                  style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}
-                >
-                  <p className="text-lg font-semibold">
-                    {needsLetter.groupType === "one_to_one" ? "Write your letter 🖋️" : "Share your update 📮"}
-                  </p>
-                  <p className="text-sm opacity-80 mt-1">
-                    {needsLetter.name || needsLetter.members.filter(m => m.email !== user.email).map(m => m.name || m.email?.split("@")[0]).join(", ")}
-                    {" · "}
-                    {needsLetter.groupType === "one_to_one" ? `Letter ${needsLetter.currentPeriod.periodNumber}` : `Week ${needsLetter.currentPeriod.periodNumber}`}
-                  </p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="space-y-8">
+            {(() => {
+              const yourTurn = items.filter(i => i.myTurn && !i.currentPeriod.hasWrittenThisPeriod);
+              const waiting = items.filter(i => !i.myTurn || i.currentPeriod.hasWrittenThisPeriod);
+              const SectionHeader = ({ label }: { label: string }) => (
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>{label}</span>
+                  <div className="flex-1 h-px" style={{ background: "rgba(142,158,66,0.25)" }} />
                 </div>
-              </Link>
-            )}
-
-            <div className="space-y-3">
-              {items.map((item) => (
-                <CorrespondenceCard key={item.id} item={item} userEmail={user.email} />
-              ))}
-            </div>
+              );
+              return (
+                <>
+                  {yourTurn.length > 0 && (
+                    <div>
+                      <SectionHeader label="Your Turn To Write" />
+                      <div className="space-y-3">
+                        {yourTurn.map(item => <CorrespondenceCard key={item.id} item={item} userEmail={user.email} />)}
+                      </div>
+                    </div>
+                  )}
+                  {waiting.length > 0 && (
+                    <div>
+                      <SectionHeader label="Waiting for Response" />
+                      <div className="space-y-3">
+                        {waiting.map(item => <CorrespondenceCard key={item.id} item={item} userEmail={user.email} />)}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </motion.div>
         )}
       </div>
