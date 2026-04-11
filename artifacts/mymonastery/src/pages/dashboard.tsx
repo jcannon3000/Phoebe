@@ -746,6 +746,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 
 function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; badge?: string }) {
   const next = r.nextMeetupDate ? parseISO(r.nextMeetupDate) : null;
+  const isToday_ = next ? isToday(next) : false;
   const rhythm = r.rhythm as string | undefined;
   const rhythmLabel = rhythm === "weekly" ? "Weekly tradition"
     : rhythm === "biweekly" || rhythm === "fortnightly" ? "Biweekly tradition"
@@ -787,7 +788,7 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   }
 
   return (
-    <BarCard key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} pulse={false} category="gatherings">
+    <BarCard key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} pulse={isToday_} category="gatherings">
       <div className="flex items-start justify-between gap-2">
         <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{gatheringEmoji} {r.name}</span>
         <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
