@@ -389,6 +389,13 @@ export default function LectioPage() {
     if (idx >= 0) setSlideIdx(idx);
   };
 
+  // Jump to the summary slide — used by the Settings menu "Go to summary"
+  // shortcut so the creator/invitee can skip past all stages to the recap.
+  const jumpToSummary = () => {
+    const idx = slides.findIndex((sl) => sl.kind === "summary");
+    if (idx >= 0) setSlideIdx(idx);
+  };
+
   return (
     <div
       style={{
@@ -659,6 +666,10 @@ export default function LectioPage() {
                 ? (removeMemberMutation.variables as string | undefined) ?? null
                 : null
             }
+            onGoToSummary={() => {
+              jumpToSummary();
+              setMenuOpen(false);
+            }}
             onLeave={() => archiveMutation.mutate()}
             leavePending={archiveMutation.isPending}
             onDelete={() => deleteMutation.mutate()}
@@ -717,8 +728,11 @@ function PromptSlide({ stage }: { stage: Stage }) {
 function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
   // The reading slide is tall: title + verse sit near the top, and the
   // gospel text fills the remaining height with an internal scroll. Text
-  // scrolls behind the floating nav and visibly fades out behind it,
-  // hinting that there's more to read.
+  // scrolls behind the floating nav; a solid gradient overlay fades the
+  // text visibly into the page background so the reader clearly sees that
+  // more text is hidden behind the pill. We use an overlay div (instead of
+  // mask-image) because mask-image isn't reliable on iOS Safari inside a
+  // flexing scroll container.
   return (
     <div
       style={{
@@ -729,6 +743,7 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
         // Push the title + verse down so they don't sit right under the
         // header. This is the "move the title down a little" ask.
         paddingTop: 48,
+        position: "relative",
       }}
     >
       <p
@@ -769,17 +784,26 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           // Extra bottom padding so the final line can scroll above the
           // floating nav pill.
           paddingBottom: 200,
-          // A deeper, two-stop fade so the text clearly darkens as it
-          // slides behind the nav pill — by the time it's under the nav,
-          // the text is basically gone.
-          WebkitMaskImage:
-            "linear-gradient(to bottom, #000 0%, #000 calc(100% - 260px), rgba(0,0,0,0.35) calc(100% - 140px), transparent calc(100% - 40px))",
-          maskImage:
-            "linear-gradient(to bottom, #000 0%, #000 calc(100% - 260px), rgba(0,0,0,0.35) calc(100% - 140px), transparent calc(100% - 40px))",
         }}
       >
         {reading.gospelText}
       </div>
+      {/* Bottom fade overlay — sits on top of the scroll area and fades
+          the text into the page background behind the floating nav pill.
+          pointerEvents: "none" so taps still reach the nav and scroller. */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 180,
+          pointerEvents: "none",
+          background:
+            "linear-gradient(to bottom, rgba(9,26,16,0) 0%, rgba(9,26,16,0.75) 55%, rgba(9,26,16,1) 100%)",
+        }}
+      />
     </div>
   );
 }
@@ -1211,6 +1235,7 @@ function SettingsMenu({
   invitePending,
   onRemoveMember,
   removePendingEmail,
+  onGoToSummary,
   onLeave,
   leavePending,
   onDelete,
@@ -1224,6 +1249,7 @@ function SettingsMenu({
   invitePending: boolean;
   onRemoveMember: (email: string) => void;
   removePendingEmail: string | null;
+  onGoToSummary: () => void;
   onLeave: () => void;
   leavePending: boolean;
   onDelete: () => void;
@@ -1593,6 +1619,29 @@ function SettingsMenu({
               )}
             </div>
           )}
+        </div>
+
+        {/* Jump-to-summary shortcut — skips past the stage slides so people
+            can go straight to the week's recap from inside the Menu. */}
+        <div style={{ marginBottom: 18 }}>
+          <button
+            type="button"
+            onClick={onGoToSummary}
+            className="rounded-full"
+            style={{
+              background: BUTTON_BG,
+              color: WARM_TEXT,
+              border: `1px solid ${BORDER}`,
+              fontFamily: SPACE_GROTESK,
+              fontSize: 13,
+              fontWeight: 600,
+              padding: "8px 18px",
+              cursor: "pointer",
+              width: "100%",
+            }}
+          >
+            Go to summary →
+          </button>
         </div>
 
         {/* Danger zone */}

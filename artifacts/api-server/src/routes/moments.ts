@@ -1021,6 +1021,18 @@ router.get("/moments", async (req, res): Promise<void> => {
 
         const myToken = userTokenRows.find(t => t.momentId === m.id);
 
+        // Personal streak
+        const todayDate = todayDateInTz(m.timezone || "UTC");
+        const allPosts = await db.select().from(momentPostsTable).where(eq(momentPostsTable.momentId, m.id));
+        const myPostDates = new Set(allPosts.filter(p => p.userToken === myToken?.userToken).map(p => p.windowDate));
+        const todayILogged = myPostDates.has(todayDate);
+        let myStreak = todayILogged ? 1 : 0;
+        const sortedWindows = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate));
+        for (const w of sortedWindows) {
+          if (w.windowDate === todayDate) continue;
+          if (myPostDates.has(w.windowDate)) { myStreak++; } else { break; }
+        }
+
         // Lectio-specific enrichment: this week's reading + how many members have
         // submitted any reflection for the current Sunday anchor.
         let lectioSundayName: string | null = null;
@@ -1069,9 +1081,12 @@ router.get("/moments", async (req, res): Promise<void> => {
               lectioMyStageDone = true;
             }
 
-            // Friendly labels for the dashboard card.
-            const STAGE_LABEL = { lectio: "Lectio", meditatio: "Meditatio", oratio: "Oratio" } as const;
-            lectioCurrentStageLabel = currentStage ? STAGE_LABEL[currentStage] : "Sunday";
+            // Friendly labels for the dashboard card. We use "Stage 1/2/3"
+            // now — the Latin terms read as jargon to newcomers. On Sunday
+            // (no active reflection day) show "Completed" to mark the week
+            // as done.
+            const STAGE_LABEL = { lectio: "Stage 1", meditatio: "Stage 2", oratio: "Stage 3" } as const;
+            lectioCurrentStageLabel = currentStage ? STAGE_LABEL[currentStage] : "Completed";
             // Next reflection day — Lectio Divina only reflects on Mon/Wed/Fri,
             // so this is the next of those three days strictly after today.
             // Friday → Monday (not Sunday, since Sunday has no reflection).
@@ -1095,6 +1110,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           minutesLeft: minutesRemaining(m),
           latestWindow,
           myUserToken: myToken?.userToken ?? null,
+          myStreak,
           lectioSundayName,
           lectioGospelReference,
           lectioGospelText,
@@ -1122,6 +1138,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           minutesLeft: 0,
           latestWindow: null,
           myUserToken: myToken?.userToken ?? null,
+          myStreak: 0,
           lectioSundayName: null,
           lectioGospelReference: null,
           lectioGospelText: null,
