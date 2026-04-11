@@ -450,6 +450,59 @@ function useIsDesktop(): boolean {
   return isDesktop;
 }
 
+// Alternates between "Renew 🌿" and "Archive" with a crossfade, like SplitFlapLine.
+// Clicking "Archive" stops propagation, calls the archive API, and triggers onArchive.
+function RenewArchivePill({ momentId, onArchive }: { momentId: number; onArchive: () => void }) {
+  const [show, setShow] = useState<"renew" | "archive">("renew");
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setShow(s => s === "renew" ? "archive" : "renew");
+    }, 3500);
+    return () => clearInterval(t);
+  }, []);
+
+  const handleArchive = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { await apiRequest("PATCH", `/api/moments/${momentId}/archive`, {}); } catch { /* non-fatal */ }
+    onArchive();
+  };
+
+  return (
+    <div className="relative" style={{ width: 80, height: 28 }}>
+      <AnimatePresence mode="wait">
+        {show === "renew" ? (
+          <motion.span
+            key="renew"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center"
+            style={{ background: "#2D5E3F", color: "#F0EDE6", whiteSpace: "nowrap" }}
+          >
+            Renew 🌿
+          </motion.span>
+        ) : (
+          <motion.span
+            key="archive"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center cursor-pointer"
+            style={{ background: "rgba(46,107,64,0.18)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)", whiteSpace: "nowrap" }}
+            onClick={handleArchive}
+          >
+            Archive
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function SplitFlapLine({ lines }: { lines: string[] }) {
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<FlapPhase>("show");
@@ -518,6 +571,8 @@ function stripTrailingEmoji(s: string): string {
 }
 
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
+  const [isArchived, setIsArchived] = useState(false);
+  if (isArchived) return null;
   const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
   // Lectio uses its per-user stage-done flag instead of todayPostCount since
   // reflections don't write to moment_posts. When the user is "caught up"
@@ -677,19 +732,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         </div>
         <div className="shrink-0 flex items-center self-center">
           {showRenewPill ? (
-            <span
-              className="text-xs font-semibold rounded-full inline-block"
-              style={{
-                background: "#2D5E3F",
-                color: "#F0EDE6",
-                padding: "4px 14px",
-                letterSpacing: "0.01em",
-                whiteSpace: "nowrap",
-                lineHeight: "20px",
-              }}
-            >
-              Renew
-            </span>
+            <RenewArchivePill momentId={m.id} onArchive={() => setIsArchived(true)} />
           ) : isLectio ? (
             // Lectio always shows a pill: "Reflect 📜" when there's something
             // to do this stage, "Responses" once the user has submitted.
