@@ -129,6 +129,25 @@ function nextWindowLabel(m: Pick<Moment, "frequency" | "dayOfWeek" | "practiceDa
   return "Next week";
 }
 
+function nextWindowDaysAhead(m: Pick<Moment, "frequency" | "dayOfWeek" | "practiceDays">): number {
+  if (m.frequency === "daily") return 1;
+  if (m.frequency === "monthly") return 30;
+  let rawDays: string[] = [];
+  try { rawDays = m.practiceDays ? (JSON.parse(m.practiceDays) as string[]) : []; } catch { /* */ }
+  if (!rawDays.length && m.dayOfWeek) rawDays = [m.dayOfWeek];
+  const today = new Date().getDay();
+  for (let i = 1; i <= 7; i++) {
+    const check = (today + i) % 7;
+    const match = rawDays.some(d => {
+      const up = d.toUpperCase();
+      if (RRULE_DOW[up] !== undefined) return RRULE_DOW[up] === check;
+      return DOW_LC[d.toLowerCase()] === check;
+    });
+    if (match) return i;
+  }
+  return 7;
+}
+
 const PRACTICE_EMOJI: Record<string, string> = {
   "morning-prayer": "🌅",
   "evening-prayer": "🌙",
@@ -765,24 +784,28 @@ export default function Dashboard() {
       }
     }
 
+    // Calendar-week boundary shared by moments and gatherings placement.
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
+    const nextWeekStart = addDays(weekStart, 7);
+
     // ── Moments placement
-    // Server-side `isActionableToday` is now the single source of truth for
-    // whether a practice belongs in "Today". It's timezone-aware (uses the
-    // practice's own tz, not the browser's), handles lectio-divina's weekday
-    // rhythm, and ignores time-of-day bands so all active practices show up
-    // on the home screen today. Nothing lands in `monthItems` anymore —
-    // practices are either actionable today, already-done today, or upcoming
-    // this week.
+    // isActionableToday → Today section. Otherwise bucket by next window date:
+    // if the next occurrence falls within the current calendar week (Sun–Sat)
+    // it goes to "This week"; if it's in a future week it goes to "This month".
     for (const m of allMoments) {
-      // Lectio reflections don't write to moment_posts, so we use the
-      // server-computed `lectioMyStageDone` flag (current user has submitted
-      // the current stage's reflection this week) as the "logged" signal.
       const isLectio = m.templateType === "lectio-divina";
       const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
       if (m.isActionableToday && !userDone) {
         todayItems.push({ kind: "moment", data: m });
       } else {
-        weekItems.push({ kind: "moment", data: m, nextWindow: nextWindowLabel(m) });
+        const label = nextWindowLabel(m);
+        const daysAhead = nextWindowDaysAhead(m);
+        const nextDate = addDays(startOfDay(new Date()), daysAhead);
+        if (isBefore(nextDate, nextWeekStart)) {
+          weekItems.push({ kind: "moment", data: m, nextWindow: label });
+        } else {
+          monthItems.push({ kind: "moment", data: m, nextWindow: label });
+        }
       }
     }
 
@@ -790,8 +813,6 @@ export default function Dashboard() {
     // "This week" is the calendar week Sunday → next Sunday, not a rolling
     // next-7-days window. So on Wednesday, "This week" still includes
     // Thursday/Friday/Saturday of this week, and nothing from next Monday.
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
-    const nextWeekStart = addDays(weekStart, 7);
     for (const r of allGatherings) {
       if (r.nextMeetupDate && isToday(parseISO(r.nextMeetupDate))) {
         todayItems.push({ kind: "gathering", data: r, badge: "Today" });
