@@ -125,7 +125,7 @@ export default function PrayerListPage() {
                 const logged = m.commitmentSessionsLogged ?? 0;
                 const progressLabel = goal ? `${logged}/${goal} days` : null;
                 const href = (m.windowOpen && m.momentToken && m.myUserToken)
-                  ? `/moment/${m.momentToken}/${m.myUserToken}`
+                  ? `/moment/${m.momentToken}/${m.myUserToken}?from=prayer-list`
                   : `/moments/${m.id}`;
                 const prayedToday = m.todayPostCount > 0;
                 const lastPrayedLabel = formatLastPrayed(m.myLastPostAt);

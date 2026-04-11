@@ -815,6 +815,24 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
                 Pray 🙏🏽
               </motion.span>
             </Link>
+          ) : isIntercession && m.todayPostCount > 0 && m.windowOpen ? (
+            // Already prayed today — show View pill so they can revisit the circle
+            <Link href={openHref} onClick={(e) => e.stopPropagation()}>
+              <span
+                className="text-xs font-semibold rounded-full inline-block"
+                style={{
+                  background: "rgba(46,107,64,0.18)",
+                  color: "#C8D4C0",
+                  border: "1px solid rgba(46,107,64,0.35)",
+                  padding: "4px 14px",
+                  letterSpacing: "0.01em",
+                  whiteSpace: "nowrap",
+                  lineHeight: "20px",
+                }}
+              >
+                View
+              </span>
+            </Link>
           ) : (
             isDesktop && desktopStatusText && (
               <span className="text-xs" style={{ color: "#8FAF96" }}>{desktopStatusText}</span>

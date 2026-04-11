@@ -604,6 +604,19 @@ export default function MomentPostPage() {
   const [posted, setPosted] = useState(false);
   const [todayCount, setTodayCount] = useState<number | null>(null);
   const [memberCount, setMemberCount] = useState<number | null>(null);
+  const [fadingOut, setFadingOut] = useState(false);
+
+  // Detect if we came from the prayer-list page — if so, don't redirect to
+  // practice detail after Amen (keep existing dashboard navigation instead).
+  const fromPrayerList =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("from") === "prayer-list";
+
+  // Fade then navigate — used after Amen on intercessions (not from prayer-list)
+  const fadeNavigate = useCallback((url: string) => {
+    setFadingOut(true);
+    setTimeout(() => setLocation(url), 350);
+  }, [setLocation]);
 
   // Welcome screen — shown once per member per moment (localStorage-gated)
   // Skipped entirely for logged-in users navigating from the dashboard
@@ -642,10 +655,16 @@ export default function MomentPostPage() {
       setPosted(true);
       setTodayCount(res.todayPostCount);
       setMemberCount(res.memberCount);
-      // Redirect back to dashboard after showing the success animation
-      setTimeout(() => {
-        setLocation("/dashboard");
-      }, 2500);
+      const isIntercession = data?.moment.templateType === "intercession";
+      if (isIntercession && !fromPrayerList && data?.moment.id) {
+        // For intercessions: show the confirmation briefly, fade out, then go
+        // to the practice detail page so the user can see their circle.
+        const detailUrl = `/moments/${data.moment.id}`;
+        setTimeout(() => setFadingOut(true), 2000);
+        setTimeout(() => setLocation(detailUrl), 2350);
+      } else {
+        setTimeout(() => setLocation("/dashboard"), 2500);
+      }
     },
     onError: () => {
       // Reset amenPulse so the button returns to its normal state for retry
@@ -947,7 +966,8 @@ export default function MomentPostPage() {
     }));
     const detailUrl = `/moments/${moment.id}`;
     return (
-      <IntercessionPrayerPage
+      <div style={{ position: "relative" }}>
+        <IntercessionPrayerPage
         topic={moment.intercessionTopic ?? moment.name}
         fullText={moment.intercessionFullText ?? ""}
         intention={moment.intention}
@@ -964,8 +984,26 @@ export default function MomentPostPage() {
         postFailed={postMutation.isError}
         nextWindowLabel={computeNextWindowLabel(moment.frequency, moment.dayOfWeek, moment.practiceDays, moment.timeOfDay)}
         onComplete={handleIntercessionComplete}
-        onBack={() => setLocation(detailUrl)}
+        onBack={() => (posted && !fromPrayerList) ? fadeNavigate(detailUrl) : setLocation(detailUrl)}
       />
+      {/* Fade-to-dark overlay that appears just before navigating to detail */}
+      <AnimatePresence>
+        {fadingOut && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.35, ease: "easeIn" }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "#0F1F15",
+              zIndex: 9999,
+              pointerEvents: "none",
+            }}
+          />
+        )}
+      </AnimatePresence>
+      </div>
     );
   }
 
