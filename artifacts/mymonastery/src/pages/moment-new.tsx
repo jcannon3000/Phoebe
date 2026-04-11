@@ -1328,7 +1328,10 @@ export default function MomentNew() {
                       </div>
                       <div className="grid gap-4">
                         <button onClick={() => setIntercessionMode("bcp")}
-                          className="w-full text-left p-5 rounded-2xl border-2 border-border hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all">
+                          className="w-full text-left p-5 rounded-2xl transition-all"
+                          style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.35)" }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.65)")}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.35)")}>
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">📖</span>
                             <div>
@@ -1338,7 +1341,10 @@ export default function MomentNew() {
                           </div>
                         </button>
                         <button onClick={confirmCustomIntercession}
-                          className="w-full text-left p-5 rounded-2xl border-2 border-border hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all">
+                          className="w-full text-left p-5 rounded-2xl transition-all"
+                          style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.35)" }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.65)")}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.35)")}
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">✍️</span>
                             <div>
