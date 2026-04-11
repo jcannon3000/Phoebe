@@ -821,7 +821,7 @@ function TimeSection({
   );
 
   return (
-    <div className={scrollable ? "mb-[12px]" : "mb-[16px]"}>
+    <div className={scrollable ? "mb-7" : "mb-8"}>
       <SectionHeader label={label} />
       {scrollable ? (
         <div className="relative">
@@ -1145,7 +1145,11 @@ export default function Dashboard() {
         })()}
 
         {/* Prayer Requests — hidden when filter active */}
-        {filter === null && <PrayerSection maxVisible={3} />}
+        {filter === null && (
+          <div className="mt-7">
+            <PrayerSection maxVisible={3} />
+          </div>
+        )}
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
