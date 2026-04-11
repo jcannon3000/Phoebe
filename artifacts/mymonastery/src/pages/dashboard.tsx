@@ -275,6 +275,56 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
+// ─── Letter summary card (multiple letters collapsed) ────────────────────────
+
+function LetterSummaryCard({
+  correspondences,
+  userEmail,
+}: {
+  correspondences: Correspondence[];
+  userEmail: string;
+}) {
+  const otherNames = correspondences.map(c =>
+    (c.members.find(m => m.email !== userEmail)?.name ?? "Someone").split(" ")[0]
+  );
+  const title = otherNames.length === 2
+    ? `Dialogues with ${otherNames[0]} & ${otherNames[1]}`
+    : `Dialogues with ${otherNames.length} people`;
+
+  const anyNeedWrite = correspondences.some(c => {
+    const ts = c.turnState;
+    return c.groupType === "one_to_one"
+      ? (ts === "OPEN" || ts === "OVERDUE")
+      : !(c.currentPeriod.membersWritten.find(m => m.email === userEmail)?.hasWritten ?? false);
+  });
+  const anyUnread = correspondences.some(c => c.unreadCount > 0);
+  const shouldPulse = anyNeedWrite || anyUnread;
+
+  const statusText = anyUnread
+    ? "New letters waiting 📮"
+    : anyNeedWrite
+    ? "Your turn to write 🖋️"
+    : "Waiting for others to respond";
+
+  return (
+    <BarCard href="/letters" pulse={shouldPulse} category="letters">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+          📮 {title}
+        </span>
+        <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+          View All
+        </span>
+      </div>
+      <div className="mt-1.5">
+        <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0 }}>
+          {statusText}
+        </p>
+      </div>
+    </BarCard>
+  );
+}
+
 // ─── Letter card ─────────────────────────────────────────────────────────────
 
 function LetterCard({
@@ -697,12 +747,22 @@ function TimeSection({
   if (items.length === 0) return null;
   const scrollable = items.length > 3;
 
+  const letterItems = items.filter(i => i.kind === "letter") as Array<{ kind: "letter"; data: Correspondence }>;
+  const nonLetterItems = items.filter(i => i.kind !== "letter");
+
   const cards = (
     <div className="space-y-3">
-      {items.map((item) => {
+      {letterItems.length > 1 ? (
+        <LetterSummaryCard
+          key={`${label}-letters-summary`}
+          correspondences={letterItems.map(i => i.data)}
+          userEmail={userEmail}
+        />
+      ) : letterItems.length === 1 ? (
+        <LetterCard key={`${label}-l-${letterItems[0].data.id}`} c={letterItems[0].data} userEmail={userEmail} userName={userName} keyPrefix={label} />
+      ) : null}
+      {nonLetterItems.map((item) => {
         switch (item.kind) {
-          case "letter":
-            return <LetterCard key={`${label}-l-${item.data.id}`} c={item.data} userEmail={userEmail} userName={userName} keyPrefix={label} />;
           case "moment":
             return <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />;
           case "gathering":
