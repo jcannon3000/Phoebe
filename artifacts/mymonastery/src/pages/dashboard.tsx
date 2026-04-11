@@ -287,7 +287,7 @@ function LetterCard({
     statusText = `${otherMembers} wrote 🌿`;
     statusColor = "#F0EDE6";
   } else if (iWrote && !theyWrote) {
-    statusText = isOneToOne ? `Waiting for ${otherMembers}... 🌿` : `Your update is in 🌿`;
+    statusText = isOneToOne ? `Waiting for ${otherMembers}` : `Your update is in 🌿`;
     statusColor = "#8FAF96";
   } else if (needsWrite) {
     statusText = isOneToOne ? `Your turn to write 🖋️` : `Share your update 🖋️`;
