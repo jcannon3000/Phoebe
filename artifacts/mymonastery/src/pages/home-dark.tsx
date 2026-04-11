@@ -137,7 +137,7 @@ function DarkNav() {
             ) : (
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold"
-                style={{ background: C.card, color: C.textSecondary, border: "1px solid rgba(92,122,95,0.3)" }}
+                style={{ background: C.card, color: C.textSecondary, border: "1px solid rgba(46,107,64,0.3)" }}
               >
                 {user.name.charAt(0)}
               </div>
@@ -210,7 +210,7 @@ function DarkFAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: C.card, border: "1px solid rgba(92,122,95,0.2)", boxShadow: C.cardShadow, minWidth: 220 }}
+              style={{ background: C.card, border: "1px solid rgba(46,107,64,0.2)", boxShadow: C.cardShadow, minWidth: 220 }}
             >
               <p className="text-sm font-semibold" style={{ color: C.text }}>📮 Start a correspondence</p>
               <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>Write letters with someone</p>
@@ -298,7 +298,7 @@ function LettersSection() {
       {items.length === 0 ? (
         <div
           className="rounded-2xl p-[18px] text-center"
-          style={{ background: C.card, border: "1px dashed rgba(92,122,95,0.4)", boxShadow: C.cardShadow }}
+          style={{ background: C.card, border: "1px dashed rgba(46,107,64,0.4)", boxShadow: C.cardShadow }}
         >
           <p className="text-sm mb-3" style={{ color: C.textSecondary }}>No letters yet. Start a correspondence. 📮</p>
           <Link href="/letters/new">
@@ -427,7 +427,7 @@ function GatheringsSection() {
       {gatherings.length === 0 ? (
         <div
           className="rounded-2xl p-[18px] text-center"
-          style={{ background: C.card, border: "1px dashed rgba(92,122,95,0.4)", boxShadow: C.cardShadow }}
+          style={{ background: C.card, border: "1px dashed rgba(46,107,64,0.4)", boxShadow: C.cardShadow }}
         >
           <p className="text-sm mb-3" style={{ color: C.textSecondary }}>No gatherings yet. Start one. 📅</p>
           <Link href="/tradition/new">

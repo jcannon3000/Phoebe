@@ -168,7 +168,7 @@ export default function LetterInvitePage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
             className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-            style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", color: "#F0EDE6" }}
+            style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
           />
           <input
             type="email"
@@ -176,7 +176,7 @@ export default function LetterInvitePage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Your email"
             className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-            style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", color: "#F0EDE6" }}
+            style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
           />
         </div>
 

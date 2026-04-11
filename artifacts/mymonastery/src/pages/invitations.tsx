@@ -33,7 +33,7 @@ export default function InvitationsPage() {
         {/* Empty state */}
         <div
           className="rounded-xl px-5 py-8 text-center"
-          style={{ background: "transparent", border: "1px dashed rgba(92,122,95,0.3)" }}
+          style={{ background: "transparent", border: "1px dashed rgba(46,107,64,0.3)" }}
         >
           <p className="text-2xl mb-3">📩</p>
           <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>

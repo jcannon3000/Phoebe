@@ -82,7 +82,7 @@ export default function BcpIntercessionsPage() {
             className="w-full text-sm px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/60 transition-all"
             style={{
               backgroundColor: "#091A10",
-              borderColor: "rgba(92,122,95,0.3)",
+              borderColor: "rgba(46,107,64,0.3)",
               color: "#F0EDE6",
             }}
           />
@@ -120,7 +120,7 @@ export default function BcpIntercessionsPage() {
                   key={prayer.title}
                   onClick={() => setSelectedPrayer(prayer)}
                   className="w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/5 active:scale-[0.99]"
-                  style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(92,122,95,0.12)" }}
+                  style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(46,107,64,0.12)" }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -149,7 +149,7 @@ export default function BcpIntercessionsPage() {
                     className="w-full text-left p-4 rounded-xl transition-all"
                     style={{
                       background: isOpen ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
-                      border: `1px solid ${isOpen ? "rgba(92,122,95,0.35)" : "rgba(92,122,95,0.15)"}`,
+                      border: `1px solid ${isOpen ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.15)"}`,
                     }}
                   >
                     <div className="flex items-center justify-between">
@@ -207,7 +207,7 @@ export default function BcpIntercessionsPage() {
             className="relative w-full max-w-lg mx-4 mb-0 sm:mb-0 rounded-t-2xl sm:rounded-2xl overflow-hidden"
             style={{
               background: "#0F2818",
-              border: "1px solid rgba(92,122,95,0.3)",
+              border: "1px solid rgba(46,107,64,0.3)",
               maxHeight: "85vh",
               animation: "prayer-slide-up 0.3s ease-out",
             }}
@@ -221,7 +221,7 @@ export default function BcpIntercessionsPage() {
             `}</style>
 
             {/* Modal header */}
-            <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: "1px solid rgba(92,122,95,0.15)" }}>
+            <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-1.5" style={{ color: "rgba(143,175,150,0.5)" }}>
                   {selectedPrayer.category}
@@ -253,7 +253,7 @@ export default function BcpIntercessionsPage() {
               >
                 {selectedPrayer.text}
               </p>
-              <p className="text-[11px] mt-6 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(92,122,95,0.12)" }}>
+              <p className="text-[11px] mt-6 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
                 From the Book of Common Prayer
               </p>
             </div>

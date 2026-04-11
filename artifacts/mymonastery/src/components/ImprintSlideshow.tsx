@@ -208,7 +208,7 @@ export default function ImprintSlideshow({
           <button
             onClick={advance}
             className="w-full max-w-sm py-4 rounded-2xl text-base font-semibold"
-            style={{ background: "transparent", color: "#C8D4C0", border: "1.5px solid rgba(92,122,95,0.5)" }}
+            style={{ background: "transparent", color: "#C8D4C0", border: "1.5px solid rgba(46,107,64,0.5)" }}
           >
             Continue →
           </button>

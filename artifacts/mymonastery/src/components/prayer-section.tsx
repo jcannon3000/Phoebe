@@ -153,7 +153,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
               placeholder="Share a prayer request with your garden... 🌿"
               maxLength={1000}
               className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
-              style={{ backgroundColor: "#091A10", borderColor: "rgba(92,122,95,0.3)", color: "#F0EDE6" }}
+              style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
             />
             <button
               type="button"
@@ -320,7 +320,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                               placeholder="Leave a word alongside this… 🌿"
                               maxLength={120}
                               className="flex-1 text-sm px-3 py-2 rounded-lg border placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/40 transition-all"
-                              style={{ backgroundColor: "#091A10", borderColor: "rgba(92,122,95,0.3)", color: "#F0EDE6" }}
+                              style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
                             />
                             <button
                               type="button"
@@ -401,7 +401,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
             {/* Request preview */}
             <div
               className="rounded-xl px-4 py-3 mb-5 text-sm leading-relaxed"
-              style={{ backgroundColor: "rgba(200,212,192,0.06)", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.2)" }}
+              style={{ backgroundColor: "rgba(200,212,192,0.06)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.2)" }}
             >
               {pendingBody}
             </div>

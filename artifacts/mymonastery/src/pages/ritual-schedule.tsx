@@ -299,7 +299,7 @@ export default function RitualSchedule() {
           <button
             onClick={handleFixedConfirm}
             disabled={isSaving || !fixedTime}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-full font-semibold text-lg hover:bg-primary/90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(92,122,95,0.3)] flex items-center justify-center gap-2"
+            className="w-full py-4 bg-primary text-primary-foreground rounded-full font-semibold text-lg hover:bg-primary/90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(46,107,64,0.3)] flex items-center justify-center gap-2"
           >
             {isSaving ? (
               <><span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Confirming...</>
@@ -311,7 +311,7 @@ export default function RitualSchedule() {
           <button
             onClick={handleFlexibleSave}
             disabled={isSaving || !times[0]}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-full font-semibold text-lg hover:bg-primary/90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(92,122,95,0.3)] flex items-center justify-center gap-2"
+            className="w-full py-4 bg-primary text-primary-foreground rounded-full font-semibold text-lg hover:bg-primary/90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(46,107,64,0.3)] flex items-center justify-center gap-2"
           >
             {isSaving ? (
               <><span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Saving...</>

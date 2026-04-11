@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
-import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek } from "date-fns";
+import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -270,7 +270,7 @@ function FAB() {
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 mb-4">
+    <div className="flex items-center gap-3 mb-2">
       <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
         {label}
       </h2>
@@ -701,6 +701,33 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   const unconfirmed = participants.filter((p: any) => p.status === "pending" || p.status === "invited");
   const waitingForConfirmation = unconfirmed.length >= 2;
 
+  // Build the 2nd-line flap: cycle between Participants, Next Date, Location.
+  // Each line is optional — skip entries that aren't known yet.
+  const flapLines: string[] = [];
+
+  if (participants.length > 0) {
+    const firstNames = participants
+      .slice(0, 3)
+      .map((p: any) => (p.name || p.email || "").split(" ")[0])
+      .filter(Boolean)
+      .join(", ");
+    const extra = participants.length > 3 ? ` +${participants.length - 3}` : "";
+    if (firstNames) flapLines.push(`with ${firstNames}${extra}`);
+  }
+
+  if (next) {
+    flapLines.push(`${nextDayLabel(next)} · ${format(next, "h:mm a")}`);
+  } else if (waitingForConfirmation) {
+    flapLines.push("Waiting for confirmation");
+  }
+
+  // Prefer the upcoming meetup's location; fall back to the tradition-level
+  // location (legacy data) so old rituals still show something.
+  const meetupLocation = r.nextMeetupLocation ?? r.location;
+  if (meetupLocation) {
+    flapLines.push(`📍 ${meetupLocation}`);
+  }
+
   return (
     <BarCard key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} pulse={false} category="gatherings">
       <div className="flex items-start justify-between gap-2">
@@ -710,27 +737,8 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
         </span>
       </div>
       <div className="mt-1.5">
-        {next ? (
-          <p className="text-sm" style={{ color: "#8FAF96" }}>
-            {nextDayLabel(next)} · {format(next, "h:mm a")}
-          </p>
-        ) : waitingForConfirmation ? (
-          <p className="text-sm" style={{ color: "rgba(143,175,150,0.7)" }}>
-            Waiting for confirmation
-          </p>
-        ) : null}
-        {r.location && (
-          <p className="text-xs mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-            📍 {r.location}
-          </p>
-        )}
+        <SplitFlapLine lines={flapLines} />
       </div>
-      {participants.length > 0 && (
-        <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-          with {participants.slice(0, 3).map((p: any) => (p.name || p.email || "").split(" ")[0]).join(", ")}
-          {participants.length > 3 && ` +${participants.length - 3}`}
-        </p>
-      )}
     </BarCard>
   );
 }
@@ -788,7 +796,7 @@ function TimeSection({
   );
 
   return (
-    <div className={scrollable ? "mb-[22px]" : "mb-8"}>
+    <div className={scrollable ? "mb-[2px]" : "mb-[6px]"}>
       <SectionHeader label={label} />
       {scrollable ? (
         <div className="relative">
@@ -886,14 +894,14 @@ export default function Dashboard() {
       }
     }
 
-    // Calendar-week boundary shared by moments and gatherings placement.
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
-    const nextWeekStart = addDays(weekStart, 7);
+    // "This week" is a rolling next-7-days window (not a calendar Sun→Sat
+    // week). So on Wednesday, "This week" covers Thu–next Wed.
+    const sevenDaysFromToday = addDays(startOfDay(new Date()), 7);
 
     // ── Moments placement
     // isActionableToday → Today section. Otherwise bucket by next window date:
-    // if the next occurrence falls within the current calendar week (Sun–Sat)
-    // it goes to "This week"; if it's in a future week it goes to "This month".
+    // if the next occurrence falls within the next 7 days it goes to
+    // "This week"; otherwise it goes to "This month".
     for (const m of allMoments) {
       const isLectio = m.templateType === "lectio-divina";
       const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
@@ -903,7 +911,7 @@ export default function Dashboard() {
         const label = nextWindowLabel(m);
         const daysAhead = nextWindowDaysAhead(m);
         const nextDate = addDays(startOfDay(new Date()), daysAhead);
-        if (isBefore(nextDate, nextWeekStart)) {
+        if (isBefore(nextDate, sevenDaysFromToday)) {
           weekItems.push({ kind: "moment", data: m, nextWindow: label });
         } else {
           monthItems.push({ kind: "moment", data: m, nextWindow: label });
@@ -911,16 +919,13 @@ export default function Dashboard() {
       }
     }
 
-    // ── Gatherings placement
-    // "This week" is the calendar week Sunday → next Sunday, not a rolling
-    // next-7-days window. So on Wednesday, "This week" still includes
-    // Thursday/Friday/Saturday of this week, and nothing from next Monday.
+    // ── Gatherings placement (same rolling 7-day window)
     for (const r of allGatherings) {
       if (r.nextMeetupDate && isToday(parseISO(r.nextMeetupDate))) {
         todayItems.push({ kind: "gathering", data: r, badge: "Today" });
       } else if (r.nextMeetupDate) {
         const d = parseISO(r.nextMeetupDate);
-        if (isBefore(d, nextWeekStart) && !isToday(d)) {
+        if (isBefore(d, sevenDaysFromToday) && !isToday(d)) {
           weekItems.push({ kind: "gathering", data: r, badge: format(d, "EEEE") });
         } else {
           monthItems.push({ kind: "gathering", data: r });

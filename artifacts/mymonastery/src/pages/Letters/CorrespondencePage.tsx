@@ -245,7 +245,7 @@ export default function CorrespondencePage() {
           className={`rounded-2xl overflow-hidden mb-4 transition-shadow ${data.myTurn ? "animate-turn-pulse" : ""}`}
           style={{
             background: isOverdue ? "#1A2D1A" : "#0F2818",
-            border: `1px solid ${isOverdue ? "rgba(217,180,74,0.35)" : "rgba(92,122,95,0.35)"}`,
+            border: `1px solid ${isOverdue ? "rgba(217,180,74,0.35)" : "rgba(46,107,64,0.35)"}`,
             boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
           }}
         >
@@ -305,7 +305,7 @@ export default function CorrespondencePage() {
         {showCalendarPrompt && (
           <div
             className="rounded-2xl mb-8 p-5"
-            style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.3)" }}
+            style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
           >
             <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>
               📅 Get a calendar reminder when it's your turn?
@@ -326,7 +326,7 @@ export default function CorrespondencePage() {
                 onClick={() => calendarPromptMutation.mutate("dismissed")}
                 disabled={calendarPromptMutation.isPending}
                 className="flex-1 py-2 rounded-xl text-sm"
-                style={{ background: "transparent", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}
+                style={{ background: "transparent", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
               >
                 No thanks
               </button>
@@ -368,7 +368,7 @@ export default function CorrespondencePage() {
                       style={{
                         background: "#0F2818",
                         border: `1px solid rgba(92,122,95,${isOwn ? "0.35" : "0.2"})`,
-                        borderLeft: `3px solid ${isOwn ? "#8FAF96" : "rgba(92,122,95,0.4)"}`,
+                        borderLeft: `3px solid ${isOwn ? "#8FAF96" : "rgba(46,107,64,0.4)"}`,
                         borderRadius: "16px",
                         padding: "24px 28px",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",

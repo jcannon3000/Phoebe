@@ -1267,7 +1267,7 @@ export default function MomentNew() {
                     {TEMPLATES.map(t => (
                       <button key={t.id} onClick={() => selectTemplate(t)}
                         className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-                        style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)" }}>
+                        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}>
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{t.emoji}</span>
                           <div>
@@ -1302,7 +1302,7 @@ export default function MomentNew() {
                           setStep("bcp-commitment");
                         }}
                         className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-                        style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)" }}
+                        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{office.emoji}</span>
@@ -1329,9 +1329,9 @@ export default function MomentNew() {
                       <div className="grid gap-4">
                         <button onClick={() => setIntercessionMode("bcp")}
                           className="w-full text-left p-5 rounded-2xl transition-all"
-                          style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.35)" }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.65)")}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.35)")}>
+                          style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)" }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.65)")}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.35)")}>
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">📖</span>
                             <div>
@@ -1342,9 +1342,9 @@ export default function MomentNew() {
                         </button>
                         <button onClick={confirmCustomIntercession}
                           className="w-full text-left p-5 rounded-2xl transition-all"
-                          style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.35)" }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.65)")}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.35)")}>
+                          style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)" }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.65)")}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.35)")}>
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">✍️</span>
                             <div>
@@ -1440,7 +1440,7 @@ export default function MomentNew() {
                                 <div className="flex gap-1 mt-2">
                                   {Array.from({ length: 7 }).map((_, i) => (
                                     <div key={i} className="w-2.5 h-2.5 rounded-full transition-all duration-300"
-                                      style={{ background: i < opt.dots ? (sel ? "#E8E4D8" : "#5C7A5F") : "rgba(92,122,95,0.2)" }} />
+                                      style={{ background: i < opt.dots ? (sel ? "#E8E4D8" : "#5C7A5F") : "rgba(46,107,64,0.2)" }} />
                                   ))}
                                 </div>
                                 <p className={`text-xs mt-1 ${sel ? "text-[#E8E4D8]/60" : "text-[#8FAF96]/50"}`}>
@@ -1494,7 +1494,7 @@ export default function MomentNew() {
                             style={{
                               background: sel ? "#5C7A5F" : "rgba(200,212,192,0.08)",
                               color: sel ? "#F0EDE6" : "#8FAF96",
-                              border: sel ? "1px solid rgba(92,122,95,0.6)" : "1px solid rgba(92,122,95,0.3)",
+                              border: sel ? "1px solid rgba(46,107,64,0.6)" : "1px solid rgba(46,107,64,0.3)",
                               opacity: atMax ? 0.3 : 1,
                               cursor: atMax ? "not-allowed" : "pointer",
                             }}
@@ -1573,7 +1573,7 @@ export default function MomentNew() {
                       )}
                     </div>
                     {/* BCP info card */}
-                    <div className="rounded-2xl p-4 space-y-1" style={{ background: "rgba(200,212,192,0.08)", border: "1px solid rgba(92,122,95,0.35)" }}>
+                    <div className="rounded-2xl p-4 space-y-1" style={{ background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.35)" }}>
                       <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>📖 About {isMorning ? "Morning Prayer" : "Evening Prayer"}</p>
                       <p className="text-sm" style={{ color: "#8FAF96" }}>
                         {isMorning ? "Morning Prayer Rite II takes 15–20 minutes." : "Evening Prayer Rite II takes 15–20 minutes."}<br />
@@ -1626,13 +1626,13 @@ export default function MomentNew() {
                       rows={4}
                       placeholder="e.g. Our enemies and those with whom we are in conflict…"
                       className="w-full px-4 py-4 rounded-2xl resize-none text-base focus:outline-none transition-colors"
-                      style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.4)", color: "#F0EDE6" }}
+                      style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
                     {intention.length > 150 && (
                       <p className="text-right text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>{intention.length}/200</p>
                     )}
                   </div>
-                  <div style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", borderRadius: "16px", overflow: "hidden" }}>
+                  <div style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", borderRadius: "16px", overflow: "hidden" }}>
                     <details>
                       <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2" style={{ color: "#C8D4C0", fontSize: "13px", fontWeight: 600 }}>
                         📖 The full prayer
@@ -1777,8 +1777,8 @@ export default function MomentNew() {
                         <button key={f} onClick={() => { setFrequency(f); setScheduledDays([]); }}
                           className={`flex-1 py-3 rounded-xl font-semibold text-sm capitalize transition-all ${frequency === f ? "animate-turn-pulse" : ""}`}
                           style={frequency === f
-                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
-                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}>
                           {f === "daily" ? "Every day" : "Once a week"}
                         </button>
                       ))}
@@ -1800,8 +1800,8 @@ export default function MomentNew() {
                             }
                             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${scheduledDays.includes(val) ? "animate-turn-pulse" : ""}`}
                             style={scheduledDays.includes(val)
-                              ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
-                              : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
+                              ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
+                              : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}>
                             {label}
                           </button>
                         ))}
@@ -1861,7 +1861,7 @@ export default function MomentNew() {
                             className={`relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200 ${sel ? "animate-turn-pulse" : ""}`}
                             style={{
                               background: sel ? "#1A4A2E" : "#0F2818",
-                              border: `1.5px solid ${sel ? "rgba(92,122,95,0.7)" : "rgba(92,122,95,0.3)"}`,
+                              border: `1.5px solid ${sel ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
                               boxShadow: sel ? "0 4px 14px rgba(45,94,63,0.3)" : undefined,
                             }}
                           >

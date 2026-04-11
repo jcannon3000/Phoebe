@@ -154,7 +154,7 @@ export default function ReadLetter() {
         className="max-w-3xl mx-auto relative"
         style={{
           backgroundColor: "#FAF6F0",
-          boxShadow: "inset 0 0 0 1px rgba(92,122,95,0.1), 0 4px 24px rgba(44,24,16,0.08)",
+          boxShadow: "inset 0 0 0 1px rgba(46,107,64,0.1), 0 4px 24px rgba(44,24,16,0.08)",
           padding: "48px 32px",
           borderRadius: "2px",
           marginTop: "16px",

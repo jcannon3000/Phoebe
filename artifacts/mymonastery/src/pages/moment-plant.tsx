@@ -376,7 +376,7 @@ export default function MomentPlant() {
                         style={{
                           background: sel ? "#5C7A5F" : "#EEF3EF",
                           border: `1.5px solid ${sel ? "#5C7A5F" : "#c8dac9"}`,
-                          boxShadow: sel ? "0 4px 14px rgba(92,122,95,0.22)" : undefined,
+                          boxShadow: sel ? "0 4px 14px rgba(46,107,64,0.22)" : undefined,
                         }}
                       >
                         {sel && (

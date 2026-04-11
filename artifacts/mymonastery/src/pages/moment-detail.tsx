@@ -575,7 +575,7 @@ export default function MomentDetail() {
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-5 flex items-center justify-between rounded-2xl px-4 py-3"
-            style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)" }}
+            style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
           >
             <div>
               <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>
@@ -804,7 +804,7 @@ export default function MomentDetail() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Log Timeline</span>
-            <div className="flex-1 h-px" style={{ background: "rgba(92,122,95,0.35)" }} />
+            <div className="flex-1 h-px" style={{ background: "rgba(46,107,64,0.35)" }} />
           </div>
 
           {/* TODAY — per-member status (only on practice days) */}

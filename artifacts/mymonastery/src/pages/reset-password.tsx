@@ -94,7 +94,7 @@ export default function ResetPassword() {
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(""); }}
                     className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.35)", color: "#F0EDE6" }}
+                    style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
                     autoComplete="new-password"
                     disabled={submitting}
                   />

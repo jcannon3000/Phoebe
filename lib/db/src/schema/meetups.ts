@@ -9,6 +9,10 @@ export const meetupsTable = pgTable("meetups", {
   scheduledDate: text("scheduled_date").notNull(),
   status: text("status").notNull().default("planned"),
   notes: text("notes"),
+  // Location is per-meetup (each scheduled gathering can be in a different
+  // place). The ritual-level `location` column is kept only for backward
+  // compatibility with older rows.
+  location: text("location"),
   googleCalendarEventId: text("google_calendar_event_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

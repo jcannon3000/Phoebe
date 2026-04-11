@@ -34,7 +34,7 @@ export default function CommunitiesPage() {
           className="rounded-2xl px-6 py-10 text-center"
           style={{
             background: "rgba(200,212,192,0.04)",
-            border: "1px dashed rgba(92,122,95,0.3)",
+            border: "1px dashed rgba(46,107,64,0.3)",
           }}
         >
           <div className="text-5xl mb-5">🌱</div>

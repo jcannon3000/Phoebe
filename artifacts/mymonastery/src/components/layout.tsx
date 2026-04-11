@@ -66,7 +66,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
             className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
-            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(92,122,95,0.18)" }}
+            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
           >
             {/* Close button */}
             <div className="flex justify-end p-4 pb-2">
@@ -76,11 +76,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
 
             {/* ── Profile ── */}
-            <div className="px-5 pb-5" style={{ borderBottom: "1px solid rgba(92,122,95,0.15)" }}>
+            <div className="px-5 pb-5" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               <div className="flex items-center gap-3 mb-3">
                 <div
                   className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0"
-                  style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(92,122,95,0.3)" }}
+                  style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
                 >
                   {user?.name?.charAt(0).toUpperCase() ?? "?"}
                 </div>
@@ -96,7 +96,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <button
                 onClick={() => presenceToggle.mutate(!user?.showPresence)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors"
-                style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(92,122,95,0.15)" }}
+                style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.15)" }}
               >
                 <div className="text-left">
                   <p className="text-sm" style={{ color: "#8FAF96" }}>Show when I'm here 🌿</p>
@@ -111,11 +111,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
 
             {/* ── My Communities ── */}
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(92,122,95,0.15)" }}>
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
                 My Communities
               </p>
-              <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(92,122,95,0.2)" }}>
+              <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
                 <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>Communities are coming soon 🌱</p>
                 <p className="text-xs" style={{ color: "rgba(200,212,192,0.4)" }}>
                   Shared prayer, gatherings, and letters for your parish or group.
@@ -124,7 +124,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
 
             {/* ── Navigation ── */}
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(92,122,95,0.15)" }}>
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
                 Navigate
               </p>
@@ -202,7 +202,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 letterSpacing: "-0.01em",
                 background: "rgba(200,212,192,0.08)",
                 color: "#C8D4C0",
-                border: "1px solid rgba(92,122,95,0.3)",
+                border: "1px solid rgba(46,107,64,0.3)",
               }}
             >
               Menu

@@ -181,7 +181,7 @@ export default function LetterNew() {
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#8FAF96" : "rgba(92,122,95,0.2)" }}
+              style={{ background: s <= step ? "#8FAF96" : "rgba(46,107,64,0.2)" }}
             />
           ))}
         </div>
@@ -204,7 +204,7 @@ export default function LetterNew() {
                 <button
                   onClick={() => handleTypeSelect("one_to_one")}
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
-                  style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
                   <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 A letter</p>
                   <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>One letter. One person. Once a week.</p>
@@ -216,7 +216,7 @@ export default function LetterNew() {
                 <button
                   onClick={() => handleTypeSelect("group")}
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
-                  style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
                   <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 Round letter</p>
                   <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Keep a circle rooted in each other's lives.</p>
@@ -255,13 +255,13 @@ export default function LetterNew() {
                           onClick={() => handleConnectionSelect(c)}
                           className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm"
                           style={sel
-                            ? { background: "#1A4A2E", border: "1px solid rgba(92,122,95,0.65)", color: "#F0EDE6" }
-                            : { background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", color: "#C8D4C0" }
+                            ? { background: "#1A4A2E", border: "1px solid rgba(46,107,64,0.65)", color: "#F0EDE6" }
+                            : { background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", color: "#C8D4C0" }
                           }
                         >
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                            style={{ background: sel ? "rgba(255,255,255,0.15)" : "rgba(92,122,95,0.2)", color: sel ? "#F0EDE6" : "#8FAF96" }}
+                            style={{ background: sel ? "rgba(255,255,255,0.15)" : "rgba(46,107,64,0.2)", color: sel ? "#F0EDE6" : "#8FAF96" }}
                           >
                             {initials(c.name || c.email)}
                           </div>
@@ -284,7 +284,7 @@ export default function LetterNew() {
                         value={m.name}
                         onChange={(e) => updateMember(i, "name", e.target.value)}
                         className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.3)", color: "#F0EDE6" }}
+                        style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
                       />
                       {type === "group" && i >= 2 && (
                         <button onClick={() => removeMember(i)} className="text-lg px-1" style={{ color: "#8FAF96" }}>×</button>
@@ -296,7 +296,7 @@ export default function LetterNew() {
                       value={m.email}
                       onChange={(e) => updateMember(i, "email", e.target.value)}
                       className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-                      style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.3)", color: "#F0EDE6" }}
+                      style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
                     />
                   </div>
                 ))}
@@ -343,7 +343,7 @@ export default function LetterNew() {
                 maxLength={60}
                 autoFocus
                 className="w-full px-4 py-4 rounded-xl text-lg font-medium focus:outline-none"
-                style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.3)", color: "#F0EDE6" }}
+                style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
               />
 
               {error && <p className="text-sm mt-3" style={{ color: "#C47A65" }}>{error}</p>}

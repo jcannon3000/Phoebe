@@ -44,12 +44,27 @@ async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: t
     }
   }
 
+  // Find the upcoming meetup row to pull its per-meetup location. Fall back
+  // to the legacy ritual-level location when the meetup row has none.
+  let nextMeetupLocation: string | null = null;
+  if (nextMeetupDate) {
+    const nextIso = nextMeetupDate;
+    const match = meetups.find((m) => {
+      try { return new Date(m.scheduledDate).toISOString() === nextIso; }
+      catch { return false; }
+    });
+    nextMeetupLocation = match?.location ?? ritual.location ?? null;
+  } else {
+    nextMeetupLocation = ritual.location ?? null;
+  }
+
   return {
     ...ritual,
     participants: (ritual.participants as Array<{ name: string; email: string }>) ?? [],
     streak,
     lastMeetupDate,
     nextMeetupDate,
+    nextMeetupLocation,
     status,
   };
 }
@@ -425,6 +440,9 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
   if (parsed.data.confirmedTime !== undefined) {
     updatePayload.confirmedTime = parsed.data.confirmedTime;
   }
+  // We still mirror location onto the ritual row for backward compatibility
+  // with older clients that read `ritual.location`, but the source of truth
+  // going forward is the per-meetup `meetups.location` column.
   if (parsed.data.location !== undefined) {
     updatePayload.location = parsed.data.location || null;
   }
@@ -449,10 +467,15 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
     }
   }
 
-  // Create a planned meetup row so dashboard shows the proposed date
+  // Create a planned meetup row so dashboard shows the proposed date.
+  // Location is per-meetup: when the organizer supplies a location with
+  // proposed times, stamp it onto the planned meetup row.
   let meetupId: number | null = null;
   if (parsed.data.proposedTimes && parsed.data.proposedTimes.length > 0) {
     const placeholderTime = new Date(parsed.data.proposedTimes[0]);
+    const meetupLocation = parsed.data.location !== undefined
+      ? (parsed.data.location.trim() || null)
+      : undefined;
     const existingMeetups = await db
       .select()
       .from(meetupsTable)
@@ -460,13 +483,16 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
     const existingPlanned = existingMeetups.find((m) => m.status === "planned");
 
     if (existingPlanned) {
-      await db.update(meetupsTable).set({ scheduledDate: placeholderTime }).where(eq(meetupsTable.id, existingPlanned.id));
+      const meetupPatch: Partial<typeof meetupsTable.$inferInsert> = { scheduledDate: placeholderTime };
+      if (meetupLocation !== undefined) meetupPatch.location = meetupLocation;
+      await db.update(meetupsTable).set(meetupPatch).where(eq(meetupsTable.id, existingPlanned.id));
       meetupId = existingPlanned.id;
     } else {
       const [inserted] = await db.insert(meetupsTable).values({
         ritualId: id,
         scheduledDate: placeholderTime,
         status: "planned",
+        location: meetupLocation ?? null,
       }).returning();
       meetupId = inserted.id;
     }
@@ -626,12 +652,16 @@ router.get("/rituals/:id/timeline", async (req, res): Promise<void> => {
     if (!calEvent) calendarEventMissing = true;
   }
 
+  // Location is per-meetup: prefer the upcoming meetup's location, fall
+  // back to the legacy ritual-level location for older rows.
+  const upcomingLocation = upcoming?.location ?? ritual.location ?? null;
+
   res.json({
     upcoming: upcoming
-      ? { ...upcoming, scheduledDate: upcoming.scheduledDate.toISOString() }
+      ? { ...upcoming, scheduledDate: upcoming.scheduledDate.toISOString(), location: upcoming.location ?? null }
       : null,
-    past: past.map((m) => ({ ...m, scheduledDate: m.scheduledDate.toISOString() })),
-    location: ritual.location,
+    past: past.map((m) => ({ ...m, scheduledDate: m.scheduledDate.toISOString(), location: m.location ?? null })),
+    location: upcomingLocation,
     confirmedTime: ritual.confirmedTime,
     calendarEventMissing,
   });

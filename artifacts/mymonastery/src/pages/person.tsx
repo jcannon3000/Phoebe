@@ -427,7 +427,7 @@ export default function PersonProfile() {
             )}
 
             {/* CTA */}
-            <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(92,122,95,0.15)" }}>
+            <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
               <Link
                 href="/moment/new"
                 className="text-sm font-medium transition-opacity hover:opacity-70"
