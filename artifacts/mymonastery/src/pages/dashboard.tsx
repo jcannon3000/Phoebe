@@ -520,7 +520,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 
   return (
     <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse} category="practices">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>
         </div>
@@ -534,7 +534,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           </span>
         ) : null}
       </div>
-      <div className="flex items-center justify-between gap-4 mt-1.5 -mr-2">
+      <div className="flex items-center justify-between gap-4 mt-0.5 -mr-2">
         <div className="min-w-0 flex-1">
           {shouldPulse && !isLectio ? (
             subtitle ? (
