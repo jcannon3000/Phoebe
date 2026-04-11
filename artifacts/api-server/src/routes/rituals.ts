@@ -314,7 +314,7 @@ router.post("/rituals/:id/meetups", async (req, res): Promise<void> => {
     .insert(meetupsTable)
     .values({
       ritualId: params.data.id,
-      scheduledDate: new Date(parsed.data.scheduledDate),
+      scheduledDate: new Date(parsed.data.scheduledDate).toISOString(),
       status: parsed.data.status,
       notes: parsed.data.notes ?? null,
     })
@@ -657,7 +657,7 @@ router.get("/rituals/:id/timeline", async (req, res): Promise<void> => {
     if (confirmedTime > new Date()) {
       const [newMeetup] = await db
         .insert(meetupsTable)
-        .values({ ritualId: id, scheduledDate: confirmedTime, status: "planned" })
+        .values({ ritualId: id, scheduledDate: confirmedTime.toISOString(), status: "planned" })
         .returning();
       upcoming = newMeetup;
     }
@@ -676,11 +676,20 @@ router.get("/rituals/:id/timeline", async (req, res): Promise<void> => {
   // back to the legacy ritual-level location for older rows.
   const upcomingLocation = upcoming?.location ?? ritual.location ?? null;
 
+  // scheduled_date is a text column in Postgres, so drizzle hands it back
+  // as a string. Normalize to an ISO string via new Date() so the client
+  // can parseISO it regardless of whether the row was written with a Date
+  // object or a pre-stringified ISO value.
+  const toIso = (v: unknown): string => {
+    if (v instanceof Date) return v.toISOString();
+    return new Date(String(v)).toISOString();
+  };
+
   res.json({
     upcoming: upcoming
-      ? { ...upcoming, scheduledDate: upcoming.scheduledDate.toISOString(), location: upcoming.location ?? null }
+      ? { ...upcoming, scheduledDate: toIso(upcoming.scheduledDate), location: upcoming.location ?? null }
       : null,
-    past: past.map((m) => ({ ...m, scheduledDate: m.scheduledDate.toISOString(), location: m.location ?? null })),
+    past: past.map((m) => ({ ...m, scheduledDate: toIso(m.scheduledDate), location: m.location ?? null })),
     location: upcomingLocation,
     confirmedTime: ritual.confirmedTime,
     calendarEventMissing,
@@ -707,7 +716,7 @@ router.patch("/rituals/:id/meetups/:meetupId", async (req, res): Promise<void> =
 
   if (!updated) { res.status(404).json({ error: "Meetup not found" }); return; }
 
-  res.json({ ...updated, scheduledDate: updated.scheduledDate.toISOString() });
+  res.json({ ...updated, scheduledDate: new Date(updated.scheduledDate as unknown as string).toISOString() });
 });
 
 // GET /api/rituals/:id/scheduling-summary — auth-required
@@ -779,11 +788,11 @@ router.post("/rituals/:id/confirm-time", async (req, res): Promise<void> => {
     return;
   }
 
-  const confirmedTime = parsed.data.confirmedTime;
+  const confirmedTimeIso = new Date(parsed.data.confirmedTime).toISOString();
 
   await db
     .update(ritualsTable)
-    .set({ confirmedTime })
+    .set({ confirmedTime: confirmedTimeIso })
     .where(eq(ritualsTable.id, id));
 
   // Create a planned meetup for the confirmed time
@@ -794,16 +803,16 @@ router.post("/rituals/:id/confirm-time", async (req, res): Promise<void> => {
   const existingPlanned = existingMeetups.find((m) => m.status === "planned");
 
   if (existingPlanned) {
-    await db.update(meetupsTable).set({ scheduledDate: confirmedTime }).where(eq(meetupsTable.id, existingPlanned.id));
+    await db.update(meetupsTable).set({ scheduledDate: confirmedTimeIso }).where(eq(meetupsTable.id, existingPlanned.id));
   } else {
     await db.insert(meetupsTable).values({
       ritualId: id,
-      scheduledDate: confirmedTime,
+      scheduledDate: confirmedTimeIso,
       status: "planned",
     });
   }
 
-  res.json({ confirmedTime: confirmedTime.toISOString() });
+  res.json({ confirmedTime: confirmedTimeIso });
 });
 
 // ─── GET /api/rituals/:id/connections ─────────────────────────────────────────

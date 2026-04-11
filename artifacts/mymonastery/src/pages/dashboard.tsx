@@ -755,13 +755,13 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   const flapLines: string[] = [];
 
   if (participants.length > 0) {
-    const firstNames = participants
+    const fullNames = participants
       .slice(0, 3)
-      .map((p: any) => (p.name || p.email || "").split(" ")[0])
+      .map((p: any) => (p.name || p.email || "").trim())
       .filter(Boolean)
       .join(", ");
     const extra = participants.length > 3 ? ` +${participants.length - 3}` : "";
-    if (firstNames) flapLines.push(`with ${firstNames}${extra}`);
+    if (fullNames) flapLines.push(`with ${fullNames}${extra}`);
   }
 
   if (next) {

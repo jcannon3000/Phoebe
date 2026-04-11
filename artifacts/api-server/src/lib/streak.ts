@@ -32,7 +32,7 @@ export function computeStreak(meetups: Meetup[], frequency: string): StreakResul
   }
 
   const lastCompleted = completed.find((m) => m.status === "completed");
-  const lastMeetupDate = lastCompleted ? lastCompleted.scheduledDate.toISOString() : null;
+  const lastMeetupDate = lastCompleted ? new Date(lastCompleted.scheduledDate as unknown as string).toISOString() : null;
 
   const now = new Date();
   const frequencyDays = frequency === "weekly" ? 7 : frequency === "biweekly" ? 14 : 30;

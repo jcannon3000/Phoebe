@@ -352,7 +352,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         meetups: meetups.map(m => ({
           id: m.id,
           ritualId: m.ritualId,
-          scheduledDate: m.scheduledDate.toISOString(),
+          scheduledDate: new Date(m.scheduledDate as unknown as string).toISOString(),
           status: m.status,
           notes: m.notes,
           createdAt: m.createdAt.toISOString(),
