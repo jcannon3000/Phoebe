@@ -512,7 +512,7 @@ export default function LectioPage() {
         style={{
           minHeight: 0,
           paddingTop: isFullHeightSlide ? 80 : 96,
-          paddingBottom: isFullHeightSlide ? 104 : 112,
+          paddingBottom: isFullHeightSlide ? 132 : 112,
         }}
       >
         <div
@@ -598,7 +598,7 @@ export default function LectioPage() {
         style={{
           position: "fixed",
           left: "50%",
-          bottom: 26,
+          bottom: 16,
           transform: "translateX(-50%)",
           zIndex: 50,
           background: "rgba(19,44,29,0.92)",
