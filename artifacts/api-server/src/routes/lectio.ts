@@ -366,6 +366,7 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
         ? moment.createdAt
         : new Date(moment.createdAt as unknown as string)
       ).toISOString(),
+      allowMemberInvites: (moment as unknown as { allowMemberInvites?: boolean }).allowMemberInvites ?? true,
     },
     userName: userRow.name ?? userRow.email.split("@")[0],
     userToken,

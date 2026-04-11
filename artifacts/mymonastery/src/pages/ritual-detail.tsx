@@ -109,6 +109,7 @@ export default function RitualDetail() {
   });
   const [editName, setEditName] = useState("");
   const [editIntention, setEditIntention] = useState("");
+  const [editAllowMemberInvites, setEditAllowMemberInvites] = useState(true);
 
   const [timeline, setTimeline] = useState<TimelineData | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(true);
@@ -144,6 +145,9 @@ export default function RitualDetail() {
     if (ritual && !isEditing) {
       setEditName(ritual.name);
       setEditIntention(ritual.intention || "");
+      // allowMemberInvites is not in the generated Ritual type; read via cast.
+      const ami = (ritual as unknown as { allowMemberInvites?: boolean }).allowMemberInvites;
+      setEditAllowMemberInvites(ami ?? true);
     }
   }, [ritual, isEditing]);
 
@@ -285,7 +289,13 @@ export default function RitualDetail() {
 
   const handleSaveSettings = async () => {
     try {
-      await updateMutation.mutateAsync({ id: ritualId, data: { name: editName, intention: editIntention } });
+      // allowMemberInvites isn't in the generated schema yet — send via
+      // apiRequest directly so the backend can pick it up from req.body.
+      await apiRequest("PUT", `/api/rituals/${ritualId}`, {
+        name: editName,
+        intention: editIntention,
+        allowMemberInvites: editAllowMemberInvites,
+      });
       setIsEditing(false);
       toast({ title: "Changes saved" });
       queryClient.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}`] });
@@ -1027,6 +1037,45 @@ export default function RitualDetail() {
                 )}
               </div>
 
+              {/* Invite permissions toggle — owner only */}
+              {isOwner && (
+                <div className="pt-4 border-t border-border/40">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Members can invite</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Allow any member to invite new people</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const next = !editAllowMemberInvites;
+                        setEditAllowMemberInvites(next);
+                        // Save immediately — no need to enter full edit mode for a toggle
+                        apiRequest("PUT", `/api/rituals/${ritualId}`, {
+                          name: editName,
+                          intention: editIntention,
+                          allowMemberInvites: next,
+                        })
+                          .then(() => queryClient.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}`] }))
+                          .catch(() => {
+                            setEditAllowMemberInvites(!next); // revert on failure
+                            toast({ variant: "destructive", title: "Could not save setting" });
+                          });
+                      }}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0"
+                      style={{
+                        background: editAllowMemberInvites ? "rgba(74,103,65,0.7)" : "rgba(255,255,255,0.12)",
+                        border: "1px solid rgba(46,107,64,0.4)",
+                      }}
+                    >
+                      <span
+                        className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
+                        style={{ transform: editAllowMemberInvites ? "translateX(22px)" : "translateX(3px)" }}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="pt-4 border-t border-border flex justify-between items-center">
                 {isEditing ? (
                   <>
@@ -1049,8 +1098,8 @@ export default function RitualDetail() {
                 )}
               </div>
 
-              {/* Members — owner can add or remove */}
-              {user?.id === ritual.ownerId && (
+              {/* Members — owner always sees this; non-owners see it when allowMemberInvites is on */}
+              {(user?.id === ritual.ownerId || editAllowMemberInvites) && (
                 <div className="pt-6 border-t border-border/40">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-medium text-foreground">Members</h3>
@@ -1077,7 +1126,7 @@ export default function RitualDetail() {
                               <p className="text-xs text-muted-foreground/60 truncate">{p.email}</p>
                             </div>
                           </div>
-                          {!isMe && (
+                          {!isMe && isOwner && (
                             isRemoving ? (
                               <div className="flex items-center gap-2 shrink-0 ml-2">
                                 <button

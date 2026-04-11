@@ -275,6 +275,8 @@ export async function migrate() {
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS intercession_intention TEXT`);
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS fasting_description TEXT`);
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS template TEXT`);
+    await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS allow_member_invites BOOLEAN NOT NULL DEFAULT true`);
+    await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS allow_member_invites BOOLEAN NOT NULL DEFAULT true`);
 
     // Per-meetup location (each scheduled gathering can be in a different place).
     // Added to the schema after the table was first created, so existing

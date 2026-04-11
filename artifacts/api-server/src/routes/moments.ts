@@ -1385,9 +1385,25 @@ router.post("/moments/:id/invite", async (req, res): Promise<void> => {
     .where(and(eq(momentUserTokensTable.momentId, momentId), eq(momentUserTokensTable.email, user.email)));
   if (!myTokenRow) { res.status(403).json({ error: "Forbidden" }); return; }
 
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
   const existingMembers = await db.select().from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.momentId, momentId));
   const existingEmails = new Set(existingMembers.map(m => m.email.toLowerCase()));
+
+  // Creator = member with the smallest token id (same rule used elsewhere)
+  const creatorToken = existingMembers.length > 0
+    ? existingMembers.reduce((min, m) => m.id < min.id ? m : min, existingMembers[0])
+    : null;
+  const isCreator = creatorToken
+    ? creatorToken.email.toLowerCase() === user.email.toLowerCase()
+    : false;
+
+  if (!isCreator && !moment.allowMemberInvites) {
+    res.status(403).json({ error: "Only the creator can invite people to this practice" });
+    return;
+  }
 
   const newPeople = parsed.data.people.filter(p => !existingEmails.has(p.email.toLowerCase()));
   if (newPeople.length === 0) {
@@ -1404,14 +1420,15 @@ router.post("/moments/:id/invite", async (req, res): Promise<void> => {
 
   const insertedNewTokens = await db.insert(momentUserTokensTable).values(newTokenRows).returning();
 
-  // Add new members to the existing group calendar event
+  // Calendar invites for the new members.
+  //   - Creator inviting: add attendees to the organizer's group event.
+  //   - Non-creator inviting: create a one-off calendar event per invitee
+  //     from the inviter's own credentials, so the invitee sees the invite
+  //     coming from the inviter (not the creator).
   try {
-    const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
-    if (moment) {
+    if (isCreator) {
       // Find the organizer's token row (lowest ID) — they own the group event
-      const allTokens = await db.select().from(momentUserTokensTable)
-        .where(eq(momentUserTokensTable.momentId, momentId));
-      const organizerToken = allTokens.reduce((min, t) => t.id < min.id ? t : min, allTokens[0]);
+      const organizerToken = creatorToken ?? existingMembers[0];
       const [organizer] = await db.select().from(usersTable)
         .where(eq(usersTable.email, organizerToken.email));
 
@@ -1419,13 +1436,12 @@ router.post("/moments/:id/invite", async (req, res): Promise<void> => {
         const newEmails = insertedNewTokens.map(t => t.email);
 
         if (organizerToken.googleCalendarEventId) {
-          // Add new members as attendees to the existing group event — they'll get an email invite
           await addAttendeesToCalendarEvent(organizer.id, organizerToken.googleCalendarEventId, newEmails)
             .catch(() => null);
           console.info(`Added ${newEmails.join(", ")} to GCal event ${organizerToken.googleCalendarEventId}`);
         } else {
           // No existing group event — create one now with all current members
-          const allEmails = allTokens.map(t => t.email); // All members get invites from scheduler
+          const allEmails = [...existingMembers.map(t => t.email), ...newEmails];
           const [hh, mm] = moment.scheduledTime.split(":").map(Number);
           const startDate = new Date();
           startDate.setHours(hh, mm, 0, 0);
@@ -1457,6 +1473,49 @@ router.post("/moments/:id/invite", async (req, res): Promise<void> => {
               .where(eq(momentUserTokensTable.id, organizerToken.id));
             console.info(`Created new group GCal event ${eventId} for moment ${momentId}`);
           }
+        }
+      }
+    } else if (user.googleAccessToken) {
+      // Non-creator inviting — one new per-member event per invitee, owned
+      // by the inviter so the calendar invite is attributed to them.
+      const inviterFirst = (user.name ?? "").trim().split(/\s+/)[0] || user.name || "A friend";
+      const [hh, mm] = moment.scheduledTime.split(":").map(Number);
+      const startDate = new Date();
+      startDate.setHours(hh, mm, 0, 0);
+      if (startDate < new Date()) startDate.setDate(startDate.getDate() + 1);
+      const endDate = new Date(startDate.getTime() + practiceEventDurationMins(moment.templateType) * 60_000);
+      const recurrenceRule = moment.frequency === "daily"
+        ? ["RRULE:FREQ=DAILY"]
+        : moment.frequency === "weekly"
+        ? ["RRULE:FREQ=WEEKLY"]
+        : ["RRULE:FREQ=MONTHLY"];
+
+      for (const t of insertedNewTokens) {
+        const shortLink = `${getInviteBaseUrl()}/m/${t.userToken}`;
+        const description = [
+          `${inviterFirst} invited you to practice together.`,
+          `Open in Phoebe → ${shortLink}`,
+          "",
+          ...(moment.intention ? [`"${moment.intention}"`, ""] : []),
+        ].join("\n");
+
+        const eventId = await createCalendarEvent(sessionUserId, {
+          summary: `🌱 ${moment.name} with ${inviterFirst}`,
+          description,
+          startDate,
+          endDate,
+          attendees: [t.email],
+          recurrence: recurrenceRule,
+          colorId: "2",
+          reminders: [
+            { method: "popup", minutes: 5 },
+          ],
+        }).catch(() => null);
+
+        if (eventId) {
+          await db.update(momentUserTokensTable)
+            .set({ googleCalendarEventId: eventId })
+            .where(eq(momentUserTokensTable.id, t.id));
         }
       }
     }
@@ -2169,6 +2228,7 @@ const EditMomentSchema = z.object({
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   intercessionTopic: z.string().max(300).nullable().optional(),
   contemplativeDurationMinutes: z.number().int().min(1).max(60).nullable().optional(),
+  allowMemberInvites: z.boolean().optional(),
 });
 
 router.patch("/moments/:id", async (req, res): Promise<void> => {
@@ -2204,6 +2264,7 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   if (d.scheduledTime !== undefined) updates.scheduledTime = d.scheduledTime;
   if (d.intercessionTopic !== undefined) updates.intercessionTopic = d.intercessionTopic;
   if (d.contemplativeDurationMinutes !== undefined) updates.contemplativeDurationMinutes = d.contemplativeDurationMinutes;
+  if (d.allowMemberInvites !== undefined) updates.allowMemberInvites = d.allowMemberInvites;
 
   if (Object.keys(updates).length === 0) {
     res.json({ ok: true });

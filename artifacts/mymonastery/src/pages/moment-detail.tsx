@@ -1138,6 +1138,34 @@ export default function MomentDetail() {
                 </div>
               )}
 
+              {/* Invite permissions toggle — creator only */}
+              {isCreator && (() => {
+                const currentAmi = (moment as unknown as { allowMemberInvites?: boolean }).allowMemberInvites ?? true;
+                return (
+                  <div className="flex items-center justify-between bg-card border border-border/60 rounded-2xl px-5 py-4">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Members can invite</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Allow any member to invite new people</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        editMutation.mutate({ allowMemberInvites: !currentAmi });
+                      }}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ml-4"
+                      style={{
+                        background: currentAmi ? "rgba(92,122,95,0.7)" : "rgba(0,0,0,0.12)",
+                        border: "1px solid rgba(92,122,95,0.4)",
+                      }}
+                    >
+                      <span
+                        className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
+                        style={{ transform: currentAmi ? "translateX(22px)" : "translateX(3px)" }}
+                      />
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* Non-creator: Leave only */}
               {!isCreator && (
                 <>

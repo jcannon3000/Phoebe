@@ -58,6 +58,9 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   listeningAppleMusicUrl: text("listening_apple_music_url"),
   listeningArtworkUrl: text("listening_artwork_url"),
   listeningManual: boolean("listening_manual"),
+  // Toggle: when true, any member of the practice can invite new people.
+  // When false, only the creator can. Default is open.
+  allowMemberInvites: boolean("allow_member_invites").notNull().default(true),
 });
 
 export type SharedMoment = typeof sharedMomentsTable.$inferSelect;

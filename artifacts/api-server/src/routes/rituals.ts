@@ -226,6 +226,11 @@ router.put("/rituals/:id", async (req, res): Promise<void> => {
   if (parsed.data.dayPreference !== undefined) updateData.dayPreference = parsed.data.dayPreference;
   if (parsed.data.participants !== undefined) updateData.participants = parsed.data.participants;
   if (parsed.data.intention !== undefined) updateData.intention = parsed.data.intention;
+  // allowMemberInvites bypasses zod since the generated UpdateRitualBody
+  // doesn't include it yet — read directly from req.body.
+  if (typeof (req.body as { allowMemberInvites?: unknown }).allowMemberInvites === "boolean") {
+    updateData.allowMemberInvites = (req.body as { allowMemberInvites: boolean }).allowMemberInvites;
+  }
 
   const [ritual] = await db
     .update(ritualsTable)
@@ -895,6 +900,15 @@ router.post("/rituals/:id/invite", async (req, res): Promise<void> => {
     const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
     if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
 
+    const isOwner = ritual.ownerId === sessionUserId;
+    if (!isOwner && !ritual.allowMemberInvites) {
+      res.status(403).json({ error: "Only the owner can invite people to this tradition" });
+      return;
+    }
+
+    // Load the inviter so non-owner invites can be attributed in the calendar
+    const [inviter] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+
     const current = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
     const currentEmails = new Set(current.map(p => p.email.toLowerCase()));
 
@@ -909,7 +923,6 @@ router.post("/rituals/:id/invite", async (req, res): Promise<void> => {
     await db.update(ritualsTable).set({ participants: merged }).where(eq(ritualsTable.id, ritualId));
 
     // Add invite tokens for new participants
-    const appBase = getInviteBaseUrl();
     for (const p of newParts) {
       const existingToken = await db.select().from(inviteTokensTable)
         .where(eq(inviteTokensTable.ritualId, ritualId));
@@ -920,13 +933,46 @@ router.post("/rituals/:id/invite", async (req, res): Promise<void> => {
       }
     }
 
-    // Add new members to existing calendar event
+    // Calendar invites
+    //   - Owner inviting: add attendees to the existing shared meetup event.
+    //   - Non-owner inviting: create a one-off calendar event from the
+    //     inviter's credentials so the invitee sees the invite coming from
+    //     them (not the owner). We don't touch the shared event because
+    //     Google Calendar attribution is bound to the event owner.
     try {
       const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritualId));
-      const plannedMeetup = meetups.find(m => m.status === "planned" && m.googleCalendarEventId);
-      if (plannedMeetup?.googleCalendarEventId) {
+      const plannedMeetup = meetups.find(m => m.status === "planned");
+
+      if (isOwner && plannedMeetup?.googleCalendarEventId) {
         const newEmails = newParts.map(p => p.email);
         await addAttendeesToCalendarEvent(sessionUserId, plannedMeetup.googleCalendarEventId, newEmails);
+      } else if (!isOwner && plannedMeetup && inviter) {
+        const inviterFirst = (inviter.name ?? "").trim().split(/\s+/)[0] || inviter.name || "A friend";
+        const shortLink = `${getInviteBaseUrl()}/rituals/${ritualId}`;
+        const eventStart = new Date(plannedMeetup.scheduledDate);
+        const eventEnd = new Date(eventStart.getTime() + 60 * 60_000);
+        const description = [
+          `${inviterFirst} invited you to join "${ritual.name}" on Phoebe.`,
+          ritual.intention ? `"${ritual.intention}"` : null,
+          "",
+          `Open in Phoebe → ${shortLink}`,
+        ].filter(Boolean).join("\n");
+
+        for (const p of newParts) {
+          await createCalendarEvent(sessionUserId, {
+            summary: ritual.name,
+            description,
+            startDate: eventStart,
+            endDate: eventEnd,
+            attendees: [p.email],
+            colorId: "5",
+            status: "tentative",
+            reminders: [
+              { method: "email", minutes: 1440 },
+              { method: "popup", minutes: 120 },
+            ],
+          }).catch(() => null);
+        }
       }
     } catch { /* non-fatal */ }
 

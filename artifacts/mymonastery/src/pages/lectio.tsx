@@ -19,7 +19,7 @@
  * is unlocked and the slideshow just walks through all three.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -82,6 +82,7 @@ type LectioData = {
     templateType: string;
     timezone: string;
     createdAt: string;
+    allowMemberInvites?: boolean;
   };
   userName: string;
   userToken: string;
@@ -295,7 +296,7 @@ export default function LectioPage() {
     },
   });
   const editMutation = useMutation({
-    mutationFn: (body: { name?: string; intention?: string }) =>
+    mutationFn: (body: { name?: string; intention?: string; allowMemberInvites?: boolean }) =>
       apiRequest("PATCH", `/api/moments/${momentId}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
@@ -339,6 +340,36 @@ export default function LectioPage() {
       setInitialized(true);
     }
   }, [data, initialized, slides]);
+
+  // Re-anchor slideIdx by (stage, kind) whenever the slides array
+  // rebuilds. Without this, submitting a reflection silently shifts
+  // everyone to the wrong slide — the welcome slide drops out (minus
+  // one) and, for a solo practitioner, the summary slide gets appended
+  // (plus one), so the numeric index that pointed at `responses`
+  // before the rebuild ends up at `summary` after. Anchoring by
+  // (stage, kind) inside a layout effect lets React re-map the index
+  // before the browser paints, so the user never sees the wrong slide.
+  const prevSlidesRef = useRef<Slide[]>([]);
+  useLayoutEffect(() => {
+    const prev = prevSlidesRef.current;
+    prevSlidesRef.current = slides;
+    if (prev.length === 0 || prev === slides) return;
+    const prevSlide = prev[slideIdx];
+    if (!prevSlide) return;
+    const sameKindAtIdx =
+      slides[slideIdx] &&
+      slides[slideIdx].stage === prevSlide.stage &&
+      slides[slideIdx].kind === prevSlide.kind;
+    if (sameKindAtIdx) return;
+    const newIdx = slides.findIndex(
+      (sl) => sl.stage === prevSlide.stage && sl.kind === prevSlide.kind,
+    );
+    if (newIdx >= 0) {
+      setSlideIdx(newIdx);
+    } else if (slideIdx >= slides.length) {
+      setSlideIdx(Math.max(0, slides.length - 1));
+    }
+  }, [slides, slideIdx]);
 
   if (isLoading) {
     return (
@@ -762,6 +793,7 @@ export default function LectioPage() {
             onClose={() => setMenuOpen(false)}
             onSaveEdit={(name, intention) => editMutation.mutate({ name, intention })}
             editPending={editMutation.isPending}
+            onToggleAllowMemberInvites={(val) => editMutation.mutate({ allowMemberInvites: val })}
             onInvite={(name, email) => inviteMutation.mutate({ name, email })}
             invitePending={inviteMutation.isPending}
             onRemoveMember={(email) => removeMemberMutation.mutate(email)}
@@ -1685,6 +1717,7 @@ function SettingsMenu({
   onClose,
   onSaveEdit,
   editPending,
+  onToggleAllowMemberInvites,
   onInvite,
   invitePending,
   onRemoveMember,
@@ -1699,6 +1732,7 @@ function SettingsMenu({
   onClose: () => void;
   onSaveEdit: (name: string, intention: string) => void;
   editPending: boolean;
+  onToggleAllowMemberInvites: (val: boolean) => void;
   onInvite: (name: string, email: string) => void;
   invitePending: boolean;
   onRemoveMember: (email: string) => void;
@@ -1825,8 +1859,8 @@ function SettingsMenu({
           Go to summary →
         </button>
 
-        {/* 2. Invite someone — creators only. Collapsible form in place. */}
-        {isCreator && (
+        {/* 2. Invite someone — visible when creator OR allowMemberInvites is on. */}
+        {(isCreator || (moment.allowMemberInvites ?? true)) && (
           <div style={{ marginBottom: 14 }}>
             {showInviteForm ? (
               <div
@@ -2081,6 +2115,58 @@ function SettingsMenu({
             </button>
           )}
         </div>
+
+        {/* Invite permissions toggle — creator only */}
+        {isCreator && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "rgba(0,0,0,0.2)",
+              border: `1px solid ${BORDER}`,
+              borderRadius: 12,
+              padding: "12px 14px",
+              marginBottom: 18,
+            }}
+          >
+            <div>
+              <div style={{ color: WARM_TEXT, fontSize: 14, fontWeight: 500 }}>Members can invite</div>
+              <div style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 2 }}>Allow any member to invite new people</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onToggleAllowMemberInvites(!(moment.allowMemberInvites ?? true))}
+              style={{
+                position: "relative",
+                display: "inline-flex",
+                height: 24,
+                width: 44,
+                alignItems: "center",
+                borderRadius: 12,
+                background: (moment.allowMemberInvites ?? true) ? "rgba(74,103,65,0.7)" : "rgba(255,255,255,0.12)",
+                border: "1px solid rgba(46,107,64,0.4)",
+                cursor: "pointer",
+                flexShrink: 0,
+                marginLeft: 12,
+                transition: "background 0.2s",
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  height: 16,
+                  width: 16,
+                  borderRadius: 8,
+                  background: "#fff",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                  transform: (moment.allowMemberInvites ?? true) ? "translateX(22px)" : "translateX(3px)",
+                  transition: "transform 0.2s",
+                }}
+              />
+            </button>
+          </div>
+        )}
 
         {/* Members list — creators can add/remove, non-creators just see who's here. */}
         <div style={{ marginBottom: 22 }}>
