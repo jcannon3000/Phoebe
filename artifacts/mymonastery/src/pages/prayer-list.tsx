@@ -20,7 +20,32 @@ type Moment = {
   commitmentSessionsGoal?: number | null;
   commitmentSessionsLogged?: number | null;
   goalDays?: number | null;
+  myLastPostAt?: string | null;
 };
+
+// Render "Last prayed" for the prayer-list card in the same register as
+// the rest of the page — terse, lowercase, reassuring. Anything newer
+// than 60 seconds reads as "just now". Days are floored so a post from
+// 26 hours ago reads "yesterday", not "today".
+function formatLastPrayed(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return null;
+  const diffMs = Date.now() - then;
+  if (diffMs < 0) return null;
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return "Last prayed just now";
+  if (minutes < 60) return `Last prayed ${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Last prayed ${hours} hr${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Last prayed yesterday";
+  if (days < 7) return `Last prayed ${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `Last prayed ${weeks} wk${weeks === 1 ? "" : "s"} ago`;
+  const months = Math.floor(days / 30);
+  return `Last prayed ${months} mo${months === 1 ? "" : "s"} ago`;
+}
 
 export default function PrayerListPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -103,6 +128,7 @@ export default function PrayerListPage() {
                   ? `/moment/${m.momentToken}/${m.myUserToken}`
                   : `/moments/${m.id}`;
                 const prayedToday = m.todayPostCount > 0;
+                const lastPrayedLabel = formatLastPrayed(m.myLastPostAt);
 
                 return (
                   <Link key={m.id} href={href} className="block">
@@ -126,8 +152,10 @@ export default function PrayerListPage() {
                           )}
                         </div>
                         <div className="flex items-center justify-between mt-1">
-                          {otherMembers && (
-                            <p className="text-xs" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
+                          {otherMembers ? (
+                            <p className="text-xs truncate" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
+                          ) : (
+                            <span />
                           )}
                           {m.windowOpen && !prayedToday && (
                             <span className="text-xs font-semibold rounded-full px-2.5 py-1" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
@@ -138,6 +166,14 @@ export default function PrayerListPage() {
                             <span className="text-xs" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
                           )}
                         </div>
+                        {lastPrayedLabel && (
+                          <p
+                            className="text-[11px] mt-1"
+                            style={{ color: "rgba(143,175,150,0.55)", fontStyle: "italic" }}
+                          >
+                            {lastPrayedLabel}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </Link>

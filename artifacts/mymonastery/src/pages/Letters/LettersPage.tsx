@@ -90,9 +90,15 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
   const isOneToOne = item.groupType === "one_to_one";
   const isOverdue = isOneToOne && item.turnState === "OVERDUE";
 
+  // Case-insensitive email comparison — otherwise the current user's own
+  // row leaks into "otherMembers" when the stored email casing differs from
+  // the auth email, producing titles like "Dialogue with test" where the
+  // email local-part gets displayed as if it were another person.
+  const me = (userEmail || "").toLowerCase();
   const otherMembers = item.members
-    .filter((m) => m.email !== userEmail)
+    .filter((m) => (m.email || "").toLowerCase() !== me)
     .map((m) => m.name || m.email?.split("@")[0])
+    .filter(Boolean)
     .join(", ");
 
   const lastPostmark = item.recentPostmarks?.[0] ?? null;

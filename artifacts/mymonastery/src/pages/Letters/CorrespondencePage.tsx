@@ -181,12 +181,19 @@ export default function CorrespondencePage() {
   const { currentPeriod, letters, members } = data;
   const isOneToOne = data.groupType === "one_to_one";
 
+  // Case-insensitive so the current user is reliably filtered out even
+  // when the stored member row's email casing differs from the auth email.
+  const me = (userEmail || "").toLowerCase();
   const otherMembers = members
-    .filter((m) => m.email !== userEmail)
+    .filter((m) => (m.email || "").toLowerCase() !== me)
     .map((m) => m.name || m.email.split("@")[0])
+    .filter(Boolean)
     .join(", ");
 
-  const memberCities = members.filter((m) => m.homeCity).map((m) => `${m.name || m.email.split("@")[0]} · ${m.homeCity}`);
+  const memberCities = members
+    .filter((m) => (m.email || "").toLowerCase() !== me)
+    .filter((m) => m.homeCity)
+    .map((m) => `${m.name || m.email.split("@")[0]} · ${m.homeCity}`);
 
   const periodLabel = isOneToOne
     ? `Letter ${currentPeriod.periodNumber}`
@@ -198,7 +205,7 @@ export default function CorrespondencePage() {
 
   // Other member's most recent letter — used for "waiting since" copy on OVERDUE.
   const lastLetterByOther = [...letters]
-    .filter((l) => l.authorEmail !== userEmail)
+    .filter((l) => (l.authorEmail || "").toLowerCase() !== me)
     .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())[0];
 
   const showCalendarPrompt =
