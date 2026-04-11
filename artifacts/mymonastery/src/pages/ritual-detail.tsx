@@ -1143,14 +1143,14 @@ export default function RitualDetail() {
               )}
 
               {user?.id === ritual.ownerId && (
-                <div className="pt-8 border-t border-destructive/20">
-                  <h3 className="text-destructive font-medium mb-2">Remove this gathering</h3>
+                <div className="pt-8 border-t border-border/20">
+                  <h3 className="font-medium mb-2" style={{ color: "#8FAF96" }}>Archive this gathering</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    This will permanently remove all history and cannot be undone.
+                    This will archive the gathering and remove it from your dashboard.
                   </p>
                   <button
                     onClick={() => {
-                      if (window.confirm("Are you sure you want to remove this gathering? This cannot be undone.")) {
+                      if (window.confirm("Are you sure you want to archive this gathering?")) {
                         deleteMutation.mutate({ id: ritualId }, {
                           onSuccess: () => {
                             queryClient.invalidateQueries({ queryKey: [`/api/rituals`] });
@@ -1159,9 +1159,10 @@ export default function RitualDetail() {
                         });
                       }
                     }}
-                    className="px-4 py-2 bg-destructive/10 text-destructive rounded-xl font-medium hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    className="px-4 py-2 rounded-xl font-medium transition-colors"
+                    style={{ background: "rgba(46,107,64,0.12)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
                   >
-                    Remove gathering
+                    Archive gathering
                   </button>
                 </div>
               )}
