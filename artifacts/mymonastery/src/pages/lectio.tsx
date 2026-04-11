@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { format, parseISO, isToday } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 
 type Stage = "lectio" | "meditatio" | "oratio";
@@ -380,6 +381,14 @@ export default function LectioPage() {
     if (idx >= 0) setSlideIdx(idx);
   };
 
+  // Jump to a specific stage's Responses slide — used by each summary row.
+  const jumpToStageResponses = (stage: Stage) => {
+    const idx = slides.findIndex(
+      (sl) => sl.stage === stage && sl.kind === "responses",
+    );
+    if (idx >= 0) setSlideIdx(idx);
+  };
+
   return (
     <div
       style={{
@@ -501,6 +510,7 @@ export default function LectioPage() {
                 <SummarySlide
                   data={data}
                   onReadResponses={jumpToFirstResponses}
+                  onJumpToStage={jumpToStageResponses}
                   onDone={() => setLocation("/dashboard")}
                 />
               )}
@@ -529,72 +539,106 @@ export default function LectioPage() {
           maxWidth: "calc(100vw - 32px)",
         }}
       >
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={prev}
-            disabled={atStart}
-            aria-label="Previous"
-            className="rounded-full transition-opacity disabled:opacity-20"
-            style={{
-              color: WARM_TEXT,
-              background: "transparent",
-              border: `1px solid ${BORDER}`,
-              padding: "8px 14px",
-              fontSize: 13,
-              cursor: atStart ? "default" : "pointer",
-            }}
-          >
-            ←
-          </button>
+        {(() => {
+          // Build a descriptive nav:
+          //   [ Back ]   STAGE · Latin    [ Action pill ]
+          // The action pill tells the user what the next step in this slide
+          // is ("Read" → "Reflect" → "Responses" → "Next stage"). The summary
+          // slide has its own CTAs, so the pill is hidden there.
+          const stageLabel = current.stage
+            ? `${STAGE_ORDINAL[current.stage]} · ${STAGE_LATIN[current.stage]}`
+            : "Summary";
 
-          <div className="flex items-center gap-1.5">
-            {slides.map((sl, i) => {
-              const isActive = i === slideIdx;
-              const isStageBreak = i > 0 && slides[i - 1].stage !== sl.stage;
-              return (
-                <div key={i} className="flex items-center gap-1.5">
-                  {isStageBreak && (
-                    <div style={{ width: 10, height: 1, background: BORDER }} />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setSlideIdx(i)}
-                    aria-label={`${sl.stage} ${sl.kind}`}
-                    style={{
-                      width: isActive ? 10 : 6,
-                      height: isActive ? 10 : 6,
-                      borderRadius: 999,
-                      background: isActive ? ACCENT : "rgba(143,175,150,0.25)",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                      transition: "all 0.2s ease",
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          let actionLabel: string | null = null;
+          if (current.kind === "prompt") {
+            actionLabel = "Read";
+          } else if (current.kind === "reading") {
+            actionLabel = "Reflect";
+          } else if (current.kind === "entry") {
+            // Only offer the nav pill once the user has already submitted —
+            // otherwise they should use the Share button on the slide itself.
+            if (stageData?.userHasSubmitted) actionLabel = "Responses";
+          } else if (current.kind === "responses") {
+            const nextSlide = slides[slideIdx + 1];
+            if (nextSlide) {
+              actionLabel = nextSlide.kind === "summary" ? "Summary" : "Next stage";
+            }
+          }
 
-          <button
-            type="button"
-            onClick={next}
-            disabled={atEnd}
-            aria-label="Next"
-            className="rounded-full transition-opacity disabled:opacity-20"
-            style={{
-              color: WARM_TEXT,
-              background: "transparent",
-              border: `1px solid ${BORDER}`,
-              padding: "8px 14px",
-              fontSize: 13,
-              cursor: atEnd ? "default" : "pointer",
-            }}
-          >
-            →
-          </button>
-        </div>
+          return (
+            <div
+              className="flex items-center gap-4"
+              style={{ minWidth: 0 }}
+            >
+              <button
+                type="button"
+                onClick={prev}
+                disabled={atStart}
+                className="rounded-full transition-opacity disabled:opacity-20"
+                style={{
+                  color: WARM_TEXT,
+                  background: "transparent",
+                  border: `1px solid ${BORDER}`,
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  fontFamily: SPACE_GROTESK,
+                  fontWeight: 600,
+                  cursor: atStart ? "default" : "pointer",
+                }}
+              >
+                Back
+              </button>
+
+              <div
+                style={{
+                  textAlign: "center",
+                  minWidth: 0,
+                  flex: "0 0 auto",
+                }}
+              >
+                <p
+                  style={{
+                    color: FAINT_GREEN,
+                    fontSize: 10,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {stageLabel}
+                </p>
+              </div>
+
+              {actionLabel ? (
+                <button
+                  type="button"
+                  onClick={next}
+                  disabled={atEnd}
+                  className="rounded-full transition-opacity disabled:opacity-20"
+                  style={{
+                    background: BUTTON_BG,
+                    color: WARM_TEXT,
+                    border: "none",
+                    padding: "6px 16px",
+                    fontSize: 12,
+                    fontFamily: SPACE_GROTESK,
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    cursor: atEnd ? "default" : "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {actionLabel}
+                </button>
+              ) : (
+                // Keep the layout balanced even when there's no action pill
+                // (e.g. summary slide, or entry before submitting).
+                <div style={{ width: 60 }} />
+              )}
+            </div>
+          );
+        })()}
       </nav>
 
       {/* Settings menu overlay */}
@@ -875,21 +919,15 @@ function ResponsesSlide({
       ) : (
         <div className="space-y-3">
           {reflections.map((r, i) => (
-            <ReflectionCard key={i} name={r.userName} text={r.text} isYou={r.isYou} />
+            <ReflectionCard
+              key={i}
+              name={r.userName}
+              text={r.text}
+              isYou={r.isYou}
+              createdAt={r.createdAt}
+            />
           ))}
         </div>
-      )}
-      {stageData.nonSubmitterNames.length > 0 && (
-        <p
-          style={{
-            color: FAINT_GREEN,
-            fontSize: 12,
-            marginTop: 18,
-            lineHeight: 1.6,
-          }}
-        >
-          Still listening: {stageData.nonSubmitterNames.join(", ")}
-        </p>
       )}
       {memberCount <= 1 && (
         <p style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 18 }}>
@@ -902,15 +940,31 @@ function ResponsesSlide({
 
 // ─── Single reflection card ─────────────────────────────────────────────────
 
+// Format a reflection's timestamp as "Today · 2:30 PM" or "Fri · 2:30 PM"
+// so the reader has a sense of when each response came in.
+function formatReflectionTime(iso: string): string {
+  try {
+    const d = parseISO(iso);
+    const time = format(d, "h:mm a");
+    if (isToday(d)) return `Today · ${time}`;
+    return `${format(d, "EEE")} · ${time}`;
+  } catch {
+    return "";
+  }
+}
+
 function ReflectionCard({
   name,
   text,
   isYou,
+  createdAt,
 }: {
   name: string;
   text: string;
   isYou: boolean;
+  createdAt?: string;
 }) {
+  const timeLabel = createdAt ? formatReflectionTime(createdAt) : "";
   return (
     <div
       className="rounded-xl"
@@ -920,17 +974,35 @@ function ReflectionCard({
         padding: "16px 18px",
       }}
     >
-      <p
-        style={{
-          color: isYou ? ACCENT : MUTED_GREEN,
-          fontSize: 11,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}
+      <div
+        className="flex items-baseline justify-between gap-3"
+        style={{ marginBottom: 6 }}
       >
-        {isYou ? "You" : name}
-      </p>
+        <p
+          style={{
+            color: isYou ? ACCENT : MUTED_GREEN,
+            fontSize: 11,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            margin: 0,
+          }}
+        >
+          {isYou ? "You" : name}
+        </p>
+        {timeLabel && (
+          <p
+            style={{
+              color: FAINT_GREEN,
+              fontSize: 10,
+              letterSpacing: "0.04em",
+              margin: 0,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {timeLabel}
+          </p>
+        )}
+      </div>
       <p
         style={{
           color: WARM_TEXT,
@@ -955,10 +1027,12 @@ function ReflectionCard({
 function SummarySlide({
   data,
   onReadResponses,
+  onJumpToStage,
   onDone,
 }: {
   data: LectioData;
   onReadResponses: () => void;
+  onJumpToStage: (stage: Stage) => void;
   onDone: () => void;
 }) {
   const rows: Array<{ stage: Stage; count: number; unlocked: boolean }> = STAGE_ORDER.map((s) => {
@@ -982,7 +1056,7 @@ function SummarySlide({
           marginBottom: 10,
         }}
       >
-        You've finished the week
+        The week's reading
       </p>
       <p
         style={{
@@ -995,32 +1069,42 @@ function SummarySlide({
           marginRight: "auto",
         }}
       >
-        Each stage of the reading, and who has joined you in it.
+        Read what others heard.
       </p>
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           gap: 10,
-          maxWidth: 420,
+          maxWidth: 440,
           margin: "0 auto 28px auto",
         }}
       >
         {rows.map((r) => (
-          <div
+          <button
+            type="button"
             key={r.stage}
+            onClick={() => r.unlocked && onJumpToStage(r.stage)}
+            disabled={!r.unlocked}
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "14px 18px",
+              gap: 16,
+              padding: "14px 16px 14px 18px",
               borderRadius: 14,
               border: `1px solid ${BORDER}`,
               background: "rgba(15,40,24,0.6)",
               opacity: r.unlocked ? 1 : 0.4,
+              cursor: r.unlocked ? "pointer" : "default",
+              width: "100%",
+              textAlign: "left",
+              fontFamily: SPACE_GROTESK,
+              color: WARM_TEXT,
+              transition: "background 0.15s ease",
             }}
           >
-            <div style={{ textAlign: "left" }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <p
                 style={{
                   color: FAINT_GREEN,
@@ -1036,10 +1120,38 @@ function SummarySlide({
                 {STAGE_LATIN[r.stage]}
               </p>
             </div>
-            <p style={{ color: MUTED_GREEN, fontSize: 13, margin: 0 }}>
-              {r.count} {r.count === 1 ? "response" : "responses"}
-            </p>
-          </div>
+            <div className="flex items-center" style={{ gap: 10, flexShrink: 0 }}>
+              <span
+                className="rounded-full"
+                style={{
+                  background: "rgba(111,175,133,0.14)",
+                  color: ACCENT,
+                  border: "1px solid rgba(111,175,133,0.35)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                  padding: "3px 10px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {r.count} {r.count === 1 ? "response" : "responses"}
+              </span>
+              <span
+                className="rounded-full"
+                style={{
+                  background: BUTTON_BG,
+                  color: WARM_TEXT,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "4px 12px",
+                  border: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Read →
+              </span>
+            </div>
+          </button>
         ))}
       </div>
       <button
@@ -1057,7 +1169,7 @@ function SummarySlide({
           cursor: "pointer",
         }}
       >
-        Read the responses
+        Read all responses
       </button>
       <div style={{ marginTop: 16 }}>
         <button
