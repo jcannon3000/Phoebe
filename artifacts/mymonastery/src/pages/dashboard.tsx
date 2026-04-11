@@ -463,14 +463,13 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const safeIntention = (m.intention && norm(m.intention) !== nameNorm) ? m.intention : null;
   const safeIntercessionTopic = (m.intercessionTopic && norm(m.intercessionTopic) !== nameNorm) ? m.intercessionTopic : null;
 
-  // Progress badge — show "1/3 days" when goal is set.
-  // For lectio, the badge shows the current stage instead (Lectio/Meditatio/Oratio)
-  // since the practice has its own weekly stage rhythm rather than a day count.
-  const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
-  const logged = m.commitmentSessionsLogged ?? 0;
+  // Progress badge — for intercession/fasting show group streak (fire emoji); blank if 0.
+  // For lectio show the current stage label. For other practices, no badge.
   const progressLabel = isLectio
     ? (m.lectioCurrentStageLabel ?? null)
-    : (goal ? `${logged}/${goal} ${goal === 1 ? "day" : "days"}` : null);
+    : (isIntercession || m.templateType === "fasting")
+      ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : null)
+      : null;
 
   const openHref = (isLectio && m.momentToken && m.myUserToken)
     ? `/lectio/${m.momentToken}/${m.myUserToken}`
