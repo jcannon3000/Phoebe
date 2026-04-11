@@ -9,6 +9,7 @@ export const correspondencesTable = pgTable("correspondences", {
   groupType: text("group_type").notNull(),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   isActive: boolean("is_active").notNull().default(true),
+  firstExchangeComplete: boolean("first_exchange_complete").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -26,6 +27,9 @@ export const correspondenceMembersTable = pgTable("correspondence_members", {
   homeCity: text("home_city"),
   homeCountry: text("home_country"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
+  calendarPromptState: text("calendar_prompt_state"),
+  lastCalendarEventId: text("last_calendar_event_id"),
+  overdueCalendarEventId: text("overdue_calendar_event_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

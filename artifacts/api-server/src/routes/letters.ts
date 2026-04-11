@@ -13,12 +13,12 @@ import {
   getPeriodStart,
   getPeriodEnd,
   getPeriodNumber,
-  getNextPeriodStart,
   formatPeriodLabel,
   formatNextPeriodStart,
   formatHumanDate,
   formatPeriodStartDateString,
   isInLastThreeDays,
+  getOneToOneTurnState,
 } from "../lib/letterPeriods";
 import { sendInvitationEmail, sendNewLetterEmail, sendReminderEmail } from "../lib/letterEmails";
 import { sendLetterCalendarEvent } from "../lib/letterCalendar";
@@ -524,25 +524,49 @@ router.post(
     const periodStartStr = formatPeriodStartDateString(periodStart);
     const periodNumber = getPeriodNumber(correspondence.startedAt, now, periodDays);
 
-    // One letter per period rule
-    const existingLetters = await db
-      .select()
-      .from(lettersTable)
-      .where(
-        and(
-          eq(lettersTable.correspondenceId, correspondenceId),
-          eq(lettersTable.authorEmail, auth.email),
-          eq(lettersTable.periodStartDate, periodStartStr),
-        ),
+    // Cadence gate for one_to_one — mirror the phoebe route's turn-state logic.
+    if (correspondence.groupType === "one_to_one") {
+      const allLetters = await db
+        .select()
+        .from(lettersTable)
+        .where(eq(lettersTable.correspondenceId, correspondenceId));
+      const other = members.find((m) => m.email !== auth.email);
+      const turn = getOneToOneTurnState(
+        auth.email,
+        other?.email ?? "",
+        allLetters.map((l) => ({ authorEmail: l.authorEmail, sentAt: new Date(l.sentAt) })),
+        correspondence.firstExchangeComplete,
+        now,
       );
+      if (turn.state !== "OPEN" && turn.state !== "OVERDUE") {
+        res.status(403).json({
+          error: "not_your_turn",
+          message: `It's ${other?.name || "your correspondent"}'s turn to write.`,
+          nextPeriodStart: turn.windowOpenDate ? turn.windowOpenDate.toISOString() : null,
+        });
+        return;
+      }
+    } else {
+      // Group: one letter per 14-day period.
+      const existingLetters = await db
+        .select()
+        .from(lettersTable)
+        .where(
+          and(
+            eq(lettersTable.correspondenceId, correspondenceId),
+            eq(lettersTable.authorEmail, auth.email),
+            eq(lettersTable.periodStartDate, periodStartStr),
+          ),
+        );
 
-    if (existingLetters.length > 0) {
-      res.status(429).json({
-        error: "already_written_this_period",
-        message: "Your letter for this period has already been sent.",
-        nextPeriodStart: formatNextPeriodStart(correspondence.startedAt, periodDays),
-      });
-      return;
+      if (existingLetters.length > 0) {
+        res.status(429).json({
+          error: "already_written_this_period",
+          message: "Your letter for this period has already been sent.",
+          nextPeriodStart: formatNextPeriodStart(correspondence.startedAt, periodDays),
+        });
+        return;
+      }
     }
 
     // Calculate letter number for this author
@@ -579,6 +603,21 @@ router.post(
       .update(correspondenceMembersTable)
       .set({ lastLetterAt: now, homeCity: city })
       .where(eq(correspondenceMembersTable.id, member.id));
+
+    // Flip firstExchangeComplete for one_to_one when two distinct authors exist.
+    if (correspondence.groupType === "one_to_one" && !correspondence.firstExchangeComplete) {
+      const authorsAfter = await db
+        .select({ authorEmail: lettersTable.authorEmail })
+        .from(lettersTable)
+        .where(eq(lettersTable.correspondenceId, correspondenceId));
+      const distinctAuthors = new Set(authorsAfter.map((r) => r.authorEmail.toLowerCase()));
+      if (distinctAuthors.size >= 2) {
+        await db
+          .update(correspondencesTable)
+          .set({ firstExchangeComplete: true })
+          .where(eq(correspondencesTable.id, correspondenceId));
+      }
+    }
 
     // Delete draft for this period
     await db

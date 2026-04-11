@@ -41,6 +41,9 @@ interface CorrespondenceItem {
   recentPostmarks: PostmarkData[];
   unreadPreview: UnreadPreview | null;
   myTurn: boolean;
+  turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
+  windowOpenDate?: string | null;
+  overdueDate?: string | null;
   currentPeriod: {
     periodNumber: number;
     periodStart: string;
@@ -85,6 +88,7 @@ function parsePostmark(raw: string): { city: string; state: string } {
 function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; userEmail: string }) {
   const { currentPeriod } = item;
   const isOneToOne = item.groupType === "one_to_one";
+  const isOverdue = isOneToOne && item.turnState === "OVERDUE";
 
   const otherMembers = item.members
     .filter((m) => m.email !== userEmail)
@@ -99,7 +103,11 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
   })() : null;
 
   const unread = item.unreadCount > 0;
-  const accentColor = item.myTurn && !currentPeriod.hasWrittenThisPeriod ? "#8E9E42" : "rgba(142,158,66,0.35)";
+  const accentColor = isOverdue
+    ? "#D9B44A"
+    : item.myTurn && !currentPeriod.hasWrittenThisPeriod
+      ? "#8E9E42"
+      : "rgba(142,158,66,0.35)";
   const title = (item.name?.replace(/^Letters with\b/, "Dialogue with")) || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`);
 
   return (
@@ -137,7 +145,9 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
               {isOneToOne ? `Letter ${currentPeriod.periodNumber}` : `Round ${currentPeriod.periodNumber}`}
             </span>
             <span style={{ color: "rgba(200,212,192,0.3)" }}>·</span>
-            {currentPeriod.hasWrittenThisPeriod ? (
+            {isOverdue ? (
+              <span className="text-xs font-medium" style={{ color: "#D9B44A" }}>Overdue · write when you're ready 🌿</span>
+            ) : currentPeriod.hasWrittenThisPeriod ? (
               <span className="text-xs" style={{ color: "#8FAF96" }}>{isOneToOne ? "Sent · awaiting reply 🌿" : "Update sent 🌿"}</span>
             ) : item.myTurn ? (
               <span className="text-xs font-medium" style={{ color: "#C8D4C0" }}>{isOneToOne ? "Your turn to write 🖋️" : "Write your update 🖋️"}</span>

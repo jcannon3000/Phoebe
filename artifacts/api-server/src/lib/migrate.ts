@@ -520,6 +520,26 @@ export async function migrate() {
     await run(client, `ALTER TABLE correspondence_members ADD COLUMN IF NOT EXISTS home_country TEXT`);
     await run(client, `ALTER TABLE correspondence_members ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`);
 
+    // ── Letter cadence + calendar columns ────────────────────────────────────
+    await run(client, `ALTER TABLE correspondences ADD COLUMN IF NOT EXISTS first_exchange_complete BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `ALTER TABLE correspondence_members ADD COLUMN IF NOT EXISTS calendar_prompt_state TEXT`);
+    await run(client, `ALTER TABLE correspondence_members ADD COLUMN IF NOT EXISTS last_calendar_event_id TEXT`);
+    await run(client, `ALTER TABLE correspondence_members ADD COLUMN IF NOT EXISTS overdue_calendar_event_id TEXT`);
+
+    // Backfill first_exchange_complete = true for any one-to-one correspondence
+    // that already has letters from two distinct authors (the first exchange is done).
+    await run(client, `
+      UPDATE correspondences c
+      SET first_exchange_complete = TRUE
+      WHERE c.group_type = 'one_to_one'
+        AND c.first_exchange_complete = FALSE
+        AND (
+          SELECT COUNT(DISTINCT l.author_email)
+          FROM letters l
+          WHERE l.correspondence_id = c.id
+        ) >= 2
+    `);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

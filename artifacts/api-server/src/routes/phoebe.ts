@@ -11,24 +11,24 @@ import {
   usersTable,
 } from "@workspace/db";
 import {
-  getPeriodStart,
-  getPeriodEnd,
-  getPeriodNumber,
-  getNextPeriodStart,
-  formatPeriodLabel,
   formatNextPeriodStart,
   formatHumanDate,
-  formatPeriodStartDateString,
-  isInLastThreeDays,
-  getWhoseTurn,
   getCurrentPeriodInfo,
+  getOneToOneTurnState,
+  getNextFridayOnOrAfter,
+  type OneToOneTurnState,
 } from "../lib/letterPeriods";
 import {
   sendInvitationEmail,
   sendNewLetterEmail,
   sendReminderEmail,
 } from "../lib/letterEmails";
-import { sendLetterCalendarEvent } from "../lib/letterCalendar";
+import {
+  sendLetterCalendarEvent,
+  sendLetterWindowOpenCalendarEvent,
+  sendLetterOverdueCalendarEvent,
+  cancelLetterCalendarEvent,
+} from "../lib/letterCalendar";
 import { getInviteBaseUrl } from "../lib/urls";
 
 const router: IRouter = Router();
@@ -92,22 +92,30 @@ async function getMembership(correspondenceId: number, auth: LetterAuth) {
 // ─── Turn logic ───────────────────────────────────────────────────────────────
 
 /**
- * For one_to_one: returns true if it is this user's turn.
- * Creator = the user whose userId === correspondence.createdByUserId.
- * Odd periods = creator's turn. Even = other member's turn.
+ * Resolve the current one_to_one turn state for a given participant.
+ * Letter 1 → anytime. Letter 2 → immediate response. Letter 3+ →
+ * 14-day alternating windows, missed windows stay OPEN as OVERDUE.
  */
-function isUsersTurn(
-  correspondence: { createdByUserId: number | null; startedAt: Date },
-  auth: LetterAuth,
-  members: Array<{ userId: number | null; email: string }>,
+function resolveOneToOneTurn(
+  correspondence: { firstExchangeComplete: boolean },
+  requesterEmail: string,
+  members: Array<{ email: string }>,
+  letters: Array<{ authorEmail: string; sentAt: Date }>,
   now: Date,
-): boolean {
-  const whoseTurn = getWhoseTurn(correspondence.startedAt, now);
-  const isCreator =
-    (auth.userId && auth.userId === correspondence.createdByUserId) ||
-    (!auth.userId && members[0]?.email === auth.email);
-  if (whoseTurn === "creator") return !!isCreator;
-  return !isCreator;
+) {
+  const other = members.find((m) => m.email.toLowerCase() !== requesterEmail.toLowerCase());
+  const otherEmail = other?.email ?? "";
+  return getOneToOneTurnState(
+    requesterEmail,
+    otherEmail,
+    letters.map((l) => ({ authorEmail: l.authorEmail, sentAt: new Date(l.sentAt) })),
+    correspondence.firstExchangeComplete,
+    now,
+  );
+}
+
+function isWritable(state: OneToOneTurnState): boolean {
+  return state === "OPEN" || state === "OVERDUE";
 }
 
 // ─── POST /api/phoebe/correspondences ────────────────────────────────────────
@@ -228,9 +236,14 @@ router.get(
         return !readers.includes(identifier as string | number) && l.authorEmail !== auth.email;
       }).length;
 
-      const hasWrittenThisPeriod = letters.some(
-        (l) => l.periodStartDate === periodInfo.periodStartStr && l.authorEmail === auth.email,
+      // For one_to_one: "have I written" = is the most recent letter mine?
+      // For group: did I write in the current period bucket?
+      const chronoLetters = [...letters].sort(
+        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime(),
       );
+      const hasWrittenThisPeriod = type === "one_to_one"
+        ? chronoLetters.length > 0 && chronoLetters[chronoLetters.length - 1].authorEmail === auth.email
+        : letters.some((l) => l.periodStartDate === periodInfo.periodStartStr && l.authorEmail === auth.email);
 
       const membersWritten = members.map((m) => ({
         name: m.name || m.email,
@@ -238,9 +251,15 @@ router.get(
         hasWritten: letters.some((l) => l.periodStartDate === periodInfo.periodStartStr && l.authorEmail === m.email),
       }));
 
-      const myTurn = type === "one_to_one"
-        ? isUsersTurn(correspondence, auth, members, now) && !hasWrittenThisPeriod
-        : !hasWrittenThisPeriod;
+      // Resolve turn state using new cadence model for one_to_one.
+      let turnInfo: ReturnType<typeof getOneToOneTurnState> | null = null;
+      let myTurn: boolean;
+      if (type === "one_to_one") {
+        turnInfo = resolveOneToOneTurn(correspondence, auth.email, members, letters, now);
+        myTurn = isWritable(turnInfo.state);
+      } else {
+        myTurn = !hasWrittenThisPeriod;
+      }
 
       const recentLetters = [...letters]
         .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())
@@ -258,6 +277,11 @@ router.get(
         letterCount: letters.length,
         unreadCount,
         myTurn,
+        turnState: turnInfo?.state ?? (myTurn ? "OPEN" : "WAITING"),
+        windowOpenDate: turnInfo?.windowOpenDate?.toISOString() ?? null,
+        overdueDate: turnInfo?.overdueDate?.toISOString() ?? null,
+        firstExchangeComplete: correspondence.firstExchangeComplete,
+        myCalendarPromptState: mRow.calendarPromptState ?? null,
         recentPostmarks: recentLetters
           .filter((l) => l.postmarkCity)
           .map((l) => ({ authorName: l.authorName, city: l.postmarkCity, sentAt: l.sentAt })),
@@ -302,9 +326,12 @@ router.get(
     const type = (correspondence.groupType === "one_to_one" ? "one_to_one" : "group") as "one_to_one" | "group";
     const periodInfo = getCurrentPeriodInfo(correspondence.startedAt, now, type);
 
-    const hasWrittenThisPeriod = letters.some(
-      (l) => l.periodStartDate === periodInfo.periodStartStr && l.authorEmail === auth.email,
+    const chronoLetters = [...letters].sort(
+      (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime(),
     );
+    const hasWrittenThisPeriod = type === "one_to_one"
+      ? chronoLetters.length > 0 && chronoLetters[chronoLetters.length - 1].authorEmail === auth.email
+      : letters.some((l) => l.periodStartDate === periodInfo.periodStartStr && l.authorEmail === auth.email);
 
     const membersWritten = members.map((m) => ({
       name: m.name || m.email,
@@ -312,9 +339,14 @@ router.get(
       hasWritten: letters.some((l) => l.periodStartDate === periodInfo.periodStartStr && l.authorEmail === m.email),
     }));
 
-    const myTurn = type === "one_to_one"
-      ? isUsersTurn(correspondence, auth, members, now) && !hasWrittenThisPeriod
-      : !hasWrittenThisPeriod;
+    let turnInfo: ReturnType<typeof getOneToOneTurnState> | null = null;
+    let myTurn: boolean;
+    if (type === "one_to_one") {
+      turnInfo = resolveOneToOneTurn(correspondence, auth.email, members, letters, now);
+      myTurn = isWritable(turnInfo.state);
+    } else {
+      myTurn = !hasWrittenThisPeriod;
+    }
 
     res.json({
       ...correspondence,
@@ -328,6 +360,11 @@ router.get(
       })),
       letters,
       myTurn,
+      turnState: turnInfo?.state ?? (myTurn ? "OPEN" : "WAITING"),
+      windowOpenDate: turnInfo?.windowOpenDate?.toISOString() ?? null,
+      overdueDate: turnInfo?.overdueDate?.toISOString() ?? null,
+      firstExchangeComplete: correspondence.firstExchangeComplete,
+      myCalendarPromptState: member.calendarPromptState ?? null,
       currentPeriod: {
         ...periodInfo,
         periodStart: periodInfo.periodStart.toISOString(),
@@ -407,39 +444,46 @@ router.post(
     const now = new Date();
     const periodInfo = getCurrentPeriodInfo(correspondence.startedAt, now, type);
 
-    // Alternating turn check for one_to_one
+    // Cadence check
     if (type === "one_to_one") {
-      const myTurn = isUsersTurn(correspondence, auth, members, now);
-      if (!myTurn) {
+      const existingLetters = await db
+        .select()
+        .from(lettersTable)
+        .where(eq(lettersTable.correspondenceId, correspondenceId));
+
+      const turn = resolveOneToOneTurn(correspondence, auth.email, members, existingLetters, now);
+      if (!isWritable(turn.state)) {
         const other = members.find((m) => m.email !== auth.email);
         res.status(403).json({
           error: "not_your_turn",
-          message: `It's ${other?.name || "your correspondent"}'s turn to write this week.`,
-          nextPeriodStart: formatNextPeriodStart(correspondence.startedAt),
+          message: turn.windowOpenDate
+            ? `It's ${other?.name || "your correspondent"}'s turn to write.`
+            : `It's ${other?.name || "your correspondent"}'s turn — they're writing the next letter.`,
+          nextPeriodStart: turn.windowOpenDate ? turn.windowOpenDate.toISOString() : null,
         });
         return;
       }
-    }
+    } else {
+      // Group: keep one-letter-per-period constraint.
+      const existing = await db
+        .select()
+        .from(lettersTable)
+        .where(
+          and(
+            eq(lettersTable.correspondenceId, correspondenceId),
+            eq(lettersTable.authorEmail, auth.email),
+            eq(lettersTable.periodStartDate, periodInfo.periodStartStr),
+          ),
+        );
 
-    // One letter per period check
-    const existing = await db
-      .select()
-      .from(lettersTable)
-      .where(
-        and(
-          eq(lettersTable.correspondenceId, correspondenceId),
-          eq(lettersTable.authorEmail, auth.email),
-          eq(lettersTable.periodStartDate, periodInfo.periodStartStr),
-        ),
-      );
-
-    if (existing.length > 0) {
-      res.status(429).json({
-        error: "already_written",
-        message: "You've already written this period.",
-        nextPeriodStart: formatNextPeriodStart(correspondence.startedAt),
-      });
-      return;
+      if (existing.length > 0) {
+        res.status(429).json({
+          error: "already_written",
+          message: "You've already written this period.",
+          nextPeriodStart: formatNextPeriodStart(correspondence.startedAt, 14),
+        });
+        return;
+      }
     }
 
     const authorLetters = await db
@@ -467,8 +511,22 @@ router.post(
 
     await db
       .update(correspondenceMembersTable)
-      .set({ lastLetterAt: now, ...(city ? { homeCity: city } : {}) })
+      .set({
+        lastLetterAt: now,
+        ...(city ? { homeCity: city } : {}),
+        // The author just wrote — cancel any pending calendar reminders for them.
+        lastCalendarEventId: null,
+        overdueCalendarEventId: null,
+      })
       .where(eq(correspondenceMembersTable.id, member.id));
+
+    // Cancel (best-effort) any pending calendar reminders the author had.
+    if (member.lastCalendarEventId) {
+      cancelLetterCalendarEvent(member.lastCalendarEventId).catch(() => {});
+    }
+    if (member.overdueCalendarEventId) {
+      cancelLetterCalendarEvent(member.overdueCalendarEventId).catch(() => {});
+    }
 
     await db
       .delete(letterDraftsTable)
@@ -480,15 +538,41 @@ router.post(
         ),
       );
 
+    // Flip firstExchangeComplete for one_to_one when Letter 2 arrives
+    // (two distinct authors now have letters in the correspondence).
+    let firstExchangeJustCompleted = false;
+    if (type === "one_to_one" && !correspondence.firstExchangeComplete) {
+      const authorsAfter = await db
+        .select({ authorEmail: lettersTable.authorEmail })
+        .from(lettersTable)
+        .where(eq(lettersTable.correspondenceId, correspondenceId));
+      const distinctAuthors = new Set(authorsAfter.map((r) => r.authorEmail.toLowerCase()));
+      if (distinctAuthors.size >= 2) {
+        await db
+          .update(correspondencesTable)
+          .set({ firstExchangeComplete: true })
+          .where(eq(correspondencesTable.id, correspondenceId));
+        correspondence.firstExchangeComplete = true;
+        firstExchangeJustCompleted = true;
+      }
+    }
+
     // Notify recipients (fire-and-forget)
     const frontendUrl = getInviteBaseUrl();
     for (const m of members) {
       if (m.email === auth.email || !m.joinedAt) continue;
 
+      // Email + in-app link — use /letters/:id (existing thread view)
       const letterUrl = m.userId
         ? `${frontendUrl}/letters/${correspondenceId}`
         : `${frontendUrl}/letters/${correspondenceId}?token=${m.inviteToken}`;
 
+      // The splash/deep-link URL — /letter/:id (singular, auth-gated)
+      const letterSplashUrl = m.userId
+        ? `${frontendUrl}/letter/${correspondenceId}`
+        : `${frontendUrl}/letter/${correspondenceId}?token=${m.inviteToken}`;
+
+      // "A letter arrived" postmark calendar event — existing behavior.
       if (type === "one_to_one" && city) {
         sendLetterCalendarEvent({
           recipientEmail: m.email,
@@ -497,23 +581,58 @@ router.post(
           correspondenceName: correspondence.name,
           postmarkCity: city,
           letterDate: now,
-          letterUrl,
+          letterUrl: letterSplashUrl,
           correspondenceId,
         }).catch((err) => console.error("Letter calendar event failed:", err));
+      }
+
+      // New: window-open reminder for the next writer, if the first exchange
+      // is complete (i.e., strict alternation is now in force) AND they've
+      // enabled calendar prompts. Scheduled for the first Friday on or after
+      // (now + 14 days).
+      if (
+        type === "one_to_one" &&
+        correspondence.firstExchangeComplete &&
+        m.calendarPromptState === "enabled"
+      ) {
+        const windowOpen = new Date(now);
+        windowOpen.setDate(windowOpen.getDate() + 14);
+        const scheduledDate = getNextFridayOnOrAfter(windowOpen);
+
+        const writeSplashUrl = m.userId
+          ? `${frontendUrl}/letter/${correspondenceId}`
+          : `${frontendUrl}/letter/${correspondenceId}?token=${m.inviteToken}`;
+
+        sendLetterWindowOpenCalendarEvent({
+          recipientEmail: m.email,
+          waitingAuthorName: auth.name,
+          correspondenceName: correspondence.name,
+          scheduledDate,
+          letterUrl: writeSplashUrl,
+        })
+          .then(async (eventId) => {
+            if (eventId) {
+              await db
+                .update(correspondenceMembersTable)
+                .set({ lastCalendarEventId: eventId })
+                .where(eq(correspondenceMembersTable.id, m.id));
+            }
+          })
+          .catch((err) => console.error("Window-open calendar event failed:", err));
       }
 
       sendNewLetterEmail({
         to: m.email,
         authorName: auth.name,
         correspondenceName: correspondence.name,
-        correspondenceUrl: letterUrl,
+        correspondenceUrl: letterSplashUrl,
         postmarkCity: city || undefined,
         letterDate: now,
         type,
       }).catch((err) => console.error("Letter email failed:", err));
     }
 
-    res.json(letter);
+    res.json({ ...letter, firstExchangeJustCompleted });
   }),
 );
 
@@ -709,22 +828,28 @@ router.post("/phoebe/send-reminders", async (req, res): Promise<void> => {
       .from(correspondenceMembersTable)
       .where(eq(correspondenceMembersTable.correspondenceId, c.id));
 
-    const letters = await db
-      .select()
-      .from(lettersTable)
-      .where(and(eq(lettersTable.correspondenceId, c.id), eq(lettersTable.periodStartDate, periodInfo.periodStartStr)));
+    // For group: letters in the current period.
+    // For one_to_one: all letters, for turn-state resolution.
+    const letters = type === "one_to_one"
+      ? await db
+          .select()
+          .from(lettersTable)
+          .where(eq(lettersTable.correspondenceId, c.id))
+      : await db
+          .select()
+          .from(lettersTable)
+          .where(and(eq(lettersTable.correspondenceId, c.id), eq(lettersTable.periodStartDate, periodInfo.periodStartStr)));
 
     const writtenEmails = new Set(letters.map((l) => l.authorEmail));
 
     for (const m of members) {
       if (!m.joinedAt) continue;
-      if (writtenEmails.has(m.email)) continue;
+      if (type === "group" && writtenEmails.has(m.email)) continue;
 
-      // For one_to_one: only remind if it's this member's turn
+      // For one_to_one: only remind if their window is actually OPEN/OVERDUE.
       if (type === "one_to_one") {
-        const fakeAuth = { userId: m.userId, email: m.email, name: m.name || "" };
-        const myTurn = isUsersTurn(c, fakeAuth, members, now);
-        if (!myTurn) continue;
+        const turn = resolveOneToOneTurn(c, m.email, members, letters, now);
+        if (!isWritable(turn.state)) continue;
       }
 
       const [existing] = await db
@@ -739,9 +864,10 @@ router.post("/phoebe/send-reminders", async (req, res): Promise<void> => {
         );
       if (existing) continue;
 
+      // Send recipients through the auth-gated /letter/:id splash first.
       const writeUrl = m.userId
-        ? `${frontendUrl}/letters/${c.id}/write`
-        : `${frontendUrl}/letters/${c.id}/write?token=${m.inviteToken}`;
+        ? `${frontendUrl}/letter/${c.id}`
+        : `${frontendUrl}/letter/${c.id}?token=${m.inviteToken}`;
 
       // For one_to_one: find the other person's name
       const otherMember = type === "one_to_one"
@@ -768,6 +894,144 @@ router.post("/phoebe/send-reminders", async (req, res): Promise<void> => {
   }
 
   res.json({ remindersSent });
+});
+
+// ─── PREVIEW (public, content-free) ──────────────────────────────────────────
+// Returns just enough to render the /letter/:id splash page without exposing
+// letter content. No authentication required — letter bodies are never sent.
+router.get("/phoebe/correspondences/:id/preview", async (req, res): Promise<void> => {
+  const correspondenceId = parseInt(req.params.id, 10);
+  if (Number.isNaN(correspondenceId)) {
+    res.status(400).json({ error: "Invalid id" }); return;
+  }
+
+  const [correspondence] = await db
+    .select()
+    .from(correspondencesTable)
+    .where(eq(correspondencesTable.id, correspondenceId));
+  if (!correspondence || !correspondence.isActive) {
+    res.status(404).json({ error: "Not found" }); return;
+  }
+
+  const members = await db
+    .select()
+    .from(correspondenceMembersTable)
+    .where(eq(correspondenceMembersTable.correspondenceId, correspondenceId));
+
+  const lettersCount = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(lettersTable)
+    .where(eq(lettersTable.correspondenceId, correspondenceId));
+
+  const latest = await db
+    .select({ authorName: lettersTable.authorName, sentAt: lettersTable.sentAt })
+    .from(lettersTable)
+    .where(eq(lettersTable.correspondenceId, correspondenceId))
+    .orderBy(desc(lettersTable.sentAt))
+    .limit(1);
+
+  res.json({
+    correspondenceName: correspondence.name,
+    groupType: correspondence.groupType,
+    memberNames: members.map((m) => m.name || m.email.split("@")[0]),
+    letterCount: lettersCount[0]?.count ?? 0,
+    latestAuthorName: latest[0]?.authorName ?? null,
+    latestSentAt: latest[0]?.sentAt ?? null,
+  });
+});
+
+// ─── CALENDAR PROMPT STATE ───────────────────────────────────────────────────
+// The current member toggles whether they want calendar reminders for this
+// correspondence. "enabled" → window-open + overdue events will be sent.
+// "dismissed" → never ask again. null → prompt still pending.
+router.post(
+  "/phoebe/correspondences/:id/calendar-prompt",
+  requireAuth(async (req, res, auth) => {
+    const correspondenceId = parseInt(req.params.id, 10);
+    const { state } = req.body as { state: "enabled" | "dismissed" };
+    if (state !== "enabled" && state !== "dismissed") {
+      res.status(400).json({ error: "state must be 'enabled' or 'dismissed'" }); return;
+    }
+
+    const { member } = await getMembership(correspondenceId, auth);
+    if (!member) { res.status(403).json({ error: "Not a member" }); return; }
+
+    await db
+      .update(correspondenceMembersTable)
+      .set({ calendarPromptState: state })
+      .where(eq(correspondenceMembersTable.id, member.id));
+
+    res.json({ ok: true, state });
+  }),
+);
+
+// ─── OVERDUE CALENDAR CRON ───────────────────────────────────────────────────
+// Daily job — for each active one_to_one correspondence with the first
+// exchange complete, find any member whose turn has just transitioned to
+// OVERDUE and schedule a single follow-up calendar event.
+router.post("/phoebe/check-overdue-letters", async (req, res): Promise<void> => {
+  const internalKey = req.headers["x-internal-key"];
+  if (internalKey !== process.env["INTERNAL_API_KEY"]) {
+    res.status(401).json({ error: "Unauthorized" }); return;
+  }
+
+  const correspondences = await db
+    .select()
+    .from(correspondencesTable)
+    .where(and(eq(correspondencesTable.isActive, true), eq(correspondencesTable.firstExchangeComplete, true)));
+
+  const now = new Date();
+  const frontendUrl = getInviteBaseUrl();
+  let overdueSent = 0;
+
+  for (const c of correspondences) {
+    if (c.groupType !== "one_to_one") continue;
+
+    const members = await db
+      .select()
+      .from(correspondenceMembersTable)
+      .where(eq(correspondenceMembersTable.correspondenceId, c.id));
+
+    const letters = await db
+      .select()
+      .from(lettersTable)
+      .where(eq(lettersTable.correspondenceId, c.id));
+
+    for (const m of members) {
+      if (!m.joinedAt) continue;
+      if (m.calendarPromptState !== "enabled") continue;
+      if (m.overdueCalendarEventId) continue; // already scheduled
+
+      const turn = resolveOneToOneTurn(c, m.email, members, letters, now);
+      if (turn.state !== "OVERDUE") continue;
+
+      const otherMember = members.find((om) => om.email !== m.email);
+      const waitingAuthor = otherMember?.name || otherMember?.email.split("@")[0] || "Your correspondent";
+      const scheduledDate = getNextFridayOnOrAfter(now);
+
+      const writeSplashUrl = m.userId
+        ? `${frontendUrl}/letter/${c.id}`
+        : `${frontendUrl}/letter/${c.id}?token=${m.inviteToken}`;
+
+      const eventId = await sendLetterOverdueCalendarEvent({
+        recipientEmail: m.email,
+        waitingAuthorName: waitingAuthor,
+        correspondenceName: c.name,
+        scheduledDate,
+        letterUrl: writeSplashUrl,
+      });
+
+      if (eventId) {
+        await db
+          .update(correspondenceMembersTable)
+          .set({ overdueCalendarEventId: eventId })
+          .where(eq(correspondenceMembersTable.id, m.id));
+        overdueSent++;
+      }
+    }
+  }
+
+  res.json({ overdueSent });
 });
 
 export default router;

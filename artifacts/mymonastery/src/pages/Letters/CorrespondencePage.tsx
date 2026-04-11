@@ -26,6 +26,8 @@ interface LetterData {
   readBy: Array<string | number>;
 }
 
+type TurnState = "WAITING" | "OPEN" | "OVERDUE" | "SENT";
+
 interface CorrespondenceDetail {
   id: number;
   name: string;
@@ -34,6 +36,11 @@ interface CorrespondenceDetail {
   members: Array<{ id: number; name: string | null; email: string; joinedAt: string | null; lastLetterAt: string | null; homeCity: string | null }>;
   letters: LetterData[];
   myTurn: boolean;
+  turnState?: TurnState;
+  windowOpenDate?: string | null;
+  overdueDate?: string | null;
+  firstExchangeComplete?: boolean;
+  myCalendarPromptState?: "enabled" | "dismissed" | null;
   currentPeriod: {
     periodNumber: number;
     periodStart: string;
@@ -57,6 +64,14 @@ function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${months[d.getMonth()]} ${d.getDate()}`;
+}
+
+function daysSince(dateStr: string): number {
+  const then = new Date(dateStr);
+  then.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
 const STATE_ABBR: Record<string, string> = { "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA","Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT","Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","District of Columbia":"DC" };
@@ -122,6 +137,15 @@ export default function CorrespondencePage() {
     },
   });
 
+  const calendarPromptMutation = useMutation({
+    mutationFn: (state: "enabled" | "dismissed") =>
+      apiRequest("POST", `/api/phoebe/correspondences/${correspondenceId}/calendar-prompt`, { state }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ["/api/phoebe/correspondences"] });
+    },
+  });
+
   // Mark as read on mount
   useEffect(() => {
     if (!correspondenceId || (!user && !token)) return;
@@ -168,6 +192,20 @@ export default function CorrespondencePage() {
     ? `Letter ${currentPeriod.periodNumber}`
     : `Round ${currentPeriod.periodNumber}`;
 
+  const turnState: TurnState | undefined = data.turnState;
+  const isOpen = isOneToOne && (turnState === "OPEN" || turnState === "OVERDUE");
+  const isOverdue = isOneToOne && turnState === "OVERDUE";
+
+  // Other member's most recent letter — used for "waiting since" copy on OVERDUE.
+  const lastLetterByOther = [...letters]
+    .filter((l) => l.authorEmail !== userEmail)
+    .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())[0];
+
+  const showCalendarPrompt =
+    isOneToOne &&
+    data.firstExchangeComplete === true &&
+    (data.myCalendarPromptState ?? null) === null;
+
   return (
     <Layout>
       <div className="flex flex-col w-full pb-24">
@@ -204,38 +242,99 @@ export default function CorrespondencePage() {
 
         {/* Period bar */}
         <div
-          className={`rounded-2xl overflow-hidden mb-8 transition-shadow ${data.myTurn && !currentPeriod.hasWrittenThisPeriod ? "animate-turn-pulse" : ""}`}
-          style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+          className={`rounded-2xl overflow-hidden mb-4 transition-shadow ${data.myTurn ? "animate-turn-pulse" : ""}`}
+          style={{
+            background: isOverdue ? "#1A2D1A" : "#0F2818",
+            border: `1px solid ${isOverdue ? "rgba(217,180,74,0.35)" : "rgba(200,212,192,0.25)"}`,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+          }}
         >
           <div className="flex">
-            <div className="w-[3px] flex-shrink-0" style={{ background: "#8FAF96" }} />
+            <div className="w-[3px] flex-shrink-0" style={{ background: isOverdue ? "#D9B44A" : "#8FAF96" }} />
             <div className="flex-1 p-5">
-              <p className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
+              <p className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: isOverdue ? "#D9B44A" : "#8FAF96", letterSpacing: "0.1em" }}>
                 {periodLabel}
               </p>
 
-              {/* CTA */}
-              {data.myTurn && !currentPeriod.hasWrittenThisPeriod ? (
+              {/* CTA — one_to_one: driven by turnState */}
+              {isOneToOne ? (
+                <>
+                  {isOverdue && lastLetterByOther && (
+                    <p className="text-sm mb-3" style={{ color: "#D9B44A" }}>
+                      {otherMembers} has been waiting {daysSince(lastLetterByOther.sentAt)} days. No rush — write when you're ready. 🌿
+                    </p>
+                  )}
+                  {isOpen ? (
+                    <Link href={writeUrl}>
+                      <button
+                        className="w-full py-3 rounded-xl text-base font-semibold"
+                        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                      >
+                        Write your letter 🖋️
+                      </button>
+                    </Link>
+                  ) : letters.length > 0 && letters[0].authorEmail === userEmail ? (
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>
+                      Your letter is sent. 🌿 Waiting for {otherMembers} to write back.
+                    </p>
+                  ) : (
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>
+                      Waiting for {otherMembers} to write... 🌿
+                    </p>
+                  )}
+                </>
+              ) : data.myTurn && !currentPeriod.hasWrittenThisPeriod ? (
                 <Link href={writeUrl}>
                   <button
                     className="w-full py-3 rounded-xl text-base font-semibold"
                     style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                   >
-                    {isOneToOne ? "Write your letter 🖋️" : "Share your update 📮"}
+                    Share your update 📮
                   </button>
                 </Link>
               ) : currentPeriod.hasWrittenThisPeriod ? (
                 <p className="text-sm" style={{ color: "#8FAF96" }}>
-                  {isOneToOne ? "Your letter is sent. 🌿 Waiting for their response." : "Your update is in for this round. 🌿"}
-                </p>
-              ) : isOneToOne ? (
-                <p className="text-sm" style={{ color: "#8FAF96" }}>
-                  Waiting for {otherMembers} to write... 🌿
+                  Your update is in for this round. 🌿
                 </p>
               ) : null}
             </div>
           </div>
         </div>
+
+        {/* Calendar prompt — shown once, after first exchange is complete */}
+        {showCalendarPrompt && (
+          <div
+            className="rounded-2xl mb-8 p-5"
+            style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.18)" }}
+          >
+            <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>
+              📅 Get a calendar reminder when it's your turn?
+            </p>
+            <p className="text-xs mb-4 leading-relaxed" style={{ color: "#8FAF96" }}>
+              We'll drop an all-day event on your Google Calendar the Friday your writing window opens — a gentle nudge, nothing more.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => calendarPromptMutation.mutate("enabled")}
+                disabled={calendarPromptMutation.isPending}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                Yes, remind me
+              </button>
+              <button
+                onClick={() => calendarPromptMutation.mutate("dismissed")}
+                disabled={calendarPromptMutation.isPending}
+                className="flex-1 py-2 rounded-xl text-sm"
+                style={{ background: "transparent", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.2)" }}
+              >
+                No thanks
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!showCalendarPrompt && <div className="mb-8" />}
 
         {/* Letter thread */}
         {letters.length === 0 ? (

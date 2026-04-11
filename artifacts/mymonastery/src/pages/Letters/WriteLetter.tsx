@@ -11,13 +11,24 @@ interface MemberData {
   homeCity: string | null;
 }
 
+interface LetterRef {
+  id: number;
+  authorEmail: string;
+  authorName: string;
+  sentAt: string;
+}
+
 interface CorrespondenceBasic {
   id: number;
   name: string;
   groupType: string;
   startedAt: string;
   members: MemberData[];
+  letters?: LetterRef[];
   myTurn: boolean;
+  turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
+  windowOpenDate?: string | null;
+  overdueDate?: string | null;
   currentPeriod: {
     periodNumber: number;
     periodLabel: string;
@@ -206,6 +217,20 @@ export default function WriteLetter() {
     .map((m) => m.name || m.email.split("@")[0])
     .join(", ") ?? "";
 
+  const isOverdue = isOneToOne && correspondence?.turnState === "OVERDUE";
+  const waitingDays = (() => {
+    if (!isOverdue || !correspondence?.letters?.length) return 0;
+    const otherLast = [...correspondence.letters]
+      .filter((l) => l.authorEmail !== user?.email)
+      .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())[0];
+    if (!otherLast) return 0;
+    const then = new Date(otherLast.sentAt);
+    then.setHours(0, 0, 0, 0);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24)));
+  })();
+
   function handleSendClick() {
     setConfirmSend(true);
     if (isOneToOne) detectLocation();
@@ -241,6 +266,11 @@ export default function WriteLetter() {
           {correspondence?.currentPeriod && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? `Letter ${correspondence.currentPeriod.periodNumber}` : `Round ${correspondence.currentPeriod.periodNumber}`}
+            </p>
+          )}
+          {isOverdue && waitingDays > 0 && (
+            <p className="text-[12px] mt-0.5" style={{ color: "#C17F24" }}>
+              {otherMembers} has been waiting {waitingDays} days 🌿
             </p>
           )}
         </div>

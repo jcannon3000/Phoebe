@@ -54,6 +54,7 @@ import WriteLetter from "./pages/Letters/WriteLetter";
 import ReadLetter from "./pages/Letters/ReadLetter";
 import LetterInvitePage from "./pages/Letters/InvitePage";
 import LetterNew from "./pages/Letters/LetterNew";
+import LetterSplash from "./pages/Letters/LetterSplash";
 import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
 import GatheringsPage from "./pages/gatherings";
@@ -106,6 +107,7 @@ function Router() {
       <Route path="/ritual/:id" component={RitualDetail} />
       <Route path="/schedule/:token" component={GuestSchedule} />
       <Route path="/invite/:token" component={InvitePage} />
+      <Route path="/letter/:id" component={LetterSplash} />
       <Route path="/letters" component={LettersPage} />
       <Route path="/letters/new" component={LetterNew} />
       <Route path="/letters/invite/:token" component={LetterInvitePage} />

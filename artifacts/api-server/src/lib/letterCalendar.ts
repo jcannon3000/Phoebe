@@ -1,5 +1,5 @@
-import { createAllDayCalendarEvent } from "./calendar";
-import { formatHumanDate } from "./letterPeriods";
+import { createAllDayCalendarEvent, deleteCalendarEvent } from "./calendar";
+import { formatHumanDate, formatPeriodStartDateString } from "./letterPeriods";
 
 export async function sendLetterCalendarEvent(params: {
   recipientEmail: string;
@@ -53,5 +53,106 @@ export async function sendLetterCalendarEvent(params: {
   } catch (err) {
     console.error("Letter calendar event failed:", err);
     return null;
+  }
+}
+
+/**
+ * Schedule an all-day calendar event for the day the writing window opens.
+ * This lands on a Friday (the "catch up" day) and reminds the recipient
+ * that it is now their turn to write back.
+ */
+export async function sendLetterWindowOpenCalendarEvent(params: {
+  recipientEmail: string;
+  waitingAuthorName: string;
+  correspondenceName: string;
+  scheduledDate: Date;
+  letterUrl: string;
+}): Promise<string | null> {
+  const { recipientEmail, waitingAuthorName, correspondenceName, scheduledDate, letterUrl } = params;
+  const dateStr = formatPeriodStartDateString(scheduledDate);
+
+  const description = [
+    `${waitingAuthorName} is waiting for your next letter in ${correspondenceName}.`,
+    "",
+    `Sit down with a cup of something warm and write back.`,
+    "",
+    `Write here →`,
+    letterUrl,
+    "",
+    `──────────────────`,
+    `Be together with Phoebe.`,
+  ].join("\n");
+
+  try {
+    const eventId = await createAllDayCalendarEvent(0, {
+      summary: `📮 ${waitingAuthorName} is waiting for your letter`,
+      description,
+      dateStr,
+      attendees: [recipientEmail],
+      // Popup at the start of the event day. Google Calendar all-day
+      // reminder minutes must be non-negative, so this fires at midnight
+      // of the event day; users also see the event on their calendar.
+      reminders: [{ method: "popup", minutes: 0 }],
+      transparency: "transparent",
+    });
+    return eventId;
+  } catch (err) {
+    console.error("Letter window-open calendar event failed:", err);
+    return null;
+  }
+}
+
+/**
+ * Schedule a follow-up all-day event for the day the window transitions
+ * to OVERDUE. Softer copy ("still waiting — write when you're ready").
+ */
+export async function sendLetterOverdueCalendarEvent(params: {
+  recipientEmail: string;
+  waitingAuthorName: string;
+  correspondenceName: string;
+  scheduledDate: Date;
+  letterUrl: string;
+}): Promise<string | null> {
+  const { recipientEmail, waitingAuthorName, correspondenceName, scheduledDate, letterUrl } = params;
+  const dateStr = formatPeriodStartDateString(scheduledDate);
+
+  const description = [
+    `${waitingAuthorName} is still waiting for your letter in ${correspondenceName}.`,
+    "",
+    `No rush. Write when you're ready. 🌿`,
+    "",
+    `Write here →`,
+    letterUrl,
+    "",
+    `──────────────────`,
+    `Be together with Phoebe.`,
+  ].join("\n");
+
+  try {
+    const eventId = await createAllDayCalendarEvent(0, {
+      summary: `📮 ${waitingAuthorName} is still waiting — write when you're ready`,
+      description,
+      dateStr,
+      attendees: [recipientEmail],
+      reminders: [{ method: "popup", minutes: 0 }],
+      transparency: "transparent",
+    });
+    return eventId;
+  } catch (err) {
+    console.error("Letter overdue calendar event failed:", err);
+    return null;
+  }
+}
+
+/**
+ * Best-effort cleanup of a prior calendar event (window-open or overdue).
+ * Used when the letter is sent or when replacing an event with a newer one.
+ */
+export async function cancelLetterCalendarEvent(eventId: string | null | undefined): Promise<void> {
+  if (!eventId) return;
+  try {
+    await deleteCalendarEvent(0, eventId);
+  } catch (err) {
+    console.error("Letter calendar event cancel failed:", err);
   }
 }
