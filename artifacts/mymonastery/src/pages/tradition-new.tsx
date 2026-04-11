@@ -371,7 +371,7 @@ export default function TraditionNew() {
                 When will you first gather? 🌿
               </h1>
               <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-                Pick your first choice and two alternates. Your group will say which works best.
+                Pick a time to meet. Alternates are optional — your group can weigh in.
               </p>
 
               {/* First Pick */}
@@ -417,15 +417,15 @@ export default function TraditionNew() {
                   style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
                 />
                 <p className="text-xs mt-2" style={{ color: "#8FAF96" }}>
-                  Location is per-gathering — you can change it for each future meeting.
+                  Location is per event — set it fresh each time you gather.
                 </p>
               </div>
 
-              {/* First Alternative */}
+              {/* Alternatives */}
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3 mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
+                Alternative time suggestions (optional)
+              </p>
               <div className="mb-5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
-                  First Alternative
-                </p>
                 <div className="flex gap-2">
                   <input
                     type="date"
@@ -451,11 +451,7 @@ export default function TraditionNew() {
                 </div>
               </div>
 
-              {/* Second Alternative */}
               <div className="mb-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#8FAF96" }}>
-                  Second Alternative
-                </p>
                 <div className="flex gap-2">
                   <input
                     type="date"
