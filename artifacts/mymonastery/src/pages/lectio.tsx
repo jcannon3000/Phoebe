@@ -33,9 +33,9 @@ const STAGE_ORDER: Stage[] = ["lectio", "meditatio", "oratio"];
 // newcomers aren't tripped up by Latin. The Latin name still appears as a
 // quieter subtitle for those who recognize the tradition.
 const STAGE_ORDINAL: Record<Stage, string> = {
-  lectio: "First Stage",
-  meditatio: "Second Stage",
-  oratio: "Third Stage",
+  lectio: "Stage 1",
+  meditatio: "Stage 2",
+  oratio: "Stage 3",
 };
 const STAGE_LATIN: Record<Stage, string> = {
   lectio: "Lectio",
@@ -435,7 +435,7 @@ export default function LectioPage() {
         </button>
         <div style={{ textAlign: "right" }}>
           <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
-            {current.stage ? STAGE_ORDINAL[current.stage] : "Summary"}
+            {data.week.isSunday ? "Completed" : current.stage ? STAGE_ORDINAL[current.stage] : "Summary"}
           </p>
           <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2 }}>
             {data.reading.gospelReference}
@@ -526,7 +526,7 @@ export default function LectioPage() {
         style={{
           position: "fixed",
           left: "50%",
-          bottom: 24,
+          bottom: 26,
           transform: "translateX(-50%)",
           zIndex: 50,
           background: "rgba(19,44,29,0.92)",
@@ -545,9 +545,11 @@ export default function LectioPage() {
           // The action pill tells the user what the next step in this slide
           // is ("Read" → "Reflect" → "Responses" → "Next stage"). The summary
           // slide has its own CTAs, so the pill is hidden there.
-          const stageLabel = current.stage
-            ? `${STAGE_ORDINAL[current.stage]} · ${STAGE_LATIN[current.stage]}`
-            : "Summary";
+          const stageLabel = data.week.isSunday
+            ? "Completed"
+            : current.stage
+              ? `${STAGE_ORDINAL[current.stage]} · ${STAGE_LATIN[current.stage]}`
+              : "Summary";
 
           let actionLabel: string | null = null;
           if (current.kind === "prompt") {
