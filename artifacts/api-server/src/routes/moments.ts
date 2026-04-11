@@ -1078,6 +1078,26 @@ router.get("/moments", async (req, res): Promise<void> => {
             }, new Date(0)).toISOString()
           : null;
 
+        // Most recent PAST window's group activity — used by the dashboard
+        // card to replace "0 of 2 have prayed today" with a truthful
+        // "2 prayed Wednesday" on days the intercession isn't happening.
+        // We derive this from actual posts (not window.postCount, which is
+        // stale until evaluateWindow fires) so it's accurate the moment
+        // someone logs a prayer.
+        const postsByWindow = new Map<string, Set<string>>();
+        for (const p of allPosts) {
+          if (p.windowDate === "seed") continue;
+          if (!postsByWindow.has(p.windowDate)) postsByWindow.set(p.windowDate, new Set());
+          postsByWindow.get(p.windowDate)!.add(p.userToken);
+        }
+        const pastWindowDatesWithPosts = [...postsByWindow.keys()]
+          .filter(d => d !== todayDate)
+          .sort((a, b) => b.localeCompare(a));
+        const lastWindowDate: string | null = pastWindowDatesWithPosts[0] ?? null;
+        const lastWindowPostCount: number = lastWindowDate
+          ? postsByWindow.get(lastWindowDate)!.size
+          : 0;
+
         // Lectio-specific enrichment: this week's reading + how many members have
         // submitted any reflection for the current Sunday anchor.
         let lectioSundayName: string | null = null;
@@ -1163,6 +1183,8 @@ router.get("/moments", async (req, res): Promise<void> => {
           myUserToken: myToken?.userToken ?? null,
           myStreak,
           myLastPostAt,
+          lastWindowDate,
+          lastWindowPostCount,
           isCreator,
           lectioSundayName,
           lectioGospelReference,
@@ -1193,6 +1215,8 @@ router.get("/moments", async (req, res): Promise<void> => {
           myUserToken: myToken?.userToken ?? null,
           myStreak: 0,
           myLastPostAt: null,
+          lastWindowDate: null,
+          lastWindowPostCount: 0,
           isCreator: false,
           lectioSundayName: null,
           lectioGospelReference: null,

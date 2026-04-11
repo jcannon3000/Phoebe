@@ -65,6 +65,11 @@ type Moment = {
   lectioMyStageDone?: boolean | null;
   lectioCurrentStageLabel?: string | null;
   lectioNextStageLabel?: string | null;
+  // Most recent past window where someone actually prayed. Used by the
+  // dashboard card flap to replace "0 of 2 have prayed today" with
+  // "2 prayed Wednesday" on off-days.
+  lastWindowDate?: string | null;
+  lastWindowPostCount?: number | null;
 };
 
 // ─── Category color system ──────────────────────────────────────────────────
@@ -640,10 +645,46 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   //   Mobile: participants → next prayer → log count (no right-side status)
   //   Desktop: participants → log count → intention (status stays on the right)
   // Any empty line is skipped entirely so we never flip to nothing.
-  const logCountLine =
-    m.memberCount > 0
-      ? `${m.todayPostCount} of ${m.memberCount} have prayed today`
-      : "";
+  //
+  // The "log count" line is context-sensitive so we don't sit on a card
+  // that reads "0 of 2 have prayed today" on a Tuesday when the practice
+  // only runs Mon/Wed/Fri:
+  //   • If today IS a practice day (no upcoming nextWindow) and there
+  //     are members → "X of Y have prayed today"
+  //   • Otherwise, if anyone has prayed in a past window → "N prayed
+  //     Wednesday" / "N prayed yesterday" / "N prayed last time"
+  //   • Otherwise (first week, never prayed) → empty, so the flap cycles
+  //     through just the two remaining lines.
+  const logCountLine = (() => {
+    if (!nextWindow && m.memberCount > 0) {
+      // Today is a practice day — show live progress toward the group bloom.
+      return `${m.todayPostCount} of ${m.memberCount} have prayed today`;
+    }
+    const lastCount = m.lastWindowPostCount ?? 0;
+    if (lastCount > 0 && m.lastWindowDate) {
+      const whenLabel = (() => {
+        // lastWindowDate is an ISO date string like "2026-04-09"; parse
+        // as a local date (parseISO handles this) and compare to today.
+        const d = parseISO(m.lastWindowDate);
+        const today = startOfDay(new Date());
+        const that = startOfDay(d);
+        const diffDays = Math.round((today.getTime() - that.getTime()) / 86_400_000);
+        if (diffDays <= 0) return "today";       // shouldn't happen — guarded above
+        if (diffDays === 1) return "yesterday";
+        if (diffDays < 7) return format(d, "EEEE"); // "Wednesday"
+        return "last time";
+      })();
+      const noun = lastCount === 1 ? "person" : "people";
+      // For weekday labels we say "prayed Wednesday"; for "yesterday" and
+      // "last time" we keep the same grammar. Drop the noun when the
+      // label is a weekday so it reads tighter: "2 prayed Wednesday".
+      const sameForAll = whenLabel === "yesterday" || whenLabel === "last time"
+        ? `${lastCount} ${noun} prayed ${whenLabel}`
+        : `${lastCount} prayed ${whenLabel}`;
+      return sameForAll;
+    }
+    return "";
+  })();
   const intentionLine = safeIntention ? `For ${safeIntention}` : "";
   const freqLabel = m.frequency === "daily" ? "Daily" : m.frequency === "monthly" ? "Monthly" : "Weekly";
   const nextPrayerLine = nextWindow ? `${freqLabel} · Next prayer ${nextWindow.toLowerCase()}` : "";
