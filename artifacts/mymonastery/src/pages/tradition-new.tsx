@@ -80,8 +80,10 @@ export default function TraditionNew() {
   function handleTypeSelect(t: string) {
     setTemplate(t);
     const option = TEMPLATE_OPTIONS.find((o) => o.value === t);
-    if (!name && option && t !== "custom") {
+    if (option && t !== "custom") {
       setName(option.label);
+    } else if (t === "custom") {
+      setName("");
     }
     setStep(2);
   }
@@ -215,17 +217,32 @@ export default function TraditionNew() {
               {/* Name */}
               <div className="mb-6">
                 <label className="text-xs font-semibold uppercase tracking-widest mb-2 block" style={{ color: "#8FAF96" }}>
-                  Name this gathering
+                  {template !== "custom" ? "Gathering" : "Name this gathering"}
                 </label>
-                <input
-                  ref={nameRef}
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Morning Coffee, Sunday Dinner"
-                  className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none"
-                  style={{ background: "#091A10", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
-                />
+                {template !== "custom" ? (
+                  <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl" style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.4)" }}>
+                    <span className="text-xl">{TEMPLATE_OPTIONS.find(o => o.value === template)?.emoji}</span>
+                    <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setTemplate("custom")}
+                      className="ml-auto text-xs"
+                      style={{ color: "rgba(143,175,150,0.5)" }}
+                    >
+                      rename
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    ref={nameRef}
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Morning Coffee, Sunday Dinner"
+                    className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none"
+                    style={{ background: "#091A10", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
+                  />
+                )}
               </div>
 
               {/* Existing connections */}
