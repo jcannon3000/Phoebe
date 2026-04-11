@@ -36,7 +36,13 @@ type Slide =
       kind: "preview";
       caption: string;
       sub: string;
-      variant: "dashboard" | "prayer" | "letters" | "gatherings";
+      variant:
+        | "dashboard"
+        | "prayer"
+        | "letters"
+        | "gatherings"
+        | "letter-compose"
+        | "morning-prayer";
     }
   | { kind: "closing"; above: string[]; featured: string };
 
@@ -156,7 +162,7 @@ const SLIDES: Slide[] = [
     ],
   },
 
-  // 8a — Preview: Prayer
+  // 8a — Preview: Prayer (the feed)
   {
     kind: "preview",
     variant: "prayer",
@@ -164,12 +170,28 @@ const SLIDES: Slide[] = [
     sub: "A shared garden. People share what they're carrying — and others respond, a word at a time. Low friction. Low vulnerability. The doorway into the life of the community.",
   },
 
-  // 8b — Preview: Letters
+  // 8a.1 — Preview: Morning Prayer slideshow (prayer as practice)
+  {
+    kind: "preview",
+    variant: "morning-prayer",
+    caption: "Not just a feed — a practice.",
+    sub: "Morning Prayer, Lectio Divina, Compline — held as guided slideshows the community moves through together. You see who else is praying with you at the same hour.",
+  },
+
+  // 8b — Preview: Letters (the list)
   {
     kind: "preview",
     variant: "letters",
     caption: "Letters, on a rhythm.",
     sub: "One person. One letter. Once a fortnight. Phoebe holds the cadence so the friendship can deepen in writing — the way parish friendships used to form before everything sped up.",
+  },
+
+  // 8b.1 — Preview: Letter composition (letters up close)
+  {
+    kind: "preview",
+    variant: "letter-compose",
+    caption: "Where friendship actually happens.",
+    sub: "Letters are written longhand in feel: unhurried, reflective, one reader at a time. This is where familiarity turns into vulnerability, and vulnerability into trust.",
   },
 
   // 8c — Preview: Gatherings
@@ -263,13 +285,13 @@ function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
   return (
     <div className="flex flex-col items-center justify-center text-center max-w-3xl mx-auto">
       <h1
-        className="text-6xl md:text-7xl font-bold mb-6 tracking-tight"
+        className="text-5xl md:text-7xl font-bold mb-4 md:mb-6 tracking-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
         {slide.headline}
       </h1>
       <p
-        className="text-xl md:text-2xl font-light"
+        className="text-lg md:text-2xl font-light"
         style={{ color: C.sage, fontFamily: C.font }}
       >
         {slide.sub}
@@ -286,16 +308,16 @@ function StatementSlide({
   return (
     <div className="max-w-3xl mx-auto w-full">
       <h2
-        className="text-3xl md:text-4xl font-semibold mb-10 leading-tight"
+        className="text-2xl md:text-4xl font-semibold mb-6 md:mb-10 leading-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
         {slide.headline}
       </h2>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {slide.body.map((p, i) => (
           <p
             key={i}
-            className="text-lg md:text-xl leading-relaxed font-light"
+            className="text-base md:text-xl leading-relaxed font-light"
             style={{ color: C.sage, fontFamily: C.font }}
           >
             {p}
@@ -314,16 +336,16 @@ function StackedSlide({
   return (
     <div className="max-w-3xl mx-auto w-full">
       <h2
-        className="text-3xl md:text-4xl font-semibold mb-10 leading-tight"
+        className="text-2xl md:text-4xl font-semibold mb-6 md:mb-10 leading-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
         {slide.headline}
       </h2>
-      <div className="space-y-4 mb-10">
+      <div className="space-y-3 md:space-y-4 mb-6 md:mb-10">
         {slide.items.map((item, i) => (
           <p
             key={i}
-            className="text-xl md:text-2xl font-light"
+            className="text-lg md:text-2xl font-light"
             style={{ color: C.sage, fontFamily: C.font }}
           >
             {item}
@@ -331,11 +353,11 @@ function StackedSlide({
         ))}
       </div>
       {slide.tail && (
-        <div className="space-y-4 pt-6" style={{ borderTop: `1px solid ${C.border}` }}>
+        <div className="space-y-4 pt-5 md:pt-6" style={{ borderTop: `1px solid ${C.border}` }}>
           {slide.tail.map((t, i) => (
             <p
               key={i}
-              className="text-base md:text-lg leading-relaxed font-light italic"
+              className="text-sm md:text-lg leading-relaxed font-light italic"
               style={{ color: "rgba(143,175,150,0.75)", fontFamily: C.font }}
             >
               {t}
@@ -355,19 +377,19 @@ function ProgressiveSlide({
   return (
     <div className="max-w-3xl mx-auto w-full">
       <h2
-        className="text-3xl md:text-4xl font-semibold mb-12 leading-tight"
+        className="text-2xl md:text-4xl font-semibold mb-6 md:mb-12 leading-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
         {slide.headline}
       </h2>
-      <div className="space-y-5">
+      <div className="space-y-3 md:space-y-5">
         {slide.lines.map((line, i) => (
           <motion.p
             key={i}
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15 + i * 0.12, duration: 0.4 }}
-            className="text-xl md:text-2xl font-light leading-relaxed"
+            className="text-lg md:text-2xl font-light leading-relaxed"
             style={{ color: line.color, fontFamily: C.font }}
           >
             {line.text}
@@ -382,31 +404,31 @@ function CardsSlide({ slide }: { slide: Extract<Slide, { kind: "cards" }> }) {
   return (
     <div className="max-w-6xl mx-auto w-full">
       <h2
-        className="text-2xl md:text-3xl font-semibold mb-10 leading-tight text-center"
+        className="text-xl md:text-3xl font-semibold mb-6 md:mb-10 leading-tight text-center"
         style={{ color: C.text, fontFamily: C.font }}
       >
         {slide.headline}
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
         {slide.cards.map((card, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 + i * 0.1, duration: 0.4 }}
-            className="rounded-2xl p-7"
+            className="rounded-2xl p-5 md:p-7"
             style={{
               background: C.card,
               border: `1px solid ${C.border}`,
             }}
           >
             <p
-              className="text-xs font-bold uppercase tracking-widest mb-5"
+              className="text-xs font-bold uppercase tracking-widest mb-3 md:mb-5"
               style={{ color: C.sage, fontFamily: C.font }}
             >
               {card.label}
             </p>
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {card.lines.map((line, j) => (
                 <p
                   key={j}
@@ -431,11 +453,11 @@ function TrellisSlide({
 }) {
   return (
     <div className="max-w-3xl mx-auto w-full text-center">
-      <div className="space-y-4 mb-10">
+      <div className="space-y-3 md:space-y-4 mb-6 md:mb-10">
         {slide.above.map((line, i) => (
           <p
             key={i}
-            className="text-lg md:text-xl font-light leading-relaxed"
+            className="text-base md:text-xl font-light leading-relaxed"
             style={{ color: C.sage, fontFamily: C.font }}
           >
             {line}
@@ -446,13 +468,13 @@ function TrellisSlide({
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.25, duration: 0.5 }}
-        className="text-4xl md:text-5xl font-semibold mb-8 leading-tight"
+        className="text-3xl md:text-5xl font-semibold mb-6 md:mb-8 leading-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
         {slide.featured}
       </motion.p>
       <p
-        className="text-lg md:text-xl font-light"
+        className="text-base md:text-xl font-light"
         style={{ color: C.sage, fontFamily: C.font }}
       >
         {slide.below}
@@ -468,11 +490,11 @@ function ClosingSlide({
 }) {
   return (
     <div className="max-w-3xl mx-auto w-full text-center">
-      <div className="space-y-5 mb-16">
+      <div className="space-y-4 md:space-y-5 mb-10 md:mb-16">
         {slide.above.map((line, i) => (
           <p
             key={i}
-            className="text-lg md:text-xl font-light leading-relaxed"
+            className="text-base md:text-xl font-light leading-relaxed"
             style={{ color: C.sage, fontFamily: C.font }}
           >
             {line}
@@ -483,7 +505,7 @@ function ClosingSlide({
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.3, duration: 0.6 }}
-        className="text-5xl md:text-6xl font-bold tracking-tight"
+        className="text-4xl md:text-6xl font-bold tracking-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
         {slide.featured}
@@ -571,9 +593,8 @@ function MockBarCard({
 function MockPhone({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-[32px] p-5 mx-auto"
+      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[290px] md:max-w-[320px]"
       style={{
-        width: 320,
         background: "#091A10",
         border: "1px solid rgba(200,212,192,0.15)",
         boxShadow:
@@ -934,6 +955,203 @@ function GatheringsMock() {
   );
 }
 
+function LetterComposeMock() {
+  return (
+    <MockPhone>
+      <div className="flex items-center gap-2 mb-3">
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center text-xs"
+          style={{ background: "#14402A", color: "#F0EDE6" }}
+        >
+          M
+        </div>
+        <div>
+          <p
+            className="text-xs font-semibold"
+            style={{ color: "#F0EDE6", fontFamily: C.font }}
+          >
+            To Margaret Whitfield
+          </p>
+          <p
+            className="text-[9px]"
+            style={{ color: "#8FAF96", fontFamily: C.font }}
+          >
+            Fortnightly · Week 2
+          </p>
+        </div>
+      </div>
+
+      <div
+        className="rounded-2xl p-4"
+        style={{
+          background: "rgba(240,237,230,0.04)",
+          border: "1px solid rgba(20,64,42,0.55)",
+          minHeight: 240,
+        }}
+      >
+        <p
+          className="text-[10px] uppercase tracking-widest mb-3"
+          style={{ color: "rgba(200,212,192,0.45)", fontFamily: C.font }}
+        >
+          Dear Margaret,
+        </p>
+        <p
+          className="text-xs leading-relaxed mb-3"
+          style={{
+            color: "rgba(240,237,230,0.92)",
+            fontFamily: "'Caveat', 'Space Grotesk', cursive",
+            fontSize: 15,
+          }}
+        >
+          It's been a strange fortnight. Lent has taken a shape I didn't
+          expect, and I've been thinking about what you said at coffee
+          after Evensong — about sitting with silence instead of trying
+          to fill it.
+        </p>
+        <p
+          className="text-xs leading-relaxed"
+          style={{
+            color: "rgba(240,237,230,0.75)",
+            fontFamily: "'Caveat', 'Space Grotesk', cursive",
+            fontSize: 15,
+          }}
+        >
+          The lilies you mentioned — I saw them too. I'll tell you about
+          <motion.span
+            animate={{ opacity: [1, 0.2, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="inline-block ml-0.5"
+            style={{
+              width: 1,
+              height: 14,
+              background: "#8FAF96",
+              verticalAlign: "middle",
+            }}
+          />
+        </p>
+      </div>
+
+      <div className="flex justify-between items-center mt-4">
+        <p
+          className="text-[10px]"
+          style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}
+        >
+          Draft saved · 3 min ago
+        </p>
+        <div
+          className="px-3 py-1.5 rounded-full text-[10px] font-semibold"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          Send ✉️
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
+function MorningPrayerMock() {
+  return (
+    <MockPhone>
+      {/* Slideshow top progress bars */}
+      <div className="flex gap-1 mb-5">
+        {[1, 0.6, 0, 0, 0].map((f, i) => (
+          <div
+            key={i}
+            className="flex-1 h-0.5 rounded-full"
+            style={{
+              background: "rgba(200,212,192,0.15)",
+            }}
+          >
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${f * 100}%`,
+                background: "#8FAF96",
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <p
+        className="text-[9px] font-semibold uppercase tracking-widest mb-2 text-center"
+        style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
+      >
+        Morning Prayer · Day 34
+      </p>
+
+      <div className="text-center my-8">
+        <div className="text-5xl mb-6">🕯️</div>
+        <p
+          className="text-sm italic leading-relaxed mb-4"
+          style={{ color: "rgba(240,237,230,0.85)", fontFamily: C.font }}
+        >
+          "O Lord, open thou our lips."
+        </p>
+        <p
+          className="text-sm italic leading-relaxed"
+          style={{ color: "#8FAF96", fontFamily: C.font }}
+        >
+          And our mouth shall shew forth thy praise.
+        </p>
+      </div>
+
+      <div
+        className="rounded-xl p-3 mb-4"
+        style={{
+          background: "rgba(46,107,64,0.1)",
+          border: "1px solid rgba(46,107,64,0.3)",
+        }}
+      >
+        <p
+          className="text-[9px] font-semibold uppercase tracking-widest mb-1"
+          style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
+        >
+          Praying with you
+        </p>
+        <div className="flex -space-x-1.5">
+          {["M", "D", "A", "J", "R"].map((l, i) => (
+            <div
+              key={i}
+              className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold"
+              style={{
+                background: "#14402A",
+                color: "#F0EDE6",
+                border: "1.5px solid #091A10",
+              }}
+            >
+              {l}
+            </div>
+          ))}
+          <div
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[9px]"
+            style={{
+              background: "rgba(143,175,150,0.2)",
+              color: "#C8D4C0",
+              border: "1.5px solid #091A10",
+            }}
+          >
+            +7
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-center">
+        <div
+          className="px-4 py-2 rounded-full text-[11px] font-medium"
+          style={{
+            background: "#2D5E3F",
+            color: "#F0EDE6",
+            fontFamily: C.font,
+          }}
+        >
+          Continue →
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
 function PreviewSlide({
   slide,
 }: {
@@ -946,27 +1164,31 @@ function PreviewSlide({
       <PrayerMock />
     ) : slide.variant === "letters" ? (
       <LettersMock />
-    ) : (
+    ) : slide.variant === "gatherings" ? (
       <GatheringsMock />
+    ) : slide.variant === "letter-compose" ? (
+      <LetterComposeMock />
+    ) : (
+      <MorningPrayerMock />
     );
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-center gap-10 md:gap-16 max-w-5xl mx-auto w-full">
+    <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 max-w-5xl mx-auto w-full">
       <div className="text-center md:text-left max-w-md">
         <p
-          className="text-[10px] font-semibold uppercase tracking-widest mb-3"
+          className="text-[10px] font-semibold uppercase tracking-widest mb-2 md:mb-3"
           style={{ color: C.sage, fontFamily: C.font }}
         >
           A glimpse inside Phoebe
         </p>
         <h2
-          className="text-3xl md:text-4xl font-semibold mb-5 leading-tight"
+          className="text-2xl md:text-4xl font-semibold mb-3 md:mb-5 leading-tight"
           style={{ color: C.text, fontFamily: C.font }}
         >
           {slide.caption}
         </h2>
         <p
-          className="text-base md:text-lg font-light leading-relaxed"
+          className="text-sm md:text-lg font-light leading-relaxed"
           style={{ color: C.sage, fontFamily: C.font }}
         >
           {slide.sub}
@@ -976,7 +1198,7 @@ function PreviewSlide({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="shrink-0"
+        className="shrink-0 w-full md:w-auto flex justify-center"
       >
         {mock}
       </motion.div>
@@ -1040,16 +1262,33 @@ export default function ChurchDeck() {
       style={{ background: C.bg }}
     >
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 pt-6 pb-2">
+      <div className="flex items-center justify-between gap-4 px-4 md:px-6 pt-4 md:pt-6 pb-2">
         <button
           onClick={() => setLocation("/dashboard")}
-          className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-100"
+          className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-100 shrink-0"
           style={{ color: C.sage, opacity: 0.75 }}
         >
           <X size={16} />
-          Close
+          <span className="hidden md:inline">Close</span>
         </button>
-        <div className="flex gap-1.5">
+
+        {/* Mobile: slim progress bar */}
+        <div
+          className="flex-1 h-0.5 rounded-full md:hidden"
+          style={{ background: "rgba(200,212,192,0.15)" }}
+        >
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: C.sage }}
+            animate={{
+              width: `${((index + 1) / SLIDES.length) * 100}%`,
+            }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </div>
+
+        {/* Desktop: dot row */}
+        <div className="hidden md:flex gap-1.5">
           {SLIDES.map((_, i) => (
             <button
               key={i}
@@ -1065,8 +1304,9 @@ export default function ChurchDeck() {
             />
           ))}
         </div>
+
         <span
-          className="text-xs tabular-nums"
+          className="text-xs tabular-nums shrink-0"
           style={{ color: C.sage, opacity: 0.6 }}
         >
           {index + 1} / {SLIDES.length}
@@ -1074,7 +1314,7 @@ export default function ChurchDeck() {
       </div>
 
       {/* Slide */}
-      <div className="flex-1 flex items-center justify-center px-8 md:px-16 py-8 overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center px-5 md:px-16 py-4 md:py-8 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
@@ -1090,7 +1330,7 @@ export default function ChurchDeck() {
       </div>
 
       {/* Nav */}
-      <div className="flex items-center justify-between px-8 pb-8 pt-2">
+      <div className="flex items-center justify-between px-5 md:px-8 pb-5 md:pb-8 pt-2">
         <button
           onClick={prev}
           disabled={index === 0}
