@@ -1249,7 +1249,7 @@ export default function MomentNew() {
           </div>
         )}
 
-        <div className={step === "template" ? "flex flex-col" : `bg-card rounded-[2rem] p-8 md:p-12 shadow-[var(--shadow-warm-lg)] border border-card-border min-h-[440px] flex flex-col`}>
+        <div className={step === "template" ? "flex flex-col" : `bg-card rounded-[2rem] p-5 md:p-10 shadow-[var(--shadow-warm-lg)] border min-h-[440px] flex flex-col overflow-y-auto`} style={step !== "template" ? { borderColor: "rgba(46,107,64,0.4)" } : undefined}>
           <AnimatePresence mode="wait">
             <motion.div key={step} variants={sv} initial="initial" animate="animate" exit="exit"
               transition={{ duration: 0.22 }} className="flex-1 flex flex-col">
@@ -1897,8 +1897,8 @@ export default function MomentNew() {
               {step === "invite" && (
                 <div className="space-y-5 flex-1">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-1">Who will tend this practice with you? 🌿</h2>
-                    <p className="text-sm text-muted-foreground">Practices are meant to be done together across distance. Add at least one person to begin.</p>
+                    <h2 className="text-xl font-semibold mb-1">Who will tend this practice with you? 🌿</h2>
+                    <p className="text-sm text-muted-foreground">Add at least one person to begin.</p>
                   </div>
                   <InviteStep type="practice" onPeopleChange={setInvitedPeople} />
                 </div>
