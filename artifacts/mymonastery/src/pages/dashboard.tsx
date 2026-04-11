@@ -34,6 +34,7 @@ type Moment = {
   templateType: string | null;
   intention: string;
   currentStreak: number;
+  myStreak: number;
   totalBlooms: number;
   state: string;
   memberCount: number;
@@ -468,7 +469,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const progressLabel = isLectio
     ? (m.lectioCurrentStageLabel ?? null)
     : (isIntercession || m.templateType === "fasting")
-      ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : "No Streak")
+      ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : m.myStreak > 0 ? `🙏 ${m.myStreak}` : null)
       : null;
 
   const openHref = (isLectio && m.momentToken && m.myUserToken)
