@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { format, parseISO, formatDistanceToNow, isPast, addDays, differenceInDays, isFuture } from "date-fns";
-import { CheckCircle2, XCircle, Settings, Sprout, CalendarCheck, RefreshCw, Flower2, Plus, UserPlus, X, Copy, Link2, Calendar } from "lucide-react";
+import { CheckCircle2, XCircle, Settings, Sprout, Flower2, Plus, UserPlus, X, Copy, Link2, Calendar } from "lucide-react";
 import { clsx } from "clsx";
 import {
   useGetRitual,
@@ -481,73 +481,19 @@ export default function RitualDetail() {
               className="space-y-6"
             >
               {/* ── Rhythm Health ──────────────────────────────────────── */}
-              {!timelineLoading && (
+              {/* Only show when there's no upcoming gathering AND no history —
+                  i.e. when the user truly has nothing scheduled. Once a
+                  gathering exists (pending, confirmed, or past) the empty
+                  state becomes a contradiction, so we hide the whole card. */}
+              {!timelineLoading && !timeline?.upcoming && (timeline?.past.length ?? 0) === 0 && (
                 <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.2)" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color: "rgba(200,212,192,0.4)" }}>
-                    Rhythm
+                  <p className="text-sm" style={{ color: "#8FAF96" }}>
+                    No gatherings logged yet. Start with one and build from there.
                   </p>
-
-                  {/* Last met */}
-                  {lastCompletedMeetup ? (
-                    <div className="mb-1">
-                      <p className="text-sm" style={{ color: "#F0EDE6" }}>
-                        Last met{" "}
-                        <span style={{ color: "#C8D4C0", fontWeight: 500 }}>
-                          {format(parseISO(lastCompletedMeetup.scheduledDate), "EEEE, MMMM d")}
-                        </span>
-                        <span style={{ color: "#8FAF96" }}>
-                          {" "}· {formatDistanceToNow(parseISO(lastCompletedMeetup.scheduledDate), { addSuffix: true })}
-                        </span>
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>
-                      No gatherings logged yet — the first one is the hardest to schedule.
-                    </p>
-                  )}
-
-                  {/* Next due / overdue */}
-                  {nextDueDate && (
-                    <p className="text-sm mt-0.5" style={{ color: isRhythmOverdue ? "#C47A65" : "rgba(143,175,150,0.7)" }}>
-                      {isRhythmOverdue
-                        ? `You're overdue — ${Math.abs(daysUntilDue!)} day${Math.abs(daysUntilDue!) !== 1 ? "s" : ""} past your ${ritual.frequency} rhythm`
-                        : daysUntilDue === 0
-                        ? "Next gathering due today"
-                        : `Next gathering due by ${format(nextDueDate, "MMMM d")}`}
-                    </p>
-                  )}
-                  {!nextDueDate && lastCompletedMeetup === null && (
+                  {!nextDueDate && (
                     <p className="text-sm mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
                       Commit to a {ritual.frequency} rhythm by scheduling your first gathering.
                     </p>
-                  )}
-
-                  {/* Gentle rhythm dots */}
-                  {rhythmDots.length > 0 && (
-                    <div className="flex items-center gap-2 mt-4">
-                      {rhythmDots.map((dot, i) => (
-                        <div
-                          key={i}
-                          className="rounded-full transition-all"
-                          style={{
-                            width: "10px", height: "10px",
-                            background: dot === "completed"
-                              ? "#4A9E84"
-                              : dot === "missed"
-                              ? "rgba(46,107,64,0.15)"
-                              : "transparent",
-                            border: dot === "upcoming"
-                              ? "1.5px solid rgba(46,107,64,0.35)"
-                              : dot === "missed"
-                              ? "1.5px solid rgba(46,107,64,0.12)"
-                              : "none",
-                          }}
-                        />
-                      ))}
-                      <span className="text-[10px] ml-1" style={{ color: "rgba(143,175,150,0.4)" }}>
-                        {rhythmDots.filter(d => d === "completed").length} of {rhythmDots.length} gathered
-                      </span>
-                    </div>
                   )}
                 </div>
               )}
@@ -599,87 +545,67 @@ export default function RitualDetail() {
                 <div className="h-40 rounded-2xl animate-pulse" style={{ background: "#0F2818" }} />
               ) : timeline?.upcoming ? (
                 <div className="rounded-2xl p-6" style={{ background: "#0F2818", border: timeline.confirmedTime ? "1px solid rgba(46,107,64,0.35)" : "1px dashed rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
-                  {/* Card header — always includes Reschedule */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <CalendarCheck size={16} className={timeline.confirmedTime ? "text-primary" : "text-muted-foreground"} />
-                      <span className={`text-sm font-semibold uppercase tracking-wide ${
-                        timeline.confirmedTime ? "text-primary" : "text-muted-foreground"
-                      }`}>
-                        {timeline.confirmedTime ? "Next Gathering" : "Finding a Time"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {calendarSynced && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <RefreshCw size={11} />
-                          Synced
-                        </span>
-                      )}
-                      <Link
-                        href={`/ritual/${ritualId}/schedule`}
-                        className="text-xs font-medium text-primary/80 hover:text-primary border border-primary/30 rounded-full px-3 py-1 transition-colors"
-                      >
-                        Reschedule
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* Status badge */}
-                  {timeline.confirmedTime ? (
-                    <div className="flex items-center gap-2 mb-4">
-                      {timeline.upcoming.googleCalendarEventId ? (
-                        <a
-                          href="https://calendar.google.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium hover:opacity-90 transition-colors" style={{ background: "rgba(45,94,63,0.2)", border: "1px solid rgba(45,94,63,0.4)", color: "#8FAF96" }}
-                        >
-                          <CheckCircle2 size={12} />
-                          Confirmed in Google Calendar
-                        </a>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ background: "rgba(45,94,63,0.2)", border: "1px solid rgba(45,94,63,0.4)", color: "#8FAF96" }}>
-                          <CheckCircle2 size={12} />
-                          Time confirmed
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ background: "rgba(196,122,101,0.1)", border: "1px solid rgba(196,122,101,0.3)", color: "#C47A65" }}>
-                        <RefreshCw size={11} />
-                        Waiting for everyone to respond
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Date & time */}
-                  <p className="text-2xl font-semibold mb-1" style={{ color: "#F0EDE6" }}>
-                    {format(parseISO(timeline.upcoming.scheduledDate), "EEEE, MMMM d")}
+                  {/* Date hero */}
+                  <p className="text-3xl font-semibold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {format(parseISO(timeline.upcoming.scheduledDate), "EEEE, d MMMM")}
                   </p>
-                  <p className="text-lg mb-2" style={{ color: "#C8D4C0" }}>
+                  <p className="text-lg mt-1" style={{ color: "#C8D4C0" }}>
                     {format(parseISO(timeline.upcoming.scheduledDate), "h:mm a")}
-                    {!upcomingIsPast && !timeline.confirmedTime && (
-                      <span className="text-sm ml-2 text-muted-foreground/50 italic"> · pending</span>
-                    )}
                     {!upcomingIsPast && timeline.confirmedTime && (
-                      <span className="text-sm ml-2 text-muted-foreground/60">
+                      <span className="text-sm ml-2" style={{ color: "rgba(143,175,150,0.55)" }}>
                         · {formatDistanceToNow(parseISO(timeline.upcoming.scheduledDate), { addSuffix: true })}
                       </span>
                     )}
                   </p>
                   {/* Per-meetup location (falls back to tradition-level for legacy data) */}
                   {(timeline.upcoming.location ?? timeline.location) && (
-                    <p className="text-sm mb-4" style={{ color: "#8FAF96" }}>
-                      📍 {timeline.upcoming.location ?? timeline.location}
+                    <p className="text-sm mt-2" style={{ color: "#8FAF96" }}>
+                      {timeline.upcoming.location ?? timeline.location}
                     </p>
+                  )}
+
+                  {/* Divider */}
+                  <div className="my-5 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+
+                  {/* Status as muted text */}
+                  {timeline.confirmedTime ? (
+                    <div className="mb-4">
+                      {timeline.upcoming.googleCalendarEventId ? (
+                        <a
+                          href="https://calendar.google.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm hover:underline"
+                          style={{ color: "#8FAF96" }}
+                        >
+                          Confirmed in Google Calendar
+                        </a>
+                      ) : (
+                        <p className="text-sm" style={{ color: "#8FAF96" }}>
+                          Time confirmed
+                        </p>
+                      )}
+                      {calendarSynced && (
+                        <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.55)" }}>
+                          Synced
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mb-4">
+                      <p className="text-sm" style={{ color: "#8FAF96" }}>
+                        Waiting for everyone to respond
+                      </p>
+                      <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.55)" }}>
+                        Members can respond via their invite link.
+                      </p>
+                    </div>
                   )}
 
                   {/* Bottom action zone */}
                   {upcomingIsPast ? (
-                    <div className="space-y-3 pt-3 border-t border-border/50">
-                      <p className="text-xs italic text-center" style={{ color: "rgba(143,175,150,0.6)" }}>
+                    <div className="space-y-3">
+                      <p className="text-sm" style={{ color: "#8FAF96" }}>
                         Did you gather?
                       </p>
                       <div className="flex gap-3">
@@ -698,11 +624,20 @@ export default function RitualDetail() {
                           {loggingId ? "Logging…" : "We gathered ✓"}
                         </button>
                       </div>
+                      <div className="pt-2 flex justify-end">
+                        <Link
+                          href={`/ritual/${ritualId}/schedule`}
+                          className="text-sm hover:underline"
+                          style={{ color: "#8FAF96" }}
+                        >
+                          Reschedule
+                        </Link>
+                      </div>
                     </div>
                   ) : timeline.confirmedTime ? (
                     /* Fixed future event — RSVP */
-                    <div className="pt-3 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground mb-2.5 font-medium">Will you be there?</p>
+                    <div>
+                      <p className="text-sm mb-2.5" style={{ color: "#8FAF96" }}>Will you be there?</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleRsvp("going")}
@@ -727,22 +662,36 @@ export default function RitualDetail() {
                         </button>
                       </div>
                       {rsvp && (
-                        <p className="text-xs text-muted-foreground/60 text-center mt-2 italic">
-                          {rsvp === "going" ? "See you there 🌱" : "Noted — we'll keep meeting."}
+                        <p className="text-xs text-center mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+                          {rsvp === "going" ? "See you there" : "Noted. We'll keep meeting."}
                         </p>
                       )}
+                      <div className="pt-4 flex justify-end">
+                        <Link
+                          href={`/ritual/${ritualId}/schedule`}
+                          className="text-sm hover:underline"
+                          style={{ color: "#8FAF96" }}
+                        >
+                          Reschedule
+                        </Link>
+                      </div>
                     </div>
                   ) : (
                     /* Flexible pending event */
-                    <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground italic">
-                        Members can respond via their invite link
-                      </p>
+                    <div className="flex items-center justify-end gap-5">
                       <Link
                         href={`/ritual/${ritualId}/schedule`}
-                        className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                        className="text-sm hover:underline"
+                        style={{ color: "#8FAF96" }}
                       >
-                        Change options →
+                        Change options
+                      </Link>
+                      <Link
+                        href={`/ritual/${ritualId}/schedule`}
+                        className="text-sm hover:underline"
+                        style={{ color: "#8FAF96" }}
+                      >
+                        Reschedule
                       </Link>
                     </div>
                   )}
@@ -875,14 +824,14 @@ export default function RitualDetail() {
               {/* Past gatherings */}
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <h2 className="font-semibold shrink-0 text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.4)" }}>
-                    History
+                  <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    history
                   </h2>
-                  <div className="flex-1 h-px" style={{ background: "rgba(46,107,64,0.35)" }} />
+                  <div className="flex-1 h-px" style={{ background: "rgba(200, 212, 192, 0.15)" }} />
                 </div>
                 {(!timeline || timeline.past.length === 0) ? (
-                  <p className="text-center py-8 italic" style={{ fontSize: "14px", color: "#8FAF96" }}>
-                    Your history will grow here. The first one is the hardest to schedule.
+                  <p className="text-center py-8" style={{ fontSize: "14px", color: "#8FAF96" }}>
+                    Your history will grow here.
                   </p>
                 ) : (
                   <div className="relative space-y-4">
@@ -905,7 +854,7 @@ export default function RitualDetail() {
                             <div className="flex items-start justify-between flex-wrap gap-2">
                               <div>
                                 <p className="font-medium text-sm" style={{ color: "#F0EDE6" }}>
-                                  {format(parseISO(meetup.scheduledDate), "EEEE, MMMM d")}
+                                  {format(parseISO(meetup.scheduledDate), "EEEE, d MMMM")}
                                 </p>
                                 <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
                                   {format(parseISO(meetup.scheduledDate), "h:mm a · yyyy")}
