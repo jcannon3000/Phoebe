@@ -147,7 +147,7 @@ export default function LetterInvitePage() {
         <p className="text-base mb-8 leading-relaxed" style={{ color: "#6b6460" }}>
           {isOneToOne
             ? `You've been invited to exchange letters — one every two weeks, alternating. You write, they respond, you write back. A conversation with room to breathe.`
-            : `You've been invited to share weekly updates in ${data.correspondenceName}. Once a week, everyone shares what's been happening. 50 words or more.`
+            : `You've been invited to join ${data.correspondenceName}. Once every two weeks, everyone shares what's been happening. 50 words or more.`
           }
         </p>
 

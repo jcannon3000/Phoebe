@@ -265,9 +265,10 @@ router.get(
         .where(eq(lettersTable.correspondenceId, cId));
 
       const now = new Date();
-      const periodStart = getPeriodStart(correspondence.startedAt, now);
-      const periodEnd = getPeriodEnd(periodStart);
-      const periodNumber = getPeriodNumber(correspondence.startedAt, now);
+      const periodDays = correspondence.groupType === "small_group" ? 14 : 7;
+      const periodStart = getPeriodStart(correspondence.startedAt, now, periodDays);
+      const periodEnd = getPeriodEnd(periodStart, periodDays);
+      const periodNumber = getPeriodNumber(correspondence.startedAt, now, periodDays);
       const periodStartStr = formatPeriodStartDateString(periodStart);
 
       // Unread count
@@ -332,7 +333,7 @@ router.get(
           periodLabel: formatPeriodLabel(periodStart, periodEnd),
           hasWrittenThisPeriod,
           membersWritten,
-          isLastThreeDays: isInLastThreeDays(periodStart, now),
+          isLastThreeDays: isInLastThreeDays(periodStart, now, periodDays),
         },
       });
     }
@@ -400,9 +401,10 @@ router.get(
       .orderBy(desc(lettersTable.sentAt));
 
     const now = new Date();
-    const periodStart = getPeriodStart(correspondence.startedAt, now);
-    const periodEnd = getPeriodEnd(periodStart);
-    const periodNumber = getPeriodNumber(correspondence.startedAt, now);
+    const periodDays = correspondence.groupType === "small_group" ? 14 : 7;
+    const periodStart = getPeriodStart(correspondence.startedAt, now, periodDays);
+    const periodEnd = getPeriodEnd(periodStart, periodDays);
+    const periodNumber = getPeriodNumber(correspondence.startedAt, now, periodDays);
     const periodStartStr = formatPeriodStartDateString(periodStart);
 
     const hasWrittenThisPeriod = letters.some(
@@ -435,7 +437,7 @@ router.get(
         periodLabel: formatPeriodLabel(periodStart, periodEnd),
         hasWrittenThisPeriod,
         membersWritten,
-        isLastThreeDays: isInLastThreeDays(periodStart, now),
+        isLastThreeDays: isInLastThreeDays(periodStart, now, periodDays),
       },
     });
   }),
@@ -517,9 +519,10 @@ router.post(
     }
 
     const now = new Date();
-    const periodStart = getPeriodStart(correspondence.startedAt, now);
+    const periodDays = correspondence.groupType === "small_group" ? 14 : 7;
+    const periodStart = getPeriodStart(correspondence.startedAt, now, periodDays);
     const periodStartStr = formatPeriodStartDateString(periodStart);
-    const periodNumber = getPeriodNumber(correspondence.startedAt, now);
+    const periodNumber = getPeriodNumber(correspondence.startedAt, now, periodDays);
 
     // One letter per period rule
     const existingLetters = await db
@@ -537,7 +540,7 @@ router.post(
       res.status(429).json({
         error: "already_written_this_period",
         message: "Your letter for this period has already been sent.",
-        nextPeriodStart: formatNextPeriodStart(correspondence.startedAt),
+        nextPeriodStart: formatNextPeriodStart(correspondence.startedAt, periodDays),
       });
       return;
     }
@@ -647,7 +650,8 @@ router.put(
 
     const { content } = req.body as { content: string };
     const now = new Date();
-    const periodStart = getPeriodStart(correspondence.startedAt, now);
+    const periodDays = correspondence.groupType === "small_group" ? 14 : 7;
+    const periodStart = getPeriodStart(correspondence.startedAt, now, periodDays);
     const periodStartStr = formatPeriodStartDateString(periodStart);
 
     await db
@@ -692,7 +696,8 @@ router.get(
     }
 
     const now = new Date();
-    const periodStart = getPeriodStart(correspondence.startedAt, now);
+    const periodDays = correspondence.groupType === "small_group" ? 14 : 7;
+    const periodStart = getPeriodStart(correspondence.startedAt, now, periodDays);
     const periodStartStr = formatPeriodStartDateString(periodStart);
 
     const [draft] = await db
@@ -897,12 +902,13 @@ router.post("/letters/send-reminders", async (req, res): Promise<void> => {
   let remindersSent = 0;
 
   for (const c of correspondences) {
-    const periodStart = getPeriodStart(c.startedAt, now);
+    const periodDays = c.groupType === "small_group" ? 14 : 7;
+    const periodStart = getPeriodStart(c.startedAt, now, periodDays);
 
-    if (!isInLastThreeDays(periodStart, now)) continue;
+    if (!isInLastThreeDays(periodStart, now, periodDays)) continue;
 
     const periodStartStr = formatPeriodStartDateString(periodStart);
-    const periodEnd = getPeriodEnd(periodStart);
+    const periodEnd = getPeriodEnd(periodStart, periodDays);
     const periodEndLabel = formatHumanDate(periodEnd);
 
     const members = await db

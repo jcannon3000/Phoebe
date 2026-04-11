@@ -128,10 +128,10 @@ export async function sendInvitationEmail(opts: {
         ${creatorName} invited you to ${correspondenceName}
       </h1>
       <p style="margin:0 0 8px;font-size:15px;color:#6b6460;line-height:1.7;">
-        ${creatorName} has invited you to share weekly updates in <em>${correspondenceName}</em> on Phoebe.
+        ${creatorName} has invited you to share in <em>${correspondenceName}</em> on Phoebe.
       </p>
       <p style="margin:0 0 8px;font-size:15px;color:#6b6460;line-height:1.7;">
-        Once a week, everyone shares what's been happening — 50 words or more. A simple practice of staying in each other's lives.
+        Once every two weeks, everyone shares what's been happening — 50 words or more. A simple practice of staying in each other's lives.
       </p>
       <p style="margin:0 0 28px;font-size:15px;color:#6b6460;line-height:1.7;">
         No account needed. 🌿
@@ -144,9 +144,9 @@ export async function sendInvitationEmail(opts: {
     const text = [
       `${creatorName} invited you to ${correspondenceName}`,
       "",
-      `${creatorName} has invited you to share weekly updates in ${correspondenceName} on Phoebe.`,
+      `${creatorName} has invited you to share in ${correspondenceName} on Phoebe.`,
       "",
-      "Once a week, everyone shares what's been happening — 50 words or more. A simple practice of staying in each other's lives.",
+      "Once every two weeks, everyone shares what's been happening — 50 words or more. A simple practice of staying in each other's lives.",
       "",
       "No account needed. 🌿",
       "",
@@ -214,7 +214,7 @@ export async function sendNewLetterEmail(opts: {
         ${authorName} shared an update
       </h1>
       <p style="margin:0 0 28px;font-size:15px;color:#6b6460;line-height:1.7;">
-        ${authorName} has shared their weekly update in <em>${correspondenceName}</em>.
+        ${authorName} has shared their update in <em>${correspondenceName}</em>.
       </p>
       ${linkButton(correspondenceUrl, "Read it here →")}
       <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
@@ -224,7 +224,7 @@ export async function sendNewLetterEmail(opts: {
     const text = [
       `${authorName} shared an update 🌿`,
       "",
-      `${authorName} has shared their weekly update in ${correspondenceName}.`,
+      `${authorName} has shared their update in ${correspondenceName}.`,
       "",
       "Read it here:",
       correspondenceUrl,
@@ -281,13 +281,13 @@ export async function sendReminderEmail(opts: {
   const { to, correspondenceName, writeUrl, periodEnd, otherPersonName, type = "one_to_one" } = opts;
 
   if (type === "group") {
-    const subject = "Share your update this week 🌿";
+    const subject = "Share your update 🌿";
     const html = wrapHtml(`
       <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2C1810;line-height:1.3;">
-        Share your update this week
+        Share your update
       </h1>
       <p style="margin:0 0 8px;font-size:15px;color:#6b6460;line-height:1.7;">
-        You haven't shared your weekly update in <em>${correspondenceName}</em> yet.
+        You haven't shared your update in <em>${correspondenceName}</em> yet.
       </p>
       <p style="margin:0 0 28px;font-size:15px;color:#6b6460;line-height:1.7;">
         50 words or more. What's been happening?
@@ -298,9 +298,9 @@ export async function sendReminderEmail(opts: {
       </p>
     `);
     const text = [
-      "Share your update this week 🌿",
+      "Share your update 🌿",
       "",
-      `You haven't shared your weekly update in ${correspondenceName} yet.`,
+      `You haven't shared your update in ${correspondenceName} yet.`,
       "",
       "50 words or more. What's been happening?",
       "",

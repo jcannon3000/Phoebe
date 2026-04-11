@@ -129,7 +129,7 @@ export default function LetterNew() {
           {step === 1 && (
             <motion.div key="step1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Who are you writing to? 📮
+                How do you want to stay close?
               </h1>
               <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
                 Choose how you want to correspond.
@@ -142,9 +142,9 @@ export default function LetterNew() {
                   style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
                   <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 A letter</p>
-                  <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Start a dialogue. Stay in touch.</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>One letter. One person. Once a week.</p>
                   <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                    Once a week, one letter, one person. A zoom out from the daily noise — not a text, not ambient. A real correspondence, with history. Monks have written this way for centuries. Sacred because it's the only one you send.
+                    A real correspondence, with history. Not a text, not a thread — a letter you sit down to write, and one you wait to receive. Monks have written this way for centuries.
                   </p>
                 </button>
 
@@ -153,10 +153,10 @@ export default function LetterNew() {
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
                   style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
-                  <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 Group updates</p>
-                  <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Keep a circle close.</p>
+                  <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 Round letter</p>
+                  <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Keep a circle rooted in each other's lives.</p>
                   <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                    3 to 15 people. Everyone shares once a week — 50 words or more. A thread that keeps a community rooted in each other's lives.
+                    3 to 15 people. Everyone shares once every two weeks — 50 words or more. Not a group chat. A letter that builds a shared history.
                   </p>
                 </button>
               </div>

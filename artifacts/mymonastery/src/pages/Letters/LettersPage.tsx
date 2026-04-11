@@ -134,7 +134,7 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
 
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-[11px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-              {isOneToOne ? `Letter ${currentPeriod.periodNumber}` : `Week ${currentPeriod.periodNumber}`}
+              {isOneToOne ? `Letter ${currentPeriod.periodNumber}` : `Round ${currentPeriod.periodNumber}`}
             </span>
             <span style={{ color: "rgba(200,212,192,0.3)" }}>·</span>
             {currentPeriod.hasWrittenThisPeriod ? (

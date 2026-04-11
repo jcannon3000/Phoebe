@@ -166,7 +166,7 @@ export default function CorrespondencePage() {
 
   const periodLabel = isOneToOne
     ? `Letter ${currentPeriod.periodNumber}`
-    : `Week ${currentPeriod.periodNumber}`;
+    : `Round ${currentPeriod.periodNumber}`;
 
   return (
     <Layout>
@@ -226,7 +226,7 @@ export default function CorrespondencePage() {
                 </Link>
               ) : currentPeriod.hasWrittenThisPeriod ? (
                 <p className="text-sm" style={{ color: "#8FAF96" }}>
-                  {isOneToOne ? "Your letter is sent. 🌿 Waiting for their response." : "Your update is in for this week. 🌿"}
+                  {isOneToOne ? "Your letter is sent. 🌿 Waiting for their response." : "Your update is in for this round. 🌿"}
                 </p>
               ) : isOneToOne ? (
                 <p className="text-sm" style={{ color: "#8FAF96" }}>

@@ -240,7 +240,7 @@ export default function WriteLetter() {
           <p className="text-[13px]" style={{ color: "#9a9390" }}>{correspondence?.name}</p>
           {correspondence?.currentPeriod && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
-              {isOneToOne ? `Letter ${correspondence.currentPeriod.periodNumber}` : `Week ${correspondence.currentPeriod.periodNumber}`}
+              {isOneToOne ? `Letter ${correspondence.currentPeriod.periodNumber}` : `Round ${correspondence.currentPeriod.periodNumber}`}
             </p>
           )}
         </div>
@@ -333,7 +333,7 @@ export default function WriteLetter() {
           onChange={(e) => { setContent(e.target.value); setConfirmSend(false); }}
           placeholder={isOneToOne
             ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
-            : `What's been happening this week?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
+            : `What's been happening these past two weeks?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
           }
           className="w-full min-h-[50vh] resize-none focus:outline-none placeholder:italic"
           style={{
