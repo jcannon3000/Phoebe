@@ -179,10 +179,17 @@ function buildSlides(data: LectioData): Slide[] {
   return slides;
 }
 
-// Where to land the user when they first open the page: the prompt slide of
-// the first unlocked stage they haven't submitted yet. Falls back to index 0
-// if everything is already done.
+// Where to land the user when they first open the page:
+//   - if they've already submitted every unlocked stage for the week, go
+//     straight to the summary slide
+//   - otherwise, open them on the prompt slide of the first unlocked stage
+//     they haven't finished yet
+//   - fall back to index 0 if nothing else matches
 function initialSlideIndex(data: LectioData, slides: Slide[]): number {
+  if (allStagesSubmitted(data)) {
+    const summaryIdx = slides.findIndex((sl) => sl.kind === "summary");
+    if (summaryIdx >= 0) return summaryIdx;
+  }
   for (const s of STAGE_ORDER) {
     if (data.stages[s].unlocked && !data.stages[s].userHasSubmitted) {
       const idx = slides.findIndex((sl) => sl.stage === s && sl.kind === "prompt");
@@ -240,6 +247,29 @@ export default function LectioPage() {
   const editMutation = useMutation({
     mutationFn: (body: { name?: string; intention?: string }) =>
       apiRequest("PATCH", `/api/moments/${momentId}`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+    },
+  });
+  // Creator-only: invite a new member to the lectio circle.
+  const inviteMutation = useMutation({
+    mutationFn: (body: { name: string; email: string }) =>
+      apiRequest("POST", `/api/moments/${momentId}/invite`, {
+        people: [body],
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+    },
+  });
+  // Creator-only: remove a member by email.
+  const removeMemberMutation = useMutation({
+    mutationFn: (email: string) =>
+      apiRequest(
+        "DELETE",
+        `/api/moments/${momentId}/members/${encodeURIComponent(email)}`,
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
       qc.invalidateQueries({ queryKey: ["/api/moments"] });
@@ -404,12 +434,25 @@ export default function LectioPage() {
         </div>
       </header>
 
-      {/* Slide content — sits directly on the dark background, no card. */}
+      {/* Slide content — sits directly on the dark background, no card.
+          For the reading slide we drop the bottom padding and let the
+          scrollable text extend behind the floating nav with a fade mask. */}
       <main
-        className="flex-1 flex items-center justify-center px-5 py-6"
-        style={{ paddingBottom: 112 /* room for floating nav pill */ }}
+        className={`flex-1 flex px-5 py-6 ${
+          current.kind === "reading"
+            ? "items-stretch justify-center"
+            : "items-center justify-center"
+        }`}
+        style={{ paddingBottom: current.kind === "reading" ? 0 : 112 }}
       >
-        <div className="max-w-2xl w-full">
+        <div
+          className="max-w-2xl w-full"
+          style={
+            current.kind === "reading"
+              ? { display: "flex", flexDirection: "column", minHeight: 0 }
+              : undefined
+          }
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={`${current.stage}-${current.kind}`}
@@ -417,6 +460,11 @@ export default function LectioPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
+              style={
+                current.kind === "reading"
+                  ? { display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }
+                  : undefined
+              }
             >
               {current.kind === "prompt" && current.stage && (
                 <PromptSlide stage={current.stage} />
@@ -557,6 +605,14 @@ export default function LectioPage() {
             onClose={() => setMenuOpen(false)}
             onSaveEdit={(name, intention) => editMutation.mutate({ name, intention })}
             editPending={editMutation.isPending}
+            onInvite={(name, email) => inviteMutation.mutate({ name, email })}
+            invitePending={inviteMutation.isPending}
+            onRemoveMember={(email) => removeMemberMutation.mutate(email)}
+            removePendingEmail={
+              removeMemberMutation.isPending
+                ? (removeMemberMutation.variables as string | undefined) ?? null
+                : null
+            }
             onLeave={() => archiveMutation.mutate()}
             leavePending={archiveMutation.isPending}
             onDelete={() => deleteMutation.mutate()}
@@ -613,15 +669,26 @@ function PromptSlide({ stage }: { stage: Stage }) {
 }
 
 function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
+  // The reading slide is tall: title + verse sit at the top, and the gospel
+  // text fills the remaining height with an internal scroll. Text scrolls
+  // behind the floating nav and fades out behind it, hinting that there's
+  // more to read.
   return (
-    <div className="py-2">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+      }}
+    >
       <p
         style={{
           color: FAINT_GREEN,
           fontSize: 11,
           letterSpacing: "0.22em",
           textTransform: "uppercase",
-          marginBottom: 18,
+          marginBottom: 6,
           textAlign: "center",
         }}
       >
@@ -632,25 +699,33 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           color: MUTED_GREEN,
           fontSize: 13,
           letterSpacing: "0.04em",
-          marginBottom: 22,
+          marginBottom: 14,
           textAlign: "center",
         }}
       >
         {reading.gospelReference}
       </p>
-      {/* The gospel is often long — scroll inside this container so the page
-          (and the floating nav) stay put. */}
       <div
         style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
           color: WARM_TEXT,
           fontSize: 18,
           lineHeight: 1.8,
           fontFamily: SPACE_GROTESK,
           whiteSpace: "pre-wrap",
-          maxHeight: "min(58vh, 520px)",
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
           paddingRight: 4,
+          // Extra bottom padding so the final line can scroll above the
+          // floating nav pill.
+          paddingBottom: 140,
+          // Fade the text behind the nav so it's obvious there's more
+          // to scroll on mobile.
+          WebkitMaskImage:
+            "linear-gradient(to bottom, #000 calc(100% - 160px), transparent 100%)",
+          maskImage:
+            "linear-gradient(to bottom, #000 calc(100% - 160px), transparent 100%)",
         }}
       >
         {reading.gospelText}
@@ -1014,6 +1089,10 @@ function SettingsMenu({
   onClose,
   onSaveEdit,
   editPending,
+  onInvite,
+  invitePending,
+  onRemoveMember,
+  removePendingEmail,
   onLeave,
   leavePending,
   onDelete,
@@ -1023,6 +1102,10 @@ function SettingsMenu({
   onClose: () => void;
   onSaveEdit: (name: string, intention: string) => void;
   editPending: boolean;
+  onInvite: (name: string, email: string) => void;
+  invitePending: boolean;
+  onRemoveMember: (email: string) => void;
+  removePendingEmail: string | null;
   onLeave: () => void;
   leavePending: boolean;
   onDelete: () => void;
@@ -1032,8 +1115,14 @@ function SettingsMenu({
   const [name, setName] = useState(moment.name);
   const [intention, setIntention] = useState(moment.intention ?? "");
   const [confirming, setConfirming] = useState<null | "leave" | "delete">(null);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [confirmRemoveEmail, setConfirmRemoveEmail] = useState<string | null>(null);
 
   const dirty = name.trim() !== moment.name || intention.trim() !== (moment.intention ?? "");
+  const canSubmitInvite =
+    inviteName.trim().length > 0 && /.+@.+\..+/.test(inviteEmail.trim());
 
   return (
     <motion.div
@@ -1174,18 +1263,218 @@ function SettingsMenu({
           )}
         </div>
 
-        {/* Members list */}
+        {/* Members list — creators can add/remove, non-creators just see who's here. */}
         <div style={{ marginBottom: 22 }}>
           <label style={{ display: "block", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, marginBottom: 8 }}>
             Members
           </label>
-          <div className="space-y-1.5">
-            {members.map((m) => (
-              <div key={m.email} style={{ color: m.isYou ? ACCENT : MUTED_GREEN, fontSize: 14 }}>
-                {m.name}{m.isYou ? " · you" : ""}
-              </div>
-            ))}
+          <div className="space-y-1">
+            {members.map((m) => {
+              const isRemoving = removePendingEmail === m.email;
+              const isConfirming = confirmRemoveEmail === m.email;
+              return (
+                <div
+                  key={m.email}
+                  className="flex items-center justify-between gap-3"
+                  style={{
+                    padding: "6px 0",
+                    borderBottom: `1px solid ${BORDER}`,
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ color: m.isYou ? ACCENT : WARM_TEXT, fontSize: 14, fontWeight: 500 }}>
+                      {m.name}{m.isYou ? " · you" : ""}
+                    </div>
+                    <div
+                      style={{
+                        color: FAINT_GREEN,
+                        fontSize: 12,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {m.email}
+                    </div>
+                  </div>
+                  {isCreator && !m.isYou && (
+                    isConfirming ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onRemoveMember(m.email);
+                            setConfirmRemoveEmail(null);
+                          }}
+                          disabled={isRemoving}
+                          style={{
+                            background: "#8A2A2A",
+                            color: WARM_TEXT,
+                            border: "none",
+                            borderRadius: 999,
+                            fontFamily: SPACE_GROTESK,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: "4px 12px",
+                            cursor: isRemoving ? "wait" : "pointer",
+                          }}
+                        >
+                          {isRemoving ? "Removing…" : "Remove"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmRemoveEmail(null)}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: FAINT_GREEN,
+                            fontFamily: SPACE_GROTESK,
+                            fontSize: 11,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmRemoveEmail(m.email)}
+                        aria-label={`Remove ${m.name}`}
+                        style={{
+                          background: "transparent",
+                          border: `1px solid ${BORDER}`,
+                          color: FAINT_GREEN,
+                          borderRadius: 999,
+                          fontFamily: SPACE_GROTESK,
+                          fontSize: 11,
+                          padding: "4px 10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )
+                  )}
+                </div>
+              );
+            })}
           </div>
+
+          {isCreator && (
+            <div style={{ marginTop: 12 }}>
+              {showInviteForm ? (
+                <div
+                  style={{
+                    background: "rgba(0,0,0,0.25)",
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 12,
+                    padding: 12,
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={inviteName}
+                    onChange={(e) => setInviteName(e.target.value)}
+                    placeholder="Name"
+                    style={{
+                      width: "100%",
+                      background: "rgba(0,0,0,0.3)",
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: 8,
+                      color: WARM_TEXT,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 14,
+                      padding: "8px 10px",
+                      outline: "none",
+                      marginBottom: 8,
+                    }}
+                  />
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="Email"
+                    style={{
+                      width: "100%",
+                      background: "rgba(0,0,0,0.3)",
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: 8,
+                      color: WARM_TEXT,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 14,
+                      padding: "8px 10px",
+                      outline: "none",
+                      marginBottom: 10,
+                    }}
+                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!canSubmitInvite) return;
+                        onInvite(inviteName.trim(), inviteEmail.trim());
+                        setInviteName("");
+                        setInviteEmail("");
+                        setShowInviteForm(false);
+                      }}
+                      disabled={!canSubmitInvite || invitePending}
+                      className="rounded-full"
+                      style={{
+                        background: BUTTON_BG,
+                        color: WARM_TEXT,
+                        fontFamily: SPACE_GROTESK,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: "6px 14px",
+                        border: "none",
+                        cursor: canSubmitInvite && !invitePending ? "pointer" : "not-allowed",
+                        opacity: canSubmitInvite && !invitePending ? 1 : 0.5,
+                      }}
+                    >
+                      {invitePending ? "Inviting…" : "Send invite"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowInviteForm(false);
+                        setInviteName("");
+                        setInviteEmail("");
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: FAINT_GREEN,
+                        fontFamily: SPACE_GROTESK,
+                        fontSize: 12,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowInviteForm(true)}
+                  className="rounded-full"
+                  style={{
+                    background: "transparent",
+                    border: `1px dashed ${BORDER}`,
+                    color: ACCENT,
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: "6px 14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  + Invite someone
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Danger zone */}
