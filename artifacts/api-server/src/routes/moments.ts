@@ -363,7 +363,7 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
   if (startDate < new Date()) startDate.setDate(startDate.getDate() + 1);
   const endDate = new Date(startDate.getTime() + 60 * 60_000);
 
-  const organizerName = organizer.name ?? organizer.email ?? "Eleanor";
+  const organizerName = organizer.name ?? organizer.email ?? "Phoebe";
   const creatorFirst = organizerName.split(" ")[0];
   const tradMemberNames = uniqueMembers.map(m => m.name.split(" ")[0]).join(", ");
   const tradGoalSessions = commitmentSessionsGoal ?? goalDays ?? null;
@@ -387,12 +387,11 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
 
     const description = [
       `${creatorFirst} invited you to practice together.`,
-      `Open in Eleanor → ${shortLink}`,
+      `Open in Phoebe → ${shortLink}`,
       "",
       ...(intention ? [`"${intention}"`, ""] : []),
       `When: ${tradFreqLabel} at ${tradTimeLabel} · Starting ${tradStartDate}`,
       `Who: ${tradMemberNames}`,
-      ...(tradGoalSessions ? [`Goal: ${tradGoalSessions} sessions together 🌱`] : []),
     ].join("\n");
 
     const eventId = await createCalendarEvent(sessionUserId, {
@@ -650,11 +649,11 @@ router.post("/moments", async (req, res): Promise<void> => {
     return minStr === "00" ? `${hour12} ${period}` : `${hour12}:${minStr} ${period}`;
   }
   const calTimeLabel = formatTimeForTitle(hhEff, mmEff);
-  const creatorFirstName = (organizer.name ?? organizer.email ?? "Eleanor").split(" ")[0];
+  const creatorFirstName = (organizer.name ?? organizer.email ?? "Phoebe").split(" ")[0];
   function buildEventTitle(): string {
     if (templateType === "morning-prayer") return `✨ Morning Prayer with ${creatorFirstName}`;
     if (templateType === "evening-prayer") return `🌙 Evening Prayer with ${creatorFirstName}`;
-    if (templateType === "intercession") return `🙏 ${name} — today`;
+    if (templateType === "intercession") return `Praying ${name}`;
     if (templateType === "contemplative") return `🕯️ ${name}`;
     if (templateType === "fasting") return `✦ ${name}`;
     if (templateType === "listening") return `🎵 Listening to ${listeningArtist ?? listeningTitle ?? name} together`;
@@ -678,38 +677,35 @@ router.post("/moments", async (req, res): Promise<void> => {
     if (templateType === "intercession") {
       const lines: string[] = [];
       lines.push(`${invFirst} invited you to pray with them.`);
-      lines.push(`Open in Eleanor → ${shortLink}`);
+      lines.push(`Open in Phoebe → ${shortLink}`);
       lines.push("");
       if (intention) {
-        lines.push(`${invFirst} is praying for ${intention}${goalSessions ? ` — ${goalSessions} days together` : ""}. They want you alongside them.`);
+        lines.push(`${invFirst} is praying for ${intention}. They want you alongside them.`);
         lines.push("");
       }
       lines.push(`When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`);
-      if (goalSessions) lines.push(`Goal: ${goalSessions} days together 🌱`);
       return lines.join("\n");
     }
 
     if (templateType === "morning-prayer") {
       return [
         `${invFirst} invited you to pray the Daily Office together.`,
-        `Open in Eleanor → ${shortLink}`,
+        `Open in Phoebe → ${shortLink}`,
         "",
         `Each morning, ${invFirst} will be praying Morning Prayer from the Book of Common Prayer. Wherever you are, at the same time of day — knowing the other is doing the same.`,
         "",
         `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
-        ...(goalSessions ? [`Goal: ${goalSessions} days together 🌱`] : []),
       ].join("\n");
     }
 
     if (templateType === "evening-prayer") {
       return [
         `${invFirst} invited you to pray the Daily Office together.`,
-        `Open in Eleanor → ${shortLink}`,
+        `Open in Phoebe → ${shortLink}`,
         "",
         `Each evening, ${invFirst} will be praying Evening Prayer from the Book of Common Prayer. Wherever you are, at the same time of day — knowing the other is doing the same.`,
         "",
         `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
-        ...(goalSessions ? [`Goal: ${goalSessions} days together 🌱`] : []),
       ].join("\n");
     }
 
@@ -717,12 +713,11 @@ router.post("/moments", async (req, res): Promise<void> => {
       const durStr = contemplativeDurationMinutes ? `${contemplativeDurationMinutes} minutes of silence together` : "A shared time of silence";
       return [
         `${invFirst} invited you to sit in silence together.`,
-        `Open in Eleanor → ${shortLink}`,
+        `Open in Phoebe → ${shortLink}`,
         "",
         `${durStr}. Wherever you are, at the same time of day — knowing the other is present too.`,
         "",
         `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
-        ...(goalSessions ? [`Goal: ${goalSessions} sessions together 🌱`] : []),
       ].join("\n");
     }
 
@@ -732,12 +727,9 @@ router.post("/moments", async (req, res): Promise<void> => {
         : listeningType === "album"
           ? `${listeningTitle ?? "an album"} by ${listeningArtist ?? "an artist"}`
           : `${listeningTitle ?? "a song"} by ${listeningArtist ?? "an artist"}`;
-      const headline = goalSessions
-        ? `We're listening to ${what} together — ${goalSessions} days, building a streak.`
-        : `We're listening to ${what} together.`;
       return [
-        headline,
-        `Open in Eleanor → ${shortLink}`,
+        `We're listening to ${what} together.`,
+        `Open in Phoebe → ${shortLink}`,
         "",
         "Though you'll be in different places, you'll each listen — knowing the other is too. That's the whole thing.",
         "",
@@ -748,11 +740,10 @@ router.post("/moments", async (req, res): Promise<void> => {
     // Default / custom practice
     return [
       `${invFirst} invited you to practice together.`,
-      `Open in Eleanor → ${shortLink}`,
+      `Open in Phoebe → ${shortLink}`,
       "",
       ...(intention ? [`"${intention}"`, ""] : []),
       `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
-      ...(goalSessions ? [`Goal: ${goalSessions} sessions together 🌱`] : []),
     ].join("\n");
   }
 
@@ -820,18 +811,17 @@ router.post("/moments", async (req, res): Promise<void> => {
 
     return [
       `${invFirst} invited you to fast together.`,
-      `Open in Eleanor → ${shortLink}`,
+      `Open in Phoebe → ${shortLink}`,
       "",
       "A shared fast as a discipline — knowing someone else is keeping it alongside you changes everything.",
       ...(fastingIntention ? ["", `Why we fast: ${fastingIntention}`] : []),
       "",
       `When: ${fastFreqLabel} · Starting ${humanStartDate()}`,
-      ...(goalSessions ? [`Goal: ${goalSessions} fasts together 🌱`] : []),
     ].join("\n");
   }
 
   // ─── Create ONE group calendar event with all members ──────────────────────
-  const organizerName = organizer.name ?? organizer.email ?? "Eleanor";
+  const organizerName = organizer.name ?? organizer.email ?? "Phoebe";
   const attendeeEmails = insertedTokens.map(t => t.email); // All members get invites from scheduler
   let gcalCreated = false;
 
@@ -847,7 +837,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     const orgToken = insertedTokens.find(t => t.email === organizer.email);
     const orgDescription = orgToken
       ? buildDescription(orgToken.userToken, organizer.name ?? "You", organizerName, true)
-      : `Open Eleanor → ${getInviteBaseUrl()}/moments/${moment.id}`;
+      : `Open Phoebe → ${getInviteBaseUrl()}/moments/${moment.id}`;
 
     if (isFasting) {
       const fastingDateStr = getFastingStartDateStr();
@@ -1400,10 +1390,10 @@ router.post("/moments/:id/invite", async (req, res): Promise<void> => {
           const eventId = await createCalendarEvent(organizer.id, {
             summary: `🌿 ${moment.name}`,
             description: [
-              `${moment.name} practice on Eleanor.`,
+              `${moment.name} practice on Phoebe.`,
               ...(moment.intention ? [`"${moment.intention}"`] : []),
               "",
-              `Open Eleanor → ${getInviteBaseUrl()}/moments/${momentId}`,
+              `Open Phoebe → ${getInviteBaseUrl()}/moments/${momentId}`,
             ].join("\n"),
             startDate,
             endDate,
@@ -1637,7 +1627,7 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
   const organizerToken = allMembers.length > 0
     ? allMembers.reduce((min, m) => m.id < min.id ? m : min, allMembers[0])
     : null;
-  const inviterName = organizerToken?.name ?? organizerToken?.email?.split("@")[0] ?? "Eleanor";
+  const inviterName = organizerToken?.name ?? organizerToken?.email?.split("@")[0] ?? "Phoebe";
 
   res.json({
     moment: {
@@ -1933,12 +1923,12 @@ router.post("/moments/:id/personal-time", async (req, res): Promise<void> => {
       const newId = await createCalendarEvent(sessionUserId, {
         summary: `🔔 ${moment.name}`,
         description: [
-          `${moment.name} practice on Eleanor.`,
+          `${moment.name} practice on Phoebe.`,
           ...(moment.intention ? [`"${moment.intention}"`] : []),
           "",
           `${allMembers.length} ${allMembers.length === 1 ? "person" : "people"} practicing together.`,
           "",
-          `Open Eleanor → ${getInviteBaseUrl()}/moments/${momentId}`,
+          `Open Phoebe → ${getInviteBaseUrl()}/moments/${momentId}`,
         ].join("\n"),
         startDate: new Date(),
         startLocalStr,
@@ -2079,7 +2069,7 @@ router.post("/moments/:momentToken/join", async (req, res): Promise<void> => {
           const calEventId = await createCalendarEvent(joinSessionUserId, {
             summary: `🔔 ${moment.name}`,
             description: [
-              `Your ${moment.name} practice on Eleanor.`,
+              `Your ${moment.name} practice on Phoebe.`,
               ...(moment.intention ? [`"${moment.intention}"`] : []),
               "",
               "Tap to log:",
@@ -2206,12 +2196,12 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
       const newEventId = await createCalendarEvent(sessionUserId, {
         summary: `🔔 ${updated.name}`,
         description: [
-          `${updated.name} practice on Eleanor.`,
+          `${updated.name} practice on Phoebe.`,
           ...(updated.intention ? [`"${updated.intention}"`] : []),
           "",
           `${allTokens.length} ${allTokens.length === 1 ? "person" : "people"} practicing together.`,
           "",
-          `Open Eleanor → ${getInviteBaseUrl()}/moments/${momentId}`,
+          `Open Phoebe → ${getInviteBaseUrl()}/moments/${momentId}`,
         ].join("\n"),
         startDate: new Date(),
         startLocalStr,
@@ -2621,7 +2611,7 @@ router.post("/moments/:id/refresh-calendar", async (req, res): Promise<void> => 
     newSummary = `🎵 Listening to ${listeningArtist ?? listeningTitle ?? moment.name} together`;
     newDescription = [
       headline,
-      `Open in Eleanor → ${shortLink}`,
+      `Open in Phoebe → ${shortLink}`,
       "",
       "Though you'll be in different places, you'll each listen — knowing the other is too. That's the whole thing.",
       "",
@@ -2632,11 +2622,10 @@ router.post("/moments/:id/refresh-calendar", async (req, res): Promise<void> => 
     newSummary = `🌱 ${moment.name}`;
     newDescription = [
       `${invFirst} invited you to practice together.`,
-      `Open in Eleanor → ${shortLink}`,
+      `Open in Phoebe → ${shortLink}`,
       "",
       ...(moment.intention ? [`"${moment.intention}"`, ""] : []),
       `When: ${freqLabel} at ${calTimeLabel} · Starting ${todayStr}`,
-      ...(goalSessions ? [`Goal: ${goalSessions} sessions together 🌱`] : []),
     ].join("\n");
   }
 
@@ -2698,10 +2687,10 @@ router.post("/moments/:id/restore-calendar", async (req, res): Promise<void> => 
   const eventId = await createCalendarEvent(sessionUserId, {
     summary: `🌿 ${moment.name}`,
     description: [
-      `${moment.name} practice on Eleanor — restored.`,
+      `${moment.name} practice on Phoebe — restored.`,
       moment.intention ? `"${moment.intention}"` : "",
       "",
-      `Open Eleanor → ${getInviteBaseUrl()}/moments/${momentId}`,
+      `Open Phoebe → ${getInviteBaseUrl()}/moments/${momentId}`,
     ].filter(Boolean).join("\n"),
     startDate,
     endDate,
