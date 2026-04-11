@@ -713,10 +713,10 @@ function PromptSlide({ stage }: { stage: Stage }) {
 }
 
 function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
-  // The reading slide is tall: title + verse sit at the top, and the gospel
-  // text fills the remaining height with an internal scroll. Text scrolls
-  // behind the floating nav and fades out behind it, hinting that there's
-  // more to read.
+  // The reading slide is tall: title + verse sit near the top, and the
+  // gospel text fills the remaining height with an internal scroll. Text
+  // scrolls behind the floating nav and visibly fades out behind it,
+  // hinting that there's more to read.
   return (
     <div
       style={{
@@ -724,6 +724,9 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
+        // Push the title + verse down so they don't sit right under the
+        // header. This is the "move the title down a little" ask.
+        paddingTop: 48,
       }}
     >
       <p
@@ -743,7 +746,7 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           color: MUTED_GREEN,
           fontSize: 13,
           letterSpacing: "0.04em",
-          marginBottom: 14,
+          marginBottom: 18,
           textAlign: "center",
         }}
       >
@@ -763,13 +766,14 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           paddingRight: 4,
           // Extra bottom padding so the final line can scroll above the
           // floating nav pill.
-          paddingBottom: 140,
-          // Fade the text behind the nav so it's obvious there's more
-          // to scroll on mobile.
+          paddingBottom: 200,
+          // A deeper, two-stop fade so the text clearly darkens as it
+          // slides behind the nav pill — by the time it's under the nav,
+          // the text is basically gone.
           WebkitMaskImage:
-            "linear-gradient(to bottom, #000 calc(100% - 160px), transparent 100%)",
+            "linear-gradient(to bottom, #000 0%, #000 calc(100% - 260px), rgba(0,0,0,0.35) calc(100% - 140px), transparent calc(100% - 40px))",
           maskImage:
-            "linear-gradient(to bottom, #000 calc(100% - 160px), transparent 100%)",
+            "linear-gradient(to bottom, #000 0%, #000 calc(100% - 260px), rgba(0,0,0,0.35) calc(100% - 140px), transparent calc(100% - 40px))",
         }}
       >
         {reading.gospelText}
