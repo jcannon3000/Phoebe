@@ -525,16 +525,16 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>
         </div>
         {progressLabel ? (
-          <span className="text-[10px] font-semibold uppercase shrink-0 mt-0.5" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+          <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
             {progressLabel}
           </span>
         ) : m.currentStreak > 0 ? (
-          <span className="text-[10px] font-semibold uppercase shrink-0 mt-0.5" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+          <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
             {m.currentStreak} day streak
           </span>
         ) : null}
       </div>
-      <div className="flex items-center justify-between gap-4 mt-0.5 -mr-2">
+      <div className="flex items-center justify-between gap-4 mt-px -mr-2">
         <div className="min-w-0 flex-1">
           {shouldPulse && !isLectio ? (
             subtitle ? (
