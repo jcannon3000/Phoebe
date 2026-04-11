@@ -579,7 +579,12 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
       lines.push("──────────────────────");
       lines.push("");
 
-      if (proposedTimes.length > 0) {
+      if (proposedTimes.length === 1) {
+        lines.push(`When: ${formatProposedTime(proposedTimes[0])}`);
+        lines.push("");
+        lines.push("──────────────────────");
+        lines.push("");
+      } else if (proposedTimes.length > 1) {
         lines.push("Proposed times:");
         lines.push("");
         for (let i = 0; i < proposedTimes.length; i++) {

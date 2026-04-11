@@ -57,6 +57,7 @@ export async function migrate() {
         scheduled_date TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'planned',
         notes TEXT,
+        location TEXT,
         google_calendar_event_id TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
@@ -272,6 +273,11 @@ export async function migrate() {
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS has_fasting BOOLEAN NOT NULL DEFAULT false`);
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS intercession_intention TEXT`);
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS fasting_description TEXT`);
+
+    // Per-meetup location (each scheduled gathering can be in a different place).
+    // Added to the schema after the table was first created, so existing
+    // deployments need this ALTER to unblock meetup selects.
+    await run(client, `ALTER TABLE meetups ADD COLUMN IF NOT EXISTS location TEXT`);
 
     // Fix missing ON DELETE CASCADE on existing FK constraints (safe to re-run)
     await run(client, `ALTER TABLE rituals DROP CONSTRAINT IF EXISTS rituals_owner_id_fkey`);
