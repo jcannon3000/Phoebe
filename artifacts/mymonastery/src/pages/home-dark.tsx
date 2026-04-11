@@ -940,16 +940,20 @@ export default function HomeDark() {
             <DarkPrayerSection />
 
             {/* Footer */}
-            <p className="text-center text-xs mt-10 mb-2 tracking-wide" style={{ color: C.footer }}>
+            <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: C.footer }}>
               Inspired by Monastic Wisdom
             </p>
-            <div className="text-center mb-4">
+            <div className="flex justify-center mb-4">
               <button
                 onClick={() => setLocation("/church-deck")}
-                className="text-xs tracking-wide underline-offset-4 hover:underline"
-                style={{ color: C.footer }}
+                className="px-5 py-2 rounded-full text-xs font-medium tracking-wide transition-opacity hover:opacity-100"
+                style={{
+                  background: "rgba(200,212,192,0.06)",
+                  border: "1px solid rgba(200,212,192,0.18)",
+                  color: "rgba(200,212,192,0.7)",
+                }}
               >
-                For church leaders →
+                About
               </button>
             </div>
 

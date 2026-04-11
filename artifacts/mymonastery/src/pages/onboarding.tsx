@@ -243,18 +243,9 @@ export default function Onboarding() {
 
           </motion.div>
 
-          <p className="text-center text-xs mt-8 mb-2 tracking-wide" style={{ color: "rgba(143,175,150,0.5)" }}>
+          <p className="text-center text-xs mt-8 tracking-wide" style={{ color: "rgba(143,175,150,0.5)" }}>
             Inspired by Monastic Wisdom
           </p>
-          <div className="text-center">
-            <button
-              onClick={() => setLocation("/church-deck")}
-              className="text-xs tracking-wide underline-offset-4 hover:underline"
-              style={{ color: "rgba(143,175,150,0.5)" }}
-            >
-              For church leaders →
-            </button>
-          </div>
         </div>
       </main>
     </div>
