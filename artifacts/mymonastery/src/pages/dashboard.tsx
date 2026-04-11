@@ -282,20 +282,21 @@ function LetterCard({
   const shouldPulse = needsWrite || hasUnread;
 
   let statusText = "";
-  let statusColor = "#8FAF96";
   if (hasUnread) {
     statusText = `${otherMembers} wrote 🌿`;
-    statusColor = "#F0EDE6";
   } else if (iWrote && !theyWrote) {
     statusText = isOneToOne ? `Waiting for ${otherMembers}` : `Your update is in 🌿`;
-    statusColor = "#8FAF96";
   } else if (needsWrite) {
     statusText = isOneToOne ? `Your turn to write 🖋️` : `Share your update 🖋️`;
-    statusColor = "#F0EDE6";
   } else {
     statusText = "All written 🌿";
-    statusColor = "#8FAF96";
   }
+
+  const lastPostmark = c.recentPostmarks?.[0] ?? null;
+  const sentDateLine = lastPostmark?.sentAt
+    ? `Sent ${format(parseISO(lastPostmark.sentAt), "MMM d")}`
+    : null;
+  const flapLines = [statusText, ...(sentDateLine ? [sentDateLine] : [])].filter(Boolean);
 
   return (
     <BarCard key={`${keyPrefix}-${c.id}`} href={`/letters/${c.id}`} pulse={shouldPulse} category="letters">
@@ -313,7 +314,7 @@ function LetterCard({
         </span>
       </div>
       <div className="flex items-center justify-between gap-2 mt-1.5">
-        <p className="text-sm font-medium" style={{ color: statusColor }}>{statusText}</p>
+        <SplitFlapLine lines={flapLines} />
         {needsWrite && (
           <Link href={`/letters/${c.id}/write`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
