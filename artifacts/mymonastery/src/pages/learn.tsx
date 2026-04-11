@@ -5,7 +5,6 @@ import { Layout } from "@/components/layout";
 import ImprintSlideshow, {
   correspondenceSlides,
   gatheringSlides,
-  communitySlides,
   type ImprintSlide,
 } from "@/components/ImprintSlideshow";
 
@@ -22,18 +21,8 @@ interface LearnTopic {
 
 const TOPICS: LearnTopic[] = [
   {
-    id: "community",
-    title: "On community",
-    emoji: "🏘️",
-    blurb: "Why rhythm, repetition, and being known matter more than events.",
-    slides: communitySlides,
-    accent: "#6FAF85",
-    background: "rgba(111,175,133,0.10)",
-    border: "rgba(111,175,133,0.30)",
-  },
-  {
     id: "gatherings",
-    title: "On gatherings",
+    title: "Recurring gatherings",
     emoji: "🤝",
     blurb: "Small groups, showing up, and the difference between being around people and being known by them.",
     slides: gatheringSlides,

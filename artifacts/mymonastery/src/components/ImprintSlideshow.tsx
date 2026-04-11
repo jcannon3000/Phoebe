@@ -37,49 +37,18 @@ export const correspondenceSlides: ImprintSlide[] = [
   },
 ];
 
-export const communitySlides: ImprintSlide[] = [
-  {
-    headline: "Community is not an event. It is a rhythm.",
-    body: "The thing a parish or a neighborhood or a house-church has that nothing else does is repetition — the same people, the same practices, on the same week, for years. Phoebe is built to help that rhythm survive contact with modern life.",
-  },
-  {
-    headline: "We are formed by what we return to.",
-    body: "The prayers you pray again and again. The letters you write to the same person every other week. The table you sit around every Sunday evening. These are not filler — they are the things that actually shape who you are and who your community is becoming.",
-  },
-  {
-    headline: "A community is a web, not a list.",
-    body: "It is not the number of people you know. It is the number of people who know each other because of you. Phoebe tries to make that web visible — so you can see where the relationships are thickening and where they need tending.",
-  },
-  {
-    headline: "The digital is for the sake of the in-person.",
-    body: "Phoebe is not a replacement for showing up. It is scaffolding — reminders, rhythms, shared history — so that when you are together, you are actually together, and when you are apart, no one drifts away unnoticed.",
-  },
-  {
-    headline: "Start small. Stay faithful. Watch it grow.",
-    body: "One letter. One practice. One gathering on a rhythm you can actually keep. That is how a community is planted. The roots take years, but they will hold.",
-  },
-];
-
 export const gatheringSlides: ImprintSlide[] = [
   {
     headline: "Showing up is the practice.",
-    body: "Not once. Repeatedly. In the same room, with the same people, on a rhythm you committed to together. The early church didn't build community through events. They built it through showing up, again and again, until the relationships had weight.",
+    body: "Repeatedly. In the same room, with the same people, on a rhythm you committed to together. The early church built community by returning to each other, again and again, until the relationships had weight.",
   },
   {
-    headline: "We are wired for the small group.",
-    body: "Sebastian Junger spent years studying why soldiers miss war. His answer wasn't the combat. It was the tribe — the small group of people who depended on each other completely. Modern life dismantles that. We are surrounded by people and known by almost none of them. A tradition is how you rebuild it.",
+    headline: "To be known takes time and repetition.",
+    body: "Vivek Murthy found that loneliness has almost nothing to do with how many people are in your life. It has everything to do with whether any of them truly know you. A tradition is a practice of being known, slowly, over time, in the same room.",
   },
   {
-    headline: "There is a difference between being around people and being known by them.",
-    body: "Vivek Murthy found that loneliness has almost nothing to do with how many people are in your life. It has everything to do with whether any of them really know you. A tradition is not a social event. It is a practice of being known — slowly, over time, in the same room.",
-  },
-  {
-    headline: "You cannot build a support network in a crisis.",
-    body: "Most parishes only activate connection when something has already gone wrong. A death. A diagnosis. A divorce. By then it is too late to build the network — you are asking strangers to show up for each other. The tradition you start today is the network that will be there when it is needed. Every time you show up, the roots go deeper.",
-  },
-  {
-    headline: "This is a covenant, not a calendar event.",
-    body: "You are not scheduling a meetup. You are committing to a rhythm — weekly, fortnightly, monthly — and saying: we will keep showing up for each other. Phoebe handles the logistics. Finds the time, sends the invite, reschedules gracefully when life interrupts. Your only job is to show up.",
+    headline: "Most tools give you a calendar invite. Phoebe gives you a commitment.",
+    body: "You set an intention to meet — weekly, fortnightly, monthly. Then Phoebe works around everyone's actual schedule to find the times that make it possible. The goal is the gathering. The calendar is just how you get there.",
   },
 ];
 
