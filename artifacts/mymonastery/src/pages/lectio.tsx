@@ -413,7 +413,8 @@ export default function LectioPage() {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        height: "100vh",
+        overflow: "hidden",
         background: BG,
         color: WARM_TEXT,
         display: "flex",
@@ -421,10 +422,10 @@ export default function LectioPage() {
         fontFamily: SPACE_GROTESK,
       }}
     >
-      {/* Header: fixed to the top of the viewport so content can scroll
-          behind it (paired with the top fade gradient below). Back on the
-          left, Menu in the middle, stage label / gospel ref on the right.
-          z-index 50 matches the bottom nav. */}
+      {/* Header: fixed to the top of the viewport so it stays visible while
+          the gospel card scrolls internally. Back on the left, Menu in the
+          middle, stage label / gospel ref on the right. z-index 50 matches
+          the bottom nav. */}
       <header
         style={{
           position: "fixed",
@@ -484,51 +485,12 @@ export default function LectioPage() {
         </div>
       </header>
 
-      {/* Fixed title + verse reference for the reading slide. Sits just below
-          the header and hovers above the scrolling gospel text so only the
-          text itself moves. */}
-      {current.kind === "reading" && (
-        <div
-          aria-hidden
-          style={{
-            position: "fixed",
-            top: 68,
-            left: 0,
-            right: 0,
-            zIndex: 50,
-            pointerEvents: "none",
-            textAlign: "center",
-            padding: "0 20px",
-          }}
-        >
-          <p
-            style={{
-              color: FAINT_GREEN,
-              fontSize: 11,
-              letterSpacing: "0.22em",
-              textTransform: "uppercase",
-              marginBottom: 6,
-            }}
-          >
-            {data.reading.sundayName}
-          </p>
-          <p
-            style={{
-              color: MUTED_GREEN,
-              fontSize: 13,
-              letterSpacing: "0.04em",
-            }}
-          >
-            {data.reading.gospelReference}
-          </p>
-        </div>
-      )}
-
-      {/* Slide content — sits directly on the dark background, no card.
-          For the reading + all-responses slides we drop the bottom padding
-          and let the scrollable area extend behind the floating nav with
-          a fade overlay. Both slides share the same stretch + flex-column
-          plumbing so the inner div can fill the viewport. */}
+      {/* Slide content. Main is flex-1 inside a fixed-height viewport so it
+          takes all the space between the top of the window and the bottom.
+          Full-height slides (reading, all-responses) get top/bottom padding
+          so they fit cleanly between the fixed header and the fixed nav —
+          and their scrolling happens inside their own card, not on the
+          page. Other slides center their content. */}
       {(() => {
         const isFullHeightSlide =
           current.kind === "reading" || current.kind === "all-responses";
@@ -540,8 +502,9 @@ export default function LectioPage() {
             : "items-center justify-center"
         }`}
         style={{
-          paddingTop: isFullHeightSlide ? 0 : 96,
-          paddingBottom: isFullHeightSlide ? 0 : 112,
+          minHeight: 0,
+          paddingTop: isFullHeightSlide ? 80 : 96,
+          paddingBottom: isFullHeightSlide ? 104 : 112,
         }}
       >
         <div
@@ -822,14 +785,11 @@ function PromptSlide({ stage }: { stage: Stage }) {
 }
 
 function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
-  // The reading slide's title + verse reference are rendered at the page
-  // level as a fixed overlay (see the parent component). This component
-  // only owns the scrollable gospel text, which flows underneath the fixed
-  // header, title, and bottom nav. A CSS mask is applied to the scroll
-  // container so only the TEXT fades (top + bottom) as it passes behind
-  // the hovering chrome — the background itself stays a flat dark green.
-  const textFadeMask =
-    "linear-gradient(to bottom, transparent 0px, #000 180px, #000 calc(100% - 140px), transparent calc(100% - 40px))";
+  // The gospel is displayed as a bordered card that fills the available
+  // vertical space between the fixed header and the fixed nav. The title +
+  // verse reference sit at the top of the card; the gospel text itself is
+  // the only thing that scrolls (inside the card), so the page chrome
+  // stays put and the page never scrolls.
   return (
     <div
       style={{
@@ -837,8 +797,41 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
+        background: "rgba(19,44,29,0.55)",
+        border: `1px solid ${BORDER}`,
+        borderRadius: 18,
+        boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
+        overflow: "hidden",
       }}
     >
+      <div
+        style={{
+          padding: "22px 24px 14px",
+          borderBottom: `1px solid ${BORDER}`,
+          textAlign: "center",
+        }}
+      >
+        <p
+          style={{
+            color: FAINT_GREEN,
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          {reading.sundayName}
+        </p>
+        <p
+          style={{
+            color: MUTED_GREEN,
+            fontSize: 13,
+            letterSpacing: "0.04em",
+          }}
+        >
+          {reading.gospelReference}
+        </p>
+      </div>
       <div
         style={{
           flex: 1,
@@ -850,15 +843,7 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           lineHeight: 1.8,
           fontFamily: SPACE_GROTESK,
           whiteSpace: "pre-wrap",
-          paddingRight: 4,
-          paddingTop: 160,
-          paddingBottom: 220,
-          maskImage: textFadeMask,
-          WebkitMaskImage: textFadeMask,
-          maskRepeat: "no-repeat",
-          WebkitMaskRepeat: "no-repeat",
-          maskSize: "100% 100%",
-          WebkitMaskSize: "100% 100%",
+          padding: "22px 24px 26px",
         }}
       >
         {reading.gospelText}
@@ -1331,8 +1316,6 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
     };
   });
 
-  const textFadeMask =
-    "linear-gradient(to bottom, transparent 0px, #000 120px, #000 calc(100% - 140px), transparent calc(100% - 40px))";
   return (
     <div
       style={{
@@ -1340,6 +1323,11 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
+        background: "rgba(19,44,29,0.55)",
+        border: `1px solid ${BORDER}`,
+        borderRadius: 18,
+        boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
+        overflow: "hidden",
       }}
     >
       <div
@@ -1348,14 +1336,7 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
           minHeight: 0,
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
-          paddingTop: 110,
-          paddingBottom: 220,
-          maskImage: textFadeMask,
-          WebkitMaskImage: textFadeMask,
-          maskRepeat: "no-repeat",
-          WebkitMaskRepeat: "no-repeat",
-          maskSize: "100% 100%",
-          WebkitMaskSize: "100% 100%",
+          padding: "22px 24px 26px",
         }}
       >
         <p
