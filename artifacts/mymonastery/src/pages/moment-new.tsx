@@ -830,7 +830,11 @@ export default function MomentNew() {
     setLoggingType("reflection");
     setReflectionPrompt("What is on your heart today?");
     setIntercessionMode(null);
-    setStep("name");
+    // Skip the "What is this practice called?" step — custom intercession
+    // uses the default name "Intercession 🙏🏽" from the template prefill.
+    // Go straight to the combined intention + prayer screen so the flow
+    // mirrors the BCP intercession path.
+    setStep("intention");
   }
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
@@ -839,9 +843,11 @@ export default function MomentNew() {
   const STEP_ORDER: StepId[] = isBcpTemplate
     ? BCP_STEP_ORDER
     : templateId === "intercession"
-      ? selectedBcpPrayer !== null
-        ? ["template", "intercession", "intention", "schedule", "duration", "invite"]
-        : ["template", "intercession", "name", "intention", "logging", "schedule", "duration", "invite"]
+      // Custom and BCP intercessions now share the same step order. We
+      // drop the "name" step (name defaults from template prefill) and
+      // the "logging" step (reflectionPrompt defaults from prefill too)
+      // so custom flows through the same minimal path as BCP.
+      ? ["template", "intercession", "intention", "schedule", "duration", "invite"]
     : templateId === "contemplative"
       ? ["template", "contemplative-duration", "name", "intention", "logging", "schedule", "invite"]
     : templateId === "fasting"
@@ -913,7 +919,12 @@ export default function MomentNew() {
     if (step === "name") return name.trim().length >= 2;
     if (step === "intention") {
       if (selectedBcpPrayer) return true; // intention is optional when a BCP prayer is selected
-      if (templateId === "intercession" && intercessionSource === "custom") return intention.trim().length >= 3;
+      if (templateId === "intercession" && intercessionSource === "custom") {
+        // Custom intercession requires BOTH a named intention and a
+        // prayer written out — the group prays the prayer together, so
+        // leaving it blank would leave everyone with nothing to pray.
+        return intention.trim().length >= 3 && intercessionFullText.trim().length >= 4;
+      }
       return intention.trim().length >= 4;
     }
     if (step === "logging") {
@@ -1685,26 +1696,28 @@ export default function MomentNew() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest text-[#5C7A5F]">Your intention</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Your intention</label>
                     <input autoFocus type="text" value={intention}
                       onChange={e => setIntention(e.target.value.slice(0, 120))}
                       placeholder="e.g. End to the war in Iran, My mother's health, Our parish community..."
-                      className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors text-base placeholder:text-muted-foreground/40"
+                      className="w-full px-4 py-3 rounded-2xl text-base focus:outline-none transition-colors"
+                      style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
                     {intention.length > 80 && (
-                      <p className="text-right text-xs text-muted-foreground/50">{intention.length}/120</p>
+                      <p className="text-right text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>{intention.length}/120</p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest text-[#5C7A5F]">A prayer (optional)</label>
-                    <p className="text-xs text-muted-foreground/60">
-                      Write your own prayer, or leave this blank and Eleanor will display just your intention.
+                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Write a prayer for everyone to pray</label>
+                    <p className="text-xs" style={{ color: "rgba(143,175,150,0.6)" }}>
+                      This is the prayer your group will pray together each time they open their link.
                     </p>
                     <textarea value={intercessionFullText}
                       onChange={e => setIntercessionFullText(e.target.value)}
-                      rows={4}
+                      rows={5}
                       placeholder="Write a prayer for your group to pray together..."
-                      className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors resize-none text-base placeholder:text-muted-foreground/40 font-serif"
+                      className="w-full px-4 py-3 rounded-2xl resize-none text-base leading-relaxed focus:outline-none transition-colors font-serif italic"
+                      style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
                   </div>
                 </div>
