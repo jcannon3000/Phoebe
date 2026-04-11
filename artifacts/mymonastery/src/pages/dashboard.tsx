@@ -613,7 +613,19 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 
   // Keep the emoji on one side only. Template emoji goes on the left; strip
   // any trailing emoji that's already in the stored name.
-  const displayName = stripTrailingEmoji(m.name);
+  // For custom intercessions (no meaningful topic), use the intention as the
+  // title — same logic as the prayer page ("Prayers for my niece" not "Intercession").
+  const displayName = (() => {
+    if (isIntercession && m.intention) {
+      const norm2 = (s: string) => s.trim().toLowerCase();
+      const hasMeaningfulTopic =
+        m.intercessionTopic &&
+        norm2(m.intercessionTopic) !== norm2(m.name) &&
+        norm2(m.intercessionTopic) !== norm2(m.intention);
+      if (!hasMeaningfulTopic) return m.intention;
+    }
+    return stripTrailingEmoji(m.name);
+  })();
 
   let subtitle = "";
   if (memberNames) subtitle = `with ${memberNames}`;
