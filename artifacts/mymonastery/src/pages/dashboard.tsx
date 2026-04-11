@@ -588,11 +588,12 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       ? `${m.todayPostCount} of ${m.memberCount} have prayed today`
       : "";
   const intentionLine = safeIntention ? `For ${safeIntention}` : "";
-  const nextPrayerLine = nextWindow ? `Next prayer ${nextWindow.toLowerCase()}` : "";
+  const freqLabel = m.frequency === "daily" ? "Daily" : m.frequency === "monthly" ? "Monthly" : "Weekly";
+  const nextPrayerLine = nextWindow ? `${freqLabel} · Next prayer ${nextWindow.toLowerCase()}` : "";
   const todayCountLine = !nextWindow && m.todayPostCount > 0 ? `${m.todayPostCount} today 🌿` : "";
   const mobileStatusLine = nextPrayerLine || todayCountLine;
   const desktopStatusText = nextWindow
-    ? `Next Prayer ${nextWindow}`
+    ? `${freqLabel} · Next Prayer ${nextWindow}`
     : !nextWindow && m.todayPostCount > 0
     ? `${m.todayPostCount} today 🌿`
     : "";
