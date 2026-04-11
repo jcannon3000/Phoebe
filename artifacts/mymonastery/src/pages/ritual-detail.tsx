@@ -435,6 +435,7 @@ export default function RitualDetail() {
         <div className="flex gap-1 p-1 rounded-full mb-5" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
           {[
             { id: "timeline", label: "🤝 Gatherings" },
+            { id: "moments", label: "🙏 Practices" },
             { id: "settings", label: "About" },
           ].map((tab) => (
             <button
@@ -639,10 +640,10 @@ export default function RitualDetail() {
                   )}
 
                   {/* Date & time */}
-                  <p className="text-2xl font-semibold text-foreground mb-1">
+                  <p className="text-2xl font-semibold mb-1" style={{ color: "#F0EDE6" }}>
                     {format(parseISO(timeline.upcoming.scheduledDate), "EEEE, MMMM d")}
                   </p>
-                  <p className="text-lg text-muted-foreground mb-4">
+                  <p className="text-lg mb-4" style={{ color: "#C8D4C0" }}>
                     {format(parseISO(timeline.upcoming.scheduledDate), "h:mm a")}
                     {!upcomingIsPast && !timeline.confirmedTime && (
                       <span className="text-sm ml-2 text-muted-foreground/50 italic"> · pending</span>

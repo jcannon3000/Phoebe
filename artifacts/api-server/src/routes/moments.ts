@@ -676,8 +676,8 @@ router.post("/moments", async (req, res): Promise<void> => {
 
     if (templateType === "intercession") {
       const lines: string[] = [];
-      lines.push(`${invFirst} invited you to pray with them.`);
-      lines.push(`Open in Phoebe → ${shortLink}`);
+      lines.push(`🙏 ${invFirst} invited you to pray with them.`);
+      lines.push(shortLink);
       lines.push("");
       if (intention) {
         lines.push(`${invFirst} is praying for ${intention}. They want you alongside them.`);
@@ -689,8 +689,8 @@ router.post("/moments", async (req, res): Promise<void> => {
 
     if (templateType === "morning-prayer") {
       return [
-        `${invFirst} invited you to pray the Daily Office together.`,
-        `Open in Phoebe → ${shortLink}`,
+        `✨ ${invFirst} invited you to pray the Daily Office together.`,
+        shortLink,
         "",
         `Each morning, ${invFirst} will be praying Morning Prayer from the Book of Common Prayer. Wherever you are, at the same time of day — knowing the other is doing the same.`,
         "",
@@ -700,8 +700,8 @@ router.post("/moments", async (req, res): Promise<void> => {
 
     if (templateType === "evening-prayer") {
       return [
-        `${invFirst} invited you to pray the Daily Office together.`,
-        `Open in Phoebe → ${shortLink}`,
+        `🌙 ${invFirst} invited you to pray the Daily Office together.`,
+        shortLink,
         "",
         `Each evening, ${invFirst} will be praying Evening Prayer from the Book of Common Prayer. Wherever you are, at the same time of day — knowing the other is doing the same.`,
         "",
@@ -712,8 +712,8 @@ router.post("/moments", async (req, res): Promise<void> => {
     if (templateType === "contemplative") {
       const durStr = contemplativeDurationMinutes ? `${contemplativeDurationMinutes} minutes of silence together` : "A shared time of silence";
       return [
-        `${invFirst} invited you to sit in silence together.`,
-        `Open in Phoebe → ${shortLink}`,
+        `🕯️ ${invFirst} invited you to sit in silence together.`,
+        shortLink,
         "",
         `${durStr}. Wherever you are, at the same time of day — knowing the other is present too.`,
         "",
@@ -728,8 +728,8 @@ router.post("/moments", async (req, res): Promise<void> => {
           ? `${listeningTitle ?? "an album"} by ${listeningArtist ?? "an artist"}`
           : `${listeningTitle ?? "a song"} by ${listeningArtist ?? "an artist"}`;
       return [
-        `We're listening to ${what} together.`,
-        `Open in Phoebe → ${shortLink}`,
+        `🎵 ${invFirst} invited you to listen to ${what} together.`,
+        shortLink,
         "",
         "Though you'll be in different places, you'll each listen — knowing the other is too. That's the whole thing.",
         "",
@@ -737,10 +737,21 @@ router.post("/moments", async (req, res): Promise<void> => {
       ].join("\n");
     }
 
+    if (templateType === "lectio-divina") {
+      return [
+        `📜 ${invFirst} invited you to pray Lectio Divina together.`,
+        shortLink,
+        "",
+        `On Mondays, Wednesdays, and Fridays, sit with the week's gospel reading. Slowly, attentively — letting the word read you.`,
+        "",
+        `When: Mon · Wed · Fri · Starting ${humanStartDate()}`,
+      ].join("\n");
+    }
+
     // Default / custom practice
     return [
-      `${invFirst} invited you to practice together.`,
-      `Open in Phoebe → ${shortLink}`,
+      `🌱 ${invFirst} invited you to practice together.`,
+      shortLink,
       "",
       ...(intention ? [`"${intention}"`, ""] : []),
       `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
@@ -810,8 +821,8 @@ router.post("/moments", async (req, res): Promise<void> => {
     const fastFreqLabel = fastingFrequency === "weekly" ? "Weekly" : fastingFrequency === "monthly" ? "Monthly" : "Fasting day";
 
     return [
-      `${invFirst} invited you to fast together.`,
-      `Open in Phoebe → ${shortLink}`,
+      `🌿 ${invFirst} invited you to fast together.`,
+      shortLink,
       "",
       "A shared fast as a discipline — knowing someone else is keeping it alongside you changes everything.",
       ...(fastingIntention ? ["", `Why we fast: ${fastingIntention}`] : []),
@@ -1016,6 +1027,25 @@ router.get("/moments", async (req, res): Promise<void> => {
         const allPosts = await db.select().from(momentPostsTable).where(eq(momentPostsTable.momentId, m.id));
         const myPostDates = new Set(allPosts.filter(p => p.userToken === myToken?.userToken).map(p => p.windowDate));
         const todayILogged = myPostDates.has(todayDate);
+
+        // Back-fill missing past window records so the streak walk below is accurate.
+        // evaluateWindow only fires when a window closes or bloom threshold is hit;
+        // posts made to still-open windows leave no window row, breaking the streak.
+        {
+          const existingWindowDates = new Set(windows.map(w => w.windowDate));
+          const allPastPostDates = [...new Set(
+            allPosts.filter(p => p.windowDate !== "seed" && p.windowDate < todayDate).map(p => p.windowDate)
+          )];
+          const missingDates = allPastPostDates.filter(d => !existingWindowDates.has(d));
+          if (missingDates.length > 0) {
+            for (const d of missingDates) {
+              try { await evaluateWindow(m.id, d); } catch { /* non-fatal */ }
+            }
+            const refetched = await db.select().from(momentWindowsTable).where(eq(momentWindowsTable.momentId, m.id));
+            windows.splice(0, windows.length, ...refetched);
+          }
+        }
+
         let myStreak = todayILogged ? 1 : 0;
         const sortedWindows = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate));
         for (const w of sortedWindows) {
