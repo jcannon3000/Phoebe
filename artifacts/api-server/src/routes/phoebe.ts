@@ -27,6 +27,7 @@ import {
   sendLetterCalendarEvent,
   sendLetterWindowOpenCalendarEvent,
   sendLetterOverdueCalendarEvent,
+  sendLetterInvitationCalendarEvent,
   cancelLetterCalendarEvent,
 } from "../lib/letterCalendar";
 import { getInviteBaseUrl } from "../lib/urls";
@@ -172,13 +173,21 @@ router.post(
         name: m.name || null,
         inviteToken,
       });
+      const inviteUrl = `${frontendUrl}/letters/invite/${inviteToken}`;
       sendInvitationEmail({
         to: m.email,
         creatorName: auth.name,
         correspondenceName: name,
-        inviteUrl: `${frontendUrl}/letters/invite/${inviteToken}`,
+        inviteUrl,
         type,
       }).catch((err) => console.error("Invitation email failed:", err));
+      sendLetterInvitationCalendarEvent({
+        recipientEmail: m.email,
+        creatorName: auth.name,
+        correspondenceName: name,
+        inviteUrl,
+        type,
+      }).catch((err) => console.error("Invitation calendar event failed:", err));
     }
 
     const allMembers = await db

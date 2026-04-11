@@ -1,5 +1,70 @@
 import { createAllDayCalendarEvent, deleteCalendarEvent } from "./calendar";
-import { formatHumanDate, formatPeriodStartDateString } from "./letterPeriods";
+import { formatHumanDate, formatPeriodStartDateString, getNextFridayOnOrAfter } from "./letterPeriods";
+
+/**
+ * Invitation calendar event — dropped onto the invitee's calendar on the
+ * next Friday so they see it before the first writing window opens. Acts
+ * as the primary "you've been invited" surface; the invitation email is a
+ * supplement.
+ */
+export async function sendLetterInvitationCalendarEvent(params: {
+  recipientEmail: string;
+  creatorName: string;
+  correspondenceName: string;
+  inviteUrl: string;
+  type: "one_to_one" | "group";
+}): Promise<string | null> {
+  const { recipientEmail, creatorName, correspondenceName, inviteUrl, type } = params;
+  const dateStr = formatPeriodStartDateString(getNextFridayOnOrAfter(new Date()));
+  const creatorFirst = creatorName.split(" ")[0];
+
+  const summary = type === "group"
+    ? `📮 ${creatorName} invited you to ${correspondenceName}`
+    : `📮 ${creatorName} invited you to exchange letters`;
+
+  const description = type === "group"
+    ? [
+        `${creatorName} has invited you to share in ${correspondenceName} on Phoebe.`,
+        "",
+        `Once every two weeks, everyone shares what's been happening — 50 words or more. A simple practice of staying in each other's lives.`,
+        "",
+        `Accept the invitation →`,
+        inviteUrl,
+        "",
+        `No account needed. 🌿`,
+        "",
+        `──────────────────`,
+        `Be together with Phoebe.`,
+      ].join("\n")
+    : [
+        `${creatorName} has invited you to exchange letters on Phoebe.`,
+        "",
+        `Once every two weeks, you each write one letter — sharing what's been happening, what's on your mind, what matters. You write one week. They respond the next. A conversation with room to breathe.`,
+        "",
+        `Accept ${creatorFirst}'s invitation →`,
+        inviteUrl,
+        "",
+        `No account needed. Just your words. 🌿`,
+        "",
+        `──────────────────`,
+        `Be together with Phoebe.`,
+      ].join("\n");
+
+  try {
+    const eventId = await createAllDayCalendarEvent(0, {
+      summary,
+      description,
+      dateStr,
+      attendees: [recipientEmail],
+      reminders: [{ method: "popup", minutes: 0 }],
+      transparency: "transparent",
+    });
+    return eventId;
+  } catch (err) {
+    console.error("Letter invitation calendar event failed:", err);
+    return null;
+  }
+}
 
 export async function sendLetterCalendarEvent(params: {
   recipientEmail: string;
