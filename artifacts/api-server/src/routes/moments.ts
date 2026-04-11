@@ -688,7 +688,7 @@ router.post("/moments", async (req, res): Promise<void> => {
 
     if (templateType === "intercession") {
       const lines: string[] = [];
-      lines.push(`🙏 ${invFirst} invited you to pray with them.`);
+      lines.push(`🙏🏽 ${invFirst} invited you to pray with them.`);
       lines.push(shortLink);
       lines.push("");
       if (intention) {

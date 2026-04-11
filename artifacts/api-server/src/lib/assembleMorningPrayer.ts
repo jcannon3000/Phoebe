@@ -128,7 +128,7 @@ const CANTICLE_EMOJI: Record<string, string> = {
   canticle_11: "✨",
   canticle_12: "🌍",
   canticle_13: "🌟",
-  canticle_14: "🙏",
+  canticle_14: "🙏🏽",
   canticle_16: "🌅",
   canticle_18: "🕊️",
   canticle_19: "🌸",
@@ -357,7 +357,7 @@ export async function assembleMorningPrayer(
 
   // SLIDE 3: Confession
   slides.push(
-    slide(id(), "confession", "🙏", "CONFESSION OF SIN", getText("confession_text"), {
+    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", getText("confession_text"), {
       bcpReference: "BCP p. 79",
       metadata: { prompt: "Pause. Bring what you carry. 🌿" },
     }),
@@ -501,7 +501,7 @@ export async function assembleMorningPrayer(
 
   // Lord's Prayer
   slides.push(
-    slide(id(), "lords_prayer", "🙏", "THE LORD'S PRAYER", getText("lords_prayer_contemporary"), {
+    slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", getText("lords_prayer_contemporary"), {
       bcpReference: "BCP p. 97",
     }),
   );
@@ -550,7 +550,7 @@ export async function assembleMorningPrayer(
 
   // Closing
   slides.push(
-    slide(id(), "closing", "🙏", "", "Morning Prayer", {
+    slide(id(), "closing", "🙏🏽", "", "Morning Prayer", {
       metadata: {
         date: date.toISOString(),
       },

@@ -58,7 +58,7 @@ THANKSGIVING_PSALMS.forEach(n => (PSALM_EMOJI[n] = "🌾"));
 const CANTICLE_EMOJI: Record<string, string> = {
   canticle_8: "🌊", canticle_9: "💧", canticle_10: "🔍",
   canticle_11: "✨", canticle_12: "🌍", canticle_13: "🌟",
-  canticle_14: "🙏", canticle_15: "🌸", canticle_16: "🌅",
+  canticle_14: "🙏🏽", canticle_15: "🌸", canticle_16: "🌅",
   canticle_17: "🕊️", canticle_18: "🕊️", canticle_19: "🌸",
   canticle_20: "✨", canticle_21: "🌟",
 };
@@ -175,7 +175,7 @@ export async function assembleEveningPrayer(
 
   // 3. Confession
   slides.push(
-    slide(id(), "confession", "🙏", "CONFESSION OF SIN", getText("confession_text"), {
+    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", getText("confession_text"), {
       bcpReference: "BCP p. 116",
       metadata: { prompt: "Pause. Bring what you carry. 🌿" },
     }),
@@ -296,7 +296,7 @@ export async function assembleEveningPrayer(
   // 13. The Lord's Prayer
   const lpData = getTextData("lords_prayer_contemporary");
   slides.push(
-    slide(id(), "lords_prayer", "🙏", lpData.title.toUpperCase(), lpData.content, {
+    slide(id(), "lords_prayer", "🙏🏽", lpData.title.toUpperCase(), lpData.content, {
       bcpReference: lpData.bcpReference,
     }),
   );

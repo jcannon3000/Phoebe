@@ -23,7 +23,7 @@ const TOPICS: LearnTopic[] = [
   {
     id: "gatherings",
     title: "Recurring gatherings",
-    emoji: "🤝",
+    emoji: "🤝🏽",
     blurb: "Small groups, showing up, and the difference between being around people and being known by them.",
     slides: gatheringSlides,
     accent: "#7AAF7D",

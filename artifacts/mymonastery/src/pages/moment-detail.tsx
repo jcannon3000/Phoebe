@@ -413,7 +413,7 @@ export default function MomentDetail() {
 
   // Label for action button — context-sensitive
   const actionLabel = isIntercession
-    ? "Pray 🙏"
+    ? "Pray 🙏🏽"
     : isListening
       ? "Listen 🎵"
       : isMorningPrayer
@@ -545,7 +545,7 @@ export default function MomentDetail() {
             )}
             {moment.fastingIntention && (
               <div className="bg-[#FFF8EC] border border-[#C17F24]/25 rounded-2xl px-4 py-3 flex items-start gap-3">
-                <span className="text-xl mt-0.5">🙏</span>
+                <span className="text-xl mt-0.5">🙏🏽</span>
                 <div>
                   <p className="text-xs font-semibold text-[#C17F24] uppercase tracking-wider mb-0.5">Intention</p>
                   <p className="text-sm text-[#8B5E1A]">{moment.fastingIntention}</p>
@@ -586,7 +586,7 @@ export default function MomentDetail() {
                 {isMorningPrayer
                   ? "📖 Morning Prayer · Today's office"
                   : isIntercession
-                    ? "🙏 Open today · Pray together"
+                    ? "🙏🏽 Open today · Pray together"
                     : isListening
                       ? "🎵 Listening today"
                       : "🌿 Open today"}
@@ -624,7 +624,7 @@ export default function MomentDetail() {
             {isIntercession && postUrl ? (
               <Link href={postUrl}>
                 <span className="shrink-0 text-sm font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-4 py-2 hover:bg-[#5C7A5F]/5 transition-colors cursor-pointer whitespace-nowrap">
-                  Pray 🙏
+                  Pray 🙏🏽
                 </span>
               </Link>
             ) : (
@@ -646,7 +646,7 @@ export default function MomentDetail() {
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
                 <p className="text-2xl font-bold text-foreground">{displayMyStreak}</p>
-                <p className="text-xs text-muted-foreground mt-1">🙏 Your streak</p>
+                <p className="text-xs text-muted-foreground mt-1">🙏🏽 Your streak</p>
               </div>
               <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
                 <p className="text-2xl font-bold text-foreground">{groupStreak}</p>

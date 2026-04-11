@@ -259,10 +259,10 @@ const BCP_PRAYERS: BcpPrayer[] = [
 // ─── Templates ───────────────────────────────────────────────────────────────
 const TEMPLATES = [
   {
-    id: "intercession", emoji: "🙏", name: "Intercession",
+    id: "intercession", emoji: "🙏🏽", name: "Intercession",
     desc: "Hold someone or something in prayer together",
     prefill: {
-      name: "Intercession 🙏",
+      name: "Intercession 🙏🏽",
       intention: "",
       loggingType: "reflection" as LoggingType,
       reflectionPrompt: "What is on your heart today?",
@@ -360,8 +360,8 @@ const GOAL_OPTIONS_WEEKLY = [
 // ─── Logging type options ─────────────────────────────────────────────────────
 const LOGGING_OPTIONS: { type: LoggingType; icon: string; label: string; description: string }[] = [
   { type: "photo",      icon: "📸", label: "Photo",      description: "Capture a moment to share with the group" },
-  { type: "reflection", icon: "✍️", label: "Reflection",  description: "A written response to a prompt" },
-  { type: "both",       icon: "📸✍️", label: "Photo + Reflection", description: "Share a photo and a written reflection" },
+  { type: "reflection", icon: "✍🏽", label: "Reflection",  description: "A written response to a prompt" },
+  { type: "both",       icon: "📸✍🏽", label: "Photo + Reflection", description: "Share a photo and a written reflection" },
   { type: "checkin",    icon: "✅", label: "Just practice", description: "No words needed. Mark that you were present." },
 ];
 
@@ -1323,7 +1323,7 @@ export default function MomentNew() {
                   {intercessionMode === null && (
                     <>
                       <div className="mb-6">
-                        <h2 className="text-2xl font-semibold mb-1">What will you hold in prayer together? 🙏</h2>
+                        <h2 className="text-2xl font-semibold mb-1">What will you hold in prayer together? 🙏🏽</h2>
                         <p className="text-sm text-muted-foreground italic">Choose a prayer from the Book of Common Prayer, or name your own intention.</p>
                       </div>
                       <div className="grid gap-4">
@@ -1346,7 +1346,7 @@ export default function MomentNew() {
                           onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.65)")}
                           onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.35)")}>
                           <div className="flex items-start gap-4">
-                            <span className="text-3xl">✍️</span>
+                            <span className="text-3xl">✍🏽</span>
                             <div>
                               <p className="font-semibold text-foreground">Name your own intention</p>
                               <p className="text-sm text-muted-foreground mt-0.5">You'll write the intention on the next screen</p>
@@ -1614,7 +1614,7 @@ export default function MomentNew() {
                 <div className="space-y-5 flex-1">
                   <div>
                     <h2 className="text-2xl font-bold mb-1.5" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                      Is there a specific intention? 🙏
+                      Is there a specific intention? 🙏🏽
                     </h2>
                     <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
                       Optional. If you name one, it appears for everyone when they open the prayer.
@@ -1647,7 +1647,7 @@ export default function MomentNew() {
               ) : step === "intention" && templateId === "intercession" && intercessionSource === "custom" ? (
                 <div className="space-y-7 flex-1">
                   <div>
-                    <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who are you praying for? 🙏</h2>
+                    <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who are you praying for? 🙏🏽</h2>
                     <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
                       This will be shown to everyone in the practice when they open their link to pray.
                     </p>
@@ -1833,7 +1833,7 @@ export default function MomentNew() {
 
                 const title = isFastingFlow
                   ? "How long will you fast together? 🌾"
-                  : "How long will you hold this intention? 🙏";
+                  : "How long will you hold this intention? 🙏🏽";
                 const subtitle = isFastingFlow
                   ? "A shared fast. Begin where you can."
                   : "Begin where you are. You can always continue.";
@@ -2074,7 +2074,7 @@ export default function MomentNew() {
               {/* ── Fasting — why are you fasting ────────────────── */}
               {step === "fasting-why" && (
                 <div className="flex-1 flex flex-col">
-                  <h2 className="text-2xl font-semibold mb-1">Why are you fasting together? 🙏</h2>
+                  <h2 className="text-2xl font-semibold mb-1">Why are you fasting together? 🙏🏽</h2>
                   <p className="text-sm text-muted-foreground italic mb-6">The intention your group will hold. This is what gives the fast its meaning.</p>
                   <textarea value={fastingIntention}
                     onChange={e => setFastingIntention(e.target.value.slice(0, 200))}

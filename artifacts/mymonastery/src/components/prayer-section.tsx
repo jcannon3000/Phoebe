@@ -129,7 +129,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
         aria-expanded={isOpen}
       >
         <h2 className="text-lg font-semibold shrink-0" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          Prayer Requests 🙏
+          Prayer Requests 🙏🏽
         </h2>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
         <span
@@ -162,7 +162,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
               className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
               style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
             >
-              🙏
+              🙏🏽
             </button>
           </div>
 
@@ -297,7 +297,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                             </div>
 
                             <p className="text-xs italic mb-3" style={{ color: "#5C7A5F" }}>
-                              Your community is holding this. 🙏
+                              Your community is holding this. 🙏🏽
                             </p>
                           </>
                         )}
@@ -329,7 +329,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                               className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                               style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
                             >
-                              🙏
+                              🙏🏽
                             </button>
                           </div>
                         )}
@@ -419,7 +419,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
             >
-              {submitMutation.isPending ? "Sharing…" : "Share with my community 🙏"}
+              {submitMutation.isPending ? "Sharing…" : "Share with my community 🙏🏽"}
             </button>
 
             {/* Cancel */}

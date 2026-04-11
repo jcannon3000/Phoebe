@@ -9,7 +9,7 @@ import ImprintSlideshow, { gatheringSlides } from "@/components/ImprintSlideshow
 const TEMPLATE_OPTIONS = [
   { value: "coffee", emoji: "☕", label: "Coffee", tagline: "Share your first cup, again and again" },
   { value: "meal", emoji: "🍽️", label: "A Meal", tagline: "The table is the oldest gathering place" },
-  { value: "walk", emoji: "🚶", label: "A Walk", tagline: "Move together on a regular day" },
+  { value: "walk", emoji: "🚶🏽", label: "A Walk", tagline: "Move together on a regular day" },
   { value: "book_club", emoji: "📚", label: "Book Club", tagline: "Read together, think together" },
   { value: "custom", emoji: "🌿", label: "Something else", tagline: "Name your own gathering" },
 ];

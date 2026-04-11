@@ -56,15 +56,15 @@ const TEMPLATE_EMOJI: Record<string, string> = {
   "evening-prayer": "🌙",
   morning_prayer: "🌅",
   evening_prayer: "🌙",
-  intercession: "🙏",
+  intercession: "🙏🏽",
   breath_together: "🌬️",
   contemplative_sit: "🌿",
-  walk_together: "🚶",
+  walk_together: "🚶🏽",
   morning_coffee: "☕",
   custom: "✨",
   breath: "🌬️",
   contemplative: "🌿",
-  walk: "🚶",
+  walk: "🚶🏽",
   listening: "🎵",
 };
 
@@ -259,7 +259,7 @@ export default function MomentsDashboard() {
           <Link href="/dashboard" className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
             ← Dashboard
           </Link>
-          <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Practices 🙏</h1>
+          <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>Practices 🙏🏽</h1>
           <p className="text-sm italic mt-1" style={{ color: "#8FAF96" }}>For the distance between gatherings</p>
         </div>
 

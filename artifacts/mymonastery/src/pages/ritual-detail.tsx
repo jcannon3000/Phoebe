@@ -20,8 +20,8 @@ type Tab = "timeline" | "moments" | "settings";
 
 const LOGGING_ICONS: Record<string, string> = {
   photo: "📷",
-  reflection: "✍️",
-  both: "📷✍️",
+  reflection: "✍🏽",
+  both: "📷✍🏽",
   checkin: "✅",
 };
 
@@ -385,39 +385,53 @@ export default function RitualDetail() {
               </div>
 
               <h1 className="font-bold leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "26px", color: "#F0EDE6" }}>{ritual.name}</h1>
-              {ritual.intention && (
-                <p className="mt-1.5 text-sm italic" style={{ color: "#8FAF96", maxWidth: "340px" }}>{ritual.intention}</p>
-              )}
+              {(() => {
+                const freqWord =
+                  ritual.frequency === "biweekly" ? "biweekly" :
+                  ritual.frequency === "weekly" ? "weekly" :
+                  ritual.frequency === "monthly" ? "monthly" :
+                  ritual.frequency;
+                const timesMet = (timeline?.past ?? []).filter(m => m.status === "completed").length;
+                const metLabel =
+                  timesMet === 0 ? "not met yet" :
+                  timesMet === 1 ? "met 1 time" :
+                  `met ${timesMet} times`;
+                return (
+                  <p className="mt-1.5 text-sm" style={{ color: "#8FAF96" }}>
+                    A {freqWord} tradition · {metLabel}
+                  </p>
+                );
+              })()}
               {timeline?.location && (
                 <p className="mt-2 text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>📍 {timeline.location}</p>
               )}
             </div>
 
-            {/* Member avatars + Add people */}
+            {/* Member names + Add people */}
             <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-              <div className="flex -space-x-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {ritual.participants.slice(0, 3).map((p, i) => {
                   const isPending = invitedEmails.has(p.email.toLowerCase()) || false;
                   return (
-                    <div key={i} className="relative group/avatar">
-                      <Link
-                        href={`/people/${encodeURIComponent(p.email)}`}
-                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-medium shadow-sm hover:z-10 hover:scale-110 transition-all"
-                        style={{ borderColor: "rgba(46,107,64,0.35)", background: isPending ? "rgba(200,212,192,0.1)" : "rgba(74,103,65,0.15)", color: isPending ? "#8FAF96" : "#C8D4C0" }}
-                        title={p.name}
-                      >
-                        {p.name.charAt(0).toUpperCase()}
-                      </Link>
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-xs rounded-lg whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-20" style={{ background: "#091A10", color: "#F0EDE6" }}>
-                        {p.name}
-                      </div>
-                    </div>
+                    <Link
+                      key={i}
+                      href={`/people/${encodeURIComponent(p.email)}`}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:bg-[#4A6741]/10"
+                      style={{
+                        border: "1px solid rgba(46,107,64,0.35)",
+                        background: isPending ? "rgba(200,212,192,0.08)" : "rgba(74,103,65,0.12)",
+                        color: isPending ? "#8FAF96" : "#C8D4C0",
+                      }}
+                      title={p.email}
+                    >
+                      {p.name || p.email.split("@")[0]}
+                    </Link>
                   );
                 })}
                 {ritual.participants.length > 3 && (
-                  <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-medium shadow-sm" style={{ borderColor: "rgba(46,107,64,0.3)", background: "rgba(92,122,95,0.08)", color: "#8FAF96" }}>
-                    +{ritual.participants.length - 3}
-                  </div>
+                  <span className="text-xs font-medium px-2 py-1.5 rounded-full" style={{ color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}>
+                    +{ritual.participants.length - 3} more
+                  </span>
                 )}
               </div>
               <button
@@ -435,8 +449,8 @@ export default function RitualDetail() {
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-full mb-5" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
           {[
-            { id: "timeline", label: "🤝 Gatherings" },
-            { id: "moments", label: "🙏 Practices" },
+            { id: "timeline", label: "🤝🏽 Gatherings" },
+            { id: "moments", label: "🙏🏽 Practices" },
             { id: "settings", label: "About" },
           ].map((tab) => (
             <button
@@ -736,7 +750,7 @@ export default function RitualDetail() {
               ) : (
                 /* No gathering scheduled yet */
                 <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: isRhythmOverdue ? "1px dashed rgba(196,122,101,0.4)" : "1px dashed rgba(46,107,64,0.3)" }}>
-                  <div className="text-3xl mb-3">{isRhythmOverdue ? "🕯️" : "🤝"}</div>
+                  <div className="text-3xl mb-3">{isRhythmOverdue ? "🕯️" : "🤝🏽"}</div>
                   <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                     {isRhythmOverdue ? "It's time to find a time" : "No gathering scheduled yet"}
                   </p>
@@ -934,16 +948,16 @@ export default function RitualDetail() {
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
-              {/* Plant CTA */}
+              {/* Start shared practice CTA */}
               <Link
                 href={`/moment/new?ritualId=${ritualId}`}
                 className="flex items-center justify-between p-5 rounded-2xl transition-colors group"
                 style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
               >
                 <div>
-                  <p className="font-semibold text-foreground">Plant a Shared Moment</p>
+                  <p className="font-semibold text-foreground">Start a shared practice</p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    A recurring micro-ritual your whole tradition shows up for together.
+                    A recurring practice everyone in this tradition commits to together.
                   </p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ml-4 group-hover:bg-primary/20 transition-colors">
@@ -966,8 +980,8 @@ export default function RitualDetail() {
               {!momentsLoading && momentsData && momentsData.moments.length === 0 && (
                 <div className="text-center py-12">
                   <div className="text-4xl mb-3">🌿</div>
-                  <p className="font-medium text-foreground mb-1">No moments planted yet</p>
-                  <p className="text-sm text-muted-foreground">Plant your first Shared Moment to start gathering together.</p>
+                  <p className="font-medium text-foreground mb-1">No shared practices yet</p>
+                  <p className="text-sm text-muted-foreground">Start a shared practice to begin.</p>
                 </div>
               )}
 

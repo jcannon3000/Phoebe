@@ -307,7 +307,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                     letterSpacing: "0.02em",
                   }}
                 >
-                  Amen 🙏
+                  Amen 🙏🏽
                 </button>
               )}
             </div>

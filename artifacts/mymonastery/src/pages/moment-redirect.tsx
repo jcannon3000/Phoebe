@@ -29,7 +29,7 @@ export default function MomentRedirect() {
       style={{ background: "#091A10" }}
     >
       <div className="text-center">
-        <p className="text-2xl mb-3">🙏</p>
+        <p className="text-2xl mb-3">🙏🏽</p>
         <p style={{ color: "#8FAF96", fontSize: "14px" }}>Opening your practice…</p>
       </div>
     </div>

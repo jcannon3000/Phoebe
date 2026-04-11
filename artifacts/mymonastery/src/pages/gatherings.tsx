@@ -87,7 +87,7 @@ export default function GatheringsPage() {
           <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
           <div className="flex-1 p-4">
             <div className="flex items-start justify-between gap-2 mb-1">
-              <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>🤝 {ritual.name}</span>
+              <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>🤝🏽 {ritual.name}</span>
               <span className="text-[11px]" style={{ color: "#8FAF96" }}>{rhythmLabel}</span>
             </div>
 
@@ -106,7 +106,7 @@ export default function GatheringsPage() {
             )}
 
             {r.intercessionIntention && (
-              <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>🙏 Praying for {r.intercessionIntention}</p>
+              <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>🙏🏽 Praying for {r.intercessionIntention}</p>
             )}
             {r.fastingDescription && (
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>🌿 Fasting together</p>
@@ -125,7 +125,7 @@ export default function GatheringsPage() {
             ← Dashboard
           </Link>
           <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Gatherings 🤝
+            Gatherings 🤝🏽
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
             Your community, meeting regularly, with intention.
@@ -146,7 +146,7 @@ export default function GatheringsPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center text-center py-12"
           >
-            <div className="text-5xl mb-6">🤝</div>
+            <div className="text-5xl mb-6">🤝🏽</div>
             <p className="text-base font-medium mb-1" style={{ color: "#F0EDE6" }}>Community grows where people keep showing up.</p>
             <p className="text-sm mb-8" style={{ color: "#9a9390" }}>
               Commit to a rhythm. Phoebe handles the rest.

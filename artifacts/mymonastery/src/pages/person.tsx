@@ -33,7 +33,7 @@ function initials(name: string) {
 
 function practiceEmoji(templateType: string | null): string {
   switch (templateType) {
-    case "intercession":    return "🙏";
+    case "intercession":    return "🙏🏽";
     case "morning-prayer":  return "🌅";
     case "evening-prayer":  return "🌙";
     case "contemplative":   return "🕯️";
@@ -246,7 +246,7 @@ export default function PersonProfile() {
             style={{ background: "rgba(212,137,106,0.06)", border: "1px solid rgba(212,137,106,0.25)" }}
           >
             <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: "#D4896A" }}>
-              Held in prayer 🙏
+              Held in prayer 🙏🏽
             </p>
             <p className="text-sm leading-relaxed mb-1" style={{ color: "#F0EDE6" }}>{prayer.body}</p>
             <p className="text-xs mb-3" style={{ color: "rgba(212,137,106,0.6)" }}>
@@ -273,7 +273,7 @@ export default function PersonProfile() {
                   className="px-3 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-30"
                   style={{ background: "rgba(212,137,106,0.15)", color: "#D4896A" }}
                 >
-                  🙏
+                  🙏🏽
                 </button>
               </div>
             )}
@@ -410,7 +410,7 @@ export default function PersonProfile() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
-                            🤝 {ritual.name}
+                            🤝🏽 {ritual.name}
                           </p>
                           {ritual.status === "on_track" && (
                             <span className="text-[10px] shrink-0 mt-0.5" style={{ color: "rgba(111,175,133,0.7)" }}>✓</span>

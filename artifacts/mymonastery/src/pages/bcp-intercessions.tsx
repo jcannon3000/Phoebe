@@ -22,7 +22,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
   "For the Nation": "🏛️",
   "For the World": "🌍",
   "For the Natural Order": "🌿",
-  "For the Poor and Neglected": "🤲",
+  "For the Poor and Neglected": "🤲🏽",
   "For the Sick": "💊",
   "For the Sorrowing": "💔",
   "For Those in Need": "🕊️",
@@ -65,7 +65,7 @@ export default function BcpIntercessionsPage() {
             className="text-2xl font-bold mb-1"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Intercessions 🙏
+            Intercessions 🙏🏽
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
             Prayers from the Book of Common Prayer
@@ -126,7 +126,7 @@ export default function BcpIntercessionsPage() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{prayer.title}</p>
                       <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>
-                        {CATEGORY_EMOJI[prayer.category] ?? "🙏"} {prayer.category}
+                        {CATEGORY_EMOJI[prayer.category] ?? "🙏🏽"} {prayer.category}
                       </p>
                     </div>
                     <span className="text-xs shrink-0 mt-0.5" style={{ color: "#8FAF96" }}>›</span>
@@ -140,7 +140,7 @@ export default function BcpIntercessionsPage() {
           <div className="space-y-2">
             {CATEGORIES.map(({ category, prayers }) => {
               const isOpen = openCategory === category;
-              const emoji = CATEGORY_EMOJI[category] ?? "🙏";
+              const emoji = CATEGORY_EMOJI[category] ?? "🙏🏽";
 
               return (
                 <div key={category}>

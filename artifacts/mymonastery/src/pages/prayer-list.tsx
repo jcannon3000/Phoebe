@@ -55,7 +55,7 @@ export default function PrayerListPage() {
             className="text-2xl font-bold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Prayer List 🙏
+            Prayer List 🙏🏽
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
             Carrying what your community is carrying.
@@ -79,7 +79,7 @@ export default function PrayerListPage() {
               boxShadow: "0 2px 16px rgba(46,107,64,0.25)",
             }}
           >
-            Begin Prayer 🙏
+            Begin Prayer 🙏🏽
           </button>
         </div>
 
@@ -117,7 +117,7 @@ export default function PrayerListPage() {
                       <div className="flex-1 px-4 py-3">
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                            🙏 {m.intercessionTopic || m.name}
+                            🙏🏽 {m.intercessionTopic || m.name}
                           </span>
                           {progressLabel && (
                             <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>

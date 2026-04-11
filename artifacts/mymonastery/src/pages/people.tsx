@@ -24,7 +24,7 @@ const AVATAR_COLORS = [
 const PRACTICE_EMOJI: Record<string, string> = {
   "morning-prayer": "🌅",
   "evening-prayer": "🌙",
-  "intercession": "🙏",
+  "intercession": "🙏🏽",
   "contemplative": "🕯️",
   "fasting": "🌿",
   "listening": "🎵",
@@ -242,7 +242,7 @@ export default function People() {
                             {person.sharedTraditions.map(t => (
                               <div key={t.id} className="flex items-center gap-2">
                                 <span className="text-sm" style={{ color: "#C8B47A" }}>
-                                  🤝 {t.name}
+                                  🤝🏽 {t.name}
                                 </span>
                               </div>
                             ))}
@@ -257,7 +257,7 @@ export default function People() {
                             className="mt-1.5 text-[13px] italic block hover:opacity-70 transition-opacity"
                             style={{ color: "#D4896A" }}
                           >
-                            <span className="animate-prayer-pulse inline-block">🙏</span> Asking for prayer · {truncate(person.activePrayerRequest.body, 40)}
+                            <span className="animate-prayer-pulse inline-block">🙏🏽</span> Asking for prayer · {truncate(person.activePrayerRequest.body, 40)}
                           </Link>
                         )}
 
@@ -315,7 +315,7 @@ export default function People() {
                                       className="flex items-center justify-between py-1.5 group/row"
                                     >
                                       <span className="text-sm text-foreground/80 group-hover/row:text-foreground transition-colors">
-                                        {practice.templateType === "intercession" ? "🙏" : practice.templateType === "contemplative" ? "🕯️" : practice.templateType === "morning-prayer" ? "✨" : practice.templateType === "evening-prayer" ? "🌙" : practice.templateType === "fasting" ? "🌿" : practice.templateType === "listening" ? "🎵" : "🌱"}{" "}
+                                        {practice.templateType === "intercession" ? "🙏🏽" : practice.templateType === "contemplative" ? "🕯️" : practice.templateType === "morning-prayer" ? "✨" : practice.templateType === "evening-prayer" ? "🌙" : practice.templateType === "fasting" ? "🌿" : practice.templateType === "listening" ? "🎵" : "🌱"}{" "}
                                         {practice.name}
                                       </span>
                                       <span className={`text-xs ${practice.currentStreak >= 3 ? "animate-streak-glow" : ""}`} style={{ color: practice.currentStreak > 0 ? "#C17F24" : "#5C7A5F" }}>

@@ -15,7 +15,7 @@ const INTENTION_PLACEHOLDERS = [
   "Five minutes of stillness before the day starts 🌿",
   "Breathe together. Pray together. Show up together.",
   "A moment of gratitude, wherever you are 🌸",
-  "Walk outside and notice something beautiful 🚶",
+  "Walk outside and notice something beautiful 🚶🏽",
 ];
 
 const REFLECTION_EXAMPLES = [
@@ -35,7 +35,7 @@ const LOGGING_OPTIONS: {
 }[] = [
   {
     type: "reflection",
-    icon: "✍️",
+    icon: "✍🏽",
     label: "Reflection",
     description: "A short written response to a prompt you set.",
     bestFor: "Prayer, meditation, gratitude, walks",

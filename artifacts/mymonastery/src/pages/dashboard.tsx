@@ -49,6 +49,7 @@ type Moment = {
   goalDays?: number | null;
   commitmentSessionsGoal?: number | null;
   commitmentSessionsLogged?: number | null;
+  commitmentGoalReachedAt?: string | null;
   isCreator?: boolean;
   myUserToken: string | null;
   momentToken: string | null;
@@ -154,7 +155,7 @@ function nextWindowDaysAhead(m: Pick<Moment, "frequency" | "dayOfWeek" | "practi
 const PRACTICE_EMOJI: Record<string, string> = {
   "morning-prayer": "🌅",
   "evening-prayer": "🌙",
-  "intercession": "🙏",
+  "intercession": "🙏🏽",
   "contemplative": "🕯️",
   "fasting": "🌿",
   "listening": "🎵",
@@ -240,7 +241,7 @@ function FAB() {
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏 Start a practice</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a practice</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Prayer, fasting, intercession & more</p>
             </button>
             <button
@@ -248,7 +249,7 @@ function FAB() {
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#1E4B32", border: `1px solid ${CATEGORY_COLORS.gatherings.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝 Start a gathering</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝🏽 Start a gathering</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Meet together regularly</p>
             </button>
           </motion.div>
@@ -567,7 +568,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const progressLabel = isLectio
     ? (m.lectioCurrentStageLabel ?? null)
     : (isIntercession || m.templateType === "fasting")
-      ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : m.myStreak > 0 ? `🙏 ${m.myStreak}` : null)
+      ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : m.myStreak > 0 ? `🙏🏽 ${m.myStreak}` : null)
       : null;
 
   const openHref = (isLectio && m.momentToken && m.myUserToken)
@@ -642,7 +643,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
             className="text-[10px] font-semibold uppercase shrink-0"
             style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}
           >
-            Goal reached 🌸
+            Goal reached
           </span>
         ) : progressLabel ? (
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
@@ -667,7 +668,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           )}
           {isIntercession && safeIntercessionTopic && (
             <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
-              🙏 {safeIntercessionTopic}
+              🙏🏽 {safeIntercessionTopic}
             </p>
           )}
         </div>
@@ -684,7 +685,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
                 lineHeight: "20px",
               }}
             >
-              Renew 🌱
+              Renew
             </span>
           ) : isLectio ? (
             // Lectio always shows a pill: "Reflect 📜" when there's something
@@ -718,7 +719,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
             >
-              Pray 🙏
+              Pray 🙏🏽
             </motion.span>
           ) : (
             isDesktop && desktopStatusText && (
@@ -742,7 +743,7 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
     : rhythm === "one-time" ? "One-time gathering"
     : r.frequency ? `${r.frequency} tradition` : "Recurring tradition";
   const participants: Array<any> = r.participants ?? [];
-  const gatheringEmoji = r.intercessionIntention ? "🙏" : r.fastingDescription ? "✦" : "🤝";
+  const gatheringEmoji = r.intercessionIntention ? "🙏🏽" : r.fastingDescription ? "✦" : "🤝🏽";
 
   // Check confirmation status — if 2+ participants haven't confirmed
   const unconfirmed = participants.filter((p: any) => p.status === "pending" || p.status === "invited");
@@ -905,7 +906,26 @@ export default function Dashboard() {
     const allGatherings = (rituals ?? []) as any[];
     const userName = user?.name ?? "";
 
-    const totalCount = allLetters.length + allMoments.length + allGatherings.length;
+    // Hide practices whose goal was reached and the creator hasn't renewed
+    // within two days — the calendar cleanup has already torn down the
+    // reminders, so keeping the card around just creates clutter.
+    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const visibleMoments = allMoments.filter((m) => {
+      const goal = m.commitmentSessionsGoal ?? m.goalDays ?? null;
+      const isLectio = m.templateType === "lectio-divina";
+      const goalReached =
+        !isLectio && goal != null && goal > 0 && (m.myStreak ?? 0) >= goal;
+      if (!goalReached || !m.isCreator) return true;
+      const reachedAt = m.commitmentGoalReachedAt
+        ? new Date(m.commitmentGoalReachedAt).getTime()
+        : null;
+      // Cleanup nulls the timestamp after 2 days — treat that as expired too.
+      if (reachedAt == null) return false;
+      return nowMs - reachedAt < twoDaysMs;
+    });
+
+    const totalCount = allLetters.length + visibleMoments.length + allGatherings.length;
 
     const todayItems: DashboardItem[] = [];
     const weekItems: DashboardItem[] = [];
@@ -949,7 +969,7 @@ export default function Dashboard() {
     // isActionableToday → Today section. Otherwise bucket by next window date:
     // if the next occurrence falls within the next 7 days it goes to
     // "This week"; otherwise it goes to "This month".
-    for (const m of allMoments) {
+    for (const m of visibleMoments) {
       const isLectio = m.templateType === "lectio-divina";
       const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
       if (m.isActionableToday && !userDone) {
@@ -1026,12 +1046,12 @@ export default function Dashboard() {
             };
             const PILLS: Pill[] = [
               { label: "📮 Letters",      filterKey: "letters",   fg: "#5C8A5F", bg: "rgba(92,138,95,0.14)",   border: "rgba(92,138,95,0.28)"   },
-              { label: "🙏 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
-              { label: "🤝 Gatherings",   filterKey: "gatherings",fg: "#7AAF7D", bg: "rgba(122,175,125,0.14)", border: "rgba(122,175,125,0.28)" },
+              { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
+              { label: "🤝🏽 Gatherings",   filterKey: "gatherings",fg: "#7AAF7D", bg: "rgba(122,175,125,0.14)", border: "rgba(122,175,125,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
               { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
-              { label: "🙏 Intercessions", href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
+              { label: "🙏🏽 Intercessions", href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
               { label: "📖 Learn",        href: "/learn",        fg: "#A8C5A0", bg: "rgba(168,197,160,0.12)", border: "rgba(168,197,160,0.28)" },
             ];
             const pillStyle = (p: Pill) => ({

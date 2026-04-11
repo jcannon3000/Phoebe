@@ -390,7 +390,7 @@ function IntercessionPrayerPage({
       className="min-h-screen bg-[#F5EDD8] flex items-center justify-center px-6"
     >
       <div className="max-w-xs w-full text-center">
-        <div className="text-7xl mb-5">🙏</div>
+        <div className="text-7xl mb-5">🙏🏽</div>
         <h1 className="text-3xl font-bold text-[#2C1A0E] mb-2" style={{ fontFamily: "Space Grotesk, sans-serif" }}>Amen.</h1>
         <p className="text-sm text-[#6b5c4a] mb-6">{todayPostCount} of {memberCount} have prayed together today.</p>
         <div className="mb-8">
@@ -487,7 +487,7 @@ function IntercessionPrayerPage({
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mb-4 text-center rounded-2xl p-3"
         >
-          <p className="text-sm mb-4" style={{ color: "rgba(200,230,210,0.6)" }}>{todayPostCount} of {memberCount} have prayed this 🙏</p>
+          <p className="text-sm mb-4" style={{ color: "rgba(200,230,210,0.6)" }}>{todayPostCount} of {memberCount} have prayed this 🙏🏽</p>
           <NamedPresenceWithBloom members={members} myToken={myToken} justBloomed={justBloomed} />
         </motion.div>
 
@@ -508,7 +508,7 @@ function IntercessionPrayerPage({
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-4"
             >
-              <p className="text-4xl font-bold" style={{ color: "#F0EDE6" }}>🙏 Amen</p>
+              <p className="text-4xl font-bold" style={{ color: "#F0EDE6" }}>🙏🏽 Amen</p>
             </motion.div>
           ) : (
             <>
@@ -551,7 +551,7 @@ function IntercessionPrayerPage({
                   className="w-full py-5 rounded-2xl text-lg font-bold text-center"
                   style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527", background: "rgba(240,237,230,0.4)" }}
                 >
-                  Amen 🙏
+                  Amen 🙏🏽
                 </div>
                 <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
                   You prayed this today.
@@ -567,7 +567,7 @@ function IntercessionPrayerPage({
                   className="w-full py-5 rounded-2xl text-lg font-bold hover:opacity-90 disabled:opacity-40"
                   style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527" }}
                 >
-                  {isPraying ? "Marking…" : postFailed ? "Try again 🙏" : "Amen 🙏"}
+                  {isPraying ? "Marking…" : postFailed ? "Try again 🙏🏽" : "Amen 🙏🏽"}
                 </motion.button>
                 <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
                   Tapping Amen marks that you have prayed this together.
@@ -764,7 +764,7 @@ export default function MomentPostPage() {
     const BADGE: Record<string, string> = {
       "morning-prayer": "🌅 Morning Prayer",
       "evening-prayer": "🌙 Evening Prayer",
-      "intercession": "🙏 Intercession Prayer",
+      "intercession": "🙏🏽 Intercession Prayer",
       "contemplative": "🕯️ Contemplative Sitting",
       "fasting": "🌿 Fasting Practice",
       "listening": "🎵 Listening Together",

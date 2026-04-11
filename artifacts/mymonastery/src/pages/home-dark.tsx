@@ -475,7 +475,7 @@ function GatheringsSection() {
                     )}
 
                     {r.intercessionIntention && (
-                      <p className="text-xs mt-1" style={{ color: C.textSecondary }}>🙏 Praying for {r.intercessionIntention}</p>
+                      <p className="text-xs mt-1" style={{ color: C.textSecondary }}>🙏🏽 Praying for {r.intercessionIntention}</p>
                     )}
                     {r.fastingDescription && (
                       <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>🌿 Fasting together</p>
@@ -608,7 +608,7 @@ function DarkPrayerSection() {
         aria-expanded={isOpen}
       >
         <h2 className="text-lg font-semibold shrink-0" style={{ color: C.text, fontFamily: C.font }}>
-          Prayer requests 🙏
+          Prayer requests 🙏🏽
         </h2>
         <div className="flex-1 h-px" style={{ background: C.divider }} />
         <span
@@ -646,7 +646,7 @@ function DarkPrayerSection() {
               className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
               style={{ backgroundColor: C.prayer, color: C.text }}
             >
-              🙏
+              🙏🏽
             </button>
           </div>
 
@@ -757,7 +757,7 @@ function DarkPrayerSection() {
                             </div>
 
                             <p className="text-xs italic mb-3" style={{ color: C.textSecondary }}>
-                              Your community is holding this. 🙏
+                              Your community is holding this. 🙏🏽
                             </p>
                           </>
                         )}
@@ -793,7 +793,7 @@ function DarkPrayerSection() {
                               className="px-3 py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                               style={{ backgroundColor: C.prayer, color: C.text }}
                             >
-                              🙏
+                              🙏🏽
                             </button>
                           </div>
                         )}
@@ -869,7 +869,7 @@ function DarkPrayerSection() {
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: C.activeBtnBg, color: C.text }}
             >
-              {submitMutation.isPending ? "Sharing..." : "Share with my community 🙏"}
+              {submitMutation.isPending ? "Sharing..." : "Share with my community 🙏🏽"}
             </button>
 
             <div className="mt-4 text-center">

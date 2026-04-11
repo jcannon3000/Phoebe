@@ -94,7 +94,7 @@ router.get("/office/morning", async (req, res) => {
       {
         id: "emergency_3",
         type: "closing",
-        emoji: "🙏",
+        emoji: "🙏🏽",
         eyebrow: "",
         title: null,
         content: "Morning Prayer",
