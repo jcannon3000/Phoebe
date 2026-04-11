@@ -39,8 +39,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   }
 
   const navItems = [
-    { emoji: "📮", label: "Letters",     path: "/letters"     },
     { emoji: "🙏🏽", label: "Practices",   path: "/practices"   },
+    { emoji: "📮", label: "Letters",     path: "/letters"     },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "🏘️", label: "Communities", path: "/communities" },
     { emoji: "👥", label: "People",      path: "/people"      },

@@ -48,14 +48,14 @@ export default function CommunitiesPage() {
             In the meantime, start a gathering or a practice with the people you already walk with.
           </p>
           <div className="flex justify-center gap-4 mt-5">
-            <Link href="/tradition/new">
-              <span className="text-xs font-semibold" style={{ color: "#A8C5A0" }}>
-                Start a gathering →
-              </span>
-            </Link>
             <Link href="/moment/new">
               <span className="text-xs font-semibold" style={{ color: "#A8C5A0" }}>
                 Start a practice →
+              </span>
+            </Link>
+            <Link href="/tradition/new">
+              <span className="text-xs font-semibold" style={{ color: "#A8C5A0" }}>
+                Start a gathering →
               </span>
             </Link>
           </div>

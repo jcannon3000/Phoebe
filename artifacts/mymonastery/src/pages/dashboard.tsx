@@ -232,15 +232,9 @@ function FAB() {
           >
             {/* FAB menu buttons use solid opaque backgrounds so the list
                 doesn't bleed through content behind it. Category identity
-                comes from the border color. */}
-            <button
-              onClick={() => { setOpen(false); setLocation("/letters/new"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#14322C", border: `1px solid ${CATEGORY_COLORS.letters.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📮 Write a letter</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Start a new correspondence</p>
-            </button>
+                comes from the border color. Practices are listed first
+                because they're the most common thing people come here to
+                start. */}
             <button
               onClick={() => { setOpen(false); setLocation("/moment/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
@@ -248,6 +242,14 @@ function FAB() {
             >
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a practice</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Prayer, fasting, intercession & more</p>
+            </button>
+            <button
+              onClick={() => { setOpen(false); setLocation("/letters/new"); }}
+              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+              style={{ background: "#14322C", border: `1px solid ${CATEGORY_COLORS.letters.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📮 Write a letter</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Start a new correspondence</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
@@ -930,8 +932,9 @@ function TimeSection({
 }) {
   if (items.length === 0) return null;
 
-  const letterItems = items.filter(i => i.kind === "letter") as Array<{ kind: "letter"; data: Correspondence }>;
-  const nonLetterItems = items.filter(i => i.kind !== "letter");
+  const letterItems = items.filter(i => i.kind === "letter") as Array<Extract<DashboardItem, { kind: "letter" }>>;
+  const momentItems = items.filter(i => i.kind === "moment") as Array<Extract<DashboardItem, { kind: "moment" }>>;
+  const gatheringItems = items.filter(i => i.kind === "gathering") as Array<Extract<DashboardItem, { kind: "gathering" }>>;
 
   // Letters where it's the user's turn always show as individual cards.
   // Passive letters (waiting/sent) collapse into a summary when there are 2+.
@@ -939,11 +942,23 @@ function TimeSection({
   const passiveLetters = letterItems.filter(i => i.data.turnState !== "OPEN" && i.data.turnState !== "OVERDUE");
 
   // Visible card count for scroll threshold
-  const visibleCardCount = actionLetters.length + (passiveLetters.length > 1 ? 1 : passiveLetters.length) + nonLetterItems.length;
+  const visibleCardCount =
+    momentItems.length +
+    actionLetters.length +
+    (passiveLetters.length > 1 ? 1 : passiveLetters.length) +
+    gatheringItems.length;
   const scrollable = visibleCardCount > 3;
 
+  // Practices → Letters → Gatherings — matches the ordering in the
+  // FAB, the pill row, and the drawer menu so the whole app reads
+  // consistently. Within letters, action-required (your turn) cards
+  // still come before passive ones so nothing waiting on the user
+  // gets buried.
   const cards = (
     <div className="space-y-3">
+      {momentItems.map((item) => (
+        <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />
+      ))}
       {actionLetters.map(i => (
         <LetterCard key={`${label}-l-${i.data.id}`} c={i.data} userEmail={userEmail} userName={userName} keyPrefix={label} />
       ))}
@@ -956,14 +971,9 @@ function TimeSection({
       ) : passiveLetters.length === 1 ? (
         <LetterCard key={`${label}-l-${passiveLetters[0].data.id}`} c={passiveLetters[0].data} userEmail={userEmail} userName={userName} keyPrefix={label} />
       ) : null}
-      {nonLetterItems.map((item) => {
-        switch (item.kind) {
-          case "moment":
-            return <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />;
-          case "gathering":
-            return <GatheringCard key={`${label}-g-${item.data.id}`} r={item.data} keyPrefix={label} badge={item.badge} />;
-        }
-      })}
+      {gatheringItems.map((item) => (
+        <GatheringCard key={`${label}-g-${item.data.id}`} r={item.data} keyPrefix={label} badge={item.badge} />
+      ))}
     </div>
   );
 
@@ -1168,8 +1178,8 @@ export default function Dashboard() {
               border: string;
             };
             const PILLS: Pill[] = [
-              { label: "📮 Letters",      filterKey: "letters",   fg: "#5C8A5F", bg: "rgba(92,138,95,0.14)",   border: "rgba(92,138,95,0.28)"   },
               { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
+              { label: "📮 Letters",      filterKey: "letters",   fg: "#5C8A5F", bg: "rgba(92,138,95,0.14)",   border: "rgba(92,138,95,0.28)"   },
               { label: "🤝🏽 Gatherings",   filterKey: "gatherings",fg: "#7AAF7D", bg: "rgba(122,175,125,0.14)", border: "rgba(122,175,125,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
