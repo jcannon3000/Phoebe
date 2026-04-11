@@ -23,6 +23,9 @@ export const ritualsTable = pgTable("rituals", {
   hasFasting: boolean("has_fasting").notNull().default(false),
   intercessionIntention: text("intercession_intention"),
   fastingDescription: text("fasting_description"),
+  // Onboarding template the creator picked (coffee, meal, walk, book_club, custom).
+  // Used so the dashboard can show a matching emoji (e.g. 🚶🏽 for a walk).
+  template: text("template"),
 });
 
 export const insertRitualSchema = createInsertSchema(ritualsTable).omit({ id: true, createdAt: true });

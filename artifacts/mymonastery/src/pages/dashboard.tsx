@@ -752,7 +752,21 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
     : rhythm === "one-time" ? "One-time gathering"
     : r.frequency ? `${r.frequency} tradition` : "Recurring tradition";
   const participants: Array<any> = r.participants ?? [];
-  const gatheringEmoji = r.intercessionIntention ? "🙏🏽" : r.fastingDescription ? "✦" : "🤝🏽";
+  // Pick an emoji that matches how the gathering was created. Template wins
+  // over practice flags when set; intercession/fasting still override the
+  // generic handshake for legacy gatherings without a stored template.
+  const templateEmoji: Record<string, string> = {
+    coffee: "☕",
+    meal: "🍽️",
+    walk: "🚶🏽",
+    book_club: "📚",
+    custom: "🌿",
+  };
+  const gatheringEmoji = (r.template && templateEmoji[r.template])
+    ? templateEmoji[r.template]
+    : r.intercessionIntention ? "🙏🏽"
+    : r.fastingDescription ? "✦"
+    : "🤝🏽";
 
   // Check confirmation status — if 2+ participants haven't confirmed
   const unconfirmed = participants.filter((p: any) => p.status === "pending" || p.status === "invited");

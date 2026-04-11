@@ -133,6 +133,7 @@ export default function TraditionNew() {
         hasFasting: false,
         intercessionIntention: null,
         fastingDescription: null,
+        template: template || null,
       });
 
       // Save proposed times + location → creates meetup + Google Calendar invite with alternates.

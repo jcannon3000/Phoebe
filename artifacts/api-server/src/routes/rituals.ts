@@ -123,6 +123,11 @@ router.post("/rituals", async (req, res): Promise<void> => {
       fastingDescription?: string | null;
     };
 
+    // `template` isn't in the generated zod schema yet, so pull it off the
+    // raw body. Keeps the dashboard emoji accurate (e.g. 🚶🏽 for walks).
+    const rawTemplate = req.body?.template;
+    const template = typeof rawTemplate === "string" && rawTemplate.trim() ? rawTemplate.trim() : null;
+
     const [ritual] = await db
       .insert(ritualsTable)
       .values({
@@ -140,6 +145,7 @@ router.post("/rituals", async (req, res): Promise<void> => {
         hasFasting: body.hasFasting ?? false,
         intercessionIntention: body.intercessionIntention ?? null,
         fastingDescription: body.fastingDescription ?? null,
+        template,
       })
       .returning();
 
