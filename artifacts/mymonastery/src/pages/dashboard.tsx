@@ -773,7 +773,7 @@ function TimeSection({
   );
 
   return (
-    <div className="mb-8">
+    <div className={scrollable ? "mb-[22px]" : "mb-8"}>
       <SectionHeader label={label} />
       {scrollable ? (
         <div className="relative">
