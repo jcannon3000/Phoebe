@@ -468,7 +468,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const progressLabel = isLectio
     ? (m.lectioCurrentStageLabel ?? null)
     : (isIntercession || m.templateType === "fasting")
-      ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : null)
+      ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : "No Streak")
       : null;
 
   const openHref = (isLectio && m.momentToken && m.myUserToken)
