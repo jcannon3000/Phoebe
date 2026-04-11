@@ -42,6 +42,13 @@ const STAGE_LATIN: Record<Stage, string> = {
   meditatio: "Meditatio",
   oratio: "Oratio",
 };
+// Day-of-week each stage unlocks on. Surfaced on the welcome slide so the
+// rhythm is immediately legible (Mon · Lectio / Wed · Meditatio / Fri · Oratio).
+const STAGE_DAY_LABEL: Record<Stage, string> = {
+  lectio: "Monday",
+  meditatio: "Wednesday",
+  oratio: "Friday",
+};
 // Instructive prompt text. The three beats of each stage mirror the classic
 // "read · reflect in silence · share aloud" structure of a Lectio Divina
 // circle — adapted for a reading practice (you read the passage; you don't
@@ -165,9 +172,9 @@ const SPACE_GROTESK =
 
 // ─── Slide model ────────────────────────────────────────────────────────────
 
-type SlideKind = "prompt" | "reading" | "entry" | "responses" | "summary" | "all-responses";
-// Summary slide isn't bound to a specific stage — it summarizes the whole
-// week — so `stage` is nullable and readers must check `kind` first.
+type SlideKind = "welcome" | "prompt" | "reading" | "entry" | "responses" | "summary" | "all-responses";
+// Welcome + summary slides aren't bound to a specific stage — they frame
+// the whole week — so `stage` is nullable and readers must check `kind` first.
 type Slide = { stage: Stage | null; kind: SlideKind };
 
 function allStagesSubmitted(data: LectioData): boolean {
@@ -176,8 +183,23 @@ function allStagesSubmitted(data: LectioData): boolean {
   return unlocked.every((s) => data.stages[s].userHasSubmitted);
 }
 
+// True on a user's very first visit to this Lectio — they haven't shared
+// a reflection for any stage yet. Used to show the welcome slide, which
+// serves as both the creator's post-creation screen and an invited member's
+// first-time onboarding.
+function hasSubmittedAnyStage(data: LectioData): boolean {
+  return STAGE_ORDER.some((s) => data.stages[s].userHasSubmitted);
+}
+
 function buildSlides(data: LectioData): Slide[] {
   const slides: Slide[] = [];
+  // Welcome slide — prepended on a user's very first visit before they
+  // have submitted any reflection. It invites them to start, explains the
+  // Mon/Wed/Fri rhythm, and reassures them that the circle can always
+  // catch up. Goes away the moment they share their first reflection.
+  if (!hasSubmittedAnyStage(data)) {
+    slides.push({ stage: null, kind: "welcome" });
+  }
   for (const s of STAGE_ORDER) {
     if (!data.stages[s].unlocked) continue;
     slides.push({ stage: s, kind: "prompt" });
@@ -207,6 +229,13 @@ function buildSlides(data: LectioData): Slide[] {
 //     they haven't finished yet
 //   - fall back to index 0 if nothing else matches
 function initialSlideIndex(data: LectioData, slides: Slide[]): number {
+  // Fresh user — always land on the welcome slide. It's the first slide
+  // when it exists, so we can simply return 0, but findIndex is defensive
+  // in case the slide ordering ever changes.
+  if (!hasSubmittedAnyStage(data)) {
+    const welcomeIdx = slides.findIndex((sl) => sl.kind === "welcome");
+    if (welcomeIdx >= 0) return welcomeIdx;
+  }
   if (allStagesSubmitted(data)) {
     const summaryIdx = slides.findIndex((sl) => sl.kind === "summary");
     if (summaryIdx >= 0) return summaryIdx;
@@ -478,13 +507,15 @@ export default function LectioPage() {
           </button>
           <div style={{ textAlign: "right" }}>
             <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
-              {data.week.isSunday
-                ? "Completed"
-                : current.stage
-                  ? STAGE_ORDINAL[current.stage]
-                  : current.kind === "all-responses"
-                    ? "All Responses"
-                    : "Summary"}
+              {current.kind === "welcome"
+                ? "Welcome"
+                : data.week.isSunday
+                  ? "Completed"
+                  : current.stage
+                    ? STAGE_ORDINAL[current.stage]
+                    : current.kind === "all-responses"
+                      ? "All Responses"
+                      : "Summary"}
             </p>
             <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2 }}>
               {data.reading.gospelReference}
@@ -536,6 +567,9 @@ export default function LectioPage() {
                   : undefined
               }
             >
+              {current.kind === "welcome" && (
+                <WelcomeSlide data={data} onBegin={next} />
+              )}
               {current.kind === "prompt" && current.stage && (
                 <PromptSlide stage={current.stage} />
               )}
@@ -617,15 +651,18 @@ export default function LectioPage() {
           // The action pill tells the user what the next step in this slide
           // is ("Read" → "Reflect" → "Responses" → "Next stage"). The summary
           // slide has its own CTAs, so the pill is hidden there.
-          const stageLabel = data.week.isSunday
-            ? "Completed"
-            : current.stage
-              ? `${STAGE_ORDINAL[current.stage]} · ${STAGE_LATIN[current.stage]}`
-              : current.kind === "all-responses"
-                ? "All Responses"
-                : "Summary";
+          const stageLabel = current.kind === "welcome"
+            ? "Welcome"
+            : data.week.isSunday
+              ? "Completed"
+              : current.stage
+                ? `${STAGE_ORDINAL[current.stage]} · ${STAGE_LATIN[current.stage]}`
+                : current.kind === "all-responses"
+                  ? "All Responses"
+                  : "Summary";
 
           let actionLabel: string | null = null;
+          // Welcome slide has its own "Begin 🌿" button, so no pill here.
           if (current.kind === "prompt") {
             actionLabel = "Read";
           } else if (current.kind === "reading") {
@@ -1150,6 +1187,153 @@ function ReflectionCard({
 // unlocked stage. Lists the three stages + how many in the circle have
 // responded to each, with a CTA to jump back into the responses and a quiet
 // secondary link to return to the dashboard.
+
+// ─── Welcome slide ──────────────────────────────────────────────────────────
+// Shown on a user's very first visit (before they've submitted any
+// reflection) — works as both the post-creation screen for the circle's
+// creator and the first-time onboarding for anyone invited into an
+// existing practice. Visually mirrors the summary slide (three stage
+// rows) so the rhythm of Mon/Wed/Fri is legible at a glance, and ends
+// with a single "Begin 🌿" call to action.
+
+function WelcomeSlide({
+  data,
+  onBegin,
+}: {
+  data: LectioData;
+  onBegin: () => void;
+}) {
+  const rows = STAGE_ORDER.map((s) => ({
+    stage: s,
+    day: STAGE_DAY_LABEL[s],
+    latin: STAGE_LATIN[s],
+    ordinal: STAGE_ORDINAL[s],
+  }));
+
+  return (
+    <div className="py-2 text-center">
+      <p
+        style={{
+          color: FAINT_GREEN,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          marginBottom: 10,
+        }}
+      >
+        A new rhythm
+      </p>
+      <p
+        style={{
+          color: WARM_TEXT,
+          fontSize: 22,
+          lineHeight: 1.4,
+          marginBottom: 14,
+          maxWidth: 480,
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        Welcome to {data.moment.name}.
+      </p>
+      <p
+        style={{
+          color: MUTED_GREEN,
+          fontSize: 14,
+          lineHeight: 1.65,
+          marginBottom: 22,
+          maxWidth: 460,
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        Together you'll read this Sunday's gospel in three unhurried stages —
+        Monday, Wednesday, and Friday. Each stage unlocks on its day. If you or
+        anyone in your circle falls behind, the stages stay open so you can
+        always catch up before the next reading.
+      </p>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          maxWidth: 440,
+          margin: "0 auto 28px auto",
+        }}
+      >
+        {rows.map((r) => (
+          <div
+            key={r.stage}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              padding: "14px 16px 14px 18px",
+              borderRadius: 14,
+              border: `1px solid ${BORDER}`,
+              background: "rgba(15,40,24,0.6)",
+              width: "100%",
+              textAlign: "left",
+              fontFamily: SPACE_GROTESK,
+              color: WARM_TEXT,
+            }}
+          >
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                }}
+              >
+                {r.day}
+              </p>
+              <p style={{ color: WARM_TEXT, fontSize: 15, margin: "2px 0 0 0" }}>
+                {r.latin}
+              </p>
+            </div>
+            <span
+              className="rounded-full"
+              style={{
+                background: "rgba(111,175,133,0.14)",
+                color: ACCENT,
+                border: "1px solid rgba(111,175,133,0.35)",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                padding: "3px 10px",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              {r.ordinal}
+            </span>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onBegin}
+        className="rounded-full"
+        style={{
+          background: BUTTON_BG,
+          color: WARM_TEXT,
+          fontFamily: SPACE_GROTESK,
+          fontSize: 14,
+          fontWeight: 600,
+          padding: "12px 32px",
+          border: "none",
+          cursor: "pointer",
+        }}
+      >
+        Begin 🌿
+      </button>
+    </div>
+  );
+}
 
 function SummarySlide({
   data,

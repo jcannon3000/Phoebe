@@ -284,7 +284,7 @@ const TEMPLATES = [
   },
   {
     id: "lectio-divina", emoji: "📜", name: "Lectio Divina",
-    desc: "Slowly read and reflect on the upcoming Sunday Gospel together — Mon, Wed, Fri",
+    desc: "Read this Sunday's gospel together in three unhurried stages — Mon, Wed, Fri. Catch up any day.",
     prefill: {
       name: "Lectio Divina",
       intention: "Read together. Listen together. Pray together.",
@@ -916,6 +916,14 @@ export default function MomentNew() {
         setLocation(`/ritual/${ritualIdFromUrl}`);
         return;
       }
+      // Lectio Divina has its own welcome screen baked into the
+      // /lectio/... slideshow (shown before any reflection is
+      // submitted). Skip the generic "is planted" confirmation for
+      // Lectio creators so they land directly on that welcome slide.
+      if (templateId === "lectio-divina") {
+        setLocation(`/moments/${data.moment.id}`);
+        return;
+      }
       setDone(true);
     },
   });
@@ -1266,13 +1274,13 @@ export default function MomentNew() {
                   <div className="space-y-3">
                     {TEMPLATES.map(t => (
                       <button key={t.id} onClick={() => selectTemplate(t)}
-                        className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+                        className="w-full text-left rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
                         style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}>
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{t.emoji}</span>
-                          <div>
-                            <p className="font-semibold text-base" style={{ color: "#F0EDE6" }}>{t.name}</p>
-                            <p className="text-sm" style={{ color: "#8FAF96" }}>{t.desc}</p>
+                        <div className="flex items-center gap-4 px-5 py-4">
+                          <span className="text-3xl leading-none shrink-0">{t.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-[15px] leading-snug" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t.name}</p>
+                            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t.desc}</p>
                           </div>
                         </div>
                       </button>
