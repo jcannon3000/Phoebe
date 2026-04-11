@@ -76,7 +76,7 @@ export default function LetterInvitePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAF6F0" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#091A10" }}>
         <div className="w-6 h-6 rounded-full border-2 border-[#5C7A5F] border-t-transparent animate-spin" />
       </div>
     );
@@ -84,10 +84,10 @@ export default function LetterInvitePage() {
 
   if (notFound) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: "#FAF6F0" }}>
+      <div className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: "#091A10" }}>
         <div>
           <p className="text-4xl mb-4">✉️</p>
-          <p className="text-base" style={{ color: "#6b6460" }}>This invitation is no longer valid.</p>
+          <p className="text-base" style={{ color: "#8FAF96" }}>This invitation is no longer valid.</p>
         </div>
       </div>
     );
@@ -98,53 +98,31 @@ export default function LetterInvitePage() {
   const isOneToOne = data.type === "one_to_one";
 
   if (accepted) {
-    const writeUrl = correspondenceId
-      ? `/letters/${correspondenceId}/write?token=${inviteToken}`
-      : "/";
     const goUrl = correspondenceId
       ? `/letters/${correspondenceId}?token=${inviteToken}`
       : "/";
+    // Redirect to read the letter first
+    if (correspondenceId) setLocation(goUrl);
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: "#FAF6F0" }}>
-        <div className="text-5xl mb-6">✉️</div>
-        <h1 className="text-xl font-bold mb-2" style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}>
-          You're in. 🌿
-        </h1>
-        <p className="text-sm mb-8 leading-relaxed max-w-sm" style={{ color: "#6b6460" }}>
-          Write whenever you're ready.
-        </p>
-        <button
-          onClick={() => setLocation(writeUrl)}
-          className="px-8 py-4 rounded-2xl font-semibold text-base mb-4"
-          style={{ background: "#5C7A5F", color: "#fff" }}
-        >
-          Write your first letter 🖋️
-        </button>
-        <button
-          onClick={() => setLocation(goUrl)}
-          className="text-sm"
-          style={{ color: "#9a9390" }}
-        >
-          View the correspondence →
-        </button>
-        <p className="text-xs mt-12" style={{ color: "#9a9390" }}>Be together with Phoebe.</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#091A10" }}>
+        <div className="w-6 h-6 rounded-full border-2 border-[#5C7A5F] border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: "#FAF6F0" }}>
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ background: "#091A10" }}>
       <div className="max-w-sm w-full text-center">
         <div className="text-5xl mb-6">✉️</div>
 
         <h1
           className="text-[22px] font-bold mb-4"
-          style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           {data.creatorName} wants to stay in touch.
         </h1>
 
-        <p className="text-base mb-8 leading-relaxed" style={{ color: "#6b6460" }}>
+        <p className="text-base mb-8 leading-relaxed" style={{ color: "#C8D4C0" }}>
           {isOneToOne
             ? `You've been invited to exchange letters — one every two weeks, alternating. You write, they respond, you write back. A conversation with room to breathe.`
             : `You've been invited to join ${data.correspondenceName}. Once every two weeks, everyone shares what's been happening. 50 words or more.`
@@ -152,7 +130,7 @@ export default function LetterInvitePage() {
         </p>
 
         {data.letterCount > 0 && (
-          <p className="text-sm mb-6" style={{ color: "#9a9390" }}>
+          <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
             {data.letterCount} letter{data.letterCount !== 1 ? "s" : ""} already written.
           </p>
         )}
@@ -164,7 +142,7 @@ export default function LetterInvitePage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
             className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-            style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+            style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", color: "#F0EDE6" }}
           />
           <input
             type="email"
@@ -172,7 +150,7 @@ export default function LetterInvitePage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Your email"
             className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-            style={{ background: "#fff", border: "1px solid #C8C4B4", color: "#2C1810" }}
+            style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", color: "#F0EDE6" }}
           />
         </div>
 
@@ -180,13 +158,13 @@ export default function LetterInvitePage() {
           onClick={handleAccept}
           disabled={!name.trim() || !email.includes("@") || isSubmitting}
           className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-opacity"
-          style={{ background: "#5C7A5F", color: "#fff" }}
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
         >
-          {isSubmitting ? "Accepting..." : "Accept and start writing ✉️"}
+          {isSubmitting ? "Accepting..." : "Read the letter →"}
         </button>
 
-        <p className="text-xs mt-10" style={{ color: "#9a9390" }}>
-          No account needed. Just your words. 🌿<br />
+        <p className="text-xs mt-10" style={{ color: "#8FAF96" }}>
+          You'll need a Phoebe account to write back.<br />
           Be together with Phoebe.
         </p>
       </div>

@@ -279,7 +279,25 @@ export default function WriteLetter() {
 
       {/* Action bar */}
       <div className="px-6 py-3 max-w-3xl mx-auto w-full" style={{ borderBottom: "1px solid #EDE6D9" }}>
-        {!confirmSend ? (
+        {!user && confirmSend ? (
+          <div>
+            <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
+              Create a free Phoebe account to send your letter.
+            </p>
+            <div className="flex items-center gap-4">
+              <a
+                href={`/?redirect=${encodeURIComponent(`/letters/${correspondenceId}/write`)}`}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: "#5C7A5F", color: "#fff" }}
+              >
+                Create account →
+              </a>
+              <button onClick={() => setConfirmSend(false)} className="text-sm" style={{ color: "#9a9390" }}>
+                Keep writing
+              </button>
+            </div>
+          </div>
+        ) : !confirmSend ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
