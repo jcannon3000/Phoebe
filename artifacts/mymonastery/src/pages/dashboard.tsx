@@ -571,12 +571,16 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : m.myStreak > 0 ? `🙏🏽 ${m.myStreak}` : null)
       : null;
 
+  const prayHref = isIntercession
+    ? (m.momentToken && m.myUserToken ? `/moment/${m.momentToken}/${m.myUserToken}` : `/moments/${m.id}`)
+    : null;
+
   const openHref = (isLectio && m.momentToken && m.myUserToken)
     ? `/lectio/${m.momentToken}/${m.myUserToken}`
     : (shouldPulse && isMorningPrayer && m.myUserToken)
     ? `/morning-prayer/${m.id}/${m.myUserToken}`
-    : (shouldPulse && isIntercession && m.momentToken && m.myUserToken)
-    ? `/moment/${m.momentToken}/${m.myUserToken}`
+    : isIntercession
+    ? "/practices"
     : `/moments/${m.id}`;
 
   // Cycling subtitle lines.
@@ -707,21 +711,26 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
               {isLectioCaughtUp ? "Responses" : "Reflect 📜"}
             </motion.span>
           ) : shouldPulse ? (
-            <motion.span
-              className="text-xs font-semibold rounded-full inline-block"
-              style={{
-                background: "#2D5E3F",
-                color: "#F0EDE6",
-                padding: "4px 14px",
-                letterSpacing: "0.01em",
-                whiteSpace: "nowrap",
-                lineHeight: "20px",
-              }}
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            <Link
+              href={prayHref ?? openHref}
+              onClick={(e) => e.stopPropagation()}
             >
-              Pray 🙏🏽
-            </motion.span>
+              <motion.span
+                className="text-xs font-semibold rounded-full inline-block"
+                style={{
+                  background: "#2D5E3F",
+                  color: "#F0EDE6",
+                  padding: "4px 14px",
+                  letterSpacing: "0.01em",
+                  whiteSpace: "nowrap",
+                  lineHeight: "20px",
+                }}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                Pray 🙏🏽
+              </motion.span>
+            </Link>
           ) : (
             isDesktop && desktopStatusText && (
               <span className="text-xs" style={{ color: "#8FAF96" }}>{desktopStatusText}</span>
