@@ -681,6 +681,61 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   );
 }
 
+// ─── Letter carousel (multiple letters in one slot) ──────────────────────────
+
+// Hold each letter long enough to see SplitFlapLine cycle through both lines:
+// 4000ms show + ~600ms transition + 4000ms show ≈ 8600ms → use 9s.
+const LETTER_HOLD_MS = 9000;
+
+function LetterCarousel({
+  letters, userEmail, userName, keyPrefix,
+}: {
+  letters: Correspondence[];
+  userEmail: string;
+  userName: string;
+  keyPrefix: string;
+}) {
+  const [idx, setIdx] = useState(0);
+  const [opacity, setOpacity] = useState(1);
+
+  useEffect(() => {
+    if (letters.length <= 1) return;
+    const hold = setTimeout(() => {
+      setOpacity(0);
+      const swap = setTimeout(() => {
+        setIdx(i => (i + 1) % letters.length);
+        setOpacity(1);
+      }, 300);
+      return () => clearTimeout(swap);
+    }, LETTER_HOLD_MS);
+    return () => clearTimeout(hold);
+  }, [idx, letters.length]);
+
+  return (
+    <div>
+      <div style={{ opacity, transition: "opacity 0.3s ease" }}>
+        <LetterCard c={letters[idx]} userEmail={userEmail} userName={userName} keyPrefix={keyPrefix} />
+      </div>
+      {letters.length > 1 && (
+        <div className="flex justify-center gap-1.5 mt-2">
+          {letters.map((_, i) => (
+            <div
+              key={i}
+              className="rounded-full"
+              style={{
+                width: i === idx ? 16 : 4,
+                height: 4,
+                background: i === idx ? "#8FAF96" : "rgba(143,175,150,0.3)",
+                transition: "all 0.3s ease",
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Generic time section (Today / This week / This month) ──────────────────
 
 function TimeSection({
@@ -695,14 +750,27 @@ function TimeSection({
   userName: string;
 }) {
   if (items.length === 0) return null;
-  const scrollable = items.length > 3;
+
+  const letterItems = items.filter(i => i.kind === "letter") as Array<{ kind: "letter"; data: Correspondence }>;
+  const nonLetterItems = items.filter(i => i.kind !== "letter");
+  // Multiple letters collapse to one slot for scroll-threshold purposes
+  const effectiveCount = (letterItems.length > 0 ? 1 : 0) + nonLetterItems.length;
+  const scrollable = effectiveCount > 3;
 
   const cards = (
     <div className="space-y-3">
-      {items.map((item) => {
+      {letterItems.length > 1 ? (
+        <LetterCarousel
+          letters={letterItems.map(i => i.data)}
+          userEmail={userEmail}
+          userName={userName}
+          keyPrefix={label}
+        />
+      ) : letterItems.length === 1 ? (
+        <LetterCard c={letterItems[0].data} userEmail={userEmail} userName={userName} keyPrefix={label} />
+      ) : null}
+      {nonLetterItems.map((item) => {
         switch (item.kind) {
-          case "letter":
-            return <LetterCard key={`${label}-l-${item.data.id}`} c={item.data} userEmail={userEmail} userName={userName} keyPrefix={label} />;
           case "moment":
             return <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />;
           case "gathering":
