@@ -614,45 +614,11 @@ export default function LectioPage() {
         );
       })()}
 
-      {/* Fixed dark-green fade overlays behind the floating header and nav.
-          Sits on the top + bottom of the viewport so scrolling slides
-          (reading, all-responses) fade into the page background as they
-          approach the hovering chrome. pointerEvents: "none" so scroll and
-          nav taps pass through. Only rendered for slides that actually
-          scroll content behind the chrome — on short slides it would just
-          add unwanted darkness. */}
-      {(current.kind === "reading" || current.kind === "all-responses") && (
-        <>
-          <div
-            aria-hidden
-            style={{
-              position: "fixed",
-              left: 0,
-              right: 0,
-              top: 0,
-              height: 220,
-              pointerEvents: "none",
-              zIndex: 40,
-              background:
-                "linear-gradient(to top, rgba(6,18,11,0) 0%, rgba(6,18,11,0.6) 30%, rgba(6,18,11,0.92) 60%, rgba(4,12,7,1) 100%)",
-            }}
-          />
-          <div
-            aria-hidden
-            style={{
-              position: "fixed",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 280,
-              pointerEvents: "none",
-              zIndex: 40,
-              background:
-                "linear-gradient(to bottom, rgba(6,18,11,0) 0%, rgba(6,18,11,0.6) 30%, rgba(6,18,11,0.92) 60%, rgba(4,12,7,1) 100%)",
-            }}
-          />
-        </>
-      )}
+      {/* The top + bottom fades are now applied as a CSS mask on the
+          scrolling text containers themselves (see ReadingSlide and
+          AllResponsesSlide). That way only the glyphs fade — the
+          background stays a flat dark green, so the hovering chrome
+          doesn't sit on top of a visibly darker rectangle. */}
 
       {/* Floating nav pill at the bottom of the viewport. Fixed so scrolling
           inside a slide (e.g. the gospel card) doesn't move the nav. */}
@@ -859,10 +825,11 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
   // The reading slide's title + verse reference are rendered at the page
   // level as a fixed overlay (see the parent component). This component
   // only owns the scrollable gospel text, which flows underneath the fixed
-  // header, title, and bottom nav — with top + bottom gradient overlays
-  // fading the text into the page background. paddingTop leaves room so
-  // the first line appears below the fixed title; paddingBottom keeps the
-  // last line from disappearing under the nav.
+  // header, title, and bottom nav. A CSS mask is applied to the scroll
+  // container so only the TEXT fades (top + bottom) as it passes behind
+  // the hovering chrome — the background itself stays a flat dark green.
+  const textFadeMask =
+    "linear-gradient(to bottom, transparent 0px, #000 180px, #000 calc(100% - 140px), transparent calc(100% - 40px))";
   return (
     <div
       style={{
@@ -886,6 +853,12 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           paddingRight: 4,
           paddingTop: 160,
           paddingBottom: 220,
+          maskImage: textFadeMask,
+          WebkitMaskImage: textFadeMask,
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+          maskSize: "100% 100%",
+          WebkitMaskSize: "100% 100%",
         }}
       >
         {reading.gospelText}
@@ -1358,6 +1331,8 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
     };
   });
 
+  const textFadeMask =
+    "linear-gradient(to bottom, transparent 0px, #000 120px, #000 calc(100% - 140px), transparent calc(100% - 40px))";
   return (
     <div
       style={{
@@ -1375,6 +1350,12 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
           WebkitOverflowScrolling: "touch",
           paddingTop: 110,
           paddingBottom: 220,
+          maskImage: textFadeMask,
+          WebkitMaskImage: textFadeMask,
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+          maskSize: "100% 100%",
+          WebkitMaskSize: "100% 100%",
         }}
       >
         <p
