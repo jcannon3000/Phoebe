@@ -112,6 +112,8 @@ function bcpWeeksLabel(streak: number): string {
 
 // ─── Moment Card (matches dashboard BarCard style) ───────────────────────────
 
+const FULL_DAY: Record<string, string> = { Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" };
+
 function MomentCard({ moment }: { moment: MomentData }) {
   const emoji = TEMPLATE_EMOJI[moment.templateType ?? "custom"] ?? "✨";
   const shouldPulse = moment.windowOpen && moment.todayPostCount === 0;
@@ -123,8 +125,8 @@ function MomentCard({ moment }: { moment: MomentData }) {
 
   const subtitle = memberNames ? `with ${memberNames}` : moment.intention;
 
-  const isMorningPrayer = moment.templateType === "morning-prayer";
   const isIntercession = moment.templateType === "intercession";
+  const isMorningPrayer = moment.templateType === "morning-prayer";
   const href = (shouldPulse && isMorningPrayer && moment.myUserToken)
     ? `/morning-prayer/${moment.id}/${moment.myUserToken}`
     : (shouldPulse && isIntercession && moment.momentToken && moment.myUserToken)
@@ -132,9 +134,13 @@ function MomentCard({ moment }: { moment: MomentData }) {
     : `/moments/${moment.id}`;
 
   const nextWindow = !moment.windowOpen ? nextWindowDate(moment) : null;
+  const freqLabel = moment.frequency === "daily" ? "Daily" : moment.frequency === "monthly" ? "Monthly" : "Weekly";
+  const nextDayAbbr = nextWindow ? format(nextWindow, "EEE") : null;
+  const nextDayFull = nextDayAbbr ? (FULL_DAY[nextDayAbbr] ?? nextDayAbbr) : null;
   const nextLabel = nextWindow
-    ? (moment.frequency === "daily" ? "Tomorrow" : format(nextWindow, "EEE"))
+    ? (moment.frequency === "daily" ? "Tomorrow" : nextDayFull)
     : null;
+  const secondLine = shouldPulse ? subtitle : nextLabel ? `${freqLabel} · Next prayer ${nextLabel.toLowerCase()}` : subtitle;
 
   return (
     <Link href={href} className="block">
@@ -164,17 +170,11 @@ function MomentCard({ moment }: { moment: MomentData }) {
             )}
           </div>
           <div className="flex items-center justify-between gap-2 mt-1.5">
-            <p className="text-sm" style={{ color: "#8FAF96" }}>{subtitle}</p>
+            <p className="text-sm truncate" style={{ color: "#8FAF96" }}>{secondLine}</p>
             {shouldPulse && (
               <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                Open
+                Pray 🙏🏽
               </span>
-            )}
-            {!shouldPulse && moment.todayPostCount > 0 && nextLabel && (
-              <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>Next Prayer {nextLabel}</span>
-            )}
-            {!shouldPulse && moment.todayPostCount === 0 && nextLabel && (
-              <span className="text-xs shrink-0" style={{ color: "#8FAF96" }}>{nextLabel}</span>
             )}
           </div>
         </div>
@@ -232,11 +232,17 @@ export default function MomentsDashboard() {
   const weekMoments: MomentData[] = [];
   const monthMoments: MomentData[] = [];
 
+  const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   for (const m of moments) {
     if (m.isActionableToday && m.todayPostCount === 0) {
       todayMoments.push(m);
     } else {
-      weekMoments.push(m);
+      const next = nextWindowDate(m);
+      if (next <= sevenDaysFromNow) {
+        weekMoments.push(m);
+      } else {
+        monthMoments.push(m);
+      }
     }
   }
 
