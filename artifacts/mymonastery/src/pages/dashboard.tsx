@@ -312,7 +312,7 @@ function LetterSummaryCard({
         <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
           📮 {title}
         </span>
-        <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+        <span className="text-[10px] font-semibold uppercase shrink-0 mt-1" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
           View All
         </span>
       </div>
@@ -745,10 +745,13 @@ function TimeSection({
   userName: string;
 }) {
   if (items.length === 0) return null;
-  const scrollable = items.length > 3;
 
   const letterItems = items.filter(i => i.kind === "letter") as Array<{ kind: "letter"; data: Correspondence }>;
   const nonLetterItems = items.filter(i => i.kind !== "letter");
+
+  // Visible card count: 2+ letters collapse into a single summary card.
+  const visibleCardCount = (letterItems.length > 0 ? 1 : 0) + nonLetterItems.length;
+  const scrollable = visibleCardCount > 3;
 
   const cards = (
     <div className="space-y-3">
