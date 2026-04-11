@@ -59,6 +59,15 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
         </p>
       )}
 
+      {slide.kind === "intercession" && (
+        <p
+          className="text-[12px] italic"
+          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+        >
+          Your community is holding this.
+        </p>
+      )}
+
       {bcpPrayer && (
         <div
           className="w-full rounded-2xl px-6 py-5 text-left mt-1"

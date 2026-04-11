@@ -452,6 +452,13 @@ function IntercessionPrayerPage({
               Praying for: {intention}
             </motion.p>
           )}
+          <motion.p
+            variants={headerItem}
+            className="text-[12px] italic mt-2"
+            style={{ color: "rgba(200,230,210,0.5)" }}
+          >
+            Your community is holding this.
+          </motion.p>
         </motion.div>
 
         {/* Prayer text card */}
