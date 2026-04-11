@@ -47,7 +47,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
           className="w-full rounded-2xl px-6 py-5 text-left mt-1"
           style={{
             background: "rgba(46,107,64,0.12)",
-            border: "1px solid rgba(200,212,192,0.1)",
+            border: "1px solid rgba(92,122,95,0.15)",
           }}
         >
           <p

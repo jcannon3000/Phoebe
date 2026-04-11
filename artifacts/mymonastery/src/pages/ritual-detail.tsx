@@ -368,12 +368,12 @@ export default function RitualDetail() {
       <div className="max-w-3xl mx-auto w-full pb-16">
 
         {/* Header */}
-        <div className="rounded-2xl p-5 md:p-6 mb-5" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
+        <div className="rounded-2xl p-5 md:p-6 mb-5" style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               {/* Rhythm + since */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ border: "1px solid rgba(200,212,192,0.2)", color: "#8FAF96" }}>
+                <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ border: "1px solid rgba(92,122,95,0.3)", color: "#8FAF96" }}>
                   {ritual.frequency === "biweekly" ? "Biweekly" : ritual.frequency.charAt(0).toUpperCase() + ritual.frequency.slice(1)}
                 </span>
                 {(ritual as any).createdAt && (
@@ -402,7 +402,7 @@ export default function RitualDetail() {
                       <Link
                         href={`/people/${encodeURIComponent(p.email)}`}
                         className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-medium shadow-sm hover:z-10 hover:scale-110 transition-all"
-                        style={{ borderColor: "rgba(200,212,192,0.25)", background: isPending ? "rgba(200,212,192,0.1)" : "rgba(74,103,65,0.15)", color: isPending ? "#8FAF96" : "#C8D4C0" }}
+                        style={{ borderColor: "rgba(92,122,95,0.35)", background: isPending ? "rgba(200,212,192,0.1)" : "rgba(74,103,65,0.15)", color: isPending ? "#8FAF96" : "#C8D4C0" }}
                         title={p.name}
                       >
                         {p.name.charAt(0).toUpperCase()}
@@ -414,7 +414,7 @@ export default function RitualDetail() {
                   );
                 })}
                 {ritual.participants.length > 3 && (
-                  <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-medium shadow-sm" style={{ borderColor: "rgba(200,212,192,0.2)", background: "rgba(200,212,192,0.08)", color: "#8FAF96" }}>
+                  <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-medium shadow-sm" style={{ borderColor: "rgba(92,122,95,0.3)", background: "rgba(92,122,95,0.08)", color: "#8FAF96" }}>
                     +{ritual.participants.length - 3}
                   </div>
                 )}
@@ -422,7 +422,7 @@ export default function RitualDetail() {
               <button
                 onClick={() => setShowInviteSheet(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:bg-[#4A6741]/5"
-                style={{ border: "1px solid rgba(200,212,192,0.25)", color: "#8FAF96", fontSize: "13px" }}
+                style={{ border: "1px solid rgba(92,122,95,0.35)", color: "#8FAF96", fontSize: "13px" }}
               >
                 <UserPlus size={12} />
                 Add people
@@ -432,7 +432,7 @@ export default function RitualDetail() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 rounded-full mb-5" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
+        <div className="flex gap-1 p-1 rounded-full mb-5" style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
           {[
             { id: "timeline", label: "🤝 Gatherings" },
             { id: "moments", label: "🙏 Practices" },
@@ -467,7 +467,7 @@ export default function RitualDetail() {
             >
               {/* ── Rhythm Health ──────────────────────────────────────── */}
               {!timelineLoading && (
-                <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)" }}>
+                <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.2)" }}>
                   <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color: "rgba(200,212,192,0.4)" }}>
                     Rhythm
                   </p>
@@ -519,12 +519,12 @@ export default function RitualDetail() {
                             background: dot === "completed"
                               ? "#4A9E84"
                               : dot === "missed"
-                              ? "rgba(200,212,192,0.12)"
+                              ? "rgba(92,122,95,0.15)"
                               : "transparent",
                             border: dot === "upcoming"
-                              ? "1.5px solid rgba(200,212,192,0.25)"
+                              ? "1.5px solid rgba(92,122,95,0.35)"
                               : dot === "missed"
-                              ? "1.5px solid rgba(200,212,192,0.08)"
+                              ? "1.5px solid rgba(92,122,95,0.12)"
                               : "none",
                           }}
                         />
@@ -548,7 +548,7 @@ export default function RitualDetail() {
                     transition={{ delay: i * 0.08 }}
                     onClick={() => setCalSyncNotifs(prev => prev.filter(n => n.email !== m.email))}
                     className="flex items-center gap-3 rounded-2xl px-4 py-3 cursor-pointer"
-                    style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}
+                    style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)" }}
                   >
                     <span className="text-xl">🌱</span>
                     <div className="flex-1">
@@ -583,7 +583,7 @@ export default function RitualDetail() {
               {timelineLoading ? (
                 <div className="h-40 rounded-2xl animate-pulse" style={{ background: "#0F2818" }} />
               ) : timeline?.upcoming ? (
-                <div className="rounded-2xl p-6" style={{ background: "#0F2818", border: timeline.confirmedTime ? "1px solid rgba(200,212,192,0.25)" : "1px dashed rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
+                <div className="rounded-2xl p-6" style={{ background: "#0F2818", border: timeline.confirmedTime ? "1px solid rgba(92,122,95,0.35)" : "1px dashed rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
                   {/* Card header — always includes Reschedule */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -728,7 +728,7 @@ export default function RitualDetail() {
                 </div>
               ) : (
                 /* No gathering scheduled yet */
-                <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: isRhythmOverdue ? "1px dashed rgba(196,122,101,0.4)" : "1px dashed rgba(200,212,192,0.2)" }}>
+                <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: isRhythmOverdue ? "1px dashed rgba(196,122,101,0.4)" : "1px dashed rgba(92,122,95,0.3)" }}>
                   <div className="text-3xl mb-3">{isRhythmOverdue ? "🕯️" : "🤝"}</div>
                   <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                     {isRhythmOverdue ? "It's time to find a time" : "No gathering scheduled yet"}
@@ -750,7 +750,7 @@ export default function RitualDetail() {
 
               {/* Suggest a time — non-owner members */}
               {!isOwner && ritual && (
-                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)" }}>
+                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.2)" }}>
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Propose a time</p>
                     {suggestSent && (
@@ -810,7 +810,7 @@ export default function RitualDetail() {
 
               {/* Time suggestions — owner only */}
               {isOwner && suggestionsData && suggestionsData.suggestions.length > 0 && (
-                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)" }}>
+                <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.2)" }}>
                   <p className="text-sm font-semibold mb-3" style={{ color: "#F0EDE6" }}>
                     When your people are free
                   </p>
@@ -873,7 +873,7 @@ export default function RitualDetail() {
                         : null;
                       return (
                         <div key={meetup.id} className="flex items-start gap-4 pl-1">
-                          <div className="relative z-10 w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 shadow-sm mt-1" style={{ borderColor: "rgba(200,212,192,0.15)", background: "#0F2818" }}>
+                          <div className="relative z-10 w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 shadow-sm mt-1" style={{ borderColor: "rgba(92,122,95,0.2)", background: "#0F2818" }}>
                             {meetup.status === "completed" ? (
                               <CheckCircle2 size={16} style={{ color: "#4A9E84" }} />
                             ) : (
@@ -899,7 +899,7 @@ export default function RitualDetail() {
                                 className="text-xs px-2.5 py-0.5 rounded-full font-medium shrink-0"
                                 style={meetup.status === "completed"
                                   ? { background: "rgba(74,158,132,0.08)", color: "#4A9E84", border: "1px solid rgba(74,158,132,0.2)" }
-                                  : { background: "rgba(200,212,192,0.05)", color: "rgba(143,175,150,0.5)", border: "1px solid rgba(200,212,192,0.1)" }
+                                  : { background: "rgba(92,122,95,0.05)", color: "rgba(143,175,150,0.5)", border: "1px solid rgba(92,122,95,0.15)" }
                                 }
                               >
                                 {meetup.status === "completed" ? "Gathered ✓" : "Missed"}
@@ -931,7 +931,7 @@ export default function RitualDetail() {
               <Link
                 href={`/moment/new?ritualId=${ritualId}`}
                 className="flex items-center justify-between p-5 rounded-2xl transition-colors group"
-                style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
               >
                 <div>
                   <p className="font-semibold text-foreground">Plant a Shared Moment</p>
@@ -971,7 +971,7 @@ export default function RitualDetail() {
                 const timeLabel = new Date(0, 0, 0, hh, mm).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
                 return (
-                  <div key={m.id} className="rounded-2xl p-5 space-y-4" style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
+                  <div key={m.id} className="rounded-2xl p-5 space-y-4" style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1026,7 +1026,7 @@ export default function RitualDetail() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
               className="rounded-2xl p-6 space-y-6"
-              style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+              style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
             >
               <div>
                 <label className="block text-sm font-medium mb-2 text-foreground">Gathering Name</label>

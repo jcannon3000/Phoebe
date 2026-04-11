@@ -186,7 +186,7 @@ export default function TraditionNew() {
                     key={o.value}
                     onClick={() => handleTypeSelect(o.value)}
                     className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-                    style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.2)" }}
+                    style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.3)" }}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{o.emoji}</span>
@@ -220,7 +220,7 @@ export default function TraditionNew() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Morning Coffee, Sunday Dinner"
                   className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none"
-                  style={{ background: "#091A10", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6" }}
+                  style={{ background: "#091A10", border: "1.5px solid rgba(92,122,95,0.35)", color: "#F0EDE6" }}
                 />
               </div>
 
@@ -238,7 +238,7 @@ export default function TraditionNew() {
                           className="w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all"
                           style={{
                             background: sel ? "#2D5E3F" : "#0F2818",
-                            border: `1.5px solid ${sel ? "rgba(200,212,192,0.5)" : "rgba(200,212,192,0.2)"}`,
+                            border: `1.5px solid ${sel ? "rgba(92,122,95,0.65)" : "rgba(92,122,95,0.3)"}`,
                           }}
                         >
                           <div
@@ -274,7 +274,7 @@ export default function TraditionNew() {
                           onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], name: e.target.value }; return c; })}
                           placeholder="Name (optional)"
                           className="flex-1 px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                          style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
+                          style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.3)", color: "#F0EDE6" }}
                         />
                         {newPeople.length > 1 && (
                           <button onClick={() => setNewPeople((p) => p.filter((_, j) => j !== i))} className="text-lg px-1" style={{ color: "#8FAF96" }}>×</button>
@@ -286,7 +286,7 @@ export default function TraditionNew() {
                         onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], email: e.target.value }; return c; })}
                         placeholder="Email address"
                         className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
+                        style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.3)", color: "#F0EDE6" }}
                       />
                     </div>
                   ))}
@@ -328,7 +328,7 @@ export default function TraditionNew() {
                     className="w-full text-left p-4 rounded-2xl transition-all"
                     style={{
                       background: rhythm === o.value ? "#2D5E3F" : "#0F2818",
-                      border: `2px solid ${rhythm === o.value ? "rgba(200,212,192,0.5)" : "rgba(200,212,192,0.2)"}`,
+                      border: `2px solid ${rhythm === o.value ? "rgba(92,122,95,0.65)" : "rgba(92,122,95,0.3)"}`,
                     }}
                   >
                     <div className="flex items-center gap-3">
@@ -382,7 +382,7 @@ export default function TraditionNew() {
                       setFirstPick(e.target.value ? `${e.target.value}T${time}` : "");
                     }}
                     className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.35)", color: "#F0EDE6", colorScheme: "dark" }}
                   />
                   <input
                     type="time"
@@ -392,7 +392,7 @@ export default function TraditionNew() {
                       if (date) setFirstPick(`${date}T${e.target.value}`);
                     }}
                     className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.35)", color: "#F0EDE6", colorScheme: "dark" }}
                   />
                 </div>
               </div>
@@ -412,7 +412,7 @@ export default function TraditionNew() {
                     }}
                     placeholder="Optional"
                     className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.18)", color: "#F0EDE6", colorScheme: "dark" }}
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
                   />
                   <input
                     type="time"
@@ -422,7 +422,7 @@ export default function TraditionNew() {
                       if (date) setAltTime1(`${date}T${e.target.value}`);
                     }}
                     className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.18)", color: "#F0EDE6", colorScheme: "dark" }}
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
                   />
                 </div>
               </div>
@@ -442,7 +442,7 @@ export default function TraditionNew() {
                     }}
                     placeholder="Optional"
                     className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.18)", color: "#F0EDE6", colorScheme: "dark" }}
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
                   />
                   <input
                     type="time"
@@ -452,7 +452,7 @@ export default function TraditionNew() {
                       if (date) setAltTime2(`${date}T${e.target.value}`);
                     }}
                     className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(200,212,192,0.18)", color: "#F0EDE6", colorScheme: "dark" }}
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
                   />
                 </div>
               </div>

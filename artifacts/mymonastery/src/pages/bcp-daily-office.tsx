@@ -179,7 +179,7 @@ export default function BcpDailyOfficePage() {
             className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
             style={{
               background: isMorning ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
-              border: `1px solid ${isMorning ? "rgba(200,212,192,0.25)" : "rgba(200,212,192,0.12)"}`,
+              border: `1px solid ${isMorning ? "rgba(92,122,95,0.35)" : "rgba(92,122,95,0.18)"}`,
             }}
           >
             <div className="flex items-center gap-4">
@@ -201,7 +201,7 @@ export default function BcpDailyOfficePage() {
             className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
             style={{
               background: isEvening ? "rgba(26,28,46,0.4)" : "rgba(26,28,46,0.15)",
-              border: `1px solid ${isEvening ? "rgba(139,157,195,0.25)" : "rgba(200,212,192,0.12)"}`,
+              border: `1px solid ${isEvening ? "rgba(139,157,195,0.25)" : "rgba(92,122,95,0.18)"}`,
             }}
           >
             <div className="flex items-center gap-4">
@@ -218,7 +218,7 @@ export default function BcpDailyOfficePage() {
           </button>
         </div>
 
-        <div className="mt-8 rounded-xl px-5 py-4 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(200,212,192,0.15)" }}>
+        <div className="mt-8 rounded-xl px-5 py-4 text-center" style={{ background: "rgba(92,122,95,0.04)", border: "1px dashed rgba(92,122,95,0.2)" }}>
           <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>
             Want to pray the office daily with others?
           </p>

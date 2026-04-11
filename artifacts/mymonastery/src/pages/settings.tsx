@@ -21,7 +21,7 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="rounded-xl px-5 py-4 mb-3"
-      style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(200,212,192,0.12)" }}
+      style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(92,122,95,0.18)" }}
     >
       {children}
     </div>
@@ -69,7 +69,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4 mb-4">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
-              style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(200,212,192,0.2)" }}
+              style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(92,122,95,0.3)" }}
             >
               {user.name?.charAt(0).toUpperCase() ?? "?"}
             </div>
@@ -126,7 +126,7 @@ export default function SettingsPage() {
         <button
           onClick={() => { logout(); setLocation("/"); }}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80"
-          style={{ background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(200,212,192,0.12)" }}
+          style={{ background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.18)" }}
         >
           <LogOut size={15} />
           Sign out

@@ -575,7 +575,7 @@ export default function MomentDetail() {
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-5 flex items-center justify-between rounded-2xl px-4 py-3"
-            style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)" }}
+            style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)" }}
           >
             <div>
               <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>

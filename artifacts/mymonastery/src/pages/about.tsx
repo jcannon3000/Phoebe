@@ -31,7 +31,7 @@ export default function AboutPage() {
         <div className="space-y-6">
           <div
             className="rounded-xl px-5 py-5"
-            style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(200,212,192,0.12)" }}
+            style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(92,122,95,0.18)" }}
           >
             <p className="text-sm leading-relaxed" style={{ color: "#C8D4C0" }}>
               Phoebe is a sanctuary for fellowship — letters, practices, and gatherings for the people who matter most.
@@ -46,7 +46,7 @@ export default function AboutPage() {
 
           <div
             className="rounded-xl px-5 py-4 text-center"
-            style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(200,212,192,0.15)" }}
+            style={{ background: "rgba(92,122,95,0.04)", border: "1px dashed rgba(92,122,95,0.2)" }}
           >
             <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>
               Built with care for the Church and her people. 🌿

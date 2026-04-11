@@ -133,7 +133,7 @@ export default function People() {
             {/* Compact empty state */}
             <div
               className="rounded-xl px-5 py-5 mb-6 flex items-center gap-4"
-              style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+              style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
             >
               <span style={{ fontSize: "32px" }}>🌱</span>
               <div>
@@ -151,7 +151,7 @@ export default function People() {
               <Link href="/letters/new">
                 <div
                   className="flex items-center gap-4 px-4 py-4 rounded-xl cursor-pointer hover:shadow-sm transition-shadow"
-                  style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                 >
                   <span className="text-xl">🌿</span>
                   <span className="flex-1 text-sm font-medium" style={{ color: "#F0EDE6" }}>Start a letter with someone</span>
@@ -161,7 +161,7 @@ export default function People() {
               <Link href="/tradition/new">
                 <div
                   className="flex items-center gap-4 px-4 py-4 rounded-xl cursor-pointer hover:shadow-sm transition-shadow"
-                  style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                 >
                   <span className="text-xl">🏡</span>
                   <span className="flex-1 text-sm font-medium" style={{ color: "#F0EDE6" }}>Create a gathering</span>
@@ -193,7 +193,7 @@ export default function People() {
                     className="rounded-2xl overflow-hidden transition-shadow hover:shadow-lg"
                     style={{
                       background: "#0F2818",
-                      border: `1px solid ${isHighlighted ? "rgba(111,175,133,0.5)" : "rgba(200,212,192,0.15)"}`,
+                      border: `1px solid ${isHighlighted ? "rgba(111,175,133,0.5)" : "rgba(92,122,95,0.2)"}`,
                       boxShadow: "0 2px 8px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2)",
                     }}
                   >
