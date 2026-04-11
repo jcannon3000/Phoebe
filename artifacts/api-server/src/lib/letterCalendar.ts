@@ -31,8 +31,6 @@ export async function sendLetterInvitationCalendarEvent(params: {
         `Accept the invitation →`,
         inviteUrl,
         "",
-        `You'll need a Phoebe account to accept. 🌿`,
-        "",
         `──────────────────`,
         `Be together with Phoebe.`,
       ].join("\n")
@@ -43,8 +41,6 @@ export async function sendLetterInvitationCalendarEvent(params: {
         "",
         `Accept ${creatorFirst}'s invitation →`,
         inviteUrl,
-        "",
-        `You'll need a Phoebe account to accept. Just your words. 🌿`,
         "",
         `──────────────────`,
         `Be together with Phoebe.`,
