@@ -844,7 +844,7 @@ function TimeSection({
   );
 
   return (
-    <div className={scrollable ? "mb-3" : "mb-8"}>
+    <div className={scrollable ? "mb-3" : "mb-5"}>
       <SectionHeader label={label} />
       {scrollable ? (
         <div className="relative">
