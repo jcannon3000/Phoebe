@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -218,25 +219,16 @@ export default function LettersPage() {
     <Layout>
       <div className="max-w-2xl mx-auto w-full pb-24">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Letters 📮
-            </h1>
-            <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-              Letters have connected people for centuries. One letter every other week.
-            </p>
-          </div>
-          {!isEmpty && (
-            <Link href="/letters/new">
-              <button className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                + New
-              </button>
-            </Link>
-          )}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+            Letters 📮
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
+            Letters have connected people for centuries. One letter every other week.
+          </p>
         </div>
 
-        <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
+        <div className="h-px mb-6" style={{ background: "rgba(142,158,66,0.25)" }} />
 
         {isLoading ? (
           <div className="space-y-3">
@@ -293,6 +285,16 @@ export default function LettersPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Floating + FAB */}
+      <Link
+        href="/letters/new"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
+        style={{ background: "#2D4A1E", color: "#F0EDE6" }}
+        aria-label="New correspondence"
+      >
+        <Plus size={24} />
+      </Link>
     </Layout>
   );
 }
