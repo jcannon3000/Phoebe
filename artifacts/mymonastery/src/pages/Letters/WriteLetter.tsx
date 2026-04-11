@@ -282,13 +282,20 @@ export default function WriteLetter() {
         {!user && confirmSend ? (
           <div>
             <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
-              Create a free Phoebe account to send your letter.
+              Sign in to send your letter. Your draft is saved.
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 flex-wrap">
               <a
                 href={`/?redirect=${encodeURIComponent(`/letters/${correspondenceId}/write`)}`}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold"
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold"
                 style={{ background: "#5C7A5F", color: "#fff" }}
+              >
+                Log in →
+              </a>
+              <a
+                href={`/?signup=1&redirect=${encodeURIComponent(`/letters/${correspondenceId}/write`)}`}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: "transparent", border: "1px solid #C8BFB0", color: "#5C7A5F" }}
               >
                 Create account →
               </a>

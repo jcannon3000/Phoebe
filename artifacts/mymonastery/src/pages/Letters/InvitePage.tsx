@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InviteInfo {
   correspondenceName: string;
@@ -14,6 +15,7 @@ interface InviteInfo {
 export default function LetterInvitePage() {
   const [, params] = useRoute("/letters/invite/:token");
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const inviteToken = params?.token ?? "";
 
   const [data, setData] = useState<InviteInfo | null>(null);
@@ -46,6 +48,28 @@ export default function LetterInvitePage() {
     }
     load();
   }, [inviteToken]);
+
+  // Auto-accept when the user is already logged in
+  useEffect(() => {
+    if (!user || !data || accepted || isSubmitting) return;
+    setIsSubmitting(true);
+    fetch(`/api/phoebe/invite/${inviteToken}/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ name: user.name, email: user.email }),
+    }).then(async res => {
+      if (!res.ok) res = await fetch(`/api/letters/invite/${inviteToken}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: user.name, email: user.email }),
+      });
+      const result = await res.json();
+      setCorrespondenceId(result.correspondenceId);
+      setAccepted(true);
+    }).catch(() => setIsSubmitting(false));
+  }, [user, data]);
 
   async function handleAccept() {
     if (!name.trim() || !email.trim()) return;
@@ -163,7 +187,16 @@ export default function LetterInvitePage() {
           {isSubmitting ? "Accepting..." : "Read the letter →"}
         </button>
 
-        <p className="text-xs mt-10" style={{ color: "#8FAF96" }}>
+        <p className="text-xs mt-6" style={{ color: "#8FAF96" }}>
+          Already have an account?{" "}
+          <a
+            href={`/?redirect=${encodeURIComponent(`/letters/invite/${inviteToken}`)}`}
+            style={{ color: "#C8D4C0", textDecoration: "underline" }}
+          >
+            Log in →
+          </a>
+        </p>
+        <p className="text-xs mt-3" style={{ color: "#8FAF96" }}>
           You'll need a Phoebe account to write back.<br />
           Be together with Phoebe.
         </p>
