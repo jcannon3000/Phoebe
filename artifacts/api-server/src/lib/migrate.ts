@@ -251,6 +251,7 @@ export async function migrate() {
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_sessions_logged INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_goal_tier INTEGER NOT NULL DEFAULT 1`);
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_tend_freely BOOLEAN NOT NULL DEFAULT false`);
+    await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_goal_reached_at TIMESTAMPTZ`);
 
     // Listening practice columns
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS listening_type TEXT`);

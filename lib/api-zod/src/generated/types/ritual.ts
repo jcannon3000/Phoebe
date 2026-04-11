@@ -17,6 +17,8 @@ export interface Ritual {
   frequency: RitualFrequency;
   /** @nullable */
   dayPreference?: string | null;
+  /** @nullable */
+  location?: string | null;
   participants: Participant[];
   /** @nullable */
   intention?: string | null;
@@ -26,6 +28,8 @@ export interface Ritual {
   lastMeetupDate?: string | null;
   /** @nullable */
   nextMeetupDate?: string | null;
+  /** @nullable */
+  nextMeetupLocation?: string | null;
   status: RitualStatus;
   createdAt: Date;
 }

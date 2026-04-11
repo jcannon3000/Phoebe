@@ -65,6 +65,7 @@ export const ListRitualsResponseItem = zod.object({
   streak: zod.number(),
   lastMeetupDate: zod.string().nullish(),
   nextMeetupDate: zod.string().nullish(),
+  nextMeetupLocation: zod.string().nullish(),
   status: zod.enum(["on_track", "overdue", "needs_scheduling"]),
   createdAt: zod.coerce.date(),
 });
@@ -120,6 +121,7 @@ export const GetRitualResponse = zod
     streak: zod.number(),
     lastMeetupDate: zod.string().nullish(),
     nextMeetupDate: zod.string().nullish(),
+    nextMeetupLocation: zod.string().nullish(),
     status: zod.enum(["on_track", "overdue", "needs_scheduling"]),
     createdAt: zod.coerce.date(),
   })
@@ -133,6 +135,7 @@ export const GetRitualResponse = zod
             scheduledDate: zod.coerce.date(),
             status: zod.enum(["planned", "completed", "skipped"]),
             notes: zod.string().nullish(),
+            location: zod.string().nullish(),
             createdAt: zod.coerce.date(),
           }),
         )

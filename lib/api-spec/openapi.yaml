@@ -315,6 +315,8 @@ components:
           enum: [weekly, biweekly, monthly]
         dayPreference:
           type: ["string", "null"]
+        location:
+          type: ["string", "null"]
         participants:
           type: array
           items:
@@ -328,6 +330,8 @@ components:
         lastMeetupDate:
           type: ["string", "null"]
         nextMeetupDate:
+          type: ["string", "null"]
+        nextMeetupLocation:
           type: ["string", "null"]
         status:
           type: string
@@ -418,6 +422,8 @@ components:
           type: string
           enum: [planned, completed, skipped]
         notes:
+          type: ["string", "null"]
+        location:
           type: ["string", "null"]
         createdAt:
           type: string

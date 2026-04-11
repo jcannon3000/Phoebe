@@ -14,5 +14,7 @@ export interface Meetup {
   status: MeetupStatus;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  location?: string | null;
   createdAt: Date;
 }

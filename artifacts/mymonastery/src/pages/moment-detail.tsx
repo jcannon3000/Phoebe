@@ -1294,28 +1294,56 @@ export default function MomentDetail() {
                       </button>
                     );
                   })}
+                  <button
+                    onClick={() => setRenewCustom("ongoing")}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                      renewCustom === "ongoing"
+                        ? "bg-[#5C7A5F] text-white"
+                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
+                    style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                  >
+                    Ongoing ✨
+                  </button>
                 </div>
 
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
-                  Custom length
-                </p>
-                <div className="flex items-center gap-2 mb-6">
-                  <input
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={renewCustom}
-                    onChange={(e) => setRenewCustom(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-xl bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]"
-                    placeholder="How many?"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {moment.frequency === "daily" ? "days" : "sessions"}
-                  </span>
-                </div>
+                {renewCustom !== "ongoing" && (
+                  <>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
+                      Custom length
+                    </p>
+                    <div className="flex items-center gap-2 mb-6">
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={renewCustom}
+                        onChange={(e) => setRenewCustom(e.target.value)}
+                        className="flex-1 px-4 py-3 rounded-xl bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]"
+                        placeholder="How many?"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {moment.frequency === "daily" ? "days" : "sessions"}
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {renewCustom === "ongoing" && (
+                  <p className="text-xs text-muted-foreground italic mb-6" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                    No end date — this is just what you do now. The calendar event keeps going. ✨
+                  </p>
+                )}
 
                 <button
                   onClick={() => {
+                    if (renewCustom === "ongoing") {
+                      updateGoalMutation.mutate(
+                        { commitmentSessionsGoal: null, commitmentTendFreely: true },
+                        { onSuccess: () => setRenewModalOpen(false) }
+                      );
+                      return;
+                    }
                     const n = parseInt(renewCustom, 10);
                     if (!Number.isFinite(n) || n < 1 || n > 365) return;
                     updateGoalMutation.mutate(
@@ -1323,24 +1351,18 @@ export default function MomentDetail() {
                       { onSuccess: () => setRenewModalOpen(false) }
                     );
                   }}
-                  disabled={updateGoalMutation.isPending || !renewCustom || parseInt(renewCustom, 10) < 1}
+                  disabled={
+                    updateGoalMutation.isPending ||
+                    (renewCustom !== "ongoing" && (!renewCustom || parseInt(renewCustom, 10) < 1))
+                  }
                   className="w-full py-3.5 rounded-2xl text-sm font-semibold bg-[#5C7A5F] text-white hover:bg-[#5a7a60] transition-colors disabled:opacity-50"
                   style={{ fontFamily: "Space Grotesk, sans-serif" }}
                 >
-                  {updateGoalMutation.isPending ? "Renewing…" : "Renew 🌱"}
-                </button>
-                <button
-                  onClick={() => {
-                    updateGoalMutation.mutate(
-                      { commitmentSessionsGoal: null, commitmentTendFreely: true },
-                      { onSuccess: () => setRenewModalOpen(false) }
-                    );
-                  }}
-                  disabled={updateGoalMutation.isPending}
-                  className="w-full mt-2 py-2 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
-                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                >
-                  Tend freely instead ✨
+                  {updateGoalMutation.isPending
+                    ? "Renewing…"
+                    : renewCustom === "ongoing"
+                      ? "Make it ongoing ✨"
+                      : "Renew 🌱"}
                 </button>
               </div>
             </motion.div>

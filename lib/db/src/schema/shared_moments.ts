@@ -46,6 +46,10 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   commitmentSessionsLogged: integer("commitment_sessions_logged").notNull().default(0),
   commitmentGoalTier: integer("commitment_goal_tier").notNull().default(1),
   commitmentTendFreely: boolean("commitment_tend_freely").notNull().default(false),
+  // Stamped when sessionsLogged first crosses sessionsGoal. Cleared on renew.
+  // Used by the goal-cleanup job to remove recurring calendar events for
+  // members who never renew within 2 days of reaching the goal.
+  commitmentGoalReachedAt: timestamp("commitment_goal_reached_at", { withTimezone: true }),
   // Listening practice fields
   listeningType: text("listening_type"),             // song | album | artist
   listeningTitle: text("listening_title"),

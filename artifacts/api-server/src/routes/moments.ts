@@ -241,10 +241,22 @@ async function evaluateWindow(momentId: number, windowDate: string) {
       const nextState = goalHit ? "active" : newState;
       // Increment progressive session counter
       const newSessionsLogged = ((moment as Record<string, unknown>).commitmentSessionsLogged as number ?? 0) + 1;
+      // Stamp commitmentGoalReachedAt the moment sessionsLogged first crosses the
+      // commitment goal — used by the goal-cleanup job to remove recurring
+      // calendar events 2 days later if no one renews. If already stamped (or no
+      // goal set, or already past goal) leave it alone.
+      const sessionsGoal = (moment as Record<string, unknown>).commitmentSessionsGoal as number | null;
+      const prevReachedAt = (moment as Record<string, unknown>).commitmentGoalReachedAt as Date | null;
+      const justCrossedGoal =
+        sessionsGoal != null &&
+        sessionsGoal > 0 &&
+        newSessionsLogged >= sessionsGoal &&
+        !prevReachedAt;
       await db.update(sharedMomentsTable)
         .set({
           currentStreak: nextStreak, longestStreak: newLongest, totalBlooms: newBlooms, state: nextState,
           commitmentSessionsLogged: newSessionsLogged,
+          ...(justCrossedGoal ? { commitmentGoalReachedAt: new Date() } : {}),
         } as Record<string, unknown>)
         .where(eq(sharedMomentsTable.id, momentId));
     }
@@ -2294,15 +2306,19 @@ router.patch("/moments/:id/goal", async (req, res): Promise<void> => {
   const updates: Record<string, unknown> = {};
 
   if (parsed.data.commitmentTendFreely) {
-    // "Tend freely" — clear the goal, mark tend-freely
+    // "Tend freely" — clear the goal, mark tend-freely. Clearing
+    // commitmentGoalReachedAt cancels the 2-day calendar cleanup.
     updates.commitmentSessionsGoal = null;
     updates.commitmentTendFreely = true;
+    updates.commitmentGoalReachedAt = null;
   } else if (parsed.data.commitmentSessionsGoal !== null) {
-    // Setting a new goal — increment tier, reset sessions logged, set new goal
+    // Setting a new goal — increment tier, reset sessions logged, set new goal.
+    // Also clear commitmentGoalReachedAt so the cleanup job won't fire.
     updates.commitmentSessionsGoal = parsed.data.commitmentSessionsGoal;
     updates.commitmentSessionsLogged = 0;
     updates.commitmentGoalTier = (((moment as Record<string, unknown>).commitmentGoalTier as number) ?? 1) + 1;
     updates.commitmentTendFreely = false;
+    updates.commitmentGoalReachedAt = null;
   }
 
   if (Object.keys(updates).length > 0) {
