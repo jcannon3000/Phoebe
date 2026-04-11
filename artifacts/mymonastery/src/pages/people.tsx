@@ -110,7 +110,7 @@ export default function People() {
 
   return (
     <Layout>
-      <div className="flex flex-col h-full w-full">
+      <div className="max-w-2xl mx-auto w-full pb-20">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
