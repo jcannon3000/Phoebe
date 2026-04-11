@@ -146,6 +146,14 @@ const BG = "#091A10";
 const WARM_TEXT = "#F0EDE6";
 const MUTED_GREEN = "#8FAF96";
 const FAINT_GREEN = "rgba(143,175,150,0.55)";
+// Card (reading + all-responses). Slightly brighter than the page so the
+// card reads as a raised surface. CARD_FADE_* are used for the "more
+// below" gradient at the bottom of the scrollable area — the solid stop
+// matches the composite of CARD_BG over BG so the fade is invisible on
+// the background but opaque over text.
+const CARD_BG = "rgba(32,70,46,0.78)";
+const CARD_FADE_TRANSPARENT = "rgba(28,58,38,0)";
+const CARD_FADE_SOLID = "rgba(28,58,38,0.98)";
 const ACCENT = "#6FAF85";
 const BORDER = "rgba(200,212,192,0.15)";
 const BUTTON_BG = "#2D5E3F";
@@ -789,7 +797,9 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
   // vertical space between the fixed header and the fixed nav. The title +
   // verse reference sit at the top of the card; the gospel text itself is
   // the only thing that scrolls (inside the card), so the page chrome
-  // stays put and the page never scrolls.
+  // stays put and the page never scrolls. A small gradient overlay sits
+  // at the bottom of the card to hint there's more text below when the
+  // user hasn't scrolled to the end.
   return (
     <div
       style={{
@@ -797,11 +807,12 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        background: "rgba(19,44,29,0.55)",
+        background: CARD_BG,
         border: `1px solid ${BORDER}`,
         borderRadius: 18,
         boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
         overflow: "hidden",
+        position: "relative",
       }}
     >
       <div
@@ -848,6 +859,20 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
       >
         {reading.gospelText}
       </div>
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 56,
+          pointerEvents: "none",
+          background: `linear-gradient(to bottom, ${CARD_FADE_TRANSPARENT} 0%, ${CARD_FADE_SOLID} 100%)`,
+          borderBottomLeftRadius: 18,
+          borderBottomRightRadius: 18,
+        }}
+      />
     </div>
   );
 }
@@ -1323,11 +1348,12 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        background: "rgba(19,44,29,0.55)",
+        background: CARD_BG,
         border: `1px solid ${BORDER}`,
         borderRadius: 18,
         boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
         overflow: "hidden",
+        position: "relative",
       }}
     >
       <div
@@ -1448,6 +1474,20 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
           </div>
         ))}
       </div>
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 56,
+          pointerEvents: "none",
+          background: `linear-gradient(to bottom, ${CARD_FADE_TRANSPARENT} 0%, ${CARD_FADE_SOLID} 100%)`,
+          borderBottomLeftRadius: 18,
+          borderBottomRightRadius: 18,
+        }}
+      />
     </div>
   );
 }
