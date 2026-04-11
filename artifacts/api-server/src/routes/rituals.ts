@@ -1,4 +1,4 @@
-import { getFrontendUrl } from "../lib/urls";
+import { getInviteBaseUrl } from "../lib/urls";
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -437,7 +437,7 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
 
   // Create invite tokens for each participant
   const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
-  const appBase = getFrontendUrl();
+  const appBase = getInviteBaseUrl();
   const existingInvites = await db
     .select()
     .from(inviteTokensTable)
@@ -476,7 +476,7 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
   try {
     const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
     if (organizer && parsed.data.proposedTimes.length > 0) {
-      const appBase = getFrontendUrl();
+      const appBase = getInviteBaseUrl();
       const organizerFirstName = (organizer.name ?? organizer.email ?? "Someone").split(" ")[0];
 
       // Warm one-liner — use the stored intention (tagline) if available
@@ -843,7 +843,7 @@ router.post("/rituals/:id/invite", async (req, res): Promise<void> => {
     await db.update(ritualsTable).set({ participants: merged }).where(eq(ritualsTable.id, ritualId));
 
     // Add invite tokens for new participants
-    const appBase = getFrontendUrl();
+    const appBase = getInviteBaseUrl();
     for (const p of newParts) {
       const existingToken = await db.select().from(inviteTokensTable)
         .where(eq(inviteTokensTable.ritualId, ritualId));
@@ -955,7 +955,7 @@ router.post("/rituals/:id/restore-calendar", async (req, res): Promise<void> => 
       `${ritual.name} — restored via Eleanor`,
       ritual.intention ? `"${ritual.intention}"` : "",
       "",
-      `View this tradition → ${getFrontendUrl()}/ritual/${id}`,
+      `View this tradition → ${getInviteBaseUrl()}/ritual/${id}`,
     ].filter(Boolean).join("\n"),
     startDate: eventStart,
     endDate: eventEnd,

@@ -1,4 +1,4 @@
-import { getFrontendUrl } from "../lib/urls";
+import { getInviteBaseUrl } from "../lib/urls";
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
@@ -339,7 +339,7 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
   });
 
   // Create moment_user_tokens for each member
-  const baseUrl = `${getFrontendUrl()}/moment`;
+  const baseUrl = `${getInviteBaseUrl()}/moment`;
 
   const memberTokenRows = uniqueMembers.map(m => ({
     momentId: moment.id,
@@ -375,7 +375,7 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
   let gcalCreated = false;
 
   for (const t of nonOrganizerTokens) {
-    const shortLink = `${getFrontendUrl()}/m/${t.userToken}`;
+    const shortLink = `${getInviteBaseUrl()}/m/${t.userToken}`;
     const tradFreqLabel = frequency === "daily" ? "Daily" : frequency === "weekly" ? "Weekly" : "Monthly";
     const tradStartDate = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
     const tradTimeLabel = (() => {
@@ -575,7 +575,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     return true;
   });
 
-  const baseUrl = `${getFrontendUrl()}/moment`;
+  const baseUrl = `${getInviteBaseUrl()}/moment`;
 
   const memberTokenRows = uniqueMembers.map(m => ({
     momentId: moment.id,
@@ -672,7 +672,7 @@ router.post("/moments", async (req, res): Promise<void> => {
   const freqLabel = frequency === "daily" ? "Daily" : frequency === "weekly" ? "Weekly" : "Monthly";
 
   function buildDescription(memberToken: string, _memberName: string, inviterName: string, _isOrganizer: boolean): string {
-    const shortLink = `${getFrontendUrl()}/m/${memberToken}`;
+    const shortLink = `${getInviteBaseUrl()}/m/${memberToken}`;
     const invFirst = inviterName.split(" ")[0];
 
     if (templateType === "intercession") {
@@ -814,7 +814,7 @@ router.post("/moments", async (req, res): Promise<void> => {
   }
 
   function buildFastingDescription(memberToken: string, inviterName: string, _isOrganizer: boolean): string {
-    const shortLink = `${getFrontendUrl()}/m/${memberToken}`;
+    const shortLink = `${getInviteBaseUrl()}/m/${memberToken}`;
     const invFirst = inviterName.split(" ")[0];
     const fastFreqLabel = fastingFrequency === "weekly" ? "Weekly" : fastingFrequency === "monthly" ? "Monthly" : "Fasting day";
 
@@ -847,7 +847,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     const orgToken = insertedTokens.find(t => t.email === organizer.email);
     const orgDescription = orgToken
       ? buildDescription(orgToken.userToken, organizer.name ?? "You", organizerName, true)
-      : `Open Eleanor → ${getFrontendUrl()}/moments/${moment.id}`;
+      : `Open Eleanor → ${getInviteBaseUrl()}/moments/${moment.id}`;
 
     if (isFasting) {
       const fastingDateStr = getFastingStartDateStr();
@@ -1386,7 +1386,7 @@ router.post("/moments/:id/invite", async (req, res): Promise<void> => {
               `${moment.name} practice on Eleanor.`,
               ...(moment.intention ? [`"${moment.intention}"`] : []),
               "",
-              `Open Eleanor → ${getFrontendUrl()}/moments/${momentId}`,
+              `Open Eleanor → ${getInviteBaseUrl()}/moments/${momentId}`,
             ].join("\n"),
             startDate,
             endDate,
@@ -1921,7 +1921,7 @@ router.post("/moments/:id/personal-time", async (req, res): Promise<void> => {
           "",
           `${allMembers.length} ${allMembers.length === 1 ? "person" : "people"} practicing together.`,
           "",
-          `Open Eleanor → ${getFrontendUrl()}/moments/${momentId}`,
+          `Open Eleanor → ${getInviteBaseUrl()}/moments/${momentId}`,
         ].join("\n"),
         startDate: new Date(),
         startLocalStr,
@@ -2058,7 +2058,7 @@ router.post("/moments/:momentToken/join", async (req, res): Promise<void> => {
           else if (moment.frequency === "weekly" && moment.dayOfWeek) recurrence.push(`RRULE:FREQ=WEEKLY;BYDAY=${moment.dayOfWeek}`);
           else if (moment.frequency === "weekly") recurrence.push("RRULE:FREQ=WEEKLY");
 
-          const joinShortLink = `${getFrontendUrl()}/m/${tokenRow.userToken}`;
+          const joinShortLink = `${getInviteBaseUrl()}/m/${tokenRow.userToken}`;
           const calEventId = await createCalendarEvent(joinSessionUserId, {
             summary: `🔔 ${moment.name}`,
             description: [
@@ -2087,7 +2087,7 @@ router.post("/moments/:momentToken/join", async (req, res): Promise<void> => {
       }
     }
 
-    const baseUrl = `${getFrontendUrl()}/moment`;
+    const baseUrl = `${getInviteBaseUrl()}/moment`;
 
     res.status(201).json({
       userToken: tokenRow.userToken,
@@ -2194,7 +2194,7 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
           "",
           `${allTokens.length} ${allTokens.length === 1 ? "person" : "people"} practicing together.`,
           "",
-          `Open Eleanor → ${getFrontendUrl()}/moments/${momentId}`,
+          `Open Eleanor → ${getInviteBaseUrl()}/moments/${momentId}`,
         ].join("\n"),
         startDate: new Date(),
         startLocalStr,
@@ -2575,7 +2575,7 @@ router.post("/moments/:id/refresh-calendar", async (req, res): Promise<void> => 
   }
 
   // Build the new title and description in current format
-  const shortLink = `${getFrontendUrl()}/m/${myTokenRow.userToken}`;
+  const shortLink = `${getInviteBaseUrl()}/m/${myTokenRow.userToken}`;
   const freqLabel = moment.frequency === "daily" ? "Daily" : moment.frequency === "weekly" ? "Weekly" : "Monthly";
   const [h, m] = (moment.scheduledTime || "08:00").split(":").map(Number);
   const period = h < 12 ? "AM" : "PM";
@@ -2684,7 +2684,7 @@ router.post("/moments/:id/restore-calendar", async (req, res): Promise<void> => 
       `${moment.name} practice on Eleanor — restored.`,
       moment.intention ? `"${moment.intention}"` : "",
       "",
-      `Open Eleanor → ${getFrontendUrl()}/moments/${momentId}`,
+      `Open Eleanor → ${getInviteBaseUrl()}/moments/${momentId}`,
     ].filter(Boolean).join("\n"),
     startDate,
     endDate,

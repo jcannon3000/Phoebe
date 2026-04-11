@@ -22,7 +22,7 @@ import {
 } from "../lib/letterPeriods";
 import { sendInvitationEmail, sendNewLetterEmail, sendReminderEmail } from "../lib/letterEmails";
 import { sendLetterCalendarEvent } from "../lib/letterCalendar";
-import { getFrontendUrl } from "../lib/urls";
+import { getInviteBaseUrl } from "../lib/urls";
 
 const router: IRouter = Router();
 
@@ -193,7 +193,7 @@ router.post(
     });
 
     // Add invited members
-    const frontendUrl = getFrontendUrl();
+    const frontendUrl = getInviteBaseUrl();
     for (const m of members) {
       const inviteToken = randomUUID();
       await db.insert(correspondenceMembersTable).values({
@@ -589,7 +589,7 @@ router.post(
       );
 
     // Send calendar events + notification emails to other members (fire-and-forget)
-    const frontendUrl = getFrontendUrl();
+    const frontendUrl = getInviteBaseUrl();
     for (const m of members) {
       if (m.email === auth.email) continue;
       if (!m.joinedAt) continue;
@@ -893,7 +893,7 @@ router.post("/letters/send-reminders", async (req, res): Promise<void> => {
     .where(eq(correspondencesTable.isActive, true));
 
   const now = new Date();
-  const frontendUrl = getFrontendUrl();
+  const frontendUrl = getInviteBaseUrl();
   let remindersSent = 0;
 
   for (const c of correspondences) {

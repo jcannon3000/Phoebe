@@ -1,4 +1,4 @@
-import { getFrontendUrl } from "../lib/urls";
+import { getFrontendUrl, getInviteBaseUrl } from "../lib/urls";
 import { sendEmail } from "../lib/email";
 import { Router, type IRouter } from "express";
 import passport from "passport";
@@ -328,7 +328,7 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     .set({ resetToken: token, resetTokenExpiry: expiry } as Record<string, unknown>)
     .where(eq(usersTable.id, user.id));
 
-  const resetUrl = `${frontendURL}/reset-password?token=${token}`;
+  const resetUrl = `${getInviteBaseUrl()}/reset-password?token=${token}`;
 
   // Try to send email; fall back to logging locally
   try {
