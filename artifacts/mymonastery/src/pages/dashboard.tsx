@@ -625,16 +625,10 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         </div>
         {showRenewPill ? (
           <span
-            className="text-[10px] font-semibold uppercase shrink-0 rounded-full"
-            style={{
-              background: "#2D5E3F",
-              color: "#F0EDE6",
-              letterSpacing: "0.08em",
-              padding: "3px 10px",
-              marginTop: "1px",
-            }}
+            className="text-[10px] font-semibold uppercase shrink-0"
+            style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}
           >
-            Renew 🌱
+            Goal reached 🌸
           </span>
         ) : progressLabel ? (
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
@@ -664,7 +658,23 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           )}
         </div>
         <div className="shrink-0 flex items-center self-center">
-          {isLectio ? (
+          {showRenewPill ? (
+            <motion.span
+              className="text-xs font-semibold rounded-full inline-block"
+              style={{
+                background: "#2D5E3F",
+                color: "#F0EDE6",
+                padding: "4px 14px",
+                letterSpacing: "0.01em",
+                whiteSpace: "nowrap",
+                lineHeight: "20px",
+              }}
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              Renew 🌱
+            </motion.span>
+          ) : isLectio ? (
             // Lectio always shows a pill: "Reflect 📜" when there's something
             // to do this stage, "Responses" once the user has submitted.
             <motion.span
