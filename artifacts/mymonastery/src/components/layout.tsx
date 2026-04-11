@@ -177,7 +177,11 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
       <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center" style={{ background: "#091A10" }}>
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md">
+          <Link
+            href="/dashboard"
+            onClick={() => window.dispatchEvent(new CustomEvent("phoebe:reset-filter"))}
+            className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+          >
             <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
               Phoebe
             </span>

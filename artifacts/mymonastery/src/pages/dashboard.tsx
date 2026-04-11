@@ -703,6 +703,12 @@ export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<"letters" | "practices" | "gatherings" | null>(null);
 
+  useEffect(() => {
+    const reset = () => setFilter(null);
+    window.addEventListener("phoebe:reset-filter", reset);
+    return () => window.removeEventListener("phoebe:reset-filter", reset);
+  }, []);
+
   const { data: correspondences, isLoading: lettersLoading } = useQuery<Correspondence[]>({
     queryKey: ["/api/letters/correspondences"],
     queryFn: () => apiRequest("GET", "/api/letters/correspondences"),
