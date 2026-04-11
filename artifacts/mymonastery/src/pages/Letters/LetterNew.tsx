@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +11,17 @@ type CorrespondenceType = "one_to_one" | "group";
 interface Member {
   email: string;
   name: string;
+}
+
+interface Connection {
+  name: string;
+  email: string;
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
 }
 
 const stepVariants = {
@@ -31,6 +42,17 @@ export default function LetterNew() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
+  const [selectedConnectionEmails, setSelectedConnectionEmails] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch("/api/connections", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { connections: [] })
+      .then(d => { setConnections(d.connections ?? []); setConnectionsLoading(false); })
+      .catch(() => { setConnections([]); setConnectionsLoading(false); });
+  }, []);
+
   const createMutation = useMutation({
     mutationFn: (data: { type: CorrespondenceType; name: string; members: Member[] }) =>
       apiRequest("POST", "/api/phoebe/correspondences", data),
@@ -46,12 +68,48 @@ export default function LetterNew() {
 
   function handleTypeSelect(t: CorrespondenceType) {
     setType(t);
+    setSelectedConnectionEmails(new Set());
     if (t === "one_to_one") {
       setMembers([{ email: "", name: "" }]);
     } else {
       setMembers([{ email: "", name: "" }, { email: "", name: "" }]);
     }
     setStep(2);
+  }
+
+  function handleConnectionSelect(c: Connection) {
+    const key = c.email.toLowerCase();
+    if (type === "one_to_one") {
+      // Clicking a suggestion fills the single member slot
+      const alreadySelected = selectedConnectionEmails.has(key);
+      if (alreadySelected) {
+        setSelectedConnectionEmails(new Set());
+        setMembers([{ email: "", name: "" }]);
+      } else {
+        setSelectedConnectionEmails(new Set([key]));
+        setMembers([{ email: c.email, name: c.name }]);
+      }
+    } else {
+      // Group: toggle
+      setSelectedConnectionEmails(prev => {
+        const next = new Set(prev);
+        if (next.has(key)) {
+          next.delete(key);
+          setMembers(ms => {
+            const filtered = ms.filter(m => m.email.toLowerCase() !== key);
+            return filtered.length === 0 ? [{ email: "", name: "" }] : filtered;
+          });
+        } else {
+          next.add(key);
+          setMembers(ms => {
+            const emptyIdx = ms.findIndex(m => !m.email.trim());
+            if (emptyIdx >= 0) return ms.map((m, i) => i === emptyIdx ? { email: c.email, name: c.name } : m);
+            return [...ms, { email: c.email, name: c.name }];
+          });
+        }
+        return next;
+      });
+    }
   }
 
   function handleWhoNext() {
@@ -64,7 +122,6 @@ export default function LetterNew() {
       setError("Add at least 2 people."); return;
     }
     if (type === "one_to_one") {
-      // Skip naming — auto-generate and create immediately
       const other = validMembers[0];
       const autoName = `Letters with ${other.name || other.email.split("@")[0]}`;
       createMutation.mutate({ type: "one_to_one", name: autoName, members: validMembers });
@@ -83,9 +140,17 @@ export default function LetterNew() {
 
   function updateMember(i: number, field: "email" | "name", value: string) {
     setMembers((ms) => ms.map((m, idx) => idx === i ? { ...m, [field]: value } : m));
+    // Deselect connection if user manually edits the field
+    if (field === "email" && type === "one_to_one") {
+      setSelectedConnectionEmails(new Set());
+    }
   }
 
   function removeMember(i: number) {
+    const email = members[i]?.email?.toLowerCase();
+    if (email) {
+      setSelectedConnectionEmails(prev => { const n = new Set(prev); n.delete(email); return n; });
+    }
     setMembers((ms) => ms.filter((_, idx) => idx !== i));
   }
 
@@ -116,7 +181,7 @@ export default function LetterNew() {
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#8FAF96" : "rgba(200,212,192,0.2)" }}
+              style={{ background: s <= step ? "#8FAF96" : "rgba(92,122,95,0.2)" }}
             />
           ))}
         </div>
@@ -139,7 +204,7 @@ export default function LetterNew() {
                 <button
                   onClick={() => handleTypeSelect("one_to_one")}
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
-                  style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
                   <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 A letter</p>
                   <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>One letter. One person. Once a week.</p>
@@ -151,7 +216,7 @@ export default function LetterNew() {
                 <button
                   onClick={() => handleTypeSelect("group")}
                   className="w-full text-left p-5 rounded-2xl transition-all active:scale-[0.99]"
-                  style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.25)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
+                  style={{ background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}
                 >
                   <p className="text-base font-semibold mb-2" style={{ color: "#F0EDE6" }}>📮 Round letter</p>
                   <p className="text-sm font-medium mb-1" style={{ color: "#C8D4C0" }}>Keep a circle rooted in each other's lives.</p>
@@ -175,6 +240,40 @@ export default function LetterNew() {
                   : "Add 2–14 people. Everyone gets an invitation."}
               </p>
 
+              {/* Connection suggestions */}
+              {!connectionsLoading && connections.length > 0 && (
+                <div className="mb-7">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "#8FAF96" }}>
+                    From your practices 🌿
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {connections.map((c) => {
+                      const sel = selectedConnectionEmails.has(c.email.toLowerCase());
+                      return (
+                        <button
+                          key={c.email}
+                          onClick={() => handleConnectionSelect(c)}
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm"
+                          style={sel
+                            ? { background: "#1A4A2E", border: "1px solid rgba(92,122,95,0.65)", color: "#F0EDE6" }
+                            : { background: "#0F2818", border: "1px solid rgba(92,122,95,0.35)", color: "#C8D4C0" }
+                          }
+                        >
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                            style={{ background: sel ? "rgba(255,255,255,0.15)" : "rgba(92,122,95,0.2)", color: sel ? "#F0EDE6" : "#8FAF96" }}
+                          >
+                            {initials(c.name || c.email)}
+                          </div>
+                          <span>{(c.name || c.email.split("@")[0]).split(" ")[0]}</span>
+                          {sel && <span style={{ color: "#8FAF96", fontSize: "11px" }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-5">
                 {members.map((m, i) => (
                   <div key={i}>
@@ -185,7 +284,7 @@ export default function LetterNew() {
                         value={m.name}
                         onChange={(e) => updateMember(i, "name", e.target.value)}
                         className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
+                        style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.3)", color: "#F0EDE6" }}
                       />
                       {type === "group" && i >= 2 && (
                         <button onClick={() => removeMember(i)} className="text-lg px-1" style={{ color: "#8FAF96" }}>×</button>
@@ -197,7 +296,7 @@ export default function LetterNew() {
                       value={m.email}
                       onChange={(e) => updateMember(i, "email", e.target.value)}
                       className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-                      style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
+                      style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.3)", color: "#F0EDE6" }}
                     />
                   </div>
                 ))}
@@ -244,7 +343,7 @@ export default function LetterNew() {
                 maxLength={60}
                 autoFocus
                 className="w-full px-4 py-4 rounded-xl text-lg font-medium focus:outline-none"
-                style={{ background: "#091A10", border: "1px solid rgba(200,212,192,0.2)", color: "#F0EDE6" }}
+                style={{ background: "#091A10", border: "1px solid rgba(92,122,95,0.3)", color: "#F0EDE6" }}
               />
 
               {error && <p className="text-sm mt-3" style={{ color: "#C47A65" }}>{error}</p>}

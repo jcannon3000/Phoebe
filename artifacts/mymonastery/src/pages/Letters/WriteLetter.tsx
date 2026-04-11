@@ -329,8 +329,8 @@ export default function WriteLetter() {
                     value={postmarkCity}
                     onChange={e => setPostmarkCity(e.target.value)}
                     placeholder="City, State ZIP"
-                    className="text-[13px] font-medium bg-transparent border-b focus:outline-none"
-                    style={{ color: "#5C7A5F", borderColor: "#C8BFB0", minWidth: 180 }}
+                    className="text-[13px] font-medium border-b focus:outline-none"
+                    style={{ color: "#2C1810", backgroundColor: "#F8F3EC", borderColor: "#A8A09A", minWidth: 180 }}
                   />
                 )}
               </div>
