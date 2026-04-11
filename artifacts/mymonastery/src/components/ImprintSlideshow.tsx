@@ -20,20 +20,20 @@ interface ImprintSlideshowProps {
 
 export const correspondenceSlides: ImprintSlide[] = [
   {
-    headline: "For centuries, monks cultivated their deepest relationships through writing. 🌿",
-    body: "Not through proximity. Not through events. Through letters — steady, unhurried, returned to week after week. The relationships that lasted were the ones that were written down. This is the wisdom Phoebe draws on.",
+    headline: "For centuries, monks cultivated relationships through writing letters.",
+    body: "Steady, unhurried, faithful. Letters caused them to be intentional about what they were sharing in their lives, and enter into dialogues that blossomed into meaningful connection.",
   },
   {
-    headline: "One letter. One person. Once a week. 📮",
-    body: "Because you only get one, it means something. You can't dash it off. You have to slow down and ask: what actually happened this week? What do I want them to know? The limitation is the gift. Sacred because it is set apart from the noise.",
+    headline: "One letter. One person. Once every two weeks.",
+    body: "Because you only get one, it means something. You have to slow down and ask: what actually happened this week? What do I want them to know? The limitation is the gift. Sacred because it is set apart from everything else.",
   },
   {
-    headline: "A letter is not a message. It is a record. 📖",
-    body: "Every week you write, you are adding to something — a shared history, a running account of two lives in honest contact. Not ambient. Not lost in a thread. Directed, deliberate, yours. Years from now you will be able to read it back. That is not something a text gives you.",
+    headline: "A letter is not a message. It is a record.",
+    body: "Every time you write, you are adding to something. A shared history. A running account of two lives in honest contact. Directed, deliberate, yours. Years from now you will be able to read it back. That is something worth building.",
   },
   {
-    headline: "The strength of our relationships is what makes life most vibrant. 🙏",
-    body: "In a world of isolation and distraction, Phoebe sets apart a space to stay close to the people who matter most. When something hard happens — to you, to someone you love — there are already people who know you. Who have been reading your words. Who will show up.",
+    headline: "The strength of our relationships is what makes life most vibrant.",
+    body: "When something hard happens, there are already people who know you. Who have been reading your words. Who have been writing theirs. Who will show up. That is what a correspondence builds. That is what Phoebe is for.",
   },
 ];
 
