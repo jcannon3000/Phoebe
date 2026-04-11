@@ -1065,6 +1065,19 @@ router.get("/moments", async (req, res): Promise<void> => {
           if (myPostDates.has(w.windowDate)) { myStreak++; } else { break; }
         }
 
+        // Most recent post the current user made on this practice. The
+        // prayer list card uses this to render "Last prayed 3 days ago"
+        // and anything else that wants to show "when did *you* last
+        // pray through this?" — distinct from the group's latestWindow.
+        const myPosts = allPosts.filter(p => p.userToken === myToken?.userToken && p.windowDate !== "seed");
+        const myLastPostAt: string | null = myPosts.length > 0
+          ? myPosts.reduce<Date>((latest, p) => {
+              const ts = p.createdAt ? new Date(p.createdAt) : null;
+              if (!ts) return latest;
+              return ts > latest ? ts : latest;
+            }, new Date(0)).toISOString()
+          : null;
+
         // Lectio-specific enrichment: this week's reading + how many members have
         // submitted any reflection for the current Sunday anchor.
         let lectioSundayName: string | null = null;
@@ -1149,6 +1162,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           latestWindow,
           myUserToken: myToken?.userToken ?? null,
           myStreak,
+          myLastPostAt,
           isCreator,
           lectioSundayName,
           lectioGospelReference,
@@ -1178,6 +1192,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           latestWindow: null,
           myUserToken: myToken?.userToken ?? null,
           myStreak: 0,
+          myLastPostAt: null,
           isCreator: false,
           lectioSundayName: null,
           lectioGospelReference: null,

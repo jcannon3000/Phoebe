@@ -271,6 +271,18 @@ const TEMPLATES = [
     },
   },
   {
+    id: "contemplative", emoji: "🕯️", name: "Contemplative Prayer",
+    desc: "Sit in silence together — centering prayer, breath prayer, or stillness",
+    prefill: {
+      name: "Contemplative Prayer 🕯️",
+      intention: "We sit together in the silence. Not alone.",
+      loggingType: "checkin" as LoggingType,
+      reflectionPrompt: "",
+      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
+      frequency: "daily" as Frequency,
+    },
+  },
+  {
     id: "fasting", emoji: "✦", name: "Fasting",
     desc: "Keep a shared fast as a discipline — the same day, each week",
     prefill: {
@@ -292,6 +304,18 @@ const TEMPLATES = [
       reflectionPrompt: "",
       scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
       frequency: "weekly" as Frequency,
+    },
+  },
+  {
+    id: "custom", emoji: "🌱", name: "Something else",
+    desc: "Name your own practice — prayer, study, exercise, anything done together",
+    prefill: {
+      name: "",
+      intention: "",
+      loggingType: "reflection" as LoggingType,
+      reflectionPrompt: "",
+      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
+      frequency: "daily" as Frequency,
     },
   },
 ];

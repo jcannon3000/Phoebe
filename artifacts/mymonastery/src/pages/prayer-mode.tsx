@@ -176,14 +176,20 @@ export default function PrayerModePage() {
   };
 
   const handleDone = async () => {
-    // Log check-ins for unprayed intercessions
-    const unprayed = intercessions.filter(
-      (m) => m.windowOpen && m.todayPostCount === 0 && m.momentToken && m.myUserToken,
+    // Log a check-in for every intercession the user has just prayed through
+    // — that's the whole point of the slideshow, so streaks and "last
+    // prayed" timestamps register on the practices. We send `isCheckin: true`
+    // (the field the backend actually reads; the old `loggingType: "checkin"`
+    // was silently ignored), and we log every intercession with tokens,
+    // not just ones whose window is currently "open". The post endpoint
+    // de-dupes per day, so this is safe to call even if they already prayed.
+    const toLog = intercessions.filter(
+      (m) => m.momentToken && m.myUserToken,
     );
     await Promise.allSettled(
-      unprayed.map((m) =>
+      toLog.map((m) =>
         apiRequest("POST", `/api/moment/${m.momentToken}/${m.myUserToken}/post`, {
-          loggingType: "checkin",
+          isCheckin: true,
         }),
       ),
     );
