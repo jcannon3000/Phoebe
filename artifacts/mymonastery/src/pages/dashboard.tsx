@@ -608,10 +608,25 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         return [whoLine, nextLine, verseLine];
       })()
     : [];
-  const mobileFlapLines: string[] = (isLectio ? lectioFlapLines : [subtitle, mobileStatusLine, logCountLine])
+  // Goal-reached flap: cycle between participants and the goal length completed.
+  // Uses "days" for daily practices, "sessions" otherwise. The number reflects
+  // whatever goal length the user originally set.
+  const goalUnit = m.frequency === "daily" ? "days" : "sessions";
+  const goalLengthLine = showRenewPill && sessionsGoalForCard
+    ? `${sessionsGoalForCard} ${goalUnit} prayed 🌸`
+    : "";
+  const renewFlapLines: string[] = showRenewPill
+    ? [subtitle, goalLengthLine]
+    : [];
+
+  const mobileFlapLines: string[] = (
+    showRenewPill ? renewFlapLines :
+    isLectio ? lectioFlapLines :
+    [subtitle, mobileStatusLine, logCountLine]
+  )
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
-  const desktopFlapLines: string[] = (isLectio ? lectioFlapLines : [subtitle, logCountLine, intentionLine])
+  const desktopFlapLines: string[] = (showRenewPill ? renewFlapLines : isLectio ? lectioFlapLines : [subtitle, logCountLine, intentionLine])
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
   const flapLines = isDesktop ? desktopFlapLines : mobileFlapLines;
@@ -641,7 +656,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       </div>
       <div className="flex items-center justify-between gap-4 mt-px -mr-2">
         <div className="min-w-0 flex-1">
-          {shouldPulse && !isLectio ? (
+          {shouldPulse && !isLectio && !showRenewPill ? (
             subtitle ? (
               <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {subtitle}
