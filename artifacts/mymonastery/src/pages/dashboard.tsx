@@ -749,20 +749,28 @@ function TimeSection({
   const letterItems = items.filter(i => i.kind === "letter") as Array<{ kind: "letter"; data: Correspondence }>;
   const nonLetterItems = items.filter(i => i.kind !== "letter");
 
-  // Visible card count: 2+ letters collapse into a single summary card.
-  const visibleCardCount = (letterItems.length > 0 ? 1 : 0) + nonLetterItems.length;
+  // Letters where it's the user's turn always show as individual cards.
+  // Passive letters (waiting/sent) collapse into a summary when there are 2+.
+  const actionLetters = letterItems.filter(i => i.data.turnState === "OPEN" || i.data.turnState === "OVERDUE");
+  const passiveLetters = letterItems.filter(i => i.data.turnState !== "OPEN" && i.data.turnState !== "OVERDUE");
+
+  // Visible card count for scroll threshold
+  const visibleCardCount = actionLetters.length + (passiveLetters.length > 1 ? 1 : passiveLetters.length) + nonLetterItems.length;
   const scrollable = visibleCardCount > 3;
 
   const cards = (
     <div className="space-y-3">
-      {letterItems.length > 1 ? (
+      {actionLetters.map(i => (
+        <LetterCard key={`${label}-l-${i.data.id}`} c={i.data} userEmail={userEmail} userName={userName} keyPrefix={label} />
+      ))}
+      {passiveLetters.length > 1 ? (
         <LetterSummaryCard
           key={`${label}-letters-summary`}
-          correspondences={letterItems.map(i => i.data)}
+          correspondences={passiveLetters.map(i => i.data)}
           userEmail={userEmail}
         />
-      ) : letterItems.length === 1 ? (
-        <LetterCard key={`${label}-l-${letterItems[0].data.id}`} c={letterItems[0].data} userEmail={userEmail} userName={userName} keyPrefix={label} />
+      ) : passiveLetters.length === 1 ? (
+        <LetterCard key={`${label}-l-${passiveLetters[0].data.id}`} c={passiveLetters[0].data} userEmail={userEmail} userName={userName} keyPrefix={label} />
       ) : null}
       {nonLetterItems.map((item) => {
         switch (item.kind) {
