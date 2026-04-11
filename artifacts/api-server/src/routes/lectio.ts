@@ -362,6 +362,10 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
       intention: moment.intention,
       templateType: moment.templateType,
       timezone: tz,
+      createdAt: (moment.createdAt instanceof Date
+        ? moment.createdAt
+        : new Date(moment.createdAt as unknown as string)
+      ).toISOString(),
     },
     userName: userRow.name ?? userRow.email.split("@")[0],
     userToken,
@@ -420,6 +424,28 @@ router.post("/lectio/:momentToken/:userToken/reflect", async (req, res): Promise
     return;
   }
   const { stage, reflectionText } = parsed.data;
+
+  // Stages 2 + 3 ask for a fuller reflection (20–200 words). Lectio stays
+  // open because "a single word or phrase" is the whole point of that
+  // stage. The client enforces the same bounds, but we validate here too
+  // so the rule holds even if someone bypasses the UI.
+  if (stage === "meditatio" || stage === "oratio") {
+    const wordCount = reflectionText.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount < 20) {
+      res.status(400).json({
+        error: "reflection_too_short",
+        detail: `This stage asks for at least 20 words (you wrote ${wordCount}).`,
+      });
+      return;
+    }
+    if (wordCount > 200) {
+      res.status(400).json({
+        error: "reflection_too_long",
+        detail: `This stage caps reflections at 200 words (you wrote ${wordCount}).`,
+      });
+      return;
+    }
+  }
 
   const loaded = await loadMomentAndMember(momentToken, userToken);
   if ("error" in loaded) {

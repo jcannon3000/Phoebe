@@ -68,7 +68,14 @@ type StageReveal = {
 };
 
 type LectioData = {
-  moment: { id: number; name: string; intention: string; templateType: string; timezone: string };
+  moment: {
+    id: number;
+    name: string;
+    intention: string;
+    templateType: string;
+    timezone: string;
+    createdAt: string;
+  };
   userName: string;
   userToken: string;
   isCreator: boolean;
@@ -414,54 +421,108 @@ export default function LectioPage() {
         fontFamily: SPACE_GROTESK,
       }}
     >
-      {/* Header: back link on the left, centered menu button, reading ref on
-          the right. The menu button is the one entry point into settings. */}
+      {/* Header: fixed to the top of the viewport so content can scroll
+          behind it (paired with the top fade gradient below). Back on the
+          left, Menu in the middle, stage label / gospel ref on the right.
+          z-index 50 matches the bottom nav. */}
       <header
-        className="max-w-2xl mx-auto w-full px-5 pt-6 pb-2"
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr auto 1fr",
-          alignItems: "center",
-          gap: 12,
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 50,
+          pointerEvents: "none",
         }}
       >
-        <Link href="/dashboard">
-          <span style={{ color: FAINT_GREEN, fontSize: 13 }}>← Back</span>
-        </Link>
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open settings"
-          className="rounded-full"
+        <div
+          className="max-w-2xl mx-auto w-full px-5 pt-6 pb-2"
           style={{
-            background: "rgba(19,44,29,0.85)",
-            border: `1px solid ${BORDER}`,
-            color: WARM_TEXT,
-            fontFamily: SPACE_GROTESK,
-            fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: "0.04em",
-            padding: "6px 16px",
-            cursor: "pointer",
+            display: "grid",
+            gridTemplateColumns: "1fr auto 1fr",
+            alignItems: "center",
+            gap: 12,
+            pointerEvents: "auto",
           }}
         >
-          Menu
-        </button>
-        <div style={{ textAlign: "right" }}>
-          <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
-            {data.week.isSunday
-              ? "Completed"
-              : current.stage
-                ? STAGE_ORDINAL[current.stage]
-                : current.kind === "all-responses"
-                  ? "All Responses"
-                  : "Summary"}
+          <Link href="/dashboard">
+            <span style={{ color: FAINT_GREEN, fontSize: 13 }}>← Back</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open settings"
+            className="rounded-full"
+            style={{
+              background: "rgba(19,44,29,0.85)",
+              border: `1px solid ${BORDER}`,
+              color: WARM_TEXT,
+              fontFamily: SPACE_GROTESK,
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              padding: "6px 16px",
+              cursor: "pointer",
+            }}
+          >
+            Menu
+          </button>
+          <div style={{ textAlign: "right" }}>
+            <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+              {data.week.isSunday
+                ? "Completed"
+                : current.stage
+                  ? STAGE_ORDINAL[current.stage]
+                  : current.kind === "all-responses"
+                    ? "All Responses"
+                    : "Summary"}
+            </p>
+            <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2 }}>
+              {data.reading.gospelReference}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* Fixed title + verse reference for the reading slide. Sits just below
+          the header and hovers above the scrolling gospel text so only the
+          text itself moves. */}
+      {current.kind === "reading" && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            top: 68,
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            pointerEvents: "none",
+            textAlign: "center",
+            padding: "0 20px",
+          }}
+        >
+          <p
+            style={{
+              color: FAINT_GREEN,
+              fontSize: 11,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              marginBottom: 6,
+            }}
+          >
+            {data.reading.sundayName}
           </p>
-          <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2 }}>
+          <p
+            style={{
+              color: MUTED_GREEN,
+              fontSize: 13,
+              letterSpacing: "0.04em",
+            }}
+          >
             {data.reading.gospelReference}
           </p>
         </div>
-      </header>
+      )}
 
       {/* Slide content — sits directly on the dark background, no card.
           For the reading + all-responses slides we drop the bottom padding
@@ -473,12 +534,15 @@ export default function LectioPage() {
           current.kind === "reading" || current.kind === "all-responses";
         return (
       <main
-        className={`flex-1 flex px-5 py-6 ${
+        className={`flex-1 flex px-5 ${
           isFullHeightSlide
             ? "items-stretch justify-center"
             : "items-center justify-center"
         }`}
-        style={{ paddingBottom: isFullHeightSlide ? 0 : 112 }}
+        style={{
+          paddingTop: isFullHeightSlide ? 0 : 96,
+          paddingBottom: isFullHeightSlide ? 0 : 112,
+        }}
       >
         <div
           className="max-w-2xl w-full"
@@ -550,28 +614,44 @@ export default function LectioPage() {
         );
       })()}
 
-      {/* Fixed dark-green fade overlay behind the floating nav. Sits on the
-          bottom of the viewport so that ANY scrolling slide (reading,
-          all-responses) fades into the page background as it approaches the
-          nav pill. pointerEvents: "none" so scroll and nav taps pass
-          through. Only rendered for slides that actually scroll content
-          behind the nav — on short slides it would just add unwanted
-          darkness at the bottom. */}
+      {/* Fixed dark-green fade overlays behind the floating header and nav.
+          Sits on the top + bottom of the viewport so scrolling slides
+          (reading, all-responses) fade into the page background as they
+          approach the hovering chrome. pointerEvents: "none" so scroll and
+          nav taps pass through. Only rendered for slides that actually
+          scroll content behind the chrome — on short slides it would just
+          add unwanted darkness. */}
       {(current.kind === "reading" || current.kind === "all-responses") && (
-        <div
-          aria-hidden
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 280,
-            pointerEvents: "none",
-            zIndex: 40,
-            background:
-              "linear-gradient(to bottom, rgba(6,18,11,0) 0%, rgba(6,18,11,0.6) 30%, rgba(6,18,11,0.92) 60%, rgba(4,12,7,1) 100%)",
-          }}
-        />
+        <>
+          <div
+            aria-hidden
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 220,
+              pointerEvents: "none",
+              zIndex: 40,
+              background:
+                "linear-gradient(to top, rgba(6,18,11,0) 0%, rgba(6,18,11,0.6) 30%, rgba(6,18,11,0.92) 60%, rgba(4,12,7,1) 100%)",
+            }}
+          />
+          <div
+            aria-hidden
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 280,
+              pointerEvents: "none",
+              zIndex: 40,
+              background:
+                "linear-gradient(to bottom, rgba(6,18,11,0) 0%, rgba(6,18,11,0.6) 30%, rgba(6,18,11,0.92) 60%, rgba(4,12,7,1) 100%)",
+            }}
+          />
+        </>
       )}
 
       {/* Floating nav pill at the bottom of the viewport. Fixed so scrolling
@@ -776,13 +856,13 @@ function PromptSlide({ stage }: { stage: Stage }) {
 }
 
 function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
-  // The reading slide is tall: title + verse sit near the top, and the
-  // gospel text fills the remaining height with an internal scroll. Text
-  // scrolls behind the floating nav; a solid gradient overlay fades the
-  // text visibly into the page background so the reader clearly sees that
-  // more text is hidden behind the pill. We use an overlay div (instead of
-  // mask-image) because mask-image isn't reliable on iOS Safari inside a
-  // flexing scroll container.
+  // The reading slide's title + verse reference are rendered at the page
+  // level as a fixed overlay (see the parent component). This component
+  // only owns the scrollable gospel text, which flows underneath the fixed
+  // header, title, and bottom nav — with top + bottom gradient overlays
+  // fading the text into the page background. paddingTop leaves room so
+  // the first line appears below the fixed title; paddingBottom keeps the
+  // last line from disappearing under the nav.
   return (
     <div
       style={{
@@ -790,35 +870,8 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        // Push the title + verse down so they don't sit right under the
-        // header. This is the "move the title down a little" ask.
-        paddingTop: 48,
-        position: "relative",
       }}
     >
-      <p
-        style={{
-          color: FAINT_GREEN,
-          fontSize: 11,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-          textAlign: "center",
-        }}
-      >
-        {reading.sundayName}
-      </p>
-      <p
-        style={{
-          color: MUTED_GREEN,
-          fontSize: 13,
-          letterSpacing: "0.04em",
-          marginBottom: 18,
-          textAlign: "center",
-        }}
-      >
-        {reading.gospelReference}
-      </p>
       <div
         style={{
           flex: 1,
@@ -831,9 +884,8 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           fontFamily: SPACE_GROTESK,
           whiteSpace: "pre-wrap",
           paddingRight: 4,
-          // Extra bottom padding so the final line can scroll above the
-          // floating nav pill.
-          paddingBottom: 200,
+          paddingTop: 160,
+          paddingBottom: 220,
         }}
       >
         {reading.gospelText}
@@ -861,6 +913,19 @@ function EntrySlide({
   useEffect(() => {
     setDraft(stageData.myReflection ?? "");
   }, [stageData.myReflection]);
+
+  // Meditatio + Oratio ask for a fuller reflection (20–200 words). Lectio
+  // is kept open (a single word or phrase is the whole point of that
+  // stage) so no count applies there.
+  const hasWordLimits = stage === "meditatio" || stage === "oratio";
+  const MIN_WORDS = 20;
+  const MAX_WORDS = 200;
+  const wordCount = draft.trim().length === 0
+    ? 0
+    : draft.trim().split(/\s+/).length;
+  const belowMin = hasWordLimits && wordCount < MIN_WORDS;
+  const aboveMax = hasWordLimits && wordCount > MAX_WORDS;
+  const canShare = !submitting && draft.trim().length > 0 && !belowMin && !aboveMax;
 
   return (
     <div className="py-2">
@@ -905,6 +970,21 @@ function EntrySlide({
             "'Space Grotesk', system-ui, -apple-system, Segoe UI, sans-serif",
         }}
       />
+      {hasWordLimits && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: 6,
+            fontSize: 12,
+            color: aboveMax || belowMin ? "#C79A4A" : FAINT_GREEN,
+          }}
+        >
+          {wordCount} / {MAX_WORDS} words
+          {belowMin && wordCount > 0 && ` · ${MIN_WORDS - wordCount} more to share`}
+          {aboveMax && ` · ${wordCount - MAX_WORDS} over`}
+        </div>
+      )}
       <div className="flex items-center justify-between mt-3">
         <span style={{ color: FAINT_GREEN, fontSize: 12 }}>
           {hasSubmitted ? "You can revise anytime this week." : "Private until you share."}
@@ -912,7 +992,7 @@ function EntrySlide({
         <button
           type="button"
           onClick={() => onSubmit(draft.trim())}
-          disabled={submitting || draft.trim().length === 0}
+          disabled={!canShare}
           className="rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
           style={{
             background: BUTTON_BG,
@@ -921,7 +1001,7 @@ function EntrySlide({
             fontWeight: 600,
             padding: "8px 18px",
             border: "none",
-            cursor: submitting ? "wait" : "pointer",
+            cursor: submitting ? "wait" : canShare ? "pointer" : "not-allowed",
           }}
         >
           {submitting ? "Saving…" : hasSubmitted ? "Save" : "Share"}
@@ -1285,43 +1365,42 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        paddingTop: 8,
-        position: "relative",
       }}
     >
-      <p
-        style={{
-          color: FAINT_GREEN,
-          fontSize: 11,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-          marginBottom: 6,
-          textAlign: "center",
-        }}
-      >
-        The week's reading
-      </p>
-      <p
-        style={{
-          color: WARM_TEXT,
-          fontSize: 20,
-          lineHeight: 1.4,
-          marginBottom: 18,
-          textAlign: "center",
-          fontFamily: SPACE_GROTESK,
-        }}
-      >
-        What the circle heard
-      </p>
       <div
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
-          paddingBottom: 200,
+          paddingTop: 110,
+          paddingBottom: 220,
         }}
       >
+        <p
+          style={{
+            color: FAINT_GREEN,
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            marginBottom: 6,
+            textAlign: "center",
+          }}
+        >
+          The week's reading
+        </p>
+        <p
+          style={{
+            color: WARM_TEXT,
+            fontSize: 20,
+            lineHeight: 1.4,
+            marginBottom: 24,
+            textAlign: "center",
+            fontFamily: SPACE_GROTESK,
+          }}
+        >
+          What the circle heard
+        </p>
         {sections.map((section) => (
           <div key={section.stage} style={{ marginBottom: 28 }}>
             <div
@@ -1452,10 +1531,25 @@ function SettingsMenu({
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [confirmRemoveEmail, setConfirmRemoveEmail] = useState<string | null>(null);
+  // Collapsible advanced section — hidden by default so the menu surfaces
+  // the three quick actions (Go to summary, Invite, weeks-active) first.
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
 
   const dirty = name.trim() !== moment.name || intention.trim() !== (moment.intention ?? "");
   const canSubmitInvite =
     inviteName.trim().length > 0 && /.+@.+\..+/.test(inviteEmail.trim());
+
+  // How many full weeks this practice has been running. Based on the
+  // moment's createdAt — we just compute (now − createdAt) / 7 days, with
+  // a floor of 1 so a brand-new practice still reads as "1 week".
+  const weeksActive = (() => {
+    if (!moment.createdAt) return 1;
+    const created = new Date(moment.createdAt).getTime();
+    if (Number.isNaN(created)) return 1;
+    const ms = Date.now() - created;
+    const weeks = Math.floor(ms / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(1, weeks + 1);
+  })();
 
   return (
     <motion.div
@@ -1499,7 +1593,7 @@ function SettingsMenu({
         }}
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Settings</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{moment.name}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -1518,6 +1612,212 @@ function SettingsMenu({
           </button>
         </div>
 
+        {/* ─── Quick actions (Go to summary → Invite → weeks active) ──────
+            These three land at the top of the menu so the common actions
+            are one tap away. The detailed practice controls (name,
+            intention, members, delete) live inside the collapsible
+            Settings section below. */}
+
+        {/* 1. Go to summary — jumps past the stage slides. */}
+        <button
+          type="button"
+          onClick={onGoToSummary}
+          className="rounded-full"
+          style={{
+            background: BUTTON_BG,
+            color: WARM_TEXT,
+            border: `1px solid ${BORDER}`,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 13,
+            fontWeight: 600,
+            padding: "10px 18px",
+            cursor: "pointer",
+            width: "100%",
+            marginBottom: 14,
+          }}
+        >
+          Go to summary →
+        </button>
+
+        {/* 2. Invite someone — creators only. Collapsible form in place. */}
+        {isCreator && (
+          <div style={{ marginBottom: 14 }}>
+            {showInviteForm ? (
+              <div
+                style={{
+                  background: "rgba(0,0,0,0.25)",
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="Name"
+                  style={{
+                    width: "100%",
+                    background: "rgba(0,0,0,0.3)",
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 8,
+                    color: WARM_TEXT,
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 14,
+                    padding: "8px 10px",
+                    outline: "none",
+                    marginBottom: 8,
+                  }}
+                />
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="Email"
+                  style={{
+                    width: "100%",
+                    background: "rgba(0,0,0,0.3)",
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 8,
+                    color: WARM_TEXT,
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 14,
+                    padding: "8px 10px",
+                    outline: "none",
+                    marginBottom: 10,
+                  }}
+                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canSubmitInvite) return;
+                      onInvite(inviteName.trim(), inviteEmail.trim());
+                      setInviteName("");
+                      setInviteEmail("");
+                      setShowInviteForm(false);
+                    }}
+                    disabled={!canSubmitInvite || invitePending}
+                    className="rounded-full"
+                    style={{
+                      background: BUTTON_BG,
+                      color: WARM_TEXT,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: "6px 14px",
+                      border: "none",
+                      cursor: canSubmitInvite && !invitePending ? "pointer" : "not-allowed",
+                      opacity: canSubmitInvite && !invitePending ? 1 : 0.5,
+                    }}
+                  >
+                    {invitePending ? "Inviting…" : "Send invite"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInviteForm(false);
+                      setInviteName("");
+                      setInviteEmail("");
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: FAINT_GREEN,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowInviteForm(true)}
+                className="rounded-full"
+                style={{
+                  background: "transparent",
+                  border: `1px dashed ${BORDER}`,
+                  color: ACCENT,
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: "10px 18px",
+                  cursor: "pointer",
+                  width: "100%",
+                }}
+              >
+                + Invite someone
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* 3. Weeks active — read-only signal of how long this practice
+            has been going. Helps people see the practice as something
+            they've been building. */}
+        <div
+          style={{
+            background: "rgba(0,0,0,0.2)",
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
+            padding: "12px 16px",
+            marginBottom: 18,
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <span
+            style={{
+              color: FAINT_GREEN,
+              fontSize: 11,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+            }}
+          >
+            Active for
+          </span>
+          <span style={{ color: WARM_TEXT, fontSize: 15, fontWeight: 600 }}>
+            {weeksActive} {weeksActive === 1 ? "week" : "weeks"}
+          </span>
+        </div>
+
+        {/* ─── Settings (collapsible) ─────────────────────────────────────
+            Holds the less-used controls: name, intention, members list
+            and the destructive actions. Collapsed by default. */}
+        <button
+          type="button"
+          onClick={() => setSettingsExpanded((s) => !s)}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
+            color: WARM_TEXT,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 13,
+            fontWeight: 600,
+            padding: "10px 14px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: settingsExpanded ? 14 : 0,
+          }}
+        >
+          <span>Settings</span>
+          <span style={{ color: FAINT_GREEN, fontSize: 14 }}>
+            {settingsExpanded ? "▾" : "▸"}
+          </span>
+        </button>
+
+        {settingsExpanded && (
+          <>
         {/* Name / intention — editable by creator, read-only otherwise */}
         <div style={{ marginBottom: 22 }}>
           <label style={{ display: "block", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, marginBottom: 6 }}>
@@ -1694,143 +1994,6 @@ function SettingsMenu({
             })}
           </div>
 
-          {isCreator && (
-            <div style={{ marginTop: 12 }}>
-              {showInviteForm ? (
-                <div
-                  style={{
-                    background: "rgba(0,0,0,0.25)",
-                    border: `1px solid ${BORDER}`,
-                    borderRadius: 12,
-                    padding: 12,
-                  }}
-                >
-                  <input
-                    type="text"
-                    value={inviteName}
-                    onChange={(e) => setInviteName(e.target.value)}
-                    placeholder="Name"
-                    style={{
-                      width: "100%",
-                      background: "rgba(0,0,0,0.3)",
-                      border: `1px solid ${BORDER}`,
-                      borderRadius: 8,
-                      color: WARM_TEXT,
-                      fontFamily: SPACE_GROTESK,
-                      fontSize: 14,
-                      padding: "8px 10px",
-                      outline: "none",
-                      marginBottom: 8,
-                    }}
-                  />
-                  <input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="Email"
-                    style={{
-                      width: "100%",
-                      background: "rgba(0,0,0,0.3)",
-                      border: `1px solid ${BORDER}`,
-                      borderRadius: 8,
-                      color: WARM_TEXT,
-                      fontFamily: SPACE_GROTESK,
-                      fontSize: 14,
-                      padding: "8px 10px",
-                      outline: "none",
-                      marginBottom: 10,
-                    }}
-                  />
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!canSubmitInvite) return;
-                        onInvite(inviteName.trim(), inviteEmail.trim());
-                        setInviteName("");
-                        setInviteEmail("");
-                        setShowInviteForm(false);
-                      }}
-                      disabled={!canSubmitInvite || invitePending}
-                      className="rounded-full"
-                      style={{
-                        background: BUTTON_BG,
-                        color: WARM_TEXT,
-                        fontFamily: SPACE_GROTESK,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        padding: "6px 14px",
-                        border: "none",
-                        cursor: canSubmitInvite && !invitePending ? "pointer" : "not-allowed",
-                        opacity: canSubmitInvite && !invitePending ? 1 : 0.5,
-                      }}
-                    >
-                      {invitePending ? "Inviting…" : "Send invite"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowInviteForm(false);
-                        setInviteName("");
-                        setInviteEmail("");
-                      }}
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: FAINT_GREEN,
-                        fontFamily: SPACE_GROTESK,
-                        fontSize: 12,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowInviteForm(true)}
-                  className="rounded-full"
-                  style={{
-                    background: "transparent",
-                    border: `1px dashed ${BORDER}`,
-                    color: ACCENT,
-                    fontFamily: SPACE_GROTESK,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    padding: "6px 14px",
-                    cursor: "pointer",
-                  }}
-                >
-                  + Invite someone
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Jump-to-summary shortcut — skips past the stage slides so people
-            can go straight to the week's recap from inside the Menu. */}
-        <div style={{ marginBottom: 18 }}>
-          <button
-            type="button"
-            onClick={onGoToSummary}
-            className="rounded-full"
-            style={{
-              background: BUTTON_BG,
-              color: WARM_TEXT,
-              border: `1px solid ${BORDER}`,
-              fontFamily: SPACE_GROTESK,
-              fontSize: 13,
-              fontWeight: 600,
-              padding: "8px 18px",
-              cursor: "pointer",
-              width: "100%",
-            }}
-          >
-            Go to summary →
-          </button>
         </div>
 
         {/* Danger zone */}
@@ -1958,6 +2121,8 @@ function SettingsMenu({
             )
           )}
         </div>
+          </>
+        )}
       </motion.div>
     </motion.div>
   );
