@@ -968,7 +968,13 @@ export default function MomentPostPage() {
     return (
       <div style={{ position: "relative" }}>
         <IntercessionPrayerPage
-        topic={moment.intercessionTopic ?? moment.name}
+        topic={
+          // Custom intercessions: use the intention as the title ("Prayers for my niece")
+          // BCP intercessions: use the topic or fall back to the practice name
+          moment.intercessionSource !== "bcp" && moment.intention
+            ? moment.intention
+            : (moment.intercessionTopic ?? moment.name)
+        }
         fullText={moment.intercessionFullText ?? ""}
         intention={moment.intention}
         intercessionSource={moment.intercessionSource}
