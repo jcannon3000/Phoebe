@@ -113,9 +113,13 @@ router.get(
   }
 );
 
-// ─── Scheduler account setup (one-time) ──────────────────────────────────────
-// Visit /api/auth/scheduler/setup to authorize eleanorscheduler@gmail.com
-// and get the refresh token to store as SCHEDULER_GOOGLE_REFRESH_TOKEN env var.
+// ─── Outbound-mail account setup (one-time) ─────────────────────────────────
+// Visit /api/auth/scheduler/setup while logged into Google Workspace as
+// invites@withphoebe.app to authorize the mailbox. The returned refresh
+// token should be stored as INVITES_GOOGLE_REFRESH_TOKEN. (The route is
+// still named "scheduler" for historical reasons — it's account-agnostic;
+// it just mints a refresh token for whichever Google account you're
+// signed into at the time.)
 const schedulerCallbackURL = callbackURL.replace("/auth/google/callback", "/auth/scheduler/callback");
 
 router.get("/auth/scheduler/setup", (_req, res) => {
@@ -158,10 +162,10 @@ router.get("/auth/scheduler/callback", async (req, res): Promise<void> => {
 
     res.send(`
       <html><body style="font-family: system-ui; padding: 2rem; max-width: 600px; margin: 0 auto;">
-        <h2>✅ Scheduler account authorized</h2>
-        <p>Set this as your <code>SCHEDULER_GOOGLE_REFRESH_TOKEN</code> environment variable on Railway:</p>
+        <h2>✅ Outbound-mail account authorized</h2>
+        <p>Set this as your <code>INVITES_GOOGLE_REFRESH_TOKEN</code> environment variable on Railway:</p>
         <pre style="background: #f5f5f5; padding: 1rem; border-radius: 8px; word-break: break-all; font-size: 14px;">${refreshToken}</pre>
-        <p style="color: #666; font-size: 14px;">Once set, Phoebe will send all calendar invites from this scheduler account.</p>
+        <p style="color: #666; font-size: 14px;">Once set, Phoebe will send every outbound email (invites, magic links, calendar invitations, letters) from <strong>invites@withphoebe.app</strong>.</p>
       </body></html>
     `);
   } catch (err) {

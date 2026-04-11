@@ -1,8 +1,10 @@
 import { google } from "googleapis";
+import { INVITES_FROM_HEADER, getInvitesRefreshToken } from "./invitesAccount";
 
-// Send emails via Gmail API using the scheduler account (eleanorscheduler@gmail.com)
-// Reuses the same OAuth refresh token as calendar events.
-// Note: the Gmail account address is eleanorscheduler@ but the display name is Phoebe.
+// Send emails via Gmail API authenticated as invites@withphoebe.app (the
+// dedicated Google Workspace mailbox). Falls back to the legacy scheduler
+// account (eleanorscheduler@gmail.com) if the new refresh token hasn't
+// been set yet, so deployments don't break during rollout.
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(
@@ -16,9 +18,9 @@ let cachedAccessToken: string | null = null;
 let cachedTokenExpiry: number | null = null;
 
 async function getGmailClient() {
-  const refreshToken = process.env["SCHEDULER_GOOGLE_REFRESH_TOKEN"];
+  const refreshToken = getInvitesRefreshToken();
   if (!refreshToken) {
-    console.warn("SCHEDULER_GOOGLE_REFRESH_TOKEN not set — email sending disabled");
+    console.warn("No Google refresh token set (INVITES_GOOGLE_REFRESH_TOKEN or SCHEDULER_GOOGLE_REFRESH_TOKEN) — email sending disabled");
     return null;
   }
 
@@ -47,7 +49,7 @@ function encodeMimeMessage(options: {
   const boundary = "PhoebeBoundary";
   const message = [
     `To: ${to}`,
-    `From: Phoebe <eleanorscheduler@gmail.com>`,
+    `From: ${INVITES_FROM_HEADER}`,
     `Subject: ${subject}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,

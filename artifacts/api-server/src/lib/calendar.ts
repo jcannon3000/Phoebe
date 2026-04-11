@@ -1,9 +1,11 @@
 import { google } from "googleapis";
+import { getInvitesRefreshToken } from "./invitesAccount";
 
 // ─── Scheduler-based calendar client ─────────────────────────────────────────
-// All calendar events are created from a single scheduler account
-// (eleanorscheduler@gmail.com) instead of individual user accounts.
-// Attendees receive email invitations and the event appears on their calendar.
+// All calendar events are created from the invites@withphoebe.app Google
+// Workspace mailbox so every outbound message — calendar invitations
+// included — comes from the same branded address. Falls back to the
+// legacy scheduler refresh token if the new one isn't set yet.
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(
@@ -18,9 +20,9 @@ let cachedAccessToken: string | null = null;
 let cachedTokenExpiry: number | null = null;
 
 async function getSchedulerClient() {
-  const refreshToken = process.env["SCHEDULER_GOOGLE_REFRESH_TOKEN"];
+  const refreshToken = getInvitesRefreshToken();
   if (!refreshToken) {
-    console.warn("SCHEDULER_GOOGLE_REFRESH_TOKEN not set — calendar features disabled");
+    console.warn("No Google refresh token set — calendar features disabled");
     return null;
   }
 

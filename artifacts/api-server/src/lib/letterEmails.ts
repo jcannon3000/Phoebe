@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { INVITES_FROM_HEADER, getInvitesRefreshToken } from "./invitesAccount";
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(
@@ -12,9 +13,9 @@ let cachedAccessToken: string | null = null;
 let cachedTokenExpiry: number | null = null;
 
 async function getGmailClient() {
-  const refreshToken = process.env["SCHEDULER_GOOGLE_REFRESH_TOKEN"];
+  const refreshToken = getInvitesRefreshToken();
   if (!refreshToken) {
-    console.warn("SCHEDULER_GOOGLE_REFRESH_TOKEN not set — letter email sending disabled");
+    console.warn("No Google refresh token set — letter email sending disabled");
     return null;
   }
 
@@ -43,7 +44,7 @@ function encodeMimeMessage(options: {
   const boundary = "PhoebeLettersBoundary";
   const message = [
     `To: ${to}`,
-    `From: Phoebe <eleanorscheduler@gmail.com>`,
+    `From: ${INVITES_FROM_HEADER}`,
     `Subject: ${subject}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
