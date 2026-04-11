@@ -807,12 +807,12 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
           {rhythmLabel}
         </span>
       </div>
-      <div className="flex items-center justify-between gap-4 mt-1.5 -mr-2">
+      <div className="flex items-center justify-between gap-4 mt-px -mr-2">
         <div className="min-w-0 flex-1">
           <SplitFlapLine lines={flapLines} />
         </div>
         <div className="shrink-0 flex items-center self-center">
-          <motion.span
+          <span
             className="text-xs font-semibold rounded-full inline-block"
             style={{
               background: "#2D5E3F",
@@ -822,11 +822,9 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
               whiteSpace: "nowrap",
               lineHeight: "20px",
             }}
-            animate={isToday_ ? { scale: [1, 1.05, 1] } : undefined}
-            transition={isToday_ ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
           >
             View
-          </motion.span>
+          </span>
         </div>
       </div>
     </BarCard>
