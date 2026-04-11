@@ -173,7 +173,7 @@ const SPACE_GROTESK =
 
 // ─── Slide model ────────────────────────────────────────────────────────────
 
-type SlideKind = "welcome" | "prompt" | "reading" | "entry" | "responses" | "summary" | "all-responses";
+type SlideKind = "welcome" | "prompt" | "reading" | "entry" | "responses" | "summary" | "all-responses" | "coming-soon";
 // Welcome + summary slides aren't bound to a specific stage — they frame
 // the whole week — so `stage` is nullable and readers must check `kind` first.
 type Slide = { stage: Stage | null; kind: SlideKind };
@@ -205,7 +205,11 @@ function buildSlides(data: LectioData): Slide[] {
     if (!data.stages[s].unlocked) continue;
     slides.push({ stage: s, kind: "prompt" });
     slides.push({ stage: s, kind: "reading" });
-    slides.push({ stage: s, kind: "entry" });
+    // Skip the entry slide for stages the user has already submitted —
+    // drop them straight into the responses instead.
+    if (!data.stages[s].userHasSubmitted) {
+      slides.push({ stage: s, kind: "entry" });
+    }
     slides.push({ stage: s, kind: "responses" });
   }
   // Tack on a summary slide once the user has submitted every unlocked stage.
@@ -219,6 +223,15 @@ function buildSlides(data: LectioData): Slide[] {
   if (allStagesSubmitted(data)) {
     slides.push({ stage: null, kind: "summary" });
     slides.push({ stage: null, kind: "all-responses" });
+  } else if (data.week.unlockedStages.length < STAGE_ORDER.length && allStagesSubmitted(data) === false) {
+    // Not all stages unlocked yet AND the user has submitted everything
+    // currently available → show a "coming soon" slide with the locked stages.
+    const submittedAllUnlocked =
+      data.week.unlockedStages.length > 0 &&
+      data.week.unlockedStages.every((s) => data.stages[s].userHasSubmitted);
+    if (submittedAllUnlocked) {
+      slides.push({ stage: null, kind: "coming-soon" });
+    }
   }
   return slides;
 }
@@ -240,6 +253,14 @@ function initialSlideIndex(data: LectioData, slides: Slide[]): number {
   if (allStagesSubmitted(data)) {
     const summaryIdx = slides.findIndex((sl) => sl.kind === "summary");
     if (summaryIdx >= 0) return summaryIdx;
+  }
+  // All unlocked stages submitted but more stages are locked — land on coming-soon.
+  const submittedAllUnlocked =
+    data.week.unlockedStages.length > 0 &&
+    data.week.unlockedStages.every((s) => data.stages[s].userHasSubmitted);
+  if (submittedAllUnlocked && data.week.unlockedStages.length < STAGE_ORDER.length) {
+    const comingIdx = slides.findIndex((sl) => sl.kind === "coming-soon");
+    if (comingIdx >= 0) return comingIdx;
   }
   for (const s of STAGE_ORDER) {
     if (data.stages[s].unlocked && !data.stages[s].userHasSubmitted) {
@@ -643,6 +664,9 @@ export default function LectioPage() {
               {current.kind === "all-responses" && (
                 <AllResponsesSlide data={data} />
               )}
+              {current.kind === "coming-soon" && (
+                <ComingSoonSlide data={data} onDone={() => setLocation("/dashboard")} />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -684,13 +708,15 @@ export default function LectioPage() {
           // slide has its own CTAs, so the pill is hidden there.
           const stageLabel = current.kind === "welcome"
             ? "Welcome"
-            : data.week.isSunday
-              ? "Completed"
-              : current.stage
-                ? `${STAGE_ORDINAL[current.stage]} · ${STAGE_LATIN[current.stage]}`
-                : current.kind === "all-responses"
-                  ? "All Responses"
-                  : "Summary";
+            : current.kind === "coming-soon"
+              ? "Coming Soon"
+              : data.week.isSunday
+                ? "Completed"
+                : current.stage
+                  ? `${STAGE_ORDINAL[current.stage]} · ${STAGE_LATIN[current.stage]}`
+                  : current.kind === "all-responses"
+                    ? "All Responses"
+                    : "Summary";
 
           let actionLabel: string | null = null;
           // Welcome slide has its own "Begin 🌿" button, so no pill here.
@@ -705,7 +731,9 @@ export default function LectioPage() {
           } else if (current.kind === "responses") {
             const nextSlide = slides[slideIdx + 1];
             if (nextSlide) {
-              actionLabel = nextSlide.kind === "summary" ? "Summary" : "Next stage";
+              if (nextSlide.kind === "summary") actionLabel = "Summary";
+              else if (nextSlide.kind === "coming-soon") actionLabel = "Next";
+              else actionLabel = "Next stage";
             }
           }
 
@@ -1362,6 +1390,169 @@ function WelcomeSlide({
         }}
       >
         Begin 🌿
+      </button>
+    </div>
+  );
+}
+
+// ─── Coming-soon slide ──────────────────────────────────────────────────────
+// Shown after completing all currently-unlocked stages when future stages are
+// still locked (Mon/Tue after Lectio; Wed/Thu after Meditatio).
+// Lists all three stages — the done ones look normal, the locked ones are
+// muted with "Come back Wednesday / Friday".
+
+function ComingSoonSlide({
+  data,
+  onDone,
+}: {
+  data: LectioData;
+  onDone: () => void;
+}) {
+  // Map stage → unlock day label
+  const NEXT_DAY: Record<Stage, string> = {
+    lectio: "Monday",
+    meditatio: "Wednesday",
+    oratio: "Friday",
+  };
+  // Which stages are locked (not yet unlocked this week)?
+  const lockedStages = STAGE_ORDER.filter((s) => !data.stages[s].unlocked);
+
+  return (
+    <div className="py-2 text-center">
+      <p
+        style={{
+          color: FAINT_GREEN,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          marginBottom: 10,
+        }}
+      >
+        You're caught up
+      </p>
+      <p
+        style={{
+          color: WARM_TEXT,
+          fontSize: 22,
+          lineHeight: 1.4,
+          marginBottom: 8,
+          maxWidth: 480,
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        Well done.
+      </p>
+      <p
+        style={{
+          color: MUTED_GREEN,
+          fontSize: 14,
+          lineHeight: 1.6,
+          marginBottom: 24,
+          maxWidth: 440,
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        {lockedStages.length === 2
+          ? `The next two stages open Wednesday and Friday.`
+          : `The next stage opens ${NEXT_DAY[lockedStages[0]]}.`}
+      </p>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          maxWidth: 440,
+          margin: "0 auto 28px auto",
+        }}
+      >
+        {STAGE_ORDER.map((s) => {
+          const locked = !data.stages[s].unlocked;
+          const comesOnDay = NEXT_DAY[s];
+          return (
+            <div
+              key={s}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+                padding: "14px 16px 14px 18px",
+                borderRadius: 14,
+                border: locked
+                  ? "1px solid rgba(46,107,64,0.2)"
+                  : `1px solid ${BORDER}`,
+                background: locked
+                  ? "rgba(10,25,15,0.5)"
+                  : "rgba(15,40,24,0.6)",
+                width: "100%",
+                textAlign: "left",
+                fontFamily: SPACE_GROTESK,
+              }}
+            >
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p
+                  style={{
+                    color: locked ? "rgba(111,175,133,0.3)" : FAINT_GREEN,
+                    fontSize: 10,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                  }}
+                >
+                  {comesOnDay}
+                </p>
+                <p
+                  style={{
+                    color: locked ? "rgba(240,237,230,0.25)" : WARM_TEXT,
+                    fontSize: 15,
+                    margin: "2px 0 0 0",
+                  }}
+                >
+                  {STAGE_LATIN[s]}
+                </p>
+              </div>
+              <span
+                className="rounded-full"
+                style={{
+                  background: locked
+                    ? "rgba(46,107,64,0.08)"
+                    : "rgba(111,175,133,0.14)",
+                  color: locked ? "rgba(111,175,133,0.3)" : ACCENT,
+                  border: locked
+                    ? "1px solid rgba(46,107,64,0.18)"
+                    : "1px solid rgba(111,175,133,0.35)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                  padding: "3px 10px",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                {locked ? `Come back ${comesOnDay}` : "Done ✓"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={onDone}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: FAINT_GREEN,
+          fontFamily: SPACE_GROTESK,
+          fontSize: 13,
+          cursor: "pointer",
+          textDecoration: "underline",
+        }}
+      >
+        Back to dashboard
       </button>
     </div>
   );
