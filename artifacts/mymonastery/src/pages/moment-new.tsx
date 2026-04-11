@@ -1344,7 +1344,7 @@ export default function MomentNew() {
                           className="w-full text-left p-5 rounded-2xl transition-all"
                           style={{ background: "#0F2818", border: "1.5px solid rgba(92,122,95,0.35)" }}
                           onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.65)")}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.35)")}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(92,122,95,0.35)")}>
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">✍️</span>
                             <div>
@@ -1766,7 +1766,7 @@ export default function MomentNew() {
                     <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
                       How often would you like to pray? 🌿
                     </h2>
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>Set a time and rhythm. Eleanor will send a reminder — one tap and you're in the practice.</p>
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>Choose your rhythm. It shows up on everyone's calendar as an all-day event.</p>
                   </div>
 
                   {/* Frequency */}
@@ -1809,53 +1809,7 @@ export default function MomentNew() {
                     </motion.div>
                   )}
 
-                  {/* Hour */}
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>Hour</label>
-                    <div className="grid grid-cols-6 gap-1.5">
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(h => (
-                        <button key={h} onClick={() => setScheduledHour(h)}
-                          className={`py-2 rounded-lg text-sm font-semibold transition-all ${scheduledHour === h ? "animate-turn-pulse" : ""}`}
-                          style={scheduledHour === h
-                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
-                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
-                          {h}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Minute */}
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>Minute</label>
-                    <div className="flex gap-2">
-                      {[0, 15, 30, 45].map(m => (
-                        <button key={m} onClick={() => setScheduledMinute(m)}
-                          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${scheduledMinute === m ? "animate-turn-pulse" : ""}`}
-                          style={scheduledMinute === m
-                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
-                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
-                          :{String(m).padStart(2, "0")}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* AM/PM */}
-                  <div className="flex gap-3">
-                    {(["AM", "PM"] as const).map(p => (
-                      <button key={p} onClick={() => setScheduledAmPm(p)}
-                        className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all ${scheduledAmPm === p ? "animate-turn-pulse" : ""}`}
-                        style={scheduledAmPm === p
-                          ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(92,122,95,0.65)" }
-                          : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(92,122,95,0.3)" }}>
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-
-                  <p className="text-xs italic" style={{ color: "#8FAF96" }}>The reminder fires at this time for everyone. 🔔</p>
-                  <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>You can log any time that day — the whole day counts. 🌿</p>
+                  <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>The whole day counts. 🌿</p>
                 </div>
               )}
 
