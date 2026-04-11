@@ -17,6 +17,8 @@ type Correspondence = {
   name: string;
   groupType: string;
   unreadCount: number;
+  myTurn: boolean;
+  turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
   members: Array<{ name: string | null; email: string; homeCity: string | null }>;
   recentPostmarks: Array<{ authorName: string; city: string; sentAt: string }>;
   currentPeriod: {
@@ -294,19 +296,30 @@ function LetterCard({
   const displayName = (c.name?.replace(/^Letters with\b/, "Dialogue with")) ||
     (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`);
 
-  const iWrote = c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false;
-  const theyWrote = c.currentPeriod.membersWritten.find(m => m.name !== userName)?.hasWritten ?? false;
+  const ts = c.turnState;
   const hasUnread = c.unreadCount > 0;
-  const needsWrite = !iWrote;
+
+  // For one-to-one: drive everything from the state machine
+  const needsWrite = isOneToOne
+    ? (ts === "OPEN" || ts === "OVERDUE")
+    : !(c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false);
+  const theyWrote = isOneToOne
+    ? false // not used for one-to-one status
+    : (c.currentPeriod.membersWritten.find(m => m.name !== userName)?.hasWritten ?? false);
+  const iWrote = isOneToOne ? !needsWrite : !needsWrite;
   const shouldPulse = needsWrite || hasUnread;
 
   let statusText = "";
   if (hasUnread) {
     statusText = `${otherMembers} wrote 🌿`;
+  } else if (isOneToOne) {
+    if (ts === "OVERDUE") statusText = `Overdue · write when you're ready 🌿`;
+    else if (ts === "OPEN") statusText = `Your turn to write 🖋️`;
+    else statusText = `Waiting for ${otherMembers}`;
   } else if (iWrote && !theyWrote) {
-    statusText = isOneToOne ? `Waiting for ${otherMembers}` : `Your update is in 🌿`;
+    statusText = `Your update is in 🌿`;
   } else if (needsWrite) {
-    statusText = isOneToOne ? `Your turn to write 🖋️` : `Share your update 🖋️`;
+    statusText = `Share your update 🖋️`;
   } else {
     statusText = "All written 🌿";
   }
@@ -770,17 +783,31 @@ export default function Dashboard() {
 
     // ── Letters placement
     for (const c of allLetters) {
-      const iWrote = c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false;
+      const isOneToOne = c.groupType === "one_to_one";
       const hasUnread = c.unreadCount > 0;
-      const isDeadline = c.currentPeriod.isLastThreeDays && !iWrote;
-      const isOpenTurn = !iWrote && !c.currentPeriod.isLastThreeDays;
 
-      if (isDeadline) {
-        todayItems.push({ kind: "letter", data: c });
-      } else if (isOpenTurn || hasUnread) {
-        weekItems.push({ kind: "letter", data: c });
+      if (isOneToOne) {
+        // One-to-one: use the state machine, not the period cadence
+        const ts = c.turnState;
+        if (ts === "OPEN" || ts === "OVERDUE") {
+          todayItems.push({ kind: "letter", data: c });
+        } else if (hasUnread) {
+          weekItems.push({ kind: "letter", data: c });
+        } else {
+          monthItems.push({ kind: "letter", data: c });
+        }
       } else {
-        monthItems.push({ kind: "letter", data: c });
+        // Group round letter: use period-based logic
+        const iWrote = c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false;
+        const isDeadline = c.currentPeriod.isLastThreeDays && !iWrote;
+        const isOpenTurn = !iWrote && !c.currentPeriod.isLastThreeDays;
+        if (isDeadline) {
+          todayItems.push({ kind: "letter", data: c });
+        } else if (isOpenTurn || hasUnread) {
+          weekItems.push({ kind: "letter", data: c });
+        } else {
+          monthItems.push({ kind: "letter", data: c });
+        }
       }
     }
 
