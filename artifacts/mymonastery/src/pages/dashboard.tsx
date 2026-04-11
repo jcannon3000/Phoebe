@@ -579,8 +579,6 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? `/lectio/${m.momentToken}/${m.myUserToken}`
     : (shouldPulse && isMorningPrayer && m.myUserToken)
     ? `/morning-prayer/${m.id}/${m.myUserToken}`
-    : isIntercession
-    ? "/practices"
     : `/moments/${m.id}`;
 
   // Cycling subtitle lines.
@@ -795,8 +793,27 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
           {rhythmLabel}
         </span>
       </div>
-      <div className="mt-1.5">
-        <SplitFlapLine lines={flapLines} />
+      <div className="flex items-center justify-between gap-4 mt-1.5 -mr-2">
+        <div className="min-w-0 flex-1">
+          <SplitFlapLine lines={flapLines} />
+        </div>
+        <div className="shrink-0 flex items-center self-center">
+          <motion.span
+            className="text-xs font-semibold rounded-full inline-block"
+            style={{
+              background: "#2D5E3F",
+              color: "#F0EDE6",
+              padding: "4px 14px",
+              letterSpacing: "0.01em",
+              whiteSpace: "nowrap",
+              lineHeight: "20px",
+            }}
+            animate={isToday_ ? { scale: [1, 1.05, 1] } : undefined}
+            transition={isToday_ ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
+          >
+            View
+          </motion.span>
+        </div>
       </div>
     </BarCard>
   );
