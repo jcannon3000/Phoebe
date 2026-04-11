@@ -565,11 +565,11 @@ export default function LectioPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            height: 220,
+            height: 280,
             pointerEvents: "none",
             zIndex: 40,
             background:
-              "linear-gradient(to bottom, rgba(9,26,16,0) 0%, rgba(9,26,16,0.55) 35%, rgba(9,26,16,0.9) 65%, rgba(9,26,16,1) 100%)",
+              "linear-gradient(to bottom, rgba(6,18,11,0) 0%, rgba(6,18,11,0.6) 30%, rgba(6,18,11,0.92) 60%, rgba(4,12,7,1) 100%)",
           }}
         />
       )}
