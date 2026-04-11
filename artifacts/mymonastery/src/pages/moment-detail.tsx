@@ -261,6 +261,10 @@ export default function MomentDetail() {
   const [editGoalDays, setEditGoalDays] = useState(7);
   const [editScheduledTime, setEditScheduledTime] = useState("");
 
+  // Renew / extend-goal modal
+  const [renewModalOpen, setRenewModalOpen] = useState(false);
+  const [renewCustom, setRenewCustom] = useState<string>("");
+
   const { data, isLoading } = useQuery({
     queryKey: [`/api/moments/${id}`],
     queryFn: () => apiRequest<MomentDetail>("GET", `/api/moments/${id}`),
@@ -706,7 +710,8 @@ export default function MomentDetail() {
           }
 
           const goalHit = sessionsLogged >= sessionsGoal;
-          const almostThere = !goalHit && (sessionsGoal - sessionsLogged) <= 3;
+          const myGoalHit = (myStreak ?? 0) >= sessionsGoal;
+          const almostThere = !goalHit && !myGoalHit && (sessionsGoal - sessionsLogged) <= 3;
           const remaining = Math.max(0, sessionsGoal - sessionsLogged);
           const progressPct = Math.min(100, (sessionsLogged / sessionsGoal) * 100);
 
@@ -757,6 +762,15 @@ export default function MomentDetail() {
                         : isOngoing ? "Keep going ✨"
                         : `Set this as your next goal 🌿`}
                     </button>
+                    {isCreator && (
+                      <button
+                        onClick={() => { setRenewCustom(String(sessionsGoal)); setRenewModalOpen(true); }}
+                        className="w-full mt-2 py-2 text-xs text-[#5C7A5F] hover:text-[#3f5a44] transition-colors font-medium"
+                        style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                      >
+                        Renew with a different length 🌱
+                      </button>
+                    )}
                     {!isOngoing && (
                       <button
                         onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: null, commitmentTendFreely: true })}
@@ -773,29 +787,48 @@ export default function MomentDetail() {
           }
 
           // Active goal — progress bar
-          const barColor = almostThere ? "#C17F24" : "#5C7A5F";
+          const barColor = myGoalHit ? "#5C7A5F" : almostThere ? "#C17F24" : "#5C7A5F";
+          const myProgressPct = Math.min(100, ((myStreak ?? 0) / sessionsGoal) * 100);
+          const displayPct = myGoalHit ? 100 : progressPct;
           return (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
                   {goalLabel(sessionsGoal, freq)} goal
                 </span>
-                <span className={`text-xs ${almostThere ? "text-[#C17F24] font-medium" : "text-muted-foreground"}`}>
-                  {almostThere ? "Almost there 🌸" : `${remaining} to go 🌿`}
+                <span className={`text-xs ${myGoalHit ? "text-[#5C7A5F] font-semibold" : almostThere ? "text-[#C17F24] font-medium" : "text-muted-foreground"}`}>
+                  {myGoalHit ? "Goal reached 🌸" : almostThere ? "Almost there 🌸" : `${remaining} to go 🌿`}
                 </span>
               </div>
               <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
                 <motion.div
-                  className={`h-full rounded-full ${almostThere ? "animate-[goal-pulse_2s_ease-in-out_infinite]" : ""}`}
+                  className={`h-full rounded-full ${almostThere && !myGoalHit ? "animate-[goal-pulse_2s_ease-in-out_infinite]" : ""}`}
                   style={{ backgroundColor: barColor }}
                   initial={{ width: 0 }}
-                  animate={{ width: `${sessionsLogged > 0 ? Math.max(progressPct, 3) : 0}%` }}
+                  animate={{ width: `${(myGoalHit ? myProgressPct : sessionsLogged > 0 ? Math.max(displayPct, 3) : 0)}%` }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5">
-                {sessionsLogged} of {sessionsGoal} {unitLabelPlural} · {remaining} to go 🌿
-              </p>
+              {myGoalHit ? (
+                <div className="mt-2.5 flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    You showed up {myStreak ?? sessionsGoal} {unitLabelPlural}. 🌸
+                  </p>
+                  {isCreator && (
+                    <button
+                      onClick={() => { setRenewCustom(String(sessionsGoal)); setRenewModalOpen(true); }}
+                      className="px-3 py-1 rounded-full text-[11px] font-semibold bg-[#5C7A5F] text-white hover:bg-[#5a7a60] transition-colors"
+                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                    >
+                      Renew 🌱
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {sessionsLogged} of {sessionsGoal} {unitLabelPlural} · {remaining} to go 🌿
+                </p>
+              )}
             </div>
           );
         })()}
@@ -1207,6 +1240,112 @@ export default function MomentDetail() {
 
       {/* ── Invite Sheet ─────────────────────────────────────────────────────── */}
       <AnimatePresence>
+        {renewModalOpen && (
+          <>
+            <motion.div
+              key="renew-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-40"
+              onClick={() => setRenewModalOpen(false)}
+            />
+            <motion.div
+              key="renew-sheet"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto"
+            >
+              <div className="px-5 pt-4 pb-8">
+                <div className="w-10 h-1 bg-border/60 rounded-full mx-auto mb-4" />
+                <div className="flex items-center justify-between mb-1">
+                  <h2 className="text-lg font-semibold text-foreground">Renew {moment.name}</h2>
+                  <button
+                    onClick={() => setRenewModalOpen(false)}
+                    className="text-muted-foreground hover:text-foreground text-xl leading-none p-1"
+                  >
+                    ×
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-5">
+                  Pick a new length — progress resets and the rhythm continues.
+                </p>
+
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
+                  Presets
+                </p>
+                <div className="flex flex-wrap gap-2 mb-5">
+                  {[3, 7, 14, 30, 90].map((n) => {
+                    const isActive = renewCustom === String(n);
+                    return (
+                      <button
+                        key={n}
+                        onClick={() => setRenewCustom(String(n))}
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                          isActive
+                            ? "bg-[#5C7A5F] text-white"
+                            : "bg-secondary text-foreground hover:bg-secondary/80"
+                        }`}
+                        style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                      >
+                        {n} {moment.frequency === "daily" ? "days" : "sessions"}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
+                  Custom length
+                </p>
+                <div className="flex items-center gap-2 mb-6">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={renewCustom}
+                    onChange={(e) => setRenewCustom(e.target.value)}
+                    className="flex-1 px-4 py-3 rounded-xl bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]"
+                    placeholder="How many?"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {moment.frequency === "daily" ? "days" : "sessions"}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const n = parseInt(renewCustom, 10);
+                    if (!Number.isFinite(n) || n < 1 || n > 365) return;
+                    updateGoalMutation.mutate(
+                      { commitmentSessionsGoal: n, commitmentTendFreely: false },
+                      { onSuccess: () => setRenewModalOpen(false) }
+                    );
+                  }}
+                  disabled={updateGoalMutation.isPending || !renewCustom || parseInt(renewCustom, 10) < 1}
+                  className="w-full py-3.5 rounded-2xl text-sm font-semibold bg-[#5C7A5F] text-white hover:bg-[#5a7a60] transition-colors disabled:opacity-50"
+                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                >
+                  {updateGoalMutation.isPending ? "Renewing…" : "Renew 🌱"}
+                </button>
+                <button
+                  onClick={() => {
+                    updateGoalMutation.mutate(
+                      { commitmentSessionsGoal: null, commitmentTendFreely: true },
+                      { onSuccess: () => setRenewModalOpen(false) }
+                    );
+                  }}
+                  disabled={updateGoalMutation.isPending}
+                  className="w-full mt-2 py-2 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+                  style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                >
+                  Tend freely instead ✨
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
         {showInvite && (
           <>
             {/* Backdrop */}

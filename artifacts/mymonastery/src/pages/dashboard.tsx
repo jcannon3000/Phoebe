@@ -49,6 +49,7 @@ type Moment = {
   goalDays?: number | null;
   commitmentSessionsGoal?: number | null;
   commitmentSessionsLogged?: number | null;
+  isCreator?: boolean;
   myUserToken: string | null;
   momentToken: string | null;
   frequency: string;
@@ -559,6 +560,17 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : m.myStreak > 0 ? `🙏 ${m.myStreak}` : null)
       : null;
 
+  // Goal-reached detection: if a goal is set and the user's personal streak
+  // hits it, the creator gets a "Renew 🌱" pill instead of the normal streak
+  // badge so they can extend or pick a new length.
+  const sessionsGoalForCard = m.commitmentSessionsGoal ?? m.goalDays ?? null;
+  const goalReachedForMe =
+    !isLectio &&
+    sessionsGoalForCard != null &&
+    sessionsGoalForCard > 0 &&
+    (m.myStreak ?? 0) >= sessionsGoalForCard;
+  const showRenewPill = goalReachedForMe && !!m.isCreator;
+
   const openHref = (isLectio && m.momentToken && m.myUserToken)
     ? `/lectio/${m.momentToken}/${m.myUserToken}`
     : (shouldPulse && isMorningPrayer && m.myUserToken)
@@ -611,7 +623,20 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>
         </div>
-        {progressLabel ? (
+        {showRenewPill ? (
+          <span
+            className="text-[10px] font-semibold uppercase shrink-0 rounded-full"
+            style={{
+              background: "#2D5E3F",
+              color: "#F0EDE6",
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              marginTop: "1px",
+            }}
+          >
+            Renew 🌱
+          </span>
+        ) : progressLabel ? (
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
             {progressLabel}
           </span>
@@ -796,7 +821,7 @@ function TimeSection({
   );
 
   return (
-    <div className={scrollable ? "mb-[2px]" : "mb-[6px]"}>
+    <div className={scrollable ? "mb-[12px]" : "mb-[16px]"}>
       <SectionHeader label={label} />
       {scrollable ? (
         <div className="relative">

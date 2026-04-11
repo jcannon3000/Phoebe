@@ -1120,6 +1120,12 @@ router.get("/moments", async (req, res): Promise<void> => {
           }
         }
 
+        // Creator = member with smallest token id (matches single-moment endpoint)
+        const creatorToken = allMembers.length > 0
+          ? allMembers.reduce((min, mt) => mt.id < min.id ? mt : min, allMembers[0])
+          : null;
+        const isCreator = (myToken?.email ?? "").toLowerCase() === (creatorToken?.email ?? "").toLowerCase();
+
         return {
           ...m,
           memberCount: allMembers.length,
@@ -1131,6 +1137,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           latestWindow,
           myUserToken: myToken?.userToken ?? null,
           myStreak,
+          isCreator,
           lectioSundayName,
           lectioGospelReference,
           lectioGospelText,
@@ -1159,6 +1166,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           latestWindow: null,
           myUserToken: myToken?.userToken ?? null,
           myStreak: 0,
+          isCreator: false,
           lectioSundayName: null,
           lectioGospelReference: null,
           lectioGospelText: null,
