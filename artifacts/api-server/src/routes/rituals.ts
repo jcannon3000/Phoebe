@@ -111,59 +111,64 @@ router.post("/rituals", async (req, res): Promise<void> => {
     return;
   }
 
-  const schedulingToken = randomUUID();
-  const location = parsed.data.location?.trim() || null;
+  try {
+    const schedulingToken = randomUUID();
+    const location = parsed.data.location?.trim() || null;
 
-  const body = parsed.data as typeof parsed.data & {
-    rhythm?: string;
-    hasIntercession?: boolean;
-    hasFasting?: boolean;
-    intercessionIntention?: string | null;
-    fastingDescription?: string | null;
-  };
+    const body = parsed.data as typeof parsed.data & {
+      rhythm?: string;
+      hasIntercession?: boolean;
+      hasFasting?: boolean;
+      intercessionIntention?: string | null;
+      fastingDescription?: string | null;
+    };
 
-  const [ritual] = await db
-    .insert(ritualsTable)
-    .values({
-      name: body.name,
-      description: body.description ?? null,
-      frequency: body.frequency,
-      dayPreference: body.dayPreference ?? null,
-      participants: body.participants ?? [],
-      intention: body.intention ?? null,
-      location,
-      ownerId: body.ownerId,
-      scheduleToken: schedulingToken,
-      rhythm: body.rhythm ?? "fortnightly",
-      hasIntercession: body.hasIntercession ?? false,
-      hasFasting: body.hasFasting ?? false,
-      intercessionIntention: body.intercessionIntention ?? null,
-      fastingDescription: body.fastingDescription ?? null,
-    })
-    .returning();
+    const [ritual] = await db
+      .insert(ritualsTable)
+      .values({
+        name: body.name,
+        description: body.description ?? null,
+        frequency: body.frequency,
+        dayPreference: body.dayPreference ?? null,
+        participants: body.participants ?? [],
+        intention: body.intention ?? null,
+        location,
+        ownerId: body.ownerId,
+        scheduleToken: schedulingToken,
+        rhythm: body.rhythm ?? "fortnightly",
+        hasIntercession: body.hasIntercession ?? false,
+        hasFasting: body.hasFasting ?? false,
+        intercessionIntention: body.intercessionIntention ?? null,
+        fastingDescription: body.fastingDescription ?? null,
+      })
+      .returning();
 
-  const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritual.id));
-  const enriched = await enrichRitual(ritual, meetups);
+    const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritual.id));
+    const enriched = await enrichRitual(ritual, meetups);
 
-  const ctx = {
-    ritual: enriched,
-    streak: enriched.streak,
-    lastMeetupDate: enriched.lastMeetupDate,
-    nextMeetupDate: enriched.nextMeetupDate,
-  };
+    const ctx = {
+      ritual: enriched,
+      streak: enriched.streak,
+      lastMeetupDate: enriched.lastMeetupDate,
+      nextMeetupDate: enriched.nextMeetupDate,
+    };
 
-  // Fire-and-forget: generate welcome message (non-blocking)
-  getWelcomeMessage(ctx)
-    .then(async (welcome) => {
-      await db.insert(ritualMessagesTable).values({
-        ritualId: ritual.id,
-        role: "assistant",
-        content: welcome,
-      });
-    })
-    .catch((err: unknown) => req.log.warn({ err }, "Failed to generate welcome message"));
+    // Fire-and-forget: generate welcome message (non-blocking)
+    getWelcomeMessage(ctx)
+      .then(async (welcome) => {
+        await db.insert(ritualMessagesTable).values({
+          ritualId: ritual.id,
+          role: "assistant",
+          content: welcome,
+        });
+      })
+      .catch((err: unknown) => req.log.warn({ err }, "Failed to generate welcome message"));
 
-  res.status(201).json(ListRitualsResponse.element.parse(enriched));
+    res.status(201).json({ id: ritual.id, ...enriched });
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to create ritual");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to create ritual" });
+  }
 });
 
 router.get("/rituals/:id", async (req, res): Promise<void> => {
@@ -447,11 +452,23 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
     updatePayload.location = parsed.data.location || null;
   }
 
-  const [updated] = await db
-    .update(ritualsTable)
-    .set(updatePayload)
-    .where(eq(ritualsTable.id, id))
-    .returning();
+  let updated: typeof ritualsTable.$inferSelect | undefined;
+  try {
+    [updated] = await db
+      .update(ritualsTable)
+      .set(updatePayload)
+      .where(eq(ritualsTable.id, id))
+      .returning();
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to update ritual proposed-times");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to update proposed times" });
+    return;
+  }
+
+  if (!updated) {
+    res.status(404).json({ error: "Ritual not found after update" });
+    return;
+  }
 
   // Create invite tokens for each participant
   const participants = (ritual.participants as Array<{ name: string; email: string }>) ?? [];
@@ -471,31 +488,37 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
   // Location is per-meetup: when the organizer supplies a location with
   // proposed times, stamp it onto the planned meetup row.
   let meetupId: number | null = null;
-  if (parsed.data.proposedTimes && parsed.data.proposedTimes.length > 0) {
-    const placeholderTime = new Date(parsed.data.proposedTimes[0]);
-    const meetupLocation = parsed.data.location !== undefined
-      ? (parsed.data.location.trim() || null)
-      : undefined;
-    const existingMeetups = await db
-      .select()
-      .from(meetupsTable)
-      .where(eq(meetupsTable.ritualId, id));
-    const existingPlanned = existingMeetups.find((m) => m.status === "planned");
+  try {
+    if (parsed.data.proposedTimes && parsed.data.proposedTimes.length > 0) {
+      const placeholderTimeISO = new Date(parsed.data.proposedTimes[0]).toISOString();
+      const meetupLocation = parsed.data.location !== undefined
+        ? (parsed.data.location.trim() || null)
+        : undefined;
+      const existingMeetups = await db
+        .select()
+        .from(meetupsTable)
+        .where(eq(meetupsTable.ritualId, id));
+      const existingPlanned = existingMeetups.find((m) => m.status === "planned");
 
-    if (existingPlanned) {
-      const meetupPatch: Partial<typeof meetupsTable.$inferInsert> = { scheduledDate: placeholderTime };
-      if (meetupLocation !== undefined) meetupPatch.location = meetupLocation;
-      await db.update(meetupsTable).set(meetupPatch).where(eq(meetupsTable.id, existingPlanned.id));
-      meetupId = existingPlanned.id;
-    } else {
-      const [inserted] = await db.insert(meetupsTable).values({
-        ritualId: id,
-        scheduledDate: placeholderTime,
-        status: "planned",
-        location: meetupLocation ?? null,
-      }).returning();
-      meetupId = inserted.id;
+      if (existingPlanned) {
+        const meetupPatch: Partial<typeof meetupsTable.$inferInsert> = { scheduledDate: placeholderTimeISO };
+        if (meetupLocation !== undefined) meetupPatch.location = meetupLocation;
+        await db.update(meetupsTable).set(meetupPatch).where(eq(meetupsTable.id, existingPlanned.id));
+        meetupId = existingPlanned.id;
+      } else {
+        const [inserted] = await db.insert(meetupsTable).values({
+          ritualId: id,
+          scheduledDate: placeholderTimeISO,
+          status: "planned",
+          location: meetupLocation ?? null,
+        }).returning();
+        meetupId = inserted.id;
+      }
     }
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to create/update planned meetup for proposed-times");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to save meetup" });
+    return;
   }
 
   // ─── Create Google Calendar event for the tradition ─────────────────────────

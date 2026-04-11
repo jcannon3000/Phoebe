@@ -79,17 +79,15 @@ export default function TraditionNew() {
 
   function handleTypeSelect(t: string) {
     setTemplate(t);
-    const option = TEMPLATE_OPTIONS.find((o) => o.value === t);
-    if (option && t !== "custom") {
-      setName(`${option.emoji} ${option.label}`);
-    } else {
-      setName("");
-    }
+    setName("");
     setStep(2);
   }
 
   function handleWhoNext() {
-    if (!name.trim()) { setError("Give your gathering a name."); return; }
+    const templateOption = TEMPLATE_OPTIONS.find((o) => o.value === template);
+    const effectiveName = name.trim() || (templateOption && template !== "custom" ? `${templateOption.emoji} ${templateOption.label}` : "");
+    if (!effectiveName) { setError("Give your gathering a name."); return; }
+    if (!name.trim()) setName(effectiveName);
     if (!hasAtLeastOnePerson) { setError("Add at least one person."); return; }
     setError("");
     setStep(3);
@@ -98,6 +96,13 @@ export default function TraditionNew() {
   function handleRhythmNext() {
     if (!rhythm) { setError("Choose a rhythm."); return; }
     setError("");
+    if (!firstPick) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      setFirstPick(`${yyyy}-${mm}-${dd}T12:00`);
+    }
     setStep(4);
   }
 
@@ -113,11 +118,14 @@ export default function TraditionNew() {
         .filter(Boolean)
         .map((t) => new Date(t).toISOString());
 
+      const templateOption = TEMPLATE_OPTIONS.find((o) => o.value === template);
+      const finalName = name.trim() || (templateOption && template !== "custom" ? `${templateOption.emoji} ${templateOption.label}` : name.trim());
+
       const result = await apiRequest<{ id: number }>("POST", "/api/rituals", {
-        name: name.trim(),
+        name: finalName,
         frequency: rhythm,
         participants,
-        intention: TEMPLATE_OPTIONS.find((o) => o.value === template)?.tagline || `A ${name} gathering.`,
+        intention: TEMPLATE_OPTIONS.find((o) => o.value === template)?.tagline || `A ${finalName} gathering.`,
         ownerId: user.id,
         dayPreference: firstPick,
         rhythm,
@@ -137,7 +145,14 @@ export default function TraditionNew() {
       qc.invalidateQueries({ queryKey: ["/api/rituals"] });
       setLocation(`/ritual/${result.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      const raw = err instanceof Error ? err.message : "";
+      // Server error responses may include JSON error messages; fall back gracefully
+      let friendly = "Something went wrong — please try again.";
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.error && typeof parsed.error === "string") friendly = parsed.error;
+      } catch { /* not JSON */ }
+      setError(friendly);
       setSubmitting(false);
     }
   }
@@ -224,7 +239,10 @@ export default function TraditionNew() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Morning Coffee, Sunday Dinner"
+                  placeholder={(() => {
+                    const opt = TEMPLATE_OPTIONS.find((o) => o.value === template);
+                    return opt && template !== "custom" ? `${opt.emoji} ${opt.label}` : "e.g. Morning Coffee, Sunday Dinner";
+                  })()}
                   className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none"
                   style={{ background: "#091A10", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
                 />
