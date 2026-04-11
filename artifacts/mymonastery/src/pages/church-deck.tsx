@@ -60,7 +60,7 @@ const SLIDES: Slide[] = [
     headline:
       "Declining attendance, volunteering, and giving are not separate problems.",
     body: [
-      "They are all downstream of the same thing: people are not forming real relationships with one another.",
+      "They are all downstream of the same thing: people are having trouble forming and retaining deep connections.",
       "Not because they do not want to, but because the structures that made it possible have quietly disappeared.",
     ],
   },
