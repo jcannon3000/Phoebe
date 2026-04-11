@@ -906,22 +906,21 @@ export default function Dashboard() {
     const allGatherings = (rituals ?? []) as any[];
     const userName = user?.name ?? "";
 
-    // Hide practices whose goal was reached and the creator hasn't renewed
-    // within two days — the calendar cleanup has already torn down the
-    // reminders, so keeping the card around just creates clutter.
+    // Hide practices whose creator reached the goal more than two days ago
+    // and hasn't renewed — the calendar cleanup has already torn down the
+    // reminders, so keeping the card around just creates clutter. We only
+    // hide when we have a confirmed commitmentGoalReachedAt older than two
+    // days: the UI's "goal reached" look is driven by myStreak, but the
+    // backend only stamps commitmentGoalReachedAt when commitmentSessionsLogged
+    // crosses the commitment goal, and for intercession those two counters
+    // can diverge. Falling back to "hide" there would make the card vanish
+    // the instant the pill lights up, which is the opposite of what we want.
     const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
     const nowMs = Date.now();
     const visibleMoments = allMoments.filter((m) => {
-      const goal = m.commitmentSessionsGoal ?? m.goalDays ?? null;
-      const isLectio = m.templateType === "lectio-divina";
-      const goalReached =
-        !isLectio && goal != null && goal > 0 && (m.myStreak ?? 0) >= goal;
-      if (!goalReached || !m.isCreator) return true;
-      const reachedAt = m.commitmentGoalReachedAt
-        ? new Date(m.commitmentGoalReachedAt).getTime()
-        : null;
-      // Cleanup nulls the timestamp after 2 days — treat that as expired too.
-      if (reachedAt == null) return false;
+      if (!m.isCreator) return true;
+      if (!m.commitmentGoalReachedAt) return true;
+      const reachedAt = new Date(m.commitmentGoalReachedAt).getTime();
       return nowMs - reachedAt < twoDaysMs;
     });
 
