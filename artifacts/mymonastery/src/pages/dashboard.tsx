@@ -655,42 +655,51 @@ function TimeSection({
   items,
   userEmail,
   userName,
-  maxItems = 3,
 }: {
   label: string;
   items: DashboardItem[];
   userEmail: string;
   userName: string;
-  maxItems?: number;
 }) {
-  const [expanded, setExpanded] = useState(false);
   if (items.length === 0) return null;
-  const visible = expanded ? items : items.slice(0, maxItems);
-  const hasMore = items.length > maxItems;
+  const scrollable = items.length > 3;
+
+  const cards = (
+    <div className="space-y-3">
+      {items.map((item) => {
+        switch (item.kind) {
+          case "letter":
+            return <LetterCard key={`${label}-l-${item.data.id}`} c={item.data} userEmail={userEmail} userName={userName} keyPrefix={label} />;
+          case "moment":
+            return <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />;
+          case "gathering":
+            return <GatheringCard key={`${label}-g-${item.data.id}`} r={item.data} keyPrefix={label} badge={item.badge} />;
+        }
+      })}
+    </div>
+  );
 
   return (
     <div className="mb-8">
       <SectionHeader label={label} />
-      <div className="space-y-3">
-        {visible.map((item, i) => {
-          switch (item.kind) {
-            case "letter":
-              return <LetterCard key={`${label}-l-${item.data.id}`} c={item.data} userEmail={userEmail} userName={userName} keyPrefix={label} />;
-            case "moment":
-              return <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />;
-            case "gathering":
-              return <GatheringCard key={`${label}-g-${item.data.id}`} r={item.data} keyPrefix={label} badge={item.badge} />;
-          }
-        })}
-      </div>
-      {hasMore && !expanded && (
-        <button
-          onClick={() => setExpanded(true)}
-          className="mt-4 text-sm font-medium transition-opacity hover:opacity-80"
-          style={{ color: "#A8C5A0" }}
-        >
-          View all ({items.length}) →
-        </button>
+      {scrollable ? (
+        <div className="relative">
+          <div
+            className="overflow-y-auto pr-1"
+            style={{ maxHeight: "272px", scrollbarWidth: "none" }}
+          >
+            {cards}
+            {/* Bottom padding so last card isn't flush against the fade */}
+            <div className="h-4" />
+          </div>
+          {/* Fade out at bottom */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
+            style={{ background: "linear-gradient(to bottom, transparent, #091A10)" }}
+          />
+        </div>
+      ) : (
+        cards
       )}
     </div>
   );
