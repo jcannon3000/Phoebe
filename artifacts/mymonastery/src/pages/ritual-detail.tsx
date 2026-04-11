@@ -1100,10 +1100,19 @@ export default function RitualDetail() {
                 )}
               </div>
 
-              {/* Members — owner can remove */}
-              {user?.id === ritual.ownerId && ritual.participants.length > 1 && (
+              {/* Members — owner can add or remove */}
+              {user?.id === ritual.ownerId && (
                 <div className="pt-6 border-t border-border/40">
-                  <h3 className="text-sm font-medium text-foreground mb-3">Members</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-foreground">Members</h3>
+                    <button
+                      onClick={() => setShowInviteSheet(true)}
+                      className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
+                      style={{ background: "rgba(74,103,65,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}
+                    >
+                      + Add people
+                    </button>
+                  </div>
                   <div className="space-y-2">
                     {ritual.participants.map((p: { name: string; email: string }) => {
                       const isMe = p.email.toLowerCase() === user?.email?.toLowerCase();

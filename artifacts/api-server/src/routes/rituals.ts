@@ -571,41 +571,33 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
         ? `${appBase}/schedule/${ritual.scheduleToken}`
         : (organizerInviteToken ? `${appBase}/invite/${organizerInviteToken.token}` : appBase);
 
-      // Build description
+      // Build description — emoji first, creator name, link on the second line,
+      // then the practical details. No Phoebe tagline.
       const lines: string[] = [];
-      lines.push(`${organizerFirstName} is gathering people for ${ritual.name} 🌿`);
-      lines.push(warmLine);
-      lines.push("");
-      lines.push("──────────────────────");
+      lines.push(`🌿 ${organizerFirstName} invited you to ${ritual.name}.`);
+      lines.push(scheduleUrl);
       lines.push("");
 
       if (proposedTimes.length === 1) {
         lines.push(`When: ${formatProposedTime(proposedTimes[0])}`);
-        lines.push("");
-        lines.push("──────────────────────");
-        lines.push("");
       } else if (proposedTimes.length > 1) {
         lines.push("Proposed times:");
-        lines.push("");
         for (let i = 0; i < proposedTimes.length; i++) {
           const label = i === 0 ? "✓ First choice" : "· Alternate";
           lines.push(`  ${label}: ${formatProposedTime(proposedTimes[i])}`);
         }
-        lines.push("");
-        lines.push("──────────────────────");
-        lines.push("");
       }
 
-      lines.push(`${ritual.name} · ${freqLabel}`);
-      lines.push(`Tended with Phoebe 🌿`);
-      lines.push("");
-      lines.push("View this tradition →");
-      lines.push(scheduleUrl);
-      lines.push("");
-      lines.push("──────────────────────");
-      lines.push("");
-      lines.push("Phoebe helps recurring gatherings actually happen.");
-      lines.push("Check your email for your personal invite link to respond.");
+      if (ritual.location && ritual.location.trim()) {
+        lines.push(`Location: ${ritual.location.trim()}`);
+      }
+
+      lines.push(`A ${freqLabel.toLowerCase()} tradition.`);
+
+      if (warmLine && warmLine !== "A recurring tradition worth tending.") {
+        lines.push("");
+        lines.push(warmLine);
+      }
 
       const description = lines.join("\n");
       const eventStart = new Date(proposedTimes[0]);
