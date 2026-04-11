@@ -493,7 +493,7 @@ export default function ChurchDeck() {
         e.preventDefault();
         prev();
       } else if (e.key === "Escape") {
-        setLocation("/home-dark");
+        setLocation("/dashboard");
       }
     }
     window.addEventListener("keydown", onKey);
@@ -510,7 +510,7 @@ export default function ChurchDeck() {
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 pt-6 pb-2">
         <button
-          onClick={() => setLocation("/home-dark")}
+          onClick={() => setLocation("/dashboard")}
           className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-100"
           style={{ color: C.sage, opacity: 0.75 }}
         >

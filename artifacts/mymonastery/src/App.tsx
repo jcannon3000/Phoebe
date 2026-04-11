@@ -58,7 +58,6 @@ import LetterSplash from "./pages/Letters/LetterSplash";
 import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
 import GatheringsPage from "./pages/gatherings";
-import HomeDark from "./pages/home-dark";
 import MomentNew from "./pages/moment-new";
 import MomentDetail from "./pages/moment-detail";
 import MomentPostPage from "./pages/moment-post";
@@ -94,7 +93,6 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/dashboard" component={Dashboard} />
-      <Route path="/home-dark" component={HomeDark} />
       <Route path="/gatherings" component={GatheringsPage} />
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />
