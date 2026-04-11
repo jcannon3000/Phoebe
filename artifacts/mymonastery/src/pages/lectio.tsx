@@ -550,6 +550,30 @@ export default function LectioPage() {
         );
       })()}
 
+      {/* Fixed dark-green fade overlay behind the floating nav. Sits on the
+          bottom of the viewport so that ANY scrolling slide (reading,
+          all-responses) fades into the page background as it approaches the
+          nav pill. pointerEvents: "none" so scroll and nav taps pass
+          through. Only rendered for slides that actually scroll content
+          behind the nav — on short slides it would just add unwanted
+          darkness at the bottom. */}
+      {(current.kind === "reading" || current.kind === "all-responses") && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 220,
+            pointerEvents: "none",
+            zIndex: 40,
+            background:
+              "linear-gradient(to bottom, rgba(9,26,16,0) 0%, rgba(9,26,16,0.55) 35%, rgba(9,26,16,0.9) 65%, rgba(9,26,16,1) 100%)",
+          }}
+        />
+      )}
+
       {/* Floating nav pill at the bottom of the viewport. Fixed so scrolling
           inside a slide (e.g. the gospel card) doesn't move the nav. */}
       <nav
@@ -814,22 +838,6 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
       >
         {reading.gospelText}
       </div>
-      {/* Bottom fade overlay — sits on top of the scroll area and fades
-          the text into the page background behind the floating nav pill.
-          pointerEvents: "none" so taps still reach the nav and scroller. */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: 180,
-          pointerEvents: "none",
-          background:
-            "linear-gradient(to bottom, rgba(9,26,16,0) 0%, rgba(9,26,16,0.75) 55%, rgba(9,26,16,1) 100%)",
-        }}
-      />
     </div>
   );
 }
@@ -1399,21 +1407,6 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
           </div>
         ))}
       </div>
-      {/* Bottom fade overlay — same treatment as the reading slide so the
-          last response fades into the page behind the floating nav pill. */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: 180,
-          pointerEvents: "none",
-          background:
-            "linear-gradient(to bottom, rgba(9,26,16,0) 0%, rgba(9,26,16,0.75) 55%, rgba(9,26,16,1) 100%)",
-        }}
-      />
     </div>
   );
 }
