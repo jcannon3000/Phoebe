@@ -248,7 +248,7 @@ function FAB() {
               style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a group intercession</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Hold someone in prayer together</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Build a rhythm of prayer together</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/moment/new?template=fasting"); }}
