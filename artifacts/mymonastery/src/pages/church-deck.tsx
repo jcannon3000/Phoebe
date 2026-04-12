@@ -23,29 +23,11 @@ const C = {
 type Slide =
   | { kind: "title"; headline: string; sub: string }
   | { kind: "statement"; headline: string; body: string[] }
-  | { kind: "stacked"; headline: string; items: string[]; tail?: string[] }
-  | { kind: "progressive"; headline: string; lines: { text: string; color: string }[] }
-  | {
-      kind: "cards";
-      headline: string;
-      sub?: string;
-      cards: { label: string; lines: string[] }[];
-    }
-  | { kind: "trellis"; above: string[]; featured: string; below: string }
-  | {
-      kind: "preview";
-      caption: string;
-      sub: string;
-      variant:
-        | "dashboard"
-        | "prayer"
-        | "letters"
-        | "gatherings"
-        | "letter-compose"
-        | "intercession";
-    }
+  | { kind: "progressive"; headline?: string; lines: { text: string; color: string }[] }
+  | { kind: "preview"; label?: string; headline: string; body: string[]; placeholder: string }
   | { kind: "closing"; above: string[]; featured: string };
 
+// ─── Slides ─────────────────────────────────────────────────────────────────
 const SLIDES: Slide[] = [
   // 1 — Title
   {
@@ -54,195 +36,152 @@ const SLIDES: Slide[] = [
     sub: "A place set apart for connection.",
   },
 
-  // 2 — The problem (originally slide 3; opening slide skipped)
+  // 2 — The opening frame
   {
     kind: "statement",
-    headline:
-      "Declining attendance, volunteering, and giving are not separate problems.",
+    headline: "Your parish already has everything it needs.",
     body: [
-      "They are all downstream of the same thing: people are having trouble forming and retaining deep connections.",
-      "Not because they do not want to, but because the structures that made it possible have quietly disappeared.",
+      "People who want to be close to one another. A tradition of shared practice. Groups that already meet. Relationships that are already forming.",
+      "The question is not how to build community from scratch. It is how to cultivate what is already there.",
     ],
   },
 
-  // 3 — The insight
+  // 3 — The real challenge
   {
     kind: "statement",
-    headline:
-      "People do not form bonds by attending a service or joining a directory.",
+    headline: "Most parishes are good at Sunday.",
     body: [
-      "They form them through consistent, small-group interaction over time. The same people. The same rhythm. Week after week. Year after year.",
-      "Every rector knows this. The challenge is making it happen.",
+      "The challenge is Tuesday. Wednesday. Friday. The six days when nothing is organised and people quietly return to their separate lives.",
+      "Phoebe is built for those days.",
     ],
   },
 
-  // 4 — What that rhythm looks like
-  {
-    kind: "stacked",
-    headline: "The Church has always known what this looks like.",
-    items: [
-      "Intercession — bearing each other's burdens in prayer.",
-      "Fasting — a rhythm held in common, not alone.",
-      "Lectio divina — scripture returned to, slowly, together.",
-      "Letters sent between communities.",
-      "Meals taken together on a rhythm.",
-    ],
-    tail: [
-      "These are not new ideas. They are the Church's oldest inheritance. They formed people for centuries.",
-    ],
-  },
-
-  // 5 — What changed
+  // 4 — What cultivating looks like
   {
     kind: "statement",
-    headline:
-      "What has changed is not their value. It is how hard they have become to sustain.",
+    headline: "Relationships deepen through small, consistent touchpoints.",
     body: [
-      "Schedules do not align. Communication is fragmented. There is no shared structure holding people to a rhythm together.",
-      "The practices still exist. The wisdom is still there. The Church just needs something that makes them easy to return to.",
+      "A shared fast on Friday. A prayer for someone by name during the week. A passage read together before Sunday. A gathering that keeps happening even when life tries to disrupt it.",
+      "These are not new ideas. They are the Church's oldest inheritance. Phoebe makes them easy to return to.",
     ],
   },
 
-  // 6 — What Phoebe does
-  {
-    kind: "stacked",
-    headline: "Phoebe is built around three of these ancient practices.",
-    items: ["Shared prayer.", "Letters.", "Gathering together on a rhythm."],
-    tail: [
-      "It does not reinvent them. It removes the friction that has made them so difficult to sustain in modern life.",
-    ],
-  },
-
-  // 7 — How relationships actually form (progressive brightness)
+  // 5 — How relationships form
   {
     kind: "progressive",
-    headline: "How relationships actually form.",
     lines: [
-      { text: "Shared practice builds consistency.", color: C.dim2 },
-      { text: "Consistency builds familiarity.", color: C.dim3 },
-      { text: "Familiarity opens into vulnerability.", color: C.dim4 },
+      { text: "Shared prayer builds consistency.", color: C.dim1 },
+      { text: "Consistency builds familiarity.", color: C.dim2 },
+      { text: "Familiarity opens into vulnerability.", color: C.dim3 },
       { text: "Vulnerability builds trust.", color: C.dim5 },
-      { text: "Trust creates real connection.", color: C.accent },
-      { text: "Real connection enlivens the parish.", color: C.text },
+      { text: "Trust deepens the community.", color: C.text },
     ],
   },
 
-  // 8 — Three layers, three purposes
+  // 6 — Prayer (screenshot)
   {
-    kind: "cards",
-    headline: "Each practice plays a different role in the life of a community.",
-    cards: [
-      {
-        label: "Prayer",
-        lines: [
-          "The entry point.",
-          "Low friction. No scheduling required. No vulnerability asked for yet.",
-          "Just showing up together, returning to the same thing.",
-          "This is where familiarity begins.",
-        ],
-      },
-      {
-        label: "Letters",
-        lines: [
-          "The depth layer.",
-          "One letter, one person, once every two weeks.",
-          "Reflection turns shared rhythm into personal knowledge of one another.",
-          "People begin to be truly known.",
-        ],
-      },
-      {
-        label: "Gatherings",
-        lines: [
-          "Where trust takes root.",
-          "Not one-off events. Intervals. Weekly, every other week, monthly.",
-          "Phoebe holds the rhythm when life tries to disrupt it.",
-          "The goal is that people keep meeting.",
-        ],
-      },
+    kind: "preview",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "Not just a feed. A practice.",
+    body: [
+      "Intercession, fasting, and Lectio Divina held as guided experiences the community moves through together. You see who else is praying with you at the same hour. You know you are not alone.",
     ],
+    placeholder: "Insert prayer practice screenshot",
   },
 
-  // 8a — Preview: Prayer (the feed)
+  // 7 — Intercession (screenshot)
   {
     kind: "preview",
-    variant: "prayer",
-    caption: "Prayer, held in common.",
-    sub: "A shared garden. People share what they're carrying — and others respond, a word at a time. Low friction. Low vulnerability. The doorway into the life of the community.",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "Prayer, held in common.",
+    body: [
+      "People share what they are carrying. Others respond, a word at a time. Low friction. Low vulnerability. The doorway into the life of the community.",
+      "When someone submits a prayer request during the week, they arrive on Sunday already known.",
+    ],
+    placeholder: "Insert prayer requests screenshot",
   },
 
-  // 8a.1 — Preview: Intercession slideshow (prayer as practice)
+  // 8 — Fasting (screenshot)
   {
     kind: "preview",
-    variant: "intercession",
-    caption: "Not just a feed — a practice.",
-    sub: "Intercession, fasting, and lectio divina — held as guided slideshows the community moves through together. You see who else is praying with you at the same hour.",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "A rhythm held together.",
+    body: [
+      "A group commits to a fast on a chosen day. A calendar invite goes out the night before. On the day, they see who is fasting alongside them. At the close, they share what nourished them instead.",
+      "For groups fasting from meat, Phoebe tracks the water saved together. This week. This month. All time. A visible record of shared faithfulness.",
+    ],
+    placeholder: "Insert fast practice screenshot",
   },
 
-  // 8b — Preview: Letters (the list)
+  // 9 — Lectio Divina (screenshot)
   {
     kind: "preview",
-    variant: "letters",
-    caption: "Letters, on a rhythm.",
-    sub: "One person. One letter. Once every other week. Phoebe holds the cadence so the friendship can deepen in writing — the way parish friendships used to form before everything sped up.",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "The Sunday gospel, read together across the week.",
+    body: [
+      "Monday \u2014 a word or phrase that is speaking to you. Wednesday \u2014 what the passage is stirring in you. Friday \u2014 what it is calling you to do or to be.",
+      "They arrive on Sunday having already sat with the same text together. The sermon lands differently. The conversation goes deeper.",
+    ],
+    placeholder: "Insert Lectio Divina screenshot",
   },
 
-  // 8b.1 — Preview: Letter composition (letters up close)
+  // 10 — Letters (screenshot)
   {
     kind: "preview",
-    variant: "letter-compose",
-    caption: "Where friendship actually happens.",
-    sub: "Letters are written longhand in feel: unhurried, reflective, one reader at a time. This is where familiarity turns into vulnerability, and vulnerability into trust.",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "Where friendship actually happens.",
+    body: [
+      "One letter. One person. Once every two weeks. Unhurried, reflective, one reader at a time. This is where familiarity turns into vulnerability and vulnerability into trust.",
+      "People can write to anyone in their community or anyone at all. The correspondence builds a shared history neither could have written alone.",
+    ],
+    placeholder: "Insert letters screenshot",
   },
 
-  // 8c — Preview: Gatherings
+  // 11 — Gatherings (screenshot)
   {
     kind: "preview",
-    variant: "gatherings",
-    caption: "Gatherings that actually repeat.",
-    sub: "Suppers, prayer, study groups — held on an interval, not as one-off events. Phoebe keeps the rhythm through the weeks life tries to disrupt.",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "Gatherings that actually repeat.",
+    body: [
+      "Suppers, study groups, prayer circles \u2014 held on an interval, not as one-off events. Phoebe keeps the rhythm through the weeks life tries to disrupt it.",
+      "The parish calendar lives here too. Events the parish is already running get in front of people who are already engaged.",
+    ],
+    placeholder: "Insert gatherings screenshot",
   },
 
-  // 8d — Preview: Dashboard (the whole picture held together)
+  // 12 — Home screen (screenshot)
   {
     kind: "preview",
-    variant: "dashboard",
-    caption: "One rhythm, held in one place.",
-    sub: "Every person in the parish sees the same shape: what's this week, what's this month, who's waiting for a reply. One surface, formed around the practices — not another inbox to manage.",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "One rhythm, held in one place.",
+    body: [
+      "Every person in the parish sees the same shape: what is happening this week, what is coming up, who is waiting for a reply. One surface, formed around the practices. Not another inbox to manage.",
+    ],
+    placeholder: "Insert home screen screenshot",
   },
 
-  // 9 — The loop
+  // 13 — What this builds
   {
     kind: "statement",
-    headline: "Each layer feeds the next.",
+    headline: "Each practice feeds the next.",
     body: [
       "Prayer creates the familiarity that makes letters feel natural. Letters build the trust that makes gatherings matter. Gatherings deepen the bonds that bring people back to prayer.",
-      "Over time, the loop enlivens everything it touches.",
+      "The parish calendar keeps everyone aware of what is already happening. The prayer request submitted on Wednesday breaks the ice on Sunday. The letter written on Friday deepens the conversation at the next gathering.",
+      "Over time, the touchpoints between Sundays become the fabric of community life.",
     ],
   },
 
-  // 10 — What this recovers
+  // 14 — What this is not
   {
     kind: "statement",
-    headline:
-      "This is not a new program to add to an already full calendar.",
+    headline: "This is not a new program to add to an already full calendar.",
     body: [
-      "It is the recovery of something the Church once did naturally — and has struggled to sustain in the fragmented pace of modern life.",
-      "Phoebe gives that recovery a structure to grow through.",
+      "The rector does not manage it. The parish does not moderate it. Adults use it to tend their own relationships within the community.",
+      "Phoebe is the gate. What grows between people once they are inside belongs to them.",
     ],
   },
 
-  // 11 — The image (Phoebe is the trellis.)
-  {
-    kind: "trellis",
-    above: [
-      "We do not create relationships from scratch.",
-      "We nurture them through rhythm until they deepen on their own.",
-    ],
-    featured: "Phoebe is the trellis.",
-    below: "The relationships are what grow through it.",
-  },
-
-  // 12 — The evidence
+  // 15 — The research
   {
     kind: "statement",
     headline: "The research is unambiguous.",
@@ -253,21 +192,17 @@ const SLIDES: Slide[] = [
     ],
   },
 
-  // 13 — Why the Church
+  // 16 — Who Phoebe is for
   {
-    kind: "stacked",
-    headline: "The Church already has the raw material.",
-    items: [
-      "Shared meaning.",
-      "A tradition of formation.",
-      "People who genuinely want to be connected to one another.",
-    ],
-    tail: [
-      "What it is missing is not vision. It is the structure that turns that desire into lived relational life.",
+    kind: "statement",
+    headline: "For parishes that already have groups meeting.",
+    body: [
+      "Practices happening. People who want to be closer to one another.",
+      "Phoebe does not ask you to build something new. It cultivates what is already there. It fills the space between Sundays with small acts of faithfulness that compound over time.",
     ],
   },
 
-  // 14 — Closing
+  // 17 — Closing
   {
     kind: "closing",
     above: [
@@ -328,60 +263,21 @@ function StatementSlide({
   );
 }
 
-function StackedSlide({
-  slide,
-}: {
-  slide: Extract<Slide, { kind: "stacked" }>;
-}) {
-  return (
-    <div className="max-w-3xl mx-auto w-full">
-      <h2
-        className="text-2xl md:text-4xl font-semibold mb-6 md:mb-10 leading-tight"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        {slide.headline}
-      </h2>
-      <div className="space-y-3 md:space-y-4 mb-6 md:mb-10">
-        {slide.items.map((item, i) => (
-          <p
-            key={i}
-            className="text-lg md:text-2xl font-light"
-            style={{ color: C.sage, fontFamily: C.font }}
-          >
-            {item}
-          </p>
-        ))}
-      </div>
-      {slide.tail && (
-        <div className="space-y-4 pt-5 md:pt-6" style={{ borderTop: `1px solid ${C.border}` }}>
-          {slide.tail.map((t, i) => (
-            <p
-              key={i}
-              className="text-sm md:text-lg leading-relaxed font-light italic"
-              style={{ color: "rgba(143,175,150,0.75)", fontFamily: C.font }}
-            >
-              {t}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ProgressiveSlide({
   slide,
 }: {
   slide: Extract<Slide, { kind: "progressive" }>;
 }) {
   return (
-    <div className="max-w-3xl mx-auto w-full">
-      <h2
-        className="text-2xl md:text-4xl font-semibold mb-6 md:mb-12 leading-tight"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        {slide.headline}
-      </h2>
+    <div className="max-w-3xl mx-auto w-full flex flex-col items-center text-center">
+      {slide.headline && (
+        <h2
+          className="text-2xl md:text-4xl font-semibold mb-6 md:mb-12 leading-tight"
+          style={{ color: C.text, fontFamily: C.font }}
+        >
+          {slide.headline}
+        </h2>
+      )}
       <div className="space-y-3 md:space-y-5">
         {slide.lines.map((line, i) => (
           <motion.p
@@ -400,56 +296,72 @@ function ProgressiveSlide({
   );
 }
 
-function CardsSlide({ slide }: { slide: Extract<Slide, { kind: "cards" }> }) {
+function PreviewSlide({
+  slide,
+}: {
+  slide: Extract<Slide, { kind: "preview" }>;
+}) {
   return (
-    <div className="max-w-6xl mx-auto w-full">
-      <h2
-        className="text-xl md:text-3xl font-semibold mb-6 md:mb-10 leading-tight text-center"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        {slide.headline}
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
-        {slide.cards.map((card, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 + i * 0.1, duration: 0.4 }}
-            className="rounded-2xl p-5 md:p-7"
-            style={{
-              background: C.card,
-              border: `1px solid ${C.border}`,
-            }}
+    <div className="max-w-5xl mx-auto w-full flex flex-col md:flex-row items-center gap-6 md:gap-16">
+      {/* Left: text content */}
+      <div className="flex-1 min-w-0 md:max-w-[55%]">
+        {slide.label && (
+          <p
+            className="text-[10px] font-bold uppercase tracking-[0.18em] mb-4"
+            style={{ color: "rgba(143,175,150,0.45)" }}
           >
+            {slide.label}
+          </p>
+        )}
+        <h2
+          className="text-2xl md:text-4xl font-semibold mb-6 md:mb-10 leading-tight"
+          style={{ color: C.text, fontFamily: C.font }}
+        >
+          {slide.headline}
+        </h2>
+        <div className="space-y-4 md:space-y-6">
+          {slide.body.map((p, i) => (
             <p
-              className="text-xs font-bold uppercase tracking-widest mb-3 md:mb-5"
+              key={i}
+              className="text-base md:text-xl leading-relaxed font-light"
               style={{ color: C.sage, fontFamily: C.font }}
             >
-              {card.label}
+              {p}
             </p>
-            <div className="space-y-2 md:space-y-3">
-              {card.lines.map((line, j) => (
-                <p
-                  key={j}
-                  className="text-sm md:text-base leading-relaxed font-light"
-                  style={{ color: C.text, fontFamily: C.font }}
-                >
-                  {line}
-                </p>
-              ))}
-            </div>
-          </motion.div>
-        ))}
+          ))}
+        </div>
       </div>
+
+      {/* Right: screenshot placeholder */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1, duration: 0.5 }}
+        className="shrink-0 w-full md:w-[40%]"
+      >
+        <div
+          className="flex items-center justify-center rounded-2xl px-6 py-20 md:py-32"
+          style={{
+            background: C.card,
+            border: `1px solid rgba(200,212,192,0.25)`,
+          }}
+        >
+          <p
+            className="text-[13px] text-center italic"
+            style={{ color: C.sage }}
+          >
+            {slide.placeholder}
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 }
 
-function TrellisSlide({
+function ClosingSlide({
   slide,
 }: {
-  slide: Extract<Slide, { kind: "trellis" }>;
+  slide: Extract<Slide, { kind: "closing" }>;
 }) {
   return (
     <div className="max-w-3xl mx-auto w-full text-center">
@@ -468,840 +380,11 @@ function TrellisSlide({
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.25, duration: 0.5 }}
-        className="text-3xl md:text-5xl font-semibold mb-6 md:mb-8 leading-tight"
+        className="text-3xl md:text-5xl font-semibold leading-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
         {slide.featured}
       </motion.p>
-      <p
-        className="text-base md:text-xl font-light"
-        style={{ color: C.sage, fontFamily: C.font }}
-      >
-        {slide.below}
-      </p>
-    </div>
-  );
-}
-
-function ClosingSlide({
-  slide,
-}: {
-  slide: Extract<Slide, { kind: "closing" }>;
-}) {
-  return (
-    <div className="max-w-3xl mx-auto w-full text-center">
-      <div className="space-y-4 md:space-y-5 mb-10 md:mb-16">
-        {slide.above.map((line, i) => (
-          <p
-            key={i}
-            className="text-base md:text-xl font-light leading-relaxed"
-            style={{ color: C.sage, fontFamily: C.font }}
-          >
-            {line}
-          </p>
-        ))}
-      </div>
-      <motion.p
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.3, duration: 0.6 }}
-        className="text-4xl md:text-6xl font-bold tracking-tight"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        {slide.featured}
-      </motion.p>
-    </div>
-  );
-}
-
-// ─── App preview mockups ─────────────────────────────────────────────────────
-// These are visual mockups of the real Phoebe UI, rendered in static form
-// so the deck can show what each layer looks like without running the app.
-
-const CAT = {
-  letters: {
-    bg: "rgba(20,64,42,0.25)",
-    border: "rgba(20,64,42,0.5)",
-    bar: "#14402A",
-  },
-  practices: {
-    bg: "rgba(46,107,64,0.15)",
-    border: "rgba(46,107,64,0.4)",
-    bar: "#2E6B40",
-  },
-  gatherings: {
-    bg: "rgba(111,175,133,0.15)",
-    border: "rgba(111,175,133,0.4)",
-    bar: "#6FAF85",
-  },
-};
-
-function MockBarCard({
-  category,
-  title,
-  status,
-  pulse = false,
-}: {
-  category: keyof typeof CAT;
-  title: string;
-  status: string;
-  pulse?: boolean;
-}) {
-  const c = CAT[category];
-  return (
-    <div
-      className="relative flex rounded-xl overflow-hidden"
-      style={{
-        background: c.bg,
-        border: `1px solid ${c.border}`,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-      }}
-    >
-      <div
-        className="w-1 flex-shrink-0"
-        style={{
-          background: c.bar,
-          boxShadow: pulse ? `0 0 12px ${c.bar}` : undefined,
-        }}
-      />
-      <div className="flex-1 px-4 pt-3 pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <span
-            className="text-sm font-semibold"
-            style={{ color: "#F0EDE6", fontFamily: C.font }}
-          >
-            {title}
-          </span>
-          <span
-            className="text-[9px] font-semibold uppercase shrink-0 mt-0.5"
-            style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-          >
-            View All
-          </span>
-        </div>
-        <p
-          className="text-xs mt-1"
-          style={{ color: "#8FAF96", fontFamily: C.font }}
-        >
-          {status}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function MockPhone({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[290px] md:max-w-[320px]"
-      style={{
-        background: "#091A10",
-        border: "1px solid rgba(200,212,192,0.15)",
-        boxShadow:
-          "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function DashboardMock() {
-  return (
-    <MockPhone>
-      <p
-        className="mb-1"
-        style={{ color: "rgba(143,175,150,0.7)", fontSize: 11, fontFamily: C.font }}
-      >
-        Cultivating community makes life radiant ✨
-      </p>
-      <h1
-        className="text-xl font-semibold mb-4"
-        style={{ color: "#F0EDE6", fontFamily: C.font }}
-      >
-        Saturday, 11 April
-      </h1>
-
-      <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-        style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
-      >
-        This week
-      </p>
-      <div className="space-y-2 mb-4">
-        <MockBarCard
-          category="letters"
-          title="📮 Dialogue with Margaret"
-          status="Your turn to write 🖋️"
-          pulse
-        />
-        <MockBarCard
-          category="practices"
-          title="🙏🏽 Intercession"
-          status="Tomorrow · 6 prayers"
-        />
-        <MockBarCard
-          category="practices"
-          title="🌿 Lenten Fast"
-          status="Day 24 · hold the rhythm"
-        />
-        <MockBarCard
-          category="gatherings"
-          title="🍞 Wednesday Supper"
-          status="In 4 days · Parish Hall"
-        />
-      </div>
-
-      <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-        style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
-      >
-        This month
-      </p>
-      <div className="space-y-2">
-        <MockBarCard
-          category="practices"
-          title="📜 Lectio Divina"
-          status="Every Thursday evening"
-        />
-      </div>
-    </MockPhone>
-  );
-}
-
-function PrayerMock() {
-  const requests = [
-    {
-      from: "Margaret W.",
-      body: "For my mother, who begins treatment this week.",
-      words: 4,
-    },
-    {
-      from: "David R.",
-      body: "Discernment about the new role. Grateful for your prayers.",
-      words: 6,
-    },
-    {
-      from: "Anonymous",
-      body: "For peace in a difficult season.",
-      words: 2,
-    },
-  ];
-  return (
-    <MockPhone>
-      <div className="flex items-center gap-2 mb-4">
-        <h2
-          className="text-base font-semibold"
-          style={{ color: "#F0EDE6", fontFamily: C.font }}
-        >
-          Prayer Requests 🙏🏽
-        </h2>
-        <div
-          className="flex-1 h-px"
-          style={{ background: "rgba(200,212,192,0.15)" }}
-        />
-      </div>
-
-      <div className="flex gap-2 mb-4">
-        <div
-          className="flex-1 text-xs px-3 py-2 rounded-xl"
-          style={{
-            background: "#091A10",
-            border: "1px solid rgba(46,107,64,0.3)",
-            color: "rgba(143,175,150,0.5)",
-            fontFamily: C.font,
-          }}
-        >
-          Share a prayer request with your garden... 🌿
-        </div>
-        <div
-          className="px-3 py-2 rounded-xl text-xs font-medium"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-        >
-          🙏🏽
-        </div>
-      </div>
-
-      <div>
-        {requests.map((r, i) => (
-          <div
-            key={i}
-            className="flex gap-0"
-            style={{
-              borderBottom:
-                i < requests.length - 1 ? "1px solid rgba(200,212,192,0.12)" : "none",
-            }}
-          >
-            <div
-              className="w-0.5 self-stretch shrink-0"
-              style={{ background: "#8FAF96" }}
-            />
-            <div className="flex-1 p-3 pl-2.5">
-              <p
-                className="text-[9px] font-medium uppercase tracking-widest mb-1"
-                style={{ color: "rgba(200,212,192,0.45)", fontFamily: C.font }}
-              >
-                From {r.from}
-              </p>
-              <p
-                className="text-xs leading-relaxed mb-1.5"
-                style={{ color: "#F0EDE6", fontFamily: C.font }}
-              >
-                {r.body}
-              </p>
-              <p
-                className="text-[10px]"
-                style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}
-              >
-                🌿 {r.words} {r.words === 1 ? "word of prayer" : "words of prayer"}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </MockPhone>
-  );
-}
-
-function MockLetterCard({
-  title,
-  periodLabel,
-  statusText,
-  statusColor,
-  postmarkCity,
-  postmarkDate,
-  accentColor,
-  previewText,
-  borderOpacity = 0.2,
-}: {
-  title: string;
-  periodLabel: string;
-  statusText: string;
-  statusColor: string;
-  postmarkCity?: string;
-  postmarkDate?: string;
-  accentColor: string;
-  previewText?: string;
-  borderOpacity?: number;
-}) {
-  return (
-    <div
-      className="relative flex rounded-xl overflow-hidden"
-      style={{
-        background: "#0F2818",
-        border: `1px solid rgba(142,158,66,${borderOpacity})`,
-        boxShadow:
-          "0 2px 8px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2)",
-      }}
-    >
-      <div
-        className="w-1 flex-shrink-0"
-        style={{ background: accentColor }}
-      />
-      <div className="flex-1 p-3 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p
-            className="text-[13px] font-semibold"
-            style={{ color: "#F0EDE6", fontFamily: C.font }}
-          >
-            📮 {title}
-          </p>
-          {postmarkCity && (
-            <div className="text-right shrink-0">
-              <p
-                className="text-[9px] font-semibold uppercase"
-                style={{ color: "#C8D4C0", letterSpacing: "0.06em", fontFamily: C.font }}
-              >
-                {postmarkCity}
-              </p>
-              {postmarkDate && (
-                <p
-                  className="text-[8px]"
-                  style={{ color: "#8FAF96", fontFamily: C.font }}
-                >
-                  {postmarkDate}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 mt-1">
-          <span
-            className="text-[9px] font-semibold uppercase"
-            style={{ color: "#C8D4C0", letterSpacing: "0.08em", fontFamily: C.font }}
-          >
-            {periodLabel}
-          </span>
-          <span style={{ color: "rgba(200,212,192,0.3)" }}>·</span>
-          <span
-            className="text-[10px] font-medium"
-            style={{ color: statusColor, fontFamily: C.font }}
-          >
-            {statusText}
-          </span>
-        </div>
-        {previewText && (
-          <p
-            className="text-[11px] mt-1.5 italic leading-snug"
-            style={{
-              color: "#8FAF96",
-              fontFamily: "Georgia, serif",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {previewText}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function LettersMock() {
-  return (
-    <MockPhone>
-      <h2
-        className="text-lg font-bold mb-1"
-        style={{ color: "#F0EDE6", fontFamily: C.font }}
-      >
-        Letters 📮
-      </h2>
-      <p
-        className="text-[10px] mb-3"
-        style={{ color: "#8FAF96", fontFamily: C.font }}
-      >
-        Letters have connected people for centuries. One letter every other week.
-      </p>
-      <div
-        className="h-px mb-4"
-        style={{ background: "rgba(142,158,66,0.25)" }}
-      />
-
-      {/* Section: Your Turn To Write */}
-      <div className="flex items-center gap-2 mb-2">
-        <span
-          className="text-[9px] font-semibold uppercase tracking-widest"
-          style={{ color: "#8FAF96", fontFamily: C.font }}
-        >
-          Your Turn To Write
-        </span>
-        <div
-          className="flex-1 h-px"
-          style={{ background: "rgba(142,158,66,0.25)" }}
-        />
-      </div>
-      <div className="space-y-2 mb-5">
-        <MockLetterCard
-          title="Dialogue with Margaret"
-          periodLabel="Letter 7"
-          statusText="Your turn to write 🖋️"
-          statusColor="#C8D4C0"
-          postmarkCity="Charleston, SC"
-          postmarkDate="Apr 3"
-          accentColor="#8E9E42"
-          borderOpacity={0.35}
-          previewText="The lilies in the churchyard have come in early this year. I thought of you when I saw them..."
-        />
-      </div>
-
-      {/* Section: Waiting for Response */}
-      <div className="flex items-center gap-2 mb-2">
-        <span
-          className="text-[9px] font-semibold uppercase tracking-widest"
-          style={{ color: "#8FAF96", fontFamily: C.font }}
-        >
-          Waiting for Response
-        </span>
-        <div
-          className="flex-1 h-px"
-          style={{ background: "rgba(142,158,66,0.25)" }}
-        />
-      </div>
-      <div className="space-y-2">
-        <MockLetterCard
-          title="Dialogue with David"
-          periodLabel="Letter 4"
-          statusText="Sent · awaiting reply 🌿"
-          statusColor="#8FAF96"
-          postmarkCity="Raleigh, NC"
-          postmarkDate="Mar 28"
-          accentColor="rgba(142,158,66,0.35)"
-        />
-        <MockLetterCard
-          title="Sharing with Book Circle"
-          periodLabel="Round 3"
-          statusText="Update sent 🌿"
-          statusColor="#8FAF96"
-          accentColor="rgba(142,158,66,0.35)"
-        />
-      </div>
-    </MockPhone>
-  );
-}
-
-function GatheringsMock() {
-  const items = [
-    {
-      emoji: "🍞",
-      name: "Wednesday Supper",
-      when: "Wednesdays · 6:30 PM",
-      where: "Parish Hall",
-      count: "12 going",
-    },
-    {
-      emoji: "🫖",
-      name: "Coffee Hour",
-      when: "Sundays · 10:30 AM",
-      where: "Fellowship Hall",
-      count: "22 regulars",
-    },
-    {
-      emoji: "📖",
-      name: "Lenten Study",
-      when: "Thursdays · 7:00 PM",
-      where: "Rectory Library",
-      count: "6 going",
-    },
-  ];
-  return (
-    <MockPhone>
-      <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-3"
-        style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
-      >
-        Your rhythms
-      </p>
-
-      <div className="space-y-3">
-        {items.map((it, i) => (
-          <div
-            key={i}
-            className="rounded-2xl p-4"
-            style={{
-              background: "rgba(111,175,133,0.12)",
-              border: "1px solid rgba(111,175,133,0.35)",
-            }}
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                style={{ background: "rgba(111,175,133,0.2)" }}
-              >
-                {it.emoji}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm font-semibold mb-0.5"
-                  style={{ color: "#F0EDE6", fontFamily: C.font }}
-                >
-                  {it.name}
-                </p>
-                <p
-                  className="text-[11px]"
-                  style={{ color: "#8FAF96", fontFamily: C.font }}
-                >
-                  {it.when}
-                </p>
-                <p
-                  className="text-[11px]"
-                  style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}
-                >
-                  {it.where}
-                </p>
-              </div>
-              <div
-                className="text-[10px] font-medium px-2 py-1 rounded-full shrink-0"
-                style={{
-                  background: "rgba(111,175,133,0.2)",
-                  color: "#C8D4C0",
-                  fontFamily: C.font,
-                }}
-              >
-                {it.count}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </MockPhone>
-  );
-}
-
-function LetterComposeMock() {
-  return (
-    <MockPhone>
-      <div className="flex items-center gap-2 mb-3">
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center text-xs"
-          style={{ background: "#14402A", color: "#F0EDE6" }}
-        >
-          M
-        </div>
-        <div>
-          <p
-            className="text-xs font-semibold"
-            style={{ color: "#F0EDE6", fontFamily: C.font }}
-          >
-            To Margaret Whitfield
-          </p>
-          <p
-            className="text-[9px]"
-            style={{ color: "#8FAF96", fontFamily: C.font }}
-          >
-            Letter 7 · Every other week
-          </p>
-        </div>
-      </div>
-
-      <div
-        className="rounded-2xl p-4"
-        style={{
-          background: "rgba(240,237,230,0.04)",
-          border: "1px solid rgba(20,64,42,0.55)",
-          minHeight: 240,
-        }}
-      >
-        <p
-          className="text-[10px] uppercase tracking-widest mb-3"
-          style={{ color: "rgba(200,212,192,0.45)", fontFamily: C.font }}
-        >
-          Dear Margaret,
-        </p>
-        <p
-          className="text-xs leading-relaxed mb-3"
-          style={{
-            color: "rgba(240,237,230,0.92)",
-            fontFamily: "'Caveat', 'Space Grotesk', cursive",
-            fontSize: 15,
-          }}
-        >
-          It's been a strange couple of weeks. Lent has taken a shape I
-          didn't expect, and I've been thinking about what you said at coffee
-          after Evensong — about sitting with silence instead of trying
-          to fill it.
-        </p>
-        <p
-          className="text-xs leading-relaxed"
-          style={{
-            color: "rgba(240,237,230,0.75)",
-            fontFamily: "'Caveat', 'Space Grotesk', cursive",
-            fontSize: 15,
-          }}
-        >
-          The lilies you mentioned — I saw them too. I'll tell you about
-          <motion.span
-            animate={{ opacity: [1, 0.2, 1] }}
-            transition={{ duration: 1, repeat: Infinity }}
-            className="inline-block ml-0.5"
-            style={{
-              width: 1,
-              height: 14,
-              background: "#8FAF96",
-              verticalAlign: "middle",
-            }}
-          />
-        </p>
-      </div>
-
-      <div className="flex justify-between items-center mt-4">
-        <p
-          className="text-[10px]"
-          style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}
-        >
-          Draft saved · 3 min ago
-        </p>
-        <div
-          className="px-3 py-1.5 rounded-full text-[10px] font-semibold"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-        >
-          Send ✉️
-        </div>
-      </div>
-    </MockPhone>
-  );
-}
-
-function IntercessionMock() {
-  // Matches the real SlideContent template in /src/pages/prayer-mode.tsx:
-  // "Your Intercession" eyebrow, serif italic body, "with {names}" attribution,
-  // "Your community is holding this." whisper, "Amen →" pill, "X of Y" footer.
-  return (
-    <div
-      className="rounded-[28px] md:rounded-[32px] mx-auto w-full max-w-[290px] md:max-w-[320px] relative"
-      style={{
-        background: "#0C1F12",
-        border: "1px solid rgba(200,212,192,0.15)",
-        boxShadow:
-          "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
-        minHeight: 430,
-      }}
-    >
-      {/* Exit × (decorative, matching prayer-mode.tsx) */}
-      <div
-        className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-lg"
-        style={{
-          color: "rgba(200,212,192,0.4)",
-          background: "rgba(200,212,192,0.06)",
-        }}
-      >
-        ×
-      </div>
-
-      {/* Centered slide content */}
-      <div className="flex flex-col items-center text-center px-6 pt-14 pb-12">
-        <p
-          className="text-[9px] uppercase font-semibold mb-4"
-          style={{
-            color: "rgba(143,175,150,0.45)",
-            letterSpacing: "0.18em",
-            fontFamily: C.font,
-          }}
-        >
-          Your Intercession
-        </p>
-
-        <p
-          className="text-[16px] md:text-[17px] leading-[1.5] font-medium italic mb-3"
-          style={{
-            color: "#E8E4D8",
-            fontFamily: "'Playfair Display', Georgia, serif",
-          }}
-        >
-          Margaret's mother, as she begins treatment this week.
-        </p>
-
-        <p
-          className="text-[11px] mb-2"
-          style={{ color: "#8FAF96", fontFamily: C.font }}
-        >
-          with David, Anna, James
-        </p>
-
-        <p
-          className="text-[10px] italic mb-5"
-          style={{
-            color: "rgba(143,175,150,0.55)",
-            fontFamily: C.font,
-          }}
-        >
-          Your community is holding this.
-        </p>
-
-        {/* BCP enrichment box — matches the real bcpPrayer card */}
-        <div
-          className="w-full rounded-xl px-3 py-3 text-left mb-5"
-          style={{
-            background: "rgba(46,107,64,0.12)",
-            border: "1px solid rgba(46,107,64,0.15)",
-          }}
-        >
-          <p
-            className="text-[10px] leading-[1.75] italic"
-            style={{
-              color: "#C8D4C0",
-              fontFamily: "'Playfair Display', Georgia, serif",
-            }}
-          >
-            O Father of mercies and God of all comfort, look graciously upon
-            this thy servant, that her weakness may be banished and her
-            strength restored.
-          </p>
-          <p
-            className="text-[7px] uppercase mt-2"
-            style={{
-              color: "rgba(143,175,150,0.3)",
-              letterSpacing: "0.14em",
-              fontFamily: C.font,
-            }}
-          >
-            From the Book of Common Prayer
-          </p>
-        </div>
-
-        {/* Amen pill — exact colors from prayer-mode.tsx */}
-        <div
-          className="px-6 py-2 rounded-full text-[11px] font-medium tracking-wide"
-          style={{
-            background: "rgba(46,107,64,0.28)",
-            border: "1px solid rgba(46,107,64,0.5)",
-            color: "#C8D4C0",
-            fontFamily: C.font,
-          }}
-        >
-          Amen →
-        </div>
-      </div>
-
-      {/* Progress footer — "3 of 6" matching prayer-mode.tsx */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
-        <p
-          className="text-[10px]"
-          style={{
-            color: "rgba(143,175,150,0.32)",
-            letterSpacing: "0.06em",
-            fontFamily: C.font,
-          }}
-        >
-          3 of 6
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function PreviewSlide({
-  slide,
-}: {
-  slide: Extract<Slide, { kind: "preview" }>;
-}) {
-  const mock =
-    slide.variant === "dashboard" ? (
-      <DashboardMock />
-    ) : slide.variant === "prayer" ? (
-      <PrayerMock />
-    ) : slide.variant === "letters" ? (
-      <LettersMock />
-    ) : slide.variant === "gatherings" ? (
-      <GatheringsMock />
-    ) : slide.variant === "letter-compose" ? (
-      <LetterComposeMock />
-    ) : (
-      <IntercessionMock />
-    );
-
-  return (
-    <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 max-w-5xl mx-auto w-full">
-      <div className="text-center md:text-left max-w-md">
-        <p
-          className="text-[10px] font-semibold uppercase tracking-widest mb-2 md:mb-3"
-          style={{ color: C.sage, fontFamily: C.font }}
-        >
-          A glimpse inside Phoebe
-        </p>
-        <h2
-          className="text-2xl md:text-4xl font-semibold mb-3 md:mb-5 leading-tight"
-          style={{ color: C.text, fontFamily: C.font }}
-        >
-          {slide.caption}
-        </h2>
-        <p
-          className="text-sm md:text-lg font-light leading-relaxed"
-          style={{ color: C.sage, fontFamily: C.font }}
-        >
-          {slide.sub}
-        </p>
-      </div>
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.5 }}
-        className="shrink-0 w-full md:w-auto flex justify-center"
-      >
-        {mock}
-      </motion.div>
     </div>
   );
 }
@@ -1312,14 +395,8 @@ function renderSlide(slide: Slide) {
       return <TitleSlide slide={slide} />;
     case "statement":
       return <StatementSlide slide={slide} />;
-    case "stacked":
-      return <StackedSlide slide={slide} />;
     case "progressive":
       return <ProgressiveSlide slide={slide} />;
-    case "cards":
-      return <CardsSlide slide={slide} />;
-    case "trellis":
-      return <TrellisSlide slide={slide} />;
     case "preview":
       return <PreviewSlide slide={slide} />;
     case "closing":
@@ -1355,6 +432,7 @@ export default function ChurchDeck() {
   }, [next, prev, setLocation]);
 
   const slide = SLIDES[index];
+  const isLast = index === SLIDES.length - 1;
 
   return (
     <div
@@ -1440,14 +518,13 @@ export default function ChurchDeck() {
           <ChevronLeft size={18} />
           Back
         </button>
-        {index === SLIDES.length - 1 ? (
+        {isLast ? (
           <button
             onClick={() => setLocation("/dashboard")}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            Enter Phoebe
-            <ChevronRight size={18} />
+            Done
           </button>
         ) : (
           <button
