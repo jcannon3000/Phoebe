@@ -114,7 +114,7 @@ const SLIDES: Slide[] = [
   // — Murthy quote
   {
     kind: "quote",
-    text: "As Vivek Murthy has said, loneliness is not just an emotional state but a public health crisis\u2014and the antidote is connection. In that sense, creating spaces for people to connect isn\u2019t just engagement, it\u2019s a form of ministry.",
+    text: "As Vivek Murthy has said, loneliness is not just an emotional state\u2014it is a public health crisis.\n\nIn that light, creating spaces for people to connect isn\u2019t just engagement.\nIt\u2019s ministry.",
   },
 
   // 19 — Closing
@@ -934,7 +934,7 @@ function QuoteSlide({ slide }: { slide: Extract<Slide, { kind: "quote" }> }) {
     <div className="flex items-center justify-center max-w-3xl mx-auto text-center">
       <motion.p
         className="text-xl md:text-3xl font-semibold leading-snug md:leading-snug"
-        style={{ fontFamily: C.font }}
+        style={{ fontFamily: C.font, whiteSpace: "pre-line" }}
         animate={{
           color: [C.sage, C.text, C.sage],
         }}
