@@ -294,7 +294,7 @@ const PlantSchema = z.object({
   frequency: z.enum(["daily", "weekly", "monthly"]).default("weekly"),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).default("08:00"),
   goalDays: z.number().int().min(1).max(365).default(30),
-  commitmentSessionsGoal: z.number().int().min(1).max(365).nullable().optional(),
+  commitmentSessionsGoal: z.number().int().min(0).max(365).nullable().optional(),
 });
 
 router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
@@ -473,7 +473,7 @@ const StandalonePlantSchema = z.object({
   // Commitment fields
   commitmentDuration: z.number().int().min(0).max(365).optional(),
   // Progressive goal fields
-  commitmentSessionsGoal: z.number().int().min(1).max(365).nullable().optional(),
+  commitmentSessionsGoal: z.number().int().min(0).max(365).nullable().optional(),
   // Listening fields
   listeningType: z.enum(["song", "album", "artist"]).optional(),
   listeningTitle: z.string().max(200).optional(),
@@ -2390,7 +2390,7 @@ const EditMomentSchema = z.object({
   dayOfWeek: z.enum(["MO","TU","WE","TH","FR","SA","SU"]).nullable().optional(),
   practiceDays: z.string().optional(),
   goalDays: z.number().int().min(0).max(365).optional(),
-  commitmentSessionsGoal: z.number().int().min(1).max(365).nullable().optional(),
+  commitmentSessionsGoal: z.number().int().min(0).max(365).nullable().optional(),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   intercessionTopic: z.string().max(300).nullable().optional(),
   contemplativeDurationMinutes: z.number().int().min(1).max(60).nullable().optional(),
@@ -2511,7 +2511,7 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
 
 // ─── PATCH /api/moments/:id/goal — update progressive goal ─────────────────
 const UpdateGoalSchema = z.object({
-  commitmentSessionsGoal: z.number().int().min(1).max(365).nullable(),
+  commitmentSessionsGoal: z.number().int().min(0).max(365).nullable(),
   commitmentTendFreely: z.boolean().optional(),
 });
 

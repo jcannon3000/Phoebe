@@ -856,8 +856,8 @@ export default function MomentNew() {
     : templateId === "contemplative"
       ? ["template", "contemplative-duration", "name", "intention", "logging", "schedule", "invite"]
     : templateId === "fasting"
-      ? (fastingTypeChoice === "custom"
-        ? ["template", "fasting-type", "fasting-when", "duration", "invite"]
+      ? (fastingTypeChoice === "meat"
+        ? ["template", "fasting-type", "fasting-when", "invite"]
         : ["template", "fasting-type", "fasting-when", "duration", "invite"])
     : templateId === "listening"
       ? ["template", "listening-what", "schedule", "invite"]
@@ -1092,9 +1092,9 @@ export default function MomentNew() {
         : isSpiritual && frequency === "weekly" && scheduledDays.length > 0
         ? JSON.stringify(scheduledDays)
         : undefined,
-      goalDays: isLectio ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
-      commitmentDuration: isLectio ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
-      commitmentSessionsGoal: (isFasting || templateId === "intercession") ? practiceDurationDays : null,
+      goalDays: isLectio ? 0 : (isFasting && fastingTypeChoice === "meat") ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
+      commitmentDuration: isLectio ? 0 : (isFasting && fastingTypeChoice === "meat") ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
+      commitmentSessionsGoal: (isFasting && fastingTypeChoice === "meat") ? null : (isFasting || templateId === "intercession") ? practiceDurationDays : null,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       timeOfDay: undefined,
       participants: validParticipants,
@@ -2139,6 +2139,7 @@ export default function MomentNew() {
                         onClick={() => {
                           setFastingTypeChoice("meat");
                           setFastingFrom("meat");
+                          setFastingFrequency("weekly");
                           setFastingIntention("To practice restraint, care for creation, and shared discipline.");
                           setStep("fasting-when");
                         }}
@@ -2153,7 +2154,7 @@ export default function MomentNew() {
                             </p>
                           </div>
                           <p className="text-[13px] leading-relaxed" style={{ color: "#8FAF96" }}>
-                            Abstaining from meat for one day saves an estimated 400 gallons of water. Practice restraint, care for creation, and shared discipline.
+                            Phoebe calculates your group's collective water conservation — each person who fasts from meat for one day saves an estimated 400 gallons.
                           </p>
                         </div>
                       </button>
@@ -2230,6 +2231,7 @@ export default function MomentNew() {
                             if (customFastName.trim().length >= 2) {
                               setFastingFrom(customFastName.trim());
                               setFastingIntention(customFastDescription.trim());
+                              setFastingFrequency("weekly");
                               setStep("fasting-when");
                             }
                           }}

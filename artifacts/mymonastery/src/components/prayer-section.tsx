@@ -222,12 +222,16 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            {/* Comment hint — subtle icon so people know they can tap to leave a word */}
-                            {!request.isOwnRequest && (
-                              <span className="flex items-center gap-1" style={{ color: request.myWord ? "#5C7A5F" : "rgba(143,175,150,0.35)" }}>
-                                {request.words.length > 0 && (
-                                  <span className="text-[10px] tabular-nums">{request.words.length}</span>
-                                )}
+                            {/* Comment hint — shows word count for all requests */}
+                            {request.words.length > 0 && (
+                              <span className="flex items-center gap-1" style={{ color: request.isOwnRequest ? "rgba(143,175,150,0.45)" : request.myWord ? "#5C7A5F" : "rgba(143,175,150,0.35)" }}>
+                                <span className="text-[10px] tabular-nums">{request.words.length}</span>
+                                <MessageCircle size={14} />
+                              </span>
+                            )}
+                            {/* Subtle icon when no words yet (not own request) */}
+                            {request.words.length === 0 && !request.isOwnRequest && (
+                              <span className="flex items-center gap-1" style={{ color: "rgba(143,175,150,0.35)" }}>
                                 <MessageCircle size={14} />
                               </span>
                             )}
