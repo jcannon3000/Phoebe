@@ -87,7 +87,7 @@ type LectioData = {
   userName: string;
   userToken: string;
   isCreator: boolean;
-  members: Array<{ name: string; email: string; isYou: boolean }>;
+  members: Array<{ name: string; email: string; isYou: boolean; joined?: boolean }>;
   memberCount: number;
   week: {
     sundayDate: string;
@@ -2620,8 +2620,22 @@ function SettingsMenu({
                   }}
                 >
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ color: m.isYou ? ACCENT : WARM_TEXT, fontSize: 14, fontWeight: 500 }}>
-                      {m.name}{m.isYou ? " · you" : ""}
+                    <div style={{ color: m.isYou ? ACCENT : WARM_TEXT, fontSize: 14, fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{m.name}{m.isYou ? " · you" : ""}</span>
+                      {!m.isYou && m.joined === false && (
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "#A8C5A0",
+                          background: "rgba(46,107,64,0.2)",
+                          border: "1px solid rgba(46,107,64,0.3)",
+                          borderRadius: 999,
+                          padding: "1px 8px",
+                          letterSpacing: "0.04em",
+                        }}>
+                          Invited
+                        </span>
+                      )}
                     </div>
                     <div
                       style={{

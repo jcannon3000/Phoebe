@@ -18,13 +18,14 @@
  */
 
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db,
   sharedMomentsTable,
   momentUserTokensTable,
   lectioReflectionsTable,
+  usersTable,
 } from "@workspace/db";
 import type { LectionaryReading } from "@workspace/db";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
@@ -278,6 +279,14 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
     ? creatorToken.userToken === userToken
     : false;
 
+  // Check which members have actual user accounts (signed up vs just invited)
+  const memberEmails = allMembers.map(t => t.email.toLowerCase());
+  const registeredUsers = memberEmails.length > 0
+    ? await db.select({ email: usersTable.email }).from(usersTable)
+        .where(inArray(usersTable.email, memberEmails))
+    : [];
+  const registeredEmails = new Set(registeredUsers.map(u => u.email.toLowerCase()));
+
   // 4. Load reflections for this week (all stages, all members).
   const reflections = await db
     .select()
@@ -375,6 +384,7 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
       name: m.name ?? m.email.split("@")[0],
       email: m.email,
       isYou: m.userToken === userToken,
+      joined: registeredEmails.has(m.email.toLowerCase()),
     })),
     memberCount: allMembers.length,
     week: {
