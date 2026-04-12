@@ -1270,6 +1270,12 @@ function WelcomeSlide({
     ordinal: STAGE_ORDINAL[s],
   }));
 
+  const stageDescriptions: Record<Stage, string> = {
+    lectio: "Read slowly. Notice a word or phrase that stirs something.",
+    meditatio: "Read again. What is God saying to you through that word?",
+    oratio: "Read a third time. How does God seem to be calling you to respond?",
+  };
+
   return (
     <div className="py-2 text-center">
       <p
@@ -1278,20 +1284,22 @@ function WelcomeSlide({
           fontSize: 11,
           letterSpacing: "0.22em",
           textTransform: "uppercase",
-          marginBottom: 10,
+          marginBottom: 12,
         }}
       >
-        A new rhythm
+        Lectio Divina
       </p>
       <p
         style={{
           color: WARM_TEXT,
           fontSize: 22,
-          lineHeight: 1.4,
+          fontWeight: 600,
+          lineHeight: 1.35,
           marginBottom: 14,
-          maxWidth: 480,
+          maxWidth: 440,
           marginLeft: "auto",
           marginRight: "auto",
+          fontFamily: SPACE_GROTESK,
         }}
       >
         Welcome to {data.moment.name}.
@@ -1300,17 +1308,32 @@ function WelcomeSlide({
         style={{
           color: MUTED_GREEN,
           fontSize: 14,
-          lineHeight: 1.65,
+          lineHeight: 1.7,
+          marginBottom: 10,
+          maxWidth: 460,
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        Lectio Divina — "sacred reading" — is an ancient Christian practice of
+        listening to Scripture not for information, but for transformation. You
+        read the same passage three times across the week, each time with a
+        different question held gently before God.
+      </p>
+      <p
+        style={{
+          color: MUTED_GREEN,
+          fontSize: 14,
+          lineHeight: 1.7,
           marginBottom: 22,
           maxWidth: 460,
           marginLeft: "auto",
           marginRight: "auto",
         }}
       >
-        Together you'll read this Sunday's gospel in three unhurried stages —
-        Monday, Wednesday, and Friday. Each stage unlocks on its day. If you or
-        anyone in your circle falls behind, the stages stay open so you can
-        always catch up before the next reading.
+        Each Monday, Wednesday, and Friday, a new stage unlocks. You read,
+        reflect, and share what you heard with your circle. Stages stay open
+        so no one falls behind.
       </p>
       <div
         style={{
@@ -1326,7 +1349,7 @@ function WelcomeSlide({
             key={r.stage}
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               justifyContent: "space-between",
               gap: 16,
               padding: "14px 16px 14px 18px",
@@ -1349,28 +1372,15 @@ function WelcomeSlide({
                   margin: 0,
                 }}
               >
-                {r.day}
+                {r.day} · {r.latin}
               </p>
-              <p style={{ color: WARM_TEXT, fontSize: 15, margin: "2px 0 0 0" }}>
-                {r.latin}
+              <p style={{ color: WARM_TEXT, fontSize: 14, margin: "3px 0 2px 0", fontWeight: 500 }}>
+                {r.ordinal}
+              </p>
+              <p style={{ color: MUTED_GREEN, fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+                {stageDescriptions[r.stage]}
               </p>
             </div>
-            <span
-              className="rounded-full"
-              style={{
-                background: "rgba(111,175,133,0.14)",
-                color: ACCENT,
-                border: "1px solid rgba(111,175,133,0.35)",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.02em",
-                padding: "3px 10px",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              {r.ordinal}
-            </span>
           </div>
         ))}
       </div>
