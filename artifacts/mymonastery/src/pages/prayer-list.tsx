@@ -135,7 +135,11 @@ export default function PrayerListPage() {
                 // Card title: topic (BCP) → intention (custom) → fallback name.
                 // For custom intercessions, `intention` is what the user typed
                 // as "who are you praying for?" and is the right label.
-                const cardTitle = m.intercessionTopic || m.intention || m.name;
+                // Strip trailing emoji so we don't double-up with the 🙏🏽 prefix.
+                const stripEmoji = (s: string) =>
+                  // eslint-disable-next-line no-misleading-character-class
+                  s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
+                const cardTitle = stripEmoji(m.intercessionTopic || m.intention || m.name);
                 const fullPrayer = m.intercessionFullText?.trim() || null;
 
                 return (

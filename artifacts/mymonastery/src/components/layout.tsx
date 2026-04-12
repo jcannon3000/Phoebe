@@ -189,25 +189,40 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
 
         {user && (
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="flex items-center justify-center transition-colors"
-            style={{ background: "none", border: "none", padding: 0 }}
-            aria-label="Open menu"
-          >
-            <span
+          <div className="flex items-center gap-2">
+            <Link
+              href="/prayer-list"
               className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
                 letterSpacing: "-0.01em",
-                background: "rgba(200,212,192,0.08)",
-                color: "#C8D4C0",
-                border: "1px solid rgba(46,107,64,0.3)",
+                background: "rgba(122,158,125,0.14)",
+                color: "#7A9E7D",
+                border: "1px solid rgba(122,158,125,0.28)",
               }}
             >
-              Menu
-            </span>
-          </button>
+              🕯️ Prayer List
+            </Link>
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="flex items-center justify-center transition-colors"
+              style={{ background: "none", border: "none", padding: 0 }}
+              aria-label="Open menu"
+            >
+              <span
+                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  letterSpacing: "-0.01em",
+                  background: "rgba(200,212,192,0.08)",
+                  color: "#C8D4C0",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                }}
+              >
+                Menu
+              </span>
+            </button>
+          </div>
         )}
       </header>
 

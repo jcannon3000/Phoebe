@@ -114,11 +114,17 @@ function bcpWeeksLabel(streak: number): string {
 
 const FULL_DAY: Record<string, string> = { Sun: "Sunday", Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday" };
 
-function MomentCard({ moment }: { moment: MomentData }) {
+// Strip trailing emoji so we never double-up when the stored name already has one.
+function stripTrailingEmoji(s: string): string {
+  // eslint-disable-next-line no-misleading-character-class
+  return s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
+}
+
+function MomentCard({ moment, userEmail }: { moment: MomentData; userEmail: string }) {
   const emoji = TEMPLATE_EMOJI[moment.templateType ?? "custom"] ?? "✨";
   const shouldPulse = moment.windowOpen && moment.todayPostCount === 0;
   const memberNames = moment.members
-    .filter(m => m.email !== undefined)
+    .filter(m => m.email !== userEmail)
     .slice(0, 5)
     .map(m => (m.name ?? m.email).split(" ")[0])
     .join(", ");
@@ -132,6 +138,20 @@ function MomentCard({ moment }: { moment: MomentData }) {
     : (shouldPulse && isIntercession && moment.momentToken && moment.myUserToken)
     ? `/moment/${moment.momentToken}/${moment.myUserToken}`
     : `/moments/${moment.id}`;
+
+  // For custom intercessions, show the intention ("Prayers for my niece")
+  // instead of the generic stored name ("Intercession 🙏🏽"). Matches dashboard.
+  const displayName = (() => {
+    if (isIntercession && moment.intention) {
+      const norm = (s: string) => s.trim().toLowerCase();
+      const hasMeaningfulTopic =
+        (moment as Record<string, unknown>).intercessionTopic &&
+        norm(String((moment as Record<string, unknown>).intercessionTopic)) !== norm(moment.name) &&
+        norm(String((moment as Record<string, unknown>).intercessionTopic)) !== norm(moment.intention);
+      if (!hasMeaningfulTopic) return moment.intention;
+    }
+    return stripTrailingEmoji(moment.name);
+  })();
 
   const nextWindow = !moment.windowOpen ? nextWindowDate(moment) : null;
   const freqLabel = moment.frequency === "daily" ? "Daily" : moment.frequency === "monthly" ? "Monthly" : "Weekly";
@@ -161,7 +181,7 @@ function MomentCard({ moment }: { moment: MomentData }) {
         <div className="flex-1 px-4 py-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {moment.name}</span>
+              <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>
             </div>
             {moment.currentStreak > 0 && (
               <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
@@ -269,7 +289,34 @@ export default function MomentsDashboard() {
           <p className="text-sm italic mt-1" style={{ color: "#8FAF96" }}>For the distance between gatherings</p>
         </div>
 
-        <div className="my-5 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+        {/* Start a new practice — template shortcuts */}
+        <div className="mt-4 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
+            Start a new
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "🙏🏽 Group Intercession", template: "intercession" },
+              { label: "📜 Lectio Divina", template: "lectio-divina" },
+              { label: "🌿 Fast", template: "fasting" },
+            ].map((t) => (
+              <Link
+                key={t.template}
+                href={`/moment/new?template=${t.template}`}
+                className="inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80"
+                style={{
+                  background: "rgba(46,107,64,0.14)",
+                  color: "#6B9E6E",
+                  border: "1px solid rgba(46,107,64,0.28)",
+                }}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="my-4 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
 
         {isLoading ? (
           <div className="space-y-3">
@@ -300,7 +347,7 @@ export default function MomentsDashboard() {
               <>
                 <SectionHeader label="Today" />
                 <div className="space-y-3 mb-2">
-                  {todayMoments.map(m => <MomentCard key={m.id} moment={m} />)}
+                  {todayMoments.map(m => <MomentCard key={m.id} moment={m} userEmail={user.email} />)}
                 </div>
               </>
             )}
@@ -308,7 +355,7 @@ export default function MomentsDashboard() {
               <>
                 <SectionHeader label="This Week" />
                 <div className="space-y-3 mb-2">
-                  {weekMoments.map(m => <MomentCard key={m.id} moment={m} />)}
+                  {weekMoments.map(m => <MomentCard key={m.id} moment={m} userEmail={user.email} />)}
                 </div>
               </>
             )}
@@ -316,7 +363,7 @@ export default function MomentsDashboard() {
               <>
                 <SectionHeader label="This Month" />
                 <div className="space-y-3">
-                  {monthMoments.map(m => <MomentCard key={m.id} moment={m} />)}
+                  {monthMoments.map(m => <MomentCard key={m.id} moment={m} userEmail={user.email} />)}
                 </div>
               </>
             )}

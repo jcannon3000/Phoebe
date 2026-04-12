@@ -117,13 +117,14 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
   const schema = z.object({
     body: z.string().min(1).max(1000),
     isAnonymous: z.boolean().optional().default(false),
+    durationDays: z.number().int().min(1).max(30).optional().default(3),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
 
-  const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + parsed.data.durationDays * 24 * 60 * 60 * 1000);
 
   const [created] = await db.insert(prayerRequestsTable)
     .values({

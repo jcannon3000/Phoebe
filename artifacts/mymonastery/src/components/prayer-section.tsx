@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { MessageCircle } from "lucide-react";
 
 interface PrayerRequest {
   id: number;
@@ -29,6 +30,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
   const [inputValue, setInputValue] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [pendingBody, setPendingBody] = useState("");
+  const [durationDays, setDurationDays] = useState<3 | 7>(3);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [wordInputs, setWordInputs] = useState<Record<number, string>>({});
   const [showAll, setShowAll] = useState(false);
@@ -41,12 +43,13 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
   });
 
   const submitMutation = useMutation({
-    mutationFn: ({ body }: { body: string }) =>
-      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false }),
+    mutationFn: ({ body, durationDays: days }: { body: string; durationDays: number }) =>
+      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays: days }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       setInputValue("");
       setPendingBody("");
+      setDurationDays(3);
       setShowModal(false);
     },
   });
@@ -90,7 +93,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
 
   const handleModalSubmit = () => {
     if (!pendingBody.trim()) return;
-    submitMutation.mutate({ body: pendingBody.trim() });
+    submitMutation.mutate({ body: pendingBody.trim(), durationDays });
   };
 
   const handleModalCancel = () => {
@@ -218,21 +221,33 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                             </p>
                           </div>
 
-                          {/* Delete button for own requests */}
-                          {request.isOwnRequest && (
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation();
-                                deleteMutation.mutate(request.id);
-                              }}
-                              disabled={deleteMutation.isPending}
-                              aria-label="Delete prayer request"
-                              className="text-muted-foreground/40 hover:text-muted-foreground text-base leading-none shrink-0 ml-2 disabled:opacity-30 transition-colors"
-                            >
-                              ×
-                            </button>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {/* Comment hint — subtle icon so people know they can tap to leave a word */}
+                            {!request.isOwnRequest && (
+                              <span className="flex items-center gap-1" style={{ color: request.myWord ? "#5C7A5F" : "rgba(143,175,150,0.35)" }}>
+                                {request.words.length > 0 && (
+                                  <span className="text-[10px] tabular-nums">{request.words.length}</span>
+                                )}
+                                <MessageCircle size={14} />
+                              </span>
+                            )}
+
+                            {/* Delete button for own requests */}
+                            {request.isOwnRequest && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  deleteMutation.mutate(request.id);
+                                }}
+                                disabled={deleteMutation.isPending}
+                                aria-label="Delete prayer request"
+                                className="text-muted-foreground/40 hover:text-muted-foreground text-base leading-none disabled:opacity-30 transition-colors"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* Nearing expiry — quiet line */}
@@ -276,31 +291,40 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                         style={{ borderLeft: "2px solid #5C7A5F", marginLeft: "2px" }}
                         onClick={e => e.stopPropagation()}
                       >
-                        {request.words.length > 0 && (
-                          <>
-                            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-2 mt-1">
-                              From your community
-                            </p>
-
-                            <div className="mb-3 space-y-1">
-                              {request.words.map((w, i) => {
-                                const isMyWord = request.myWord && w.content === request.myWord;
-                                return (
-                                  <p key={i} className="text-sm text-muted-foreground/70">
-                                    <span className="font-medium text-muted-foreground/80">{w.authorName}</span>
-                                    {": "}
-                                    {w.content}
-                                    {isMyWord && " 🌿"}
+                        {(() => {
+                          // Don't echo the viewer's own word back at them —
+                          // they already know they contributed. Only show
+                          // other community members' words.
+                          const othersWords = request.words.filter(
+                            (w) => !(request.myWord && w.content === request.myWord),
+                          );
+                          return (
+                            <>
+                              {othersWords.length > 0 && (
+                                <>
+                                  <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-2 mt-1">
+                                    From your community
                                   </p>
-                                );
-                              })}
-                            </div>
+                                  <div className="mb-3 space-y-1">
+                                    {othersWords.map((w, i) => (
+                                      <p key={i} className="text-sm text-muted-foreground/70">
+                                        <span className="font-medium text-muted-foreground/80">{w.authorName}</span>
+                                        {": "}
+                                        {w.content}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
 
-                            <p className="text-xs italic mb-3" style={{ color: "#5C7A5F" }}>
-                              Your community is holding this. 🙏🏽
-                            </p>
-                          </>
-                        )}
+                              {request.myWord && (
+                                <p className="text-xs italic mb-3" style={{ color: "#5C7A5F" }}>
+                                  Your community is holding this. 🙏🏽
+                                </p>
+                              )}
+                            </>
+                          );
+                        })()}
 
                         {/* Word input — hide if user already left a word */}
                         {!request.myWord && !request.isOwnRequest && (
@@ -406,9 +430,31 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
               {pendingBody}
             </div>
 
-            {/* Instructional copy */}
+            {/* Duration picker */}
+            <p className="text-[10px] font-medium uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+              How long should your community hold this?
+            </p>
+            <div className="flex gap-2 mb-4">
+              {([3, 7] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDurationDays(d)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  style={{
+                    background: durationDays === d ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                    border: `1px solid ${durationDays === d ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.2)"}`,
+                    color: durationDays === d ? "#F0EDE6" : "#8FAF96",
+                  }}
+                >
+                  {d === 3 ? "3 days 🌱" : "7 days 🌿"}
+                </button>
+              ))}
+            </div>
             <p className="text-xs italic mb-6" style={{ color: "#8FAF96" }}>
-              Your community will hold this for three days. On the third day it will quietly be released. 🌿
+              {durationDays === 3
+                ? "Your community will hold this for three days. On the third day it will quietly be released. 🌿"
+                : "Your community will hold this for a full week. After seven days it will quietly be released. 🌿"}
             </p>
 
             {/* Submit button */}

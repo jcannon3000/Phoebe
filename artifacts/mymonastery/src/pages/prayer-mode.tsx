@@ -11,6 +11,8 @@ type Moment = {
   templateType: string | null;
   intention: string;
   intercessionTopic?: string | null;
+  intercessionFullText?: string | null;
+  intercessionSource?: string | null;
   members: Array<{ name: string; email: string }>;
   todayPostCount: number;
   windowOpen: boolean;
@@ -29,6 +31,7 @@ interface PrayerSlide {
   kind: "intercession" | "request";
   text: string;
   attribution: string;
+  fullText?: string | null;
 }
 
 function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () => void }) {
@@ -65,6 +68,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
         </p>
       )}
 
+      {/* BCP enrichment — show the formal prayer text from the Book of Common Prayer */}
       {bcpPrayer && (
         <div
           className="w-full rounded-2xl px-6 py-5 text-left mt-1"
@@ -84,6 +88,24 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
             style={{ color: "rgba(143,175,150,0.3)" }}
           >
             From the Book of Common Prayer
+          </p>
+        </div>
+      )}
+
+      {/* Custom intercession — show the user's own prayer text */}
+      {!bcpPrayer && slide.fullText && (
+        <div
+          className="w-full rounded-2xl px-6 py-5 text-left mt-1"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.15)",
+          }}
+        >
+          <p
+            className="text-[13px] leading-[1.85] italic"
+            style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
+          >
+            {slide.fullText}
           </p>
         </div>
       )}
@@ -132,6 +154,7 @@ export default function PrayerModePage() {
     ...intercessions.map((m) => ({
       kind: "intercession" as const,
       text: m.intercessionTopic || m.intention || m.name,
+      fullText: m.intercessionFullText?.trim() || null,
       attribution: m.members
         .filter((p) => p.email !== user?.email)
         .map((p) => p.name || p.email.split("@")[0])
