@@ -40,11 +40,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const navItems = [
     { emoji: "🙏🏽", label: "Practices",   path: "/practices"   },
+    { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
     { emoji: "📮", label: "Letters",     path: "/letters"     },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "🏘️", label: "Communities", path: "/communities" },
     { emoji: "👥", label: "People",      path: "/people"      },
-    { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
     { emoji: "📖", label: "Learn",       path: "/learn"       },
     { emoji: "📩", label: "Invitations", path: "/invitations" },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
