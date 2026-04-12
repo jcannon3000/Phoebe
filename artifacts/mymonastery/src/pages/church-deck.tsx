@@ -69,7 +69,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "🙏🏽 Prayer, held in common.",
+    headline: "Prayer, held in common.",
     body: [
       "People share what they are carrying. Others in the community respond with a word or a prayer, and make people feel heard and cared for.",
     ],
@@ -81,7 +81,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "📖 BCP Integration",
+    headline: "BCP Integration",
     body: [
       "Users can access the full list of intercessions and thanksgivings from the Book of Common Prayer, inviting others in their community to pray them with them.",
     ],
@@ -93,7 +93,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "📖 Group Lectio Divina",
+    headline: "Group Lectio Divina",
     body: [
       "The Sunday gospel, read together across the week, moving through each stage together on Mondays, Wednesdays, and Fridays.",
     ],
@@ -104,9 +104,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "📅 Connected people show up.",
+    headline: "Upcoming Events",
     body: [
-      "As Harvard sociologist Robert Putnam showed, when members feel a sense of belonging, they\u2019re far more likely to come to a gathering. Phoebe cultivates belonging then gives members opportunities to get more involved by displaying what\u2019s coming up.",
+      "When members feel a sense of belonging, they\u2019re far more likely to come to a gathering. Phoebe cultivates belonging then gives members opportunities to get more involved by displaying ways to connect further.",
     ],
     mock: "gatherings",
   },
@@ -114,14 +114,14 @@ const SLIDES: Slide[] = [
   // — Murthy quote
   {
     kind: "quote",
-    text: "As Vivek Murthy has said, loneliness is not just an emotional state\u2014it is a public health crisis.\n\nIn that light, creating spaces for people to connect isn\u2019t just engagement.\nIt\u2019s ministry.",
+    text: "As Former Surgeon General Vivek Murthy has said, loneliness is not just an emotional state\u2014it is a public health crisis.\n\nIn that light, creating spaces for people to connect isn\u2019t just engagement.\nIt\u2019s ministry.",
   },
 
   // 19 — Closing
   {
     kind: "closing",
     body: [],
-    featured: ["Help your parish flourish with Phoebe. 🌿"],
+    featured: ["Help your parish flourish with Phoebe."],
   },
 ];
 
@@ -746,9 +746,6 @@ function GatheringsMock() {
       <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>
         Gatherings
       </h2>
-      <p className="text-[10px] mb-3" style={{ color: C.sage }}>
-        Your community, meeting with intention.
-      </p>
       <div className="h-px mb-3" style={{ background: "rgba(200,212,192,0.1)" }} />
       <div className="space-y-3">
         {groups.map((g, gi) => (
