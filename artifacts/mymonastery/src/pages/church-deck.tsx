@@ -35,6 +35,7 @@ type Slide =
       body: string[];
       mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "gatherings";
     }
+  | { kind: "combo-mock"; mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "gatherings" }
   | { kind: "closing"; body: string[]; featured: string[] };
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
@@ -61,8 +62,8 @@ const SLIDES: Slide[] = [
     kind: "statement",
     headline: "Most parishes are good at Sunday.",
     body: [
-      "The challenge is Tuesday. Wednesday. Friday. The six days when nothing is organised and people quietly return to their separate lives.",
-      "Phoebe creates touchpoints between Sundays. Small, consistent, low friction. Enough to keep the community alive in the days when no one is gathering.",
+      "The challenge is between Sundays, when people\u2019s busy lives make it hard for them to stay connected with others from their faith community.",
+      "Phoebe creates ways for community members to engage and pray for each other throughout the week, to keep their feeling of belonging alive and help break the ice once they see each other again on Sunday.",
     ],
   },
 
@@ -922,12 +923,12 @@ function FeatureComboSlide({
           ))}
         </div>
       </div>
-      {/* Mock — right on desktop, below on mobile */}
+      {/* Mock — right on desktop, hidden on mobile (separate slide on mobile) */}
       <motion.div
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.12, duration: 0.45 }}
-        className="w-full md:w-auto flex justify-center shrink-0"
+        className="hidden md:flex w-auto justify-center shrink-0"
       >
         {Mock ? <Mock /> : null}
       </motion.div>
@@ -973,6 +974,21 @@ function ClosingSlide({
   );
 }
 
+function ComboMockSlide({ slide }: { slide: Extract<Slide, { kind: "combo-mock" }> }) {
+  const Mock = MOCK_MAP[slide.mock];
+  return (
+    <div className="flex items-center justify-center w-full">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.05, duration: 0.4 }}
+      >
+        {Mock ? <Mock /> : null}
+      </motion.div>
+    </div>
+  );
+}
+
 function renderSlide(slide: Slide) {
   switch (slide.kind) {
     case "title":
@@ -985,6 +1001,8 @@ function renderSlide(slide: Slide) {
       return <FeatureDemoSlide slide={slide} />;
     case "feature-combo":
       return <FeatureComboSlide slide={slide} />;
+    case "combo-mock":
+      return <ComboMockSlide slide={slide} />;
     case "closing":
       return <ClosingSlide slide={slide} />;
   }
@@ -994,10 +1012,26 @@ function renderSlide(slide: Slide) {
 export default function ChurchDeck() {
   const [, setLocation] = useLocation();
   const [index, setIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // On mobile, split feature-combo into text slide + mock slide
+  const slides: Slide[] = isMobile
+    ? SLIDES.flatMap((s) =>
+        s.kind === "feature-combo"
+          ? [s, { kind: "combo-mock" as const, mock: s.mock }]
+          : [s],
+      )
+    : SLIDES;
 
   const next = useCallback(
-    () => setIndex((i) => Math.min(i + 1, SLIDES.length - 1)),
-    [],
+    () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
+    [slides.length],
   );
   const prev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
 
@@ -1025,9 +1059,9 @@ export default function ChurchDeck() {
     return () => window.removeEventListener("keydown", onKey);
   }, [next, prev, setLocation]);
 
-  const slide = SLIDES[index];
+  const slide = slides[index];
   const isFirst = index === 0;
-  const isLast = index === SLIDES.length - 1;
+  const isLast = index === slides.length - 1;
 
   return (
     <div
@@ -1054,7 +1088,7 @@ export default function ChurchDeck() {
             className="h-full rounded-full"
             style={{ background: C.sage }}
             animate={{
-              width: `${((index + 1) / SLIDES.length) * 100}%`,
+              width: `${((index + 1) / slides.length) * 100}%`,
             }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           />
@@ -1062,7 +1096,7 @@ export default function ChurchDeck() {
 
         {/* Desktop: dot row */}
         <div className="hidden md:flex gap-1.5">
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => setIndex(i)}
@@ -1082,7 +1116,7 @@ export default function ChurchDeck() {
           className="text-xs tabular-nums shrink-0"
           style={{ color: C.sage, opacity: 0.6 }}
         >
-          {index + 1} / {SLIDES.length}
+          {index + 1} / {slides.length}
         </span>
       </div>
 
