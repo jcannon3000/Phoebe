@@ -1291,6 +1291,7 @@ export default function Dashboard() {
             const PILLS: Pill[] = [
               { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
               { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
+              { label: "📖 BCP Prayers",  href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
             ];
