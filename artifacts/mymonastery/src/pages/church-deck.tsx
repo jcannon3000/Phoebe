@@ -100,20 +100,7 @@ const SLIDES: Slide[] = [
     mock: "bcp",
   },
 
-  // ── Feature 3: Prayer List ──
-  // 7
-  {
-    kind: "feature-combo",
-    label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "A shared record of what the community is holding.",
-    body: [
-      "Every request, every intention, every name being carried in prayer \u2014 gathered in one place. The community can see what is being held together. They can add their prayer to what is already there.",
-      "Intercession made visible. The invisible work of the community, given a surface.",
-    ],
-    mock: "prayer-list",
-  },
-
-  // ── Feature 4: Lectio Divina ──
+  // ── Feature 3: Lectio Divina ──
   // 8
   {
     kind: "feature-combo",

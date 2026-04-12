@@ -1117,6 +1117,17 @@ router.get("/moments", async (req, res): Promise<void> => {
           if (myPostDates.has(w.windowDate)) { myStreak++; } else { break; }
         }
 
+        // Compute group streak from actual window bloom data — not the
+        // currentStreak field which can be corrupted by double-bloom bugs
+        // or reset by goal hits. Walk backwards through bloom windows.
+        const bloomThreshold = Math.max(2, Math.ceil(allMembers.length / 2));
+        const todayBloom = todayPosts.length >= bloomThreshold && allMembers.length >= 2;
+        let groupStreak = todayBloom ? 1 : 0;
+        for (const w of sortedWindows) {
+          if (w.windowDate === todayDate) continue;
+          if (w.status === "bloom") { groupStreak++; } else { break; }
+        }
+
         // Most recent post the current user made on this practice. The
         // prayer list card uses this to render "Last prayed 3 days ago"
         // and anything else that wants to show "when did *you* last
@@ -1242,6 +1253,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           latestWindow,
           myUserToken: myToken?.userToken ?? null,
           myStreak,
+          groupStreak,
           myLastPostAt,
           lastWindowDate,
           lastWindowPostCount,
@@ -1460,6 +1472,30 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     }
   }
 
+  // Compute group streak from actual window bloom data — not the
+  // currentStreak field which can be corrupted by double-bloom bugs
+  // or reset by goal hits. Walk backwards through bloom windows.
+  const bloomThreshold = Math.max(2, Math.ceil(allMembers.length / 2));
+  const todayBloom = todayPosts.length >= bloomThreshold && allMembers.length >= 2;
+  let groupStreak = todayBloom ? 1 : 0;
+  for (const w of sortedWindows) {
+    if (w.windowDate === windowDate) continue;
+    if (w.status === "bloom") { groupStreak++; } else { break; }
+  }
+  // Group best: longest consecutive bloom run across all windows
+  let groupBest = groupStreak;
+  {
+    let run = 0;
+    // Walk oldest→newest so we can count consecutive blooms properly
+    const chronological = [...sortedWindows].reverse();
+    for (const w of chronological) {
+      if (w.status === "bloom") { run++; if (run > groupBest) groupBest = run; }
+      else { run = 0; }
+    }
+    // Include today's bloom if applicable
+    if (todayBloom) { run++; if (run > groupBest) groupBest = run; }
+  }
+
   // ── Fasting water-conservation stats (detail view) ───────────────────────
   // Compute per-period fast-day counts so the detail page can show
   // "saved this week / this month / all time" split by you vs. the group.
@@ -1533,6 +1569,8 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     todayLogs,
     isCreator,
     myStreak,
+    groupStreak,
+    groupBest,
     calendarEventMissing,
     fastingWaterStats,
   });

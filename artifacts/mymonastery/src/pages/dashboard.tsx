@@ -37,6 +37,7 @@ type Moment = {
   intention: string;
   currentStreak: number;
   myStreak: number;
+  groupStreak?: number;
   totalBlooms: number;
   state: string;
   memberCount: number;
@@ -628,12 +629,14 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const safeIntention = (m.intention && norm(m.intention) !== nameNorm) ? m.intention : null;
   const safeIntercessionTopic = (m.intercessionTopic && norm(m.intercessionTopic) !== nameNorm) ? m.intercessionTopic : null;
 
-  // Progress badge — for intercession/fasting show group streak (fire emoji); blank if 0.
-  // For lectio show the current stage label. For other practices, no badge.
+  // Progress badge — for intercession/fasting show group streak (fire emoji).
+  // Uses the computed groupStreak (from actual window data) not currentStreak
+  // which can be corrupted by double-bloom or goal resets.
+  const effectiveGroupStreak = m.groupStreak ?? m.currentStreak;
   const progressLabel = isLectio
     ? (m.lectioCurrentStageLabel ?? null)
     : (isIntercession || m.templateType === "fasting")
-      ? (m.currentStreak > 0 ? `🔥 ${m.currentStreak}` : m.myStreak > 0 ? `🙏🏽 ${m.myStreak}` : null)
+      ? (effectiveGroupStreak > 0 ? `🔥 ${effectiveGroupStreak}` : null)
       : null;
 
   const prayHref = isIntercession
@@ -1064,22 +1067,23 @@ function GoalReachedModal({
     .map(p => p.name || p.email.split("@")[0])
     .slice(0, 5);
 
+  const gStreak = moment.groupStreak ?? moment.currentStreak;
   const emoji = moment.templateType === "intercession" ? "🙏🏽"
     : moment.templateType === "fasting" ? "🌿"
     : "🌸";
 
   const slides = [
-    // Slide 0: Celebration
+    // Slide 0: Celebration — group focused
     <div key="celebrate" className="flex flex-col items-center text-center gap-5">
       <p className="text-4xl">{emoji}</p>
       <h2 className="text-xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-        {hasStreak ? "You kept the rhythm." : "Your goal is complete."}
+        Your group kept the rhythm.
       </h2>
       <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
         You set a goal of {goal} {goal === 1 ? "session" : "sessions"} for{" "}
         <span style={{ color: "#C8D4C0" }}>{moment.name}</span>.
-        {hasStreak
-          ? ` You've built a ${moment.myStreak}-day streak.`
+        {gStreak > 0
+          ? ` Your group built a ${gStreak}-day streak together.`
           : " The commitment is fulfilled."}
       </p>
       {memberNames.length > 0 && (
@@ -1103,10 +1107,10 @@ function GoalReachedModal({
         What would you like to do?
       </h2>
 
-      {hasStreak ? (
+      {gStreak > 0 ? (
         <>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            You have a {moment.myStreak}-day streak. Keep it going?
+            Your group has a {gStreak}-day streak. Keep it going?
           </p>
           <button
             onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: nextGoal, commitmentTendFreely: false })}
@@ -1246,7 +1250,30 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<"practices" | null>(null);
-  const [goalDismissed, setGoalDismissed] = useState<Set<number>>(new Set());
+  // Goal popup: creator-only, persisted in localStorage, once per day, max 2 days.
+  const [goalDismissed, setGoalDismissed] = useState<Set<number>>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("phoebe:goal-dismissed") || "{}") as Record<string, string[]>;
+      const today = new Date().toISOString().slice(0, 10);
+      const dismissed = new Set<number>();
+      for (const [id, dates] of Object.entries(stored)) {
+        // Dismissed today, or already shown on 2+ different days
+        if (dates.includes(today) || dates.length >= 2) dismissed.add(Number(id));
+      }
+      return dismissed;
+    } catch { return new Set<number>(); }
+  });
+  const dismissGoal = useCallback((id: number) => {
+    setGoalDismissed(prev => new Set([...prev, id]));
+    try {
+      const stored = JSON.parse(localStorage.getItem("phoebe:goal-dismissed") || "{}") as Record<string, string[]>;
+      const today = new Date().toISOString().slice(0, 10);
+      const dates = stored[String(id)] || [];
+      if (!dates.includes(today)) dates.push(today);
+      stored[String(id)] = dates;
+      localStorage.setItem("phoebe:goal-dismissed", JSON.stringify(stored));
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     const reset = () => setFilter(null);
@@ -1265,13 +1292,14 @@ export default function Dashboard() {
 
   const isLoading = momentsLoading;
 
-  // ── Goal-reached celebration — first practice with a recent goal completion
+  // ── Goal-reached celebration — creator only, max 2 days, once per day
   const goalReachedMoment = useMemo(() => {
     if (!momentsData?.moments) return null;
     const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
     const now = Date.now();
     return momentsData.moments.find((m) => {
-      if (goalDismissed.has(m.id)) return false;
+      if (!m.isCreator) return false;               // creator only
+      if (goalDismissed.has(m.id)) return false;     // already dismissed today or 2+ days
       if (!m.commitmentGoalReachedAt) return false;
       const reachedAt = new Date(m.commitmentGoalReachedAt).getTime();
       return now - reachedAt < twoDaysMs;
@@ -1534,7 +1562,7 @@ export default function Dashboard() {
           <GoalReachedModal
             key={goalReachedMoment.id}
             moment={goalReachedMoment}
-            onDismiss={() => setGoalDismissed(prev => new Set([...prev, goalReachedMoment.id]))}
+            onDismiss={() => dismissGoal(goalReachedMoment.id)}
           />
         )}
       </AnimatePresence>

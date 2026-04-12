@@ -83,6 +83,8 @@ interface MomentDetail {
   members: { name: string | null; email: string; joined?: boolean }[];
   memberCount: number;
   myStreak: number;
+  groupStreak: number;
+  groupBest: number;
   myUserToken: string | null;
   myPersonalTime: string | null;
   myPersonalTimezone: string | null;

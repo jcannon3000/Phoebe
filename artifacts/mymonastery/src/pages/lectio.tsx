@@ -173,7 +173,7 @@ const SPACE_GROTESK =
 
 // ─── Slide model ────────────────────────────────────────────────────────────
 
-type SlideKind = "welcome" | "prompt" | "reading" | "entry" | "responses" | "summary" | "all-responses" | "coming-soon";
+type SlideKind = "welcome" | "status" | "prompt" | "reading" | "entry" | "responses" | "summary" | "all-responses" | "coming-soon";
 // Welcome + summary slides aren't bound to a specific stage — they frame
 // the whole week — so `stage` is nullable and readers must check `kind` first.
 type Slide = { stage: Stage | null; kind: SlideKind };
@@ -184,23 +184,14 @@ function allStagesSubmitted(data: LectioData): boolean {
   return unlocked.every((s) => data.stages[s].userHasSubmitted);
 }
 
-// True on a user's very first visit to this Lectio — they haven't shared
-// a reflection for any stage yet. Used to show the welcome slide, which
-// serves as both the creator's post-creation screen and an invited member's
-// first-time onboarding.
-function hasSubmittedAnyStage(data: LectioData): boolean {
-  return STAGE_ORDER.some((s) => data.stages[s].userHasSubmitted);
-}
-
 function buildSlides(data: LectioData): Slide[] {
   const slides: Slide[] = [];
-  // Welcome slide — prepended on a user's very first visit before they
-  // have submitted any reflection. It invites them to start, explains the
-  // Mon/Wed/Fri rhythm, and reassures them that the circle can always
-  // catch up. Goes away the moment they share their first reflection.
-  if (!hasSubmittedAnyStage(data)) {
-    slides.push({ stage: null, kind: "welcome" });
-  }
+  // Status slide — always shown as the landing page. On first visit it
+  // serves as the welcome/onboarding screen. On subsequent visits it shows
+  // the week's progress: which stages are done, which are next, who has
+  // responded. This replaces the old "welcome only on first visit" approach.
+  slides.push({ stage: null, kind: "status" });
+
   for (const s of STAGE_ORDER) {
     if (!data.stages[s].unlocked) continue;
     slides.push({ stage: s, kind: "prompt" });
@@ -213,61 +204,18 @@ function buildSlides(data: LectioData): Slide[] {
     slides.push({ stage: s, kind: "responses" });
   }
   // Tack on a summary slide once the user has submitted every unlocked stage.
-  // This is the "you've finished the week's reading" moment — it lists the
-  // three stages, how many of the circle have responded to each, and lets
-  // the user jump back into the responses to read what others heard.
-  //
-  // The `all-responses` slide is a single scrollable page that lists the
-  // responses from all three stages together. It's the destination of the
-  // "Read all responses" CTA on the summary slide.
   if (allStagesSubmitted(data)) {
     slides.push({ stage: null, kind: "summary" });
     slides.push({ stage: null, kind: "all-responses" });
-  } else if (data.week.unlockedStages.length < STAGE_ORDER.length && allStagesSubmitted(data) === false) {
-    // Not all stages unlocked yet AND the user has submitted everything
-    // currently available → show a "coming soon" slide with the locked stages.
-    const submittedAllUnlocked =
-      data.week.unlockedStages.length > 0 &&
-      data.week.unlockedStages.every((s) => data.stages[s].userHasSubmitted);
-    if (submittedAllUnlocked) {
-      slides.push({ stage: null, kind: "coming-soon" });
-    }
   }
   return slides;
 }
 
-// Where to land the user when they first open the page:
-//   - if they've already submitted every unlocked stage for the week, go
-//     straight to the summary slide
-//   - otherwise, open them on the prompt slide of the first unlocked stage
-//     they haven't finished yet
-//   - fall back to index 0 if nothing else matches
-function initialSlideIndex(data: LectioData, slides: Slide[]): number {
-  // Fresh user — always land on the welcome slide. It's the first slide
-  // when it exists, so we can simply return 0, but findIndex is defensive
-  // in case the slide ordering ever changes.
-  if (!hasSubmittedAnyStage(data)) {
-    const welcomeIdx = slides.findIndex((sl) => sl.kind === "welcome");
-    if (welcomeIdx >= 0) return welcomeIdx;
-  }
-  if (allStagesSubmitted(data)) {
-    const summaryIdx = slides.findIndex((sl) => sl.kind === "summary");
-    if (summaryIdx >= 0) return summaryIdx;
-  }
-  // All unlocked stages submitted but more stages are locked — land on coming-soon.
-  const submittedAllUnlocked =
-    data.week.unlockedStages.length > 0 &&
-    data.week.unlockedStages.every((s) => data.stages[s].userHasSubmitted);
-  if (submittedAllUnlocked && data.week.unlockedStages.length < STAGE_ORDER.length) {
-    const comingIdx = slides.findIndex((sl) => sl.kind === "coming-soon");
-    if (comingIdx >= 0) return comingIdx;
-  }
-  for (const s of STAGE_ORDER) {
-    if (data.stages[s].unlocked && !data.stages[s].userHasSubmitted) {
-      const idx = slides.findIndex((sl) => sl.stage === s && sl.kind === "prompt");
-      if (idx >= 0) return idx;
-    }
-  }
+// Always land on the status slide — it shows the week overview and lets
+// the user navigate to the right stage from there.
+function initialSlideIndex(_data: LectioData, slides: Slide[]): number {
+  const statusIdx = slides.findIndex((sl) => sl.kind === "status");
+  if (statusIdx >= 0) return statusIdx;
   return 0;
 }
 
@@ -486,8 +434,11 @@ export default function LectioPage() {
   // Jump to the summary slide — used by the Settings menu "Go to summary"
   // shortcut so the creator/invitee can skip past all stages to the recap.
   const jumpToSummary = () => {
+    // Try summary first; if not available (stages incomplete), fall back to status
     const idx = slides.findIndex((sl) => sl.kind === "summary");
-    if (idx >= 0) setSlideIdx(idx);
+    if (idx >= 0) { setSlideIdx(idx); return; }
+    const statusIdx = slides.findIndex((sl) => sl.kind === "status");
+    if (statusIdx >= 0) setSlideIdx(statusIdx);
   };
 
   // Jump to the combined "all responses" slide — the destination of the
@@ -559,8 +510,8 @@ export default function LectioPage() {
           </button>
           <div style={{ textAlign: "right" }}>
             <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>
-              {current.kind === "welcome"
-                ? "Welcome"
+              {current.kind === "welcome" || current.kind === "status"
+                ? "This Week"
                 : data.week.isSunday
                   ? "Completed"
                   : current.stage
@@ -621,6 +572,17 @@ export default function LectioPage() {
             >
               {current.kind === "welcome" && (
                 <WelcomeSlide data={data} onBegin={next} />
+              )}
+              {current.kind === "status" && (
+                <StatusSlide
+                  data={data}
+                  onBegin={next}
+                  onJumpToStage={(stage) => {
+                    const idx = slides.findIndex((sl) => sl.stage === stage && sl.kind === "prompt");
+                    if (idx >= 0) setSlideIdx(idx);
+                  }}
+                  onJumpToSummary={jumpToSummary}
+                />
               )}
               {current.kind === "prompt" && current.stage && (
                 <PromptSlide stage={current.stage} />
@@ -706,8 +668,8 @@ export default function LectioPage() {
           // The action pill tells the user what the next step in this slide
           // is ("Read" → "Reflect" → "Responses" → "Next stage"). The summary
           // slide has its own CTAs, so the pill is hidden there.
-          const stageLabel = current.kind === "welcome"
-            ? "Welcome"
+          const stageLabel = current.kind === "welcome" || current.kind === "status"
+            ? "This Week"
             : current.kind === "coming-soon"
               ? "Coming Soon"
               : data.week.isSunday
@@ -1401,6 +1363,276 @@ function WelcomeSlide({
       >
         Begin 🌿
       </button>
+    </div>
+  );
+}
+
+// ─── Status slide ──────────────────────────────────────────────────────────
+// Always shown as the landing page. Shows the week's reading, progress
+// through the three stages, and a CTA to begin or continue.
+
+function StatusSlide({
+  data,
+  onBegin,
+  onJumpToStage,
+  onJumpToSummary,
+}: {
+  data: LectioData;
+  onBegin: () => void;
+  onJumpToStage: (stage: Stage) => void;
+  onJumpToSummary: () => void;
+}) {
+  const isFirstVisit = !STAGE_ORDER.some((s) => data.stages[s].userHasSubmitted);
+  const allDone = allStagesSubmitted(data);
+  const completedCount = STAGE_ORDER.filter((s) => data.stages[s].userHasSubmitted).length;
+  const unlockedCount = data.week.unlockedStages.length;
+
+  // Find the next stage to work on
+  const nextStage = STAGE_ORDER.find(
+    (s) => data.stages[s].unlocked && !data.stages[s].userHasSubmitted,
+  );
+
+  const stageDescriptions: Record<Stage, string> = {
+    lectio: "Read slowly. Notice a word or phrase that stirs something.",
+    meditatio: "Read again. What is God saying to you through that word?",
+    oratio: "Read a third time. How does God seem to be calling you to respond?",
+  };
+
+  return (
+    <div className="py-2 text-center">
+      <p
+        style={{
+          color: FAINT_GREEN,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          marginBottom: 12,
+        }}
+      >
+        Lectio Divina
+      </p>
+
+      {/* Week reading info */}
+      <p
+        style={{
+          color: WARM_TEXT,
+          fontSize: 22,
+          fontWeight: 600,
+          lineHeight: 1.35,
+          marginBottom: 6,
+          maxWidth: 440,
+          marginLeft: "auto",
+          marginRight: "auto",
+          fontFamily: SPACE_GROTESK,
+        }}
+      >
+        {data.reading.sundayName}
+      </p>
+      <p style={{ color: MUTED_GREEN, fontSize: 14, marginBottom: 20 }}>
+        {data.reading.gospelReference}
+      </p>
+
+      {/* Intro text for first-timers */}
+      {isFirstVisit && (
+        <p
+          style={{
+            color: MUTED_GREEN,
+            fontSize: 14,
+            lineHeight: 1.7,
+            marginBottom: 20,
+            maxWidth: 460,
+            marginLeft: "auto",
+            marginRight: "auto",
+          }}
+        >
+          Lectio Divina — "sacred reading" — is an ancient practice of
+          listening to Scripture. You read the same passage three times
+          across the week, each time with a different question.
+        </p>
+      )}
+
+      {/* Progress bar */}
+      {!isFirstVisit && (
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            maxWidth: 200,
+            margin: "0 auto 20px auto",
+          }}
+        >
+          {STAGE_ORDER.map((s) => (
+            <div
+              key={s}
+              style={{
+                flex: 1,
+                height: 4,
+                borderRadius: 2,
+                background: data.stages[s].userHasSubmitted
+                  ? BUTTON_BG
+                  : data.stages[s].unlocked
+                    ? "rgba(46,107,64,0.25)"
+                    : "rgba(46,107,64,0.1)",
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Stage rows */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          maxWidth: 440,
+          margin: "0 auto 24px auto",
+        }}
+      >
+        {STAGE_ORDER.map((s) => {
+          const stage = data.stages[s];
+          const isDone = stage.userHasSubmitted;
+          const isLocked = !stage.unlocked;
+          const isNext = s === nextStage;
+          const responseCount = stage.reflections?.length ?? 0;
+
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => {
+                if (!isLocked) onJumpToStage(s);
+              }}
+              disabled={isLocked}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+                padding: "14px 16px 14px 18px",
+                borderRadius: 14,
+                border: `1px solid ${isNext ? "rgba(46,107,64,0.6)" : BORDER}`,
+                background: isNext ? "rgba(46,107,64,0.15)" : "rgba(15,40,24,0.6)",
+                width: "100%",
+                textAlign: "left",
+                fontFamily: SPACE_GROTESK,
+                color: WARM_TEXT,
+                opacity: isLocked ? 0.4 : 1,
+                cursor: isLocked ? "default" : "pointer",
+              }}
+            >
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p
+                  style={{
+                    color: FAINT_GREEN,
+                    fontSize: 10,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                  }}
+                >
+                  {STAGE_DAY_LABEL[s]} · {STAGE_LATIN[s]}
+                </p>
+                <p style={{ color: WARM_TEXT, fontSize: 14, margin: "3px 0 2px 0", fontWeight: 500 }}>
+                  {STAGE_ORDINAL[s]}
+                </p>
+                <p style={{ color: MUTED_GREEN, fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+                  {isLocked
+                    ? `Opens ${STAGE_DAY_LABEL[s]}`
+                    : stageDescriptions[s]}
+                </p>
+              </div>
+              <div style={{ flexShrink: 0, textAlign: "right" }}>
+                {isDone && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      color: MUTED_GREEN,
+                      background: "rgba(46,107,64,0.2)",
+                      padding: "4px 10px",
+                      borderRadius: 99,
+                    }}
+                  >
+                    Done {responseCount > 0 ? `· ${responseCount}` : ""}
+                  </span>
+                )}
+                {isNext && !isDone && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      color: WARM_TEXT,
+                      background: BUTTON_BG,
+                      padding: "4px 10px",
+                      borderRadius: 99,
+                    }}
+                  >
+                    Begin
+                  </span>
+                )}
+                {isLocked && (
+                  <span style={{ fontSize: 18, opacity: 0.3 }}>🔒</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* CTA */}
+      {allDone ? (
+        <button
+          type="button"
+          onClick={onJumpToSummary}
+          className="rounded-full"
+          style={{
+            background: BUTTON_BG,
+            color: WARM_TEXT,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 14,
+            fontWeight: 600,
+            padding: "12px 32px",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          View Summary
+        </button>
+      ) : nextStage ? (
+        <button
+          type="button"
+          onClick={() => onJumpToStage(nextStage)}
+          className="rounded-full"
+          style={{
+            background: BUTTON_BG,
+            color: WARM_TEXT,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 14,
+            fontWeight: 600,
+            padding: "12px 32px",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          {isFirstVisit ? "Begin 🌿" : `Continue — ${STAGE_ORDINAL[nextStage]}`}
+        </button>
+      ) : (
+        <p style={{ color: MUTED_GREEN, fontSize: 13 }}>
+          {completedCount} of {unlockedCount} stages complete. Next stage opens soon.
+        </p>
+      )}
+
+      {/* Member count */}
+      {data.memberCount > 1 && (
+        <p style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 14 }}>
+          {data.memberCount} {data.memberCount === 1 ? "person" : "people"} in this circle
+        </p>
+      )}
     </div>
   );
 }
