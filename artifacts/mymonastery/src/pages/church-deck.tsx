@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, MessageCircle } from "lucide-react";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const C = {
@@ -147,18 +147,7 @@ const SLIDES: Slide[] = [
     ],
   },
 
-  // 17 — Parish Calendar (text + mock on one slide)
-  {
-    kind: "feature-combo",
-    label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "What is already happening, in front of the people most likely to come.",
-    body: [
-      "The parish is already running events. The person who prayed on Wednesday and fasted on Friday is the most likely person to come to Thursday evening\u2019s talk. They just need to see it.",
-    ],
-    mock: "calendar",
-  },
-
-  // 18 — Getting Involved (text + mock on one slide)
+  // 17 — Getting Involved (text + mock on one slide)
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
@@ -353,25 +342,25 @@ function PrayerRequestsMock() {
               className="w-0.5 self-stretch shrink-0"
               style={{ background: "#8FAF96" }}
             />
-            <div className="flex-1 p-3 pl-2.5">
-              <p
-                className="text-[9px] font-medium uppercase tracking-widest mb-0.5"
-                style={{ color: "rgba(200,212,192,0.45)" }}
-              >
-                From {r.from}
-              </p>
-              <p
-                className="text-[12px] leading-relaxed mb-1"
-                style={{ color: C.text, fontFamily: C.font }}
-              >
-                {r.body}
-              </p>
-              <p
-                className="text-[10px]"
-                style={{ color: "rgba(143,175,150,0.7)" }}
-              >
-                🌿 {r.words} words of prayer
-              </p>
+            <div className="flex-1 p-3 pl-2.5 flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-[9px] font-medium uppercase tracking-widest mb-0.5"
+                  style={{ color: "rgba(200,212,192,0.45)" }}
+                >
+                  From {r.from}
+                </p>
+                <p
+                  className="text-[12px] leading-relaxed"
+                  style={{ color: C.text, fontFamily: C.font }}
+                >
+                  {r.body}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
+                <span className="text-[10px] tabular-nums">{r.words}</span>
+                <MessageCircle size={12} />
+              </div>
             </div>
           </div>
         ))}
