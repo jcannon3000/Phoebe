@@ -1288,34 +1288,32 @@ export default function Dashboard() {
               );
             };
 
-            // ── Primary row: Practices + Prayer List ──
-            const PRIMARY: Pill[] = [
+            const PILLS: Pill[] = [
               { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
               { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
-            ];
-
-            // ── Secondary row: everything else ──
-            const SECONDARY: Pill[] = [
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
             ];
 
-            return (
-              <>
-                {/* Primary: Practices + Prayer List */}
-                <div className="flex items-center gap-2 mt-2">
-                  {PRIMARY.map((p, i) => renderPill(p, `pri-${i}`))}
-                </div>
-                {/* Divider */}
-                <div className="h-px mt-3 mb-1" style={{ background: "rgba(200,212,192,0.12)" }} />
-                {/* Secondary: scrolling ticker */}
-                <div className="mt-1 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
-                  <style>{`@keyframes dash-pills { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
-                  <div style={{ display: "flex", gap: 8, width: "max-content", animation: "dash-pills 14s linear infinite" }}>
-                    {[...SECONDARY, ...SECONDARY].map((p, i) => renderPill(p, i))}
+            // When a filter is active, collapse to just the active pill with ×
+            if (filter !== null) {
+              const activePill = PILLS.find(p => p.filterKey === filter);
+              if (activePill) {
+                return (
+                  <div className="flex items-center gap-2 mt-2">
+                    {renderPill(activePill, "active")}
                   </div>
+                );
+              }
+            }
+
+            return (
+              <div className="mt-2 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
+                <style>{`@keyframes dash-pills { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
+                <div style={{ display: "flex", gap: 8, width: "max-content", animation: "dash-pills 20s linear infinite" }}>
+                  {[...PILLS, ...PILLS].map((p, i) => renderPill(p, i))}
                 </div>
-              </>
+              </div>
             );
           })()}
         </div>
