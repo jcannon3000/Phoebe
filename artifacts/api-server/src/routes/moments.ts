@@ -227,8 +227,11 @@ async function evaluateWindow(momentId: number, windowDate: string) {
       .where(eq(momentWindowsTable.id, existing[0].id));
   }
 
-  // Update streak on the moment
-  if (status === "bloom") {
+  // Update streak on the moment — only when the window TRANSITIONS to bloom.
+  // If the window was already "bloom" from a prior post, don't increment again.
+  const previousStatus = existing.length > 0 ? existing[0].status : null;
+  const justBloomed = status === "bloom" && previousStatus !== "bloom";
+  if (justBloomed) {
     const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
     if (moment) {
       const newStreak = moment.currentStreak + 1;
