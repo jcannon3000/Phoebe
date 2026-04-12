@@ -80,7 +80,7 @@ const SLIDES: Slide[] = [
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Prayer, held in common.",
     body: [
-      "People share what they are carrying. Others in the community respond with a word or a prayer, and make people feel heard and cared for.",
+      "People share what they are carrying. Others in the community respond with a word or a prayer. Everyone can stay a part of each other\u2019s lives through the week.",
     ],
     mock: "prayer-requests",
   },
@@ -898,12 +898,12 @@ function FeatureComboSlide({
           ))}
         </div>
       </div>
-      {/* Mock — right on desktop, hidden on mobile (separate slide on mobile) */}
+      {/* Mock — right on desktop, below on mobile */}
       <motion.div
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.12, duration: 0.45 }}
-        className="hidden md:flex w-auto justify-center shrink-0"
+        className="w-full md:w-auto flex justify-center shrink-0"
       >
         {Mock ? <Mock /> : null}
       </motion.div>
@@ -987,22 +987,7 @@ function renderSlide(slide: Slide) {
 export default function ChurchDeck() {
   const [, setLocation] = useLocation();
   const [index, setIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  // On mobile, split feature-combo into text slide + mock slide
-  const slides: Slide[] = isMobile
-    ? SLIDES.flatMap((s) =>
-        s.kind === "feature-combo"
-          ? [s, { kind: "combo-mock" as const, mock: s.mock }]
-          : [s],
-      )
-    : SLIDES;
+  const slides = SLIDES;
 
   const next = useCallback(
     () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
