@@ -142,8 +142,8 @@ const SLIDES: Slide[] = [
     kind: "statement",
     headline: "The community stays alive between Sundays.",
     body: [
-      "When people pray together, reflect on the same passage, or keep a fast alongside someone else during the week, they arrive on Sunday already connected. The ice is already broken. The person sitting next to them is not a stranger but someone who carried the same reading, the same prayer, the same discipline.",
-      "These small, consistent acts of shared practice are what turn a parish into a community. Not programs. Not events. Just people doing simple things together, often enough that it starts to mean something.",
+      "By engaging in simple ways to pray, reflect, and fast together during the week, people feel more connected. When they show up on Sunday, the ice is already broken.",
+      "That leads to deeper connections.",
     ],
   },
 
