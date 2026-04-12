@@ -41,14 +41,7 @@ type Slide =
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
 const SLIDES: Slide[] = [
-  // 1 — Title
-  {
-    kind: "title",
-    headline: "Phoebe",
-    sub: "A place set apart for connection.",
-  },
-
-  // 2 — The opening
+  // 1 — The opening
   {
     kind: "statement",
     headline: "Harvard sociologist Robert Putnam\u2019s research found that the strongest predictor of religious engagement is the strength of relationships within a community.",
