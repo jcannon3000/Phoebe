@@ -777,10 +777,10 @@ export default function MomentDetail() {
 
         {/* Stats grid — water impact for fasting, streaks for everything else */}
         {(() => {
-          const bloomThreshold = Math.max(2, Math.ceil(memberCount / 2));
-          const todayBloomed = todayPostCount >= bloomThreshold && memberCount >= 2;
-          const groupStreak = todayBloomed && moment.currentStreak === 0 ? 1 : moment.currentStreak;
-          const groupBest = Math.max(groupStreak, moment.longestStreak);
+          // Use API-computed group streak from actual window bloom data —
+          // avoids corrupted currentStreak/longestStreak DB fields.
+          const groupStreak = data?.groupStreak ?? 0;
+          const groupBest = data?.groupBest ?? groupStreak;
           const displayMyStreak = myStreak > 0 ? myStreak : (todayPostCount >= 1 ? 1 : 0);
 
           if (isFasting) {
@@ -878,7 +878,7 @@ export default function MomentDetail() {
             // Fall back to old goalDays display if available
             const dur = moment.commitmentDuration ?? moment.goalDays ?? 0;
             if (dur === 0) return null;
-            const daysDone = Math.min(moment.currentStreak, dur);
+            const daysDone = Math.min(data?.groupStreak ?? 0, dur);
             const progressPct = dur > 0 ? Math.min(100, (daysDone / dur) * 100) : 0;
             return (
               <div className="mb-6">
@@ -906,27 +906,33 @@ export default function MomentDetail() {
           const remaining = Math.max(0, sessionsGoal - sessionsLogged);
           const progressPct = Math.min(100, (sessionsLogged / sessionsGoal) * 100);
 
-          // Goal hit — celebration state + next goal nudge
+          // Goal hit — celebration state + next goal nudge (creator) / progress (non-creator)
           if (goalHit) {
             const nextGoal = getNextGoalInLadder(ladder, sessionsGoal);
             const card = nextGoalCard(nextGoal, freq);
             const isOngoing = !nextGoal;
+            const effectiveGroupStreak = data?.groupStreak ?? 0;
 
             return (
               <div className="mb-6">
-                {/* Celebration */}
+                {/* Celebration — shown to everyone */}
                 <div className="text-center py-4 mb-4">
                   <p className="text-3xl mb-2">🌸</p>
                   <p className="text-lg font-semibold text-[#2C1A0E]" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                    You showed up {sessionsLogged} times together.
+                    Your group kept the rhythm — {sessionsLogged} {unitLabelPlural} together.
                   </p>
+                  {effectiveGroupStreak > 0 && (
+                    <p className="text-sm text-[#5C7A5F] font-medium mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                      🔥 {effectiveGroupStreak}-{unitLabel} group streak
+                    </p>
+                  )}
                   <p className="text-sm text-[#5C7A5F] italic mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                     That's not nothing. That's a real thing you built.
                   </p>
                 </div>
 
-                {/* Next goal nudge */}
-                {card && (
+                {/* Creator gets renewal controls */}
+                {isCreator && card && (
                   <div className="bg-card border border-border/60 rounded-2xl p-5 mb-3">
                     <p className="text-sm font-medium text-muted-foreground mb-3" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                       Ready to go further? 🌿
@@ -953,15 +959,13 @@ export default function MomentDetail() {
                         : isOngoing ? "Keep going ✨"
                         : `Set this as your next goal 🌿`}
                     </button>
-                    {isCreator && (
-                      <button
-                        onClick={() => { setRenewCustom(String(sessionsGoal)); setRenewModalOpen(true); }}
-                        className="w-full mt-2 py-2 text-xs text-[#5C7A5F] hover:text-[#3f5a44] transition-colors font-medium"
-                        style={{ fontFamily: "Space Grotesk, sans-serif" }}
-                      >
-                        Renew with a different length 🌱
-                      </button>
-                    )}
+                    <button
+                      onClick={() => { setRenewCustom(String(sessionsGoal)); setRenewModalOpen(true); }}
+                      className="w-full mt-2 py-2 text-xs text-[#5C7A5F] hover:text-[#3f5a44] transition-colors font-medium"
+                      style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                    >
+                      Renew with a different length 🌱
+                    </button>
                     {!isOngoing && (
                       <button
                         onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: null, commitmentTendFreely: true })}
@@ -973,47 +977,52 @@ export default function MomentDetail() {
                     )}
 
                     {/* Archive — we're done here (creator only, two-step confirm) */}
-                    {isCreator && (
-                      <>
-                        {!showArchiveConfirm ? (
+                    {!showArchiveConfirm ? (
+                      <button
+                        onClick={() => setShowArchiveConfirm(true)}
+                        className="w-full mt-2 py-2 text-xs text-muted-foreground/60 hover:text-amber-700 transition-colors"
+                        style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                      >
+                        Archive — we're done here 🌸
+                      </button>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.97 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
+                      >
+                        <p className="text-xs font-semibold text-amber-800 mb-1">
+                          Archive "{moment.name}"?
+                        </p>
+                        <p className="text-[11px] text-amber-700/80 mb-3 leading-snug">
+                          This closes the practice for the whole group. History and reflections are preserved. You can always start a new one.
+                        </p>
+                        <div className="flex gap-2">
                           <button
-                            onClick={() => setShowArchiveConfirm(true)}
-                            className="w-full mt-2 py-2 text-xs text-muted-foreground/60 hover:text-amber-700 transition-colors"
-                            style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                            onClick={() => archiveMutation.mutate()}
+                            disabled={archiveMutation.isPending}
+                            className="text-xs font-semibold text-white bg-amber-600 rounded-full px-4 py-2 hover:bg-amber-700 transition-colors disabled:opacity-50"
                           >
-                            Archive — we're done here 🌸
+                            {archiveMutation.isPending ? "Archiving…" : "Yes, archive it"}
                           </button>
-                        ) : (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.97 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
+                          <button
+                            onClick={() => setShowArchiveConfirm(false)}
+                            className="text-xs text-amber-700 px-2 py-2 hover:text-amber-900 transition-colors"
                           >
-                            <p className="text-xs font-semibold text-amber-800 mb-1">
-                              Archive "{moment.name}"?
-                            </p>
-                            <p className="text-[11px] text-amber-700/80 mb-3 leading-snug">
-                              This closes the practice for the whole group. History and reflections are preserved. You can always start a new one.
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => archiveMutation.mutate()}
-                                disabled={archiveMutation.isPending}
-                                className="text-xs font-semibold text-white bg-amber-600 rounded-full px-4 py-2 hover:bg-amber-700 transition-colors disabled:opacity-50"
-                              >
-                                {archiveMutation.isPending ? "Archiving…" : "Yes, archive it"}
-                              </button>
-                              <button
-                                onClick={() => setShowArchiveConfirm(false)}
-                                className="text-xs text-amber-700 px-2 py-2 hover:text-amber-900 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </>
+                            Cancel
+                          </button>
+                        </div>
+                      </motion.div>
                     )}
+                  </div>
+                )}
+
+                {/* Non-creator: just show progress indicator */}
+                {!isCreator && (
+                  <div className="bg-card border border-border/60 rounded-2xl p-5 mb-3 text-center">
+                    <p className="text-sm text-muted-foreground" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                      🌿 Goal complete · waiting for the group leader to set the next step
+                    </p>
                   </div>
                 )}
               </div>
