@@ -51,7 +51,7 @@ const SLIDES: Slide[] = [
     kind: "statement",
     headline: "Most parishes are good at Sunday.",
     body: [
-      "The challenge is Tuesday. Wednesday. Friday. The six days when nothing is organised and people quietly return to their separate lives.",
+      "The challenge is the days between, when most people don\u2019t have a way to engage with their faith community during their busy lives.",
       "Phoebe is built for those days.",
     ],
   },
