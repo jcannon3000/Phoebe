@@ -126,10 +126,7 @@ function MomentCard({ moment, userEmail }: { moment: MomentData; userEmail: stri
   const memberNames = moment.members
     .filter(m => m.email !== userEmail)
     .slice(0, 5)
-    .map(m => {
-      const name = (m.name ?? m.email).split(" ")[0];
-      return m.joined === false ? `${name} (invited)` : name;
-    })
+    .map(m => (m.name ?? m.email).split(" ")[0])
     .join(", ");
 
   const subtitle = memberNames ? `with ${memberNames}` : moment.intention;

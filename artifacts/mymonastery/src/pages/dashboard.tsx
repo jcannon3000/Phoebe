@@ -579,11 +579,11 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       ? true
       : (m.windowOpen && m.todayPostCount === 0);
   const isDesktop = useIsDesktop();
-  const memberNames = m.members
-    .filter(p => p.email !== userEmail)
+  const otherMembers = m.members.filter(p => p.email !== userEmail);
+  const memberNames = otherMembers
     .map(p => {
-      const name = p.name || p.email.split("@")[0];
-      return p.joined === false ? `${name} (invited)` : name;
+      const full = p.name || p.email.split("@")[0];
+      return otherMembers.length >= 2 ? full.split(" ")[0] : full;
     })
     .slice(0, 5)
     .join(", ");

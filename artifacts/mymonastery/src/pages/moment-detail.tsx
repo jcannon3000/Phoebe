@@ -579,10 +579,10 @@ export default function MomentDetail() {
                     <span key={m.email} className="inline-flex items-center gap-0.5">
                       <Link
                         href={`/people/${encodeURIComponent(m.email)}`}
-                        className={`text-sm transition-colors ${m.joined === false ? "text-muted-foreground/40 italic" : "text-muted-foreground/70 hover:text-primary"}`}
+                        className="text-sm transition-colors text-muted-foreground/70 hover:text-primary"
                         onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       >
-                        {(m.name ?? m.email).split(" ")[0]}{m.joined === false ? " (invited)" : ""}
+                        {(m.name ?? m.email).split(" ")[0]}
                       </Link>
                       {(i < shown.length - 1 || extra > 0) && <span className="text-muted-foreground/40"> ·</span>}
                     </span>
