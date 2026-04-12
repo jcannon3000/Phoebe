@@ -56,16 +56,6 @@ const SLIDES: Slide[] = [
     ],
   },
 
-  // 3 — The real challenge
-  {
-    kind: "statement",
-    headline: "Most parishes are good at Sunday.",
-    body: [
-      "The challenge is between Sundays, when people\u2019s busy lives make it hard for them to stay connected with others from their faith community.",
-      "Phoebe creates ways for community members to engage and pray for each other throughout the week, to keep their feeling of belonging alive and help break the ice once they see each other again on Sunday.",
-    ],
-  },
-
   // 4 — The week (centered, auto-advances after 2s)
   {
     kind: "title",
