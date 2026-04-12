@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useParams, useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
@@ -70,23 +70,7 @@ export default function ThreadView() {
     enabled: !!id && !!user,
   });
 
-  // Mark unread letters as read when opening thread
-  const markReadMutation = useMutation({
-    mutationFn: (letterId: number) =>
-      api("POST", `/api/phoebe/correspondences/${id}/letters/${letterId}/read`, {})
-        .catch(() => api("POST", `/api/letters/correspondences/${id}/letters/${letterId}/read`, {})),
-  });
-
-  useEffect(() => {
-    if (!data || !user) return;
-    const unread = data.letters.filter(l =>
-      l.authorEmail !== user.email &&
-      !l.readBy.includes(user.email) &&
-      !l.readBy.includes(user.id)
-    );
-    unread.forEach(l => markReadMutation.mutate(l.id));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.letters.length]);
+  // Read receipts are marked server-side when the GET letters endpoint is called.
 
   if (isLoading || !data) {
     return (

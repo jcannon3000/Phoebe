@@ -19,18 +19,20 @@ export default function NewCorrespondence() {
   const [invitees, setInvitees] = useState<Array<{ name: string; email: string }>>([{ name: "", email: "" }]);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      api<NewCorrespondenceResponse>("POST", "/api/phoebe/correspondences", {
-        name: name.trim() || undefined,
-        groupType,
-        participants: invitees.filter(i => i.email.trim()),
-      }).catch(() =>
-        api<NewCorrespondenceResponse>("POST", "/api/letters/correspondences", {
-          name: name.trim() || undefined,
-          groupType,
-          participants: invitees.filter(i => i.email.trim()),
-        })
-      ),
+    mutationFn: () => {
+      const validMembers = invitees.filter(i => i.email.trim());
+      // Auto-generate name for one-to-one; use provided name (or fallback) for group
+      const autoName = isOTO
+        ? `Letters with ${validMembers[0]?.name?.trim() || validMembers[0]?.email?.split("@")[0] || "them"}`
+        : name.trim() || `Circle with ${validMembers.map(i => i.name?.split(" ")[0] || i.email.split("@")[0]).join(", ")}`;
+
+      // Try the letters route (uses groupType + "small_group")
+      return api<NewCorrespondenceResponse>("POST", "/api/letters/correspondences", {
+        name: autoName,
+        groupType: isOTO ? "one_to_one" : "small_group",
+        members: validMembers,
+      });
+    },
     onSuccess: (data) => setLocation(`/letters/${data.id}`),
   });
 
