@@ -40,7 +40,7 @@ type Moment = {
   totalBlooms: number;
   state: string;
   memberCount: number;
-  members: Array<{ name: string; email: string }>;
+  members: Array<{ name: string; email: string; joined?: boolean }>;
   todayPostCount: number;
   windowOpen: boolean;
   isActionableToday: boolean;
@@ -579,7 +579,10 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const isDesktop = useIsDesktop();
   const memberNames = m.members
     .filter(p => p.email !== userEmail)
-    .map(p => p.name || p.email.split("@")[0])
+    .map(p => {
+      const name = p.name || p.email.split("@")[0];
+      return p.joined === false ? `${name} (invited)` : name;
+    })
     .slice(0, 5)
     .join(", ");
 

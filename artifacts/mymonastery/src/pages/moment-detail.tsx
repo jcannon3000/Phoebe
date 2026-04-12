@@ -80,7 +80,7 @@ interface MomentDetail {
     listeningSpotifyUri?: string | null;
     listeningAppleMusicUrl?: string | null;
   };
-  members: { name: string | null; email: string }[];
+  members: { name: string | null; email: string; joined?: boolean }[];
   memberCount: number;
   myStreak: number;
   myUserToken: string | null;
@@ -573,13 +573,13 @@ export default function MomentDetail() {
               <div className="mt-2 space-y-0.5">
                 <div className="flex flex-wrap gap-x-1.5 gap-y-0.5">
                   {shown.map((m, i) => (
-                    <span key={m.email}>
+                    <span key={m.email} className="inline-flex items-center gap-0.5">
                       <Link
                         href={`/people/${encodeURIComponent(m.email)}`}
-                        className="text-sm text-muted-foreground/70 hover:text-primary transition-colors"
+                        className={`text-sm transition-colors ${m.joined === false ? "text-muted-foreground/40 italic" : "text-muted-foreground/70 hover:text-primary"}`}
                         onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       >
-                        {(m.name ?? m.email).split(" ")[0]}
+                        {(m.name ?? m.email).split(" ")[0]}{m.joined === false ? " (invited)" : ""}
                       </Link>
                       {(i < shown.length - 1 || extra > 0) && <span className="text-muted-foreground/40"> ·</span>}
                     </span>
@@ -1332,7 +1332,14 @@ export default function MomentDetail() {
                               {(m.name ?? m.email).charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm text-foreground truncate">{m.name ?? m.email}{isMe ? " (you)" : ""}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm text-foreground truncate">{m.name ?? m.email}{isMe ? " (you)" : ""}</p>
+                                {!isMe && m.joined === false && (
+                                  <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground/70">
+                                    Invited
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground/60 truncate">{m.email}</p>
                             </div>
                           </div>

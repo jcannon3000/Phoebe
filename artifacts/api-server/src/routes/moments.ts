@@ -1052,6 +1052,18 @@ router.get("/moments", async (req, res): Promise<void> => {
       }
     }
 
+    // Build a set of emails that have actual user accounts (i.e. have signed up).
+    // Used to show "invited" vs "joined" status on member lists.
+    const allMemberTokens = await db.select({ email: momentUserTokensTable.email })
+      .from(momentUserTokensTable)
+      .where(inArray(momentUserTokensTable.momentId, flatMoments.map(m => m.id)));
+    const uniqueMemberEmails = [...new Set(allMemberTokens.map(t => t.email.toLowerCase()))];
+    const registeredUsers = uniqueMemberEmails.length > 0
+      ? await db.select({ email: usersTable.email }).from(usersTable)
+          .where(inArray(usersTable.email, uniqueMemberEmails))
+      : [];
+    const registeredEmails = new Set(registeredUsers.map(u => u.email.toLowerCase()));
+
     // Enrich each moment INDEPENDENTLY. If any single moment's enrichment
     // throws (bad timezone, computeWindowOpen edge case, a null-dereference
     // we didn't anticipate, etc.), we log it and fall back to the raw row
@@ -1322,6 +1334,14 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
   const allMembers = await db.select().from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.momentId, momentId));
 
+  // Check which members have actual user accounts (signed up)
+  const memberEmails = allMembers.map(t => t.email.toLowerCase());
+  const registeredUsersDetail = memberEmails.length > 0
+    ? await db.select({ email: usersTable.email }).from(usersTable)
+        .where(inArray(usersTable.email, memberEmails))
+    : [];
+  const registeredEmailsDetail = new Set(registeredUsersDetail.map(u => u.email.toLowerCase()));
+
   // All windows sorted newest first
   let windows = await db.select().from(momentWindowsTable)
     .where(eq(momentWindowsTable.momentId, momentId));
@@ -1487,7 +1507,11 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
 
   res.json({
     moment,
-    members: allMembers.map(t => ({ name: t.name, email: t.email })),
+    members: allMembers.map(t => ({
+      name: t.name,
+      email: t.email,
+      joined: registeredEmailsDetail.has(t.email.toLowerCase()),
+    })),
     memberCount: allMembers.length,
     myUserToken: myTokenRow[0]?.userToken ?? null,
     myPersonalTime: myTokenRow[0]?.personalTime ?? null,
