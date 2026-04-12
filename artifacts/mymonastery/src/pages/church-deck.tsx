@@ -132,11 +132,10 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "One fast with a visible impact.",
+    headline: "Fasting, kept together.",
     body: [
-      "For groups fasting from meat, University of Colorado research shows that one person fasting for one day saves an estimated 400 gallons of water. Phoebe tracks what the group saves together.",
-      "This week. This month. All time.",
-      "A small act of shared faithfulness. A visible record of what the community has done together. A new way to engage the parish in creation care, together.",
+      "A group picks a fast and a rhythm. From meat. From alcohol. From screens. From spending. Whatever the discipline, Phoebe holds it with you so you are not keeping it alone.",
+      "For groups fasting from meat, Phoebe tracks the water your group conserves together. University of Colorado research shows that one person fasting from meat for one day saves approximately 400 gallons of water. The group sees the running total: this week, this month, all time.",
     ],
     mock: "meat-fast",
   },
@@ -649,76 +648,68 @@ function LectioMock() {
   );
 }
 
-/* ── Water Fast / Meat Fast ── */
+/* ── Fasting — shows multiple fast types with water impact for meat ── */
 function MeatFastMock() {
   return (
     <MockPhone>
-      <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-        style={{ color: "rgba(200,212,192,0.5)" }}
-      >
-        Fast from meat
-      </p>
       <h2
-        className="text-base font-semibold mb-1"
+        className="text-base font-bold mb-0.5"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        🌿 Water Saved Together
+        🌿 Fasting
       </h2>
-      <p className="text-[11px] mb-4" style={{ color: C.sage }}>
-        Each person &middot; each day &middot; ~400 gallons
+      <p className="text-[10px] mb-3" style={{ color: C.sage }}>
+        A shared discipline, kept together
       </p>
-      <div className="space-y-2 mb-3">
+      <div className="h-px mb-3" style={{ background: "rgba(46,107,64,0.25)" }} />
+
+      {/* Fast type options */}
+      <div className="space-y-1.5 mb-3">
         {[
-          { label: "This week", value: "1,200 gal", note: "3 people fasting" },
-          {
-            label: "This month",
-            value: "4,800 gal",
-            note: "3 people \u00b7 4 weeks",
-          },
-          {
-            label: "All time",
-            value: "18,400 gal",
-            note: "since Ash Wednesday",
-          },
-        ].map((stat, i) => (
+          { emoji: "🥩", label: "Fast from meat", note: "Tracks water conserved", active: true },
+          { emoji: "🍷", label: "Fast from alcohol", note: "Weekly · Fridays", active: false },
+          { emoji: "📱", label: "Fast from screens", note: "Sundays", active: false },
+          { emoji: "💳", label: "Fast from spending", note: "Lent", active: false },
+        ].map((f, i) => (
           <div
             key={i}
-            className="rounded-xl px-4 py-2.5"
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2"
             style={{
-              background: "rgba(46,107,64,0.12)",
-              border: "1px solid rgba(46,107,64,0.18)",
+              background: f.active ? "rgba(46,107,64,0.2)" : "rgba(46,107,64,0.06)",
+              border: `1px solid ${f.active ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.12)"}`,
             }}
           >
-            <div className="flex justify-between items-baseline">
-              <p
-                className="text-[10px] uppercase tracking-widest"
-                style={{ color: "rgba(143,175,150,0.5)" }}
-              >
-                {stat.label}
+            <span className="text-[14px]">{f.emoji}</span>
+            <div className="flex-1">
+              <p className="text-[11px] font-semibold" style={{ color: f.active ? C.text : C.sage, fontFamily: C.font }}>
+                {f.label}
               </p>
-              <p
-                className="text-base font-bold"
-                style={{ color: C.text, fontFamily: C.font }}
-              >
-                {stat.value}
-              </p>
+              <p className="text-[9px]" style={{ color: "rgba(143,175,150,0.5)" }}>{f.note}</p>
             </div>
-            <p
-              className="text-[9px] mt-0.5"
-              style={{ color: "rgba(143,175,150,0.4)" }}
-            >
-              {stat.note}
-            </p>
+            {f.active && <span className="text-[10px]" style={{ color: "#6FAF85" }}>✓</span>}
           </div>
         ))}
       </div>
-      <p
-        className="text-[9px] text-center italic"
-        style={{ color: "rgba(143,175,150,0.35)" }}
+
+      {/* Water conservation preview — meat fast only */}
+      <div
+        className="rounded-xl px-3 py-2.5"
+        style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.18)" }}
       >
-        University of Colorado research
-      </p>
+        <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(143,175,150,0.5)" }}>
+          Conserving Water Together
+        </p>
+        <div className="flex justify-between items-baseline">
+          <div>
+            <p className="text-lg font-bold" style={{ color: C.text, fontFamily: C.font }}>18,400 gal</p>
+            <p className="text-[9px]" style={{ color: "rgba(143,175,150,0.4)" }}>saved all time · 3 people</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] font-semibold" style={{ color: C.sage }}>1,200</p>
+            <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.4)" }}>this week</p>
+          </div>
+        </div>
+      </div>
     </MockPhone>
   );
 }
