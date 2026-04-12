@@ -142,8 +142,8 @@ const SLIDES: Slide[] = [
     kind: "statement",
     headline: "The community stays alive between Sundays.",
     body: [
-      "Every practice is a touchpoint. A reminder that you belong to something. That people are praying for you by name. That someone fasted alongside you this week. That a passage was read and you were part of that reading.",
-      "People do not drift from communities they are thinking about. Phoebe keeps the community present in the small moments of the week.",
+      "When people pray together, reflect on the same passage, or keep a fast alongside someone else during the week, they arrive on Sunday already connected. The ice is already broken. The person sitting next to them is not a stranger but someone who carried the same reading, the same prayer, the same discipline.",
+      "These small, consistent acts of shared practice are what turn a parish into a community. Not programs. Not events. Just people doing simple things together, often enough that it starts to mean something.",
     ],
   },
 
