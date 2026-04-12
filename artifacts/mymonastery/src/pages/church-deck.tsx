@@ -45,7 +45,7 @@ const SLIDES: Slide[] = [
   {
     kind: "title",
     headline: "Phoebe",
-    sub: "A place set apart for connection. 🕊️",
+    sub: "A place set apart for connection.",
   },
 
   // 2 — The opening
@@ -106,8 +106,7 @@ const SLIDES: Slide[] = [
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "📅 Connected people show up.",
     body: [
-      "As Harvard sociologist Robert Putnam showed, when members feel a sense of belonging, they\u2019re far more likely to come to a gathering.",
-      "Phoebe cultivates belonging then gives members opportunities to get more involved by displaying what\u2019s coming up so they can find something to step into.",
+      "As Harvard sociologist Robert Putnam showed, when members feel a sense of belonging, they\u2019re far more likely to come to a gathering. Phoebe cultivates belonging then gives members opportunities to get more involved by displaying what\u2019s coming up.",
     ],
     mock: "gatherings",
   },
@@ -333,9 +332,6 @@ function BCPPrayerModeMock() {
     { emoji: "✝️", name: "For the Mission of the Church", count: 5, expanded: true, items: ["For the Spread of the Gospel", "For the Mission of the Church", "For Missionaries", "For our Enemies", "For Those Who Suffer for the Faith"] },
     { emoji: "🏛️", name: "For the Nation", count: 7, expanded: false },
     { emoji: "🌍", name: "For the World", count: 4, expanded: false },
-    { emoji: "🌿", name: "For the Natural Order", count: 3, expanded: false },
-    { emoji: "🤲", name: "For the Poor and Neglected", count: 4, expanded: false },
-    { emoji: "❤️‍🩹", name: "For the Sick", count: 0, expanded: false },
   ];
   return (
     <MockPhone>
@@ -745,14 +741,6 @@ function GatheringsMock() {
         { time: "8:00 AM", title: "Morning Prayer", location: "Chapel", people: "4 regulars", kind: "phoebe" as const },
       ],
     },
-    {
-      label: "Sunday",
-      highlight: false,
-      events: [
-        { time: "10:00 AM", title: "Holy Eucharist", location: "Nave", kind: "ical" as const },
-        { time: "5:00 PM", title: "Evensong", location: "Nave", kind: "ical" as const },
-      ],
-    },
   ];
   return (
     <MockPhone>
@@ -881,7 +869,7 @@ function FeatureComboSlide({
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.12, duration: 0.45 }}
-        className={`${slide.mock === "prayer-requests" || slide.mock === "bcp" || slide.mock === "lectio" ? "w-full md:w-auto flex" : "hidden md:flex w-auto"} justify-center shrink-0`}
+        className="w-full md:w-auto flex justify-center shrink-0"
       >
         {Mock ? <Mock /> : null}
       </motion.div>
@@ -988,22 +976,7 @@ function renderSlide(slide: Slide) {
 export default function ChurchDeck() {
   const [, setLocation] = useLocation();
   const [index, setIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  // On mobile, split feature-combo slides into text + mock — except prayer-requests (stays combined)
-  const slides: Slide[] = isMobile
-    ? SLIDES.flatMap((s) =>
-        s.kind === "feature-combo" && s.mock !== "prayer-requests" && s.mock !== "bcp" && s.mock !== "lectio"
-          ? [s, { kind: "combo-mock" as const, mock: s.mock }]
-          : [s],
-      )
-    : SLIDES;
+  const slides = SLIDES;
 
   const next = useCallback(
     () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
