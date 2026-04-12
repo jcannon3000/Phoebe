@@ -603,7 +603,7 @@ export default function MomentDetail() {
           </div>
         )}
 
-        {/* Fasting — enhanced detail with water savings */}
+        {/* Fasting — rhythm card + water impact */}
         {isFasting && (() => {
           const isMeatFast = moment.fastingType === "meat";
           const dayLabel = moment.fastingDay
@@ -615,6 +615,22 @@ export default function MomentDetail() {
           const sinceLabel = createdDate
             ? `Together since ${createdDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
             : null;
+
+          // Water impact numbers (meat fast = ~400 gal/person/day)
+          const totalSessions = moment.commitmentSessionsLogged ?? 0;
+          const GALLONS_PER_FAST = 400;
+          const totalGallons = totalSessions * GALLONS_PER_FAST;
+          const myGallons = myStreak * GALLONS_PER_FAST;
+
+          // Human-scale equivalences
+          function gallonLabel(g: number) {
+            if (g >= 1_000_000) return `${(g / 1_000_000).toFixed(1)}M`;
+            if (g >= 1_000) return `${(g / 1_000).toFixed(1)}K`;
+            return g.toLocaleString();
+          }
+          // 1 person uses ~80 gal/day for all needs; 1 gallon = ~3.8 L drinking
+          const peopleOneDayDrinking = Math.round(totalGallons / 0.5); // 0.5 gal = daily drinking water
+          const bathtubs = Math.round(totalGallons / 35);
 
           return (
             <div className="mb-5 space-y-3">
@@ -635,15 +651,57 @@ export default function MomentDetail() {
                 )}
               </div>
 
-              {/* Water savings summary — meat fast only */}
+              {/* Water conservation impact — meat fast only */}
               {isMeatFast && (
-                <div className="rounded-2xl px-4 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
-                  <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    Water Saved
-                  </p>
-                  <p className="text-xs" style={{ color: "#8FAF96" }}>
-                    Every fast day saves an estimated 400 gallons of water per person. Check in on your fast day to see the running total.
-                  </p>
+                <div className="rounded-2xl px-5 py-4 space-y-4" style={{ background: "#0A1F12", border: "1px solid rgba(46,107,64,0.35)" }}>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: "rgba(200,212,192,0.45)" }}>
+                      💧 Water Conserved Together
+                    </p>
+
+                    {totalSessions === 0 ? (
+                      <div>
+                        <p className="text-sm" style={{ color: "#8FAF96" }}>
+                          Every meat-free fast day saves an estimated <span style={{ color: "#A8C5A0", fontWeight: 600 }}>400 gallons</span> of water per person — the water embedded in producing a typical day's meat.
+                        </p>
+                        <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
+                          Log your first fast day to see your group's running impact.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Hero number */}
+                        <div className="flex items-end gap-2 mb-1">
+                          <span className="text-4xl font-bold tabular-nums" style={{ color: "#F0EDE6", letterSpacing: "-0.03em" }}>
+                            {gallonLabel(totalGallons)}
+                          </span>
+                          <span className="text-base mb-1" style={{ color: "#8FAF96" }}>gallons saved</span>
+                        </div>
+                        <p className="text-xs mb-4" style={{ color: "rgba(143,175,150,0.5)" }}>
+                          {totalSessions} fast {totalSessions === 1 ? "day" : "days"} × 400 gal per person
+                        </p>
+
+                        {/* Equivalences */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
+                            <p className="text-base font-bold" style={{ color: "#A8C5A0" }}>{peopleOneDayDrinking.toLocaleString()}</p>
+                            <p className="text-[10px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>days of drinking water for one person</p>
+                          </div>
+                          <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
+                            <p className="text-base font-bold" style={{ color: "#A8C5A0" }}>{bathtubs > 0 ? bathtubs.toLocaleString() : "<1"}</p>
+                            <p className="text-[10px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>bathtubs of water spared</p>
+                          </div>
+                        </div>
+
+                        {/* My contribution */}
+                        {myGallons > 0 && (
+                          <p className="text-xs mt-3 pt-3 border-t" style={{ color: "rgba(143,175,150,0.5)", borderColor: "rgba(46,107,64,0.15)" }}>
+                            Your streak of {myStreak} → <span style={{ color: "#8FAF96" }}>{myGallons.toLocaleString()} gallons</span> saved by you
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -711,15 +769,32 @@ export default function MomentDetail() {
           </motion.div>
         )}
 
-        {/* Stats: Your streak / Group streak / Group best */}
+        {/* Stats grid — water impact for fasting, streaks for everything else */}
         {(() => {
           const bloomThreshold = Math.max(2, Math.ceil(memberCount / 2));
           const todayBloomed = todayPostCount >= bloomThreshold && memberCount >= 2;
           const groupStreak = todayBloomed && moment.currentStreak === 0 ? 1 : moment.currentStreak;
           const groupBest = Math.max(groupStreak, moment.longestStreak);
-          // Personal: if I've logged today and myStreak is 0, show optimistic 1
-          const iLoggedToday = todayPostCount >= 1; // approximate — server sets myStreak accurately
-          const displayMyStreak = myStreak > 0 ? myStreak : (iLoggedToday ? 1 : 0);
+          const displayMyStreak = myStreak > 0 ? myStreak : (todayPostCount >= 1 ? 1 : 0);
+
+          if (isFasting) {
+            // For fasting, show fast-day counts instead of gamified streaks
+            const totalSessions = moment.commitmentSessionsLogged ?? 0;
+            const membersCount = memberCount;
+            return (
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
+                  <p className="text-2xl font-bold text-foreground">{totalSessions}</p>
+                  <p className="text-xs text-muted-foreground mt-1">🌿 Fast days logged</p>
+                </div>
+                <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
+                  <p className="text-2xl font-bold text-foreground">{membersCount}</p>
+                  <p className="text-xs text-muted-foreground mt-1">👥 Fasting together</p>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
