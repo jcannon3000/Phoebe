@@ -32,6 +32,7 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   // Contemplative Prayer duration
   contemplativeDurationMinutes: integer("contemplative_duration_minutes"),
   // Fasting-specific fields
+  fastingType: text("fasting_type"),  // "meat" | "custom"
   fastingFrom: text("fasting_from"),
   fastingIntention: text("fasting_intention"),
   fastingFrequency: text("fasting_frequency"),

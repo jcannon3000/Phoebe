@@ -59,6 +59,7 @@ interface MomentDetail {
     practiceDays?: string | string[] | null;
     timeOfDay?: string | null;
     contemplativeDurationMinutes?: number | null;
+    fastingType?: string | null;
     fastingFrom?: string | null;
     fastingIntention?: string | null;
     fastingFrequency?: string | null;
@@ -602,46 +603,52 @@ export default function MomentDetail() {
           </div>
         )}
 
-        {/* Fasting — what & why cards */}
-        {isFasting && (
-          <div className="mb-5 space-y-2">
-            {moment.fastingFrom && (
-              <div className="bg-[#F0F8F0] border border-[#5C7A5F]/25 rounded-2xl px-4 py-3 flex items-start gap-3">
-                <span className="text-xl mt-0.5">🌿</span>
-                <div>
-                  <p className="text-xs font-semibold text-[#4a6b50] uppercase tracking-wider mb-0.5">Fasting from</p>
-                  <p className="text-sm text-[#3a5a40]">{moment.fastingFrom}</p>
-                </div>
+        {/* Fasting — enhanced detail with water savings */}
+        {isFasting && (() => {
+          const isMeatFast = moment.fastingType === "meat";
+          const dayLabel = moment.fastingDay
+            ? `Every ${moment.fastingDay.charAt(0).toUpperCase() + moment.fastingDay.slice(1)}`
+            : moment.fastingFrequency === "specific" && moment.fastingDate
+              ? new Date(moment.fastingDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
+              : "";
+          const createdDate = moment.createdAt ? new Date(moment.createdAt) : null;
+          const sinceLabel = createdDate
+            ? `Together since ${createdDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
+            : null;
+
+          return (
+            <div className="mb-5 space-y-3">
+              {/* Rhythm + since */}
+              <div className="rounded-2xl px-4 py-3" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
+                {dayLabel && (
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                    📅 {dayLabel}
+                  </p>
+                )}
+                {moment.fastingIntention && (
+                  <p className="text-[13px] italic mt-1 leading-relaxed" style={{ color: "rgba(200,212,192,0.7)", fontFamily: "Playfair Display, Georgia, serif" }}>
+                    {moment.fastingIntention}
+                  </p>
+                )}
+                {sinceLabel && (
+                  <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.55)" }}>{sinceLabel}</p>
+                )}
               </div>
-            )}
-            {moment.fastingIntention && (
-              <div className="bg-[#FFF8EC] border border-[#C17F24]/25 rounded-2xl px-4 py-3 flex items-start gap-3">
-                <span className="text-xl mt-0.5">🙏🏽</span>
-                <div>
-                  <p className="text-xs font-semibold text-[#C17F24] uppercase tracking-wider mb-0.5">Intention</p>
-                  <p className="text-sm text-[#8B5E1A]">{moment.fastingIntention}</p>
-                </div>
-              </div>
-            )}
-            {(moment.fastingFrequency || moment.fastingDate) && (
-              <div className="bg-secondary/40 border border-border/60 rounded-2xl px-4 py-3 flex items-start gap-3">
-                <span className="text-xl mt-0.5">📅</span>
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">When</p>
-                  <p className="text-sm text-foreground/80">
-                    {moment.fastingFrequency === "specific" && moment.fastingDate
-                      ? new Date(moment.fastingDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
-                      : moment.fastingFrequency === "weekly" && moment.fastingDay
-                        ? `Every ${moment.fastingDay.charAt(0).toUpperCase() + moment.fastingDay.slice(1)}`
-                        : moment.fastingFrequency === "monthly" && moment.fastingDayOfMonth
-                          ? `Monthly · the ${moment.fastingDayOfMonth}${["st","nd","rd"][((moment.fastingDayOfMonth % 100 - 11) % 10 - 1 + 3) % 3] ?? "th"}`
-                          : ""}
+
+              {/* Water savings summary — meat fast only */}
+              {isMeatFast && (
+                <div className="rounded-2xl px-4 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
+                  <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
+                    Water Saved
+                  </p>
+                  <p className="text-xs" style={{ color: "#8FAF96" }}>
+                    Every fast day saves an estimated 400 gallons of water per person. Check in on your fast day to see the running total.
                   </p>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          );
+        })()}
 
 
         {/* Open Now Banner — only when actually open (morning prayer is always accessible) */}

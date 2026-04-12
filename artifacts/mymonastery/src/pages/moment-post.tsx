@@ -73,6 +73,7 @@ type MomentData = {
     practiceDays: string | null;
     timeOfDay: string | null;
     contemplativeDurationMinutes?: number | null;
+    fastingType?: string | null;
     fastingFrom?: string | null;
     fastingIntention?: string | null;
     fastingFrequency?: string | null;
@@ -1077,81 +1078,163 @@ export default function MomentPostPage() {
     );
   }
 
-  // ── Fasting — simple check-in page with reflection ─────────────────────────
+  // ── Fasting — dark-themed check-in with morning/evening states ───────────────
   if (moment.templateType === "fasting") {
     const fastingConfirmed = posted || alreadyPosted;
+    const isMeatFast = moment.fastingType === "meat";
+    const fastName = moment.name || (isMeatFast ? "Fast from meat" : "Fast");
+    const intentionLine = moment.fastingIntention || moment.intention || "";
+    const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
+    const currentHour = new Date().getHours();
+    const isEvening = currentHour >= 17;
+
+    const FAST_REFLECTIONS = [
+      "What we choose to abstain from reveals what we value.",
+      "A fast observed together is a fast that holds.",
+      "Creation care is an act of faith.",
+      "Restraint practiced together becomes a form of prayer.",
+      "To fast is to make room.",
+    ];
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    const todayReflection = FAST_REFLECTIONS[dayOfYear % FAST_REFLECTIONS.length];
+
+    // Member initials (members is from destructured data, not moment)
+    const memberInitials = members.map((m) => ({
+      initial: (m.name || "?").charAt(0).toUpperCase(),
+      name: m.name || "Someone",
+    }));
+
     return (
-      <div className="min-h-screen bg-[#F2F7F2] flex flex-col">
-        <div className="flex-1 flex flex-col px-6 pt-10 pb-28 max-w-md mx-auto w-full">
+      <div className="min-h-screen flex flex-col" style={{ background: "#091A10" }}>
+        <div className="flex-1 flex flex-col px-6 pt-8 pb-28 max-w-md mx-auto w-full">
           {/* Back */}
-          <Link href={`/moments/${moment.id}`} className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-8 text-sm transition-colors">
+          <Link href={`/moments/${moment.id}`} className="inline-flex items-center gap-1 mb-8 text-xs transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
             ← Back
           </Link>
 
           {/* Header */}
-          <div className="mb-7">
-            <div className="text-4xl mb-3">🌿</div>
-            <h1 className="text-2xl font-semibold text-[#2a402c] mb-1">Fasting together</h1>
-            {moment.fastingFrom && (
-              <p className="text-sm text-[#4a6b50] italic mb-1">From: {moment.fastingFrom}</p>
-            )}
-            {moment.fastingIntention && (
-              <p className="text-sm text-muted-foreground italic">"{moment.fastingIntention}"</p>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {fastName}
+            </h1>
+            <p className="text-sm" style={{ color: "#8FAF96" }}>{todayStr}</p>
+            {intentionLine && (
+              <p className="text-[13px] italic mt-2 leading-relaxed" style={{ color: "rgba(200,212,192,0.7)", fontFamily: "Playfair Display, Georgia, serif" }}>
+                {intentionLine}
+              </p>
             )}
           </div>
 
+          {/* Who is fasting today */}
+          {memberInitials.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-1.5 mb-2">
+                {memberInitials.map((m: { initial: string; name: string }, i: number) => (
+                  <div
+                    key={i}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                    style={{
+                      background: "#1A4A2E",
+                      color: "#A8C5A0",
+                      border: "1px solid rgba(46,107,64,0.3)",
+                      opacity: fastingConfirmed && i === 0 ? 1 : 0.4,
+                    }}
+                  >
+                    {m.initial}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs" style={{ color: "rgba(143,175,150,0.6)" }}>
+                {actualTodayCount} of {actualMemberCount} {fastingConfirmed ? "fasting today" : "have begun their fast today"}
+              </p>
+            </div>
+          )}
+
           {fastingConfirmed ? (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col items-center justify-center text-center">
-              <div className="text-5xl mb-4">✅</div>
-              <h2 className="text-xl font-semibold text-[#2a402c] mb-2">Fast logged</h2>
-              <p className="text-sm text-muted-foreground mb-6">Your practice today is complete.</p>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col">
+              <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
+                You are fasting today 🌿
+              </p>
+
+              {/* Evening gratitude prompt */}
+              {isEvening && (
+                <div className="mb-6">
+                  <p className="text-sm font-semibold mb-2" style={{ color: "#C8D4C0" }}>
+                    What nourished you today instead?
+                  </p>
+                  <textarea
+                    value={reflection}
+                    onChange={e => setReflection(e.target.value)}
+                    rows={2}
+                    placeholder="A simple meal. Good bread. Something I wouldn't have noticed otherwise."
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+                    style={{
+                      background: "rgba(200,212,192,0.06)",
+                      border: "1px solid rgba(46,107,64,0.3)",
+                      color: "#F0EDE6",
+                    }}
+                  />
+                  {reflection.trim() && (
+                    <button
+                      onClick={() => postMutation.mutate({ isCheckin: true, reflectionText: reflection.trim() })}
+                      className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold"
+                      style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                    >
+                      Share
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Water savings (meat fast only) */}
+              {isMeatFast && (
+                <div className="rounded-2xl p-5" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
+                  <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: "rgba(200,212,192,0.5)" }}>
+                    Water saved today
+                  </p>
+                  <p className="text-3xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {(actualTodayCount * 400).toLocaleString()} gallons
+                  </p>
+                  <p className="text-xs" style={{ color: "#8FAF96" }}>
+                    {actualTodayCount} {actualTodayCount === 1 ? "person" : "people"} fasting · 400 gallons each
+                  </p>
+                </div>
+              )}
+
               {myPost?.reflectionText && (
-                <div className="bg-white/70 border border-[#5C7A5F]/25 rounded-2xl px-4 py-3 text-sm text-[#3a5a40] italic w-full text-left">
-                  "{myPost.reflectionText}"
+                <div className="mt-4 rounded-xl px-4 py-3" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.2)" }}>
+                  <p className="text-[13px] italic" style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}>
+                    "{myPost.reflectionText}"
+                  </p>
                 </div>
               )}
             </motion.div>
           ) : (
             <div className="flex-1 flex flex-col">
-              {/* Scripture of the fast */}
-              <div className="bg-white/60 border border-[#5C7A5F]/20 rounded-2xl px-5 py-4 mb-6">
-                <p className="text-xs font-semibold text-[#4a6b50] uppercase tracking-wider mb-2">A word for fasting</p>
-                <p className="text-sm text-[#2a402c] leading-relaxed italic">
-                  "Is not this the kind of fasting I have chosen: to loose the chains of injustice and untie the cords of the yoke, to set the oppressed free and break every yoke?"
+              {/* Rotating reflection */}
+              <div className="rounded-xl px-4 py-3 mb-6" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.18)" }}>
+                <p className="text-[13px] italic leading-relaxed" style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}>
+                  {todayReflection}
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">— Isaiah 58:6</p>
-              </div>
-
-              {/* Reflection */}
-              <div className="mb-5">
-                <label className="block text-sm font-semibold text-[#2a402c] mb-2">
-                  {moment.reflectionPrompt ?? "What is arising for you in this fast?"}
-                </label>
-                <textarea
-                  value={reflection}
-                  onChange={e => setReflection(e.target.value)}
-                  rows={4}
-                  placeholder="A thought, a prayer, a word…"
-                  className="w-full px-4 py-3 rounded-2xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-white/80 resize-none text-sm leading-relaxed"
-                />
               </div>
             </div>
           )}
         </div>
 
-        {/* Fixed bottom button */}
+        {/* Fixed bottom check-in button */}
         {!fastingConfirmed && (
-          <div className="fixed bottom-0 left-0 right-0 bg-[#F2F7F2] border-t border-[#5C7A5F]/20 px-6 pb-[env(safe-area-inset-bottom)] z-50">
+          <div className="fixed bottom-0 left-0 right-0 px-6 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: "#091A10", borderTop: "1px solid rgba(46,107,64,0.15)" }}>
             <div className="max-w-md mx-auto py-4">
               {postMutation.isError && (
-                <p className="text-center text-sm text-red-600 mb-2">Couldn't save — tap to try again.</p>
+                <p className="text-center text-sm mb-2" style={{ color: "#C17F24" }}>Couldn't save — tap to try again.</p>
               )}
               <button
                 onClick={() => postMutation.mutate({ isCheckin: true, reflectionText: reflection.trim() || undefined })}
                 disabled={postMutation.isPending}
-                className="w-full py-4 rounded-2xl bg-[#5C7A5F] text-white font-semibold text-base tracking-wide hover:bg-[#5a7a60] transition-all disabled:opacity-60"
+                className="w-full py-4 rounded-xl font-semibold text-base tracking-wide transition-all disabled:opacity-60"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {postMutation.isPending ? "Logging…" : postMutation.isError ? "Try again ✓" : "✓ I am keeping the fast"}
+                {postMutation.isPending ? "Logging…" : postMutation.isError ? "Try again" : "I am fasting today"}
               </button>
             </div>
           </div>

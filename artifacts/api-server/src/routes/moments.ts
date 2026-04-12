@@ -463,6 +463,7 @@ const StandalonePlantSchema = z.object({
   // Contemplative Prayer duration
   contemplativeDurationMinutes: z.number().int().min(1).max(60).optional(),
   // Fasting-specific fields
+  fastingType: z.enum(["meat", "custom"]).optional(),
   fastingFrom: z.string().max(140).optional(),
   fastingIntention: z.string().max(200).optional(),
   fastingFrequency: z.enum(["specific", "weekly", "monthly"]).optional(),
@@ -494,7 +495,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return;
   }
 
-  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual } = parsed.data;
+  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual } = parsed.data;
 
   // Enforce the Lectio Divina group limit — depth, not breadth.
   if (templateType === "lectio-divina") {
@@ -554,6 +555,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     ...(frequencyDaysPerWeek !== undefined ? { frequencyDaysPerWeek } : {}),
     ...(practiceDays !== undefined ? { practiceDays } : {}),
     ...(contemplativeDurationMinutes !== undefined ? { contemplativeDurationMinutes } : {}),
+    ...(fastingType !== undefined ? { fastingType } : {}),
     ...(fastingFrom !== undefined ? { fastingFrom } : {}),
     ...(fastingIntention !== undefined ? { fastingIntention } : {}),
     ...(fastingFrequency !== undefined ? { fastingFrequency } : {}),
@@ -1799,6 +1801,7 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
       practiceDays: moment.practiceDays ?? null,
       timeOfDay: moment.timeOfDay,
       contemplativeDurationMinutes: moment.contemplativeDurationMinutes ?? null,
+      fastingType: (moment as Record<string, unknown>).fastingType ?? null,
       fastingFrom: moment.fastingFrom ?? null,
       fastingIntention: moment.fastingIntention ?? null,
       fastingFrequency: moment.fastingFrequency ?? null,
@@ -1927,6 +1930,109 @@ router.post("/moment/:momentToken/:userToken/post", async (req, res): Promise<vo
 
   } catch (err) {
     console.error("POST /moment/:momentToken/:userToken/post error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── GET /api/moments/:id/fasting-stats — water savings & participation ──────
+router.get("/moments/:id/fasting-stats", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+    if (!moment || moment.templateType !== "fasting") { res.status(404).json({ error: "Not found" }); return; }
+
+    const GALLONS_PER_FAST = 400;
+    const isMeat = (moment as Record<string, unknown>).fastingType === "meat";
+
+    // All posts (check-ins) for this practice
+    const allPosts = await db.select().from(momentPostsTable)
+      .where(eq(momentPostsTable.momentId, momentId));
+    const allMembers = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, momentId));
+
+    // My user token
+    const sessionUser = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+    const myEmail = sessionUser[0]?.email?.toLowerCase() ?? "";
+    const myToken = allMembers.find(t => (t.email || "").toLowerCase() === myEmail);
+
+    // Group by windowDate
+    const byDate = new Map<string, { userTokens: Set<string>; posts: typeof allPosts }>();
+    for (const p of allPosts) {
+      if (!byDate.has(p.windowDate)) byDate.set(p.windowDate, { userTokens: new Set(), posts: [] });
+      const entry = byDate.get(p.windowDate)!;
+      entry.userTokens.add(p.userToken);
+      entry.posts.push(p);
+    }
+
+    // Calculate date ranges
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+    const weekStr = startOfWeek.toISOString().split("T")[0];
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    let weekFasts = 0;
+    let monthFasts = 0;
+    let allTimeFasts = 0;
+    let myAllTimeFasts = 0;
+
+    const history: Array<{
+      date: string;
+      participantCount: number;
+      memberCount: number;
+      gallonsSaved: number;
+      gratitudeNotes: Array<{ name: string; text: string }>;
+    }> = [];
+
+    for (const [date, entry] of byDate.entries()) {
+      const count = entry.userTokens.size;
+      allTimeFasts += count;
+      if (date >= weekStr) weekFasts += count;
+      if (date.startsWith(monthStr)) monthFasts += count;
+      if (myToken && entry.userTokens.has(myToken.userToken)) myAllTimeFasts++;
+
+      // Gratitude notes (reflectionText on fasting check-ins)
+      const notes: Array<{ name: string; text: string }> = [];
+      for (const p of entry.posts) {
+        if (p.reflectionText?.trim()) {
+          const member = allMembers.find(m => m.userToken === p.userToken);
+          notes.push({
+            name: member?.name || p.guestName || "Someone",
+            text: p.reflectionText.trim(),
+          });
+        }
+      }
+
+      history.push({
+        date,
+        participantCount: count,
+        memberCount: allMembers.length,
+        gallonsSaved: isMeat ? count * GALLONS_PER_FAST : 0,
+        gratitudeNotes: notes,
+      });
+    }
+
+    // Sort history most recent first
+    history.sort((a, b) => b.date.localeCompare(a.date));
+
+    res.json({
+      fastingType: (moment as Record<string, unknown>).fastingType ?? "custom",
+      isMeat,
+      memberCount: allMembers.length,
+      createdAt: moment.createdAt,
+      week: { fasts: weekFasts, gallons: isMeat ? weekFasts * GALLONS_PER_FAST : 0 },
+      month: { fasts: monthFasts, gallons: isMeat ? monthFasts * GALLONS_PER_FAST : 0 },
+      allTime: { fasts: allTimeFasts, gallons: isMeat ? allTimeFasts * GALLONS_PER_FAST : 0 },
+      my: { fasts: myAllTimeFasts, gallons: isMeat ? myAllTimeFasts * GALLONS_PER_FAST : 0 },
+      history,
+    });
+  } catch (err) {
+    console.error("GET /moments/:id/fasting-stats error:", err);
     if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -2460,6 +2566,35 @@ router.patch("/moments/:id/archive", async (req, res): Promise<void> => {
 
   await db.update(sharedMomentsTable)
     .set({ state: "archived" })
+    .where(eq(sharedMomentsTable.id, momentId));
+
+  res.json({ ok: true });
+});
+
+// ─── PATCH /api/moments/:id/unarchive — restore an archived practice ─────────
+router.patch("/moments/:id/unarchive", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+  if (moment.state !== "archived") { res.status(400).json({ error: "Not archived" }); return; }
+
+  const allMemberTokens = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+
+  const isMember = allMemberTokens.some(t => t.email === user.email);
+  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  // Restore to active state and clear goal-reached so it shows on the dashboard
+  await db.update(sharedMomentsTable)
+    .set({ state: "active", commitmentGoalReachedAt: null } as Record<string, unknown>)
     .where(eq(sharedMomentsTable.id, momentId));
 
   res.json({ ok: true });

@@ -45,7 +45,9 @@ type Moment = {
   windowOpen: boolean;
   isActionableToday: boolean;
   intercessionTopic?: string | null;
+  fastingType?: string | null;
   fastingFrom?: string | null;
+  fastingDay?: string | null;
   goalDays?: number | null;
   commitmentSessionsGoal?: number | null;
   commitmentSessionsLogged?: number | null;
@@ -713,7 +715,11 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   })();
 
   let subtitle = "";
-  if (memberNames) subtitle = `with ${memberNames}`;
+  const isFasting = m.templateType === "fasting";
+  if (isFasting && m.fastingDay) {
+    const dayCapitalized = m.fastingDay.charAt(0).toUpperCase() + m.fastingDay.slice(1);
+    subtitle = `Every ${dayCapitalized}`;
+  } else if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
 
   // Never repeat the card title as a fallback — also strip leading emoji + "For "
@@ -1115,6 +1121,9 @@ export default function Dashboard() {
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
     enabled: !!user,
+    // Always refetch when the dashboard mounts so that renew / archive
+    // mutations from the detail page are reflected immediately.
+    staleTime: 0,
   });
 
   const isLoading = momentsLoading;
@@ -1215,14 +1224,6 @@ export default function Dashboard() {
               bg: string;
               border: string;
             };
-            const PILLS: Pill[] = [
-              { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
-              { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
-              { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
-              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
-              { label: "🙏🏽 Intercessions", href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
-              { label: "📖 Learn",        href: "/learn",        fg: "#A8C5A0", bg: "rgba(168,197,160,0.12)", border: "rgba(168,197,160,0.28)" },
-            ];
             const pillStyle = (p: Pill) => ({
               background: p.bg, color: p.fg, border: `1px solid ${p.border}`,
             });
@@ -1237,6 +1238,7 @@ export default function Dashboard() {
                     style={pillStyle(p)}
                   >
                     {p.label}
+                    {filter === fk && <span style={{ opacity: 0.7, fontSize: "0.85em", lineHeight: 1 }}>×</span>}
                   </button>
                 );
               }
@@ -1246,33 +1248,32 @@ export default function Dashboard() {
                 </Link>
               );
             };
-            // When a filter is active: collapse the whole pill row down to
-            // just the one active pill with an × to clear the filter.
-            if (filter !== null) {
-              const activePill = PILLS.find(p => p.filterKey === filter);
-              if (activePill) {
-                return (
-                  <div className="flex items-center gap-2 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setFilter(null)}
-                      className={pillClass}
-                      style={pillStyle(activePill)}
-                    >
-                      {activePill.label}
-                      <span style={{ opacity: 0.7, fontSize: "0.85em", lineHeight: 1 }}>×</span>
-                    </button>
-                  </div>
-                );
-              }
-            }
+
+            // ── Primary row: Practices + Prayer List ──
+            const PRIMARY: Pill[] = [
+              { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
+              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
+            ];
+
+            // ── Secondary row: everything else ──
+            const SECONDARY: Pill[] = [
+              { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
+              { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
+            ];
+
             return (
               <>
-                {/* Scrolling ticker — shown on both mobile and desktop. */}
-                <div className="mt-2 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
+                {/* Primary: Practices + Prayer List */}
+                <div className="flex items-center gap-2 mt-2">
+                  {PRIMARY.map((p, i) => renderPill(p, `pri-${i}`))}
+                </div>
+                {/* Divider */}
+                <div className="h-px mt-3 mb-1" style={{ background: "rgba(200,212,192,0.12)" }} />
+                {/* Secondary: scrolling ticker */}
+                <div className="mt-1 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
                   <style>{`@keyframes dash-pills { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
-                  <div style={{ display: "flex", gap: 8, width: "max-content", animation: "dash-pills 20s linear infinite" }}>
-                    {[...PILLS, ...PILLS].map((p, i) => renderPill(p, i))}
+                  <div style={{ display: "flex", gap: 8, width: "max-content", animation: "dash-pills 14s linear infinite" }}>
+                    {[...SECONDARY, ...SECONDARY].map((p, i) => renderPill(p, i))}
                   </div>
                 </div>
               </>

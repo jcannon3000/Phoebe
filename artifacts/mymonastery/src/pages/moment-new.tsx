@@ -10,8 +10,9 @@ import { InviteStep } from "@/components/InviteStep";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type StepId = "template" | "daily-office-choice" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "duration" | "invite"
   | "bcp-commitment" | "bcp-frequency" | "bcp-days" | "bcp-time" | "bcp-invite" | "intercession-frequency"
-  | "contemplative-duration" | "fasting-what" | "fasting-why" | "fasting-when"
+  | "contemplative-duration" | "fasting-type" | "fasting-what" | "fasting-why" | "fasting-when"
   | "listening-what";
+type FastingTypeChoice = "meat" | "custom" | null;
 type LoggingType = "photo" | "reflection" | "both" | "checkin";
 type Frequency = "daily" | "weekly";
 type TimeOfDay = "early-morning" | "morning" | "midday" | "afternoon" | "late-afternoon" | "evening" | "night";
@@ -578,12 +579,15 @@ export default function MomentNew() {
   const [customDurationInput, setCustomDurationInput] = useState("20");
 
   // ─── Fasting-specific state ───────────────────────────────────────────────────
+  const [fastingTypeChoice, setFastingTypeChoice] = useState<FastingTypeChoice>(null);
   const [fastingFrom, setFastingFrom] = useState("");
   const [fastingIntention, setFastingIntention] = useState("");
   const [fastingFrequency, setFastingFrequency] = useState<"specific" | "weekly" | "monthly" | null>(null);
   const [fastingDate, setFastingDate] = useState("");
-  const [fastingDay, setFastingDay] = useState("");
+  const [fastingDay, setFastingDay] = useState("friday");
   const [fastingDayOfMonth, setFastingDayOfMonth] = useState<number | null>(null);
+  const [customFastName, setCustomFastName] = useState("");
+  const [customFastDescription, setCustomFastDescription] = useState("");
 
   // ─── Listening-specific state ──────────────────────────────────────────────
   const [listeningType, setListeningType] = useState<"song" | "album" | "artist">("song");
@@ -760,15 +764,18 @@ export default function MomentNew() {
       setStep("invite");
       return;
     }
-    // Fasting: dedicated flow — weekly only
+    // Fasting: choose fast type first (meat vs custom)
     if (t.id === "fasting") {
+      setFastingTypeChoice(null);
       setFastingFrom("");
       setFastingIntention("");
       setFastingFrequency("weekly");
       setFastingDate("");
-      setFastingDay("");
+      setFastingDay("friday");
       setFastingDayOfMonth(null);
-      setStep("fasting-what");
+      setCustomFastName("");
+      setCustomFastDescription("");
+      setStep("fasting-type");
       return;
     }
     if (t.prefill) {
@@ -785,6 +792,28 @@ export default function MomentNew() {
       setStep("name");
     }
   }
+
+  // ─── Auto-select template from ?template= query param ──────────────────────
+  // When the dashboard FAB routes to e.g. /moment/new?template=lectio-divina,
+  // skip past the template picker and drop the user directly into the
+  // sub-flow for that template. Only runs once on mount.
+  const templateAutoSelected = useRef(false);
+  useEffect(() => {
+    if (templateAutoSelected.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const tid = params.get("template");
+    if (!tid) return;
+    const match = TEMPLATES.find((t) => t.id === tid);
+    if (!match) return;
+    templateAutoSelected.current = true;
+    selectTemplate(match);
+    // Strip the query param so back-nav inside the flow doesn't re-trigger it
+    params.delete("template");
+    const next = params.toString();
+    window.history.replaceState({}, "", next ? `${window.location.pathname}?${next}` : window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Intercession BCP selection ─────────────────────────────────────────────
   function selectBcpPrayer(prayer: BcpPrayer) {
@@ -827,7 +856,9 @@ export default function MomentNew() {
     : templateId === "contemplative"
       ? ["template", "contemplative-duration", "name", "intention", "logging", "schedule", "invite"]
     : templateId === "fasting"
-      ? ["template", "fasting-what", "fasting-why", "fasting-when", "duration", "invite"]
+      ? (fastingTypeChoice === "custom"
+        ? ["template", "fasting-type", "fasting-when", "duration", "invite"]
+        : ["template", "fasting-type", "fasting-when", "duration", "invite"])
     : templateId === "listening"
       ? ["template", "listening-what", "schedule", "invite"]
     : templateId === "lectio-divina"
@@ -873,6 +904,7 @@ export default function MomentNew() {
     if (step === "intercession") return false;
     if (step === "contemplative-duration") return contemplativeDuration !== null;
     if (step === "listening-what") return listeningTitle.trim().length >= 1 && (listeningType === "artist" || listeningArtist.trim().length >= 1);
+    if (step === "fasting-type") return false; // navigation handled by type selection buttons
     if (step === "fasting-what") return fastingFrom.trim().length >= 2;
     if (step === "fasting-why") return fastingIntention.trim().length >= 4;
     if (step === "fasting-when") {
@@ -1015,12 +1047,23 @@ export default function MomentNew() {
     // Fasting: derive name/intention/scheduling from fasting-specific fields
     const finalName = isListening
       ? (name.trim() || `Listening to ${listeningTitle.trim()} together`)
+      : isFasting && fastingTypeChoice === "meat"
+      ? "Fast from meat"
+      : isFasting && fastingTypeChoice === "custom"
+      ? customFastName.trim() || `Fasting from ${fastingFrom.trim()}`
       : isFasting
       ? `Fasting from ${fastingFrom.trim()}`
       : name.trim();
-    const finalIntention = isFasting
+    const finalIntention = isFasting && fastingTypeChoice === "meat"
+      ? "To practice restraint, care for creation, and shared discipline."
+      : isFasting && fastingTypeChoice === "custom"
+      ? customFastDescription.trim() || fastingIntention.trim()
+      : isFasting
       ? fastingIntention.trim()
       : intention.trim() || intercessionTopic.trim() || name.trim() || "Praying together";
+    const finalFastingFrom = isFasting && fastingTypeChoice === "meat"
+      ? "meat"
+      : isFasting ? (customFastName.trim() || fastingFrom.trim()) : "";
 
     // Fasting frequency/day mapping
     const fastingFreqForApi = isFasting
@@ -1059,8 +1102,9 @@ export default function MomentNew() {
       // Contemplative
       contemplativeDurationMinutes: templateId === "contemplative" ? (contemplativeDuration ?? undefined) : undefined,
       // Fasting
-      fastingFrom: isFasting ? fastingFrom.trim() || undefined : undefined,
-      fastingIntention: isFasting ? fastingIntention.trim() || undefined : undefined,
+      fastingType: isFasting ? (fastingTypeChoice ?? undefined) : undefined,
+      fastingFrom: isFasting ? finalFastingFrom || undefined : undefined,
+      fastingIntention: isFasting ? finalIntention || undefined : undefined,
       fastingFrequency: isFasting ? fastingFrequency ?? undefined : undefined,
       fastingDate: isFasting && fastingFrequency === "specific" ? fastingDate || undefined : undefined,
       fastingDay: isFasting && fastingFrequency === "weekly" ? fastingDay || undefined : undefined,
@@ -2078,6 +2122,129 @@ export default function MomentNew() {
                 </div>
               )}
 
+              {/* ── Fasting — type selection (meat vs custom) ────── */}
+              {step === "fasting-type" && (
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    What kind of fast? ✦
+                  </h2>
+                  <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
+                    Choose a practice for your group.
+                  </p>
+
+                  {!fastingTypeChoice && (
+                    <div className="space-y-3">
+                      {/* Meat fast — featured */}
+                      <button
+                        onClick={() => {
+                          setFastingTypeChoice("meat");
+                          setFastingFrom("meat");
+                          setFastingIntention("To practice restraint, care for creation, and shared discipline.");
+                          setStep("fasting-when");
+                        }}
+                        className="w-full text-left rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+                        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.5)" }}
+                      >
+                        <div className="px-5 py-4">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="text-2xl">🌿</span>
+                            <p className="font-bold text-[15px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                              Fast from meat
+                            </p>
+                          </div>
+                          <p className="text-[13px] leading-relaxed" style={{ color: "#8FAF96" }}>
+                            Abstaining from meat for one day saves an estimated 400 gallons of water. Practice restraint, care for creation, and shared discipline.
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Custom fast */}
+                      <button
+                        onClick={() => setFastingTypeChoice("custom")}
+                        className="w-full text-left rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+                        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
+                      >
+                        <div className="px-5 py-4">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="text-2xl">✦</span>
+                            <p className="font-bold text-[15px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                              Create your own fast
+                            </p>
+                          </div>
+                          <p className="text-[13px] leading-relaxed" style={{ color: "#8FAF96" }}>
+                            Name your fast and define what it means for your group.
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Custom fast — inline name/description fields */}
+                  {fastingTypeChoice === "custom" && (
+                    <div>
+                      <button
+                        onClick={() => setFastingTypeChoice(null)}
+                        className="text-xs mb-4 flex items-center gap-1 transition-opacity hover:opacity-70"
+                        style={{ color: "#8FAF96" }}
+                      >
+                        ← Back to options
+                      </button>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-semibold mb-2" style={{ color: "#C8D4C0" }}>
+                            Fast name
+                          </label>
+                          <input
+                            type="text"
+                            value={customFastName}
+                            onChange={e => setCustomFastName(e.target.value.slice(0, 80))}
+                            placeholder="e.g. Lenten Fast, Screen Fast, Sugar Fast"
+                            autoFocus
+                            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                            style={{
+                              background: "rgba(200,212,192,0.06)",
+                              border: "1px solid rgba(46,107,64,0.35)",
+                              color: "#F0EDE6",
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold mb-2" style={{ color: "#C8D4C0" }}>
+                            Brief description <span style={{ color: "rgba(143,175,150,0.5)", fontWeight: 400 }}>(optional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={customFastDescription}
+                            onChange={e => setCustomFastDescription(e.target.value.slice(0, 140))}
+                            placeholder="What does this fast mean for your group?"
+                            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                            style={{
+                              background: "rgba(200,212,192,0.06)",
+                              border: "1px solid rgba(46,107,64,0.35)",
+                              color: "#F0EDE6",
+                            }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (customFastName.trim().length >= 2) {
+                              setFastingFrom(customFastName.trim());
+                              setFastingIntention(customFastDescription.trim());
+                              setStep("fasting-when");
+                            }
+                          }}
+                          disabled={customFastName.trim().length < 2}
+                          className="w-full py-3 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-30"
+                          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                        >
+                          Continue →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {step === "fasting-what" && (
                 <div className="flex-1 flex flex-col">
                   <h2 className="text-2xl font-semibold mb-1">What are you fasting from? 🌿</h2>
@@ -2107,7 +2274,7 @@ export default function MomentNew() {
                 </div>
               )}
 
-              {/* ── Fasting — when: date, weekly, or monthly ─────── */}
+              {/* ── Fasting — when: which day of the week ─────── */}
               {step === "fasting-when" && (() => {
                 const FAST_DAYS = [
                   { id: "monday", label: "Mon" }, { id: "tuesday", label: "Tue" }, { id: "wednesday", label: "Wed" },
@@ -2115,18 +2282,32 @@ export default function MomentNew() {
                 ];
                 return (
                   <div className="flex-1 flex flex-col">
-                    <h2 className="text-2xl font-semibold mb-1">Which day will you fast? 📅</h2>
-                    <p className="text-sm text-muted-foreground italic mb-6">Fasting is a full-day practice — the same day each week.</p>
+                    <h2 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      Which day will you fast? 📅
+                    </h2>
+                    <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
+                      The same day each week — a shared rhythm.
+                    </p>
                     <div className="grid grid-cols-7 gap-1.5">
                       {FAST_DAYS.map(d => (
                         <button key={d.id} onClick={() => setFastingDay(d.id)}
-                          className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${fastingDay === d.id ? "bg-[#5C7A5F] text-white border-[#5C7A5F]" : "border-border text-muted-foreground hover:border-[#5C7A5F]/40"}`}>
+                          className="py-2.5 rounded-xl text-sm font-semibold transition-all"
+                          style={{
+                            background: fastingDay === d.id ? "#2D5E3F" : "rgba(200,212,192,0.06)",
+                            border: fastingDay === d.id ? "1px solid rgba(46,107,64,0.6)" : "1px solid rgba(46,107,64,0.25)",
+                            color: fastingDay === d.id ? "#F0EDE6" : "#8FAF96",
+                          }}>
                           {d.label}
                         </button>
                       ))}
                     </div>
+                    {fastingDay === "friday" && (
+                      <p className="text-xs italic mt-4 text-center leading-relaxed" style={{ color: "rgba(143,175,150,0.55)" }}>
+                        Abstaining from meat on Fridays is one of the oldest practices in the Christian tradition.
+                      </p>
+                    )}
                     {fastingDay && (
-                      <p className="text-xs text-muted-foreground/60 mt-4 text-center italic">
+                      <p className="text-xs mt-3 text-center" style={{ color: "#8FAF96" }}>
                         Fasting together every {fastingDay.charAt(0).toUpperCase() + fastingDay.slice(1)} 🌿
                       </p>
                     )}
@@ -2138,7 +2319,7 @@ export default function MomentNew() {
           </AnimatePresence>
 
           {/* ── Next button (not shown for template, daily-office-choice, intercession main, bcp-commitment, or contemplative-duration) ── */}
-          {step !== "template" && step !== "daily-office-choice" && step !== "intercession" && step !== "bcp-commitment" && step !== "contemplative-duration" && (
+          {step !== "template" && step !== "daily-office-choice" && step !== "intercession" && step !== "bcp-commitment" && step !== "contemplative-duration" && step !== "fasting-type" && (
             <div className="mt-6 pt-4 border-t border-border/30">
               {/* Disabled inline message for invite step */}
               {step === "invite" && showInviteDisabledMsg && invitedPeople.length === 0 && (
