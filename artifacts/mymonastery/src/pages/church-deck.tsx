@@ -14,7 +14,7 @@ const C = {
 
 // ─── Slide types ────────────────────────────────────────────────────────────
 type Slide =
-  | { kind: "title"; headline: string; sub?: string; muted?: boolean }
+  | { kind: "title"; headline: string; sub?: string; muted?: boolean; mock?: "dashboard" }
   | { kind: "statement"; headline: string; body: string[] }
   | { kind: "feature-text"; label: string; headline: string; body: string[] }
   | {
@@ -46,6 +46,7 @@ const SLIDES: Slide[] = [
     kind: "title",
     headline: "Phoebe",
     sub: "A relational app that cultivates connections between Sundays \u2014 through shared prayer, shared practice, and shared life.",
+    mock: "dashboard",
   },
 
   // 2 — The opening
@@ -125,8 +126,121 @@ const SLIDES: Slide[] = [
 
 // ─── Slide renderers ─────────────────────────────────────────────────────────
 
-function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
+/* ── Dashboard Mock (compact) ── */
+function DashboardMock() {
   return (
+    <MockPhone>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-[14px] font-bold" style={{ color: C.text, fontFamily: C.font }}>Phoebe</h2>
+        <div className="flex gap-1.5">
+          <span className="text-[8px] px-2 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>🕯️ Prayer List</span>
+          <span className="text-[8px] px-2 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>Menu</span>
+        </div>
+      </div>
+      <p className="text-[7px] uppercase tracking-[0.18em] mb-0.5" style={{ color: "rgba(143,175,150,0.4)" }}>A place set apart for connection</p>
+      <p className="text-[11px] font-semibold mb-2" style={{ color: C.text, fontFamily: C.font }}>Sunday, 12 April</p>
+
+      {/* This week */}
+      <div className="flex items-center gap-2 mb-1.5">
+        <p className="text-[9px] font-bold" style={{ color: C.text }}>This week</p>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
+      </div>
+      <div className="space-y-1.5 mb-2.5">
+        {/* Lectio card */}
+        <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
+          <div className="w-0.5 shrink-0" style={{ background: "#5C8A5F" }} />
+          <div className="flex-1 px-2.5 py-2 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold" style={{ color: C.text }}>📜 Lectio Divina</p>
+              <p className="text-[8px]" style={{ color: C.sage }}>with Anabelle, Jack +1</p>
+            </div>
+            <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+              <p className="text-[7px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>1 of 3</p>
+              <span className="text-[8px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>Responses</span>
+            </div>
+          </div>
+        </div>
+        {/* Intercession card */}
+        <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
+          <div className="w-0.5 shrink-0" style={{ background: "#5C8A5F" }} />
+          <div className="flex-1 px-2.5 py-2 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold" style={{ color: C.text }}>🙏🏽 Prayers for my niece</p>
+              <p className="text-[8px]" style={{ color: C.sage }}>with Anabelle Helsell</p>
+            </div>
+            <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+              <p className="text-[7px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>🔥 2</p>
+              <span className="text-[8px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}>View</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Prayer Requests */}
+      <div className="flex items-center gap-2 mb-1.5">
+        <p className="text-[9px] font-semibold" style={{ color: C.text }}>Prayer Requests 🙏🏽</p>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
+      <div className="flex gap-1.5 mb-2">
+        <div className="flex-1 text-[9px] px-2.5 py-1.5 rounded-lg" style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)" }}>
+          Share a prayer request... 🌿
+        </div>
+        <div className="px-2 py-1.5 rounded-lg text-[9px]" style={{ background: "#2D5E3F", color: C.text }}>🙏🏽</div>
+      </div>
+      <div>
+        {[
+          { from: "Anabelle Helsell", body: "For Tiffany & Andrew on their wedding day", count: 1 },
+          { from: "Jeremy Cannon", body: "Astronauts", count: 1 },
+        ].map((r, i) => (
+          <div key={i} className="flex gap-0" style={{ borderBottom: i === 0 ? "1px solid rgba(200,212,192,0.12)" : "none" }}>
+            <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
+            <div className="flex-1 p-2 pl-2 flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[7px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>From {r.from}</p>
+                <p className="text-[10px] leading-relaxed" style={{ color: C.text, fontFamily: C.font }}>{r.body}</p>
+              </div>
+              <div className="flex items-center gap-0.5 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
+                <span className="text-[8px] tabular-nums">{r.count}</span>
+                <MessageCircle size={10} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </MockPhone>
+  );
+}
+
+function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
+  return slide.mock ? (
+    <div className="flex flex-col md:flex-row items-center justify-center w-full max-w-5xl mx-auto gap-8 md:gap-16">
+      <div className="text-center md:text-left w-full md:max-w-md shrink-0">
+        <h1
+          className="text-5xl md:text-7xl font-bold mb-4 md:mb-6 tracking-tight"
+          style={{ color: C.text, fontFamily: C.font }}
+        >
+          {slide.headline}
+        </h1>
+        {slide.sub && (
+          <p
+            className="text-lg md:text-2xl font-light"
+            style={{ color: C.sage, fontFamily: C.font }}
+          >
+            {slide.sub}
+          </p>
+        )}
+      </div>
+      <motion.div
+        initial={{ opacity: 0, x: 12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.12, duration: 0.45 }}
+        className="w-full md:w-auto flex justify-center shrink-0"
+      >
+        <DashboardMock />
+      </motion.div>
+    </div>
+  ) : (
     <div className="flex flex-col items-center justify-center text-center max-w-3xl mx-auto">
       <h1
         className="text-5xl md:text-7xl font-bold mb-4 md:mb-6 tracking-tight"
