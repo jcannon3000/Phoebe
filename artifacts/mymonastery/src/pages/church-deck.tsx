@@ -163,10 +163,10 @@ const SLIDES: Slide[] = [
   {
     kind: "closing",
     body: [
-      "People feel connected to communities where they are known.",
-      "Small moments of shared life are what make this possible.",
+      "Harvard sociologist Robert Putnam\u2019s research found that the strongest predictor of religious engagement is the strength of relationships within a community.",
+      "Phoebe is built around that insight. A relational app that strengthens the bonds within your parish between Sundays \u2014 through shared prayer, shared practice, and shared life.",
     ],
-    featured: ["Phoebe cultivates connection.", "Every day. Between Sundays."],
+    featured: ["Help your parish flourish with Phoebe."],
   },
 ];
 
