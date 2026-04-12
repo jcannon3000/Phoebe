@@ -133,62 +133,62 @@ function DashboardMock() {
   return (
     <MockPhone>
       {/* Header */}
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[14px] font-bold" style={{ color: C.text, fontFamily: C.font }}>Phoebe</h2>
+      <div className="flex items-center justify-between mb-1.5">
+        <h2 className="text-base font-bold" style={{ color: C.text, fontFamily: C.font }}>Phoebe</h2>
         <div className="flex gap-1.5">
-          <span className="text-[8px] px-2 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>🕯️ Prayer List</span>
-          <span className="text-[8px] px-2 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>Menu</span>
+          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>🕯️ Prayer List</span>
+          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>Menu</span>
         </div>
       </div>
-      <p className="text-[7px] uppercase tracking-[0.18em] mb-0.5" style={{ color: "rgba(143,175,150,0.4)" }}>A place set apart for connection</p>
-      <p className="text-[11px] font-semibold mb-2" style={{ color: C.text, fontFamily: C.font }}>Sunday, 12 April</p>
+      <p className="text-[8px] uppercase tracking-[0.15em] mb-1" style={{ color: "rgba(143,175,150,0.4)" }}>A place set apart for connection</p>
+      <p className="text-[13px] font-semibold mb-3" style={{ color: C.text, fontFamily: C.font }}>Sunday, 12 April</p>
 
       {/* This week */}
-      <div className="flex items-center gap-2 mb-1.5">
-        <p className="text-[9px] font-bold" style={{ color: C.text }}>This week</p>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-[11px] font-bold" style={{ color: C.text }}>This week</p>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
       </div>
-      <div className="space-y-1.5 mb-2.5">
+      <div className="space-y-2 mb-3">
         {/* Lectio card */}
         <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
-          <div className="w-0.5 shrink-0" style={{ background: "#5C8A5F" }} />
-          <div className="flex-1 px-2.5 py-2 flex items-center justify-between gap-2">
+          <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
+          <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold" style={{ color: C.text }}>📜 Lectio Divina</p>
-              <p className="text-[8px]" style={{ color: C.sage }}>with Sarah, David +3</p>
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>📜 Lectio Divina</p>
+              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>with Sarah, David +3</p>
             </div>
-            <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
-              <p className="text-[7px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>1 of 3</p>
-              <span className="text-[8px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>Responses</span>
+            <div className="text-right shrink-0 flex flex-col items-end gap-1">
+              <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>1 of 3</p>
+              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>Responses</span>
             </div>
           </div>
         </div>
         {/* Intercession card */}
         <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
-          <div className="w-0.5 shrink-0" style={{ background: "#5C8A5F" }} />
-          <div className="flex-1 px-2.5 py-2 flex items-center justify-between gap-2">
+          <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
+          <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold" style={{ color: C.text }}>🙏🏽 Prayers for healing</p>
-              <p className="text-[8px]" style={{ color: C.sage }}>with Margaret, Anna</p>
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🙏🏽 Prayers for healing</p>
+              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>with Margaret, Anna</p>
             </div>
-            <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
-              <p className="text-[7px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>🔥 2</p>
-              <span className="text-[8px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}>View</span>
+            <div className="text-right shrink-0 flex flex-col items-end gap-1">
+              <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>🔥 2</p>
+              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}>View</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Prayer Requests */}
-      <div className="flex items-center gap-2 mb-1.5">
-        <p className="text-[9px] font-semibold" style={{ color: C.text }}>Prayer Requests 🙏🏽</p>
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-[11px] font-semibold" style={{ color: C.text }}>Prayer Requests 🙏🏽</p>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>
-      <div className="flex gap-1.5 mb-2">
-        <div className="flex-1 text-[9px] px-2.5 py-1.5 rounded-lg" style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)" }}>
+      <div className="flex gap-2 mb-2.5">
+        <div className="flex-1 text-[10px] px-3 py-2 rounded-xl" style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>
           Share a prayer request... 🌿
         </div>
-        <div className="px-2 py-1.5 rounded-lg text-[9px]" style={{ background: "#2D5E3F", color: C.text }}>🙏🏽</div>
+        <div className="px-2.5 py-2 rounded-xl text-[10px]" style={{ background: "#2D5E3F", color: C.text }}>🙏🏽</div>
       </div>
       <div>
         {[
@@ -197,14 +197,14 @@ function DashboardMock() {
         ].map((r, i) => (
           <div key={i} className="flex gap-0" style={{ borderBottom: i === 0 ? "1px solid rgba(200,212,192,0.12)" : "none" }}>
             <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
-            <div className="flex-1 p-2 pl-2 flex items-start justify-between gap-2">
+            <div className="flex-1 py-2.5 px-2.5 flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="text-[7px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>From {r.from}</p>
-                <p className="text-[10px] leading-relaxed" style={{ color: C.text, fontFamily: C.font }}>{r.body}</p>
+                <p className="text-[8px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>From {r.from}</p>
+                <p className="text-[11px] leading-relaxed" style={{ color: C.text, fontFamily: C.font }}>{r.body}</p>
               </div>
-              <div className="flex items-center gap-0.5 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
-                <span className="text-[8px] tabular-nums">{r.count}</span>
-                <MessageCircle size={10} />
+              <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
+                <span className="text-[9px] tabular-nums">{r.count}</span>
+                <MessageCircle size={11} />
               </div>
             </div>
           </div>
