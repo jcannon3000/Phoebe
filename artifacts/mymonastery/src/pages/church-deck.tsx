@@ -331,7 +331,6 @@ function BCPPrayerModeMock() {
     { emoji: "⛪", name: "For the Church", count: 8, expanded: false },
     { emoji: "✝️", name: "For the Mission of the Church", count: 5, expanded: true, items: ["For the Spread of the Gospel", "For the Mission of the Church", "For Missionaries", "For our Enemies", "For Those Who Suffer for the Faith"] },
     { emoji: "🏛️", name: "For the Nation", count: 7, expanded: false },
-    { emoji: "🌍", name: "For the World", count: 4, expanded: false },
   ];
   return (
     <MockPhone>
