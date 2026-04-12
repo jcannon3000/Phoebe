@@ -92,26 +92,11 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "📖 Lectio Divina",
+    headline: "📖 Group Lectio Divina",
     body: [
-      "The Sunday gospel, read together across the week.",
-      "Monday \u2014 a word or phrase that is speaking to you.\nWednesday \u2014 what the passage is stirring in you.\nFriday \u2014 what it is calling you to do or to be.",
-      "Each person reflects on their own. Then they see what everyone else heard in the same passage. They arrive on Sunday having already sat with the text together. The sermon lands differently.",
+      "The Sunday gospel, read together across the week, moving through each stage together on Mondays, Wednesdays, and Fridays.",
     ],
     mock: "lectio",
-  },
-
-  // ── Feature 5: Water Fast ──
-  // 9
-  {
-    kind: "feature-combo",
-    label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "🌿 Fasting, kept together.",
-    body: [
-      "A group picks a fast and a rhythm. Whatever the discipline, Phoebe makes it possible to do it together and create a sense of solidarity.",
-      "For groups fasting from meat, Phoebe tracks the water your group conserves together. University of Colorado research shows that one person fasting from meat for one day saves approximately 400 gallons of water. The group sees the running total: this week, this month, all time.",
-    ],
-    mock: "meat-fast",
   },
 
   // 17 — Gatherings (text + mock on one slide)
@@ -889,7 +874,7 @@ function FeatureComboSlide({
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.12, duration: 0.45 }}
-        className={`${slide.mock === "prayer-requests" || slide.mock === "bcp" ? "w-full md:w-auto flex" : "hidden md:flex w-auto"} justify-center shrink-0`}
+        className={`${slide.mock === "prayer-requests" || slide.mock === "bcp" || slide.mock === "lectio" ? "w-full md:w-auto flex" : "hidden md:flex w-auto"} justify-center shrink-0`}
       >
         {Mock ? <Mock /> : null}
       </motion.div>
@@ -984,7 +969,7 @@ export default function ChurchDeck() {
   // On mobile, split feature-combo slides into text + mock — except prayer-requests (stays combined)
   const slides: Slide[] = isMobile
     ? SLIDES.flatMap((s) =>
-        s.kind === "feature-combo" && s.mock !== "prayer-requests" && s.mock !== "bcp"
+        s.kind === "feature-combo" && s.mock !== "prayer-requests" && s.mock !== "bcp" && s.mock !== "lectio"
           ? [s, { kind: "combo-mock" as const, mock: s.mock }]
           : [s],
       )
