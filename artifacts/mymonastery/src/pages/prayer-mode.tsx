@@ -5,9 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
 
-const CLOSING_COLLECT =
-  "Keep watch, dear Lord, with those who work, or watch, or weep this night, and give thine angels charge over those who sleep. Tend the sick, Lord Christ; give rest to the weary, bless the dying, soothe the suffering, pity the afflicted, shield the joyous; and all for thy love's sake.";
-
 type Moment = {
   id: number;
   name: string;
@@ -252,19 +249,6 @@ export default function PrayerModePage() {
             className="w-full flex flex-col items-center text-center gap-8"
             style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.4s ease" }}
           >
-            <p
-              className="text-[15px] leading-[2] italic"
-              style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
-            >
-              {CLOSING_COLLECT}
-            </p>
-            <p
-              className="text-[10px] uppercase tracking-[0.14em]"
-              style={{ color: "rgba(143,175,150,0.32)" }}
-            >
-              From the Book of Common Prayer · Compline
-            </p>
-            <div className="h-px w-12" style={{ background: "rgba(200,212,192,0.15)" }} />
             <p
               className="text-base leading-relaxed"
               style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}

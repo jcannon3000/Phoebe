@@ -12,6 +12,8 @@ type Moment = {
   templateType: string | null;
   intention: string;
   intercessionTopic?: string | null;
+  intercessionFullText?: string | null;
+  intercessionSource?: string | null;
   members: Array<{ name: string; email: string }>;
   todayPostCount: number;
   windowOpen: boolean;
@@ -130,6 +132,12 @@ export default function PrayerListPage() {
                 const prayedToday = m.todayPostCount > 0;
                 const lastPrayedLabel = formatLastPrayed(m.myLastPostAt);
 
+                // Card title: topic (BCP) → intention (custom) → fallback name.
+                // For custom intercessions, `intention` is what the user typed
+                // as "who are you praying for?" and is the right label.
+                const cardTitle = m.intercessionTopic || m.intention || m.name;
+                const fullPrayer = m.intercessionFullText?.trim() || null;
+
                 return (
                   <Link key={m.id} href={href} className="block">
                     <div
@@ -143,7 +151,7 @@ export default function PrayerListPage() {
                       <div className="flex-1 px-4 py-3">
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                            🙏🏽 {m.intercessionTopic || m.name}
+                            🙏🏽 {cardTitle}
                           </span>
                           {progressLabel && (
                             <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
@@ -166,6 +174,17 @@ export default function PrayerListPage() {
                             <span className="text-xs" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
                           )}
                         </div>
+                        {fullPrayer && (
+                          <p
+                            className="text-[13px] italic mt-2 leading-[1.55]"
+                            style={{
+                              color: "#C8D4C0",
+                              fontFamily: "Playfair Display, Georgia, serif",
+                            }}
+                          >
+                            {fullPrayer}
+                          </p>
+                        )}
                         {lastPrayedLabel && (
                           <p
                             className="text-[11px] mt-1"
