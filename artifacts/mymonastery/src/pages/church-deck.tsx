@@ -24,7 +24,7 @@ type Slide =
   | { kind: "title"; headline: string; sub: string }
   | { kind: "statement"; headline: string; body: string[] }
   | { kind: "progressive"; headline?: string; lines: { text: string; color: string }[] }
-  | { kind: "preview"; label?: string; headline: string; body: string[]; placeholder: string }
+  | { kind: "preview"; label?: string; headline: string; body: string[]; variant: "prayer" | "intercession" | "fasting" | "lectio" | "letters" | "gatherings" | "dashboard" }
   | { kind: "closing"; above: string[]; featured: string };
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ const SLIDES: Slide[] = [
     body: [
       "Intercession, fasting, and Lectio Divina held as guided experiences the community moves through together. You see who else is praying with you at the same hour. You know you are not alone.",
     ],
-    placeholder: "Insert prayer practice screenshot",
+    variant: "prayer",
   },
 
   // 7 — Intercession (screenshot)
@@ -98,7 +98,7 @@ const SLIDES: Slide[] = [
       "People share what they are carrying. Others respond, a word at a time. Low friction. Low vulnerability. The doorway into the life of the community.",
       "When someone submits a prayer request during the week, they arrive on Sunday already known.",
     ],
-    placeholder: "Insert prayer requests screenshot",
+    variant: "intercession",
   },
 
   // 8 — Fasting (screenshot)
@@ -110,7 +110,7 @@ const SLIDES: Slide[] = [
       "A group commits to a fast on a chosen day. A calendar invite goes out the night before. On the day, they see who is fasting alongside them. At the close, they share what nourished them instead.",
       "For groups fasting from meat, Phoebe tracks the water saved together. This week. This month. All time. A visible record of shared faithfulness.",
     ],
-    placeholder: "Insert fast practice screenshot",
+    variant: "fasting",
   },
 
   // 9 — Lectio Divina (screenshot)
@@ -122,7 +122,7 @@ const SLIDES: Slide[] = [
       "Monday \u2014 a word or phrase that is speaking to you. Wednesday \u2014 what the passage is stirring in you. Friday \u2014 what it is calling you to do or to be.",
       "They arrive on Sunday having already sat with the same text together. The sermon lands differently. The conversation goes deeper.",
     ],
-    placeholder: "Insert Lectio Divina screenshot",
+    variant: "lectio",
   },
 
   // 10 — Letters (screenshot)
@@ -134,7 +134,7 @@ const SLIDES: Slide[] = [
       "One letter. One person. Once every two weeks. Unhurried, reflective, one reader at a time. This is where familiarity turns into vulnerability and vulnerability into trust.",
       "People can write to anyone in their community or anyone at all. The correspondence builds a shared history neither could have written alone.",
     ],
-    placeholder: "Insert letters screenshot",
+    variant: "letters",
   },
 
   // 11 — Gatherings (screenshot)
@@ -146,7 +146,7 @@ const SLIDES: Slide[] = [
       "Suppers, study groups, prayer circles \u2014 held on an interval, not as one-off events. Phoebe keeps the rhythm through the weeks life tries to disrupt it.",
       "The parish calendar lives here too. Events the parish is already running get in front of people who are already engaged.",
     ],
-    placeholder: "Insert gatherings screenshot",
+    variant: "gatherings",
   },
 
   // 12 — Home screen (screenshot)
@@ -157,7 +157,7 @@ const SLIDES: Slide[] = [
     body: [
       "Every person in the parish sees the same shape: what is happening this week, what is coming up, who is waiting for a reply. One surface, formed around the practices. Not another inbox to manage.",
     ],
-    placeholder: "Insert home screen screenshot",
+    variant: "dashboard",
   },
 
   // 13 — What this builds
@@ -296,11 +296,247 @@ function ProgressiveSlide({
   );
 }
 
+// ─── Mock UI components for preview slides ──────────────────────────────────
+
+function MockPhone({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[290px] md:max-w-[320px]"
+      style={{
+        background: "#091A10",
+        border: "1px solid rgba(200,212,192,0.15)",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function MockBar({ title, status, bar = "#2E6B40", bg = "rgba(46,107,64,0.15)", border = "rgba(46,107,64,0.4)" }: { title: string; status: string; bar?: string; bg?: string; border?: string }) {
+  return (
+    <div className="relative flex rounded-xl overflow-hidden" style={{ background: bg, border: `1px solid ${border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+      <div className="w-1 flex-shrink-0" style={{ background: bar }} />
+      <div className="flex-1 px-3 py-2.5">
+        <span className="text-[13px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{title}</span>
+        <p className="text-[11px] mt-0.5" style={{ color: C.sage, fontFamily: C.font }}>{status}</p>
+      </div>
+    </div>
+  );
+}
+
+function PrayerPracticeMock() {
+  return (
+    <MockPhone>
+      <div className="flex flex-col items-center text-center gap-4">
+        <p className="text-[9px] uppercase tracking-[0.18em] font-semibold" style={{ color: "rgba(143,175,150,0.45)" }}>Your Intercession</p>
+        <p className="text-[15px] leading-[1.5] font-medium italic" style={{ color: "#E8E4D8", fontFamily: "'Playfair Display', Georgia, serif" }}>
+          Margaret&apos;s mother, as she begins treatment this week.
+        </p>
+        <p className="text-[12px]" style={{ color: C.sage }}>with David, Anna, James</p>
+        <p className="text-[11px] italic" style={{ color: "rgba(143,175,150,0.55)" }}>Your community is holding this.</p>
+        <div className="w-full rounded-xl px-4 py-3 text-left" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.15)" }}>
+          <p className="text-[11px] italic leading-[1.7]" style={{ color: "#C8D4C0", fontFamily: "Georgia, serif" }}>
+            O Father of mercies and God of all comfort, our only help in time of need...
+          </p>
+          <p className="text-[8px] uppercase tracking-widest mt-2" style={{ color: "rgba(143,175,150,0.3)" }}>From the Book of Common Prayer</p>
+        </div>
+        <div className="px-6 py-2 rounded-full text-[12px] font-medium" style={{ background: "rgba(46,107,64,0.28)", border: "1px solid rgba(46,107,64,0.5)", color: "#C8D4C0" }}>
+          Amen &rarr;
+        </div>
+        <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.32)" }}>1 of 4</p>
+      </div>
+    </MockPhone>
+  );
+}
+
+function IntercesssionMock() {
+  const requests = [
+    { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
+    { from: "David R.", body: "Discernment about the new role.", words: 6 },
+    { from: "Anonymous", body: "For peace in a difficult season.", words: 2 },
+  ];
+  return (
+    <MockPhone>
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-[13px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>Prayer Requests 🙏🏽</h2>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
+      <div className="flex gap-2 mb-3">
+        <div className="flex-1 text-[11px] px-3 py-2 rounded-xl" style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>
+          Share a prayer request... 🌿
+        </div>
+        <div className="px-2.5 py-2 rounded-xl text-[11px]" style={{ background: "#2D5E3F", color: C.text }}>🙏🏽</div>
+      </div>
+      <div>
+        {requests.map((r, i) => (
+          <div key={i} className="flex gap-0" style={{ borderBottom: i < 2 ? "1px solid rgba(200,212,192,0.12)" : "none" }}>
+            <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
+            <div className="flex-1 p-2.5 pl-2">
+              <p className="text-[8px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>From {r.from}</p>
+              <p className="text-[11px] leading-relaxed mb-1" style={{ color: C.text, fontFamily: C.font }}>{r.body}</p>
+              <p className="text-[9px]" style={{ color: "rgba(143,175,150,0.7)" }}>🌿 {r.words} words of prayer</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </MockPhone>
+  );
+}
+
+function FastingMock() {
+  return (
+    <MockPhone>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>Today&apos;s fast</p>
+      <h2 className="text-base font-semibold mb-1" style={{ color: C.text, fontFamily: C.font }}>🌿 Lenten Fast</h2>
+      <p className="text-[11px] mb-4" style={{ color: C.sage }}>Friday &middot; with Anna, David, Margaret</p>
+      <div className="space-y-2 mb-4">
+        {["Anna \u2014 fasting", "David \u2014 fasting", "Margaret \u2014 not yet"].map((line, i) => (
+          <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.15)" }}>
+            <div className="w-2 h-2 rounded-full" style={{ background: i < 2 ? "#2E6B40" : "rgba(143,175,150,0.25)" }} />
+            <p className="text-[11px]" style={{ color: i < 2 ? C.text : "rgba(143,175,150,0.5)", fontFamily: C.font }}>{line}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.25)" }}>
+        <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>Water saved together</p>
+        <p className="text-xl font-bold" style={{ color: C.text, fontFamily: C.font }}>1,247 gal</p>
+        <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>since Ash Wednesday</p>
+      </div>
+    </MockPhone>
+  );
+}
+
+function LectioMock() {
+  const stages = [
+    { day: "Mon", label: "A word or phrase", done: true },
+    { day: "Wed", label: "What it stirs in you", done: true },
+    { day: "Fri", label: "What it calls you to", done: false },
+  ];
+  return (
+    <MockPhone>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(200,212,192,0.5)" }}>Lectio Divina</p>
+      <h2 className="text-base font-semibold mb-1" style={{ color: C.text, fontFamily: C.font }}>📜 John 20:19-31</h2>
+      <p className="text-[11px] mb-4" style={{ color: C.sage }}>Third Sunday of Easter</p>
+      <div className="space-y-2 mb-4">
+        {stages.map((s, i) => (
+          <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: s.done ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.06)", border: `1px solid ${s.done ? "rgba(46,107,64,0.3)" : "rgba(46,107,64,0.12)"}` }}>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" style={{ background: s.done ? "#2E6B40" : "transparent", border: s.done ? "none" : "1px solid rgba(143,175,150,0.3)", color: s.done ? C.text : C.sage }}>
+              {s.done ? "✓" : ""}
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold" style={{ color: s.done ? C.text : C.sage, fontFamily: C.font }}>{s.day}</p>
+              <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.6)" }}>{s.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl px-4 py-3" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.15)" }}>
+        <p className="text-[11px] italic leading-[1.6]" style={{ color: "#C8D4C0", fontFamily: "Georgia, serif" }}>
+          &ldquo;Peace be with you. As the Father has sent me, even so I am sending you.&rdquo;
+        </p>
+        <p className="text-[9px] mt-1.5" style={{ color: "rgba(143,175,150,0.4)" }}>John 20:21 &middot; RSV</p>
+      </div>
+    </MockPhone>
+  );
+}
+
+function LettersMock() {
+  return (
+    <MockPhone>
+      <h2 className="text-base font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>Letters 📮</h2>
+      <p className="text-[10px] mb-3" style={{ color: C.sage }}>One letter every other week. Unhurried.</p>
+      <div className="h-px mb-3" style={{ background: "rgba(142,158,66,0.25)" }} />
+      <div className="space-y-2">
+        <div className="relative flex rounded-xl overflow-hidden" style={{ background: C.card, border: "1px solid rgba(142,158,66,0.35)" }}>
+          <div className="w-1 flex-shrink-0" style={{ background: "#8E9E42" }} />
+          <div className="flex-1 p-3">
+            <p className="text-[12px] font-semibold" style={{ color: C.text }}>📮 Dialogue with Margaret</p>
+            <p className="text-[9px] mt-0.5" style={{ color: C.accent }}>Letter 7 &middot; <span style={{ color: "#D4A574" }}>Your turn to write 🖋️</span></p>
+            <p className="text-[10px] mt-1.5 italic" style={{ color: C.sage, fontFamily: "Georgia, serif" }}>&ldquo;I have been thinking about what you said regarding the garden...&rdquo;</p>
+          </div>
+        </div>
+        <div className="relative flex rounded-xl overflow-hidden" style={{ background: C.card, border: "1px solid rgba(142,158,66,0.2)" }}>
+          <div className="w-1 flex-shrink-0" style={{ background: "rgba(142,158,66,0.35)" }} />
+          <div className="flex-1 p-3">
+            <p className="text-[12px] font-semibold" style={{ color: C.text }}>📮 Dialogue with James</p>
+            <p className="text-[9px] mt-0.5" style={{ color: C.accent }}>Letter 3 &middot; <span style={{ color: C.sage }}>Waiting for reply</span></p>
+          </div>
+        </div>
+        <div className="relative flex rounded-xl overflow-hidden" style={{ background: C.card, border: "1px solid rgba(142,158,66,0.2)" }}>
+          <div className="w-1 flex-shrink-0" style={{ background: "rgba(142,158,66,0.35)" }} />
+          <div className="flex-1 p-3">
+            <p className="text-[12px] font-semibold" style={{ color: C.text }}>📮 Dialogue with Anna</p>
+            <p className="text-[9px] mt-0.5" style={{ color: C.accent }}>Letter 12 &middot; <span style={{ color: C.sage }}>Sent Apr 8</span></p>
+          </div>
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
+function GatheringsMock() {
+  return (
+    <MockPhone>
+      <h2 className="text-base font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>Gatherings 🤝🏽</h2>
+      <p className="text-[10px] mb-3" style={{ color: C.sage }}>The things you do together, kept on rhythm.</p>
+      <div className="h-px mb-3" style={{ background: "rgba(111,175,133,0.25)" }} />
+      <div className="space-y-2">
+        {[
+          { title: "🍞 Wednesday Supper", when: "This Wed · 6:30 PM", place: "Parish Hall", people: "12 going" },
+          { title: "📖 Bible Study", when: "Every Thursday · 7 PM", place: "Library", people: "6 regulars" },
+          { title: "🙏🏽 Morning Prayer Circle", when: "Saturdays · 8 AM", place: "Chapel", people: "4 regulars" },
+        ].map((g, i) => (
+          <div key={i} className="relative flex rounded-xl overflow-hidden" style={{ background: "rgba(111,175,133,0.12)", border: `1px solid rgba(111,175,133,${i === 0 ? "0.4" : "0.2"})` }}>
+            <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
+            <div className="flex-1 px-3 py-2.5">
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{g.title}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{g.when}</p>
+              <p className="text-[9px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>{g.place} &middot; {g.people}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </MockPhone>
+  );
+}
+
+function DashboardMock() {
+  return (
+    <MockPhone>
+      <p className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>A Place Set Apart for Connection</p>
+      <h1 className="text-lg font-semibold mb-3" style={{ color: C.text, fontFamily: C.font }}>Sunday, 13 April</h1>
+      <p className="text-[9px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>This week</p>
+      <div className="space-y-1.5 mb-3">
+        <MockBar title="🙏🏽 Intercession" status="Tomorrow · with Anna, David" />
+        <MockBar title="🌿 Lenten Fast" status="Friday · hold the rhythm" />
+        <MockBar title="📮 Dialogue with Margaret" status="Your turn to write 🖋️" bar="#8E9E42" bg="rgba(142,158,66,0.12)" border="rgba(142,158,66,0.3)" />
+        <MockBar title="🍞 Wednesday Supper" status="In 3 days · Parish Hall" bar="#6FAF85" bg="rgba(111,175,133,0.12)" border="rgba(111,175,133,0.3)" />
+      </div>
+      <p className="text-[9px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>This month</p>
+      <div className="space-y-1.5">
+        <MockBar title="📜 Lectio Divina" status="Weekly · Next prayer Tuesday" />
+      </div>
+    </MockPhone>
+  );
+}
+
+const MOCK_MAP: Record<string, () => JSX.Element> = {
+  prayer: PrayerPracticeMock,
+  intercession: IntercesssionMock,
+  fasting: FastingMock,
+  lectio: LectioMock,
+  letters: LettersMock,
+  gatherings: GatheringsMock,
+  dashboard: DashboardMock,
+};
+
 function PreviewSlide({
   slide,
 }: {
   slide: Extract<Slide, { kind: "preview" }>;
 }) {
+  const Mock = MOCK_MAP[slide.variant];
   return (
     <div className="max-w-5xl mx-auto w-full flex flex-col md:flex-row items-center gap-6 md:gap-16">
       {/* Left: text content */}
@@ -332,27 +568,14 @@ function PreviewSlide({
         </div>
       </div>
 
-      {/* Right: screenshot placeholder */}
+      {/* Right: mock UI */}
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="shrink-0 w-full md:w-[40%]"
+        className="shrink-0 w-full md:w-[40%] flex justify-center"
       >
-        <div
-          className="flex items-center justify-center rounded-2xl px-6 py-20 md:py-32"
-          style={{
-            background: C.card,
-            border: `1px solid rgba(200,212,192,0.25)`,
-          }}
-        >
-          <p
-            className="text-[13px] text-center italic"
-            style={{ color: C.sage }}
-          >
-            {slide.placeholder}
-          </p>
-        </div>
+        {Mock ? <Mock /> : null}
       </motion.div>
     </div>
   );
