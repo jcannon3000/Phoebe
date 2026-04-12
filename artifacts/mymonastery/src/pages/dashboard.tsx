@@ -72,6 +72,9 @@ type Moment = {
   // "2 prayed Wednesday" on off-days.
   lastWindowDate?: string | null;
   lastWindowPostCount?: number | null;
+  // Fasting weekly stats (meat fasts)
+  weekFastCount?: number | null;
+  weekGallonsSaved?: number | null;
 };
 
 // ─── Category color system ──────────────────────────────────────────────────
@@ -183,11 +186,17 @@ function BarCard({
   href,
   pulse,
   category = "gatherings",
+  borderColor,
+  barColor,
+  bgColor,
   children,
 }: {
   href: string;
   pulse: boolean;
   category?: Category;
+  borderColor?: string;
+  barColor?: string;
+  bgColor?: string;
   children: React.ReactNode;
 }) {
   const colors = CATEGORY_COLORS[category];
@@ -198,14 +207,14 @@ function BarCard({
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? colors.pulseClass : ""}`}
         style={{
-          background: colors.bg,
-          border: `1px solid ${colors.border}`,
+          background: bgColor || colors.bg,
+          border: `1px solid ${borderColor || colors.border}`,
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >
         <div
           className={`w-1 flex-shrink-0 ${pulse ? colors.barPulseClass : ""}`}
-          style={{ background: pulse ? undefined : colors.bar }}
+          style={{ background: pulse ? undefined : (barColor || colors.bar) }}
         />
         <div className="flex-1 px-4 pt-3 pb-2">
           {children}
@@ -716,11 +725,20 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 
   let subtitle = "";
   const isFasting = m.templateType === "fasting";
+  const isMeatFast = isFasting && m.fastingType === "meat";
   if (isFasting && m.fastingDay) {
     const dayCapitalized = m.fastingDay.charAt(0).toUpperCase() + m.fastingDay.slice(1);
     subtitle = `Every ${dayCapitalized}`;
   } else if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
+
+  // Meat fast enrichment — water savings and weekly participation
+  const meatFastWaterLine = isMeatFast && (m.weekGallonsSaved ?? 0) > 0
+    ? `💧 ${(m.weekGallonsSaved ?? 0).toLocaleString()} gallons saved this week`
+    : "";
+  const meatFastParticipationLine = isMeatFast && (m.weekFastCount ?? 0) > 0
+    ? `${m.weekFastCount} ${m.weekFastCount === 1 ? "person" : "people"} fasted this week`
+    : "";
 
   // Never repeat the card title as a fallback — also strip leading emoji + "For "
   const norm = (s: string) => s.trim().toLowerCase().replace(/^(for\s+)/i, "");
@@ -824,20 +842,41 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? [subtitle, goalLengthLine]
     : [];
 
+  // Meat fast cards cycle through: rhythm day → water savings → participation
+  const fastingFlapLines: string[] = isMeatFast
+    ? [subtitle, meatFastWaterLine, meatFastParticipationLine]
+    : [];
+
   const mobileFlapLines: string[] = (
     showRenewPill ? renewFlapLines :
     isLectio ? lectioFlapLines :
+    isMeatFast ? fastingFlapLines :
     [subtitle, mobileStatusLine, logCountLine]
   )
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
-  const desktopFlapLines: string[] = (showRenewPill ? renewFlapLines : isLectio ? lectioFlapLines : [subtitle, logCountLine, intentionLine])
+  const desktopFlapLines: string[] = (
+    showRenewPill ? renewFlapLines :
+    isLectio ? lectioFlapLines :
+    isMeatFast ? fastingFlapLines :
+    [subtitle, logCountLine, intentionLine]
+  )
     .map(s => (s ?? "").trim())
     .filter(s => s.length > 0);
   const flapLines = isDesktop ? desktopFlapLines : mobileFlapLines;
 
   return (
-    <BarCard key={`${keyPrefix}-${m.id}`} href={openHref} pulse={shouldPulse} category="practices">
+    <BarCard
+      key={`${keyPrefix}-${m.id}`}
+      href={openHref}
+      pulse={shouldPulse}
+      category="practices"
+      {...(isMeatFast ? {
+        borderColor: "rgba(100,160,210,0.45)",
+        barColor: "#5A9BC7",
+        bgColor: "rgba(70,130,190,0.12)",
+      } : {})}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>

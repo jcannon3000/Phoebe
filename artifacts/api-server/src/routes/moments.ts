@@ -1198,6 +1198,24 @@ router.get("/moments", async (req, res): Promise<void> => {
           lectioMyStageDone,
           lectioCurrentStageLabel,
           lectioNextStageLabel,
+          // Fasting weekly stats — used by the dashboard card for meat fasts
+          // to show "X people fasted this week · Y gallons saved".
+          ...(m.templateType === "fasting" ? (() => {
+            const GALLONS_PER_FAST = 400;
+            const isMeat = (m as Record<string, unknown>).fastingType === "meat";
+            const now = new Date();
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+            const weekStr = startOfWeek.toISOString().split("T")[0];
+            let weekFastCount = 0;
+            for (const [date, tokens] of postsByWindow.entries()) {
+              if (date >= weekStr) weekFastCount += tokens.size;
+            }
+            return {
+              weekFastCount,
+              weekGallonsSaved: isMeat ? weekFastCount * GALLONS_PER_FAST : 0,
+            };
+          })() : {}),
         };
       } catch (err) {
         console.error(`[moments] enrichment failed for moment ${m.id} (${m.templateType}):`, err);
