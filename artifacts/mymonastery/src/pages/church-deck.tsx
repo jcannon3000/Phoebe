@@ -1094,9 +1094,9 @@ export default function ChurchDeck() {
   );
   const prev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
 
-  // Slide 4 (index 3) auto-advances after 2 seconds
+  // "Here is what a week looks like" (index 2) auto-advances after 2 seconds
   useEffect(() => {
-    if (index === 3) {
+    if (index === 2) {
       const timer = setTimeout(next, 2000);
       return () => clearTimeout(timer);
     }
