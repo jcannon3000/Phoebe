@@ -53,7 +53,9 @@ const SLIDES: Slide[] = [
   {
     kind: "statement",
     headline: "Harvard sociologist Robert Putnam\u2019s research found that the strongest predictor of religious engagement is the strength of relationships within a community.",
-    body: [],
+    body: [
+      "Phoebe is built around that insight.",
+    ],
   },
 
   // 4 — The week (centered, auto-advances after 2s)
