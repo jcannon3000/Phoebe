@@ -236,6 +236,23 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                               </span>
                             )}
 
+                            {/* Days remaining — own requests */}
+                            {request.isOwnRequest && request.expiresAt && (() => {
+                              const days = Math.max(0, Math.ceil((new Date(request.expiresAt).getTime() - Date.now()) / 86400000));
+                              return (
+                                <span
+                                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                  style={{
+                                    background: days <= 1 ? "rgba(217,140,74,0.15)" : "rgba(46,107,64,0.15)",
+                                    color: days <= 1 ? "#D98C4A" : "rgba(143,175,150,0.7)",
+                                    border: `1px solid ${days <= 1 ? "rgba(217,140,74,0.3)" : "rgba(46,107,64,0.2)"}`,
+                                  }}
+                                >
+                                  {days === 0 ? "today" : `${days}d left`}
+                                </span>
+                              );
+                            })()}
+
                             {/* Delete button for own requests */}
                             {request.isOwnRequest && (
                               <button
@@ -254,37 +271,6 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                           </div>
                         </div>
 
-                        {/* Nearing expiry — quiet line */}
-                        {request.nearingExpiry && !request.needsRenewal && (
-                          <p className="text-xs italic mt-2" style={{ color: "#8FAF96" }}>
-                            Past three days soon 🌿
-                          </p>
-                        )}
-
-                        {/* Past 3-day mark — owner can renew */}
-                        {request.isOwnRequest && request.needsRenewal && (
-                          <div className="flex items-center gap-3 mt-2">
-                            <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.65)" }}>
-                              Carried for three days 🌿
-                            </p>
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation();
-                                renewMutation.mutate(request.id);
-                              }}
-                              disabled={renewMutation.isPending}
-                              className="text-xs font-semibold px-3 py-1 rounded-full transition-opacity disabled:opacity-40"
-                              style={{
-                                background: "rgba(46,107,64,0.25)",
-                                color: "#C8D4C0",
-                                border: "1px solid rgba(143,175,150,0.35)",
-                              }}
-                            >
-                              🔄 Renew
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -365,18 +351,33 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                           </div>
                         )}
 
-                        {/* Release / Remove */}
-                        <div className="flex justify-end mt-3 pt-2 border-t border-border/20">
+                        {/* Release / Renew / Remove */}
+                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/20">
                           {request.isOwnRequest ? (
-                            <button
-                              type="button"
-                              onClick={() => releaseMutation.mutate(request.id)}
-                              disabled={releaseMutation.isPending}
-                              className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
-                              style={{ color: "#8FAF96" }}
-                            >
-                              Release this 🌿
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => renewMutation.mutate(request.id)}
+                                disabled={renewMutation.isPending}
+                                className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
+                                style={{
+                                  background: "rgba(46,107,64,0.2)",
+                                  color: "#A8C5A0",
+                                  border: "1px solid rgba(46,107,64,0.3)",
+                                }}
+                              >
+                                {renewMutation.isPending ? "…" : "🔄 Renew"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => releaseMutation.mutate(request.id)}
+                                disabled={releaseMutation.isPending}
+                                className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
+                                style={{ color: "rgba(143,175,150,0.5)" }}
+                              >
+                                Release this 🌿
+                              </button>
+                            </div>
                           ) : (
                             <button
                               type="button"
