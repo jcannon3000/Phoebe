@@ -296,14 +296,23 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                         onClick={e => e.stopPropagation()}
                       >
                         {(() => {
-                          // Don't echo the viewer's own word back at them —
-                          // they already know they contributed. Only show
-                          // other community members' words.
                           const othersWords = request.words.filter(
                             (w) => !(request.myWord && w.content === request.myWord),
                           );
                           return (
                             <>
+                              {/* Show the user's own word first */}
+                              {request.myWord && (
+                                <div className="mb-3 mt-1 px-3 py-2 rounded-lg" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.2)" }}>
+                                  <p className="text-[10px] font-medium uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+                                    Your word
+                                  </p>
+                                  <p className="text-sm" style={{ color: "#A8C5A0" }}>
+                                    {request.myWord}
+                                  </p>
+                                </div>
+                              )}
+
                               {othersWords.length > 0 && (
                                 <>
                                   <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-2 mt-1">
@@ -319,12 +328,6 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                                     ))}
                                   </div>
                                 </>
-                              )}
-
-                              {request.myWord && (
-                                <p className="text-xs italic mb-3" style={{ color: "#5C7A5F" }}>
-                                  Your community is holding this. 🙏🏽
-                                </p>
                               )}
                             </>
                           );
