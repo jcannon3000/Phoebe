@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useListRituals } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
@@ -231,40 +230,33 @@ function FAB() {
             transition={{ duration: 0.15 }}
             className="flex flex-col gap-2 mb-1"
           >
-            {/* FAB menu buttons use solid opaque backgrounds so the list
-                doesn't bleed through content behind it. Category identity
-                comes from the border color. Practices are listed first
-                because they're the most common thing people come here to
-                start. */}
+            {/* FAB menu shows the three practice templates directly so
+                people can jump straight into the sub-flow they want.
+                Backgrounds are solid opaque practices-green; category
+                identity comes from the border color. */}
             <button
-              onClick={() => { setOpen(false); setLocation("/moment/new"); }}
+              onClick={() => { setOpen(false); setLocation("/moment/new?template=lectio-divina"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a practice</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Prayer, fasting, intercession & more</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 Start a Lectio Divina group</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Read Sunday's gospel together, unhurried</p>
             </button>
             <button
-              onClick={() => { setOpen(false); setLocation("/letters/new"); }}
+              onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{
-                // Olive to match LettersPage (accent bar #8E9E42, border rgba(142,158,66,...))
-                background: "#2A2F16",
-                border: "1px solid rgba(142,158,66,0.5)",
-                minWidth: 220,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)",
-              }}
+              style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📮 Write a letter</p>
-              <p className="text-xs mt-0.5" style={{ color: "#B8C088" }}>Start a new correspondence</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a group intercession</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Hold someone in prayer together</p>
             </button>
             <button
-              onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
+              onClick={() => { setOpen(false); setLocation("/moment/new?template=fasting"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#1E4B32", border: `1px solid ${CATEGORY_COLORS.gatherings.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝🏽 Start a gathering</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Meet together regularly</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 Start a group fast</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Keep a shared discipline on the same day</p>
             </button>
           </motion.div>
         )}
@@ -1068,38 +1060,14 @@ function TimeSection({
   const actionLetters = letterItems.filter(i => i.data.turnState === "OPEN" || i.data.turnState === "OVERDUE");
   const passiveLetters = letterItems.filter(i => i.data.turnState !== "OPEN" && i.data.turnState !== "OVERDUE");
 
-  // Visible card count for scroll threshold
-  const visibleCardCount =
-    momentItems.length +
-    actionLetters.length +
-    (passiveLetters.length > 1 ? 1 : passiveLetters.length) +
-    gatheringItems.length;
+  // Dashboard shows practices only — letters + gatherings live in the menu.
+  const visibleCardCount = momentItems.length;
   const scrollable = visibleCardCount > 3;
 
-  // Practices → Letters → Gatherings — matches the ordering in the
-  // FAB, the pill row, and the drawer menu so the whole app reads
-  // consistently. Within letters, action-required (your turn) cards
-  // still come before passive ones so nothing waiting on the user
-  // gets buried.
   const cards = (
     <div className="space-y-3">
       {momentItems.map((item) => (
         <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />
-      ))}
-      {actionLetters.map(i => (
-        <LetterCard key={`${label}-l-${i.data.id}`} c={i.data} userEmail={userEmail} userName={userName} keyPrefix={label} />
-      ))}
-      {passiveLetters.length > 1 ? (
-        <LetterSummaryCard
-          key={`${label}-letters-summary`}
-          correspondences={passiveLetters.map(i => i.data)}
-          userEmail={userEmail}
-        />
-      ) : passiveLetters.length === 1 ? (
-        <LetterCard key={`${label}-l-${passiveLetters[0].data.id}`} c={passiveLetters[0].data} userEmail={userEmail} userName={userName} keyPrefix={label} />
-      ) : null}
-      {gatheringItems.map((item) => (
-        <GatheringCard key={`${label}-g-${item.data.id}`} r={item.data} keyPrefix={label} badge={item.badge} />
       ))}
     </div>
   );
@@ -1135,7 +1103,7 @@ function TimeSection({
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
-  const [filter, setFilter] = useState<"letters" | "practices" | "gatherings" | null>(null);
+  const [filter, setFilter] = useState<"practices" | null>(null);
 
   useEffect(() => {
     const reset = () => setFilter(null);
@@ -1143,29 +1111,18 @@ export default function Dashboard() {
     return () => window.removeEventListener("phoebe:reset-filter", reset);
   }, []);
 
-  const { data: correspondences, isLoading: lettersLoading } = useQuery<Correspondence[]>({
-    queryKey: ["/api/letters/correspondences"],
-    queryFn: () => apiRequest("GET", "/api/letters/correspondences"),
-    enabled: !!user,
-  });
-
   const { data: momentsData, isLoading: momentsLoading } = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
     enabled: !!user,
   });
 
-  const { data: rituals, isLoading: ritualsLoading } = useListRituals({ ownerId: user?.id });
-
-  const isLoading = lettersLoading || momentsLoading || ritualsLoading;
+  const isLoading = momentsLoading;
 
   // ── Placement + deduplication → three time buckets ────────────────────────
 
   const { todayItems, weekItems, monthItems, totalCount } = useMemo(() => {
-    const allLetters = correspondences ?? [];
     const allMoments = momentsData?.moments ?? [];
-    const allGatherings = (rituals ?? []) as any[];
-    const userName = user?.name ?? "";
 
     // Hide practices whose creator reached the goal more than two days ago
     // and hasn't renewed — the calendar cleanup has already torn down the
@@ -1185,41 +1142,11 @@ export default function Dashboard() {
       return nowMs - reachedAt < twoDaysMs;
     });
 
-    const totalCount = allLetters.length + visibleMoments.length + allGatherings.length;
+    const totalCount = visibleMoments.length;
 
     const todayItems: DashboardItem[] = [];
     const weekItems: DashboardItem[] = [];
     const monthItems: DashboardItem[] = [];
-
-    // ── Letters placement
-    for (const c of allLetters) {
-      const isOneToOne = c.groupType === "one_to_one";
-      const hasUnread = c.unreadCount > 0;
-
-      if (isOneToOne) {
-        // One-to-one: use the state machine, not the period cadence
-        const ts = c.turnState;
-        if (ts === "OPEN" || ts === "OVERDUE") {
-          todayItems.push({ kind: "letter", data: c });
-        } else if (hasUnread) {
-          weekItems.push({ kind: "letter", data: c });
-        } else {
-          monthItems.push({ kind: "letter", data: c });
-        }
-      } else {
-        // Group round letter: use period-based logic
-        const iWrote = c.currentPeriod.membersWritten.find(m => m.name === userName)?.hasWritten ?? false;
-        const isDeadline = c.currentPeriod.isLastThreeDays && !iWrote;
-        const isOpenTurn = !iWrote && !c.currentPeriod.isLastThreeDays;
-        if (isDeadline) {
-          todayItems.push({ kind: "letter", data: c });
-        } else if (isOpenTurn || hasUnread) {
-          weekItems.push({ kind: "letter", data: c });
-        } else {
-          monthItems.push({ kind: "letter", data: c });
-        }
-      }
-    }
 
     // "This week" is a rolling next-7-days window (not a calendar Sun→Sat
     // week). So on Wednesday, "This week" covers Thu–next Wed.
@@ -1246,24 +1173,8 @@ export default function Dashboard() {
       }
     }
 
-    // ── Gatherings placement (same rolling 7-day window)
-    for (const r of allGatherings) {
-      if (r.nextMeetupDate && isToday(parseISO(r.nextMeetupDate))) {
-        todayItems.push({ kind: "gathering", data: r, badge: "Today" });
-      } else if (r.nextMeetupDate) {
-        const d = parseISO(r.nextMeetupDate);
-        if (isBefore(d, sevenDaysFromToday) && !isToday(d)) {
-          weekItems.push({ kind: "gathering", data: r, badge: format(d, "EEEE") });
-        } else {
-          monthItems.push({ kind: "gathering", data: r });
-        }
-      } else {
-        monthItems.push({ kind: "gathering", data: r });
-      }
-    }
-
     return { todayItems, weekItems, monthItems, totalCount };
-  }, [correspondences, momentsData, rituals, user]);
+  }, [momentsData, user]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -1306,8 +1217,6 @@ export default function Dashboard() {
             };
             const PILLS: Pill[] = [
               { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
-              { label: "📮 Letters",      filterKey: "letters",   fg: "#5C8A5F", bg: "rgba(92,138,95,0.14)",   border: "rgba(92,138,95,0.28)"   },
-              { label: "🤝🏽 Gatherings",   filterKey: "gatherings",fg: "#7AAF7D", bg: "rgba(122,175,125,0.14)", border: "rgba(122,175,125,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
               { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
@@ -1382,9 +1291,7 @@ export default function Dashboard() {
 
         {!isLoading && (() => {
           const byFilter = (item: DashboardItem) => {
-            if (filter === "letters") return item.kind === "letter";
             if (filter === "practices") return item.kind === "moment";
-            if (filter === "gatherings") return item.kind === "gathering";
             return true;
           };
           const fToday = todayItems.filter(byFilter);
@@ -1413,9 +1320,7 @@ export default function Dashboard() {
                 {/* Filtered empty state */}
                 {filteredEmpty && (() => {
                   const emptyConfig = {
-                    letters:    { href: "/letters/new",   text: "No letters yet. Start one. →"    },
-                    practices:  { href: "/moment/new",    text: "No practices yet. Start one. →"  },
-                    gatherings: { href: "/tradition/new", text: "No gatherings yet. Start one. →" },
+                    practices: { href: "/moment/new", text: "No practices yet. Start one. →" },
                   } as const;
                   const cfg = emptyConfig[filter!];
                   return (
