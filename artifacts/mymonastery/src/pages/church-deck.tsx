@@ -155,7 +155,7 @@ function DashboardMock() {
           <div className="flex-1 px-2.5 py-2 flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold" style={{ color: C.text }}>📜 Lectio Divina</p>
-              <p className="text-[8px]" style={{ color: C.sage }}>with Anabelle, Jack +1</p>
+              <p className="text-[8px]" style={{ color: C.sage }}>with Sarah, David +3</p>
             </div>
             <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
               <p className="text-[7px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>1 of 3</p>
@@ -168,8 +168,8 @@ function DashboardMock() {
           <div className="w-0.5 shrink-0" style={{ background: "#5C8A5F" }} />
           <div className="flex-1 px-2.5 py-2 flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold" style={{ color: C.text }}>🙏🏽 Prayers for my niece</p>
-              <p className="text-[8px]" style={{ color: C.sage }}>with Anabelle Helsell</p>
+              <p className="text-[11px] font-semibold" style={{ color: C.text }}>🙏🏽 Prayers for healing</p>
+              <p className="text-[8px]" style={{ color: C.sage }}>with Margaret, Anna</p>
             </div>
             <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
               <p className="text-[7px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>🔥 2</p>
@@ -192,8 +192,8 @@ function DashboardMock() {
       </div>
       <div>
         {[
-          { from: "Anabelle Helsell", body: "For Tiffany & Andrew on their wedding day", count: 1 },
-          { from: "Jeremy Cannon", body: "Astronauts", count: 1 },
+          { from: "Margaret W.", body: "For my mother, who begins treatment this week.", count: 3 },
+          { from: "David R.", body: "Discernment about a new calling.", count: 1 },
         ].map((r, i) => (
           <div key={i} className="flex gap-0" style={{ borderBottom: i === 0 ? "1px solid rgba(200,212,192,0.12)" : "none" }}>
             <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
