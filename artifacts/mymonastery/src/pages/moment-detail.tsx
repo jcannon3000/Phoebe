@@ -95,6 +95,10 @@ interface MomentDetail {
   todayLogs: TodayLog[];
   isCreator: boolean;
   calendarEventMissing?: boolean;
+  fastingWaterStats?: {
+    my:    { week: number; month: number; allTime: number };
+    group: { week: number; month: number; allTime: number };
+  } | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -656,7 +660,7 @@ export default function MomentDetail() {
                 <div className="rounded-2xl px-5 py-4 space-y-4" style={{ background: "#0A1F12", border: "1px solid rgba(46,107,64,0.35)" }}>
                   <div>
                     <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: "rgba(200,212,192,0.45)" }}>
-                      💧 Water Conserved Together
+                      Conserving Water Together
                     </p>
 
                     {totalSessions === 0 ? (
@@ -778,18 +782,50 @@ export default function MomentDetail() {
           const displayMyStreak = myStreak > 0 ? myStreak : (todayPostCount >= 1 ? 1 : 0);
 
           if (isFasting) {
-            // For fasting, show fast-day counts instead of gamified streaks
-            const totalSessions = moment.commitmentSessionsLogged ?? 0;
-            const membersCount = memberCount;
+            // For fasting, show water conservation grid
+            const GALLONS_PER_FAST = 400;
+            const ws = data?.fastingWaterStats;
+
+            function gLabel(n: number) {
+              if (!n) return "0";
+              if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+              if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+              return n.toLocaleString();
+            }
+
+            const rows: { label: string; myKey: "week" | "month" | "allTime"; grpKey: "week" | "month" | "allTime" }[] = [
+              { label: "This Week",  myKey: "week",    grpKey: "week"    },
+              { label: "This Month", myKey: "month",   grpKey: "month"   },
+              { label: "All Time",   myKey: "allTime", grpKey: "allTime" },
+            ];
+
             return (
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
-                  <p className="text-2xl font-bold text-foreground">{totalSessions}</p>
-                  <p className="text-xs text-muted-foreground mt-1">🌿 Fast days logged</p>
+              <div className="mb-6">
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: "rgba(200,212,192,0.4)" }}>
+                  Conserving Water Together
+                </p>
+                {/* Column headers */}
+                <div className="grid grid-cols-3 gap-2 mb-1">
+                  <div />
+                  <p className="text-[10px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>You</p>
+                  <p className="text-[10px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>Group</p>
                 </div>
-                <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
-                  <p className="text-2xl font-bold text-foreground">{membersCount}</p>
-                  <p className="text-xs text-muted-foreground mt-1">👥 Fasting together</p>
+                <div className="space-y-2">
+                  {rows.map(({ label, myKey, grpKey }) => {
+                    const myGal   = (ws?.my[myKey]    ?? 0) * GALLONS_PER_FAST;
+                    const grpGal  = (ws?.group[grpKey] ?? 0) * GALLONS_PER_FAST;
+                    return (
+                      <div key={label} className="grid grid-cols-3 gap-2 items-center">
+                        <p className="text-[11px] font-medium" style={{ color: "rgba(200,212,192,0.55)" }}>{label}</p>
+                        <div className="rounded-xl px-2 py-2 text-center" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
+                          <p className="text-sm font-bold tabular-nums" style={{ color: "#A8C5A0" }}>{gLabel(myGal)}</p>
+                        </div>
+                        <div className="rounded-xl px-2 py-2 text-center" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.15)" }}>
+                          <p className="text-sm font-bold tabular-nums" style={{ color: "#8FAF96" }}>{gLabel(grpGal)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );

@@ -672,7 +672,10 @@ router.post("/moments", async (req, res): Promise<void> => {
       return isCustom && intention ? `🙏🏽 ${intention}` : `Praying ${name}`;
     }
     if (templateType === "contemplative") return `🕯️ ${name}`;
-    if (templateType === "fasting") return `✦ ${name}`;
+    if (templateType === "fasting") {
+      const invFirst = (organizer.name ?? "Someone").split(" ")[0];
+      return `${invFirst} invited you to conserve water together`;
+    }
     if (templateType === "listening") return `🎵 Listening to ${listeningArtist ?? listeningTitle ?? name} together`;
     return `🌱 ${name} with ${creatorFirstName}`;
   }
@@ -835,16 +838,45 @@ router.post("/moments", async (req, res): Promise<void> => {
   function buildFastingDescription(memberToken: string, inviterName: string, _isOrganizer: boolean): string {
     const shortLink = `${getInviteBaseUrl()}/m/${memberToken}`;
     const invFirst = inviterName.split(" ")[0];
-    const fastFreqLabel = fastingFrequency === "weekly" ? "Weekly" : fastingFrequency === "monthly" ? "Monthly" : "Fasting day";
+
+    // Day of week label
+    const dayLabel = fastingDay
+      ? fastingDay.charAt(0).toUpperCase() + fastingDay.slice(1)
+      : fastingFrequency === "specific" && fastingDate
+        ? new Date(fastingDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
+        : "a set day";
+
+    // Starting date (next occurrence)
+    const startDateStr = getFastingStartDateStr();
+    const startDateLabel = new Date(startDateStr + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    const freqDisplay = fastingFrequency === "weekly" ? "Weekly" : fastingFrequency === "monthly" ? "Monthly" : "One time";
+
+    // Collective impact line — based on total group size
+    const totalPeople = insertedTokens.length;
+    const weeklyGallons = (totalPeople * 400).toLocaleString();
+    const collectiveLine = `If ${totalPeople} ${totalPeople === 1 ? "person fasts" : "people fast"} together once a week, your group will conserve approximately ${weeklyGallons} gallons of water every week.`;
 
     return [
-      `🌿 ${invFirst} invited you to fast together.`,
+      `${invFirst} invited you to fast from meat on ${dayLabel}.`,
+      "",
+      "Together, you can make a measurable difference.",
+      "",
+      "The University of Colorado has found that fasting from meat for one day conserves approximately 400 gallons of water per person.",
+      "",
+      "When you fast together, Phoebe tracks your collective water impact — this week, this month, and all time.",
+      "",
+      `Join ${invFirst}'s fast:`,
       shortLink,
       "",
-      "A shared fast as a discipline — knowing someone else is keeping it alongside you changes everything.",
-      ...(fastingIntention ? ["", `Why we fast: ${fastingIntention}`] : []),
+      collectiveLine,
       "",
-      `When: ${fastFreqLabel} · Starting ${humanStartDate()}`,
+      "———",
+      "",
+      `When: ${freqDisplay} · Starting ${startDateLabel}`,
+      "",
+      "———",
+      "",
+      "Phoebe · A place set apart for connection",
     ].join("\n");
   }
 
@@ -1142,21 +1174,25 @@ router.get("/moments", async (req, res): Promise<void> => {
               dow === 1 || dow === 2 ? "lectio" :
               dow === 3 || dow === 4 ? "meditatio" :
               dow === 5 || dow === 6 ? "oratio" : null;
+            // Check which stages the user has completed this week
+            const myStages = myToken
+              ? new Set(weekReflections.filter(r => r.userToken === myToken.userToken).map(r => r.stage))
+              : new Set<string>();
+            const allThreeDone = myStages.has("lectio") && myStages.has("meditatio") && myStages.has("oratio");
+
             if (currentStage && myToken) {
-              lectioMyStageDone = weekReflections.some(
-                r => r.userToken === myToken.userToken && r.stage === currentStage,
-              );
+              lectioMyStageDone = myStages.has(currentStage);
             } else if (!currentStage) {
               // Sunday: not actionable; treat as done so it doesn't sit in "today".
               lectioMyStageDone = true;
             }
 
-            // Friendly labels for the dashboard card. We use "Stage 1/2/3"
-            // now — the Latin terms read as jargon to newcomers. On Sunday
-            // (no active reflection day) show "Completed" to mark the week
-            // as done.
+            // Friendly labels for the dashboard card. "Completed" only shows
+            // when the user has actually submitted all three stages this week.
             const STAGE_LABEL = { lectio: "Stage 1", meditatio: "Stage 2", oratio: "Stage 3" } as const;
-            lectioCurrentStageLabel = currentStage ? STAGE_LABEL[currentStage] : "Completed";
+            lectioCurrentStageLabel = allThreeDone
+              ? "Completed"
+              : currentStage ? STAGE_LABEL[currentStage] : (myStages.size > 0 ? `${myStages.size} of 3` : "Stage 1");
             // Next reflection day — Lectio Divina only reflects on Mon/Wed/Fri,
             // so this is the next of those three days strictly after today.
             // Friday → Monday (not Sunday, since Sunday has no reflection).
@@ -1397,6 +1433,54 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     }
   }
 
+  // ── Fasting water-conservation stats (detail view) ───────────────────────
+  // Compute per-period fast-day counts so the detail page can show
+  // "saved this week / this month / all time" split by you vs. the group.
+  let fastingWaterStats: {
+    my: { week: number; month: number; allTime: number };
+    group: { week: number; month: number; allTime: number };
+  } | null = null;
+
+  if (moment.templateType === "fasting") {
+    const now = new Date();
+    const sunOffset = now.getDay(); // 0 = Sunday
+    const startOfWeekDate = new Date(now);
+    startOfWeekDate.setDate(now.getDate() - sunOffset);
+    const weekStr  = startOfWeekDate.toISOString().slice(0, 10);
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+
+    // Build postsByWindow: windowDate → number of unique users who logged
+    const postsByWindowMap = new Map<string, Set<string>>();
+    for (const p of allPosts) {
+      if (!p.windowDate || p.windowDate === "seed") continue;
+      if (!postsByWindowMap.has(p.windowDate)) postsByWindowMap.set(p.windowDate, new Set());
+      postsByWindowMap.get(p.windowDate)!.add(p.userToken ?? p.guestName ?? "?");
+    }
+
+    // My days: count distinct dates in myPostDates per period
+    let myWeek = 0, myMonth = 0, myAllTime = 0;
+    for (const d of myPostDates) {
+      if (d === "seed") continue;
+      myAllTime++;
+      if (d >= monthStr) myMonth++;
+      if (d >= weekStr)  myWeek++;
+    }
+
+    // Group days: sum unique-user counts per window per period
+    let grpWeek = 0, grpMonth = 0, grpAllTime = 0;
+    for (const [date, tokens] of postsByWindowMap.entries()) {
+      const n = tokens.size;
+      grpAllTime += n;
+      if (date >= monthStr) grpMonth += n;
+      if (date >= weekStr)  grpWeek  += n;
+    }
+
+    fastingWaterStats = {
+      my:    { week: myWeek,   month: myMonth,   allTime: myAllTime  },
+      group: { week: grpWeek,  month: grpMonth,  allTime: grpAllTime },
+    };
+  }
+
   res.json({
     moment,
     members: allMembers.map(t => ({ name: t.name, email: t.email })),
@@ -1419,6 +1503,7 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     isCreator,
     myStreak,
     calendarEventMissing,
+    fastingWaterStats,
   });
 });
 

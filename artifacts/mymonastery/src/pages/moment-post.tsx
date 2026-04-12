@@ -1091,7 +1091,6 @@ export default function MomentPostPage() {
     const FAST_REFLECTIONS = [
       "What we choose to abstain from reveals what we value.",
       "A fast observed together is a fast that holds.",
-      "Creation care is an act of faith.",
       "Restraint practiced together becomes a form of prayer.",
       "To fast is to make room.",
     ];

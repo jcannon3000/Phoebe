@@ -1719,7 +1719,7 @@ export default function MomentNew() {
                     <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Your intention</label>
                     <input autoFocus type="text" value={intention}
                       onChange={e => setIntention(e.target.value.slice(0, 120))}
-                      placeholder="e.g. End to the war in Iran, My mother's health, Our parish community..."
+                      placeholder="e.g. My mother's health, Our parish community, The sick and suffering..."
                       className="w-full px-4 py-3 rounded-2xl text-base focus:outline-none transition-colors"
                       style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />

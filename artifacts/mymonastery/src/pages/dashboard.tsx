@@ -467,142 +467,25 @@ function useIsDesktop(): boolean {
   return isDesktop;
 }
 
-// Alternates between "Renew 🌿" and "Archive" with a crossfade, like SplitFlapLine.
-// Clicking "Renew" sends the user to the practice detail page where the
-// full renew modal lives (with length presets). Clicking "Archive" swaps
-// the pill into a two-stage confirmation: first click → "Sure?", second
-// click within 3s → actually archives. Any stray first click just costs a
-// confirm tap — it never nukes the practice silently.
-function RenewArchivePill({
-  momentId,
-  momentName,
-  onArchive,
-}: {
-  momentId: number;
-  momentName: string;
-  onArchive: () => void;
-}) {
+// Simple "Renew 🌿" pill — sends the user to the detail page where the
+// full renew modal lives (with length presets).
+function RenewPill({ momentId }: { momentId: number }) {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const [show, setShow] = useState<"renew" | "archive">("renew");
-  const [confirming, setConfirming] = useState(false);
-  const [archiving, setArchiving] = useState(false);
-
-  // Auto-rotate between "Renew 🌿" and "Archive", but FREEZE once the user
-  // has tapped Archive once — they need to see "Sure?" long enough to
-  // actually confirm without the label changing out from under them.
-  useEffect(() => {
-    if (confirming || archiving) return;
-    const t = setInterval(() => {
-      setShow(s => (s === "renew" ? "archive" : "renew"));
-    }, 3500);
-    return () => clearInterval(t);
-  }, [confirming, archiving]);
-
-  // If they don't confirm within 3s, drop out of confirm state.
-  useEffect(() => {
-    if (!confirming) return;
-    const t = setTimeout(() => setConfirming(false), 3000);
-    return () => clearTimeout(t);
-  }, [confirming]);
-
   const handleRenew = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Renew needs a length — that picker lives on the practice detail page.
-    // The practice detail page auto-opens the renew modal when ?renew=1.
     setLocation(`/moments/${momentId}?renew=1`);
   };
-
-  const handleArchiveTap = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!confirming) {
-      setConfirming(true);
-      return;
-    }
-    // Second tap — actually archive.
-    setArchiving(true);
-    try {
-      await apiRequest("PATCH", `/api/moments/${momentId}/archive`, {});
-      toast({
-        title: "Practice archived 🌸",
-        description: `"${momentName}" is tucked away. History is preserved.`,
-      });
-      onArchive();
-    } catch (err) {
-      setArchiving(false);
-      setConfirming(false);
-      toast({
-        title: "Couldn't archive",
-        description: (err as Error).message || "Try again in a moment.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // When the user has tapped Archive once, override the rotating label with
-  // a single "Sure?" pill that doesn't move.
-  const effectiveShow: "renew" | "archive" | "confirm" =
-    confirming || archiving ? "confirm" : show;
-
   return (
-    <div className="relative" style={{ width: 88, height: 28 }}>
-      <AnimatePresence mode="wait">
-        {effectiveShow === "renew" && (
-          <motion.span
-            key="renew"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-            onClick={handleRenew}
-            className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center cursor-pointer"
-            style={{ background: "#2D5E3F", color: "#F0EDE6", whiteSpace: "nowrap" }}
-          >
-            Renew 🌿
-          </motion.span>
-        )}
-        {effectiveShow === "archive" && (
-          <motion.span
-            key="archive"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-            className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center cursor-pointer"
-            style={{
-              background: "rgba(46,107,64,0.18)",
-              color: "#8FAF96",
-              border: "1px solid rgba(46,107,64,0.3)",
-              whiteSpace: "nowrap",
-            }}
-            onClick={handleArchiveTap}
-          >
-            Archive
-          </motion.span>
-        )}
-        {effectiveShow === "confirm" && (
-          <motion.span
-            key="confirm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center cursor-pointer"
-            style={{
-              background: "rgba(193,127,36,0.22)",
-              color: "#E8B878",
-              border: "1px solid rgba(193,127,36,0.55)",
-              whiteSpace: "nowrap",
-            }}
-            onClick={handleArchiveTap}
-          >
-            {archiving ? "Archiving…" : "Sure?"}
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </div>
+    <motion.span
+      onClick={handleRenew}
+      className="text-xs font-semibold rounded-full inline-flex items-center justify-center cursor-pointer"
+      style={{ background: "#2D5E3F", color: "#F0EDE6", whiteSpace: "nowrap", padding: "4px 14px", lineHeight: "20px" }}
+      animate={{ scale: [1, 1.05, 1] }}
+      transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+    >
+      Renew 🌿
+    </motion.span>
   );
 }
 
@@ -958,7 +841,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
                 animate={{ scale: [1, 1.05, 1] }}
                 transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
               >
-                Pray 🙏🏽
+                {isFasting ? "Log 🌿" : isIntercession ? "Pray 🙏🏽" : isMorningPrayer ? "Open 📖" : "Log 🌿"}
               </motion.span>
             </Link>
           ) : isIntercession && m.todayPostCount > 0 && m.windowOpen ? (
