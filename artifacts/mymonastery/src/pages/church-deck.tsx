@@ -77,8 +77,9 @@ const SLIDES: Slide[] = [
   {
     kind: "preview",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "The Sunday gospel, read together across the week.",
+    headline: "Lectio Divina",
     body: [
+      "The Sunday gospel, read together across the week.",
       "Monday \u2014 a word or phrase that is speaking to you.\nWednesday \u2014 what the passage is stirring in you.\nFriday \u2014 what it is calling you to do or to be.",
       "Each person reflects on their own. Then they see what everyone else heard in the same passage. They arrive on Sunday having already sat with the text together. The sermon lands differently.",
     ],
