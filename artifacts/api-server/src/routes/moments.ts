@@ -665,7 +665,10 @@ router.post("/moments", async (req, res): Promise<void> => {
   function buildEventTitle(): string {
     if (templateType === "morning-prayer") return `✨ Morning Prayer with ${creatorFirstName}`;
     if (templateType === "evening-prayer") return `🌙 Evening Prayer with ${creatorFirstName}`;
-    if (templateType === "intercession") return `Praying ${name}`;
+    if (templateType === "intercession") {
+      const isCustom = intercessionSource !== "bcp";
+      return isCustom && intention ? `🙏🏽 ${intention}` : `Praying ${name}`;
+    }
     if (templateType === "contemplative") return `🕯️ ${name}`;
     if (templateType === "fasting") return `✦ ${name}`;
     if (templateType === "listening") return `🎵 Listening to ${listeningArtist ?? listeningTitle ?? name} together`;
@@ -2343,8 +2346,14 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
       // Create new group event on the requester's calendar with all members as attendees
       const myTokenRow = allTokens.find(t => t.email === user.email);
       const attendeeEmails = allTokens.map(m => m.email); // All members get invites from scheduler
+      const patchSummary = (() => {
+        if (updated.templateType === "intercession" && updated.intercessionSource !== "bcp" && updated.intention) {
+          return `🙏🏽 ${updated.intention}`;
+        }
+        return `🔔 ${updated.name}`;
+      })();
       const newEventId = await createCalendarEvent(sessionUserId, {
-        summary: `🔔 ${updated.name}`,
+        summary: patchSummary,
         description: [
           `${updated.name} practice on Phoebe.`,
           ...(updated.intention ? [`"${updated.intention}"`] : []),
@@ -2862,6 +2871,43 @@ router.post("/moments/:id/restore-calendar", async (req, res): Promise<void> => 
     .where(eq(momentUserTokensTable.id, myTokenRow.id));
 
   res.json({ success: true });
+});
+
+// ─── POST /api/moments/:id/sync-calendar-title — update all members' calendar event titles ───
+// Used to backfill existing events when the display title changes (e.g. custom intercession intention).
+router.post("/moments/:id/sync-calendar-title", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  // Only members can trigger this
+  const allTokens = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+  const myToken = allTokens.find(t => t.email.toLowerCase() === user.email.toLowerCase());
+  if (!myToken) { res.status(403).json({ error: "Not a member of this practice" }); return; }
+
+  if (moment.templateType !== "intercession" || moment.intercessionSource === "bcp" || !moment.intention) {
+    res.json({ updated: 0, skipped: "not a custom intercession" }); return;
+  }
+
+  const newSummary = `🙏🏽 ${moment.intention}`;
+  let updated = 0;
+
+  for (const token of allTokens) {
+    if (!token.googleCalendarEventId) continue;
+    const ok = await updateCalendarEvent(sessionUserId, token.googleCalendarEventId, { summary: newSummary }).catch(() => false);
+    if (ok) updated++;
+  }
+
+  res.json({ updated });
 });
 
 export default router;

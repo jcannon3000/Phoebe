@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { InviteStep } from "@/components/InviteStep";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ interface MomentDetail {
     momentToken: string;
     templateType: string | null;
     intercessionTopic: string | null;
+    intercessionSource?: string | null;
     timezone?: string | null;
     practiceDays?: string | string[] | null;
     timeOfDay?: string | null;
@@ -246,6 +248,7 @@ export default function MomentDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, isLoading: authLoading } = useAuth();
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [seedText, setSeedText] = useState("");
   const [showSeedForm, setShowSeedForm] = useState(false);
   const [showManage, setShowManage] = useState(false);
@@ -253,6 +256,8 @@ export default function MomentDetail() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [invitePeople, setInvitePeople] = useState<{ name: string; email: string }[]>([]);
+  // Confirmation for archiving a completed practice via the goal-hit CTA pill
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   // Bell editing removed — shared time, editable via Settings > Edit practice
   const [editingPractice, setEditingPractice] = useState(false);
@@ -288,7 +293,18 @@ export default function MomentDetail() {
     mutationFn: () => apiRequest("PATCH", `/api/moments/${id}/archive`, {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/moments"] });
+      toast({
+        title: "Practice archived 🌸",
+        description: "It's tucked away. The history is preserved in your garden.",
+      });
       setLocation("/dashboard");
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Couldn't archive",
+        description: err.message || "Something went wrong. Try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -352,15 +368,62 @@ export default function MomentDetail() {
   const updateGoalMutation = useMutation({
     mutationFn: (payload: { commitmentSessionsGoal: number | null; commitmentTendFreely?: boolean }) =>
       apiRequest("PATCH", `/api/moments/${id}/goal`, payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: [`/api/moments/${id}`] });
       qc.invalidateQueries({ queryKey: ["/api/moments"] });
+      // Clear, visible confirmation so the user knows the renew went through.
+      if (variables.commitmentTendFreely) {
+        toast({
+          title: "Now ongoing ✨",
+          description: "No end date — this is just what you do now.",
+        });
+      } else if (typeof variables.commitmentSessionsGoal === "number") {
+        toast({
+          title: "Renewed 🌱",
+          description: `New goal set: ${variables.commitmentSessionsGoal} ${variables.commitmentSessionsGoal === 1 ? "session" : "sessions"}. Progress resets.`,
+        });
+      }
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Couldn't save",
+        description: err.message || "The renew didn't go through. Try again.",
+        variant: "destructive",
+      });
     },
   });
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
+
+  // Auto-open the renew modal if ?renew=1 is in the URL. The dashboard's
+  // "Renew 🌿" CTA pill navigates here with that query param so the full
+  // length-picker modal opens immediately. We strip the query afterwards
+  // so refreshing the page doesn't keep re-opening the modal.
+  useEffect(() => {
+    if (typeof window === "undefined" || !data) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("renew") === "1") {
+      const currentGoal = data.moment.commitmentSessionsGoal ?? 7;
+      setRenewCustom(String(currentGoal));
+      setRenewModalOpen(true);
+      params.delete("renew");
+      const next = params.toString();
+      window.history.replaceState({}, "", next ? `${window.location.pathname}?${next}` : window.location.pathname);
+    }
+  }, [data]);
+
+  // Silently sync calendar event titles for custom intercessions.
+  // Runs once when the page loads so existing events get the correct intention title.
+  useEffect(() => {
+    if (!data) return;
+    const { moment: m } = data;
+    if (m.templateType === "intercession" && m.intercessionSource !== "bcp" && m.intention && id) {
+      apiRequest("POST", `/api/moments/${id}/sync-calendar-title`, {}).catch(() => {/* best effort */});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.moment.id]);
 
   // Lectio Divina no longer has a practice detail page — the practice IS the
   // slideshow at /lectio/:momentToken/:userToken. Any stale link to
@@ -420,12 +483,20 @@ export default function MomentDetail() {
         ? "Open Office 📖"
         : "Log 🌿";
 
-  // Intention display — for intercession, show intercessionTopic if it differs from the practice name
-  const intercessionLabel = moment.intercessionTopic ?? moment.intention;
-  const showIntercessionLabel = isIntercession && !!intercessionLabel &&
-    intercessionLabel.toLowerCase() !== moment.name.toLowerCase();
+  // For custom intercessions, use the intention as the display title.
+  // For BCP intercessions, show the topic/name as before.
+  const isCustomIntercession = isIntercession && moment.intercessionSource !== "bcp";
+  const intercessionDisplayTitle = isCustomIntercession
+    ? (moment.intention || moment.intercessionTopic || moment.name)
+    : (moment.intercessionTopic ?? moment.name);
+  const displayTitle = isCustomIntercession ? intercessionDisplayTitle : moment.name;
+
+  // For non-custom intercessions, still show "Praying for" subtitle if topic differs from name
+  const showIntercessionSubtitle = isIntercession && !isCustomIntercession &&
+    !!moment.intercessionTopic &&
+    moment.intercessionTopic.toLowerCase() !== moment.name.toLowerCase();
   const intentionDisplay = isIntercession
-    ? intercessionLabel
+    ? intercessionDisplayTitle
     : moment.intention;
 
   return (
@@ -461,7 +532,7 @@ export default function MomentDetail() {
         {/* Header */}
         <div className="mb-5">
           <div className="flex items-start justify-between gap-3">
-            <h1 className="text-2xl font-semibold text-foreground mb-1 min-w-0 break-words">{moment.name}</h1>
+            <h1 className="text-2xl font-semibold text-foreground mb-1 min-w-0 break-words">{displayTitle}</h1>
             <button
               onClick={() => setShowInvite(true)}
               className="shrink-0 mt-0.5 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-3 py-1.5 hover:bg-[#5C7A5F]/8 transition-colors whitespace-nowrap"
@@ -470,8 +541,8 @@ export default function MomentDetail() {
             </button>
           </div>
 
-          {/* Intercession: "Praying for" — only when label differs from name; others: italic intention */}
-          {showIntercessionLabel ? (
+          {/* Intercession: "Praying for" subtitle for BCP only; custom uses intention as h1 */}
+          {showIntercessionSubtitle ? (
             <p className="text-sm text-[#5C7A5F] mb-1.5">
               Praying for: {intentionDisplay}
             </p>
@@ -779,6 +850,49 @@ export default function MomentDetail() {
                       >
                         Tend freely for now ✨
                       </button>
+                    )}
+
+                    {/* Archive — we're done here (creator only, two-step confirm) */}
+                    {isCreator && (
+                      <>
+                        {!showArchiveConfirm ? (
+                          <button
+                            onClick={() => setShowArchiveConfirm(true)}
+                            className="w-full mt-2 py-2 text-xs text-muted-foreground/60 hover:text-amber-700 transition-colors"
+                            style={{ fontFamily: "Space Grotesk, sans-serif" }}
+                          >
+                            Archive — we're done here 🌸
+                          </button>
+                        ) : (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.97 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
+                          >
+                            <p className="text-xs font-semibold text-amber-800 mb-1">
+                              Archive "{moment.name}"?
+                            </p>
+                            <p className="text-[11px] text-amber-700/80 mb-3 leading-snug">
+                              This closes the practice for the whole group. History and reflections are preserved. You can always start a new one.
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => archiveMutation.mutate()}
+                                disabled={archiveMutation.isPending}
+                                className="text-xs font-semibold text-white bg-amber-600 rounded-full px-4 py-2 hover:bg-amber-700 transition-colors disabled:opacity-50"
+                              >
+                                {archiveMutation.isPending ? "Archiving…" : "Yes, archive it"}
+                              </button>
+                              <button
+                                onClick={() => setShowArchiveConfirm(false)}
+                                className="text-xs text-amber-700 px-2 py-2 hover:text-amber-900 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
