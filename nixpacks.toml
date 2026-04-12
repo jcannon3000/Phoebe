@@ -7,7 +7,7 @@ NIXPACKS_NODE_VERSION = "22"
 cmds = ["pnpm install --no-frozen-lockfile"]
 
 [phases.build]
-cmds = ["rm -rf artifacts/mymonastery/dist artifacts/letters-app/dist", "pnpm --filter @workspace/mymonastery run build", "BASE_PATH=/mail pnpm --filter @workspace/letters-app run build", "pnpm --filter @workspace/api-server run build"]
+cmds = ["rm -rf artifacts/mymonastery/dist artifacts/letters-app/dist", "pnpm --filter @workspace/db run push --force", "pnpm --filter @workspace/mymonastery run build", "BASE_PATH=/mail pnpm --filter @workspace/letters-app run build", "pnpm --filter @workspace/api-server run build"]
 
 [start]
 cmd = "node ./artifacts/api-server/dist/index.mjs"

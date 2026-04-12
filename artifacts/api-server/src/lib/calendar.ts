@@ -1,5 +1,7 @@
 import { google } from "googleapis";
 import { getInvitesRefreshToken } from "./invitesAccount";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 // ─── Scheduler-based calendar client ─────────────────────────────────────────
 // All calendar events are created from the invites@withphoebe.app Google
@@ -321,5 +323,107 @@ export async function removeAttendeesFromCalendarEvent(
     return true;
   } catch {
     return false;
+  }
+}
+
+// ─── Per-user calendar reading ────────────────────────────────────────────────
+// Used by the Gatherings page to display the user's own Google Calendar events.
+// Requires that the user has connected their calendar (calendarConnected = true)
+// and we have their refresh token stored in googleRefreshToken.
+
+export interface UserCalendarEvent {
+  id: string;
+  title: string;
+  start: string;        // ISO datetime or YYYY-MM-DD for all-day
+  end: string;
+  location: string | null;
+  allDay: boolean;
+  url: string | null;
+  description: string | null;
+  calendarName: string | null;
+  colorHex: string | null;
+}
+
+// Maps Google Calendar colorId → hex (standard Google palette)
+const GOOGLE_COLOR_MAP: Record<string, string> = {
+  "1": "#7986CB", "2": "#33B679", "3": "#8E24AA", "4": "#E67C73",
+  "5": "#F6BF26", "6": "#F4511E", "7": "#039BE5", "8": "#616161",
+  "9": "#3F51B5", "10": "#0B8043", "11": "#D50000",
+};
+
+export async function getUserCalendarEvents(
+  userId: number,
+  daysAhead = 60,
+): Promise<UserCalendarEvent[]> {
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user?.calendarConnected || !user?.googleRefreshToken) return [];
+
+  const oauth2 = getOAuth2Client();
+  oauth2.setCredentials({
+    refresh_token: user.googleRefreshToken,
+    access_token: user.googleAccessToken ?? undefined,
+    expiry_date: user.googleTokenExpiry?.getTime() ?? undefined,
+  });
+
+  // Persist refreshed tokens back to DB automatically
+  oauth2.on("tokens", async (tokens) => {
+    try {
+      await db.update(usersTable).set({
+        ...(tokens.access_token ? { googleAccessToken: tokens.access_token } : {}),
+        ...(tokens.expiry_date ? { googleTokenExpiry: new Date(tokens.expiry_date) } : {}),
+      }).where(eq(usersTable.id, userId));
+    } catch { /* non-fatal */ }
+  });
+
+  try {
+    const cal = google.calendar({ version: "v3", auth: oauth2 });
+    const now = new Date();
+    const future = new Date(now.getTime() + daysAhead * 86400000);
+
+    // Fetch from all calendars the user is subscribed to (up to 20 calendars)
+    const listRes = await cal.calendarList.list({ maxResults: 20 });
+    const calendars = listRes.data.items ?? [];
+
+    const allEvents: UserCalendarEvent[] = [];
+
+    await Promise.all(
+      calendars
+        .filter(c => c.selected !== false && c.accessRole !== "none")
+        .map(async (calEntry) => {
+          try {
+            const evRes = await cal.events.list({
+              calendarId: calEntry.id!,
+              timeMin: now.toISOString(),
+              timeMax: future.toISOString(),
+              singleEvents: true,
+              orderBy: "startTime",
+              maxResults: 50,
+            });
+            for (const ev of evRes.data.items ?? []) {
+              if (!ev.id || ev.status === "cancelled") continue;
+              const allDay = !ev.start?.dateTime;
+              allEvents.push({
+                id: `gcal-${calEntry.id}-${ev.id}`,
+                title: ev.summary ?? "Untitled",
+                start: ev.start?.dateTime ?? ev.start?.date ?? "",
+                end: ev.end?.dateTime ?? ev.end?.date ?? "",
+                location: ev.location ?? null,
+                allDay,
+                url: ev.htmlLink ?? null,
+                description: ev.description ?? null,
+                calendarName: calEntry.summary ?? null,
+                colorHex: GOOGLE_COLOR_MAP[ev.colorId ?? calEntry.colorId ?? ""] ?? calEntry.backgroundColor ?? null,
+              });
+            }
+          } catch { /* skip inaccessible calendar */ }
+        })
+    );
+
+    // Sort by start time
+    allEvents.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+    return allEvents;
+  } catch (err) {
+    console.error("getUserCalendarEvents error:", err);
+    return [];
   }
 }
