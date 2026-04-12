@@ -28,6 +28,13 @@ type Slide =
         | "calendar"
         | "involvement";
     }
+  | {
+      kind: "feature-combo";
+      label: string;
+      headline: string;
+      body: string[];
+      mock: "calendar" | "involvement";
+    }
   | { kind: "closing"; body: string[]; featured: string[] };
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
@@ -149,43 +156,44 @@ const SLIDES: Slide[] = [
     ],
   },
 
-  // ── Feature 6: Parish Calendar ──
-  // 16 — text
+  // 16 — The community stays alive
   {
-    kind: "feature-text",
-    label: "A GLIMPSE INSIDE PHOEBE",
-    headline:
-      "Everything already happening, in front of the people most likely to come.",
+    kind: "statement",
+    headline: "The community stays alive between Sundays.",
     body: [
-      "The parish is already running events. The problem is not a lack of things to do \u2014 it is that people do not hear about them, or forget, or never felt connected enough to show up.",
-      "Phoebe puts the parish calendar in front of people who are already engaged during the week. The person who prayed on Wednesday and fasted on Friday is the most likely person to come to Thursday evening\u2019s talk. They just need to see it.",
+      "Every practice is a touchpoint. A reminder that you belong to something. That people are praying for you by name. That someone fasted alongside you this week. That a passage was read and you were part of that reading.",
+      "People do not drift from communities they are thinking about. Phoebe keeps the community present in the small moments of the week.",
     ],
   },
-  // 17 — demo
-  { kind: "feature-demo", variant: "calendar" },
 
-  // ── Feature 7: Getting Involved ──
-  // 18 — text
+  // 17 — Parish Calendar (text + mock on one slide)
   {
-    kind: "feature-text",
+    kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "A natural next step for people who are already connected.",
+    headline: "What is already happening, in front of the people most likely to come.",
     body: [
-      "When someone has been praying with a group for six weeks, they are no longer a stranger. They are ready to go deeper.",
-      "The parish calendar surfaces ways to do that. A volunteer opportunity. A study group. A service project. A gathering that is just beginning.",
-      "Phoebe does not recruit people into parish life. It cultivates the ground so that when the invitation comes, people are ready to say yes.",
+      "The parish is already running events. The person who prayed on Wednesday and fasted on Friday is the most likely person to come to Thursday evening\u2019s talk. They just need to see it.",
     ],
+    mock: "calendar",
   },
-  // 19 — demo
-  { kind: "feature-demo", variant: "involvement" },
 
-  // 20 — Closing
+  // 18 — Getting Involved (text + mock on one slide)
+  {
+    kind: "feature-combo",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "A natural next step.",
+    body: [
+      "When someone has been praying with a group for six weeks they are no longer a stranger. They are ready to go deeper. Phoebe surfaces the ways to do that \u2014 low barrier, low pressure, already in front of them.",
+    ],
+    mock: "involvement",
+  },
+
+  // 19 — Closing
   {
     kind: "closing",
     body: [
       "The strongest parishes are not the ones with the most programs. They are the ones where people know each other.",
-      "Relationships drive attendance. Relationships drive giving. Relationships drive the decision to stay when life gets hard and the invitation to bring someone new.",
-      "Relationships are built through shared points of connection \u2014 a prayer held in common, a passage read together, a fast observed alongside someone else, a name carried through the week.",
+      "Relationships are built through shared points of connection. A prayer held in common. A passage read together. A fast observed alongside someone else. A name carried through the week.",
     ],
     featured: ["Phoebe makes this possible.", "Every day. Between Sundays."],
   },
@@ -905,6 +913,53 @@ function FeatureDemoSlide({
   );
 }
 
+function FeatureComboSlide({
+  slide,
+}: {
+  slide: Extract<Slide, { kind: "feature-combo" }>;
+}) {
+  const Mock = MOCK_MAP[slide.mock];
+  return (
+    <div className="flex flex-col items-center w-full max-w-3xl mx-auto gap-6 md:gap-8">
+      {/* Text */}
+      <div className="w-full">
+        <p
+          className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          {slide.label}
+        </p>
+        <h2
+          className="text-xl md:text-3xl font-semibold mb-4 leading-tight"
+          style={{ color: C.text, fontFamily: C.font }}
+        >
+          {slide.headline}
+        </h2>
+        <div className="space-y-3">
+          {slide.body.map((p, i) => (
+            <p
+              key={i}
+              className="text-sm md:text-lg leading-relaxed font-light"
+              style={{ color: C.sage, fontFamily: C.font }}
+            >
+              {p}
+            </p>
+          ))}
+        </div>
+      </div>
+      {/* Mock */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.45 }}
+        className="w-full flex justify-center"
+      >
+        {Mock ? <Mock /> : null}
+      </motion.div>
+    </div>
+  );
+}
+
 function ClosingSlide({
   slide,
 }: {
@@ -953,6 +1008,8 @@ function renderSlide(slide: Slide) {
       return <FeatureTextSlide slide={slide} />;
     case "feature-demo":
       return <FeatureDemoSlide slide={slide} />;
+    case "feature-combo":
+      return <FeatureComboSlide slide={slide} />;
     case "closing":
       return <ClosingSlide slide={slide} />;
   }
