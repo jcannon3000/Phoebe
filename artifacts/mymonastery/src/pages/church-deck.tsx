@@ -557,92 +557,93 @@ function PrayerListMock() {
   );
 }
 
-/* ── Lectio Divina — three-stage view with scripture ── */
+/* ── Lectio Divina — responses view (matches actual app slideshow) ── */
 function LectioMock() {
-  const stages = [
-    { day: "Mon", label: "A word or phrase", done: true },
-    { day: "Wed", label: "What it stirs in you", done: true },
-    { day: "Fri", label: "What it calls you to", done: false },
+  const reflections = [
+    {
+      name: "Margaret",
+      isYou: false,
+      time: "Mon · 8am",
+      text: "I keep returning to the moment they recognised him — and then he was gone. That sudden absence after recognition.",
+    },
+    {
+      name: "You",
+      isYou: true,
+      time: "Today · 7am",
+      text: "\"Hearts burning\" — the way ordinary moments can hold something we don't see until later.",
+    },
+    {
+      name: "David",
+      isYou: false,
+      time: "Wed · 6pm",
+      text: "The road itself. They were walking away from Jerusalem. Yet he met them there.",
+    },
   ];
   return (
     <MockPhone>
+      {/* Header bar */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>← Back</p>
+        <div
+          className="px-3 py-1 rounded-full text-[10px] font-semibold"
+          style={{ background: "rgba(19,44,29,0.85)", border: "1px solid rgba(200,212,192,0.15)", color: C.text }}
+        >
+          Menu
+        </div>
+        <div className="text-right">
+          <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.55)" }}>Stage 2</p>
+          <p className="text-[10px]" style={{ color: C.sage }}>Luke 24:13–35</p>
+        </div>
+      </div>
+
+      {/* Section label */}
       <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-1"
-        style={{ color: "rgba(200,212,192,0.5)" }}
+        className="text-[9px] uppercase tracking-[0.18em] font-semibold mb-3"
+        style={{ color: "rgba(143,175,150,0.45)" }}
       >
-        Lectio Divina
+        What others heard
       </p>
-      <h2
-        className="text-base font-semibold mb-1"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        📜 John 20:19-31
-      </h2>
-      <p className="text-[11px] mb-4" style={{ color: C.sage }}>
-        Third Sunday of Easter
-      </p>
+
+      {/* Reflection cards */}
       <div className="space-y-2 mb-4">
-        {stages.map((s, i) => (
+        {reflections.map((r, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg"
+            className="rounded-xl px-3 py-2.5"
             style={{
-              background: s.done
-                ? "rgba(46,107,64,0.18)"
-                : "rgba(46,107,64,0.06)",
-              border: `1px solid ${s.done ? "rgba(46,107,64,0.3)" : "rgba(46,107,64,0.12)"}`,
+              background: r.isYou ? "rgba(111,175,133,0.08)" : "#0F2818",
+              border: `1px solid ${r.isYou ? "rgba(111,175,133,0.35)" : "rgba(200,212,192,0.15)"}`,
             }}
           >
-            <div
-              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
-              style={{
-                background: s.done ? "#2E6B40" : "transparent",
-                border: s.done ? "none" : "1px solid rgba(143,175,150,0.3)",
-                color: s.done ? C.text : C.sage,
-              }}
-            >
-              {s.done ? "\u2713" : ""}
-            </div>
-            <div>
+            <div className="flex items-baseline justify-between mb-1">
               <p
-                className="text-[11px] font-semibold"
-                style={{
-                  color: s.done ? C.text : C.sage,
-                  fontFamily: C.font,
-                }}
+                className="text-[9px] uppercase tracking-widest font-semibold"
+                style={{ color: r.isYou ? "#6FAF85" : C.sage }}
               >
-                {s.day}
+                {r.name}
               </p>
-              <p
-                className="text-[10px]"
-                style={{ color: "rgba(143,175,150,0.6)" }}
-              >
-                {s.label}
-              </p>
+              <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.45)" }}>{r.time}</p>
             </div>
+            <p className="text-[11px] leading-[1.55]" style={{ color: C.text, fontFamily: C.font }}>
+              {r.text}
+            </p>
           </div>
         ))}
       </div>
+
+      {/* Floating nav pill */}
       <div
-        className="rounded-xl px-4 py-3"
-        style={{
-          background: "rgba(46,107,64,0.12)",
-          border: "1px solid rgba(46,107,64,0.15)",
-        }}
+        className="flex items-center justify-between rounded-full px-3 py-2"
+        style={{ background: "rgba(19,44,29,0.92)", border: "1px solid rgba(200,212,192,0.15)" }}
       >
-        <p
-          className="text-[11px] italic leading-[1.6]"
-          style={{ color: "#C8D4C0", fontFamily: "Georgia, serif" }}
+        <p className="text-[10px] font-semibold" style={{ color: C.text }}>Back</p>
+        <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)" }}>Stage 2 · Meditatio</p>
+        <div
+          className="px-2.5 py-1 rounded-full text-[10px] font-semibold"
+          style={{ background: "#2D5E3F", color: C.text }}
         >
-          &ldquo;Peace be with you. As the Father has sent me, even so I am
-          sending you.&rdquo;
-        </p>
-        <p
-          className="text-[9px] mt-1.5"
-          style={{ color: "rgba(143,175,150,0.4)" }}
-        >
-          John 20:21 &middot; RSV
-        </p>
+          Next stage
+        </div>
       </div>
     </MockPhone>
   );
