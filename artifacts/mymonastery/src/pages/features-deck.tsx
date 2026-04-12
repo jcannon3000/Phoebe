@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, MessageCircle } from "lucide-react";
 
 // ─── Palette (mirrors church-deck.tsx) ───────────────────────────────────────
 const C = {
@@ -35,6 +35,10 @@ type Slide =
       kind: "preview";
       caption: string;
       sub: string;
+      variant: "prayer-requests" | "intercession" | "lectio";
+    }
+  | {
+      kind: "preview-mock";
       variant: "prayer-requests" | "intercession" | "lectio";
     }
   | { kind: "closing"; above: string[]; featured: string };
@@ -399,90 +403,57 @@ function MockPhone({ children }: { children: React.ReactNode }) {
 // ─── Prayer Requests mock ────────────────────────────────────────────────────
 function PrayerRequestsMock() {
   const requests = [
-    {
-      from: "Margaret W.",
-      body: "For my mother, who begins treatment this week.",
-      words: 4,
-    },
-    {
-      from: "David R.",
-      body: "Discernment about the new role. Grateful for your prayers.",
-      words: 6,
-    },
-    {
-      from: "Anonymous",
-      body: "For peace in a difficult season.",
-      words: 2,
-    },
+    { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
+    { from: "David R.",    body: "Discernment about the new role. Grateful for your prayers.", words: 6 },
+    { from: "Anonymous",  body: "For peace in a difficult season.", words: 2 },
   ];
   return (
     <MockPhone>
-      <div className="flex items-center gap-2 mb-4">
-        <h2
-          className="text-base font-semibold"
-          style={{ color: "#F0EDE6", fontFamily: C.font }}
-        >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-sm font-semibold shrink-0" style={{ color: "#F0EDE6", fontFamily: C.font }}>
           Prayer Requests 🙏🏽
         </h2>
-        <div
-          className="flex-1 h-px"
-          style={{ background: "rgba(200,212,192,0.15)" }}
-        />
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>
 
+      {/* Input row */}
       <div className="flex gap-2 mb-4">
         <div
-          className="flex-1 text-xs px-3 py-2 rounded-xl"
-          style={{
-            background: "#091A10",
-            border: "1px solid rgba(46,107,64,0.3)",
-            color: "rgba(143,175,150,0.5)",
-            fontFamily: C.font,
-          }}
+          className="flex-1 text-[11px] px-3 py-2 rounded-xl"
+          style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
         >
-          Share a prayer request with your garden... 🌿
+          Share a prayer request... 🌿
         </div>
-        <div
-          className="px-3 py-2 rounded-xl text-xs font-medium"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-        >
+        <div className="px-3 py-2 rounded-xl text-xs font-medium flex items-center" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
           🙏🏽
         </div>
       </div>
 
+      {/* Request rows */}
       <div>
         {requests.map((r, i) => (
           <div
             key={i}
             className="flex gap-0"
-            style={{
-              borderBottom:
-                i < requests.length - 1 ? "1px solid rgba(200,212,192,0.12)" : "none",
-            }}
+            style={{ borderBottom: i < requests.length - 1 ? "1px solid rgba(200,212,192,0.1)" : "none" }}
           >
-            <div
-              className="w-0.5 self-stretch shrink-0"
-              style={{ background: "#8FAF96" }}
-            />
-            <div className="flex-1 p-3 pl-2.5">
-              <p
-                className="text-[9px] font-medium uppercase tracking-widest mb-1"
-                style={{ color: "rgba(200,212,192,0.45)", fontFamily: C.font }}
-              >
-                From {r.from}
-              </p>
-              <p
-                className="text-xs leading-relaxed mb-1.5"
-                style={{ color: "#F0EDE6", fontFamily: C.font }}
-              >
-                {r.body}
-              </p>
-              <p
-                className="text-[10px]"
-                style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}
-              >
-                🌿 {r.words} {r.words === 1 ? "word of prayer" : "words of prayer"}
-              </p>
+            {/* Green left bar */}
+            <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
+            <div className="flex-1 p-3 pl-2.5 flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-medium uppercase tracking-widest mb-1" style={{ color: "rgba(200,212,192,0.45)", fontFamily: C.font }}>
+                  From {r.from}
+                </p>
+                <p className="text-[11px] leading-relaxed" style={{ color: "#F0EDE6", fontFamily: C.font }}>
+                  {r.body}
+                </p>
+              </div>
+              {/* Word count + icon */}
+              <div className="flex items-center gap-1 shrink-0" style={{ color: "rgba(143,175,150,0.55)" }}>
+                <span className="text-[10px] tabular-nums">{r.words}</span>
+                <MessageCircle size={12} />
+              </div>
             </div>
           </div>
         ))}
@@ -752,18 +723,16 @@ function LectioMock() {
   );
 }
 
-function PreviewSlide({ slide }: { slide: Extract<Slide, { kind: "preview" }> }) {
-  const mock =
-    slide.variant === "prayer-requests" ? (
-      <PrayerRequestsMock />
-    ) : slide.variant === "intercession" ? (
-      <IntercessionMock />
-    ) : (
-      <LectioMock />
-    );
+function MockForVariant({ variant }: { variant: "prayer-requests" | "intercession" | "lectio" }) {
+  if (variant === "prayer-requests") return <PrayerRequestsMock />;
+  if (variant === "intercession") return <IntercessionMock />;
+  return <LectioMock />;
+}
 
+function PreviewSlide({ slide }: { slide: Extract<Slide, { kind: "preview" }> }) {
   return (
     <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 max-w-5xl mx-auto w-full">
+      {/* Copy — always visible */}
       <div className="text-center md:text-left max-w-md">
         <p
           className="text-[10px] font-semibold uppercase tracking-widest mb-2 md:mb-3"
@@ -784,13 +753,29 @@ function PreviewSlide({ slide }: { slide: Extract<Slide, { kind: "preview" }> })
           {slide.sub}
         </p>
       </div>
+      {/* Mock — desktop only; on mobile it gets its own slide */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="shrink-0 w-full md:w-auto flex justify-center"
+        className="hidden md:flex shrink-0 w-full md:w-auto justify-center"
       >
-        {mock}
+        <MockForVariant variant={slide.variant} />
+      </motion.div>
+    </div>
+  );
+}
+
+function PreviewMockSlide({ slide }: { slide: Extract<Slide, { kind: "preview-mock" }> }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-6 max-w-5xl mx-auto w-full">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05, duration: 0.45 }}
+        className="flex justify-center w-full"
+      >
+        <MockForVariant variant={slide.variant} />
       </motion.div>
     </div>
   );
@@ -810,6 +795,8 @@ function renderSlide(slide: Slide) {
       return <CardsSlide slide={slide} />;
     case "preview":
       return <PreviewSlide slide={slide} />;
+    case "preview-mock":
+      return <PreviewMockSlide slide={slide} />;
     case "closing":
       return <ClosingSlide slide={slide} />;
   }
@@ -819,10 +806,26 @@ function renderSlide(slide: Slide) {
 export default function FeaturesDeck() {
   const [, setLocation] = useLocation();
   const [index, setIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // On mobile, expand each "preview" slide into [copy-only, mock-only]
+  const slides: Slide[] = isMobile
+    ? SLIDES.flatMap((s) =>
+        s.kind === "preview"
+          ? [s, { kind: "preview-mock" as const, variant: s.variant }]
+          : [s]
+      )
+    : SLIDES;
 
   const next = useCallback(
-    () => setIndex((i) => Math.min(i + 1, SLIDES.length - 1)),
-    [],
+    () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
+    [slides.length],
   );
   const prev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
 
@@ -842,7 +845,9 @@ export default function FeaturesDeck() {
     return () => window.removeEventListener("keydown", onKey);
   }, [next, prev, setLocation]);
 
-  const slide = SLIDES[index];
+  // Clamp index when switching between mobile/desktop (different slide counts)
+  const clampedIndex = Math.min(index, slides.length - 1);
+  const slide = slides[clampedIndex];
 
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: C.bg }}>
@@ -865,22 +870,22 @@ export default function FeaturesDeck() {
           <motion.div
             className="h-full rounded-full"
             style={{ background: C.sage }}
-            animate={{ width: `${((index + 1) / SLIDES.length) * 100}%` }}
+            animate={{ width: `${((clampedIndex + 1) / slides.length) * 100}%` }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           />
         </div>
 
         {/* Desktop: dot row */}
         <div className="hidden md:flex gap-1.5">
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => setIndex(i)}
               className="rounded-full transition-all"
               style={{
-                width: i === index ? 20 : 6,
+                width: i === clampedIndex ? 20 : 6,
                 height: 6,
-                background: i <= index ? C.sage : "rgba(200,212,192,0.2)",
+                background: i <= clampedIndex ? C.sage : "rgba(200,212,192,0.2)",
               }}
               aria-label={`Go to slide ${i + 1}`}
             />
@@ -891,7 +896,7 @@ export default function FeaturesDeck() {
           className="text-xs tabular-nums shrink-0"
           style={{ color: C.sage, opacity: 0.6 }}
         >
-          {index + 1} / {SLIDES.length}
+          {clampedIndex + 1} / {slides.length}
         </span>
       </div>
 
@@ -899,7 +904,7 @@ export default function FeaturesDeck() {
       <div className="flex-1 flex items-center justify-center px-5 md:px-16 py-4 md:py-8 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div
-            key={index}
+            key={clampedIndex}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -915,14 +920,14 @@ export default function FeaturesDeck() {
       <div className="flex items-center justify-between px-5 md:px-8 pb-5 md:pb-8 pt-2">
         <button
           onClick={prev}
-          disabled={index === 0}
+          disabled={clampedIndex === 0}
           className="flex items-center gap-1.5 text-sm transition-opacity disabled:opacity-20"
           style={{ color: C.sage }}
         >
           <ChevronLeft size={18} />
           Back
         </button>
-        {index === SLIDES.length - 1 ? (
+        {clampedIndex === slides.length - 1 ? (
           <button
             onClick={() => setLocation("/learn")}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
