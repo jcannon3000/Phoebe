@@ -68,7 +68,18 @@ app.use(passport.session());
 
 app.use("/api", router);
 
-// Serve frontend static files in production
+// Serve letters-app at /mail (must come before the main app catch-all)
+const lettersDist = path.resolve(__dirname, "../../letters-app/dist/public");
+if (fs.existsSync(lettersDist)) {
+  app.use("/mail/assets", express.static(path.join(lettersDist, "assets"), { maxAge: "1y", immutable: true }));
+  app.use("/mail", express.static(lettersDist, { maxAge: 0 }));
+  app.get("/mail/{*path}", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.sendFile(path.join(lettersDist, "index.html"));
+  });
+}
+
+// Serve main app static files (catch-all — must come last)
 const frontendDist = path.resolve(__dirname, "../../mymonastery/dist/public");
 if (fs.existsSync(frontendDist)) {
   // Hashed assets get long cache; everything else (index.html) must revalidate

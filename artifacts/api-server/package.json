@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && export PATH=/Applications/Postgres.app/Contents/Versions/latest/bin:/Users/jeremycannon/.local/bin:$PATH && pnpm run build && pnpm run start",
-    "build": "pnpm --filter @workspace/mymonastery run build && node ./build.mjs",
+    "build": "pnpm --filter @workspace/mymonastery run build && BASE_PATH=/mail pnpm --filter @workspace/letters-app run build && node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

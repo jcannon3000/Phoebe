@@ -144,6 +144,22 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
                   </button>
                 ))}
+
+                {/* Phoebe Letters — standalone app */}
+                <a
+                  href="/mail"
+                  onClick={onClose}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors"
+                  style={{ textDecoration: "none" }}
+                  onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                  onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-base leading-none w-5 text-center">✉️</span>
+                    <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Phoebe Letters</span>
+                  </div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: "rgba(142,158,66,0.15)", color: "#8E9E42" }}>new</span>
+                </a>
               </nav>
             </div>
 
