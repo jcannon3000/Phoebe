@@ -81,11 +81,11 @@ const SLIDES: Slide[] = [
     kind: "stacked",
     headline: "The Church has always known what this looks like.",
     items: [
-      "Shared prayer.",
+      "Intercession — bearing each other's burdens in prayer.",
+      "Fasting — a rhythm held in common, not alone.",
+      "Lectio divina — scripture returned to, slowly, together.",
       "Letters sent between communities.",
       "Meals taken together on a rhythm.",
-      "Lectio Divina.",
-      "Intercession.",
     ],
     tail: [
       "These are not new ideas. They are the Church's oldest inheritance. They formed people for centuries.",
@@ -175,7 +175,7 @@ const SLIDES: Slide[] = [
     kind: "preview",
     variant: "intercession",
     caption: "Not just a feed — a practice.",
-    sub: "Intercession, Lectio Divina, shared silence — held as guided slideshows the community moves through together. You see who else is praying with you at the same hour.",
+    sub: "Intercession, fasting, and lectio divina — held as guided slideshows the community moves through together. You see who else is praying with you at the same hour.",
   },
 
   // 8b — Preview: Letters (the list)
@@ -639,6 +639,11 @@ function DashboardMock() {
           category="practices"
           title="🙏🏽 Intercession"
           status="Tomorrow · 6 prayers"
+        />
+        <MockBarCard
+          category="practices"
+          title="🌿 Lenten Fast"
+          status="Day 24 · hold the rhythm"
         />
         <MockBarCard
           category="gatherings"
@@ -1120,112 +1125,130 @@ function LetterComposeMock() {
 }
 
 function IntercessionMock() {
+  // Matches the real SlideContent template in /src/pages/prayer-mode.tsx:
+  // "Your Intercession" eyebrow, serif italic body, "with {names}" attribution,
+  // "Your community is holding this." whisper, "Amen →" pill, "X of Y" footer.
   return (
-    <MockPhone>
-      {/* Slideshow top progress bars */}
-      <div className="flex gap-1 mb-5">
-        {[1, 1, 0.55, 0, 0, 0].map((f, i) => (
-          <div
-            key={i}
-            className="flex-1 h-0.5 rounded-full"
-            style={{
-              background: "rgba(200,212,192,0.15)",
-            }}
-          >
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${f * 100}%`,
-                background: "#8FAF96",
-              }}
-            />
-          </div>
-        ))}
-      </div>
-
-      <p
-        className="text-[9px] font-semibold uppercase tracking-widest mb-1 text-center"
-        style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
-      >
-        Intercession · 3 of 6
-      </p>
-
-      <div className="text-center mt-6 mb-7">
-        <div className="text-4xl mb-4">🙏🏽</div>
-        <p
-          className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-          style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
-        >
-          Let us pray for
-        </p>
-        <p
-          className="text-base font-semibold mb-3"
-          style={{ color: "#F0EDE6", fontFamily: C.font }}
-        >
-          Margaret's mother
-        </p>
-        <p
-          className="text-xs italic leading-relaxed px-2"
-          style={{ color: "#8FAF96", fontFamily: C.font }}
-        >
-          "As she begins treatment this week, we hold her in the light.
-          Grant her peace, and those who care for her wisdom."
-        </p>
-      </div>
-
+    <div
+      className="rounded-[28px] md:rounded-[32px] mx-auto w-full max-w-[290px] md:max-w-[320px] relative"
+      style={{
+        background: "#0C1F12",
+        border: "1px solid rgba(200,212,192,0.15)",
+        boxShadow:
+          "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
+        minHeight: 430,
+      }}
+    >
+      {/* Exit × (decorative, matching prayer-mode.tsx) */}
       <div
-        className="rounded-xl p-3 mb-3"
+        className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-lg"
         style={{
-          background: "rgba(46,107,64,0.1)",
-          border: "1px solid rgba(46,107,64,0.3)",
+          color: "rgba(200,212,192,0.4)",
+          background: "rgba(200,212,192,0.06)",
         }}
       >
-        <p
-          className="text-[9px] font-semibold uppercase tracking-widest mb-1.5"
-          style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
-        >
-          Praying with you right now
-        </p>
-        <div className="flex -space-x-1.5">
-          {["D", "A", "J", "R", "E"].map((l, i) => (
-            <div
-              key={i}
-              className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold"
-              style={{
-                background: "#14402A",
-                color: "#F0EDE6",
-                border: "1.5px solid #091A10",
-              }}
-            >
-              {l}
-            </div>
-          ))}
-          <div
-            className="w-5 h-5 rounded-full flex items-center justify-center text-[9px]"
-            style={{
-              background: "rgba(143,175,150,0.2)",
-              color: "#C8D4C0",
-              border: "1.5px solid #091A10",
-            }}
-          >
-            +7
-          </div>
-        </div>
+        ×
       </div>
 
-      <div className="flex justify-center">
-        <div
-          className="px-4 py-2 rounded-full text-[11px] font-medium"
+      {/* Centered slide content */}
+      <div className="flex flex-col items-center text-center px-6 pt-14 pb-12">
+        <p
+          className="text-[9px] uppercase font-semibold mb-4"
           style={{
-            background: "#2D5E3F",
-            color: "#F0EDE6",
+            color: "rgba(143,175,150,0.45)",
+            letterSpacing: "0.18em",
             fontFamily: C.font,
           }}
         >
-          Amen. Continue →
+          Your Intercession
+        </p>
+
+        <p
+          className="text-[16px] md:text-[17px] leading-[1.5] font-medium italic mb-3"
+          style={{
+            color: "#E8E4D8",
+            fontFamily: "'Playfair Display', Georgia, serif",
+          }}
+        >
+          Margaret's mother, as she begins treatment this week.
+        </p>
+
+        <p
+          className="text-[11px] mb-2"
+          style={{ color: "#8FAF96", fontFamily: C.font }}
+        >
+          with David, Anna, James
+        </p>
+
+        <p
+          className="text-[10px] italic mb-5"
+          style={{
+            color: "rgba(143,175,150,0.55)",
+            fontFamily: C.font,
+          }}
+        >
+          Your community is holding this.
+        </p>
+
+        {/* BCP enrichment box — matches the real bcpPrayer card */}
+        <div
+          className="w-full rounded-xl px-3 py-3 text-left mb-5"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.15)",
+          }}
+        >
+          <p
+            className="text-[10px] leading-[1.75] italic"
+            style={{
+              color: "#C8D4C0",
+              fontFamily: "'Playfair Display', Georgia, serif",
+            }}
+          >
+            O Father of mercies and God of all comfort, look graciously upon
+            this thy servant, that her weakness may be banished and her
+            strength restored.
+          </p>
+          <p
+            className="text-[7px] uppercase mt-2"
+            style={{
+              color: "rgba(143,175,150,0.3)",
+              letterSpacing: "0.14em",
+              fontFamily: C.font,
+            }}
+          >
+            From the Book of Common Prayer
+          </p>
+        </div>
+
+        {/* Amen pill — exact colors from prayer-mode.tsx */}
+        <div
+          className="px-6 py-2 rounded-full text-[11px] font-medium tracking-wide"
+          style={{
+            background: "rgba(46,107,64,0.28)",
+            border: "1px solid rgba(46,107,64,0.5)",
+            color: "#C8D4C0",
+            fontFamily: C.font,
+          }}
+        >
+          Amen →
         </div>
       </div>
-    </MockPhone>
+
+      {/* Progress footer — "3 of 6" matching prayer-mode.tsx */}
+      <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+        <p
+          className="text-[10px]"
+          style={{
+            color: "rgba(143,175,150,0.32)",
+            letterSpacing: "0.06em",
+            fontFamily: C.font,
+          }}
+        >
+          3 of 6
+        </p>
+      </div>
+    </div>
   );
 }
 

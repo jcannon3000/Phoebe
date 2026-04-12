@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
@@ -246,10 +247,16 @@ function FAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/letters/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#14322C", border: `1px solid ${CATEGORY_COLORS.letters.border}`, minWidth: 220, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              style={{
+                // Olive to match LettersPage (accent bar #8E9E42, border rgba(142,158,66,...))
+                background: "#2A2F16",
+                border: "1px solid rgba(142,158,66,0.5)",
+                minWidth: 220,
+                boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)",
+              }}
             >
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📮 Write a letter</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Start a new correspondence</p>
+              <p className="text-xs mt-0.5" style={{ color: "#B8C088" }}>Start a new correspondence</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
@@ -458,40 +465,102 @@ function useIsDesktop(): boolean {
 }
 
 // Alternates between "Renew 🌿" and "Archive" with a crossfade, like SplitFlapLine.
-// Clicking "Archive" stops propagation, calls the archive API, and triggers onArchive.
-function RenewArchivePill({ momentId, onArchive }: { momentId: number; onArchive: () => void }) {
+// Clicking "Renew" sends the user to the practice detail page where the
+// full renew modal lives (with length presets). Clicking "Archive" swaps
+// the pill into a two-stage confirmation: first click → "Sure?", second
+// click within 3s → actually archives. Any stray first click just costs a
+// confirm tap — it never nukes the practice silently.
+function RenewArchivePill({
+  momentId,
+  momentName,
+  onArchive,
+}: {
+  momentId: number;
+  momentName: string;
+  onArchive: () => void;
+}) {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [show, setShow] = useState<"renew" | "archive">("renew");
+  const [confirming, setConfirming] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
+  // Auto-rotate between "Renew 🌿" and "Archive", but FREEZE once the user
+  // has tapped Archive once — they need to see "Sure?" long enough to
+  // actually confirm without the label changing out from under them.
   useEffect(() => {
+    if (confirming || archiving) return;
     const t = setInterval(() => {
-      setShow(s => s === "renew" ? "archive" : "renew");
+      setShow(s => (s === "renew" ? "archive" : "renew"));
     }, 3500);
     return () => clearInterval(t);
-  }, []);
+  }, [confirming, archiving]);
 
-  const handleArchive = async (e: React.MouseEvent) => {
+  // If they don't confirm within 3s, drop out of confirm state.
+  useEffect(() => {
+    if (!confirming) return;
+    const t = setTimeout(() => setConfirming(false), 3000);
+    return () => clearTimeout(t);
+  }, [confirming]);
+
+  const handleRenew = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    try { await apiRequest("PATCH", `/api/moments/${momentId}/archive`, {}); } catch { /* non-fatal */ }
-    onArchive();
+    // Renew needs a length — that picker lives on the practice detail page.
+    // The practice detail page auto-opens the renew modal when ?renew=1.
+    setLocation(`/moments/${momentId}?renew=1`);
   };
 
+  const handleArchiveTap = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    // Second tap — actually archive.
+    setArchiving(true);
+    try {
+      await apiRequest("PATCH", `/api/moments/${momentId}/archive`, {});
+      toast({
+        title: "Practice archived 🌸",
+        description: `"${momentName}" is tucked away. History is preserved.`,
+      });
+      onArchive();
+    } catch (err) {
+      setArchiving(false);
+      setConfirming(false);
+      toast({
+        title: "Couldn't archive",
+        description: (err as Error).message || "Try again in a moment.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // When the user has tapped Archive once, override the rotating label with
+  // a single "Sure?" pill that doesn't move.
+  const effectiveShow: "renew" | "archive" | "confirm" =
+    confirming || archiving ? "confirm" : show;
+
   return (
-    <div className="relative" style={{ width: 80, height: 28 }}>
+    <div className="relative" style={{ width: 88, height: 28 }}>
       <AnimatePresence mode="wait">
-        {show === "renew" ? (
+        {effectiveShow === "renew" && (
           <motion.span
             key="renew"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35 }}
-            className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center"
+            onClick={handleRenew}
+            className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center cursor-pointer"
             style={{ background: "#2D5E3F", color: "#F0EDE6", whiteSpace: "nowrap" }}
           >
             Renew 🌿
           </motion.span>
-        ) : (
+        )}
+        {effectiveShow === "archive" && (
           <motion.span
             key="archive"
             initial={{ opacity: 0 }}
@@ -499,10 +568,34 @@ function RenewArchivePill({ momentId, onArchive }: { momentId: number; onArchive
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35 }}
             className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center cursor-pointer"
-            style={{ background: "rgba(46,107,64,0.18)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)", whiteSpace: "nowrap" }}
-            onClick={handleArchive}
+            style={{
+              background: "rgba(46,107,64,0.18)",
+              color: "#8FAF96",
+              border: "1px solid rgba(46,107,64,0.3)",
+              whiteSpace: "nowrap",
+            }}
+            onClick={handleArchiveTap}
           >
             Archive
+          </motion.span>
+        )}
+        {effectiveShow === "confirm" && (
+          <motion.span
+            key="confirm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 text-xs font-semibold rounded-full flex items-center justify-center cursor-pointer"
+            style={{
+              background: "rgba(193,127,36,0.22)",
+              color: "#E8B878",
+              border: "1px solid rgba(193,127,36,0.55)",
+              whiteSpace: "nowrap",
+            }}
+            onClick={handleArchiveTap}
+          >
+            {archiving ? "Archiving…" : "Sure?"}
           </motion.span>
         )}
       </AnimatePresence>
@@ -787,7 +880,11 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         </div>
         <div className="shrink-0 flex items-center self-center">
           {showRenewPill ? (
-            <RenewArchivePill momentId={m.id} onArchive={() => setIsArchived(true)} />
+            <RenewArchivePill
+              momentId={m.id}
+              momentName={m.name}
+              onArchive={() => setIsArchived(true)}
+            />
           ) : isLectio ? (
             // Lectio always shows a pill: "Reflect 📜" when there's something
             // to do this stage, "Responses" once the user has submitted.

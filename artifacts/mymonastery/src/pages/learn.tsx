@@ -81,6 +81,31 @@ export default function LearnPage() {
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 
         <div className="space-y-3">
+          {/* Features deck — the full visual tour */}
+          <Link
+            href="/learn/features"
+            className="block w-full text-left rounded-2xl px-5 py-4 transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{
+              background: "rgba(46,107,64,0.15)",
+              border: "1px solid rgba(46,107,64,0.40)",
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <span className="text-2xl leading-none mt-0.5">📜</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  A tour of the three practices
+                </p>
+                <p className="text-sm mt-1 leading-relaxed" style={{ color: "#8FAF96" }}>
+                  Lectio divina, intercession, and prayer requests — held in common. A guided deck with a glimpse inside each one.
+                </p>
+                <p className="text-[11px] mt-2 font-semibold uppercase tracking-widest" style={{ color: "#A8C5A0" }}>
+                  Open the deck →
+                </p>
+              </div>
+            </div>
+          </Link>
+
           {TOPICS.map((topic) => (
             <button
               key={topic.id}

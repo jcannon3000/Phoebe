@@ -259,6 +259,18 @@ const BCP_PRAYERS: BcpPrayer[] = [
 // ─── Templates ───────────────────────────────────────────────────────────────
 const TEMPLATES = [
   {
+    id: "lectio-divina", emoji: "📜", name: "Lectio Divina",
+    desc: "Read this Sunday's gospel together in three unhurried stages — Mon, Wed, Fri. Catch up any day.",
+    prefill: {
+      name: "Lectio Divina",
+      intention: "Read together. Listen together. Pray together.",
+      loggingType: "reflection" as LoggingType,
+      reflectionPrompt: "",
+      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
+      frequency: "weekly" as Frequency,
+    },
+  },
+  {
     id: "intercession", emoji: "🙏🏽", name: "Intercession",
     desc: "Hold someone or something in prayer together",
     prefill: {
@@ -266,18 +278,6 @@ const TEMPLATES = [
       intention: "",
       loggingType: "reflection" as LoggingType,
       reflectionPrompt: "What is on your heart today?",
-      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
-      frequency: "daily" as Frequency,
-    },
-  },
-  {
-    id: "contemplative", emoji: "🕯️", name: "Contemplative Prayer",
-    desc: "Sit in silence together — centering prayer, breath prayer, or stillness",
-    prefill: {
-      name: "Contemplative Prayer 🕯️",
-      intention: "We sit together in the silence. Not alone.",
-      loggingType: "checkin" as LoggingType,
-      reflectionPrompt: "",
       scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
       frequency: "daily" as Frequency,
     },
@@ -292,30 +292,6 @@ const TEMPLATES = [
       reflectionPrompt: "",
       scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
       frequency: "weekly" as Frequency,
-    },
-  },
-  {
-    id: "lectio-divina", emoji: "📜", name: "Lectio Divina",
-    desc: "Read this Sunday's gospel together in three unhurried stages — Mon, Wed, Fri. Catch up any day.",
-    prefill: {
-      name: "Lectio Divina",
-      intention: "Read together. Listen together. Pray together.",
-      loggingType: "reflection" as LoggingType,
-      reflectionPrompt: "",
-      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
-      frequency: "weekly" as Frequency,
-    },
-  },
-  {
-    id: "custom", emoji: "🌱", name: "Something else",
-    desc: "Name your own practice — prayer, study, exercise, anything done together",
-    prefill: {
-      name: "",
-      intention: "",
-      loggingType: "reflection" as LoggingType,
-      reflectionPrompt: "",
-      scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
-      frequency: "daily" as Frequency,
     },
   },
 ];

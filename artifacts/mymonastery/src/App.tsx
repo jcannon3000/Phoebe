@@ -76,6 +76,7 @@ import BcpDailyOfficePage from "./pages/bcp-daily-office";
 import CommunitiesPage from "./pages/communities";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
+import FeaturesDeck from "./pages/features-deck";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -126,6 +127,7 @@ function Router() {
       <Route path="/communities" component={CommunitiesPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/church-deck" component={ChurchDeck} />
+      <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route component={NotFound} />
     </Switch>
