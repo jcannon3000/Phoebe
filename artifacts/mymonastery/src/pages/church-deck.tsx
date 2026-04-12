@@ -44,7 +44,7 @@ const SLIDES: Slide[] = [
   {
     kind: "title",
     headline: "Phoebe",
-    sub: "A place set apart for connection.",
+    sub: "A place set apart for connection. 🕊️",
   },
 
   // 2 — The opening
@@ -78,7 +78,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "Prayer, held in common.",
+    headline: "🙏🏽 Prayer, held in common.",
     body: [
       "People share what they are carrying. Others in the community respond with a word or a prayer, and make people feel heard and cared for.",
     ],
@@ -90,7 +90,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "BCP Integration",
+    headline: "📖 BCP Integration",
     body: [
       "Users can access the full list of intercessions and thanksgivings from the Book of Common Prayer, inviting others in their community to pray them with them.",
     ],
@@ -102,7 +102,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "Lectio Divina",
+    headline: "📖 Lectio Divina",
     body: [
       "The Sunday gospel, read together across the week.",
       "Monday \u2014 a word or phrase that is speaking to you.\nWednesday \u2014 what the passage is stirring in you.\nFriday \u2014 what it is calling you to do or to be.",
@@ -116,7 +116,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "Fasting, kept together.",
+    headline: "🌿 Fasting, kept together.",
     body: [
       "A group picks a fast and a rhythm. Whatever the discipline, Phoebe makes it possible to do it together and create a sense of solidarity.",
       "For groups fasting from meat, Phoebe tracks the water your group conserves together. University of Colorado research shows that one person fasting from meat for one day saves approximately 400 gallons of water. The group sees the running total: this week, this month, all time.",
@@ -128,7 +128,7 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "Connected people show up.",
+    headline: "📅 Connected people show up.",
     body: [
       "As Harvard sociologist Robert Putnam showed, when members feel a sense of belonging, they\u2019re far more likely to come to a gathering.",
       "Phoebe cultivates belonging then gives members opportunities to get more involved by displaying what\u2019s coming up so they can find something to step into.",
@@ -140,7 +140,7 @@ const SLIDES: Slide[] = [
   {
     kind: "closing",
     body: [],
-    featured: ["Help your parish flourish with Phoebe."],
+    featured: ["Help your parish flourish with Phoebe. 🌿"],
   },
 ];
 
@@ -344,70 +344,68 @@ function PrayerRequestsMock() {
   );
 }
 
-/* ── BCP Intercessions — prayer mode slideshow view ── */
+/* ── BCP Intercessions — category list view (matches actual bcp-intercessions page) ── */
 function BCPPrayerModeMock() {
+  const categories = [
+    { emoji: "⛪", name: "For the Church", count: 8, expanded: false },
+    { emoji: "✝️", name: "For the Mission of the Church", count: 5, expanded: true, items: ["For the Spread of the Gospel", "For the Mission of the Church", "For Missionaries", "For our Enemies", "For Those Who Suffer for the Faith"] },
+    { emoji: "🏛️", name: "For the Nation", count: 7, expanded: false },
+    { emoji: "🌍", name: "For the World", count: 4, expanded: false },
+    { emoji: "🌿", name: "For the Natural Order", count: 3, expanded: false },
+    { emoji: "🤲", name: "For the Poor and Neglected", count: 4, expanded: false },
+    { emoji: "❤️‍🩹", name: "For the Sick", count: 0, expanded: false },
+  ];
   return (
     <MockPhone>
-      <div className="flex flex-col items-center text-center gap-4">
-        <p
-          className="text-[9px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.45)" }}
-        >
-          Group Intercession
-        </p>
-        <p
-          className="text-[16px] leading-[1.5] font-medium italic"
-          style={{
-            color: "#E8E4D8",
-            fontFamily: "'Playfair Display', Georgia, serif",
-          }}
-        >
-          For Margaret&apos;s mother, as she begins treatment this week.
-        </p>
-        <p className="text-[12px]" style={{ color: C.sage }}>
-          with David, Anna, James
-        </p>
-        <p
-          className="text-[11px] italic"
-          style={{ color: "rgba(143,175,150,0.55)" }}
-        >
-          Your community is holding this. 🙏🏽
-        </p>
-        <div
-          className="w-full rounded-xl px-4 py-4 text-left"
-          style={{
-            background: "rgba(46,107,64,0.12)",
-            border: "1px solid rgba(46,107,64,0.15)",
-          }}
-        >
-          <p
-            className="text-[12px] italic leading-[1.75]"
-            style={{ color: "#C8D4C0", fontFamily: "Georgia, serif" }}
-          >
-            O Father of mercies and God of all comfort, our only help in time of
-            need: Look down from heaven, we humbly beseech thee, behold, visit
-            and relieve thy sick servant, for whom our prayers are desired...
-          </p>
-          <p
-            className="text-[9px] uppercase tracking-widest mt-3"
-            style={{ color: "rgba(143,175,150,0.35)" }}
-          >
-            For the Sick &middot; BCP p. 458
-          </p>
-        </div>
-        <div
-          className="px-6 py-2.5 rounded-full text-[13px] font-medium"
-          style={{
-            background: "rgba(46,107,64,0.28)",
-            border: "1px solid rgba(46,107,64,0.5)",
-            color: "#C8D4C0",
-          }}
-        >
-          Amen &rarr;
-        </div>
-        <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.32)" }}>
-          1 of 4
-        </p>
+      <p className="text-[10px] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
+        ← Book of Common Prayer
+      </p>
+      <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>
+        Intercessions 🙏🏽
+      </h2>
+      <p className="text-[9px] mb-2.5" style={{ color: C.sage }}>
+        Prayers from the Book of Common Prayer
+      </p>
+      {/* Search */}
+      <div
+        className="rounded-lg px-2.5 py-1.5 mb-2.5 text-[10px]"
+        style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.15)", color: "rgba(143,175,150,0.4)" }}
+      >
+        Search prayers...
+      </div>
+      <div className="space-y-1">
+        {categories.map((cat, i) => (
+          <div key={i}>
+            <div
+              className="flex items-center gap-2 rounded-lg px-2.5 py-2"
+              style={{
+                background: cat.expanded ? "rgba(46,107,64,0.2)" : "rgba(46,107,64,0.06)",
+                border: `1px solid ${cat.expanded ? "rgba(46,107,64,0.4)" : "rgba(46,107,64,0.12)"}`,
+              }}
+            >
+              <span className="text-[12px]">{cat.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold truncate" style={{ color: C.text, fontFamily: C.font }}>{cat.name}</p>
+                {cat.count > 0 && <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.45)" }}>{cat.count} prayers</p>}
+              </div>
+              <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>{cat.expanded ? "⌄" : "›"}</span>
+            </div>
+            {cat.expanded && cat.items && (
+              <div className="ml-6 space-y-0">
+                {cat.items.map((item, j) => (
+                  <div
+                    key={j}
+                    className="flex items-center justify-between px-2 py-1.5"
+                    style={{ borderBottom: j < cat.items!.length - 1 ? "1px solid rgba(200,212,192,0.08)" : "none" }}
+                  >
+                    <p className="text-[9px]" style={{ color: C.sage }}>{item}</p>
+                    <span className="text-[8px]" style={{ color: "rgba(143,175,150,0.3)" }}>›</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </MockPhone>
   );
@@ -901,7 +899,7 @@ function FeatureComboSlide({
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.12, duration: 0.45 }}
-        className={`${slide.mock === "prayer-requests" ? "w-full md:w-auto flex" : "hidden md:flex w-auto"} justify-center shrink-0`}
+        className={`${slide.mock === "prayer-requests" || slide.mock === "bcp" ? "w-full md:w-auto flex" : "hidden md:flex w-auto"} justify-center shrink-0`}
       >
         {Mock ? <Mock /> : null}
       </motion.div>
@@ -996,7 +994,7 @@ export default function ChurchDeck() {
   // On mobile, split feature-combo slides into text + mock — except prayer-requests (stays combined)
   const slides: Slide[] = isMobile
     ? SLIDES.flatMap((s) =>
-        s.kind === "feature-combo" && s.mock !== "prayer-requests"
+        s.kind === "feature-combo" && s.mock !== "prayer-requests" && s.mock !== "bcp"
           ? [s, { kind: "combo-mock" as const, mock: s.mock }]
           : [s],
       )
