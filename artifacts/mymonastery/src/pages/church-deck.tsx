@@ -16,18 +16,15 @@ const C = {
 type Slide =
   | { kind: "title"; headline: string; sub?: string; muted?: boolean }
   | { kind: "statement"; headline: string; body: string[] }
+  | { kind: "feature-text"; label: string; headline: string; body: string[] }
   | {
-      kind: "preview";
-      label: string;
-      headline: string;
-      body: string[];
+      kind: "feature-demo";
       variant:
-        | "prayer"
-        | "bcp"
-        | "fasting"
-        | "meat-fast"
         | "prayer-requests"
+        | "bcp"
         | "prayer-list"
+        | "lectio"
+        | "meat-fast"
         | "calendar"
         | "involvement";
     }
@@ -69,21 +66,24 @@ const SLIDES: Slide[] = [
     muted: true,
   },
 
-  // 5 — Group Intercession (screenshot)
+  // ── Feature 1: Prayer Requests ──
+  // 5 — text
   {
-    kind: "preview",
+    kind: "feature-text",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "Bearing each other\u2019s burdens in prayer.",
+    headline: "Prayer, held in common.",
     body: [
-      "A group chooses people and intentions to pray for together. Each person prays at their own time, on their own schedule. They see who has prayed and who is holding the same things.",
-      "Knowing someone is praying for you by name changes how you show up on Sunday.",
+      "People share what they are carrying. Others in the community respond with a word or a prayer. Anonymous if needed. Low vulnerability. Low friction.",
+      "The doorway into the life of the community. When someone submits a request during the week, they arrive on Sunday already known.",
     ],
-    variant: "prayer",
   },
+  // 6 — demo
+  { kind: "feature-demo", variant: "prayer-requests" },
 
-  // 6 — Group Intercessions from the BCP (screenshot)
+  // ── Feature 2: BCP Intercessions ──
+  // 7 — text
   {
-    kind: "preview",
+    kind: "feature-text",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Group Intercessions from the BCP",
     body: [
@@ -91,59 +91,55 @@ const SLIDES: Slide[] = [
       "A group selects prayers to hold together \u2014 for the sick, for those in trouble, for the departed. Each person carries the same words through the week.",
       "Ancient prayers, held in common. The tradition made daily.",
     ],
-    variant: "bcp",
   },
+  // 8 — demo
+  { kind: "feature-demo", variant: "bcp" },
 
-  // 7 — Group Fast (screenshot)
+  // ── Feature 3: Prayer List ──
+  // 9 — text
   {
-    kind: "preview",
-    label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "A rhythm of restraint, held together.",
-    body: [
-      "A group commits to a fast on a chosen day. A calendar invite goes out the night before. On the day, each person sees who is fasting alongside them. At the close, they share what nourished them instead.",
-      "Fasting was never meant to be done alone. Phoebe makes it communal again.",
-    ],
-    variant: "fasting",
-  },
-
-  // 8 — Fast from meat (screenshot)
-  {
-    kind: "preview",
-    label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "One fast with a visible impact.",
-    body: [
-      "For groups fasting from meat, University of Colorado research shows that one person fasting for one day saves an estimated 400 gallons of water. Phoebe tracks what the group saves together.",
-      "This week. This month. All time.",
-      "A small act of shared faithfulness. A visible record of what the community has done together.",
-    ],
-    variant: "meat-fast",
-  },
-
-  // 9 — Prayer Requests (screenshot)
-  {
-    kind: "preview",
-    label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "Prayer, held in common.",
-    body: [
-      "People share what they are carrying. Others in the community respond with a word or a prayer. Anonymous if needed. Low vulnerability. Low friction.",
-      "The doorway into the life of the community. When someone submits a request during the week, they arrive on Sunday already known.",
-    ],
-    variant: "prayer-requests",
-  },
-
-  // 10 — The Prayer List (screenshot)
-  {
-    kind: "preview",
+    kind: "feature-text",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "A shared record of what the community is holding.",
     body: [
       "Every request, every intention, every name being carried in prayer \u2014 gathered in one place. The community can see what is being held together. They can add their prayer to what is already there.",
       "Intercession made visible. The invisible work of the community, given a surface.",
     ],
-    variant: "prayer-list",
   },
+  // 10 — demo
+  { kind: "feature-demo", variant: "prayer-list" },
 
-  // 11 — What this builds
+  // ── Feature 4: Lectio Divina ──
+  // 11 — text
+  {
+    kind: "feature-text",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "Lectio Divina",
+    body: [
+      "The Sunday gospel, read together across the week.",
+      "Monday \u2014 a word or phrase that is speaking to you.\nWednesday \u2014 what the passage is stirring in you.\nFriday \u2014 what it is calling you to do or to be.",
+      "Each person reflects on their own. Then they see what everyone else heard in the same passage. They arrive on Sunday having already sat with the text together. The sermon lands differently.",
+    ],
+  },
+  // 12 — demo
+  { kind: "feature-demo", variant: "lectio" },
+
+  // ── Feature 5: Water Fast ──
+  // 13 — text
+  {
+    kind: "feature-text",
+    label: "A GLIMPSE INSIDE PHOEBE",
+    headline: "One fast with a visible impact.",
+    body: [
+      "For groups fasting from meat, University of Colorado research shows that one person fasting for one day saves an estimated 400 gallons of water. Phoebe tracks what the group saves together.",
+      "This week. This month. All time.",
+      "A small act of shared faithfulness. A visible record of what the community has done together. A new way to engage the parish in creation care, together.",
+    ],
+  },
+  // 14 — demo
+  { kind: "feature-demo", variant: "meat-fast" },
+
+  // 15 — What this builds
   {
     kind: "statement",
     headline: "Each practice feeds the next.",
@@ -153,9 +149,10 @@ const SLIDES: Slide[] = [
     ],
   },
 
-  // 12 — The parish calendar (screenshot)
+  // ── Feature 6: Parish Calendar ──
+  // 16 — text
   {
-    kind: "preview",
+    kind: "feature-text",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline:
       "Everything already happening, in front of the people most likely to come.",
@@ -163,12 +160,14 @@ const SLIDES: Slide[] = [
       "The parish is already running events. The problem is not a lack of things to do \u2014 it is that people do not hear about them, or forget, or never felt connected enough to show up.",
       "Phoebe puts the parish calendar in front of people who are already engaged during the week. The person who prayed on Wednesday and fasted on Friday is the most likely person to come to Thursday evening\u2019s talk. They just need to see it.",
     ],
-    variant: "calendar",
   },
+  // 17 — demo
+  { kind: "feature-demo", variant: "calendar" },
 
-  // 13 — Getting more involved (screenshot)
+  // ── Feature 7: Getting Involved ──
+  // 18 — text
   {
-    kind: "preview",
+    kind: "feature-text",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "A natural next step for people who are already connected.",
     body: [
@@ -176,10 +175,11 @@ const SLIDES: Slide[] = [
       "The parish calendar surfaces ways to do that. A volunteer opportunity. A study group. A service project. A gathering that is just beginning.",
       "Phoebe does not recruit people into parish life. It cultivates the ground so that when the invitation comes, people are ready to say yes.",
     ],
-    variant: "involvement",
   },
+  // 19 — demo
+  { kind: "feature-demo", variant: "involvement" },
 
-  // 14 — Closing
+  // 20 — Closing
   {
     kind: "closing",
     body: [
@@ -246,12 +246,50 @@ function StatementSlide({
   );
 }
 
-// ─── Mock UI components for preview slides ──────────────────────────────────
+function FeatureTextSlide({
+  slide,
+}: {
+  slide: Extract<Slide, { kind: "feature-text" }>;
+}) {
+  return (
+    <div className="max-w-3xl mx-auto w-full">
+      <p
+        className="text-[10px] font-bold uppercase tracking-[0.18em] mb-4"
+        style={{ color: "rgba(143,175,150,0.45)" }}
+      >
+        {slide.label}
+      </p>
+      <h2
+        className="text-2xl md:text-4xl font-semibold mb-6 md:mb-10 leading-tight"
+        style={{ color: C.text, fontFamily: C.font }}
+      >
+        {slide.headline}
+      </h2>
+      <div className="space-y-4 md:space-y-6">
+        {slide.body.map((p, i) => (
+          <p
+            key={i}
+            className="text-base md:text-xl leading-relaxed font-light"
+            style={{
+              color: C.sage,
+              fontFamily: C.font,
+              whiteSpace: "pre-line",
+            }}
+          >
+            {p}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Mock UI components ─────────────────────────────────────────────────────
 
 function MockPhone({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[290px] md:max-w-[320px]"
+      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[320px] md:max-w-[380px]"
       style={{
         background: "#091A10",
         border: "1px solid rgba(200,212,192,0.15)",
@@ -264,8 +302,97 @@ function MockPhone({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── Slide 5: Group Intercession prayer mode ── */
-function PrayerPracticeMock() {
+/* ── Prayer Requests (the input + list view) ── */
+function PrayerRequestsMock() {
+  const requests = [
+    {
+      from: "Margaret W.",
+      body: "For my mother, who begins treatment this week.",
+      words: 4,
+    },
+    { from: "David R.", body: "Discernment about the new role.", words: 6 },
+    {
+      from: "Anonymous",
+      body: "For peace in a difficult season.",
+      words: 2,
+    },
+  ];
+  return (
+    <MockPhone>
+      <div className="flex items-center gap-2 mb-3">
+        <h2
+          className="text-[14px] font-semibold"
+          style={{ color: C.text, fontFamily: C.font }}
+        >
+          Prayer Requests 🙏🏽
+        </h2>
+        <div
+          className="flex-1 h-px"
+          style={{ background: "rgba(200,212,192,0.15)" }}
+        />
+      </div>
+      <div className="flex gap-2 mb-3">
+        <div
+          className="flex-1 text-[12px] px-3 py-2.5 rounded-xl"
+          style={{
+            background: "#091A10",
+            border: "1px solid rgba(46,107,64,0.3)",
+            color: "rgba(143,175,150,0.5)",
+            fontFamily: C.font,
+          }}
+        >
+          Share a prayer request... 🌿
+        </div>
+        <div
+          className="px-3 py-2.5 rounded-xl text-[12px]"
+          style={{ background: "#2D5E3F", color: C.text }}
+        >
+          🙏🏽
+        </div>
+      </div>
+      <div>
+        {requests.map((r, i) => (
+          <div
+            key={i}
+            className="flex gap-0"
+            style={{
+              borderBottom:
+                i < 2 ? "1px solid rgba(200,212,192,0.12)" : "none",
+            }}
+          >
+            <div
+              className="w-0.5 self-stretch shrink-0"
+              style={{ background: "#8FAF96" }}
+            />
+            <div className="flex-1 p-3 pl-2.5">
+              <p
+                className="text-[9px] font-medium uppercase tracking-widest mb-0.5"
+                style={{ color: "rgba(200,212,192,0.45)" }}
+              >
+                From {r.from}
+              </p>
+              <p
+                className="text-[12px] leading-relaxed mb-1"
+                style={{ color: C.text, fontFamily: C.font }}
+              >
+                {r.body}
+              </p>
+              <p
+                className="text-[10px]"
+                style={{ color: "rgba(143,175,150,0.7)" }}
+              >
+                🌿 {r.words} words of prayer
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </MockPhone>
+  );
+}
+
+/* ── BCP Intercessions — prayer mode slideshow view ── */
+function BCPPrayerModeMock() {
   return (
     <MockPhone>
       <div className="flex flex-col items-center text-center gap-4">
@@ -273,16 +400,16 @@ function PrayerPracticeMock() {
           className="text-[9px] uppercase tracking-[0.18em] font-semibold"
           style={{ color: "rgba(143,175,150,0.45)" }}
         >
-          Your Intercession
+          Group Intercession
         </p>
         <p
-          className="text-[15px] leading-[1.5] font-medium italic"
+          className="text-[16px] leading-[1.5] font-medium italic"
           style={{
             color: "#E8E4D8",
             fontFamily: "'Playfair Display', Georgia, serif",
           }}
         >
-          Margaret&apos;s mother, as she begins treatment this week.
+          For Margaret&apos;s mother, as she begins treatment this week.
         </p>
         <p className="text-[12px]" style={{ color: C.sage }}>
           with David, Anna, James
@@ -291,31 +418,32 @@ function PrayerPracticeMock() {
           className="text-[11px] italic"
           style={{ color: "rgba(143,175,150,0.55)" }}
         >
-          Your community is holding this.
+          Your community is holding this. 🙏🏽
         </p>
         <div
-          className="w-full rounded-xl px-4 py-3 text-left"
+          className="w-full rounded-xl px-4 py-4 text-left"
           style={{
             background: "rgba(46,107,64,0.12)",
             border: "1px solid rgba(46,107,64,0.15)",
           }}
         >
           <p
-            className="text-[11px] italic leading-[1.7]"
+            className="text-[12px] italic leading-[1.75]"
             style={{ color: "#C8D4C0", fontFamily: "Georgia, serif" }}
           >
             O Father of mercies and God of all comfort, our only help in time of
-            need...
+            need: Look down from heaven, we humbly beseech thee, behold, visit
+            and relieve thy sick servant, for whom our prayers are desired...
           </p>
           <p
-            className="text-[8px] uppercase tracking-widest mt-2"
-            style={{ color: "rgba(143,175,150,0.3)" }}
+            className="text-[9px] uppercase tracking-widest mt-3"
+            style={{ color: "rgba(143,175,150,0.35)" }}
           >
-            From the Book of Common Prayer
+            For the Sick &middot; BCP p. 458
           </p>
         </div>
         <div
-          className="px-6 py-2 rounded-full text-[12px] font-medium"
+          className="px-6 py-2.5 rounded-full text-[13px] font-medium"
           style={{
             background: "rgba(46,107,64,0.28)",
             border: "1px solid rgba(46,107,64,0.5)",
@@ -332,31 +460,32 @@ function PrayerPracticeMock() {
   );
 }
 
-/* ── Slide 6: BCP Prayer List ── */
-function BCPPrayersMock() {
-  const prayers = [
+/* ── Prayer List — the prayer list page view ── */
+function PrayerListMock() {
+  const items = [
     {
-      title: "For the Sick",
-      source: "BCP p. 458",
-      snippet:
-        "O Father of mercies and God of all comfort, our only help in time of need...",
+      name: "Margaret\u2019s mother",
+      body: "Beginning treatment this week",
+      held: "4 people praying",
+      days: "5d left",
     },
     {
-      title: "For a Person in Trouble",
-      source: "BCP p. 460",
-      snippet:
-        "O merciful God, who hast made all men and hatest nothing that thou hast made...",
+      name: "David\u2019s discernment",
+      body: "About the new role",
+      held: "6 people praying",
+      days: "2d left",
     },
     {
-      title: "For the Departed",
-      source: "BCP p. 487",
-      snippet: "Into thy hands, O merciful Savior, we commend thy servant...",
+      name: "Peace in a difficult season",
+      body: "Anonymous request",
+      held: "3 people praying",
+      days: "4d left",
     },
     {
-      title: "For Those Who Mourn",
-      source: "BCP p. 489",
-      snippet:
-        "Almighty God, Father of mercies and giver of comfort...",
+      name: "Sarah\u2019s recovery",
+      body: "After surgery last week",
+      held: "5 people praying",
+      days: "1d left",
     },
   ];
   return (
@@ -365,43 +494,59 @@ function BCPPrayersMock() {
         className="text-base font-bold mb-0.5"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        BCP Intercessions 🙏🏽
+        🕯️ Prayer List
       </h2>
       <p className="text-[10px] mb-3" style={{ color: C.sage }}>
-        Prayers from the Book of Common Prayer
+        What the community is holding together
       </p>
       <div
         className="h-px mb-3"
         style={{ background: "rgba(46,107,64,0.25)" }}
       />
-      <div className="space-y-2">
-        {prayers.map((p, i) => (
+      <div className="space-y-0">
+        {items.map((item, i) => (
           <div
             key={i}
-            className="rounded-xl px-3 py-2.5"
+            className="flex gap-0"
             style={{
-              background: "rgba(46,107,64,0.1)",
-              border: "1px solid rgba(46,107,64,0.2)",
+              borderBottom:
+                i < items.length - 1
+                  ? "1px solid rgba(200,212,192,0.1)"
+                  : "none",
             }}
           >
-            <p
-              className="text-[12px] font-semibold"
-              style={{ color: C.text, fontFamily: C.font }}
-            >
-              {p.title}
-            </p>
-            <p
-              className="text-[9px] mt-0.5 mb-1"
-              style={{ color: "rgba(143,175,150,0.5)" }}
-            >
-              {p.source}
-            </p>
-            <p
-              className="text-[10px] italic leading-[1.5]"
-              style={{ color: C.sage, fontFamily: "Georgia, serif" }}
-            >
-              {p.snippet}
-            </p>
+            <div
+              className="w-0.5 self-stretch shrink-0"
+              style={{ background: "#8FAF96" }}
+            />
+            <div className="flex-1 p-2.5 pl-2.5">
+              <div className="flex justify-between items-baseline">
+                <p
+                  className="text-[12px] font-medium"
+                  style={{ color: C.text, fontFamily: C.font }}
+                >
+                  {item.name}
+                </p>
+                <p
+                  className="text-[9px]"
+                  style={{ color: "rgba(143,175,150,0.4)" }}
+                >
+                  {item.days}
+                </p>
+              </div>
+              <p
+                className="text-[10px] mt-0.5"
+                style={{ color: "rgba(143,175,150,0.6)" }}
+              >
+                {item.body}
+              </p>
+              <p
+                className="text-[9px] mt-0.5"
+                style={{ color: "rgba(143,175,150,0.7)" }}
+              >
+                🌿 {item.held}
+              </p>
+            </div>
           </div>
         ))}
       </div>
@@ -409,86 +554,98 @@ function BCPPrayersMock() {
   );
 }
 
-/* ── Slide 7: Group Fast ── */
-function FastingMock() {
+/* ── Lectio Divina — three-stage view with scripture ── */
+function LectioMock() {
+  const stages = [
+    { day: "Mon", label: "A word or phrase", done: true },
+    { day: "Wed", label: "What it stirs in you", done: true },
+    { day: "Fri", label: "What it calls you to", done: false },
+  ];
   return (
     <MockPhone>
       <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+        className="text-[10px] font-semibold uppercase tracking-widest mb-1"
         style={{ color: "rgba(200,212,192,0.5)" }}
       >
-        Today&apos;s fast
+        Lectio Divina
       </p>
       <h2
         className="text-base font-semibold mb-1"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        🌿 Lenten Fast
+        📜 John 20:19-31
       </h2>
       <p className="text-[11px] mb-4" style={{ color: C.sage }}>
-        Friday &middot; with Anna, David, Margaret
+        Third Sunday of Easter
       </p>
       <div className="space-y-2 mb-4">
-        {[
-          "Anna \u2014 fasting",
-          "David \u2014 fasting",
-          "Margaret \u2014 not yet",
-        ].map((line, i) => (
+        {stages.map((s, i) => (
           <div
             key={i}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg"
             style={{
-              background: "rgba(46,107,64,0.12)",
-              border: "1px solid rgba(46,107,64,0.15)",
+              background: s.done
+                ? "rgba(46,107,64,0.18)"
+                : "rgba(46,107,64,0.06)",
+              border: `1px solid ${s.done ? "rgba(46,107,64,0.3)" : "rgba(46,107,64,0.12)"}`,
             }}
           >
             <div
-              className="w-2 h-2 rounded-full"
+              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
               style={{
-                background:
-                  i < 2 ? "#2E6B40" : "rgba(143,175,150,0.25)",
-              }}
-            />
-            <p
-              className="text-[11px]"
-              style={{
-                color: i < 2 ? C.text : "rgba(143,175,150,0.5)",
-                fontFamily: C.font,
+                background: s.done ? "#2E6B40" : "transparent",
+                border: s.done ? "none" : "1px solid rgba(143,175,150,0.3)",
+                color: s.done ? C.text : C.sage,
               }}
             >
-              {line}
-            </p>
+              {s.done ? "\u2713" : ""}
+            </div>
+            <div>
+              <p
+                className="text-[11px] font-semibold"
+                style={{
+                  color: s.done ? C.text : C.sage,
+                  fontFamily: C.font,
+                }}
+              >
+                {s.day}
+              </p>
+              <p
+                className="text-[10px]"
+                style={{ color: "rgba(143,175,150,0.6)" }}
+              >
+                {s.label}
+              </p>
+            </div>
           </div>
         ))}
       </div>
       <div
-        className="rounded-xl px-4 py-3 text-center"
+        className="rounded-xl px-4 py-3"
         style={{
-          background: "rgba(46,107,64,0.18)",
-          border: "1px solid rgba(46,107,64,0.25)",
+          background: "rgba(46,107,64,0.12)",
+          border: "1px solid rgba(46,107,64,0.15)",
         }}
       >
         <p
-          className="text-[10px] uppercase tracking-widest mb-1"
-          style={{ color: "rgba(143,175,150,0.5)" }}
+          className="text-[11px] italic leading-[1.6]"
+          style={{ color: "#C8D4C0", fontFamily: "Georgia, serif" }}
         >
-          Fasting together
+          &ldquo;Peace be with you. As the Father has sent me, even so I am
+          sending you.&rdquo;
         </p>
         <p
-          className="text-xl font-bold"
-          style={{ color: C.text, fontFamily: C.font }}
+          className="text-[9px] mt-1.5"
+          style={{ color: "rgba(143,175,150,0.4)" }}
         >
-          2 of 3
-        </p>
-        <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>
-          holding the rhythm today
+          John 20:21 &middot; RSV
         </p>
       </div>
     </MockPhone>
   );
 }
 
-/* ── Slide 8: Meat Fast / Water Savings ── */
+/* ── Water Fast / Meat Fast ── */
 function MeatFastMock() {
   return (
     <MockPhone>
@@ -553,7 +710,7 @@ function MeatFastMock() {
         ))}
       </div>
       <p
-        className="text-[8px] text-center italic"
+        className="text-[9px] text-center italic"
         style={{ color: "rgba(143,175,150,0.35)" }}
       >
         University of Colorado research
@@ -562,180 +719,7 @@ function MeatFastMock() {
   );
 }
 
-/* ── Slide 9: Prayer Requests ── */
-function PrayerRequestsMock() {
-  const requests = [
-    {
-      from: "Margaret W.",
-      body: "For my mother, who begins treatment this week.",
-      words: 4,
-    },
-    { from: "David R.", body: "Discernment about the new role.", words: 6 },
-    {
-      from: "Anonymous",
-      body: "For peace in a difficult season.",
-      words: 2,
-    },
-  ];
-  return (
-    <MockPhone>
-      <div className="flex items-center gap-2 mb-3">
-        <h2
-          className="text-[13px] font-semibold"
-          style={{ color: C.text, fontFamily: C.font }}
-        >
-          Prayer Requests 🙏🏽
-        </h2>
-        <div
-          className="flex-1 h-px"
-          style={{ background: "rgba(200,212,192,0.15)" }}
-        />
-      </div>
-      <div className="flex gap-2 mb-3">
-        <div
-          className="flex-1 text-[11px] px-3 py-2 rounded-xl"
-          style={{
-            background: "#091A10",
-            border: "1px solid rgba(46,107,64,0.3)",
-            color: "rgba(143,175,150,0.5)",
-            fontFamily: C.font,
-          }}
-        >
-          Share a prayer request... 🌿
-        </div>
-        <div
-          className="px-2.5 py-2 rounded-xl text-[11px]"
-          style={{ background: "#2D5E3F", color: C.text }}
-        >
-          🙏🏽
-        </div>
-      </div>
-      <div>
-        {requests.map((r, i) => (
-          <div
-            key={i}
-            className="flex gap-0"
-            style={{
-              borderBottom:
-                i < 2 ? "1px solid rgba(200,212,192,0.12)" : "none",
-            }}
-          >
-            <div
-              className="w-0.5 self-stretch shrink-0"
-              style={{ background: "#8FAF96" }}
-            />
-            <div className="flex-1 p-2.5 pl-2">
-              <p
-                className="text-[8px] font-medium uppercase tracking-widest mb-0.5"
-                style={{ color: "rgba(200,212,192,0.45)" }}
-              >
-                From {r.from}
-              </p>
-              <p
-                className="text-[11px] leading-relaxed mb-1"
-                style={{ color: C.text, fontFamily: C.font }}
-              >
-                {r.body}
-              </p>
-              <p
-                className="text-[9px]"
-                style={{ color: "rgba(143,175,150,0.7)" }}
-              >
-                🌿 {r.words} words of prayer
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </MockPhone>
-  );
-}
-
-/* ── Slide 10: Prayer List ── */
-function PrayerListMock() {
-  const items = [
-    {
-      name: "Margaret\u2019s mother",
-      held: "4 people praying",
-      days: "5 days",
-    },
-    {
-      name: "David\u2019s discernment",
-      held: "6 people praying",
-      days: "2 days",
-    },
-    {
-      name: "Peace for a difficult season",
-      held: "3 people praying",
-      days: "4 days",
-    },
-    {
-      name: "Sarah\u2019s recovery",
-      held: "5 people praying",
-      days: "1 day",
-    },
-  ];
-  return (
-    <MockPhone>
-      <h2
-        className="text-base font-bold mb-0.5"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        Prayer List 🕯️
-      </h2>
-      <p className="text-[10px] mb-3" style={{ color: C.sage }}>
-        What the community is holding together
-      </p>
-      <div
-        className="h-px mb-3"
-        style={{ background: "rgba(46,107,64,0.25)" }}
-      />
-      <div className="space-y-0">
-        {items.map((item, i) => (
-          <div
-            key={i}
-            className="flex gap-0"
-            style={{
-              borderBottom:
-                i < items.length - 1
-                  ? "1px solid rgba(200,212,192,0.1)"
-                  : "none",
-            }}
-          >
-            <div
-              className="w-0.5 self-stretch shrink-0"
-              style={{ background: "#8FAF96" }}
-            />
-            <div className="flex-1 p-2.5 pl-2">
-              <p
-                className="text-[11px] font-medium"
-                style={{ color: C.text, fontFamily: C.font }}
-              >
-                {item.name}
-              </p>
-              <div className="flex gap-2 mt-0.5">
-                <p
-                  className="text-[9px]"
-                  style={{ color: "rgba(143,175,150,0.7)" }}
-                >
-                  🌿 {item.held}
-                </p>
-                <p
-                  className="text-[9px]"
-                  style={{ color: "rgba(143,175,150,0.4)" }}
-                >
-                  {item.days}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </MockPhone>
-  );
-}
-
-/* ── Slide 12: Parish Calendar ── */
+/* ── Parish Calendar ── */
 function CalendarMock() {
   return (
     <MockPhone>
@@ -815,7 +799,7 @@ function CalendarMock() {
   );
 }
 
-/* ── Slide 13: Getting More Involved ── */
+/* ── Getting More Involved ── */
 function InvolvementMock() {
   return (
     <MockPhone>
@@ -893,61 +877,27 @@ function InvolvementMock() {
 }
 
 const MOCK_MAP: Record<string, () => JSX.Element> = {
-  prayer: PrayerPracticeMock,
-  bcp: BCPPrayersMock,
-  fasting: FastingMock,
-  "meat-fast": MeatFastMock,
   "prayer-requests": PrayerRequestsMock,
+  bcp: BCPPrayerModeMock,
   "prayer-list": PrayerListMock,
+  lectio: LectioMock,
+  "meat-fast": MeatFastMock,
   calendar: CalendarMock,
   involvement: InvolvementMock,
 };
 
-function PreviewSlide({
+function FeatureDemoSlide({
   slide,
 }: {
-  slide: Extract<Slide, { kind: "preview" }>;
+  slide: Extract<Slide, { kind: "feature-demo" }>;
 }) {
   const Mock = MOCK_MAP[slide.variant];
   return (
-    <div className="max-w-5xl mx-auto w-full flex flex-col md:flex-row items-center gap-6 md:gap-16">
-      {/* Left: text content */}
-      <div className="flex-1 min-w-0 md:max-w-[55%]">
-        <p
-          className="text-[10px] font-bold uppercase tracking-[0.18em] mb-4"
-          style={{ color: "rgba(143,175,150,0.45)" }}
-        >
-          {slide.label}
-        </p>
-        <h2
-          className="text-2xl md:text-4xl font-semibold mb-6 md:mb-10 leading-tight"
-          style={{ color: C.text, fontFamily: C.font }}
-        >
-          {slide.headline}
-        </h2>
-        <div className="space-y-4 md:space-y-6">
-          {slide.body.map((p, i) => (
-            <p
-              key={i}
-              className="text-base md:text-xl leading-relaxed font-light"
-              style={{
-                color: C.sage,
-                fontFamily: C.font,
-                whiteSpace: "pre-line",
-              }}
-            >
-              {p}
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {/* Right: live mock UI */}
+    <div className="flex items-center justify-center w-full">
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1, duration: 0.5 }}
-        className="shrink-0 w-full md:w-[40%] flex justify-center"
+        transition={{ delay: 0.05, duration: 0.4 }}
       >
         {Mock ? <Mock /> : null}
       </motion.div>
@@ -999,8 +949,10 @@ function renderSlide(slide: Slide) {
       return <TitleSlide slide={slide} />;
     case "statement":
       return <StatementSlide slide={slide} />;
-    case "preview":
-      return <PreviewSlide slide={slide} />;
+    case "feature-text":
+      return <FeatureTextSlide slide={slide} />;
+    case "feature-demo":
+      return <FeatureDemoSlide slide={slide} />;
     case "closing":
       return <ClosingSlide slide={slide} />;
   }
