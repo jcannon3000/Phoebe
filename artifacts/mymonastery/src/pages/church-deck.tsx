@@ -45,16 +45,14 @@ const SLIDES: Slide[] = [
   {
     kind: "title",
     headline: "Phoebe",
-    sub: "A place set apart for connection.",
+    sub: "A relational app that cultivates connections between Sundays \u2014 through shared prayer, shared practice, and shared life.",
   },
 
   // 2 — The opening
   {
     kind: "statement",
     headline: "Harvard sociologist Robert Putnam\u2019s research found that the strongest predictor of religious engagement is the strength of relationships within a community.",
-    body: [
-      "Phoebe is built around that insight. A relational app that strengthens the bonds within your parish between Sundays \u2014 through shared prayer, shared practice, and shared life.",
-    ],
+    body: [],
   },
 
   // 4 — The week (centered, auto-advances after 2s)
