@@ -1111,7 +1111,7 @@ export default function ChurchDeck() {
         e.preventDefault();
         prev();
       } else if (e.key === "Escape") {
-        setLocation("/dashboard");
+        setLocation("/");
       }
     }
     window.addEventListener("keydown", onKey);

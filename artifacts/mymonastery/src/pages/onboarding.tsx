@@ -110,8 +110,7 @@ export default function Onboarding() {
               Be together with Phoebe.
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
-              A relational app that cultivates connections between Sundays<br />
-              — through shared prayer, shared practice, and shared life.
+              A relational app that cultivates connections between Sundays through shared prayer, shared practice, and shared life.
             </p>
           </motion.div>
 
