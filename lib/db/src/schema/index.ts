@@ -15,3 +15,4 @@ export * from "./user_connections_cache";
 export * from "./morningPrayer";
 export * from "./letters";
 export * from "./lectio";
+export * from "./calendar_subscriptions";

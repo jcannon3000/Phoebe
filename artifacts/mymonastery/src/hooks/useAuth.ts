@@ -9,7 +9,6 @@ export interface AuthUser {
   showPresence: boolean;
   correspondenceImprintCompleted: boolean;
   gatheringImprintCompleted: boolean;
-  calendarConnected: boolean;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {
