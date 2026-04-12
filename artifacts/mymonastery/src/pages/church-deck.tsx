@@ -68,7 +68,7 @@ const SLIDES: Slide[] = [
   // 5
   {
     kind: "feature-combo",
-    label: "A GLIMPSE INSIDE PHOEBE",
+    label: "",
     headline: "🙏🏽 Prayer, held in common.",
     body: [
       "People share what they are carrying. Others in the community respond with a word or a prayer, and make people feel heard and cared for.",
@@ -80,7 +80,7 @@ const SLIDES: Slide[] = [
   // 6
   {
     kind: "feature-combo",
-    label: "A GLIMPSE INSIDE PHOEBE",
+    label: "",
     headline: "📖 BCP Integration",
     body: [
       "Users can access the full list of intercessions and thanksgivings from the Book of Common Prayer, inviting others in their community to pray them with them.",
@@ -92,7 +92,7 @@ const SLIDES: Slide[] = [
   // 8
   {
     kind: "feature-combo",
-    label: "A GLIMPSE INSIDE PHOEBE",
+    label: "",
     headline: "📖 Group Lectio Divina",
     body: [
       "The Sunday gospel, read together across the week, moving through each stage together on Mondays, Wednesdays, and Fridays.",
@@ -103,7 +103,7 @@ const SLIDES: Slide[] = [
   // 17 — Gatherings (text + mock on one slide)
   {
     kind: "feature-combo",
-    label: "A GLIMPSE INSIDE PHOEBE",
+    label: "",
     headline: "📅 Connected people show up.",
     body: [
       "As Harvard sociologist Robert Putnam showed, when members feel a sense of belonging, they\u2019re far more likely to come to a gathering. Phoebe cultivates belonging then gives members opportunities to get more involved by displaying what\u2019s coming up.",
