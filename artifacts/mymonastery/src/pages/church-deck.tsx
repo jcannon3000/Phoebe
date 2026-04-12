@@ -80,7 +80,7 @@ const SLIDES: Slide[] = [
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Prayer, held in common.",
     body: [
-      "People share what they are carrying. Others in the community respond with a word or a prayer. Everyone can stay a part of each other\u2019s lives through the week.",
+      "People share what they are carrying. Others in the community respond with a word or a prayer, and make people feel heard and cared for.",
     ],
     mock: "prayer-requests",
   },
@@ -90,11 +90,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "Group Intercessions from the BCP",
+    headline: "BCP Integration",
     body: [
-      "The Book of Common Prayer gives us prayers for every season and circumstance. Phoebe puts them in the hands of the community.",
-      "A group selects prayers to hold together \u2014 for the sick, for those in trouble, for the departed. Each person carries the same words through the week.",
-      "Ancient prayers, held in common. The tradition made daily.",
+      "Users can access the full list of intercessions and thanksgivings from the Book of Common Prayer, inviting others in their community to pray them with them.",
     ],
     mock: "bcp",
   },
@@ -120,7 +118,7 @@ const SLIDES: Slide[] = [
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Fasting, kept together.",
     body: [
-      "A group picks a fast and a rhythm. Whatever the discipline, Phoebe makes it possible to do it together and be a part of something.",
+      "A group picks a fast and a rhythm. Whatever the discipline, Phoebe makes it possible to do it together and create a sense of solidarity.",
       "For groups fasting from meat, Phoebe tracks the water your group conserves together. University of Colorado research shows that one person fasting from meat for one day saves approximately 400 gallons of water. The group sees the running total: this week, this month, all time.",
     ],
     mock: "meat-fast",
@@ -132,8 +130,8 @@ const SLIDES: Slide[] = [
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Connected people show up.",
     body: [
-      "When members feel a sense of belonging, they\u2019re far more likely to come to a gathering.",
-      "Phoebe pulls in your parish calendar so people can see what\u2019s coming up and find something to step into.",
+      "As Harvard sociologist Robert Putnam showed, when members feel a sense of belonging, they\u2019re far more likely to come to a gathering.",
+      "Phoebe cultivates belonging then gives members opportunities to get more involved by displaying what\u2019s coming up so they can find something to step into.",
     ],
     mock: "gatherings",
   },
@@ -898,12 +896,12 @@ function FeatureComboSlide({
           ))}
         </div>
       </div>
-      {/* Mock — right on desktop, below on mobile */}
+      {/* Mock — always visible for prayer-requests; hidden on mobile for others (they get a separate slide) */}
       <motion.div
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.12, duration: 0.45 }}
-        className="w-full md:w-auto flex justify-center shrink-0"
+        className={`${slide.mock === "prayer-requests" ? "w-full md:w-auto flex" : "hidden md:flex w-auto"} justify-center shrink-0`}
       >
         {Mock ? <Mock /> : null}
       </motion.div>
@@ -987,7 +985,22 @@ function renderSlide(slide: Slide) {
 export default function ChurchDeck() {
   const [, setLocation] = useLocation();
   const [index, setIndex] = useState(0);
-  const slides = SLIDES;
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // On mobile, split feature-combo slides into text + mock — except prayer-requests (stays combined)
+  const slides: Slide[] = isMobile
+    ? SLIDES.flatMap((s) =>
+        s.kind === "feature-combo" && s.mock !== "prayer-requests"
+          ? [s, { kind: "combo-mock" as const, mock: s.mock }]
+          : [s],
+      )
+    : SLIDES;
 
   const next = useCallback(
     () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
