@@ -36,6 +36,7 @@ type Slide =
       mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "gatherings";
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "gatherings" }
+  | { kind: "quote"; text: string }
   | { kind: "closing"; body: string[]; featured: string[] };
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
@@ -109,6 +110,12 @@ const SLIDES: Slide[] = [
       "Phoebe cultivates belonging then gives members opportunities to get more involved by displaying what\u2019s coming up so they can find something to step into.",
     ],
     mock: "gatherings",
+  },
+
+  // — Murthy quote
+  {
+    kind: "quote",
+    text: "As Vivek Murthy has said, loneliness is not just an emotional state but a public health crisis\u2014and the antidote is connection. In that sense, creating spaces for people to connect isn\u2019t just engagement, it\u2019s a form of ministry.",
   },
 
   // 19 — Closing
@@ -935,6 +942,27 @@ function ComboMockSlide({ slide }: { slide: Extract<Slide, { kind: "combo-mock" 
   );
 }
 
+function QuoteSlide({ slide }: { slide: Extract<Slide, { kind: "quote" }> }) {
+  return (
+    <div className="flex items-center justify-center max-w-3xl mx-auto text-center">
+      <motion.p
+        className="text-xl md:text-3xl font-semibold leading-snug md:leading-snug"
+        style={{ fontFamily: C.font }}
+        animate={{
+          color: [C.sage, C.text, C.sage],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        {slide.text}
+      </motion.p>
+    </div>
+  );
+}
+
 function renderSlide(slide: Slide) {
   switch (slide.kind) {
     case "title":
@@ -949,6 +977,8 @@ function renderSlide(slide: Slide) {
       return <FeatureComboSlide slide={slide} />;
     case "combo-mock":
       return <ComboMockSlide slide={slide} />;
+    case "quote":
+      return <QuoteSlide slide={slide} />;
     case "closing":
       return <ClosingSlide slide={slide} />;
   }
