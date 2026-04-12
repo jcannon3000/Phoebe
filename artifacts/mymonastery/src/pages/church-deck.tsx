@@ -33,7 +33,7 @@ type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "calendar" | "involvement";
+      mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "involvement";
     }
   | { kind: "closing"; body: string[]; featured: string[] };
 
@@ -74,23 +74,22 @@ const SLIDES: Slide[] = [
   },
 
   // ── Feature 1: Prayer Requests ──
-  // 5 — text
+  // 5
   {
-    kind: "feature-text",
+    kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Prayer, held in common.",
     body: [
       "People share what they are carrying. Others in the community respond with a word or a prayer. Anonymous if needed. Low vulnerability. Low friction.",
       "The doorway into the life of the community. When someone submits a request during the week, they arrive on Sunday already known.",
     ],
+    mock: "prayer-requests",
   },
-  // 6 — demo
-  { kind: "feature-demo", variant: "prayer-requests" },
 
   // ── Feature 2: BCP Intercessions ──
-  // 7 — text
+  // 6
   {
-    kind: "feature-text",
+    kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Group Intercessions from the BCP",
     body: [
@@ -98,28 +97,26 @@ const SLIDES: Slide[] = [
       "A group selects prayers to hold together \u2014 for the sick, for those in trouble, for the departed. Each person carries the same words through the week.",
       "Ancient prayers, held in common. The tradition made daily.",
     ],
+    mock: "bcp",
   },
-  // 8 — demo
-  { kind: "feature-demo", variant: "bcp" },
 
   // ── Feature 3: Prayer List ──
-  // 9 — text
+  // 7
   {
-    kind: "feature-text",
+    kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "A shared record of what the community is holding.",
     body: [
       "Every request, every intention, every name being carried in prayer \u2014 gathered in one place. The community can see what is being held together. They can add their prayer to what is already there.",
       "Intercession made visible. The invisible work of the community, given a surface.",
     ],
+    mock: "prayer-list",
   },
-  // 10 — demo
-  { kind: "feature-demo", variant: "prayer-list" },
 
   // ── Feature 4: Lectio Divina ──
-  // 11 — text
+  // 8
   {
-    kind: "feature-text",
+    kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Lectio Divina",
     body: [
@@ -127,14 +124,13 @@ const SLIDES: Slide[] = [
       "Monday \u2014 a word or phrase that is speaking to you.\nWednesday \u2014 what the passage is stirring in you.\nFriday \u2014 what it is calling you to do or to be.",
       "Each person reflects on their own. Then they see what everyone else heard in the same passage. They arrive on Sunday having already sat with the text together. The sermon lands differently.",
     ],
+    mock: "lectio",
   },
-  // 12 — demo
-  { kind: "feature-demo", variant: "lectio" },
 
   // ── Feature 5: Water Fast ──
-  // 13 — text
+  // 9
   {
-    kind: "feature-text",
+    kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "One fast with a visible impact.",
     body: [
@@ -142,9 +138,8 @@ const SLIDES: Slide[] = [
       "This week. This month. All time.",
       "A small act of shared faithfulness. A visible record of what the community has done together. A new way to engage the parish in creation care, together.",
     ],
+    mock: "meat-fast",
   },
-  // 14 — demo
-  { kind: "feature-demo", variant: "meat-fast" },
 
   // 15 — What this builds
   {
@@ -920,9 +915,9 @@ function FeatureComboSlide({
 }) {
   const Mock = MOCK_MAP[slide.mock];
   return (
-    <div className="flex flex-col items-center w-full max-w-3xl mx-auto gap-6 md:gap-8">
-      {/* Text */}
-      <div className="w-full">
+    <div className="flex flex-col md:flex-row items-start md:items-center justify-center w-full max-w-5xl mx-auto gap-8 md:gap-16">
+      {/* Text — left on desktop, full-width on mobile */}
+      <div className="w-full md:max-w-md shrink-0">
         <p
           className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
           style={{ color: "rgba(143,175,150,0.45)" }}
@@ -930,29 +925,29 @@ function FeatureComboSlide({
           {slide.label}
         </p>
         <h2
-          className="text-xl md:text-3xl font-semibold mb-4 leading-tight"
+          className="text-2xl md:text-3xl font-semibold mb-4 leading-tight"
           style={{ color: C.text, fontFamily: C.font }}
         >
           {slide.headline}
         </h2>
-        <div className="space-y-3">
+        <div className="space-y-3 md:space-y-4">
           {slide.body.map((p, i) => (
             <p
               key={i}
-              className="text-sm md:text-lg leading-relaxed font-light"
-              style={{ color: C.sage, fontFamily: C.font }}
+              className="text-sm md:text-base leading-relaxed font-light"
+              style={{ color: C.sage, fontFamily: C.font, whiteSpace: "pre-line" }}
             >
               {p}
             </p>
           ))}
         </div>
       </div>
-      {/* Mock */}
+      {/* Mock — right on desktop, below on mobile */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, duration: 0.45 }}
-        className="w-full flex justify-center"
+        initial={{ opacity: 0, x: 12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.12, duration: 0.45 }}
+        className="w-full md:w-auto flex justify-center shrink-0"
       >
         {Mock ? <Mock /> : null}
       </motion.div>
