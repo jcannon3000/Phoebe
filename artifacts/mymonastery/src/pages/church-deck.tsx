@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, X, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const C = {
@@ -26,14 +26,14 @@ type Slide =
         | "lectio"
         | "meat-fast"
         | "calendar"
-        | "involvement";
+        | "gatherings";
     }
   | {
       kind: "feature-combo";
       label: string;
       headline: string;
       body: string[];
-      mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "involvement";
+      mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "gatherings";
     }
   | { kind: "closing"; body: string[]; featured: string[] };
 
@@ -147,25 +147,26 @@ const SLIDES: Slide[] = [
     ],
   },
 
-  // 17 — Getting Involved (text + mock on one slide)
+  // 17 — Gatherings (text + mock on one slide)
   {
     kind: "feature-combo",
     label: "A GLIMPSE INSIDE PHOEBE",
-    headline: "A natural next step.",
+    headline: "Connected people show up.",
     body: [
-      "When someone has been praying with a group for six weeks they are no longer a stranger. They are ready to go deeper. Phoebe surfaces the ways to do that \u2014 low barrier, low pressure, already in front of them.",
+      "When members feel known \u2014 because they\u2019ve been praying, reflecting, and fasting together all week \u2014 they\u2019re far more likely to come to a gathering.",
+      "Phoebe pulls in your parish calendar so people can see what\u2019s coming up and find something to step into. No extra work for staff. The schedule is already there.",
     ],
-    mock: "involvement",
+    mock: "gatherings",
   },
 
   // 19 — Closing
   {
     kind: "closing",
     body: [
-      "The strongest parishes are not the ones with the most programs. They are the ones where people know each other.",
-      "Relationships are built through shared points of connection. A prayer held in common. A passage read together. A fast observed alongside someone else. A name carried through the week.",
+      "People feel connected to communities where they are known.",
+      "Small moments of shared life are what make this possible.",
     ],
-    featured: ["Phoebe makes this possible.", "Every day. Between Sundays."],
+    featured: ["Phoebe cultivates connection.", "Every day. Between Sundays."],
   },
 ];
 
@@ -624,67 +625,63 @@ function LectioMock() {
   );
 }
 
-/* ── Fasting — shows multiple fast types with water impact for meat ── */
+/* ── Fasting — matches actual moment-detail.tsx water conservation UI ── */
 function MeatFastMock() {
   return (
     <MockPhone>
-      <h2
-        className="text-base font-bold mb-0.5"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        🌿 Fasting
-      </h2>
-      <p className="text-[10px] mb-3" style={{ color: C.sage }}>
-        A shared discipline, kept together
-      </p>
-      <div className="h-px mb-3" style={{ background: "rgba(46,107,64,0.25)" }} />
-
-      {/* Fast type options */}
-      <div className="space-y-1.5 mb-3">
-        {[
-          { emoji: "🥩", label: "Fast from meat", note: "Tracks water conserved", active: true },
-          { emoji: "🍷", label: "Fast from alcohol", note: "Weekly · Fridays", active: false },
-          { emoji: "📱", label: "Fast from screens", note: "Sundays", active: false },
-          { emoji: "💳", label: "Fast from spending", note: "Lent", active: false },
-        ].map((f, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2"
-            style={{
-              background: f.active ? "rgba(46,107,64,0.2)" : "rgba(46,107,64,0.06)",
-              border: `1px solid ${f.active ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.12)"}`,
-            }}
-          >
-            <span className="text-[14px]">{f.emoji}</span>
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold" style={{ color: f.active ? C.text : C.sage, fontFamily: C.font }}>
-                {f.label}
-              </p>
-              <p className="text-[9px]" style={{ color: "rgba(143,175,150,0.5)" }}>{f.note}</p>
-            </div>
-            {f.active && <span className="text-[10px]" style={{ color: "#6FAF85" }}>✓</span>}
-          </div>
-        ))}
-      </div>
-
-      {/* Water conservation preview — meat fast only */}
+      {/* Hero water impact card */}
       <div
-        className="rounded-xl px-3 py-2.5"
-        style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.18)" }}
+        className="rounded-xl px-3.5 py-3 mb-3"
+        style={{ background: "#0A1F12", border: "1px solid rgba(46,107,64,0.35)" }}
       >
-        <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(143,175,150,0.5)" }}>
+        <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
           Conserving Water Together
         </p>
-        <div className="flex justify-between items-baseline">
-          <div>
-            <p className="text-lg font-bold" style={{ color: C.text, fontFamily: C.font }}>18,400 gal</p>
-            <p className="text-[9px]" style={{ color: "rgba(143,175,150,0.4)" }}>saved all time · 3 people</p>
+        <div className="flex items-end gap-1.5 mb-0.5">
+          <span className="text-2xl font-bold tabular-nums" style={{ color: C.text, letterSpacing: "-0.03em" }}>18,400</span>
+          <span className="text-[11px] mb-0.5" style={{ color: C.sage }}>gallons saved</span>
+        </div>
+        <p className="text-[9px] mb-3" style={{ color: "rgba(143,175,150,0.5)" }}>
+          46 fast days × 400 gal per person
+        </p>
+        {/* Equivalences */}
+        <div className="grid grid-cols-2 gap-1.5">
+          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
+            <p className="text-[13px] font-bold" style={{ color: "#A8C5A0" }}>36,800</p>
+            <p className="text-[8px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>days of drinking water for one person</p>
           </div>
-          <div className="text-right">
-            <p className="text-[11px] font-semibold" style={{ color: C.sage }}>1,200</p>
-            <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.4)" }}>this week</p>
+          <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
+            <p className="text-[13px] font-bold" style={{ color: "#A8C5A0" }}>526</p>
+            <p className="text-[8px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>bathtubs of water spared</p>
           </div>
         </div>
+      </div>
+
+      {/* Water stats grid — You / Group columns */}
+      <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: "rgba(200,212,192,0.4)" }}>
+        Conserving Water Together
+      </p>
+      <div className="grid grid-cols-3 gap-1.5 mb-1">
+        <div />
+        <p className="text-[9px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>You</p>
+        <p className="text-[9px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>Group</p>
+      </div>
+      <div className="space-y-1.5">
+        {[
+          { label: "This Week", you: "800", group: "2,400" },
+          { label: "This Month", you: "3,200", group: "9,600" },
+          { label: "All Time", you: "6,400", group: "18,400" },
+        ].map((r, i) => (
+          <div key={i} className="grid grid-cols-3 gap-1.5 items-center">
+            <p className="text-[9px] font-medium" style={{ color: "rgba(200,212,192,0.55)" }}>{r.label}</p>
+            <div className="rounded-lg px-1.5 py-1.5 text-center" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
+              <p className="text-[11px] font-bold tabular-nums" style={{ color: "#A8C5A0" }}>{r.you}</p>
+            </div>
+            <div className="rounded-lg px-1.5 py-1.5 text-center" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.15)" }}>
+              <p className="text-[11px] font-bold tabular-nums" style={{ color: "#8FAF96" }}>{r.group}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </MockPhone>
   );
@@ -770,75 +767,90 @@ function CalendarMock() {
   );
 }
 
-/* ── Getting More Involved ── */
-function InvolvementMock() {
+/* ── Gatherings — timeline view (matches actual gatherings.tsx) ── */
+function GatheringsMock() {
+  const groups = [
+    {
+      label: "Today",
+      highlight: true,
+      events: [
+        { time: "6:30 PM", title: "Wednesday Supper", location: "Parish Hall", people: "Margaret, David +4", kind: "ical" as const },
+      ],
+    },
+    {
+      label: "Thursday",
+      highlight: false,
+      events: [
+        { time: "7:00 PM", title: "Lenten Study", location: "Library", people: "Anna, James +3", kind: "phoebe" as const },
+      ],
+    },
+    {
+      label: "Saturday",
+      highlight: false,
+      events: [
+        { time: "8:00 AM", title: "Morning Prayer", location: "Chapel", people: "4 regulars", kind: "phoebe" as const },
+      ],
+    },
+    {
+      label: "Sunday",
+      highlight: false,
+      events: [
+        { time: "10:00 AM", title: "Holy Eucharist", location: "Nave", kind: "ical" as const },
+        { time: "5:00 PM", title: "Evensong", location: "Nave", kind: "ical" as const },
+      ],
+    },
+  ];
   return (
     <MockPhone>
-      <p
-        className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-        style={{ color: "rgba(200,212,192,0.5)" }}
-      >
-        Go deeper
-      </p>
-      <h2
-        className="text-base font-bold mb-3"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        Ways to get involved
+      <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>
+        Gatherings
       </h2>
-      <div className="space-y-2">
-        {[
-          {
-            title: "🤝🏽 Serve at Wednesday Supper",
-            type: "Volunteer",
-            note: "Next opening: Apr 16",
-          },
-          {
-            title: "📖 Join the Lenten Study",
-            type: "Study Group",
-            note: "Thursdays \u00b7 6 weeks",
-          },
-          {
-            title: "🌿 Garden Ministry",
-            type: "Service Project",
-            note: "Saturdays in May",
-          },
-          {
-            title: "🙏🏽 Lead Morning Prayer",
-            type: "Ministry",
-            note: "Training available",
-          },
-        ].map((item, i) => (
-          <div
-            key={i}
-            className="rounded-xl px-3 py-2.5"
-            style={{
-              background: "rgba(46,107,64,0.1)",
-              border: "1px solid rgba(46,107,64,0.2)",
-            }}
-          >
-            <p
-              className="text-[12px] font-semibold"
-              style={{ color: C.text, fontFamily: C.font }}
-            >
-              {item.title}
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span
-                className="text-[8px] px-1.5 py-0.5 rounded-full"
-                style={{
-                  background: "rgba(46,107,64,0.25)",
-                  color: C.sage,
-                }}
-              >
-                {item.type}
-              </span>
+      <p className="text-[10px] mb-3" style={{ color: C.sage }}>
+        Your community, meeting with intention.
+      </p>
+      <div className="h-px mb-3" style={{ background: "rgba(200,212,192,0.1)" }} />
+      <div className="space-y-3">
+        {groups.map((g, gi) => (
+          <div key={gi}>
+            {/* Day header */}
+            <div className="flex items-center gap-2 mb-1.5">
               <p
-                className="text-[9px]"
-                style={{ color: "rgba(143,175,150,0.5)" }}
+                className="text-[9px] font-bold uppercase tracking-widest shrink-0"
+                style={{ color: g.highlight ? "#6FAF85" : "rgba(200,212,192,0.45)" }}
               >
-                {item.note}
+                {g.label}
               </p>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
+            </div>
+            <div className="space-y-1.5">
+              {g.events.map((ev, ei) => (
+                <div
+                  key={ei}
+                  className="relative flex rounded-xl overflow-hidden"
+                  style={{
+                    background: ev.kind === "ical" ? "rgba(10,28,18,0.7)" : "#0F2818",
+                    border: `1px solid ${ev.kind === "ical" ? "rgba(74,158,132,0.2)" : "rgba(92,138,95,0.28)"}`,
+                  }}
+                >
+                  <div className="w-0.5 shrink-0" style={{ background: ev.kind === "ical" ? "#4A9E84" : "#5C8A5F" }} />
+                  <div className="flex-1 px-2.5 py-2">
+                    <p className="text-[9px] font-semibold tabular-nums" style={{ color: "rgba(143,175,150,0.7)" }}>{ev.time}</p>
+                    <p className="text-[11px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{ev.title}</p>
+                    {ev.location && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <MapPin size={8} style={{ color: "rgba(143,175,150,0.5)" }} />
+                        <span className="text-[9px]" style={{ color: "rgba(143,175,150,0.6)" }}>{ev.location}</span>
+                      </div>
+                    )}
+                    {ev.people && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Users size={8} style={{ color: "rgba(143,175,150,0.5)" }} />
+                        <span className="text-[9px]" style={{ color: "rgba(143,175,150,0.6)" }}>{ev.people}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -854,7 +866,7 @@ const MOCK_MAP: Record<string, () => JSX.Element> = {
   lectio: LectioMock,
   "meat-fast": MeatFastMock,
   calendar: CalendarMock,
-  involvement: InvolvementMock,
+  gatherings: GatheringsMock,
 };
 
 function FeatureDemoSlide({
