@@ -50,10 +50,9 @@ const SLIDES: Slide[] = [
   // 2 — The opening
   {
     kind: "statement",
-    headline: "Your parish already has everything it needs.",
+    headline: "Harvard sociologist Robert Putnam\u2019s research found that the strongest predictor of religious engagement is the strength of relationships within a community.",
     body: [
-      "People who want to be close to one another. Groups that already meet. A tradition of shared practice. Relationships that are already forming.",
-      "The question is not how to build community from scratch. It is how to cultivate what is already there.",
+      "Phoebe is built around that insight. A relational app that strengthens the bonds within your parish between Sundays \u2014 through shared prayer, shared practice, and shared life.",
     ],
   },
 
@@ -81,8 +80,7 @@ const SLIDES: Slide[] = [
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Prayer, held in common.",
     body: [
-      "People share what they are carrying. Others in the community respond with a word or a prayer. Anonymous if needed. Low vulnerability. Low friction.",
-      "The doorway into the life of the community. When someone submits a request during the week, they arrive on Sunday already known.",
+      "People share what they are carrying. Others in the community respond with a word or a prayer, and make people feel heard and cared for.",
     ],
     mock: "prayer-requests",
   },
@@ -122,30 +120,10 @@ const SLIDES: Slide[] = [
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Fasting, kept together.",
     body: [
-      "A group picks a fast and a rhythm. From meat. From alcohol. From screens. From spending. Whatever the discipline, Phoebe holds it with you so you are not keeping it alone.",
+      "A group picks a fast and a rhythm. Whatever the discipline, Phoebe makes it possible to do it together and be a part of something.",
       "For groups fasting from meat, Phoebe tracks the water your group conserves together. University of Colorado research shows that one person fasting from meat for one day saves approximately 400 gallons of water. The group sees the running total: this week, this month, all time.",
     ],
     mock: "meat-fast",
-  },
-
-  // 15 — What this builds
-  {
-    kind: "statement",
-    headline: "Each practice feeds the next.",
-    body: [
-      "The prayer request submitted on Wednesday breaks the ice on Sunday. The Lectio reflection written on Friday deepens the sermon conversation. The fast held together on Thursday is still being felt when the group gathers. The name prayed for on Tuesday is the person who feels seen when they walk through the door.",
-      "Over time the touchpoints between Sundays become the fabric of community life.",
-    ],
-  },
-
-  // 16 — The community stays alive
-  {
-    kind: "statement",
-    headline: "The community stays alive between Sundays.",
-    body: [
-      "By engaging in simple ways to pray, reflect, and fast together during the week, people feel more connected. When they show up on Sunday, the ice is already broken.",
-      "That leads to deeper connections.",
-    ],
   },
 
   // 17 — Gatherings (text + mock on one slide)
@@ -154,8 +132,8 @@ const SLIDES: Slide[] = [
     label: "A GLIMPSE INSIDE PHOEBE",
     headline: "Connected people show up.",
     body: [
-      "When members feel known \u2014 because they\u2019ve been praying, reflecting, and fasting together all week \u2014 they\u2019re far more likely to come to a gathering.",
-      "Phoebe pulls in your parish calendar so people can see what\u2019s coming up and find something to step into. No extra work for staff. The schedule is already there.",
+      "When members feel a sense of belonging, they\u2019re far more likely to come to a gathering.",
+      "Phoebe pulls in your parish calendar so people can see what\u2019s coming up and find something to step into.",
     ],
     mock: "gatherings",
   },
@@ -163,10 +141,7 @@ const SLIDES: Slide[] = [
   // 19 — Closing
   {
     kind: "closing",
-    body: [
-      "Harvard sociologist Robert Putnam\u2019s research found that the strongest predictor of religious engagement is the strength of relationships within a community.",
-      "Phoebe is built around that insight. A relational app that strengthens the bonds within your parish between Sundays \u2014 through shared prayer, shared practice, and shared life.",
-    ],
+    body: [],
     featured: ["Help your parish flourish with Phoebe."],
   },
 ];
