@@ -113,69 +113,6 @@ router.get(
   }
 );
 
-// ─── Per-user Google Calendar connect ────────────────────────────────────────
-// User hits /api/auth/google/calendar → Google OAuth (calendar.readonly scope)
-// → /api/auth/google/calendar/callback → stores refresh token → /gatherings.
-// Requires that the callback URL is registered in Google Cloud Console:
-//   [GOOGLE_REDIRECT_URI base]/api/auth/google/calendar/callback
-const calendarCallbackURL = callbackURL.replace("/auth/google/callback", "/auth/google/calendar/callback");
-
-router.get("/auth/google/calendar", (req, res) => {
-  if (!GOOGLE_CONFIGURED) { res.status(503).send("Google OAuth not configured."); return; }
-  if (!req.user) { res.redirect(frontendURL + "/"); return; }
-  const oauth2 = new google.auth.OAuth2(
-    process.env["GOOGLE_CLIENT_ID"]!,
-    process.env["GOOGLE_CLIENT_SECRET"]!,
-    calendarCallbackURL,
-  );
-  const url = oauth2.generateAuthUrl({
-    access_type: "offline",
-    prompt: "consent",
-    scope: ["https://www.googleapis.com/auth/calendar.readonly"],
-  });
-  res.redirect(url);
-});
-
-router.get("/auth/google/calendar/callback", async (req, res): Promise<void> => {
-  const code = req.query.code as string | undefined;
-  if (!code || !req.user) {
-    res.redirect(`${frontendURL}/gatherings?error=calendar_failed`);
-    return;
-  }
-  try {
-    const oauth2 = new google.auth.OAuth2(
-      process.env["GOOGLE_CLIENT_ID"]!,
-      process.env["GOOGLE_CLIENT_SECRET"]!,
-      calendarCallbackURL,
-    );
-    const { tokens } = await oauth2.getToken(code);
-    const userId = (req.user as { id: number }).id;
-    await db.update(usersTable).set({
-      ...(tokens.refresh_token ? { googleRefreshToken: tokens.refresh_token } : {}),
-      ...(tokens.access_token ? { googleAccessToken: tokens.access_token } : {}),
-      ...(tokens.expiry_date ? { googleTokenExpiry: new Date(tokens.expiry_date) } : {}),
-      calendarConnected: true,
-    }).where(eq(usersTable.id, userId));
-    // Update session user object so /api/auth/me reflects new state immediately
-    req.session.save(() => res.redirect(`${frontendURL}/gatherings`));
-  } catch (err) {
-    console.error("Calendar OAuth callback error:", err);
-    res.redirect(`${frontendURL}/gatherings?error=calendar_failed`);
-  }
-});
-
-router.post("/auth/google/calendar/disconnect", async (req, res): Promise<void> => {
-  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const userId = (req.user as { id: number }).id;
-  await db.update(usersTable).set({
-    googleRefreshToken: null,
-    googleAccessToken: null,
-    googleTokenExpiry: null,
-    calendarConnected: false,
-  }).where(eq(usersTable.id, userId));
-  res.json({ ok: true });
-});
-
 // ─── Outbound-mail account setup (one-time) ─────────────────────────────────
 // Visit /api/auth/scheduler/setup while logged into Google Workspace as
 // invites@withphoebe.app to authorize the mailbox. The returned refresh
@@ -246,7 +183,6 @@ router.get("/auth/me", (req, res) => {
     id: number; name: string; email: string; avatarUrl: string | null;
     googleId: string | null; showPresence: boolean;
     correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
-    calendarConnected: boolean;
   };
   res.json({
     id: u.id,
@@ -257,7 +193,6 @@ router.get("/auth/me", (req, res) => {
     showPresence: u.showPresence,
     correspondenceImprintCompleted: u.correspondenceImprintCompleted ?? false,
     gatheringImprintCompleted: u.gatheringImprintCompleted ?? false,
-    calendarConnected: u.calendarConnected ?? false,
   });
 });
 

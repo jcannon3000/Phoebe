@@ -17,7 +17,6 @@ export const usersTable = pgTable("users", {
   showPresence: boolean("show_presence").notNull().default(true),
   correspondenceImprintCompleted: boolean("correspondence_imprint_completed").notNull().default(false),
   gatheringImprintCompleted: boolean("gathering_imprint_completed").notNull().default(false),
-  calendarConnected: boolean("calendar_connected").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
