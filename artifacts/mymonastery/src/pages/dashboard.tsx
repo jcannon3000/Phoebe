@@ -557,8 +557,6 @@ function stripTrailingEmoji(s: string): string {
 }
 
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
-  const [isArchived, setIsArchived] = useState(false);
-  if (isArchived) return null;
   const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
   // Lectio uses its per-user stage-done flag instead of todayPostCount since
   // reflections don't write to moment_posts. When the user is "caught up"
@@ -800,11 +798,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         </div>
         <div className="shrink-0 flex items-center self-center">
           {showRenewPill ? (
-            <RenewArchivePill
-              momentId={m.id}
-              momentName={m.name}
-              onArchive={() => setIsArchived(true)}
-            />
+            <RenewPill momentId={m.id} />
           ) : isLectio ? (
             // Lectio always shows a pill: "Reflect 📜" when there's something
             // to do this stage, "Responses" once the user has submitted.
