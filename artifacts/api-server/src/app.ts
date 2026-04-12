@@ -85,9 +85,31 @@ if (fs.existsSync(frontendDist)) {
   // Hashed assets get long cache; everything else (index.html) must revalidate
   app.use("/assets", express.static(path.join(frontendDist, "assets"), { maxAge: "1y", immutable: true }));
   app.use(express.static(frontendDist, { maxAge: 0 }));
+
+  // Route-specific OG meta for link previews (iMessage, Slack, etc.)
+  const ogOverrides: Record<string, { title: string; description: string }> = {
+    "/church-deck": {
+      title: "How Phoebe Cultivates Connection",
+      description: "A place set apart for connection. Every day. Between Sundays.",
+    },
+  };
+
   app.get("/{*path}", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.sendFile(path.join(frontendDist, "index.html"));
+    const override = ogOverrides[_req.path];
+    if (override) {
+      const indexPath = path.join(frontendDist, "index.html");
+      let html = fs.readFileSync(indexPath, "utf-8");
+      html = html
+        .replace(/<title>[^<]*<\/title>/, `<title>${override.title}</title>`)
+        .replace(/(<meta property="og:title" content=")[^"]*"/, `$1${override.title}"`)
+        .replace(/(<meta property="og:description" content=")[^"]*"/, `$1${override.description}"`)
+        .replace(/(<meta name="twitter:title" content=")[^"]*"/, `$1${override.title}"`)
+        .replace(/(<meta name="twitter:description" content=")[^"]*"/, `$1${override.description}"`);
+      res.type("html").send(html);
+    } else {
+      res.sendFile(path.join(frontendDist, "index.html"));
+    }
   });
 }
 
