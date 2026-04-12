@@ -1215,7 +1215,11 @@ router.get("/moments", async (req, res): Promise<void> => {
         return {
           ...m,
           memberCount: allMembers.length,
-          members: allMembers.map(t => ({ name: t.name, email: t.email })),
+          members: allMembers.map(t => ({
+            name: t.name,
+            email: t.email,
+            joined: registeredEmails.has(t.email.toLowerCase()),
+          })),
           todayPostCount: todayPosts.length,
           windowOpen: computeWindowOpen(m),
           isActionableToday: isActionableToday(m),

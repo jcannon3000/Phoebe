@@ -2,12 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+
 import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
@@ -565,13 +565,11 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   // they can jump back in to see what others heard.
   const isLectio = m.templateType === "lectio-divina";
   const isLectioCaughtUp = isLectio && !!m.lectioMyStageDone;
-  // Goal-reached detection (used by both shouldPulse and the Renew pill below)
+  // Goal-reached detection — use the backend-stamped timestamp, not the
+  // streak comparison. The backend stamps commitmentGoalReachedAt when
+  // commitmentSessionsLogged crosses the goal, which is the correct check.
   const sessionsGoalForCard = m.commitmentSessionsGoal ?? m.goalDays ?? null;
-  const goalReachedForMe =
-    !isLectio &&
-    sessionsGoalForCard != null &&
-    sessionsGoalForCard > 0 &&
-    (m.myStreak ?? 0) >= sessionsGoalForCard;
+  const goalReachedForMe = !isLectio && !!m.commitmentGoalReachedAt;
   const showRenewPill = goalReachedForMe && !!m.isCreator;
   const shouldPulse = isLectio
     ? !isLectioCaughtUp
@@ -1020,12 +1018,232 @@ function TimeSection({
   );
 }
 
+// ─── Goal Reached Celebration Modal ─────────────────────────────────────────
+
+function GoalReachedModal({
+  moment,
+  onDismiss,
+}: {
+  moment: Moment;
+  onDismiss: () => void;
+}) {
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const [slide, setSlide] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+
+  const goal = moment.commitmentSessionsGoal ?? moment.goalDays ?? 0;
+  const hasStreak = (moment.myStreak ?? 0) >= goal && goal > 0;
+
+  // Next tier: if they hit their goal with a streak, suggest doubling or a
+  // meaningful jump. If no streak, suggest trying the same goal again.
+  const nextGoal = hasStreak
+    ? (goal <= 3 ? 7 : goal <= 7 ? 14 : goal <= 14 ? 30 : goal * 2)
+    : goal;
+
+  const updateGoalMutation = useMutation({
+    mutationFn: (data: object) => apiRequest("PATCH", `/api/moments/${moment.id}/goal`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+      onDismiss();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/moments/${moment.id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+      onDismiss();
+    },
+  });
+
+  const memberNames = moment.members
+    .map(p => p.name || p.email.split("@")[0])
+    .slice(0, 5);
+
+  const emoji = moment.templateType === "intercession" ? "🙏🏽"
+    : moment.templateType === "fasting" ? "🌿"
+    : "🌸";
+
+  const slides = [
+    // Slide 0: Celebration
+    <div key="celebrate" className="flex flex-col items-center text-center gap-5">
+      <p className="text-4xl">{emoji}</p>
+      <h2 className="text-xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+        {hasStreak ? "You kept the rhythm." : "Your goal is complete."}
+      </h2>
+      <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
+        You set a goal of {goal} {goal === 1 ? "session" : "sessions"} for{" "}
+        <span style={{ color: "#C8D4C0" }}>{moment.name}</span>.
+        {hasStreak
+          ? ` You've built a ${moment.myStreak}-day streak.`
+          : " The commitment is fulfilled."}
+      </p>
+      {memberNames.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-2 mt-1">
+          {memberNames.map((name, i) => (
+            <span
+              key={i}
+              className="text-xs px-3 py-1.5 rounded-full"
+              style={{ background: "rgba(46,107,64,0.2)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>,
+
+    // Slide 1: What next
+    <div key="next" className="flex flex-col items-center text-center gap-4">
+      <h2 className="text-lg font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+        What would you like to do?
+      </h2>
+
+      {hasStreak ? (
+        <>
+          <p className="text-sm" style={{ color: "#8FAF96" }}>
+            You have a {moment.myStreak}-day streak. Keep it going?
+          </p>
+          <button
+            onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: nextGoal, commitmentTendFreely: false })}
+            disabled={updateGoalMutation.isPending}
+            className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            Continue to {nextGoal} sessions {emoji}
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-sm" style={{ color: "#8FAF96" }}>
+            The goal is met. Would you like to try again?
+          </p>
+          <button
+            onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: nextGoal, commitmentTendFreely: false })}
+            disabled={updateGoalMutation.isPending}
+            className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            Try again — {nextGoal} sessions {emoji}
+          </button>
+        </>
+      )}
+
+      <button
+        onClick={() => updateGoalMutation.mutate({ commitmentSessionsGoal: null, commitmentTendFreely: true })}
+        disabled={updateGoalMutation.isPending}
+        className="w-full py-3 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+        style={{
+          background: "rgba(46,107,64,0.15)",
+          color: "#A8C5A0",
+          border: "1px solid rgba(46,107,64,0.3)",
+        }}
+      >
+        Continue without a goal
+      </button>
+
+      <button
+        onClick={() => setDeleting(true)}
+        disabled={deleteMutation.isPending}
+        className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40 mt-2"
+        style={{ color: "rgba(143,175,150,0.5)" }}
+      >
+        Discontinue this practice
+      </button>
+
+      {deleting && (
+        <div className="w-full rounded-xl px-4 py-3 mt-1" style={{ background: "rgba(193,127,36,0.12)", border: "1px solid rgba(193,127,36,0.3)" }}>
+          <p className="text-sm mb-3" style={{ color: "#E8B878" }}>
+            This will permanently delete the practice and its history.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="flex-1 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+              style={{ background: "rgba(193,127,36,0.25)", color: "#E8B878", border: "1px solid rgba(193,127,36,0.4)" }}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Yes, delete"}
+            </button>
+            <button
+              onClick={() => setDeleting(false)}
+              className="flex-1 py-2 rounded-xl text-sm"
+              style={{ color: "#8FAF96" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>,
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onDismiss(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full mx-6 rounded-3xl px-6 py-8 relative"
+        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", maxWidth: 420 }}
+      >
+        <button
+          onClick={onDismiss}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full"
+          style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+        >
+          <X size={16} />
+        </button>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={slide}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25 }}
+          >
+            {slides[slide]}
+          </motion.div>
+        </AnimatePresence>
+
+        {slide < slides.length - 1 && (
+          <button
+            onClick={() => setSlide(s => s + 1)}
+            className="mt-6 w-full py-3 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            Continue
+          </button>
+        )}
+
+        {/* Dots */}
+        <div className="flex justify-center gap-2 mt-4">
+          {slides.map((_, i) => (
+            <div
+              key={i}
+              className="w-1.5 h-1.5 rounded-full transition-colors"
+              style={{ background: i === slide ? "#8FAF96" : "rgba(143,175,150,0.2)" }}
+            />
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<"practices" | null>(null);
+  const [goalDismissed, setGoalDismissed] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const reset = () => setFilter(null);
@@ -1043,6 +1261,19 @@ export default function Dashboard() {
   });
 
   const isLoading = momentsLoading;
+
+  // ── Goal-reached celebration — first practice with a recent goal completion
+  const goalReachedMoment = useMemo(() => {
+    if (!momentsData?.moments) return null;
+    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    return momentsData.moments.find((m) => {
+      if (goalDismissed.has(m.id)) return false;
+      if (!m.commitmentGoalReachedAt) return false;
+      const reachedAt = new Date(m.commitmentGoalReachedAt).getTime();
+      return now - reachedAt < twoDaysMs;
+    }) ?? null;
+  }, [momentsData, goalDismissed]);
 
   // ── Placement + deduplication → three time buckets ────────────────────────
 
@@ -1293,6 +1524,17 @@ export default function Dashboard() {
 
         <FAB />
       </div>
+
+      {/* Goal-reached celebration popup */}
+      <AnimatePresence>
+        {goalReachedMoment && (
+          <GoalReachedModal
+            key={goalReachedMoment.id}
+            moment={goalReachedMoment}
+            onDismiss={() => setGoalDismissed(prev => new Set([...prev, goalReachedMoment.id]))}
+          />
+        )}
+      </AnimatePresence>
     </Layout>
   );
 }
