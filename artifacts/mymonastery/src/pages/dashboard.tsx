@@ -52,6 +52,7 @@ type Moment = {
   goalDays?: number | null;
   commitmentSessionsGoal?: number | null;
   commitmentSessionsLogged?: number | null;
+  computedSessionsLogged?: number;
   commitmentGoalReachedAt?: string | null;
   isCreator?: boolean;
   myUserToken: string | null;

@@ -1128,6 +1128,12 @@ router.get("/moments", async (req, res): Promise<void> => {
           if (w.status === "bloom") { groupStreak++; } else { break; }
         }
 
+        // Actual session count from window bloom data — the DB field
+        // commitmentSessionsLogged may be corrupted by the double-bloom bug.
+        const computedSessionsLogged = sortedWindows.filter(
+          w => w.windowDate !== todayDate && w.status === "bloom"
+        ).length + (todayBloom ? 1 : 0);
+
         // Most recent post the current user made on this practice. The
         // prayer list card uses this to render "Last prayed 3 days ago"
         // and anything else that wants to show "when did *you* last
@@ -1254,6 +1260,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           myUserToken: myToken?.userToken ?? null,
           myStreak,
           groupStreak,
+          computedSessionsLogged,
           myLastPostAt,
           lastWindowDate,
           lastWindowPostCount,
@@ -1482,19 +1489,27 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     if (w.windowDate === windowDate) continue;
     if (w.status === "bloom") { groupStreak++; } else { break; }
   }
-  // Group best: longest consecutive bloom run across all windows
+  // Group best: longest consecutive bloom run across all windows.
+  // Skip today's window in the loop (its status may be stale) and
+  // append todayBloom at the end to avoid double-counting.
   let groupBest = groupStreak;
   {
     let run = 0;
-    // Walk oldest→newest so we can count consecutive blooms properly
     const chronological = [...sortedWindows].reverse();
     for (const w of chronological) {
+      if (w.windowDate === windowDate) continue; // skip today
       if (w.status === "bloom") { run++; if (run > groupBest) groupBest = run; }
       else { run = 0; }
     }
     // Include today's bloom if applicable
     if (todayBloom) { run++; if (run > groupBest) groupBest = run; }
   }
+
+  // Actual session count from window bloom data — the DB field
+  // commitmentSessionsLogged may be corrupted by the double-bloom bug.
+  const computedSessionsLogged = sortedWindows.filter(
+    w => w.windowDate !== windowDate && w.status === "bloom"
+  ).length + (todayBloom ? 1 : 0);
 
   // ── Fasting water-conservation stats (detail view) ───────────────────────
   // Compute per-period fast-day counts so the detail page can show
@@ -1571,6 +1586,7 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     myStreak,
     groupStreak,
     groupBest,
+    computedSessionsLogged,
     calendarEventMissing,
     fastingWaterStats,
   });

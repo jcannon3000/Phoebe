@@ -21,6 +21,7 @@ type Moment = {
   momentToken: string | null;
   commitmentSessionsGoal?: number | null;
   commitmentSessionsLogged?: number | null;
+  computedSessionsLogged?: number;
   goalDays?: number | null;
   myLastPostAt?: string | null;
 };
@@ -124,7 +125,7 @@ export default function PrayerListPage() {
                   .slice(0, 3)
                   .join(", ");
                 const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
-                const logged = m.commitmentSessionsLogged ?? 0;
+                const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
                 const progressLabel = goal ? `${logged}/${goal} days` : null;
                 const href = (m.windowOpen && m.momentToken && m.myUserToken)
                   ? `/moment/${m.momentToken}/${m.myUserToken}?from=prayer-list`

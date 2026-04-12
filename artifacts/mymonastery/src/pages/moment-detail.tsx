@@ -85,6 +85,7 @@ interface MomentDetail {
   myStreak: number;
   groupStreak: number;
   groupBest: number;
+  computedSessionsLogged: number;
   myUserToken: string | null;
   myPersonalTime: string | null;
   myPersonalTimezone: string | null;
@@ -623,7 +624,7 @@ export default function MomentDetail() {
             : null;
 
           // Water impact numbers (meat fast = ~400 gal/person/day)
-          const totalSessions = moment.commitmentSessionsLogged ?? 0;
+          const totalSessions = data?.computedSessionsLogged ?? (moment.commitmentSessionsLogged ?? 0);
           const GALLONS_PER_FAST = 400;
           const totalGallons = totalSessions * GALLONS_PER_FAST;
           const myGallons = myStreak * GALLONS_PER_FAST;
@@ -854,7 +855,9 @@ export default function MomentDetail() {
         {/* Progressive Goal Display */}
         {(() => {
           const sessionsGoal = moment.commitmentSessionsGoal ?? null;
-          const sessionsLogged = moment.commitmentSessionsLogged ?? 0;
+          // Use API-computed session count from window bloom data — the DB
+          // field commitmentSessionsLogged may be inflated by double-bloom bugs.
+          const sessionsLogged = data?.computedSessionsLogged ?? (moment.commitmentSessionsLogged ?? 0);
           const tendFreely = moment.commitmentTendFreely ?? false;
           const freq = moment.frequency;
           const daysPerWeek = moment.frequencyDaysPerWeek ?? null;
@@ -918,15 +921,15 @@ export default function MomentDetail() {
                 {/* Celebration — shown to everyone */}
                 <div className="text-center py-4 mb-4">
                   <p className="text-3xl mb-2">🌸</p>
-                  <p className="text-lg font-semibold text-[#2C1A0E]" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                  <p className="text-lg font-semibold text-foreground" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                     Your group kept the rhythm — {sessionsLogged} {unitLabelPlural} together.
                   </p>
                   {effectiveGroupStreak > 0 && (
-                    <p className="text-sm text-[#5C7A5F] font-medium mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                    <p className="text-sm text-[#A8C5A0] font-medium mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                       🔥 {effectiveGroupStreak}-{unitLabel} group streak
                     </p>
                   )}
-                  <p className="text-sm text-[#5C7A5F] italic mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                  <p className="text-sm text-muted-foreground italic mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                     That's not nothing. That's a real thing you built.
                   </p>
                 </div>
@@ -940,7 +943,7 @@ export default function MomentDetail() {
                     <div className="flex items-center gap-3 mb-4">
                       <span className="text-2xl">{card.emoji}</span>
                       <div>
-                        <p className="font-semibold text-[#2C1A0E]" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
+                        <p className="font-semibold text-foreground" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                           {card.label}
                         </p>
                         <p className="text-xs text-muted-foreground">{card.sub}</p>
