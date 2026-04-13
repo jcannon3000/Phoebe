@@ -281,7 +281,7 @@ export default function CommunityDetailPage() {
         )}
 
         {/* Tabs — pill style matching home screen */}
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
           {tabs.map(t => (
             <button
               key={t.key}
