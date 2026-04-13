@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, isNull, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -7,11 +7,6 @@ import {
   groupAnnouncementsTable,
   betaUsersTable,
   usersTable,
-  prayerRequestsTable,
-  prayerWordsTable,
-  sharedMomentsTable,
-  momentUserTokensTable,
-  ritualsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -310,103 +305,24 @@ router.delete("/groups/:slug/members/:memberId", async (req, res): Promise<void>
   res.json({ ok: true });
 });
 
-// ─── Group-Scoped Prayer Requests ───────────────────────────────────────────
+// ─── Group-Scoped Resources (stubbed until groupId columns are migrated) ───
+// These endpoints will return empty results until `drizzle-kit push` adds
+// the group_id column to shared_moments, rituals, and prayer_requests.
 
-// GET /api/groups/:slug/prayer-requests
-router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const result = await requireMember(req.params.slug, user.id);
-  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
-
-  const requests = await db.select().from(prayerRequestsTable)
-    .where(and(
-      eq(prayerRequestsTable.groupId, result.group.id),
-      isNull(prayerRequestsTable.closedAt),
-    ))
-    .orderBy(desc(prayerRequestsTable.createdAt));
-
-  // Enrich
-  const enriched = await Promise.all(requests.map(async (r) => {
-    const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, r.ownerId));
-    const words = await db.select().from(prayerWordsTable).where(eq(prayerWordsTable.requestId, r.id));
-    const myWord = words.find(w => w.authorUserId === user.id);
-    return {
-      ...r,
-      ownerName: r.isAnonymous ? null : (r.createdByName || owner?.name || "Someone"),
-      words,
-      wordCount: words.length,
-      isOwnRequest: r.ownerId === user.id,
-      myWord: myWord ? { id: myWord.id, content: myWord.content } : null,
-    };
-  }));
-
-  res.json({ requests: enriched });
+router.get("/groups/:slug/prayer-requests", async (_req, res): Promise<void> => {
+  res.json({ requests: [] });
 });
 
-// POST /api/groups/:slug/prayer-requests
-router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const result = await requireMember(req.params.slug, user.id);
-  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
-
-  const schema = z.object({
-    body: z.string().min(1).max(1000),
-    isAnonymous: z.boolean().optional(),
-  });
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
-
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 3);
-
-  const [request] = await db.insert(prayerRequestsTable).values({
-    ownerId: user.id,
-    groupId: result.group.id,
-    body: parsed.data.body,
-    createdByName: user.name,
-    isAnonymous: parsed.data.isAnonymous ?? false,
-    expiresAt,
-  }).returning();
-
-  res.json({ request });
+router.post("/groups/:slug/prayer-requests", async (_req, res): Promise<void> => {
+  res.status(503).json({ error: "Group prayer requests not yet available — schema migration pending" });
 });
 
-// ─── Group-Scoped Practices ─────────────────────────────────────────────────
-
-// GET /api/groups/:slug/practices
-router.get("/groups/:slug/practices", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const result = await requireMember(req.params.slug, user.id);
-  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
-
-  const practices = await db.select().from(sharedMomentsTable)
-    .where(eq(sharedMomentsTable.groupId, result.group.id))
-    .orderBy(desc(sharedMomentsTable.createdAt));
-
-  res.json({ practices });
+router.get("/groups/:slug/practices", async (_req, res): Promise<void> => {
+  res.json({ practices: [] });
 });
 
-// ─── Group-Scoped Gatherings ────────────────────────────────────────────────
-
-// GET /api/groups/:slug/gatherings
-router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  const result = await requireMember(req.params.slug, user.id);
-  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
-
-  const gatherings = await db.select().from(ritualsTable)
-    .where(eq(ritualsTable.groupId, result.group.id))
-    .orderBy(desc(ritualsTable.createdAt));
-
-  res.json({ gatherings });
+router.get("/groups/:slug/gatherings", async (_req, res): Promise<void> => {
+  res.json({ gatherings: [] });
 });
 
 // ─── Announcements ──────────────────────────────────────────────────────────

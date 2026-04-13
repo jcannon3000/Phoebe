@@ -1,10 +1,8 @@
 import { pgTable, serial, text, integer, timestamp, boolean, date } from "drizzle-orm/pg-core";
 import { ritualsTable } from "./rituals";
-import { groupsTable } from "./groups";
 
 export const sharedMomentsTable = pgTable("shared_moments", {
   id: serial("id").primaryKey(),
-  groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
   ritualId: integer("ritual_id").references(() => ritualsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   intention: text("intention").notNull(),
