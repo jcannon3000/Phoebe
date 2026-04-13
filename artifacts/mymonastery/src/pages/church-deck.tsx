@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
@@ -1094,15 +1094,14 @@ export default function ChurchDeck() {
   );
   const prev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
 
-  // "Here is what a week looks like" (index 2) auto-advances after 2 seconds
+  // Auto-advance every 10 seconds on all slides (except the last)
   useEffect(() => {
-    if (index === 2) {
-      const timer = setTimeout(next, 2000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [index, next]);
+    if (index >= slides.length - 1) return undefined;
+    const timer = setTimeout(next, 10000);
+    return () => clearTimeout(timer);
+  }, [index, next, slides.length]);
 
+  // Keyboard navigation
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowRight" || e.key === " ") {
@@ -1119,6 +1118,42 @@ export default function ChurchDeck() {
     return () => window.removeEventListener("keydown", onKey);
   }, [next, prev, setLocation]);
 
+  // Touch/swipe support
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+    // Only count horizontal swipes (not vertical scrolling)
+    if (absDx > 40 && absDx > absDy * 1.5) {
+      if (dx < 0) next();      // swipe left → next
+      else prev();             // swipe right → prev
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  }, [next, prev]);
+
+  // Click right half to advance
+  const handleSlideClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Don't capture clicks on buttons/links
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a")) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x > rect.width / 2) {
+      next();
+    }
+  }, [next]);
+
   const slide = slides[index];
   const isFirst = index === 0;
   const isLast = index === slides.length - 1;
@@ -1127,6 +1162,8 @@ export default function ChurchDeck() {
     <div
       className="fixed inset-0 flex flex-col"
       style={{ background: C.bg }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4 px-4 md:px-6 pt-4 md:pt-6 pb-2">
@@ -1180,8 +1217,11 @@ export default function ChurchDeck() {
         </span>
       </div>
 
-      {/* Slide */}
-      <div className="flex-1 flex items-center justify-center px-5 md:px-16 py-4 md:py-8 overflow-y-auto">
+      {/* Slide — click right half to advance */}
+      <div
+        className="flex-1 flex items-center justify-center px-5 md:px-16 py-4 md:py-8 overflow-y-auto cursor-pointer"
+        onClick={handleSlideClick}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
