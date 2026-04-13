@@ -226,7 +226,7 @@ function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
         </h1>
         {slide.sub && (
           <p
-            className="text-lg md:text-2xl font-light"
+            className="text-base md:text-xl font-light leading-snug"
             style={{ color: C.sage, fontFamily: C.font }}
           >
             {slide.sub}
@@ -237,7 +237,7 @@ function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.12, duration: 0.45 }}
-        className="w-full md:w-auto flex justify-center shrink-0"
+        className="w-full md:w-auto flex justify-center shrink-0 pb-4"
       >
         <DashboardMock />
       </motion.div>
@@ -252,7 +252,7 @@ function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
       </h1>
       {slide.sub && (
         <p
-          className="text-lg md:text-2xl font-light"
+          className="text-base md:text-xl font-light leading-snug"
           style={{ color: C.sage, fontFamily: C.font }}
         >
           {slide.sub}
@@ -1094,10 +1094,10 @@ export default function ChurchDeck() {
   );
   const prev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
 
-  // Auto-advance: 2s on slide 2 ("Here is what a week looks like"), 7s on all others
+  // Auto-advance: 2s on slide 2 ("Here is what a week looks like"), 6s on all others
   useEffect(() => {
     if (index >= slides.length - 1) return undefined;
-    const delay = index === 2 ? 2000 : 7000;
+    const delay = index === 2 ? 2000 : 6000;
     const timer = setTimeout(next, delay);
     return () => clearTimeout(timer);
   }, [index, next, slides.length]);
@@ -1220,7 +1220,7 @@ export default function ChurchDeck() {
 
       {/* Slide — click right half to advance */}
       <div
-        className="flex-1 flex items-center justify-center px-5 md:px-16 py-4 md:py-8 overflow-y-auto cursor-pointer"
+        className="flex-1 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto cursor-pointer"
         onClick={handleSlideClick}
       >
         <AnimatePresence mode="wait">
