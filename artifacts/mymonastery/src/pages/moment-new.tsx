@@ -1312,7 +1312,8 @@ export default function MomentNew() {
           </div>
         )}
 
-        <div className={step === "template" ? "flex flex-col" : `bg-card rounded-[2rem] p-5 md:p-10 shadow-[var(--shadow-warm-lg)] border min-h-[440px] flex flex-col overflow-y-auto`} style={step !== "template" ? { borderColor: "rgba(46,107,64,0.4)" } : undefined}>
+        <div className={step === "template" ? "flex flex-col" : `bg-card rounded-[2rem] p-5 md:p-10 shadow-[var(--shadow-warm-lg)] border min-h-[440px] max-h-[calc(100dvh-160px)] flex flex-col overflow-hidden`} style={step !== "template" ? { borderColor: "rgba(46,107,64,0.4)" } : undefined}>
+          <div className="flex-1 overflow-y-auto min-h-0">
           <AnimatePresence mode="wait">
             <motion.div key={step} variants={sv} initial="initial" animate="animate" exit="exit"
               transition={{ duration: 0.22 }} className="flex-1 flex flex-col">
@@ -2319,10 +2320,11 @@ export default function MomentNew() {
 
             </motion.div>
           </AnimatePresence>
+          </div>
 
-          {/* ── Next button (not shown for template, daily-office-choice, intercession main, bcp-commitment, or contemplative-duration) ── */}
+          {/* ── Next button (sticky at bottom, not shown for template, daily-office-choice, intercession main, bcp-commitment, or contemplative-duration) ── */}
           {step !== "template" && step !== "daily-office-choice" && step !== "intercession" && step !== "bcp-commitment" && step !== "contemplative-duration" && step !== "fasting-type" && (
-            <div className="mt-6 pt-4 border-t border-border/30">
+            <div className="mt-4 pt-4 border-t border-border/30 shrink-0">
               {/* Disabled inline message for invite step */}
               {step === "invite" && showInviteDisabledMsg && invitedPeople.length === 0 && (
                 <div className="mb-3 px-4 py-3 rounded-2xl bg-[#5C7A5F]/8 border border-[#5C7A5F]/20 text-center">
