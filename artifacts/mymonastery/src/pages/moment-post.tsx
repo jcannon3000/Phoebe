@@ -287,7 +287,7 @@ function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: Mo
         key={`${m.userToken}-${i}`}
         animate={{
           scale: isBloomin ? [0.8, 1.15, 1] : 1,
-          backgroundColor: m.prayed ? "rgba(92,152,95,0.9)" : "rgba(255,255,255,0.06)",
+          backgroundColor: m.prayed ? "rgba(92,152,95,0.9)" : "rgba(46,107,64,0.15)",
           borderColor: m.prayed ? "rgba(92,152,95,0.6)" : "rgba(200,230,210,0.2)",
         }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -495,21 +495,21 @@ function IntercessionPrayerPage({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
             className="mb-4 rounded-2xl px-5 py-5"
-            style={{ backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
+            style={{ backgroundColor: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
           >
             <p className="font-serif text-[15px] leading-[1.8] whitespace-pre-wrap italic"
               style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#F0EDE6" }}>
               {fullText}
             </p>
             {intercessionSource === "bcp" && (
-              <p className="text-[11px] mt-4 italic border-t pt-2.5" style={{ color: "rgba(200,230,210,0.4)", borderColor: "rgba(255,255,255,0.1)" }}>
+              <p className="text-[11px] mt-4 italic border-t pt-2.5" style={{ color: "rgba(200,230,210,0.4)", borderColor: "rgba(46,107,64,0.25)" }}>
                 📖 From the Book of Common Prayer
               </p>
             )}
           </motion.div>
         )}
 
-        <div className="w-full h-px mb-4" style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
+        <div className="w-full h-px mb-4" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
 
         {/* Presence — pills with ambient glow */}
         <motion.div
@@ -554,7 +554,7 @@ function IntercessionPrayerPage({
                   placeholder="What is on your heart today?"
                   rows={3}
                   className="w-full px-4 py-4 rounded-2xl outline-none resize-none text-base leading-relaxed"
-                  style={{ backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", color: "#F0EDE6" }}
+                  style={{ backgroundColor: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
                 />
                 <p className="text-xs mt-1.5 italic text-center" style={{ color: "rgba(200,230,210,0.3)" }}>optional</p>
               </div>
