@@ -147,7 +147,7 @@ export default function PrayerModePage() {
   }, [user, authLoading, setLocation]);
 
   const intercessions = (momentsData?.moments ?? []).filter(
-    (m) => m.templateType === "intercession",
+    (m) => m.templateType === "intercession" && m.windowOpen,
   );
 
   const slides: PrayerSlide[] = [
