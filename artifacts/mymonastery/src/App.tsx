@@ -77,6 +77,7 @@ import CommunitiesPage from "./pages/communities";
 import CommunityNewPage from "./pages/community-new";
 import CommunityDetailPage from "./pages/community-detail";
 import CommunityJoinPage from "./pages/community-join";
+import BetaAdminPage from "./pages/beta-admin";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
 import FeaturesDeck from "./pages/features-deck";
@@ -131,6 +132,7 @@ function Router() {
       <Route path="/communities/new" component={CommunityNewPage} />
       <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
+      <Route path="/beta" component={BetaAdminPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />

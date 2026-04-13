@@ -5,6 +5,7 @@ import {
   groupsTable,
   groupMembersTable,
   groupAnnouncementsTable,
+  betaUsersTable,
   usersTable,
   prayerRequestsTable,
   prayerWordsTable,
@@ -453,6 +454,121 @@ router.post("/groups/:slug/announcements", async (req, res): Promise<void> => {
   }).returning();
 
   res.json({ announcement });
+});
+
+// ─── Beta User Management ───────────────────────────────────────────────────
+
+async function isBetaAdmin(userId: number): Promise<boolean> {
+  const user = getUser({ user: { id: userId } } as any);
+  if (!user) return false;
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return false;
+  const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+  return beta?.isAdmin === true;
+}
+
+// GET /api/beta/status — check if current user is a beta user
+router.get("/beta/status", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.json({ isBeta: false, isAdmin: false }); return; }
+
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
+  if (!u) { res.json({ isBeta: false, isAdmin: false }); return; }
+
+  const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+  res.json({ isBeta: !!beta, isAdmin: beta?.isAdmin === true });
+});
+
+// GET /api/beta/users — list all beta users (admin only)
+router.get("/beta/users", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  if (!(await isBetaAdmin(user.id))) {
+    res.status(403).json({ error: "Beta admin access required" });
+    return;
+  }
+
+  const betaUsers = await db.select().from(betaUsersTable).orderBy(desc(betaUsersTable.createdAt));
+  res.json({ users: betaUsers });
+});
+
+// POST /api/beta/users — add a beta user (admin only)
+router.post("/beta/users", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  if (!(await isBetaAdmin(user.id))) {
+    res.status(403).json({ error: "Beta admin access required" });
+    return;
+  }
+
+  const schema = z.object({
+    email: z.string().email(),
+    name: z.string().optional(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+
+  const emailLower = parsed.data.email.toLowerCase();
+  // Check if already exists
+  const [existing] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, emailLower));
+  if (existing) { res.json({ user: existing, alreadyExists: true }); return; }
+
+  const [betaUser] = await db.insert(betaUsersTable).values({
+    email: emailLower,
+    name: parsed.data.name ?? null,
+    addedByUserId: user.id,
+  }).returning();
+
+  res.json({ user: betaUser });
+});
+
+// DELETE /api/beta/users/:id — remove a beta user (admin only)
+router.delete("/beta/users/:id", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  if (!(await isBetaAdmin(user.id))) {
+    res.status(403).json({ error: "Beta admin access required" });
+    return;
+  }
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  // Don't allow removing yourself
+  const [target] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.id, id));
+  const [selfUser] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
+  if (target && selfUser && target.email === selfUser.email.toLowerCase()) {
+    res.status(400).json({ error: "Cannot remove yourself" });
+    return;
+  }
+
+  await db.delete(betaUsersTable).where(eq(betaUsersTable.id, id));
+  res.json({ ok: true });
+});
+
+// POST /api/beta/seed — seed the initial admin (only works when no admins exist)
+router.post("/beta/seed", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  // Only seed if no beta admins exist yet
+  const existing = await db.select().from(betaUsersTable).where(eq(betaUsersTable.isAdmin, true));
+  if (existing.length > 0) { res.status(400).json({ error: "Admin already exists" }); return; }
+
+  const [u] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, user.id));
+  if (!u) { res.status(400).json({ error: "User not found" }); return; }
+
+  const [betaUser] = await db.insert(betaUsersTable).values({
+    email: u.email.toLowerCase(),
+    name: u.name,
+    addedByUserId: user.id,
+    isAdmin: true,
+  }).returning();
+
+  res.json({ user: betaUser });
 });
 
 export default router;

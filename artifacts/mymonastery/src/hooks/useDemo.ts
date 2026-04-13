@@ -1,22 +1,35 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+
+type BetaStatus = { isBeta: boolean; isAdmin: boolean };
 
 /**
- * Demo feature flag hook. Activate by visiting any page with ?demo=<flag>
- * (e.g. ?demo=communities). Persists for the browser tab session via sessionStorage.
+ * Check if the current user has beta access (server-managed).
+ * Returns { isBeta, isAdmin }.
  */
-export function useDemoFlag(flag: string): boolean {
-  const [enabled, setEnabled] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return sessionStorage.getItem(`demo:${flag}`) === "1";
+export function useBetaStatus(): BetaStatus & { isLoading: boolean } {
+  const { user } = useAuth();
+
+  const { data, isLoading } = useQuery<BetaStatus>({
+    queryKey: ["/api/beta/status"],
+    queryFn: () => apiRequest("GET", "/api/beta/status"),
+    enabled: !!user,
+    staleTime: 60_000, // cache for 1 minute
   });
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("demo") === flag) {
-      sessionStorage.setItem(`demo:${flag}`, "1");
-      setEnabled(true);
-    }
-  }, [flag]);
+  return {
+    isBeta: data?.isBeta ?? false,
+    isAdmin: data?.isAdmin ?? false,
+    isLoading,
+  };
+}
 
-  return enabled;
+/**
+ * Legacy demo flag hook — now just delegates to beta status.
+ * Kept for backward compatibility.
+ */
+export function useDemoFlag(_flag: string): boolean {
+  const { isBeta } = useBetaStatus();
+  return isBeta;
 }

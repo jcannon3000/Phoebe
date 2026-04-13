@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const groupsTable = pgTable("groups", {
@@ -22,6 +22,17 @@ export const groupMembersTable = pgTable("group_members", {
   role: text("role").notNull().default("member"), // "admin" | "member"
   inviteToken: text("invite_token").notNull().unique(),
   joinedAt: timestamp("joined_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Beta access — admin-managed list of users who can access demo features
+export const betaUsersTable = pgTable("beta_users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  addedByUserId: integer("added_by_user_id").notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

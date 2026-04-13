@@ -5,7 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight } from "lucide-react";
-import { useDemoFlag } from "@/hooks/useDemo";
+import { useDemoFlag, useBetaStatus } from "@/hooks/useDemo";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -24,6 +24,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const communitiesEnabled = useDemoFlag("communities");
+  const { isAdmin: isBetaAdmin } = useBetaStatus();
 
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -55,6 +56,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "🏘️", label: "Communities", path: "/communities" },
     { emoji: "👥", label: "People",      path: "/people"      },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
+    ...(isBetaAdmin ? [{ emoji: "🔐", label: "Beta Users", path: "/beta" }] : []),
     { emoji: "ℹ️", label: "About",       path: "/about"       },
   ];
 
@@ -226,6 +228,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { isBeta } = useBetaStatus();
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
@@ -239,6 +242,11 @@ export function Layout({ children }: { children: ReactNode }) {
             <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
               Phoebe
             </span>
+            {isBeta && (
+              <span className="text-[9px] font-semibold uppercase tracking-widest self-start mt-1.5" style={{ color: "rgba(143,175,150,0.45)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                beta
+              </span>
+            )}
           </Link>
         </div>
 
