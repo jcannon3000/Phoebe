@@ -257,49 +257,75 @@ function NamedPresence({ members, myToken }: { members: MomentMember[]; myToken?
   );
 }
 
-// ─── Named presence circles with bloom animation (intercession) ───────────────
+// ─── Named presence pills with bloom animation (intercession) ─────────────────
+function presenceInitials(name: string | null | undefined): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0].slice(0, 2).toUpperCase();
+}
+
+const PILL_GAP = 8;
+const PILL_SCROLL_SPEED = 30;
+
 function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: MomentMember[]; myToken?: string; justBloomed: Set<string> }) {
-  const shown = Math.min(members.length, 8);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [needsTicker, setNeedsTicker] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el) setNeedsTicker(el.scrollWidth > el.clientWidth + 4);
+  }, [members]);
+
+  const pills = members.map((m, i) => {
+    const ini = presenceInitials(m.name);
+    const isMe = m.userToken === myToken;
+    const label = isMe ? "you" : (m.name ?? "?").split(" ")[0];
+    const isBloomin = justBloomed.has(m.userToken);
+    return (
+      <motion.div
+        key={`${m.userToken}-${i}`}
+        animate={{
+          scale: isBloomin ? [0.8, 1.15, 1] : 1,
+          backgroundColor: m.prayed ? "rgba(92,152,95,0.9)" : "rgba(255,255,255,0.06)",
+          borderColor: m.prayed ? "rgba(92,152,95,0.6)" : "rgba(200,230,210,0.2)",
+        }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border whitespace-nowrap shrink-0"
+        style={{ color: m.prayed ? "#fff" : "rgba(200,230,210,0.5)" }}
+      >
+        <span className="text-xs font-bold">{ini}</span>
+        <span className="text-[11px] font-medium">{label}</span>
+        {m.prayed && <span className="text-[9px] opacity-60">✓</span>}
+      </motion.div>
+    );
+  });
+
+  const tickerAnimId = "presence-ticker";
+  const totalW = members.length * 100; // approximate
+  const duration = totalW / PILL_SCROLL_SPEED;
+
   return (
-    <div className="flex flex-wrap justify-center gap-5">
-      {members.slice(0, shown).map((m, i) => {
-        const initial = (m.name ?? "?")[0].toUpperCase();
-        const isMe = m.userToken === myToken;
-        const isBloomin = justBloomed.has(m.userToken);
-        const firstName = isMe ? "you" : (m.name ?? "?").split(" ")[0];
-        return (
-          <div key={i} className="flex flex-col items-center gap-2">
-            <motion.div
-              animate={{
-                scale: isBloomin ? [0, 1.3, 1] : 1,
-                backgroundColor: m.prayed ? "rgba(92,152,95,0.9)" : "rgba(255,255,255,0.06)",
-                borderColor: m.prayed ? "rgba(92,152,95,0.9)" : "rgba(200,230,210,0.2)",
-              }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold border-2"
-              style={{ color: m.prayed ? "#fff" : "rgba(200,230,210,0.5)" }}
-            >
-              {initial}
-            </motion.div>
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-sm font-medium" style={{ color: m.prayed ? "rgba(200,230,210,0.9)" : "rgba(200,230,210,0.45)" }}>
-                {firstName}
-              </span>
-              {m.prayed && (
-                <span className="text-[10px]" style={{ color: "rgba(200,230,210,0.5)" }}>prayed</span>
-              )}
-            </div>
-          </div>
-        );
-      })}
-      {members.length > shown && (
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold border-2"
-            style={{ border: "2px solid rgba(200,230,210,0.2)", color: "rgba(200,230,210,0.4)" }}>
-            +{members.length - shown}
-          </div>
-        </div>
+    <div className="relative overflow-hidden">
+      {needsTicker && (
+        <>
+          <style>{`@keyframes ${tickerAnimId} { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
+          <div className="absolute inset-y-0 left-0 w-6 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, #1C3527, transparent)" }} />
+          <div className="absolute inset-y-0 right-0 w-6 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, #1C3527, transparent)" }} />
+        </>
       )}
+      <div
+        ref={containerRef}
+        className="flex items-center"
+        style={{
+          gap: PILL_GAP,
+          ...(needsTicker
+            ? { animation: `${tickerAnimId} ${duration}s linear infinite` }
+            : { justifyContent: "center", flexWrap: "wrap" as const }),
+        }}
+      >
+        {needsTicker ? <>{pills}{pills}</> : pills}
+      </div>
     </div>
   );
 }
@@ -437,25 +463,25 @@ function IntercessionPrayerPage({
       className="min-h-screen"
       style={{ backgroundColor: "#1C3527" }}
     >
-      <div className="max-w-md mx-auto px-5 py-10 pb-24">
+      <div className="max-w-md mx-auto px-5 py-6 pb-28">
 
-        {/* Header — staggered fade-in */}
-        <motion.div variants={headerContainer} initial="hidden" animate="visible" className="text-center mb-6">
-          <motion.p variants={headerItem} className="text-[11px] uppercase tracking-widest mb-2" style={{ color: "rgba(200,230,210,0.5)" }}>
+        {/* Header — staggered fade-in, condensed */}
+        <motion.div variants={headerContainer} initial="hidden" animate="visible" className="text-center mb-4">
+          <motion.p variants={headerItem} className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(200,230,210,0.5)" }}>
             Intercession
           </motion.p>
-          <motion.h1 variants={headerItem} className="text-[22px] font-bold leading-snug mb-2"
+          <motion.h1 variants={headerItem} className="text-xl font-bold leading-snug mb-1"
             style={{ fontFamily: "Space Grotesk, sans-serif", color: "#F0EDE6" }}>
             {topic}
           </motion.h1>
           {intention && intention !== topic && (
-            <motion.p variants={headerItem} className="text-[13px]" style={{ color: "rgba(200,230,210,0.7)" }}>
+            <motion.p variants={headerItem} className="text-[12px]" style={{ color: "rgba(200,230,210,0.7)" }}>
               Praying for: {intention}
             </motion.p>
           )}
           <motion.p
             variants={headerItem}
-            className="text-[12px] italic mt-2"
+            className="text-[11px] italic mt-1"
             style={{ color: "rgba(200,230,210,0.5)" }}
           >
             Your community is holding this.
@@ -468,24 +494,24 @@ function IntercessionPrayerPage({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-            className="mb-6 rounded-2xl px-6 py-6"
+            className="mb-4 rounded-2xl px-5 py-5"
             style={{ backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
-            <p className="font-serif text-base leading-[1.9] whitespace-pre-wrap italic"
+            <p className="font-serif text-[15px] leading-[1.8] whitespace-pre-wrap italic"
               style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#F0EDE6" }}>
               {fullText}
             </p>
             {intercessionSource === "bcp" && (
-              <p className="text-[12px] mt-5 italic border-t pt-3" style={{ color: "rgba(200,230,210,0.4)", borderColor: "rgba(255,255,255,0.1)" }}>
+              <p className="text-[11px] mt-4 italic border-t pt-2.5" style={{ color: "rgba(200,230,210,0.4)", borderColor: "rgba(255,255,255,0.1)" }}>
                 📖 From the Book of Common Prayer
               </p>
             )}
           </motion.div>
         )}
 
-        <div className="w-full h-px mb-6" style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
+        <div className="w-full h-px mb-4" style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
 
-        {/* Presence — with ambient glow when two have prayed */}
+        {/* Presence — pills with ambient glow */}
         <motion.div
           animate={{
             boxShadow: showGlow
@@ -493,13 +519,13 @@ function IntercessionPrayerPage({
               : "0 0 0 0 rgba(0,0,0,0)",
           }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mb-4 text-center rounded-2xl p-3"
+          className="mb-3 text-center rounded-2xl py-2"
         >
-          <p className="text-sm mb-4" style={{ color: "rgba(200,230,210,0.6)" }}>{todayPostCount} of {memberCount} have prayed this 🙏🏽</p>
+          <p className="text-xs mb-2.5" style={{ color: "rgba(200,230,210,0.6)" }}>{todayPostCount} of {memberCount} have prayed this 🙏🏽</p>
           <NamedPresenceWithBloom members={members} myToken={myToken} justBloomed={justBloomed} />
         </motion.div>
 
-        <div className="mt-6 mb-3" />
+        <div className="mt-3 mb-2" />
 
         {/* Amen / state section */}
         {alreadyPosted && confirmStep === "prayer" ? (
@@ -544,9 +570,9 @@ function IntercessionPrayerPage({
         )}
       </div>
 
-      {/* Fixed bottom Amen button — always visible when on prayer screen */}
+      {/* Floating bottom Amen button — always visible when on prayer screen */}
       {confirmStep === "prayer" && (
-        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ backgroundColor: "#1C3527", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: "linear-gradient(to top, #1C3527 60%, transparent)" }}>
           <div className="max-w-md mx-auto py-4">
             {postFailed && (
               <p className="text-center text-sm text-red-400 mb-2">

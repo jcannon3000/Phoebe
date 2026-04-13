@@ -14,24 +14,14 @@ function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
-const CARD_W = 160;
-const CARD_GAP = 12;
-const CARD_STEP = CARD_W + CARD_GAP;
-const SCROLL_SPEED = 35; // px per second
-
-export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
+export function InviteStep({ type: _type, onPeopleChange }: InviteStepProps) {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [manualPeople, setManualPeople] = useState([{ name: "", email: "" }]);
-  const [tickerPaused, setTickerPaused] = useState(false);
-  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [activeField, setActiveField] = useState<{ row: number; field: "name" | "email" } | null>(null);
+  const [suggestionQuery, setSuggestionQuery] = useState("");
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/connections", { credentials: "include" })
@@ -42,13 +32,23 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
 
   const selectedConnections = connections.filter(c => selectedEmails.has(c.email.toLowerCase()));
   const validManual = manualPeople.filter(p => isValidEmail(p.email));
-  const manualEmailsSet = new Set(validManual.map(p => p.email.toLowerCase()));
   const deduped = validManual.filter(p => !selectedEmails.has(p.email.toLowerCase()));
   const allInvited = [...selectedConnections, ...deduped];
 
   useEffect(() => {
     onPeopleChange(allInvited);
   }, [selectedEmails, manualPeople]);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setActiveField(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const toggleConnection = (email: string) => {
     const key = email.toLowerCase();
@@ -69,8 +69,11 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
     });
   };
 
-  const updateManual = (i: number, field: "name" | "email", val: string) =>
+  const updateManual = (i: number, field: "name" | "email", val: string) => {
     setManualPeople(prev => { const n = [...prev]; n[i] = { ...n[i], [field]: val }; return n; });
+    setSuggestionQuery(val);
+    setActiveField({ row: i, field });
+  };
 
   const addManualRow = () => {
     if (manualPeople.length < 8) setManualPeople(prev => [...prev, { name: "", email: "" }]);
@@ -81,159 +84,153 @@ export function InviteStep({ type, onPeopleChange }: InviteStepProps) {
     else setManualPeople(prev => prev.filter((_, j) => j !== i));
   };
 
-  const handlePointerDown = () => {
-    setTickerPaused(true);
-    if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
-  };
-  const handlePointerUp = () => {
-    if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
-    pauseTimerRef.current = setTimeout(() => setTickerPaused(false), 3000);
+  const selectSuggestion = (c: Connection, rowIdx: number) => {
+    setManualPeople(prev => {
+      const n = [...prev];
+      n[rowIdx] = { name: c.name, email: c.email };
+      return n;
+    });
+    setActiveField(null);
   };
 
-  const isTicker = connections.length > 3;
-  const totalWidth = connections.length * CARD_STEP;
-  const tickerDuration = totalWidth / SCROLL_SPEED;
-  const animId = `ticker-${type}`;
-
-  const ConnectionCard = ({ c, inTicker, idx }: { c: Connection; inTicker: boolean; idx: number }) => {
-    const sel = selectedEmails.has(c.email.toLowerCase());
-    return (
-      <button
-        key={`${c.email}-${idx}`}
-        onClick={() => toggleConnection(c.email)}
-        style={inTicker ? { width: CARD_W, minWidth: CARD_W } : { width: "100%" }}
-        className={`p-3 rounded-2xl border text-left transition-all ${inTicker ? "flex-shrink-0" : "w-full"} ${
-          sel ? "bg-[#2D5E3F] border-[#2E6B40]" : "bg-card border-[#2E6B40]/40 hover:border-[#2E6B40]/60 hover:bg-[#2E6B40]/5"
-        }`}
-      >
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold mb-2 ${
-          sel ? "bg-white/20 text-white" : "bg-[#2E6B40]/10 text-[#8FAF96]"
-        }`}>
-          {initials(c.name)}
-        </div>
-        <p className={`font-bold text-[13px] leading-tight truncate ${sel ? "text-white" : "text-foreground"}`}>
-          {(c.name || c.email || "").split(" ")[0]}
-        </p>
-        <p className={`text-[11px] truncate mt-0.5 ${sel ? "text-white/70" : "text-muted-foreground"}`}>
-          {c.email}
-        </p>
-        <div className={`mt-2 text-[11px] font-semibold px-2 py-1 rounded-lg text-center ${
-          sel
-            ? "bg-white/20 text-white"
-            : "border border-[#2E6B40] text-[#8FAF96]"
-        }`}>
-          {sel ? "Added ✓" : "+ Add"}
-        </div>
-      </button>
-    );
+  // Filter suggestions based on current typing
+  const getSuggestions = (rowIdx: number): Connection[] => {
+    if (!activeField || activeField.row !== rowIdx) return [];
+    const q = suggestionQuery.toLowerCase().trim();
+    if (!q || q.length < 1) return [];
+    const alreadyUsed = new Set([
+      ...Array.from(selectedEmails),
+      ...manualPeople.filter((_, i) => i !== rowIdx).map(p => p.email.toLowerCase()).filter(Boolean),
+    ]);
+    return connections
+      .filter(c => !alreadyUsed.has(c.email.toLowerCase()))
+      .filter(c =>
+        c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
+      )
+      .slice(0, 5);
   };
 
   return (
     <div className="space-y-4 flex-1">
-      {/* Section 1 — Recommended */}
+      {/* Section 1 — Existing connections as simple rows */}
       {!connectionsLoading && connections.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
             From your practices and traditions 🌿
           </p>
-
-          {isTicker ? (
-            <div className="relative">
-              <style>{`
-                @keyframes ${animId} {
-                  0% { transform: translateX(0); }
-                  100% { transform: translateX(-${totalWidth}px); }
-                }
-              `}</style>
-              <div className="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none rounded-l-2xl" />
-              <div className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none rounded-r-2xl" />
-              <div
-                className="overflow-hidden"
-                onPointerDown={handlePointerDown}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
-              >
-                <div
-                  className="flex"
-                  style={{
-                    gap: CARD_GAP,
-                    animation: `${animId} ${tickerDuration}s linear infinite`,
-                    animationPlayState: tickerPaused ? "paused" : "running",
-                  }}
+          <div className="space-y-1.5">
+            {connections.map((c) => {
+              const sel = selectedEmails.has(c.email.toLowerCase());
+              return (
+                <button
+                  key={c.email}
+                  onClick={() => toggleConnection(c.email)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                    sel ? "bg-[#2D5E3F] border-[#2E6B40]" : "bg-transparent border-[#2E6B40]/30 hover:border-[#2E6B40]/60"
+                  }`}
                 >
-                  {[...connections, ...connections].map((c, i) => (
-                    <ConnectionCard key={`${c.email}-${i}`} c={c} inTicker idx={i} />
-                  ))}
-                </div>
-              </div>
-              {selectedEmails.size > 0 && (
-                <p className="text-xs text-muted-foreground mt-3">
-                  {selectedEmails.size} {selectedEmails.size === 1 ? "person" : "people"} added from your connections
-                </p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <div className="flex gap-3 w-full">
-                {connections.map((c, i) => (
-                  <div key={c.email} className="flex-1 min-w-0">
-                    <ConnectionCard c={c} inTicker={false} idx={i} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${sel ? "text-white" : "text-foreground"}`}>
+                      {c.name || c.email.split("@")[0]}
+                    </p>
+                    <p className={`text-[11px] truncate ${sel ? "text-white/60" : "text-muted-foreground"}`}>
+                      {c.email}
+                    </p>
                   </div>
-                ))}
-              </div>
-              {selectedEmails.size > 0 && (
-                <p className="text-xs text-muted-foreground mt-3">
-                  {selectedEmails.size} {selectedEmails.size === 1 ? "person" : "people"} added from your connections
-                </p>
-              )}
-            </div>
+                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg shrink-0 ${
+                    sel
+                      ? "bg-white/20 text-white"
+                      : "border border-[#2E6B40] text-[#8FAF96]"
+                  }`}>
+                    {sel ? "Added ✓" : "+ Add"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {selectedEmails.size > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {selectedEmails.size} {selectedEmails.size === 1 ? "person" : "people"} added from your connections
+            </p>
           )}
         </div>
       )}
 
-      {/* Section 2 — Manual */}
+      {/* Section 2 — Manual entry with autocomplete */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
           Or invite someone new
         </p>
         <div className="space-y-2">
-          {manualPeople.map((p, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <input
-                type="text"
-                value={p.name}
-                onChange={e => updateManual(i, "name", e.target.value)}
-                placeholder="Name (optional)"
-                className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-background text-sm"
-              />
-              <input
-                type="email"
-                value={p.email}
-                onChange={e => {
-                  const val = e.target.value;
-                  updateManual(i, "email", val);
-                  if (isValidEmail(val)) {
-                    const match = connections.find(
-                      c => c.email.toLowerCase() === val.trim().toLowerCase()
-                    );
-                    if (match && !p.name) {
-                      updateManual(i, "name", match.name);
-                    }
-                  }
-                }}
-                placeholder="Email"
-                className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-background text-sm"
-              />
-              {manualPeople.length > 1 && (
-                <button
-                  onClick={() => removeManualRow(i)}
-                  className="text-muted-foreground/50 hover:text-muted-foreground px-1 text-lg leading-none"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
+          {manualPeople.map((p, i) => {
+            const suggestions = getSuggestions(i);
+            return (
+              <div key={i} className="relative">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={p.name}
+                    onChange={e => updateManual(i, "name", e.target.value)}
+                    onFocus={() => { setActiveField({ row: i, field: "name" }); setSuggestionQuery(p.name); }}
+                    placeholder="Name"
+                    className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-background text-sm"
+                  />
+                  <input
+                    type="email"
+                    value={p.email}
+                    onChange={e => {
+                      const val = e.target.value;
+                      updateManual(i, "email", val);
+                      if (isValidEmail(val)) {
+                        const match = connections.find(
+                          c => c.email.toLowerCase() === val.trim().toLowerCase()
+                        );
+                        if (match && !p.name) {
+                          setManualPeople(prev => {
+                            const n = [...prev];
+                            n[i] = { ...n[i], name: match.name };
+                            return n;
+                          });
+                        }
+                      }
+                    }}
+                    onFocus={() => { setActiveField({ row: i, field: "email" }); setSuggestionQuery(p.email); }}
+                    placeholder="Email"
+                    className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-background text-sm"
+                  />
+                  {manualPeople.length > 1 && (
+                    <button
+                      onClick={() => removeManualRow(i)}
+                      className="text-muted-foreground/50 hover:text-muted-foreground px-1 text-lg leading-none"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {/* Autocomplete suggestions */}
+                {activeField?.row === i && suggestions.length > 0 && (
+                  <div
+                    ref={suggestionsRef}
+                    className="absolute left-0 right-0 top-full mt-1 rounded-xl border border-[#2E6B40]/40 overflow-hidden z-20"
+                    style={{ background: "#0F2818" }}
+                  >
+                    {suggestions.map(c => (
+                      <button
+                        key={c.email}
+                        onClick={() => selectSuggestion(c, i)}
+                        className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#2E6B40]/20 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground truncate">{c.name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{c.email}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
         {manualPeople.length < 8 && (
           <button

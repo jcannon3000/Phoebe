@@ -1100,6 +1100,7 @@ export default function ChurchDeck() {
       const timer = setTimeout(next, 2000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [index, next]);
 
   useEffect(() => {
@@ -1195,8 +1196,9 @@ export default function ChurchDeck() {
         </AnimatePresence>
       </div>
 
-      {/* Nav */}
-      <div className="flex items-center justify-between px-5 md:px-8 pb-5 md:pb-8 pt-2">
+      {/* Nav — positioned over slide so phone shadow isn't clipped */}
+      <div className="flex items-center justify-between px-5 md:px-8 pb-5 md:pb-8 pt-6 relative z-10"
+        style={{ background: "linear-gradient(to top, #091A10 60%, transparent)" }}>
         <button
           onClick={prev}
           disabled={isFirst}

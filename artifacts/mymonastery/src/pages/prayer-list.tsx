@@ -111,101 +111,96 @@ export default function PrayerListPage() {
           </button>
         </div>
 
-        {/* Active intercessions */}
-        {intercessions.length > 0 && (
-          <div className="mb-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-              Your Intercessions
-            </p>
-            <div className="space-y-2">
-              {intercessions.map((m) => {
-                const otherMembers = m.members
-                  .filter((p) => p.email !== user.email)
-                  .map((p) => p.name || p.email.split("@")[0])
-                  .slice(0, 3)
-                  .join(", ");
-                const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
-                const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
-                const progressLabel = goal ? `${logged}/${goal} days` : null;
-                const href = (m.windowOpen && m.momentToken && m.myUserToken)
-                  ? `/moment/${m.momentToken}/${m.myUserToken}?from=prayer-list`
-                  : `/moments/${m.id}`;
-                const prayedToday = m.todayPostCount > 0;
-                const lastPrayedLabel = formatLastPrayed(m.myLastPostAt);
+        {/* Active intercessions — condensed cards, max 3 visible + faded 4th */}
+        {intercessions.length > 0 && (() => {
+          const openToday = intercessions.filter((m) => m.windowOpen);
+          const closed = intercessions.filter((m) => !m.windowOpen);
+          const all = [...openToday, ...closed];
 
-                // Card title: topic (BCP) → intention (custom) → fallback name.
-                // For custom intercessions, `intention` is what the user typed
-                // as "who are you praying for?" and is the right label.
-                // Strip trailing emoji so we don't double-up with the 🙏🏽 prefix.
-                const stripEmoji = (s: string) =>
-                  // eslint-disable-next-line no-misleading-character-class
-                  s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
-                const cardTitle = stripEmoji(m.intercessionTopic || m.intention || m.name);
-                const fullPrayer = m.intercessionFullText?.trim() || null;
+          const stripEmoji = (s: string) =>
+            // eslint-disable-next-line no-misleading-character-class
+            s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
 
-                return (
-                  <Link key={m.id} href={href} className="block">
-                    <div
-                      className="relative flex rounded-xl overflow-hidden"
-                      style={{
-                        background: "rgba(46,107,64,0.15)",
-                        border: `1px solid ${m.windowOpen && !prayedToday ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.25)"}`,
-                      }}
-                    >
-                      <div className="w-1 flex-shrink-0" style={{ background: "#2E6B40" }} />
-                      <div className="flex-1 px-4 py-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                            🙏🏽 {cardTitle}
-                          </span>
-                          {progressLabel && (
-                            <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-                              {progressLabel}
-                            </span>
-                          )}
+          return (
+            <div className="mb-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
+                Your Intercessions
+              </p>
+              <div className="relative" style={{ maxHeight: 260, overflow: "auto" }}>
+                <div className="space-y-2">
+                  {all.map((m, idx) => {
+                    const otherMembers = m.members
+                      .filter((p) => p.email !== user.email)
+                      .map((p) => p.name || p.email.split("@")[0])
+                      .slice(0, 3)
+                      .join(", ");
+                    const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
+                    const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
+                    const progressLabel = goal ? `${logged}/${goal} days` : null;
+                    const href = (m.windowOpen && m.momentToken && m.myUserToken)
+                      ? `/moment/${m.momentToken}/${m.myUserToken}?from=prayer-list`
+                      : `/moments/${m.id}`;
+                    const prayedToday = m.todayPostCount > 0;
+                    const cardTitle = stripEmoji(m.intercessionTopic || m.intention || m.name);
+                    // 4th card fades out
+                    const isFading = idx === 3;
+                    const isHidden = idx > 3;
+
+                    return (
+                      <Link
+                        key={m.id}
+                        href={href}
+                        className="block"
+                        style={{
+                          opacity: isFading ? 0.35 : isHidden ? undefined : 1,
+                          ...(isFading ? { maskImage: "linear-gradient(to bottom, black 20%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 20%, transparent 100%)" } : {}),
+                        }}
+                      >
+                        <div
+                          className="relative flex rounded-xl overflow-hidden"
+                          style={{
+                            background: "rgba(46,107,64,0.15)",
+                            border: `1px solid ${m.windowOpen && !prayedToday ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.25)"}`,
+                          }}
+                        >
+                          <div className="w-1 flex-shrink-0" style={{ background: m.windowOpen ? "#2E6B40" : "rgba(46,107,64,0.3)" }} />
+                          <div className="flex-1 px-4 py-2.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                                🙏🏽 {cardTitle}
+                              </span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {progressLabel && (
+                                  <span className="text-[10px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+                                    {progressLabel}
+                                  </span>
+                                )}
+                                {m.windowOpen && !prayedToday && (
+                                  <span className="text-[10px] font-semibold rounded-full px-2 py-0.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                                    Pray now
+                                  </span>
+                                )}
+                                {prayedToday && (
+                                  <span className="text-[10px]" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
+                                )}
+                                {!m.windowOpen && !prayedToday && (
+                                  <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>Not today</span>
+                                )}
+                              </div>
+                            </div>
+                            {otherMembers && (
+                              <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between mt-1">
-                          {otherMembers ? (
-                            <p className="text-xs truncate" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
-                          ) : (
-                            <span />
-                          )}
-                          {m.windowOpen && !prayedToday && (
-                            <span className="text-xs font-semibold rounded-full px-2.5 py-1" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                              Pray now
-                            </span>
-                          )}
-                          {prayedToday && (
-                            <span className="text-xs" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
-                          )}
-                        </div>
-                        {fullPrayer && (
-                          <p
-                            className="text-[13px] italic mt-2 leading-[1.55]"
-                            style={{
-                              color: "#C8D4C0",
-                              fontFamily: "Playfair Display, Georgia, serif",
-                            }}
-                          >
-                            {fullPrayer}
-                          </p>
-                        )}
-                        {lastPrayedLabel && (
-                          <p
-                            className="text-[11px] mt-1"
-                            style={{ color: "rgba(143,175,150,0.55)", fontStyle: "italic" }}
-                          >
-                            {lastPrayedLabel}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 
