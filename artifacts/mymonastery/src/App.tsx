@@ -76,6 +76,7 @@ import BcpDailyOfficePage from "./pages/bcp-daily-office";
 import CommunitiesPage from "./pages/communities";
 import CommunityNewPage from "./pages/community-new";
 import CommunityDetailPage from "./pages/community-detail";
+import CommunitySettingsPage from "./pages/community-settings";
 import CommunityJoinPage from "./pages/community-join";
 import BetaAdminPage from "./pages/beta-admin";
 import BetaClaimPage from "./pages/beta-claim";
@@ -132,6 +133,7 @@ function Router() {
       <Route path="/communities" component={CommunitiesPage} />
       <Route path="/communities/new" component={CommunityNewPage} />
       <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
+      <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/beta/claim" component={BetaClaimPage} />

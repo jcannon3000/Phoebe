@@ -163,6 +163,7 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   const schema = z.object({
     name: z.string().min(1).max(100).optional(),
     description: z.string().max(500).optional(),
+    calendarUrl: z.string().url().max(1000).optional().or(z.literal("")),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
@@ -170,6 +171,7 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   const updates: Record<string, any> = {};
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
   if (parsed.data.description !== undefined) updates.description = parsed.data.description;
+  if (parsed.data.calendarUrl !== undefined) updates.calendarUrl = parsed.data.calendarUrl || null;
 
   if (Object.keys(updates).length > 0) {
     await db.update(groupsTable).set(updates).where(eq(groupsTable.id, result.group.id));

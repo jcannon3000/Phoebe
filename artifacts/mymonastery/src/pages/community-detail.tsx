@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDemoFlag } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Users, MessageCircle, X } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings } from "lucide-react";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -175,13 +175,23 @@ export default function CommunityDetailPage() {
               </p>
             </div>
             {isAdmin && (
+              <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setLocation(`/communities/${slug}/settings`)}
+                className="p-2 rounded-xl"
+                style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
+                title="Community settings"
+              >
+                <Settings size={15} />
+              </button>
               <button
                 onClick={() => setShowInvite(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shrink-0"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
                 <Plus size={14} /> Invite
               </button>
+              </div>
             )}
           </div>
         </div>
