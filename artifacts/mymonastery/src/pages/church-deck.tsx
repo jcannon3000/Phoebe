@@ -237,7 +237,7 @@ function TitleSlide({ slide }: { slide: Extract<Slide, { kind: "title" }> }) {
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.12, duration: 0.45 }}
-        className="w-full md:w-auto flex justify-center shrink-0 pb-4"
+        className="w-full md:w-auto flex justify-center shrink-0"
       >
         <DashboardMock />
       </motion.div>
@@ -337,7 +337,7 @@ function FeatureTextSlide({
 function MockPhone({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[320px] md:max-w-[380px]"
+      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[320px] md:max-w-[380px] mb-16"
       style={{
         background: "#091A10",
         border: "1px solid rgba(200,212,192,0.15)",
