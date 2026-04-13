@@ -290,31 +290,25 @@ export default function CommunityDetailPage() {
           </div>
         )}
 
-        {/* Tabs — scrolling pill ticker */}
-        <div
-          className="flex gap-2 mb-5 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8"
-          style={{
-            overflowX: "scroll",
-            WebkitOverflowScrolling: "touch",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-            paddingBottom: 4,
-          }}
-        >
-          {tabs.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0"
-              style={{
-                background: activeTab === t.key ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
-                color: activeTab === t.key ? "#F0EDE6" : "#8FAF96",
-                border: `1px solid ${activeTab === t.key ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.2)"}`,
-              }}
-            >
-              <span>{t.emoji}</span> {t.label}
-            </button>
-          ))}
+        {/* Tabs — auto-scrolling ticker (pauses when one is active) */}
+        <style>{`@keyframes community-tabs-scroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
+        <div className="overflow-hidden relative mb-5" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
+          <div style={{ display: "flex", gap: 8, width: "max-content", animation: `community-tabs-scroll 14s linear infinite` }}>
+            {[...tabs, ...tabs].map((t, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveTab(t.key)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0"
+                style={{
+                  background: activeTab === t.key ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
+                  color: activeTab === t.key ? "#F0EDE6" : "#8FAF96",
+                  border: `1px solid ${activeTab === t.key ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.2)"}`,
+                }}
+              >
+                <span>{t.emoji}</span> {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ─── Prayer Wall ─── */}
