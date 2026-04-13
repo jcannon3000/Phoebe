@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,8 @@ type BetaUser = {
   createdAt: string;
 };
 
+type Connection = { name: string; email: string };
+
 export default function BetaAdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { isAdmin, isLoading: betaLoading } = useBetaStatus();
@@ -23,6 +25,9 @@ export default function BetaAdminPage() {
 
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
+  const [suggestionQuery, setSuggestionQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -40,6 +45,40 @@ export default function BetaAdminPage() {
     queryFn: () => apiRequest("GET", "/api/beta/users"),
     enabled: !!user && isAdmin,
   });
+
+  const { data: connectionsData } = useQuery<{ connections: Connection[] }>({
+    queryKey: ["/api/connections"],
+    queryFn: () => apiRequest("GET", "/api/connections"),
+    enabled: !!user && isAdmin,
+  });
+  const connections = connectionsData?.connections ?? [];
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const betaEmails = new Set((betaUsersData?.users ?? []).map(u => u.email.toLowerCase()));
+  const filteredSuggestions = connections
+    .filter(c => !betaEmails.has(c.email.toLowerCase()))
+    .filter(c => {
+      const q = suggestionQuery.toLowerCase().trim();
+      if (!q) return false;
+      return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+    })
+    .slice(0, 5);
+
+  const selectSuggestion = (c: Connection) => {
+    setNewName(c.name);
+    setNewEmail(c.email);
+    setShowSuggestions(false);
+  };
 
   const addMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/beta/users", {
