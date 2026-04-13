@@ -373,6 +373,35 @@ router.post("/groups/:slug/announcements", async (req, res): Promise<void> => {
   res.json({ announcement });
 });
 
+// ─── User Search ─────────────────────────────────────────────────────────────
+
+// GET /api/groups/users/search?q=... — search Phoebe users by name or email
+router.get("/groups/users/search", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const q = ((req.query.q as string) || "").trim().toLowerCase();
+    if (q.length < 2) { res.json({ users: [] }); return; }
+
+    const allUsers = await db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+      .from(usersTable);
+
+    const matches = allUsers
+      .filter(u => u.id !== user.id && (
+        u.name?.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      ))
+      .slice(0, 8);
+
+    res.json({ users: matches });
+  } catch (err) {
+    console.error("GET /api/groups/users/search error:", err);
+    res.json({ users: [] });
+  }
+});
+
 // ─── Beta User Management ───────────────────────────────────────────────────
 
 // Safely query beta_users — returns null if table doesn't exist yet

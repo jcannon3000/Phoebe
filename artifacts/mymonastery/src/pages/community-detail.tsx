@@ -40,6 +40,8 @@ export default function CommunityDetailPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
   const [newAnnouncementTitle, setNewAnnouncementTitle] = useState("");
   const [newAnnouncementContent, setNewAnnouncementContent] = useState("");
@@ -78,6 +80,13 @@ export default function CommunityDetailPage() {
     queryKey: ["/api/groups", slug, "announcements"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/announcements`),
     enabled: !!user && !!slug && activeTab === "announcements",
+  });
+
+  const { data: searchData } = useQuery<{ users: { id: number; name: string | null; email: string }[] }>({
+    queryKey: ["/api/groups/users/search", searchQuery],
+    queryFn: () => apiRequest("GET", `/api/groups/users/search?q=${encodeURIComponent(searchQuery)}`),
+    enabled: searchQuery.length >= 2,
+    staleTime: 10_000,
   });
 
   const inviteMutation = useMutation({
@@ -182,34 +191,92 @@ export default function CommunityDetailPage() {
           <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Invite someone</p>
-              <button onClick={() => setShowInvite(false)}><X size={16} style={{ color: "#8FAF96" }} /></button>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={inviteName}
-                onChange={e => setInviteName(e.target.value)}
-                placeholder="Name"
-                className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-                style={{ color: "#F0EDE6" }}
-              />
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
-                placeholder="Email"
-                className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-                style={{ color: "#F0EDE6" }}
-              />
-              <button
-                onClick={() => inviteMutation.mutate()}
-                disabled={!inviteEmail.includes("@") || inviteMutation.isPending}
-                className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-              >
-                Add
+              <button onClick={() => { setShowInvite(false); setSearchQuery(""); setInviteEmail(""); setInviteName(""); }}>
+                <X size={16} style={{ color: "#8FAF96" }} />
               </button>
             </div>
+
+            {/* Search by name */}
+            <div className="relative mb-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setInviteEmail(""); setInviteName(""); }}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+                placeholder="Search by name…"
+                autoComplete="off"
+                className="w-full px-3 py-2.5 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
+                style={{ color: "#F0EDE6" }}
+              />
+              {/* Dropdown results */}
+              {searchFocused && searchQuery.length >= 2 && (
+                <div className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
+                  style={{ background: "#0D2318", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+                  {(searchData?.users ?? []).length === 0 ? (
+                    <p className="text-xs px-4 py-3" style={{ color: "rgba(143,175,150,0.55)" }}>No Phoebe users found</p>
+                  ) : (
+                    (searchData?.users ?? []).map(u => (
+                      <button
+                        key={u.id}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                        style={{ borderBottom: "1px solid rgba(46,107,64,0.12)" }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(46,107,64,0.15)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        onClick={() => {
+                          setInviteName(u.name || "");
+                          setInviteEmail(u.email);
+                          setSearchQuery(u.name || u.email);
+                          setSearchFocused(false);
+                        }}
+                      >
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                          style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                          {(u.name || u.email).charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>{u.name || u.email}</p>
+                          <p className="text-xs truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{u.email}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Selected user or manual email fallback */}
+            {inviteEmail ? (
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg mb-2"
+                style={{ background: "rgba(46,107,64,0.2)", border: "1px solid rgba(46,107,64,0.35)" }}>
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{inviteName || inviteEmail}</p>
+                  <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>{inviteEmail}</p>
+                </div>
+                <button onClick={() => { setInviteEmail(""); setInviteName(""); setSearchQuery(""); }}>
+                  <X size={14} style={{ color: "#8FAF96" }} />
+                </button>
+              </div>
+            ) : searchQuery.includes("@") ? (
+              // Allow inviting by email directly if they typed one
+              <p className="text-xs mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+                Not on Phoebe yet? They'll get an invite link.
+              </p>
+            ) : null}
+
+            <button
+              onClick={() => {
+                const email = inviteEmail || (searchQuery.includes("@") ? searchQuery : "");
+                if (!email) return;
+                setInviteEmail(email);
+                inviteMutation.mutate();
+              }}
+              disabled={(!inviteEmail && !searchQuery.includes("@")) || inviteMutation.isPending}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 mt-1"
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            >
+              {inviteMutation.isPending ? "Inviting…" : "Send Invite"}
+            </button>
           </div>
         )}
 
