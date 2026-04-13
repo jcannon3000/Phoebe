@@ -65,71 +65,72 @@ async function requireAdmin(groupSlug: string, userId: number) {
 
 // POST /api/groups — create a group
 router.post("/groups", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const schema = z.object({
-    name: z.string().min(1).max(100),
-    description: z.string().max(500).optional(),
-  });
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
+    const schema = z.object({
+      name: z.string().min(1).max(100),
+      description: z.string().max(500).optional(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
 
-  const slug = await uniqueSlug(parsed.data.name);
+    const slug = await uniqueSlug(parsed.data.name);
 
-  const [group] = await db.insert(groupsTable).values({
-    name: parsed.data.name,
-    description: parsed.data.description ?? null,
-    slug,
-    createdByUserId: user.id,
-  }).returning();
+    const [group] = await db.insert(groupsTable).values({
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      slug,
+      createdByUserId: user.id,
+    }).returning();
 
-  // Creator becomes admin member
-  await db.insert(groupMembersTable).values({
-    groupId: group.id,
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: "admin",
-    inviteToken: generateToken(),
-    joinedAt: new Date(),
-  });
+    // Creator becomes admin member
+    await db.insert(groupMembersTable).values({
+      groupId: group.id,
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: "admin",
+      inviteToken: generateToken(),
+      joinedAt: new Date(),
+    });
 
-  res.json({ group });
+    res.json({ group });
+  } catch (err) {
+    console.error("POST /api/groups error:", err);
+    res.status(500).json({ error: "Tables not ready — run schema push" });
+  }
 });
 
 // GET /api/groups — list groups I belong to
 router.get("/groups", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const myMemberships = await db.select({ groupId: groupMembersTable.groupId, role: groupMembersTable.role })
-    .from(groupMembersTable)
-    .where(and(eq(groupMembersTable.userId, user.id), groupMembersTable.joinedAt ? undefined : undefined));
-
-  // Filter to joined memberships
-  const memberships = await db.select()
-    .from(groupMembersTable)
-    .where(and(eq(groupMembersTable.userId, user.id)));
-
-  const joined = memberships.filter(m => m.joinedAt !== null);
-  if (joined.length === 0) { res.json({ groups: [] }); return; }
-
-  const groupIds = joined.map(m => m.groupId);
-  const groups = await db.select().from(groupsTable).where(inArray(groupsTable.id, groupIds));
-
-  // Enrich with member count and role
-  const enriched = await Promise.all(groups.map(async (g) => {
-    const members = await db.select({ id: groupMembersTable.id })
+    const memberships = await db.select()
       .from(groupMembersTable)
-      .where(and(eq(groupMembersTable.groupId, g.id), groupMembersTable.joinedAt ? undefined : undefined));
-    const joinedMembers = (await db.select().from(groupMembersTable)
-      .where(eq(groupMembersTable.groupId, g.id))).filter(m => m.joinedAt !== null);
-    const myRole = joined.find(m => m.groupId === g.id)?.role ?? "member";
-    return { ...g, memberCount: joinedMembers.length, myRole };
-  }));
+      .where(eq(groupMembersTable.userId, user.id));
 
-  res.json({ groups: enriched });
+    const joined = memberships.filter(m => m.joinedAt !== null);
+    if (joined.length === 0) { res.json({ groups: [] }); return; }
+
+    const groupIds = joined.map(m => m.groupId);
+    const groups = await db.select().from(groupsTable).where(inArray(groupsTable.id, groupIds));
+
+    const enriched = await Promise.all(groups.map(async (g) => {
+      const joinedMembers = (await db.select().from(groupMembersTable)
+        .where(eq(groupMembersTable.groupId, g.id))).filter(m => m.joinedAt !== null);
+      const myRole = joined.find(m => m.groupId === g.id)?.role ?? "member";
+      return { ...g, memberCount: joinedMembers.length, myRole };
+    }));
+
+    res.json({ groups: enriched });
+  } catch {
+    // Tables don't exist yet
+    res.json({ groups: [] });
+  }
 });
 
 // GET /api/groups/:slug — single group detail
@@ -458,117 +459,149 @@ router.post("/groups/:slug/announcements", async (req, res): Promise<void> => {
 
 // ─── Beta User Management ───────────────────────────────────────────────────
 
+// Safely query beta_users — returns null if table doesn't exist yet
+async function safeBetaLookup(email: string): Promise<{ isAdmin: boolean } | null> {
+  try {
+    const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, email.toLowerCase()));
+    return beta ? { isAdmin: beta.isAdmin } : null;
+  } catch {
+    // Table doesn't exist yet — schema not pushed
+    return null;
+  }
+}
+
 async function isBetaAdmin(userId: number): Promise<boolean> {
-  const user = getUser({ user: { id: userId } } as any);
-  if (!user) return false;
   const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
   if (!u) return false;
-  const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+  const beta = await safeBetaLookup(u.email);
   return beta?.isAdmin === true;
 }
 
 // GET /api/beta/status — check if current user is a beta user
 router.get("/beta/status", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.json({ isBeta: false, isAdmin: false }); return; }
+  try {
+    const user = getUser(req);
+    if (!user) { res.json({ isBeta: false, isAdmin: false }); return; }
 
-  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
-  if (!u) { res.json({ isBeta: false, isAdmin: false }); return; }
+    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
+    if (!u) { res.json({ isBeta: false, isAdmin: false }); return; }
 
-  const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
-  res.json({ isBeta: !!beta, isAdmin: beta?.isAdmin === true });
+    const beta = await safeBetaLookup(u.email);
+    res.json({ isBeta: !!beta, isAdmin: beta?.isAdmin === true });
+  } catch {
+    // Graceful fallback if anything goes wrong
+    res.json({ isBeta: false, isAdmin: false });
+  }
 });
 
 // GET /api/beta/users — list all beta users (admin only)
 router.get("/beta/users", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  if (!(await isBetaAdmin(user.id))) {
-    res.status(403).json({ error: "Beta admin access required" });
-    return;
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+
+    const betaUsers = await db.select().from(betaUsersTable).orderBy(desc(betaUsersTable.createdAt));
+    res.json({ users: betaUsers });
+  } catch (err) {
+    console.error("GET /api/beta/users error:", err);
+    res.json({ users: [] });
   }
-
-  const betaUsers = await db.select().from(betaUsersTable).orderBy(desc(betaUsersTable.createdAt));
-  res.json({ users: betaUsers });
 });
 
 // POST /api/beta/users — add a beta user (admin only)
 router.post("/beta/users", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  if (!(await isBetaAdmin(user.id))) {
-    res.status(403).json({ error: "Beta admin access required" });
-    return;
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+
+    const schema = z.object({
+      email: z.string().email(),
+      name: z.string().optional(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+
+    const emailLower = parsed.data.email.toLowerCase();
+    const [existing] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, emailLower));
+    if (existing) { res.json({ user: existing, alreadyExists: true }); return; }
+
+    const [betaUser] = await db.insert(betaUsersTable).values({
+      email: emailLower,
+      name: parsed.data.name ?? null,
+      addedByUserId: user.id,
+    }).returning();
+
+    res.json({ user: betaUser });
+  } catch (err) {
+    console.error("POST /api/beta/users error:", err);
+    res.status(500).json({ error: "Table not ready — run schema push" });
   }
-
-  const schema = z.object({
-    email: z.string().email(),
-    name: z.string().optional(),
-  });
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
-
-  const emailLower = parsed.data.email.toLowerCase();
-  // Check if already exists
-  const [existing] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, emailLower));
-  if (existing) { res.json({ user: existing, alreadyExists: true }); return; }
-
-  const [betaUser] = await db.insert(betaUsersTable).values({
-    email: emailLower,
-    name: parsed.data.name ?? null,
-    addedByUserId: user.id,
-  }).returning();
-
-  res.json({ user: betaUser });
 });
 
 // DELETE /api/beta/users/:id — remove a beta user (admin only)
 router.delete("/beta/users/:id", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  if (!(await isBetaAdmin(user.id))) {
-    res.status(403).json({ error: "Beta admin access required" });
-    return;
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+    const [target] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.id, id));
+    const [selfUser] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
+    if (target && selfUser && target.email === selfUser.email.toLowerCase()) {
+      res.status(400).json({ error: "Cannot remove yourself" });
+      return;
+    }
+
+    await db.delete(betaUsersTable).where(eq(betaUsersTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/beta/users error:", err);
+    res.status(500).json({ error: "Table not ready — run schema push" });
   }
-
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
-
-  // Don't allow removing yourself
-  const [target] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.id, id));
-  const [selfUser] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
-  if (target && selfUser && target.email === selfUser.email.toLowerCase()) {
-    res.status(400).json({ error: "Cannot remove yourself" });
-    return;
-  }
-
-  await db.delete(betaUsersTable).where(eq(betaUsersTable.id, id));
-  res.json({ ok: true });
 });
 
 // POST /api/beta/seed — seed the initial admin (only works when no admins exist)
 router.post("/beta/seed", async (req, res): Promise<void> => {
-  const user = getUser(req);
-  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  // Only seed if no beta admins exist yet
-  const existing = await db.select().from(betaUsersTable).where(eq(betaUsersTable.isAdmin, true));
-  if (existing.length > 0) { res.status(400).json({ error: "Admin already exists" }); return; }
+    // Only seed if no beta admins exist yet
+    const existing = await db.select().from(betaUsersTable).where(eq(betaUsersTable.isAdmin, true));
+    if (existing.length > 0) { res.status(400).json({ error: "Admin already exists" }); return; }
 
-  const [u] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, user.id));
-  if (!u) { res.status(400).json({ error: "User not found" }); return; }
+    const [u] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, user.id));
+    if (!u) { res.status(400).json({ error: "User not found" }); return; }
 
-  const [betaUser] = await db.insert(betaUsersTable).values({
-    email: u.email.toLowerCase(),
-    name: u.name,
-    addedByUserId: user.id,
-    isAdmin: true,
-  }).returning();
+    const [betaUser] = await db.insert(betaUsersTable).values({
+      email: u.email.toLowerCase(),
+      name: u.name,
+      addedByUserId: user.id,
+      isAdmin: true,
+    }).returning();
 
-  res.json({ user: betaUser });
+    res.json({ user: betaUser });
+  } catch (err) {
+    console.error("POST /api/beta/seed error:", err);
+    res.status(500).json({ error: "Table not ready — run schema push" });
+  }
 });
 
 export default router;
