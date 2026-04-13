@@ -67,6 +67,7 @@ router.post("/groups", async (req, res): Promise<void> => {
     const schema = z.object({
       name: z.string().min(1).max(100),
       description: z.string().max(500).optional(),
+      emoji: z.string().max(10).optional(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
@@ -76,6 +77,7 @@ router.post("/groups", async (req, res): Promise<void> => {
     const [group] = await db.insert(groupsTable).values({
       name: parsed.data.name,
       description: parsed.data.description ?? null,
+      emoji: parsed.data.emoji ?? null,
       slug,
       createdByUserId: user.id,
     }).returning();
@@ -163,6 +165,7 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   const schema = z.object({
     name: z.string().min(1).max(100).optional(),
     description: z.string().max(500).optional(),
+    emoji: z.string().max(10).optional(),
     calendarUrl: z.string().url().max(1000).optional().or(z.literal("")),
   });
   const parsed = schema.safeParse(req.body);
@@ -171,6 +174,7 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   const updates: Record<string, any> = {};
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
   if (parsed.data.description !== undefined) updates.description = parsed.data.description;
+  if (parsed.data.emoji !== undefined) updates.emoji = parsed.data.emoji || null;
   if (parsed.data.calendarUrl !== undefined) updates.calendarUrl = parsed.data.calendarUrl || null;
 
   if (Object.keys(updates).length > 0) {

@@ -148,7 +148,7 @@ function DashboardMock() {
         <p className="text-[11px] font-bold" style={{ color: C.text }}>This week</p>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
       </div>
-      <div className="space-y-2 mb-3">
+      <div className="space-y-2">
         {/* Lectio card */}
         <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
           <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
@@ -179,36 +179,18 @@ function DashboardMock() {
         </div>
       </div>
 
-      {/* Prayer Requests */}
-      <div className="flex items-center gap-2 mb-2">
-        <p className="text-[11px] font-semibold" style={{ color: C.text }}>Prayer Requests 🙏🏽</p>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      {/* Prayer requests — just one card */}
+      <div className="flex items-center gap-2 mt-3 mb-2">
+        <p className="text-[11px] font-bold" style={{ color: C.text }}>Prayer requests</p>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
       </div>
-      <div className="flex gap-2 mb-2.5">
-        <div className="flex-1 text-[10px] px-3 py-2 rounded-xl" style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>
-          Share a prayer request... 🌿
-        </div>
-        <div className="px-2.5 py-2 rounded-xl text-[10px]" style={{ background: "#2D5E3F", color: C.text }}>🙏🏽</div>
-      </div>
-      <div>
-        {[
-          { from: "Margaret W.", body: "For my mother, who begins treatment this week.", count: 3 },
-          { from: "David R.", body: "Discernment about a new calling.", count: 1 },
-        ].map((r, i) => (
-          <div key={i} className="flex gap-0" style={{ borderBottom: i === 0 ? "1px solid rgba(200,212,192,0.12)" : "none" }}>
-            <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
-            <div className="flex-1 py-2.5 px-2.5 flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>From {r.from}</p>
-                <p className="text-[11px] leading-relaxed" style={{ color: C.text, fontFamily: C.font }}>{r.body}</p>
-              </div>
-              <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
-                <span className="text-[9px] tabular-nums">{r.count}</span>
-                <MessageCircle size={11} />
-              </div>
-            </div>
-          </div>
-        ))}
+      <div
+        className="rounded-xl px-3 py-2.5"
+        style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}
+      >
+        <p className="text-[10px] font-semibold mb-0.5" style={{ color: C.sage }}>Margaret W.</p>
+        <p className="text-[11px] leading-snug" style={{ color: C.text }}>For my mother, who begins treatment this week.</p>
+        <p className="text-[9px] mt-1" style={{ color: "rgba(143,175,150,0.35)" }}>🙏 4 praying</p>
       </div>
     </MockPhone>
   );
@@ -343,7 +325,7 @@ function MockPhone({ children }: { children: React.ReactNode }) {
         border: "1px solid rgba(200,212,192,0.15)",
         boxShadow:
           "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
-        margin: "40px auto",
+        margin: "0 auto",
       }}
     >
       {children}
@@ -1095,14 +1077,6 @@ export default function ChurchDeck() {
   );
   const prev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
 
-  // Auto-advance: 2s on slide 2 ("Here is what a week looks like"), 6s on all others
-  useEffect(() => {
-    if (index >= slides.length - 1) return undefined;
-    const delay = index === 2 ? 2000 : 6000;
-    const timer = setTimeout(next, delay);
-    return () => clearTimeout(timer);
-  }, [index, next, slides.length]);
-
   // Keyboard navigation
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -1153,8 +1127,10 @@ export default function ChurchDeck() {
     const x = e.clientX - rect.left;
     if (x > rect.width / 2) {
       next();
+    } else {
+      prev();
     }
-  }, [next]);
+  }, [next, prev]);
 
   const slide = slides[index];
   const isFirst = index === 0;

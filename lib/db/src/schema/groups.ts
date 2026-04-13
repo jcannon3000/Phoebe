@@ -6,6 +6,7 @@ export const groupsTable = pgTable("groups", {
   name: text("name").notNull(),
   description: text("description"),
   slug: text("slug").notNull().unique(),
+  emoji: text("emoji"),
   calendarUrl: text("calendar_url"),
   createdByUserId: integer("created_by_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
