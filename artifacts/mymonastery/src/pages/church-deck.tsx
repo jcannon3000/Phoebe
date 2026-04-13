@@ -1094,10 +1094,11 @@ export default function ChurchDeck() {
   );
   const prev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
 
-  // Auto-advance every 10 seconds on all slides (except the last)
+  // Auto-advance: 2s on slide 2 ("Here is what a week looks like"), 7s on all others
   useEffect(() => {
     if (index >= slides.length - 1) return undefined;
-    const timer = setTimeout(next, 10000);
+    const delay = index === 2 ? 2000 : 7000;
+    const timer = setTimeout(next, delay);
     return () => clearTimeout(timer);
   }, [index, next, slides.length]);
 
