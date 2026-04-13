@@ -293,7 +293,7 @@ export default function CommunityDetailPage() {
         {/* Tabs — auto-scrolling ticker (pauses when one is active) */}
         <style>{`@keyframes community-tabs-scroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
         <div className="overflow-hidden relative mb-5" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
-          <div style={{ display: "flex", gap: 8, width: "max-content", animation: `community-tabs-scroll 14s linear infinite` }}>
+          <div style={{ display: "flex", gap: 8, width: "max-content", animation: `community-tabs-scroll 28s linear infinite` }}>
             {[...tabs, ...tabs].map((t, i) => (
               <button
                 key={i}
