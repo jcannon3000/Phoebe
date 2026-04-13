@@ -280,25 +280,23 @@ export default function CommunityDetailPage() {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 mb-5 overflow-x-auto pb-1 -mx-1 px-1">
+        {/* Tabs — pill style matching home screen */}
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: "none" }}>
           {tabs.map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0"
               style={{
-                background: activeTab === t.key ? "rgba(46,107,64,0.25)" : "transparent",
+                background: activeTab === t.key ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
                 color: activeTab === t.key ? "#F0EDE6" : "#8FAF96",
-                border: activeTab === t.key ? "1px solid rgba(46,107,64,0.4)" : "1px solid transparent",
+                border: `1px solid ${activeTab === t.key ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.2)"}`,
               }}
             >
               <span>{t.emoji}</span> {t.label}
             </button>
           ))}
         </div>
-
-        <div className="h-px mb-5" style={{ background: "rgba(200,212,192,0.12)" }} />
 
         {/* ─── Prayer Wall ─── */}
         {activeTab === "prayer" && (
