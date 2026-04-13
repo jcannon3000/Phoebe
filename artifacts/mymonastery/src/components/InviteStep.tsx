@@ -19,6 +19,7 @@ export function InviteStep({ type: _type, onPeopleChange }: InviteStepProps) {
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [manualPeople, setManualPeople] = useState([{ name: "", email: "" }]);
+  const [showAllConnections, setShowAllConnections] = useState(false);
   const [activeField, setActiveField] = useState<{ row: number; field: "name" | "email" } | null>(null);
   const [suggestionQuery, setSuggestionQuery] = useState("");
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -112,49 +113,66 @@ export function InviteStep({ type: _type, onPeopleChange }: InviteStepProps) {
 
   return (
     <div className="space-y-4 flex-1">
-      {/* Section 1 — Existing connections as simple rows */}
-      {!connectionsLoading && connections.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
-            From your practices and traditions 🌿
-          </p>
-          <div className="space-y-1.5">
-            {connections.map((c) => {
-              const sel = selectedEmails.has(c.email.toLowerCase());
-              return (
-                <button
-                  key={c.email}
-                  onClick={() => toggleConnection(c.email)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
-                    sel ? "bg-[#2D5E3F] border-[#2E6B40]" : "bg-transparent border-[#2E6B40]/30 hover:border-[#2E6B40]/60"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${sel ? "text-white" : "text-foreground"}`}>
-                      {c.name || c.email.split("@")[0]}
-                    </p>
-                    <p className={`text-[11px] truncate ${sel ? "text-white/60" : "text-muted-foreground"}`}>
-                      {c.email}
-                    </p>
-                  </div>
-                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg shrink-0 ${
-                    sel
-                      ? "bg-white/20 text-white"
-                      : "border border-[#2E6B40] text-[#8FAF96]"
-                  }`}>
-                    {sel ? "Added ✓" : "+ Add"}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {selectedEmails.size > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              {selectedEmails.size} {selectedEmails.size === 1 ? "person" : "people"} added from your connections
+      {/* Section 1 — Existing connections as simple rows (3 visible + fade) */}
+      {!connectionsLoading && connections.length > 0 && (() => {
+        const VISIBLE = 3;
+        const hasMore = connections.length > VISIBLE;
+        return (
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+              From your practices and traditions 🌿
             </p>
-          )}
-        </div>
-      )}
+            <div className="relative">
+              <div className="space-y-1.5">
+                {(showAllConnections ? connections : connections.slice(0, VISIBLE + (hasMore ? 1 : 0))).map((c, i) => {
+                  const sel = selectedEmails.has(c.email.toLowerCase());
+                  const isFaded = !showAllConnections && hasMore && i === VISIBLE;
+                  return (
+                    <button
+                      key={c.email}
+                      onClick={() => isFaded ? setShowAllConnections(true) : toggleConnection(c.email)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                        sel ? "bg-[#2D5E3F] border-[#2E6B40]" : "bg-transparent border-[#2E6B40]/30 hover:border-[#2E6B40]/60"
+                      }`}
+                      style={isFaded ? { opacity: 0.35, maskImage: "linear-gradient(to bottom, black 0%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 0%, transparent 100%)" } : undefined}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${sel ? "text-white" : "text-foreground"}`}>
+                          {c.name || c.email.split("@")[0]}
+                        </p>
+                        <p className={`text-[11px] truncate ${sel ? "text-white/60" : "text-muted-foreground"}`}>
+                          {c.email}
+                        </p>
+                      </div>
+                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg shrink-0 ${
+                        sel
+                          ? "bg-white/20 text-white"
+                          : "border border-[#2E6B40] text-[#8FAF96]"
+                      }`}>
+                        {sel ? "Added ✓" : "+ Add"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {!showAllConnections && hasMore && (
+                <button
+                  onClick={() => setShowAllConnections(true)}
+                  className="w-full text-center text-xs font-medium mt-2 py-1.5 transition-colors"
+                  style={{ color: "#8FAF96" }}
+                >
+                  Show all {connections.length} connections
+                </button>
+              )}
+            </div>
+            {selectedEmails.size > 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {selectedEmails.size} {selectedEmails.size === 1 ? "person" : "people"} added from your connections
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Section 2 — Manual entry with autocomplete */}
       <div>

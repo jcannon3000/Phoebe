@@ -2867,7 +2867,46 @@ router.get("/connections", async (req, res): Promise<void> => {
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
     const seen = new Set<string>([user.email]);
-    const connections: { name: string; email: string }[] = [];
+    // Track the most recent createdAt for each connection so we can sort
+    const connectionMap = new Map<string, { name: string; email: string; recentTs: number }>();
+
+    const addConnection = (email: string, name: string, ts: number) => {
+      const key = email.toLowerCase();
+      if (key === user.email.toLowerCase()) return;
+      const existing = connectionMap.get(key);
+      if (!existing) {
+        connectionMap.set(key, { name, email, recentTs: ts });
+        seen.add(key);
+      } else if (ts > existing.recentTs) {
+        existing.recentTs = ts;
+        if (name && name !== email) existing.name = name;
+      }
+    };
+
+    // Members from active practices (moments this user is currently part of)
+    // — fetch with createdAt from the moment so we can sort by most recent practice
+    const userTokenRows = await db.select({ momentId: momentUserTokensTable.momentId })
+      .from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.email, user.email));
+
+    const momentIds = [...new Set(userTokenRows.map(r => r.momentId))];
+    if (momentIds.length > 0) {
+      const momentsWithMembers = await db.select({
+        name: momentUserTokensTable.name,
+        email: momentUserTokensTable.email,
+        createdAt: sharedMomentsTable.createdAt,
+      })
+        .from(momentUserTokensTable)
+        .innerJoin(sharedMomentsTable, eq(momentUserTokensTable.momentId, sharedMomentsTable.id))
+        .where(inArray(momentUserTokensTable.momentId, momentIds));
+
+      for (const m of momentsWithMembers) {
+        if (m.email) {
+          const ts = m.createdAt ? new Date(m.createdAt as unknown as string).getTime() : 0;
+          addConnection(m.email, m.name ?? m.email, ts);
+        }
+      }
+    }
 
     // Members from ALL traditions (owned by user OR where user is a participant)
     const allRituals = await db.select({ participants: ritualsTable.participants })
@@ -2877,29 +2916,7 @@ router.get("/connections", async (req, res): Promise<void> => {
     for (const r of allRituals) {
       const parts = (r.participants as Array<{ name: string; email: string }>) ?? [];
       for (const p of parts) {
-        if (p.email && !seen.has(p.email)) {
-          seen.add(p.email);
-          connections.push({ name: p.name ?? p.email, email: p.email });
-        }
-      }
-    }
-
-    // Members from active practices (moments this user is currently part of)
-    const userTokenRows = await db.select({ momentId: momentUserTokensTable.momentId })
-      .from(momentUserTokensTable)
-      .where(eq(momentUserTokensTable.email, user.email));
-
-    const momentIds = [...new Set(userTokenRows.map(r => r.momentId))];
-    if (momentIds.length > 0) {
-      const allMembers = await db.select({ name: momentUserTokensTable.name, email: momentUserTokensTable.email })
-        .from(momentUserTokensTable)
-        .where(inArray(momentUserTokensTable.momentId, momentIds));
-
-      for (const m of allMembers) {
-        if (m.email && !seen.has(m.email)) {
-          seen.add(m.email);
-          connections.push({ name: m.name ?? m.email, email: m.email });
-        }
+        if (p.email) addConnection(p.email, p.name ?? p.email, 0);
       }
     }
 
@@ -2912,11 +2929,13 @@ router.get("/connections", async (req, res): Promise<void> => {
       .where(eq(userConnectionsCacheTable.userEmail, user.email));
 
     for (const c of cached) {
-      if (c.contactEmail && !seen.has(c.contactEmail)) {
-        seen.add(c.contactEmail);
-        connections.push({ name: c.contactName ?? c.contactEmail, email: c.contactEmail });
-      }
+      if (c.contactEmail) addConnection(c.contactEmail, c.contactName ?? c.contactEmail, 0);
     }
+
+    // Sort by most recent practice first
+    const connections = [...connectionMap.values()]
+      .sort((a, b) => b.recentTs - a.recentTs)
+      .map(({ name, email }) => ({ name, email }));
 
     res.json({ connections });
   } catch (err) {
