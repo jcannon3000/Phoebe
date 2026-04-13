@@ -26,7 +26,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView } = useBetaStatus();
   const communitiesEnabled = isBeta;
 
-  const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; memberCount: number; myRole: string }> }>({
+  const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user && communitiesEnabled,
@@ -154,7 +154,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                       onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
                     >
                       <div className="flex items-center gap-2.5">
-                        <span className="text-base leading-none">🏘️</span>
+                        <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
                         <div className="text-left">
                           <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
                           <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</p>

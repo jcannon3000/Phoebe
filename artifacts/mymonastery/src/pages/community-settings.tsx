@@ -8,9 +8,11 @@ import { ExternalLink } from "lucide-react";
 
 const FONT = "'Space Grotesk', sans-serif";
 
+const EMOJI_OPTIONS = ["🏘️","⛪","✝️","🕊️","🙏🏽","🌿","🌱","🕯️","📖","🫂","💒","🌾","🔔","🫙","🌻","🍃","🏔️","🌊","☀️","🌙"];
+
 type Group = {
   id: number; name: string; description: string | null; slug: string;
-  calendarUrl: string | null;
+  emoji: string | null; calendarUrl: string | null;
 };
 
 export default function CommunitySettingsPage() {
@@ -21,6 +23,7 @@ export default function CommunitySettingsPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [emoji, setEmoji] = useState("🏘️");
   const [calendarUrl, setCalendarUrl] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -47,6 +50,7 @@ export default function CommunitySettingsPage() {
     if (group) {
       setName(group.name);
       setDescription(group.description ?? "");
+      setEmoji(group.emoji ?? "🏘️");
       setCalendarUrl(group.calendarUrl ?? "");
     }
   }, [group]);
@@ -55,6 +59,7 @@ export default function CommunitySettingsPage() {
     mutationFn: () => apiRequest("PATCH", `/api/groups/${slug}`, {
       name,
       description: description || undefined,
+      emoji,
       calendarUrl: calendarUrl || "",
     }),
     onSuccess: () => {
@@ -84,6 +89,31 @@ export default function CommunitySettingsPage() {
         <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>Edit details for {group.name}.</p>
 
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
+
+        {/* Emoji */}
+        <div className="mb-4">
+          <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+            Icon
+          </label>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="text-4xl w-14 h-14 flex items-center justify-center rounded-2xl flex-shrink-0"
+              style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}>
+              {emoji}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {EMOJI_OPTIONS.map(e => (
+                <button key={e} onClick={() => setEmoji(e)}
+                  className="text-xl w-9 h-9 flex items-center justify-center rounded-xl transition-all"
+                  style={{
+                    background: emoji === e ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                    border: `1px solid ${emoji === e ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.15)"}`,
+                  }}>
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Name */}
         <div className="mb-4">

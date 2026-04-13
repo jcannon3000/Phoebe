@@ -12,6 +12,9 @@ export default function CommunityNewPage() {
   const communitiesEnabled = useDemoFlag("communities");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [emoji, setEmoji] = useState("🏘️");
+
+  const EMOJI_OPTIONS = ["🏘️","⛪","✝️","🕊️","🙏🏽","🌿","🌱","🕯️","📖","🫂","💒","🌾","🔔","🫙","🌻","🍃","🏔️","🌊","☀️","🌙"];
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -19,7 +22,7 @@ export default function CommunityNewPage() {
   }, [user, isLoading, communitiesEnabled, setLocation]);
 
   const createMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/groups", { name, description: description || undefined }),
+    mutationFn: () => apiRequest("POST", "/api/groups", { name, description: description || undefined, emoji }),
     onSuccess: (data: any) => {
       setLocation(`/communities/${data.group.slug}`);
     },
@@ -49,6 +52,31 @@ export default function CommunityNewPage() {
         </p>
 
         <div className="space-y-4">
+          {/* Emoji picker */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Icon
+            </label>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-4xl w-14 h-14 flex items-center justify-center rounded-2xl flex-shrink-0"
+                style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}>
+                {emoji}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {EMOJI_OPTIONS.map(e => (
+                  <button key={e} onClick={() => setEmoji(e)}
+                    className="text-xl w-9 h-9 flex items-center justify-center rounded-xl transition-all"
+                    style={{
+                      background: emoji === e ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                      border: `1px solid ${emoji === e ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.15)"}`,
+                    }}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
               Name

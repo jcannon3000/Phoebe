@@ -10,7 +10,7 @@ import { Plus, Users, MessageCircle, X, Settings } from "lucide-react";
 const FONT = "'Space Grotesk', sans-serif";
 
 type Group = {
-  id: number; name: string; description: string | null; slug: string; createdAt: string;
+  id: number; name: string; description: string | null; slug: string; emoji: string | null; createdAt: string;
 };
 type Member = {
   id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean;
@@ -163,9 +163,14 @@ export default function CommunityDetailPage() {
           </button>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                {group.name}
-              </h1>
+              <div className="flex items-center gap-3 mb-1">
+                {group.emoji && (
+                  <span className="text-3xl leading-none">{group.emoji}</span>
+                )}
+                <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                  {group.name}
+                </h1>
+              </div>
               {group.description && (
                 <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>{group.description}</p>
               )}
