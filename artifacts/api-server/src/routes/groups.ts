@@ -577,18 +577,33 @@ router.delete("/beta/users/:id", async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/beta/seed — seed the initial admin (only works when no admins exist)
-router.post("/beta/seed", async (req, res): Promise<void> => {
+// POST /api/beta/claim — one-time admin claim with secret token
+// The claim token is set via BETA_CLAIM_TOKEN env var (or defaults to a hardcoded one for dev)
+router.post("/beta/claim", async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-    // Only seed if no beta admins exist yet
-    const existing = await db.select().from(betaUsersTable).where(eq(betaUsersTable.isAdmin, true));
-    if (existing.length > 0) { res.status(400).json({ error: "Admin already exists" }); return; }
+    const { token } = req.body ?? {};
+    const claimToken = process.env.BETA_CLAIM_TOKEN || "phoebe-admin-2026";
+    if (token !== claimToken) {
+      res.status(403).json({ error: "Invalid claim token" });
+      return;
+    }
 
     const [u] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, user.id));
     if (!u) { res.status(400).json({ error: "User not found" }); return; }
+
+    // Check if already a beta user
+    const [existing] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    if (existing) {
+      // Upgrade to admin if not already
+      if (!existing.isAdmin) {
+        await db.update(betaUsersTable).set({ isAdmin: true }).where(eq(betaUsersTable.id, existing.id));
+      }
+      res.json({ ok: true, alreadyExisted: true });
+      return;
+    }
 
     const [betaUser] = await db.insert(betaUsersTable).values({
       email: u.email.toLowerCase(),
@@ -597,9 +612,9 @@ router.post("/beta/seed", async (req, res): Promise<void> => {
       isAdmin: true,
     }).returning();
 
-    res.json({ user: betaUser });
+    res.json({ ok: true, user: betaUser });
   } catch (err) {
-    console.error("POST /api/beta/seed error:", err);
+    console.error("POST /api/beta/claim error:", err);
     res.status(500).json({ error: "Table not ready — run schema push" });
   }
 });

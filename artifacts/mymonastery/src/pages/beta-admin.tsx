@@ -17,17 +17,23 @@ type BetaUser = {
 
 export default function BetaAdminPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { isAdmin, isBeta, isLoading: betaLoading } = useBetaStatus();
+  const { isAdmin, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
-  const [seedStatus, setSeedStatus] = useState<"idle" | "seeding" | "done">("idle");
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
+
+  // Redirect non-admins to dashboard
+  useEffect(() => {
+    if (!authLoading && !betaLoading && user && !isAdmin) {
+      setLocation("/dashboard");
+    }
+  }, [user, authLoading, betaLoading, isAdmin, setLocation]);
 
   const { data: betaUsersData } = useQuery<{ users: BetaUser[] }>({
     queryKey: ["/api/beta/users"],
@@ -54,66 +60,7 @@ export default function BetaAdminPage() {
     },
   });
 
-  const seedMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/beta/seed"),
-    onSuccess: () => {
-      setSeedStatus("done");
-      queryClient.invalidateQueries({ queryKey: ["/api/beta/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/beta/users"] });
-    },
-  });
-
-  if (authLoading || betaLoading || !user) return null;
-
-  // If not admin yet, show seed option (first-time setup)
-  if (!isAdmin) {
-    return (
-      <Layout>
-        <div className="max-w-md mx-auto w-full text-center py-16">
-          <div className="text-5xl mb-4">🔐</div>
-          <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Beta Admin Setup
-          </h1>
-          {seedStatus === "done" ? (
-            <>
-              <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-                You're now the beta admin. Refresh to access the management panel.
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-              >
-                Refresh
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-sm mb-2" style={{ color: "#8FAF96" }}>
-                No beta admin exists yet.
-              </p>
-              <p className="text-xs mb-6" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Claim admin access for <strong style={{ color: "#F0EDE6" }}>{user.email}</strong>
-              </p>
-              <button
-                onClick={() => { setSeedStatus("seeding"); seedMutation.mutate(); }}
-                disabled={seedStatus === "seeding"}
-                className="px-6 py-3 rounded-xl text-sm font-semibold disabled:opacity-40"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-              >
-                {seedStatus === "seeding" ? "Setting up..." : "Make me beta admin"}
-              </button>
-              {seedMutation.isError && (
-                <p className="text-xs mt-3" style={{ color: "#E57373" }}>
-                  An admin already exists. Ask them to add you.
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </Layout>
-    );
-  }
+  if (authLoading || betaLoading || !user || !isAdmin) return null;
 
   const betaUsers = betaUsersData?.users ?? [];
 
