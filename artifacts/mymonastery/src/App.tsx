@@ -74,6 +74,9 @@ import BcpPage from "./pages/bcp";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
 import BcpDailyOfficePage from "./pages/bcp-daily-office";
 import CommunitiesPage from "./pages/communities";
+import CommunityNewPage from "./pages/community-new";
+import CommunityDetailPage from "./pages/community-detail";
+import CommunityJoinPage from "./pages/community-join";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
 import FeaturesDeck from "./pages/features-deck";
@@ -125,6 +128,9 @@ function Router() {
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
       <Route path="/bcp/daily-office" component={BcpDailyOfficePage} />
       <Route path="/communities" component={CommunitiesPage} />
+      <Route path="/communities/new" component={CommunityNewPage} />
+      <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
+      <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />

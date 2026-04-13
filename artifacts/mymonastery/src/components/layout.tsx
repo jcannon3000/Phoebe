@@ -2,9 +2,10 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight } from "lucide-react";
+import { useDemoFlag } from "@/hooks/useDemo";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -22,6 +23,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const logout = useLogout();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const communitiesEnabled = useDemoFlag("communities");
+
+  const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; memberCount: number; myRole: string }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user && communitiesEnabled,
+  });
 
   const presenceToggle = useMutation({
     mutationFn: (showPresence: boolean) =>
@@ -114,12 +122,53 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
                 My Communities
               </p>
-              <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
-                <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>Communities are coming soon 🌱</p>
-                <p className="text-xs" style={{ color: "rgba(200,212,192,0.4)" }}>
-                  Shared prayer, gatherings, and letters for your parish or group.
-                </p>
-              </div>
+              {communitiesEnabled && (groupsData?.groups ?? []).length > 0 ? (
+                <div className="space-y-1.5">
+                  {groupsData!.groups.map((g) => (
+                    <button
+                      key={g.slug}
+                      onClick={() => navigate(`/communities/${g.slug}`)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
+                      onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                      onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base leading-none">🏘️</span>
+                        <div className="text-left">
+                          <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
+                          <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</p>
+                        </div>
+                      </div>
+                      <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => navigate("/communities")}
+                    className="w-full text-xs text-center py-1.5"
+                    style={{ color: "#8FAF96" }}
+                  >
+                    View all →
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
+                  {communitiesEnabled ? (
+                    <>
+                      <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>No communities yet</p>
+                      <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
+                        Create one →
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>Communities are coming soon 🌱</p>
+                      <p className="text-xs" style={{ color: "rgba(200,212,192,0.4)" }}>
+                        Shared prayer, gatherings, and letters for your parish or group.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ── Navigation ── */}

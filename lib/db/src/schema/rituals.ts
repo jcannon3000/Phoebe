@@ -2,9 +2,11 @@ import { pgTable, serial, text, integer, timestamp, jsonb, boolean } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+import { groupsTable } from "./groups";
 
 export const ritualsTable = pgTable("rituals", {
   id: serial("id").primaryKey(),
+  groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   frequency: text("frequency").notNull(),

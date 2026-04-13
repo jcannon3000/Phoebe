@@ -14,6 +14,7 @@ import momentsRouter from "./moments";
 import officeRouter from "./office";
 import lectioRouter from "./lectio";
 import gatheringsRouter from "./gatherings";
+import groupsRouter from "./groups";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(momentsRouter);
 router.use(officeRouter);
 router.use(lectioRouter);
 router.use(gatheringsRouter);
+router.use(groupsRouter);
 
 export default router;

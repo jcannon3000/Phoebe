@@ -1,8 +1,10 @@
 import { pgTable, serial, text, integer, timestamp, boolean, date, jsonb, unique } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import { groupsTable } from "./groups";
 
 export const correspondencesTable = pgTable("correspondences", {
   id: serial("id").primaryKey(),
+  groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
   frequency: text("frequency").notNull().default("fortnightly"),

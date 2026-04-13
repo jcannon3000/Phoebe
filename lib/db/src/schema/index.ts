@@ -16,3 +16,4 @@ export * from "./morningPrayer";
 export * from "./letters";
 export * from "./lectio";
 export * from "./calendar_subscriptions";
+export * from "./groups";
