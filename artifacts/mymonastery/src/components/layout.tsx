@@ -23,8 +23,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const logout = useLogout();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const communitiesEnabled = useDemoFlag("communities");
-  const { isAdmin: isBetaAdmin } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView } = useBetaStatus();
+  const communitiesEnabled = isBeta;
 
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -117,6 +117,25 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full shadow-sm transition-transform ${user?.showPresence ? "left-[16px]" : "left-[2px]"}`} style={{ background: "#F0EDE6" }} />
                 </div>
               </button>
+
+              {/* Beta view toggle — only show for beta admins */}
+              {isBetaAdmin && (
+                <button
+                  onClick={toggleBetaView}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors mt-2"
+                  style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.15)" }}
+                >
+                  <div className="text-left">
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>Beta view {betaViewEnabled ? "on" : "off"}</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
+                      {betaViewEnabled ? "Seeing beta features." : "Previewing regular user view."}
+                    </p>
+                  </div>
+                  <div className={`w-8 h-[18px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${betaViewEnabled ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
+                    <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full shadow-sm transition-transform ${betaViewEnabled ? "left-[16px]" : "left-[2px]"}`} style={{ background: "#F0EDE6" }} />
+                  </div>
+                </button>
+              )}
             </div>
 
             {/* ── My Communities ── */}
