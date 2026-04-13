@@ -337,12 +337,13 @@ function FeatureTextSlide({
 function MockPhone({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[320px] md:max-w-[380px] mb-16"
+      className="rounded-[28px] md:rounded-[32px] p-4 md:p-5 mx-auto w-full max-w-[320px] md:max-w-[380px]"
       style={{
         background: "#091A10",
         border: "1px solid rgba(200,212,192,0.15)",
         boxShadow:
           "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
+        margin: "40px auto",
       }}
     >
       {children}
