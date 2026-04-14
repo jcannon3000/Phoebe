@@ -2,20 +2,20 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useDemoFlag } from "@/hooks/useDemo";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus } from "lucide-react";
 
 type Group = {
   id: number; name: string; slug: string; description: string | null;
-  memberCount: number; myRole: string; createdAt: string;
+  emoji: string | null; memberCount: number; myRole: string; createdAt: string;
 };
 
 export default function CommunitiesPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const communitiesEnabled = useDemoFlag("communities");
+  const { isBeta: communitiesEnabled, isLoading: betaLoading } = useBetaStatus();
 
   const { data: groupsData } = useQuery<{ groups: Group[] }>({
     queryKey: ["/api/groups"],
@@ -119,6 +119,7 @@ export default function CommunitiesPage() {
               <Link key={g.slug} href={`/communities/${g.slug}`} className="block">
                 <div className="flex items-center justify-between px-4 py-3.5 rounded-xl transition-colors"
                   style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.25)" }}>
+                  {g.emoji && <span className="text-2xl shrink-0 mr-3">{g.emoji}</span>}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{g.name}</p>
                     {g.description && (

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useDemoFlag } from "@/hooks/useDemo";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Users, MessageCircle, X, Settings } from "lucide-react";
@@ -33,7 +33,8 @@ export default function CommunityDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const communitiesEnabled = useDemoFlag("communities");
+  const { isBeta, isLoading: betaLoading } = useBetaStatus();
+  const communitiesEnabled = isBeta;
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<"prayer" | "practices" | "gatherings" | "announcements" | "members">("prayer");
@@ -49,8 +50,8 @@ export default function CommunityDetailPage() {
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
-    if (!authLoading && !communitiesEnabled) setLocation("/communities");
-  }, [user, authLoading, communitiesEnabled, setLocation]);
+    if (!authLoading && !betaLoading && !communitiesEnabled) setLocation("/communities");
+  }, [user, authLoading, betaLoading, communitiesEnabled, setLocation]);
 
   const { data: groupData } = useQuery<{ group: Group; myRole: string; members: Member[] }>({
     queryKey: ["/api/groups", slug],

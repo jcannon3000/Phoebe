@@ -2,14 +2,14 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useDemoFlag } from "@/hooks/useDemo";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function CommunityNewPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const communitiesEnabled = useDemoFlag("communities");
+  const { isBeta: communitiesEnabled, isLoading: betaLoading } = useBetaStatus();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [emoji, setEmoji] = useState("🏘️");
@@ -18,8 +18,8 @@ export default function CommunityNewPage() {
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
-    if (!isLoading && !communitiesEnabled) setLocation("/communities");
-  }, [user, isLoading, communitiesEnabled, setLocation]);
+    if (!isLoading && !betaLoading && !communitiesEnabled) setLocation("/communities");
+  }, [user, isLoading, betaLoading, communitiesEnabled, setLocation]);
 
   const createMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/groups", { name, description: description || undefined, emoji }),
