@@ -40,7 +40,7 @@ export function useBetaViewToggle(): [boolean, () => void] {
  * Returns { isBeta, isAdmin, betaViewEnabled, toggleBetaView }.
  * betaViewEnabled can be toggled to preview the regular user experience.
  */
-export function useBetaStatus(): BetaStatus & { isLoading: boolean; betaViewEnabled: boolean; toggleBetaView: () => void; showWelcome: boolean } {
+export function useBetaStatus(): BetaStatus & { isLoading: boolean; betaViewEnabled: boolean; toggleBetaView: () => void; showWelcome: boolean; rawIsAdmin: boolean } {
   const { user } = useAuth();
   const [betaViewEnabled, toggleBetaView] = useBetaViewToggle();
 
@@ -57,6 +57,7 @@ export function useBetaStatus(): BetaStatus & { isLoading: boolean; betaViewEnab
   return {
     isBeta: rawIsBeta && betaViewEnabled,
     isAdmin: rawIsAdmin && betaViewEnabled,
+    rawIsAdmin,
     showWelcome: data?.showWelcome ?? false,
     isLoading,
     betaViewEnabled,
