@@ -123,7 +123,7 @@ function PersonCard({ person, isPresent }: { person: PersonSummary; isPresent: b
     ? `🙏🏽 ${truncate(person.activePrayerRequest.body, 40)}`
     : "";
 
-  const flapLines = [...allNames, prayerLine].filter(s => s.length > 0);
+  const flapLines = [prayerLine, ...allNames].filter(s => s.length > 0);
 
   // Best streak across shared practices
   const bestStreak = Math.max(person.maxSharedStreak, ...person.sharedPractices.map(p => p.currentStreak), 0);
