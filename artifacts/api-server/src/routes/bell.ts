@@ -12,6 +12,39 @@ const router: IRouter = Router();
 
 const APP_URL = process.env["APP_URL"] ?? "https://withphoebe.app";
 
+// ─── Debug endpoint (temporary) ─────────────────────────────────────────────
+router.get("/bell/debug", async (_req, res): Promise<void> => {
+  try {
+    // Check if bell columns exist
+    const colCheck = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name IN ('bell_enabled', 'daily_bell_time', 'timezone', 'bell_calendar_event_id') ORDER BY column_name`
+    );
+    const cols = colCheck.rows.map((r: any) => r.column_name);
+
+    // Check a sample user
+    let sampleUser = null;
+    try {
+      const r = await pool.query(`SELECT id, email, bell_enabled, daily_bell_time, timezone, bell_calendar_event_id FROM users WHERE email = 'jcannon3000@gmail.com' LIMIT 1`);
+      sampleUser = r.rows[0] ?? null;
+    } catch (err: any) {
+      sampleUser = { error: err.message };
+    }
+
+    // Check beta status
+    let betaRow = null;
+    try {
+      const r = await pool.query(`SELECT * FROM beta_users WHERE LOWER(email) = 'jcannon3000@gmail.com' LIMIT 1`);
+      betaRow = r.rows[0] ?? null;
+    } catch (err: any) {
+      betaRow = { error: err.message };
+    }
+
+    res.json({ columns: cols, sampleUser, betaRow });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 // ─── Auth helper ────────────────────────────────────────────────────────────
 function getUser(req: any): { id: number } | null {
   return (req as any).user ?? null;
