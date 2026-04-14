@@ -1085,7 +1085,7 @@ export default function ChurchDeck() {
   useEffect(() => {
     if (!autoPlay) return;
     if (index >= slides.length - 1) return; // don't auto-advance past last slide
-    const delay = index === 2 ? 2000 : 7000;
+    const delay = index === 2 ? 3000 : 10000;
     const timer = setTimeout(() => next(), delay);
     return () => clearTimeout(timer);
   }, [index, autoPlay, slides.length, next]);
