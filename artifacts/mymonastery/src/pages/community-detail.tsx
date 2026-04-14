@@ -205,7 +205,7 @@ export default function CommunityDetailPage() {
         {showInvite && (
           <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Invite someone</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Add someone</p>
               <button onClick={() => { setShowInvite(false); setSearchQuery(""); setInviteEmail(""); setInviteName(""); }}>
                 <X size={16} style={{ color: "#8FAF96" }} />
               </button>

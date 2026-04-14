@@ -199,7 +199,7 @@ router.delete("/groups/:slug", async (req, res): Promise<void> => {
 
 // ─── Membership ─────────────────────────────────────────────────────────────
 
-// POST /api/groups/:slug/members — invite members (admin only)
+// POST /api/groups/:slug/members — add members (admin only)
 router.post("/groups/:slug/members", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -216,7 +216,7 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
-  const invited = [];
+  const added = [];
   for (const person of parsed.data.people) {
     const emailLower = person.email.toLowerCase();
     // Check if already a member
@@ -235,12 +235,13 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
       name: person.name ?? null,
       role: "member",
       inviteToken: token,
+      joinedAt: new Date(),
     }).returning();
 
-    invited.push({ ...member, inviteToken: token });
+    added.push(member);
   }
 
-  res.json({ invited });
+  res.json({ added });
 });
 
 // POST /api/groups/:slug/join — accept invite
