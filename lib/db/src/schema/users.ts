@@ -17,6 +17,9 @@ export const usersTable = pgTable("users", {
   showPresence: boolean("show_presence").notNull().default(true),
   correspondenceImprintCompleted: boolean("correspondence_imprint_completed").notNull().default(false),
   gatheringImprintCompleted: boolean("gathering_imprint_completed").notNull().default(false),
+  bellEnabled: boolean("bell_enabled").notNull().default(false),
+  dailyBellTime: text("daily_bell_time"),           // HH:MM format, e.g. "07:00"
+  timezone: text("timezone"),                        // IANA timezone, e.g. "America/New_York"
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

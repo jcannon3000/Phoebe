@@ -17,3 +17,4 @@ export * from "./letters";
 export * from "./lectio";
 export * from "./calendar_subscriptions";
 export * from "./groups";
+export * from "./bell_notifications";

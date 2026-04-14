@@ -551,6 +551,21 @@ export async function migrate() {
         ) >= 2
     `);
 
+    // ── Daily Bell system ──────────────────────────────────────────────────
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS bell_enabled BOOLEAN NOT NULL DEFAULT false`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_bell_time TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS bell_notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        bell_date TEXT NOT NULL,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_bell_notifications_user_date ON bell_notifications (user_id, bell_date)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

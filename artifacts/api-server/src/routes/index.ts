@@ -15,6 +15,7 @@ import officeRouter from "./office";
 import lectioRouter from "./lectio";
 import gatheringsRouter from "./gatherings";
 import groupsRouter from "./groups";
+import bellRouter from "./bell";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(officeRouter);
 router.use(lectioRouter);
 router.use(gatheringsRouter);
 router.use(groupsRouter);
+router.use(bellRouter);
 
 export default router;

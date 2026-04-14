@@ -4,6 +4,7 @@ import { logger } from "./lib/logger";
 import { migrate } from "./lib/migrate";
 import { attachWebSocketServer } from "./lib/ws";
 import { startGoalCleanupScheduler } from "./lib/goalCleanup";
+import { startBellScheduler } from "./lib/bellSender";
 
 const rawPort = process.env["PORT"] ?? "3001";
 const port = Number(rawPort);
@@ -24,6 +25,7 @@ migrate()
     // Hourly job: cancel recurring calendar events for practices whose goal
     // was reached more than 2 days ago and never renewed.
     startGoalCleanupScheduler();
+    startBellScheduler();
   })
   .catch((err) => {
     logger.error({ err }, "Failed to run migrations");

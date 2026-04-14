@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { LogOut } from "lucide-react";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 function SectionHeader({ label }: { label: string }) {
   return (
@@ -28,11 +29,179 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ─── Common timezone options ────────────────────────────────────────────────
+
+const TIMEZONE_OPTIONS = [
+  { value: "America/New_York", label: "Eastern (ET)" },
+  { value: "America/Chicago", label: "Central (CT)" },
+  { value: "America/Denver", label: "Mountain (MT)" },
+  { value: "America/Los_Angeles", label: "Pacific (PT)" },
+  { value: "America/Phoenix", label: "Arizona (MST)" },
+  { value: "America/Anchorage", label: "Alaska (AKT)" },
+  { value: "Pacific/Honolulu", label: "Hawaii (HST)" },
+  { value: "Europe/London", label: "London (GMT/BST)" },
+  { value: "Europe/Paris", label: "Paris (CET)" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
+  { value: "Australia/Sydney", label: "Sydney (AEST)" },
+];
+
+const TIME_OPTIONS = [
+  "05:00", "05:30", "06:00", "06:30", "07:00", "07:30",
+  "08:00", "08:30", "09:00", "09:30", "10:00",
+];
+
+function formatTimeLabel(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+// ─── Bell Preferences (beta only) ──────────────────────────────────────────
+
+interface BellPrefs {
+  bellEnabled: boolean;
+  dailyBellTime: string;
+  timezone: string;
+}
+
+function BellPreferences() {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery<BellPrefs>({
+    queryKey: ["/api/bell/preferences"],
+    queryFn: () => apiRequest("GET", "/api/bell/preferences"),
+  });
+
+  const [bellEnabled, setBellEnabled] = useState(false);
+  const [bellTime, setBellTime] = useState("07:00");
+  const [timezone, setTimezone] = useState("America/New_York");
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (data && !initialized) {
+      setBellEnabled(data.bellEnabled);
+      setBellTime(data.dailyBellTime);
+      setTimezone(data.timezone);
+      setInitialized(true);
+    }
+  }, [data, initialized]);
+
+  const saveMutation = useMutation({
+    mutationFn: (prefs: BellPrefs) =>
+      apiRequest("PUT", "/api/bell/preferences", prefs),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bell/preferences"] });
+    },
+  });
+
+  function save(overrides: Partial<BellPrefs> = {}) {
+    const prefs = {
+      bellEnabled: overrides.bellEnabled ?? bellEnabled,
+      dailyBellTime: overrides.dailyBellTime ?? bellTime,
+      timezone: overrides.timezone ?? timezone,
+    };
+    saveMutation.mutate(prefs);
+  }
+
+  if (isLoading) {
+    return (
+      <SettingsCard>
+        <div className="h-16 animate-pulse rounded-xl" style={{ background: "rgba(46,107,64,0.08)" }} />
+      </SettingsCard>
+    );
+  }
+
+  return (
+    <>
+      {/* Enable toggle */}
+      <SettingsCard>
+        <button
+          onClick={() => {
+            const next = !bellEnabled;
+            setBellEnabled(next);
+            save({ bellEnabled: next });
+          }}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Daily Bell 🔔</p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              One email each morning with your practices for the day.
+            </p>
+          </div>
+          <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${bellEnabled ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
+            <div className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${bellEnabled ? "left-[21px]" : "left-[3px]"}`} style={{ background: "#F0EDE6" }} />
+          </div>
+        </button>
+      </SettingsCard>
+
+      {/* Time + timezone pickers (only shown when enabled) */}
+      {bellEnabled && (
+        <SettingsCard>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
+                Bell time
+              </label>
+              <select
+                value={bellTime}
+                onChange={e => { setBellTime(e.target.value); save({ dailyBellTime: e.target.value }); }}
+                className="w-full px-4 py-2.5 rounded-xl border outline-none text-sm appearance-none cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.08)",
+                  border: "1px solid rgba(46,107,64,0.25)",
+                  color: "#F0EDE6",
+                }}
+              >
+                {TIME_OPTIONS.map(t => (
+                  <option key={t} value={t} style={{ background: "#091A10", color: "#F0EDE6" }}>
+                    {formatTimeLabel(t)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
+                Timezone
+              </label>
+              <select
+                value={timezone}
+                onChange={e => { setTimezone(e.target.value); save({ timezone: e.target.value }); }}
+                className="w-full px-4 py-2.5 rounded-xl border outline-none text-sm appearance-none cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.08)",
+                  border: "1px solid rgba(46,107,64,0.25)",
+                  color: "#F0EDE6",
+                }}
+              >
+                {TIMEZONE_OPTIONS.map(tz => (
+                  <option key={tz.value} value={tz.value} style={{ background: "#091A10", color: "#F0EDE6" }}>
+                    {tz.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {saveMutation.isPending && (
+              <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.5)" }}>Saving...</p>
+            )}
+          </div>
+        </SettingsCard>
+      )}
+    </>
+  );
+}
+
+// ─── Main Settings Page ─────────────────────────────────────────────────────
+
 export default function SettingsPage() {
   const { user, isLoading } = useAuth();
   const logout = useLogout();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { isBeta } = useBetaStatus();
 
   const presenceToggle = useMutation({
     mutationFn: (showPresence: boolean) =>
@@ -106,11 +275,15 @@ export default function SettingsPage() {
 
         {/* ── Notifications ── */}
         <SectionHeader label="Notifications" />
-        <SettingsCard>
-          <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Notification preferences coming soon. 🌱
-          </p>
-        </SettingsCard>
+        {isBeta ? (
+          <BellPreferences />
+        ) : (
+          <SettingsCard>
+            <p className="text-sm" style={{ color: "#8FAF96" }}>
+              Notification preferences coming soon.
+            </p>
+          </SettingsCard>
+        )}
         <div className="mb-8" />
 
         {/* ── Privacy ── */}

@@ -6,12 +6,35 @@ import {
   db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
-  lectioReflectionsTable,
+  lectioReflectionsTable, betaUsersTable,
 } from "@workspace/db";
-import { createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
+import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
+
+// ─── Beta-gated calendar creation ───────────────────────────────────────────
+// Beta users use the Daily Bell instead of individual calendar events.
+// These wrappers skip calendar creation for beta users.
+
+async function isUserBeta(userId: number): Promise<boolean> {
+  try {
+    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+    if (!u) return false;
+    const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    return !!beta;
+  } catch { return false; }
+}
+
+async function createCalendarEvent(userId: number, opts: Parameters<typeof _createCalendarEvent>[1]): Promise<string | null> {
+  if (await isUserBeta(userId)) return null;
+  return _createCalendarEvent(userId, opts);
+}
+
+async function createAllDayCalendarEvent(userId: number, opts: Parameters<typeof _createAllDayCalendarEvent>[1]): Promise<string | null> {
+  if (await isUserBeta(userId)) return null;
+  return _createAllDayCalendarEvent(userId, opts);
+}
 
 // Monastic wisdom: depth over breadth. A person may only hold three Lectio
 // Divina groups at once — the discipline is to go deep with a few, not shallow

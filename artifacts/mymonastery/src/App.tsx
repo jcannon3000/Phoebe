@@ -83,6 +83,7 @@ import BetaClaimPage from "./pages/beta-claim";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
 import FeaturesDeck from "./pages/features-deck";
+import BellPage from "./pages/bell";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,6 +141,7 @@ function Router() {
       <Route path="/learn" component={LearnPage} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
+      <Route path="/bell" component={BellPage} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route component={NotFound} />
     </Switch>
