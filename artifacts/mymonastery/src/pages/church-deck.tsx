@@ -1069,13 +1069,26 @@ function renderSlide(slide: Slide) {
 export default function ChurchDeck() {
   const [, setLocation] = useLocation();
   const [index, setIndex] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(true);
   const slides = SLIDES;
 
   const next = useCallback(
     () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
     [slides.length],
   );
-  const prev = useCallback(() => setIndex((i) => Math.max(i - 1, 0)), []);
+  const prev = useCallback(() => {
+    setAutoPlay(false); // Going back stops auto-advance
+    setIndex((i) => Math.max(i - 1, 0));
+  }, []);
+
+  // Auto-advance every 7s (slide 2 = 2s) — stops when user goes back
+  useEffect(() => {
+    if (!autoPlay) return;
+    if (index >= slides.length - 1) return; // don't auto-advance past last slide
+    const delay = index === 2 ? 2000 : 7000;
+    const timer = setTimeout(() => next(), delay);
+    return () => clearTimeout(timer);
+  }, [index, autoPlay, slides.length, next]);
 
   // Keyboard navigation
   useEffect(() => {
