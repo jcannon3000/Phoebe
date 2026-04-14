@@ -15,7 +15,7 @@ type BetaUser = {
   createdAt: string;
 };
 
-type Connection = { name: string; email: string };
+type AppUser = { id: number; name: string | null; email: string };
 
 export default function BetaAdminPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -46,12 +46,12 @@ export default function BetaAdminPage() {
     enabled: !!user && isAdmin,
   });
 
-  const { data: connectionsData } = useQuery<{ connections: Connection[] }>({
-    queryKey: ["/api/connections"],
-    queryFn: () => apiRequest("GET", "/api/connections"),
-    enabled: !!user && isAdmin,
+  const debouncedQuery = suggestionQuery.trim();
+  const { data: searchData } = useQuery<{ users: AppUser[] }>({
+    queryKey: ["/api/groups/users/search", debouncedQuery],
+    queryFn: () => apiRequest("GET", `/api/groups/users/search?q=${encodeURIComponent(debouncedQuery)}`),
+    enabled: !!user && isAdmin && debouncedQuery.length >= 2,
   });
-  const connections = connectionsData?.connections ?? [];
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -65,18 +65,13 @@ export default function BetaAdminPage() {
   }, []);
 
   const betaEmails = new Set((betaUsersData?.users ?? []).map(u => u.email.toLowerCase()));
-  const filteredSuggestions = connections
-    .filter(c => !betaEmails.has(c.email.toLowerCase()))
-    .filter(c => {
-      const q = suggestionQuery.toLowerCase().trim();
-      if (!q) return false;
-      return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
-    })
+  const filteredSuggestions = (searchData?.users ?? [])
+    .filter(u => !betaEmails.has(u.email.toLowerCase()))
     .slice(0, 5);
 
-  const selectSuggestion = (c: Connection) => {
-    setNewName(c.name);
-    setNewEmail(c.email);
+  const selectSuggestion = (u: AppUser) => {
+    setNewName(u.name || u.email.split("@")[0]);
+    setNewEmail(u.email);
     setShowSuggestions(false);
   };
 
@@ -169,15 +164,15 @@ export default function BetaAdminPage() {
                 className="absolute left-0 right-0 top-full mt-1 rounded-xl border border-[#2E6B40]/40 overflow-hidden z-20"
                 style={{ background: "#0F2818" }}
               >
-                {filteredSuggestions.map(c => (
+                {filteredSuggestions.map(u => (
                   <button
-                    key={c.email}
-                    onClick={() => selectSuggestion(c)}
+                    key={u.email}
+                    onClick={() => selectSuggestion(u)}
                     className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#2E6B40]/20 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate" style={{ color: "#F0EDE6" }}>{c.name}</p>
-                      <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{c.email}</p>
+                      <p className="text-sm truncate" style={{ color: "#F0EDE6" }}>{u.name || u.email.split("@")[0]}</p>
+                      <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{u.email}</p>
                     </div>
                   </button>
                 ))}
