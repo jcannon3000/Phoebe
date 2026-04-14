@@ -290,7 +290,7 @@ export default function CommunityDetailPage() {
               className="w-full py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 mt-1"
               style={{ background: "#2D5E3F", color: "#F0EDE6" }}
             >
-              {inviteMutation.isPending ? "Inviting…" : "Send Invite"}
+              {inviteMutation.isPending ? "Adding…" : "Add"}
             </button>
           </div>
         )}
