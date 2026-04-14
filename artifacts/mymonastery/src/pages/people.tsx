@@ -220,13 +220,19 @@ export default function People() {
       <style>{FLAP_CSS}</style>
       <div className="max-w-2xl mx-auto w-full pb-20">
         {/* Header — matches dashboard style */}
-        <div className="mb-6">
+        <div className="mb-5">
           <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
             Stay close to your community
           </p>
           <h1 style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             People 🌿
           </h1>
+        </div>
+
+        {/* Section divider */}
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>Your garden</p>
+          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
         </div>
 
         {isLoading ? (

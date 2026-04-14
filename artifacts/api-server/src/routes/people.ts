@@ -181,11 +181,36 @@ router.get("/people", async (req, res): Promise<void> => {
             })
             .from(sharedMomentsTable)
             .where(inArray(sharedMomentsTable.id, sharedMomentIds));
-          maxStreak = Math.max(0, ...sharedMoments.map(m => m.currentStreak ?? 0));
+
+          // Compute group streak from actual window data (DB field can be corrupted)
+          const windowRows = await db
+            .select({
+              momentId: momentWindowsTable.momentId,
+              windowDate: momentWindowsTable.windowDate,
+              status: momentWindowsTable.status,
+            })
+            .from(momentWindowsTable)
+            .where(inArray(momentWindowsTable.momentId, sharedMomentIds))
+            .orderBy(desc(momentWindowsTable.windowDate));
+
+          const streakByMoment = new Map<number, number>();
+          for (const m of sharedMoments) {
+            const windows = windowRows
+              .filter(w => w.momentId === m.id)
+              .sort((a, b) => b.windowDate.localeCompare(a.windowDate));
+            let streak = 0;
+            for (const w of windows) {
+              if (w.status === "bloom") streak++;
+              else break;
+            }
+            streakByMoment.set(m.id, streak);
+          }
+
+          maxStreak = Math.max(0, ...Array.from(streakByMoment.values()));
           sharedPractices = sharedMoments.map(m => ({
             id: m.id,
             name: m.name,
-            currentStreak: m.currentStreak ?? 0,
+            currentStreak: streakByMoment.get(m.id) ?? 0,
             templateType: m.templateType,
           }));
 
