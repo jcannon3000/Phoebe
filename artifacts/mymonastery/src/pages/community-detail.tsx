@@ -517,7 +517,7 @@ export default function CommunityDetailPage() {
                   className="flex items-center justify-between px-4 py-2.5 rounded-xl"
                   style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)" }}
                 >
-                  <div className="flex-1 min-w-0">
+                  <Link href={`/people/${encodeURIComponent(m.email)}`} className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
                         {m.name || m.email.split("@")[0]}
@@ -529,7 +529,7 @@ export default function CommunityDetailPage() {
                       )}
                     </div>
                     <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{m.email}</p>
-                  </div>
+                  </Link>
                   {isAdmin && m.role !== "admin" && (
                     <button
                       onClick={() => removeMemberMutation.mutate(m.id)}
