@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -229,6 +229,106 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+// ─── Bell Nudge Popup ────────────────────────────────────────────────────────
+// Shows once per day for beta users who haven't activated the Daily Bell.
+
+const BELL_DISMISS_KEY = "phoebe:bell-nudge-dismissed";
+
+function BellNudge() {
+  const { rawIsBeta } = useBetaStatus();
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const [visible, setVisible] = useState(false);
+
+  const { data: bellPrefs } = useQuery<{ bellEnabled: boolean }>({
+    queryKey: ["/api/bell/preferences"],
+    queryFn: () => apiRequest("GET", "/api/bell/preferences"),
+    enabled: !!user && rawIsBeta,
+  });
+
+  useEffect(() => {
+    if (!rawIsBeta || !user || !bellPrefs) return;
+    if (bellPrefs.bellEnabled) return; // already active
+
+    const today = new Date().toISOString().slice(0, 10);
+    const lastDismissed = localStorage.getItem(BELL_DISMISS_KEY);
+    if (lastDismissed === today) return; // already dismissed today
+
+    // Small delay so it doesn't flash on page load
+    const timer = setTimeout(() => setVisible(true), 1500);
+    return () => clearTimeout(timer);
+  }, [rawIsBeta, user, bellPrefs]);
+
+  function dismiss() {
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem(BELL_DISMISS_KEY, today);
+    setVisible(false);
+  }
+
+  function goToSettings() {
+    dismiss();
+    setLocation("/settings");
+  }
+
+  if (!visible) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="fixed bottom-6 left-4 right-4 z-50 flex justify-center"
+      >
+        <div
+          className="w-full max-w-md rounded-2xl px-5 py-4 shadow-2xl"
+          style={{
+            background: "#0D1F14",
+            border: "1px solid rgba(46,107,64,0.3)",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+          }}
+        >
+          <div className="flex items-start gap-4">
+            <span className="text-2xl mt-0.5">🔔</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                Try the Daily Bell
+              </p>
+              <p className="text-xs leading-relaxed" style={{ color: "#8FAF96" }}>
+                One calm notification each morning instead of separate reminders for each practice.
+              </p>
+              <div className="flex gap-3 mt-3">
+                <button
+                  onClick={goToSettings}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: "#4a7c59", color: "#ffffff" }}
+                >
+                  Set it up
+                </button>
+                <button
+                  onClick={dismiss}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{ color: "#8FAF96" }}
+                >
+                  Not now
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={dismiss}
+              className="flex-shrink-0 mt-0.5 transition-opacity hover:opacity-60"
+              style={{ color: "rgba(143,175,150,0.4)" }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -295,6 +395,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </header>
 
       <DrawerMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <BellNudge />
 
       <main className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
         <motion.div
