@@ -413,8 +413,24 @@ router.get("/groups/users/search", async (req, res): Promise<void> => {
 // Safely query beta_users — returns null if table doesn't exist yet
 async function safeBetaLookup(email: string): Promise<{ isAdmin: boolean; seenWelcome: boolean } | null> {
   try {
-    const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, email.toLowerCase()));
-    return beta ? { isAdmin: beta.isAdmin, seenWelcome: beta.seenWelcome } : null;
+    // Select only core columns — seenWelcome may not exist yet in all environments
+    const [beta] = await db
+      .select({ email: betaUsersTable.email, isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, email.toLowerCase()));
+    if (!beta) return null;
+    // Try reading seenWelcome separately — graceful if column doesn't exist
+    let seenWelcome = false;
+    try {
+      const [row] = await db
+        .select({ seenWelcome: betaUsersTable.seenWelcome })
+        .from(betaUsersTable)
+        .where(eq(betaUsersTable.email, email.toLowerCase()));
+      seenWelcome = row?.seenWelcome ?? false;
+    } catch {
+      // Column doesn't exist yet
+    }
+    return { isAdmin: beta.isAdmin, seenWelcome };
   } catch {
     // Table doesn't exist yet — schema not pushed
     return null;
