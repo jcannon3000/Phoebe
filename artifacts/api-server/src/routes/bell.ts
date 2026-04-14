@@ -1,15 +1,17 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNotNull, sql } from "drizzle-orm";
+import { eq, and, isNotNull } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db, usersTable, betaUsersTable,
   sharedMomentsTable, momentUserTokensTable,
 } from "@workspace/db";
-import { deleteCalendarEvent } from "../lib/calendar";
+import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
 
 const router: IRouter = Router();
 
-// ─── Auth helper (same pattern as other routes) ─────────────────────────────
+const APP_URL = process.env["APP_URL"] ?? "https://withphoebe.app";
+
+// ─── Auth helper ────────────────────────────────────────────────────────────
 function getUser(req: any): { id: number } | null {
   return (req as any).user ?? null;
 }
@@ -32,19 +34,46 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
 
     const [u] = await db
       .select({
+        email: usersTable.email,
         bellEnabled: usersTable.bellEnabled,
         dailyBellTime: usersTable.dailyBellTime,
         timezone: usersTable.timezone,
+        bellCalendarEventId: usersTable.bellCalendarEventId,
       })
       .from(usersTable)
       .where(eq(usersTable.id, user.id));
 
     if (!u) { res.status(404).json({ error: "User not found" }); return; }
 
+    // Check if the calendar event is actually active (user accepted it)
+    let calendarStatus: "active" | "pending" | "declined" | "none" = "none";
+    if (u.bellEnabled && u.bellCalendarEventId) {
+      try {
+        const attendees = await getCalendarEventAttendees(user.id, u.bellCalendarEventId);
+        if (attendees) {
+          const me = attendees.find(a => a.email.toLowerCase() === u.email.toLowerCase());
+          if (me?.responseStatus === "accepted") calendarStatus = "active";
+          else if (me?.responseStatus === "declined") calendarStatus = "declined";
+          else if (me?.responseStatus === "tentative" || me?.responseStatus === "needsAction") calendarStatus = "pending";
+          else calendarStatus = "pending";
+        } else {
+          // Event not found — it was deleted from their calendar
+          calendarStatus = "none";
+          // Clean up the stale reference
+          await db.update(usersTable)
+            .set({ bellEnabled: false, bellCalendarEventId: null })
+            .where(eq(usersTable.id, user.id));
+        }
+      } catch {
+        calendarStatus = "pending";
+      }
+    }
+
     res.json({
       bellEnabled: u.bellEnabled,
       dailyBellTime: u.dailyBellTime ?? "07:00",
       timezone: u.timezone ?? "America/New_York",
+      calendarStatus,
     });
   } catch (err) {
     console.error("GET /api/bell/preferences error:", err);
@@ -72,18 +101,32 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
 
     const parsed = schema.parse(req.body);
 
-    // Get user email for moment lookups
-    const [u] = await db.select({ email: usersTable.email, bellEnabled: usersTable.bellEnabled })
-      .from(usersTable).where(eq(usersTable.id, user.id));
+    // Get current user state
+    const [u] = await db.select({
+      email: usersTable.email,
+      name: usersTable.name,
+      bellEnabled: usersTable.bellEnabled,
+      bellCalendarEventId: usersTable.bellCalendarEventId,
+    }).from(usersTable).where(eq(usersTable.id, user.id));
 
-    await db.update(usersTable).set({
-      bellEnabled: parsed.bellEnabled,
-      dailyBellTime: parsed.dailyBellTime,
-      timezone: parsed.timezone,
-    }).where(eq(usersTable.id, user.id));
+    if (!u) { res.status(404).json({ error: "User not found" }); return; }
 
-    // When bell is turned ON, remove all existing practice calendar events
-    if (parsed.bellEnabled && u && !u.bellEnabled) {
+    const turningOn = parsed.bellEnabled && !u.bellEnabled;
+    const turningOff = !parsed.bellEnabled && u.bellEnabled;
+    const changingTime = parsed.bellEnabled && u.bellEnabled && u.bellCalendarEventId;
+
+    // ── Delete old bell calendar event if turning off or changing time ──
+    if ((turningOff || changingTime) && u.bellCalendarEventId) {
+      try {
+        await deleteCalendarEvent(user.id, u.bellCalendarEventId);
+      } catch { /* event may already be gone */ }
+      await db.update(usersTable)
+        .set({ bellCalendarEventId: null })
+        .where(eq(usersTable.id, user.id));
+    }
+
+    // ── When turning ON: remove all practice-specific calendar events ──
+    if (turningOn) {
       try {
         const tokens = await db
           .select({
@@ -104,18 +147,70 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
           try {
             await deleteCalendarEvent(user.id, t.googleCalendarEventId);
             removed++;
-          } catch {
-            // Non-fatal — event may already be deleted
-          }
+          } catch { /* non-fatal */ }
           await db.update(momentUserTokensTable)
             .set({ googleCalendarEventId: null })
             .where(eq(momentUserTokensTable.id, t.id));
         }
-        console.log(`[bell] Removed ${removed} calendar events for user ${user.id}`);
+        console.log(`[bell] Removed ${removed} practice calendar events for user ${user.id}`);
       } catch (err) {
         console.error("[bell] Calendar cleanup error (non-fatal):", err);
       }
     }
+
+    // ── Create bell calendar event if turning on or changing time ──
+    let bellCalendarEventId: string | null = null;
+    if (parsed.bellEnabled) {
+      try {
+        const [hh, mm] = parsed.dailyBellTime.split(":").map(Number);
+        const tz = parsed.timezone;
+
+        // Build a start time for today at the bell time in the user's timezone
+        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+        const startLocalStr = `${todayStr}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`;
+        // 15-minute event
+        const endMm = mm + 15;
+        const endHh = hh + Math.floor(endMm / 60);
+        const endLocalStr = `${todayStr}T${String(endHh).padStart(2, "0")}:${String(endMm % 60).padStart(2, "0")}:00`;
+
+        bellCalendarEventId = await createCalendarEvent(user.id, {
+          summary: `🔔 Daily Bell — Phoebe`,
+          description: [
+            `Your daily moment to pause and practice.`,
+            ``,
+            `Open your practices: ${APP_URL}/bell`,
+          ].join("\n"),
+          startDate: new Date(),
+          startLocalStr,
+          endLocalStr,
+          attendees: [u.email],
+          timeZone: tz,
+          recurrence: ["RRULE:FREQ=DAILY"],
+          colorId: "2",
+          reminders: [
+            { method: "popup", minutes: 0 },
+          ],
+        }).catch((err) => {
+          console.error("[bell] Calendar event creation failed:", err);
+          return null;
+        });
+
+        if (bellCalendarEventId) {
+          console.log(`[bell] Created daily bell calendar event ${bellCalendarEventId} for user ${user.id}`);
+        }
+      } catch (err) {
+        console.error("[bell] Calendar event creation error:", err);
+      }
+    }
+
+    // ── Save preferences ──
+    await db.update(usersTable).set({
+      bellEnabled: parsed.bellEnabled,
+      dailyBellTime: parsed.dailyBellTime,
+      timezone: parsed.timezone,
+      ...(bellCalendarEventId ? { bellCalendarEventId } : {}),
+      ...(!parsed.bellEnabled ? { bellCalendarEventId: null } : {}),
+    }).where(eq(usersTable.id, user.id));
 
     res.json({ ok: true, ...parsed });
   } catch (err) {
@@ -175,11 +270,8 @@ router.get("/bell/today", async (req, res): Promise<void> => {
     const todayDow = getCurrentDayOfWeekInTz(timezone);
 
     const actionable = rows.filter((r) => {
-      // Lectio: Mon-Sat
       if (r.templateType === "lectio-divina") return todayDow >= 1 && todayDow <= 6;
-      // Daily: always
       if (r.frequency === "daily") return true;
-      // Weekly: check practice days
       if (r.frequency === "weekly") {
         if (r.practiceDays) {
           try {

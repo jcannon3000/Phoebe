@@ -555,6 +555,7 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS bell_enabled BOOLEAN NOT NULL DEFAULT false`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_bell_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS bell_calendar_event_id TEXT`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS bell_notifications (
         id SERIAL PRIMARY KEY,

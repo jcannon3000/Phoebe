@@ -63,6 +63,7 @@ interface BellPrefs {
   bellEnabled: boolean;
   dailyBellTime: string;
   timezone: string;
+  calendarStatus?: "active" | "pending" | "declined" | "none";
 }
 
 function BellPreferences() {
@@ -127,13 +128,34 @@ function BellPreferences() {
           <div className="text-left">
             <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Daily Bell 🔔</p>
             <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-              One email each morning with your practices for the day.
+              One daily calendar reminder with your practices for the day.
             </p>
           </div>
           <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${bellEnabled ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
             <div className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${bellEnabled ? "left-[21px]" : "left-[3px]"}`} style={{ background: "#F0EDE6" }} />
           </div>
         </button>
+
+        {/* Calendar status indicator */}
+        {bellEnabled && data?.calendarStatus && (
+          <div className="mt-2.5 flex items-center gap-2 px-1">
+            <div
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{
+                background: data.calendarStatus === "active" ? "#4A9E6A"
+                  : data.calendarStatus === "pending" ? "#C4A94D"
+                  : data.calendarStatus === "declined" ? "#C17F7F"
+                  : "rgba(143,175,150,0.3)",
+              }}
+            />
+            <p className="text-[11px]" style={{ color: "#8FAF96" }}>
+              {data.calendarStatus === "active" && "Active on your calendar"}
+              {data.calendarStatus === "pending" && "Calendar invite sent — accept it to activate"}
+              {data.calendarStatus === "declined" && "You declined the invite — toggle off and on to resend"}
+              {data.calendarStatus === "none" && "Setting up..."}
+            </p>
+          </div>
+        )}
       </SettingsCard>
 
       {/* Time + timezone pickers (only shown when enabled) */}
@@ -201,7 +223,7 @@ export default function SettingsPage() {
   const logout = useLogout();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const { isBeta } = useBetaStatus();
+  const { rawIsBeta } = useBetaStatus();
 
   const presenceToggle = useMutation({
     mutationFn: (showPresence: boolean) =>
@@ -275,7 +297,7 @@ export default function SettingsPage() {
 
         {/* ── Notifications ── */}
         <SectionHeader label="Notifications" />
-        {isBeta ? (
+        {rawIsBeta ? (
           <BellPreferences />
         ) : (
           <SettingsCard>

@@ -5,8 +5,9 @@
 ALTER TABLE users ADD COLUMN IF NOT EXISTS bell_enabled BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_bell_time TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bell_calendar_event_id TEXT;
 
--- Bell notifications tracking table (one row per user per day)
+-- Bell notifications tracking table (kept for audit trail)
 CREATE TABLE IF NOT EXISTS bell_notifications (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -15,6 +16,5 @@ CREATE TABLE IF NOT EXISTS bell_notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Index for the bell sender cron query
 CREATE INDEX IF NOT EXISTS idx_bell_notifications_user_date
   ON bell_notifications (user_id, bell_date);
