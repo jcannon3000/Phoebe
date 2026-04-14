@@ -114,7 +114,9 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
     : item.myTurn && !currentPeriod.hasWrittenThisPeriod
       ? "#8E9E42"
       : "rgba(142,158,66,0.35)";
-  const title = (item.name?.replace(/^Letters with\b/, "Dialogue with")) || (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`);
+  const title = isOneToOne && otherMembers
+    ? `Dialogue with ${otherMembers}`
+    : (item.name?.replace(/^Letters with\b/, "Dialogue with")) || `Sharing with ${otherMembers}`;
 
   return (
     <Link href={`/letters/${item.id}`} className="block">

@@ -369,8 +369,9 @@ function LetterCard({
     .filter(m => m.email !== userEmail)
     .map(m => m.name || m.email.split("@")[0])
     .join(", ");
-  const displayName = (c.name?.replace(/^Letters with\b/, "Dialogue with")) ||
-    (isOneToOne ? `Dialogue with ${otherMembers}` : `Sharing with ${otherMembers}`);
+  const displayName = isOneToOne && otherMembers
+    ? `Dialogue with ${otherMembers}`
+    : (c.name?.replace(/^Letters with\b/, "Dialogue with")) || `Sharing with ${otherMembers}`;
 
   const ts = c.turnState;
   const hasUnread = c.unreadCount > 0;

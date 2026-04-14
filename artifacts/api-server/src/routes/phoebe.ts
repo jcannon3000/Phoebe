@@ -735,8 +735,11 @@ router.post(
         and(
           eq(correspondenceMembersTable.correspondenceId, correspondenceId),
           auth.userId
-            ? eq(correspondenceMembersTable.userId, auth.userId)
-            : eq(correspondenceMembersTable.email, auth.email),
+            ? or(
+                eq(correspondenceMembersTable.userId, auth.userId),
+                eq(correspondenceMembersTable.email, auth.email.toLowerCase()),
+              )
+            : eq(correspondenceMembersTable.email, auth.email.toLowerCase()),
         ),
       );
     res.json({ ok: true });
