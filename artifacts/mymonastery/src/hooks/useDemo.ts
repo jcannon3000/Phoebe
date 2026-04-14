@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
-type BetaStatus = { isBeta: boolean; isAdmin: boolean };
+type BetaStatus = { isBeta: boolean; isAdmin: boolean; showWelcome?: boolean };
 
 const BETA_VIEW_KEY = "phoebe:betaView";
 
@@ -40,7 +40,7 @@ export function useBetaViewToggle(): [boolean, () => void] {
  * Returns { isBeta, isAdmin, betaViewEnabled, toggleBetaView }.
  * betaViewEnabled can be toggled to preview the regular user experience.
  */
-export function useBetaStatus(): BetaStatus & { isLoading: boolean; betaViewEnabled: boolean; toggleBetaView: () => void } {
+export function useBetaStatus(): BetaStatus & { isLoading: boolean; betaViewEnabled: boolean; toggleBetaView: () => void; showWelcome: boolean } {
   const { user } = useAuth();
   const [betaViewEnabled, toggleBetaView] = useBetaViewToggle();
 
@@ -57,6 +57,7 @@ export function useBetaStatus(): BetaStatus & { isLoading: boolean; betaViewEnab
   return {
     isBeta: rawIsBeta && betaViewEnabled,
     isAdmin: rawIsAdmin && betaViewEnabled,
+    showWelcome: data?.showWelcome ?? false,
     isLoading,
     betaViewEnabled,
     toggleBetaView,

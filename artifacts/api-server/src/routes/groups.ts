@@ -411,10 +411,10 @@ router.get("/groups/users/search", async (req, res): Promise<void> => {
 // ─── Beta User Management ───────────────────────────────────────────────────
 
 // Safely query beta_users — returns null if table doesn't exist yet
-async function safeBetaLookup(email: string): Promise<{ isAdmin: boolean } | null> {
+async function safeBetaLookup(email: string): Promise<{ isAdmin: boolean; seenWelcome: boolean } | null> {
   try {
     const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, email.toLowerCase()));
-    return beta ? { isAdmin: beta.isAdmin } : null;
+    return beta ? { isAdmin: beta.isAdmin, seenWelcome: beta.seenWelcome } : null;
   } catch {
     // Table doesn't exist yet — schema not pushed
     return null;
@@ -438,10 +438,14 @@ router.get("/beta/status", async (req, res): Promise<void> => {
     if (!u) { res.json({ isBeta: false, isAdmin: false }); return; }
 
     const beta = await safeBetaLookup(u.email);
-    res.json({ isBeta: !!beta, isAdmin: beta?.isAdmin === true });
+    res.json({
+      isBeta: !!beta,
+      isAdmin: beta?.isAdmin === true,
+      showWelcome: beta ? !beta.seenWelcome : false,
+    });
   } catch {
     // Graceful fallback if anything goes wrong
-    res.json({ isBeta: false, isAdmin: false });
+    res.json({ isBeta: false, isAdmin: false, showWelcome: false });
   }
 });
 
@@ -525,6 +529,21 @@ router.delete("/beta/users/:id", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("DELETE /api/beta/users error:", err);
     res.status(500).json({ error: "Table not ready — run schema push" });
+  }
+});
+
+// POST /api/beta/welcome-seen — dismiss the one-time welcome popup
+router.post("/beta/welcome-seen", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
+    if (!u) { res.status(404).json({ error: "User not found" }); return; }
+    await db.update(betaUsersTable).set({ seenWelcome: true }).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /api/beta/welcome-seen error:", err);
+    res.status(500).json({ error: "Failed" });
   }
 });
 

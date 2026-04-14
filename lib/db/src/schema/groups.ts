@@ -35,6 +35,7 @@ export const betaUsersTable = pgTable("beta_users", {
   addedByUserId: integer("added_by_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   isAdmin: boolean("is_admin").notNull().default(false),
+  seenWelcome: boolean("seen_welcome").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

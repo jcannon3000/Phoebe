@@ -4,6 +4,7 @@ import { Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
@@ -1276,6 +1277,21 @@ export default function Dashboard() {
     } catch { /* ignore */ }
   }, []);
 
+  const queryClient = useQueryClient();
+  const { showWelcome } = useBetaStatus();
+  const [betaWelcomeVisible, setBetaWelcomeVisible] = useState(false);
+
+  useEffect(() => {
+    if (showWelcome) setBetaWelcomeVisible(true);
+  }, [showWelcome]);
+
+  const dismissBetaWelcome = useCallback(() => {
+    setBetaWelcomeVisible(false);
+    apiRequest("POST", "/api/beta/welcome-seen").then(() => {
+      queryClient.invalidateQueries({ queryKey: ["/api/beta/status"] });
+    }).catch(() => {});
+  }, [queryClient]);
+
   useEffect(() => {
     const reset = () => setFilter(null);
     window.addEventListener("phoebe:reset-filter", reset);
@@ -1384,6 +1400,48 @@ export default function Dashboard() {
           }
         }
       `}</style>
+      {/* Beta welcome popup — one-time */}
+      <AnimatePresence>
+        {betaWelcomeVisible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            onClick={dismissBetaWelcome}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.25 }}
+              className="rounded-2xl px-8 py-8 text-center max-w-sm w-full"
+              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <p className="text-4xl mb-4">🧰</p>
+              <h2
+                className="text-lg font-bold mb-2"
+                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                Welcome to the beta
+              </h2>
+              <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
+                You've been added as a beta user. You now have access to early features as they roll out.
+              </p>
+              <button
+                onClick={dismissBetaWelcome}
+                className="px-8 py-2.5 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                Got it
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="dash-shell flex flex-col w-full pb-36">
 
         {/* ── Header ── */}

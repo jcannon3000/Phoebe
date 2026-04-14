@@ -134,32 +134,55 @@ export default function BetaAdminPage() {
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
             Add Beta User
           </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              placeholder="Name"
-              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-              style={{ color: "#F0EDE6" }}
-            />
-            <input
-              type="email"
-              value={newEmail}
-              onChange={e => setNewEmail(e.target.value)}
-              placeholder="Email"
-              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-              style={{ color: "#F0EDE6" }}
-              onKeyDown={e => { if (e.key === "Enter" && newEmail.includes("@")) addMutation.mutate(); }}
-            />
-            <button
-              onClick={() => addMutation.mutate()}
-              disabled={!newEmail.includes("@") || addMutation.isPending}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-40 shrink-0"
-              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-            >
-              <Plus size={14} /> Add
-            </button>
+          <div className="relative" ref={suggestionsRef}>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newName}
+                onChange={e => { setNewName(e.target.value); setSuggestionQuery(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => { setSuggestionQuery(newName); setShowSuggestions(true); }}
+                placeholder="Name"
+                className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
+                style={{ color: "#F0EDE6" }}
+              />
+              <input
+                type="email"
+                value={newEmail}
+                onChange={e => { setNewEmail(e.target.value); setSuggestionQuery(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => { setSuggestionQuery(newEmail); setShowSuggestions(true); }}
+                placeholder="Email"
+                className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
+                style={{ color: "#F0EDE6" }}
+                onKeyDown={e => { if (e.key === "Enter" && newEmail.includes("@")) addMutation.mutate(); }}
+              />
+              <button
+                onClick={() => addMutation.mutate()}
+                disabled={!newEmail.includes("@") || addMutation.isPending}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-40 shrink-0"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                <Plus size={14} /> Add
+              </button>
+            </div>
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div
+                className="absolute left-0 right-0 top-full mt-1 rounded-xl border border-[#2E6B40]/40 overflow-hidden z-20"
+                style={{ background: "#0F2818" }}
+              >
+                {filteredSuggestions.map(c => (
+                  <button
+                    key={c.email}
+                    onClick={() => selectSuggestion(c)}
+                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-[#2E6B40]/20 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate" style={{ color: "#F0EDE6" }}>{c.name}</p>
+                      <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{c.email}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {addMutation.isError && (
             <p className="text-xs mt-2" style={{ color: "#E57373" }}>Failed to add user.</p>
