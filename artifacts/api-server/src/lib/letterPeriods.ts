@@ -209,6 +209,7 @@ export interface OneToOneLetterRef {
  * @param letters          all letters in the correspondence, chronological
  * @param firstExchangeComplete  correspondence flag — true once Letter 2 is in
  * @param now              current time (defaults to new Date())
+ * @param creatorEmail     email of the person who created the correspondence (writes first)
  */
 export function getOneToOneTurnState(
   requesterEmail: string,
@@ -216,6 +217,7 @@ export function getOneToOneTurnState(
   letters: OneToOneLetterRef[],
   firstExchangeComplete: boolean,
   now: Date = new Date(),
+  creatorEmail?: string,
 ): OneToOneTurnInfo {
   const lower = (s: string) => s.toLowerCase();
   const me = lower(requesterEmail);
@@ -224,8 +226,17 @@ export function getOneToOneTurnState(
   // Sort defensively.
   const chrono = [...letters].sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime());
 
-  // Letter 1 — no letters yet: anyone can write, anytime.
+  // Letter 1 — no letters yet: creator writes first.
+  // If we know who the creator is, only they get OPEN; the other waits.
   if (chrono.length === 0) {
+    if (creatorEmail) {
+      const creator = lower(creatorEmail);
+      if (me === creator) {
+        return { state: "OPEN", windowOpenDate: null, overdueDate: null, nextWriterEmail: me };
+      }
+      return { state: "WAITING", windowOpenDate: null, overdueDate: null, nextWriterEmail: creator };
+    }
+    // Fallback if creator unknown — anyone can start.
     return { state: "OPEN", windowOpenDate: null, overdueDate: null, nextWriterEmail: null };
   }
 

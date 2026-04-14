@@ -98,20 +98,23 @@ async function getMembership(correspondenceId: number, auth: LetterAuth) {
  * 14-day alternating windows, missed windows stay OPEN as OVERDUE.
  */
 function resolveOneToOneTurn(
-  correspondence: { firstExchangeComplete: boolean },
+  correspondence: { firstExchangeComplete: boolean; createdByUserId: number | null },
   requesterEmail: string,
-  members: Array<{ email: string }>,
+  members: Array<{ email: string; userId: number | null }>,
   letters: Array<{ authorEmail: string; sentAt: Date }>,
   now: Date,
 ) {
   const other = members.find((m) => m.email.toLowerCase() !== requesterEmail.toLowerCase());
   const otherEmail = other?.email ?? "";
+  // Find the creator's email so letter 1 is always assigned to the creator.
+  const creator = members.find((m) => m.userId === correspondence.createdByUserId);
   return getOneToOneTurnState(
     requesterEmail,
     otherEmail,
     letters.map((l) => ({ authorEmail: l.authorEmail, sentAt: new Date(l.sentAt) })),
     correspondence.firstExchangeComplete,
     now,
+    creator?.email,
   );
 }
 

@@ -346,7 +346,9 @@ export default function CorrespondencePage() {
         {/* Letter thread */}
         {letters.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-base mb-2" style={{ color: "#8FAF96" }}>No letters yet.</p>
+            <p className="text-base mb-2" style={{ color: "#8FAF96" }}>
+              {data.myTurn ? "No letters yet." : `Waiting for ${otherMembers} to write the first letter.`}
+            </p>
             {data.myTurn && (
               <Link href={writeUrl}>
                 <button className="px-6 py-3 rounded-xl font-semibold text-sm" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
