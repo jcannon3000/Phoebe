@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, or, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
   db,
@@ -85,7 +85,7 @@ async function getMembership(correspondenceId: number, auth: LetterAuth) {
     .from(correspondenceMembersTable)
     .where(eq(correspondenceMembersTable.correspondenceId, correspondenceId));
   const member = members.find(
-    (m) => (auth.userId && m.userId === auth.userId) || m.email === auth.email,
+    (m) => (auth.userId && m.userId === auth.userId) || m.email.toLowerCase() === auth.email.toLowerCase(),
   );
   return { member, members };
 }
@@ -204,14 +204,18 @@ router.post(
 router.get(
   "/phoebe/correspondences",
   requireSessionAuth(async (req, res, auth) => {
+    // Match by userId OR email so memberships created before account linkage are found
     const memberRows = await db
       .select()
       .from(correspondenceMembersTable)
       .where(
         and(
           auth.userId
-            ? eq(correspondenceMembersTable.userId, auth.userId)
-            : eq(correspondenceMembersTable.email, auth.email),
+            ? or(
+                eq(correspondenceMembersTable.userId, auth.userId),
+                eq(correspondenceMembersTable.email, auth.email.toLowerCase()),
+              )
+            : eq(correspondenceMembersTable.email, auth.email.toLowerCase()),
           sql`archived_at IS NULL`,
         ),
       );
