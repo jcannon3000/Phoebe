@@ -166,7 +166,9 @@ router.post(
       joinedAt: new Date(),
     });
 
-    const frontendUrl = getInviteBaseUrl();
+    // Create member rows for invited participants — invitations are NOT sent
+    // until the creator writes the first letter (so the recipient has
+    // something to read when they click through).
     for (const m of members) {
       const inviteToken = randomUUID();
       await db.insert(correspondenceMembersTable).values({
@@ -176,21 +178,6 @@ router.post(
         name: m.name || null,
         inviteToken,
       });
-      const inviteUrl = `${frontendUrl}/i/${inviteToken}`;
-      sendInvitationEmail({
-        to: m.email,
-        creatorName: auth.name,
-        correspondenceName: name,
-        inviteUrl,
-        type,
-      }).catch((err) => console.error("Invitation email failed:", err));
-      sendLetterInvitationCalendarEvent({
-        recipientEmail: m.email,
-        creatorName: auth.name,
-        correspondenceName: name,
-        inviteUrl,
-        type,
-      }).catch((err) => console.error("Invitation calendar event failed:", err));
     }
 
     const allMembers = await db
@@ -311,9 +298,17 @@ router.get(
       });
     }
 
+    // Hide empty correspondences from invited users — they shouldn't see
+    // the card until the creator has written the first letter.
+    const visible = results.filter((r) => {
+      if (r.letterCount > 0) return true;
+      // Creator can always see their own correspondence (they need to write first).
+      return r.createdByUserId === auth.userId;
+    });
+
     // Sort: my turn first
-    results.sort((a, b) => (b.myTurn ? 1 : 0) - (a.myTurn ? 1 : 0));
-    res.json(results);
+    visible.sort((a, b) => (b.myTurn ? 1 : 0) - (a.myTurn ? 1 : 0));
+    res.json(visible);
   }),
 );
 
@@ -337,6 +332,11 @@ router.get(
       .from(lettersTable)
       .where(eq(lettersTable.correspondenceId, correspondenceId))
       .orderBy(desc(lettersTable.sentAt));
+
+    // Non-creators can't see an empty correspondence (no letter written yet).
+    if (letters.length === 0 && correspondence.createdByUserId !== auth.userId) {
+      res.status(404).json({ error: "Not found" }); return;
+    }
 
     const now = new Date();
     const type = (correspondence.groupType === "one_to_one" ? "one_to_one" : "group") as "one_to_one" | "group";
@@ -573,10 +573,40 @@ router.post(
       }
     }
 
+    // Check if this is the very first letter — if so, send invitations now.
+    const allLettersAfter = await db
+      .select()
+      .from(lettersTable)
+      .where(eq(lettersTable.correspondenceId, correspondenceId));
+    const isFirstLetter = allLettersAfter.length === 1;
+
     // Notify recipients (fire-and-forget)
     const frontendUrl = getInviteBaseUrl();
     for (const m of members) {
-      if (m.email === auth.email || !m.joinedAt) continue;
+      if (m.email === auth.email) continue;
+
+      // If the member hasn't joined yet and this is the first letter,
+      // send the invitation email (they now have something to read).
+      if (!m.joinedAt) {
+        if (isFirstLetter) {
+          const inviteUrl = `${frontendUrl}/i/${m.inviteToken}`;
+          sendInvitationEmail({
+            to: m.email,
+            creatorName: auth.name,
+            correspondenceName: correspondence.name,
+            inviteUrl,
+            type,
+          }).catch((err) => console.error("Invitation email failed:", err));
+          sendLetterInvitationCalendarEvent({
+            recipientEmail: m.email,
+            creatorName: auth.name,
+            correspondenceName: correspondence.name,
+            inviteUrl,
+            type,
+          }).catch((err) => console.error("Invitation calendar event failed:", err));
+        }
+        continue;
+      }
 
       // Email + in-app link — use /letters/:id (existing thread view)
       const letterUrl = m.userId
