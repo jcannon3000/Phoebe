@@ -57,7 +57,7 @@ function formatTimeLabel(t: string): string {
   return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
-// ─── Bell Preferences (beta only) ──────────────────────────────────────────
+// ─── Bell Setup Slideshow ───────────────────────────────────────────────────
 
 interface BellPrefs {
   bellEnabled: boolean;
@@ -66,44 +66,202 @@ interface BellPrefs {
   calendarStatus?: "active" | "pending" | "declined" | "none";
 }
 
+function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [step, setStep] = useState(0);
+  const [bellTime, setBellTime] = useState("07:00");
+  const [timezone, setTimezone] = useState(() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
+    catch { return "America/New_York"; }
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function handleAddToCalendar() {
+    setSaving(true);
+    try {
+      await apiRequest("PUT", "/api/bell/preferences", {
+        bellEnabled: true,
+        dailyBellTime: bellTime,
+        timezone,
+      });
+      onDone();
+    } catch (err) {
+      console.error("Failed to activate bell:", err);
+      setSaving(false);
+    }
+  }
+
+  const slides = [
+    // Slide 0: Intro
+    <div key="intro" className="text-center px-2">
+      <div className="text-5xl mb-6">🔔</div>
+      <h2 className="text-xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+        The Daily Bell
+      </h2>
+      <p className="text-sm leading-relaxed mx-auto max-w-xs" style={{ color: "#8FAF96" }}>
+        One quiet notification each day — a single moment to pause and open your practices.
+      </p>
+      <p className="text-sm mt-4 leading-relaxed mx-auto max-w-xs" style={{ color: "#8FAF96" }}>
+        It replaces all individual practice reminders with one gentle bell.
+      </p>
+    </div>,
+
+    // Slide 1: Pick time
+    <div key="time" className="text-center px-2">
+      <div className="text-5xl mb-6">🕐</div>
+      <h2 className="text-xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+        When should it ring?
+      </h2>
+      <p className="text-sm mb-6 mx-auto max-w-xs" style={{ color: "#8FAF96" }}>
+        Choose a time for your daily bell.
+      </p>
+
+      <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto mb-6">
+        {TIME_OPTIONS.map(t => (
+          <button
+            key={t}
+            onClick={() => setBellTime(t)}
+            className="py-2.5 rounded-xl text-sm font-medium transition-all"
+            style={{
+              background: bellTime === t ? "#2D5E3F" : "rgba(46,107,64,0.08)",
+              border: bellTime === t ? "1px solid #4A9E6A" : "1px solid rgba(46,107,64,0.18)",
+              color: bellTime === t ? "#F0EDE6" : "#8FAF96",
+            }}
+          >
+            {formatTimeLabel(t)}
+          </button>
+        ))}
+      </div>
+
+      <div className="max-w-xs mx-auto">
+        <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2 text-left" style={{ color: "rgba(200,212,192,0.4)" }}>
+          Timezone
+        </label>
+        <select
+          value={timezone}
+          onChange={e => setTimezone(e.target.value)}
+          className="w-full px-4 py-2.5 rounded-xl border outline-none text-sm appearance-none cursor-pointer"
+          style={{
+            background: "rgba(46,107,64,0.08)",
+            border: "1px solid rgba(46,107,64,0.25)",
+            color: "#F0EDE6",
+          }}
+        >
+          {TIMEZONE_OPTIONS.map(tz => (
+            <option key={tz.value} value={tz.value} style={{ background: "#091A10", color: "#F0EDE6" }}>
+              {tz.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>,
+
+    // Slide 2: Confirm
+    <div key="confirm" className="text-center px-2">
+      <div className="text-5xl mb-6">📅</div>
+      <h2 className="text-xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+        Add to your calendar
+      </h2>
+      <p className="text-sm mb-2 mx-auto max-w-xs" style={{ color: "#8FAF96" }}>
+        A recurring daily event will appear on your Google Calendar at:
+      </p>
+      <p className="text-lg font-semibold mt-4 mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+        {formatTimeLabel(bellTime)} every day
+      </p>
+      <p className="text-xs mb-6" style={{ color: "rgba(143,175,150,0.5)" }}>
+        {TIMEZONE_OPTIONS.find(tz => tz.value === timezone)?.label ?? timezone}
+      </p>
+      <p className="text-xs mx-auto max-w-xs leading-relaxed" style={{ color: "#8FAF96" }}>
+        Your existing practice calendar invites will be removed and replaced with this single bell.
+      </p>
+    </div>,
+  ];
+
+  const isLastSlide = step === slides.length - 1;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+    >
+      <div
+        className="w-full max-w-md mx-4 rounded-2xl overflow-hidden"
+        style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)" }}
+      >
+        {/* Slide content */}
+        <div className="px-6 pt-10 pb-6 min-h-[360px] flex items-center justify-center">
+          {slides[step]}
+        </div>
+
+        {/* Dots */}
+        <div className="flex justify-center gap-2 pb-4">
+          {slides.map((_, i) => (
+            <div
+              key={i}
+              className="w-2 h-2 rounded-full transition-all"
+              style={{
+                background: i === step ? "#4A9E6A" : "rgba(143,175,150,0.2)",
+                transform: i === step ? "scale(1.2)" : "scale(1)",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={step === 0 ? onClose : () => setStep(s => s - 1)}
+            className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+            style={{ color: "#8FAF96", background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}
+          >
+            {step === 0 ? "Cancel" : "Back"}
+          </button>
+
+          {isLastSlide ? (
+            <button
+              onClick={handleAddToCalendar}
+              disabled={saving}
+              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "#4a7c59", color: "#ffffff" }}
+            >
+              {saving ? "Adding..." : "Add to Calendar"}
+            </button>
+          ) : (
+            <button
+              onClick={() => setStep(s => s + 1)}
+              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{ background: "#4a7c59", color: "#ffffff" }}
+            >
+              Next
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bell Preferences (beta only) ──────────────────────────────────────────
+
 function BellPreferences() {
   const queryClient = useQueryClient();
+  const [showSetup, setShowSetup] = useState(false);
 
   const { data, isLoading } = useQuery<BellPrefs>({
     queryKey: ["/api/bell/preferences"],
     queryFn: () => apiRequest("GET", "/api/bell/preferences"),
   });
 
-  const [bellEnabled, setBellEnabled] = useState(false);
-  const [bellTime, setBellTime] = useState("07:00");
-  const [timezone, setTimezone] = useState("America/New_York");
-  const [initialized, setInitialized] = useState(false);
-
-  useEffect(() => {
-    if (data && !initialized) {
-      setBellEnabled(data.bellEnabled);
-      setBellTime(data.dailyBellTime);
-      setTimezone(data.timezone);
-      setInitialized(true);
-    }
-  }, [data, initialized]);
-
-  const saveMutation = useMutation({
-    mutationFn: (prefs: BellPrefs) =>
-      apiRequest("PUT", "/api/bell/preferences", prefs),
+  const deactivateMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("PUT", "/api/bell/preferences", {
+        bellEnabled: false,
+        dailyBellTime: data?.dailyBellTime ?? "07:00",
+        timezone: data?.timezone ?? "America/New_York",
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bell/preferences"] });
     },
   });
-
-  function save(overrides: Partial<BellPrefs> = {}) {
-    const prefs = {
-      bellEnabled: overrides.bellEnabled ?? bellEnabled,
-      dailyBellTime: overrides.dailyBellTime ?? bellTime,
-      timezone: overrides.timezone ?? timezone,
-    };
-    saveMutation.mutate(prefs);
-  }
 
   if (isLoading) {
     return (
@@ -113,105 +271,70 @@ function BellPreferences() {
     );
   }
 
+  const isActive = data?.bellEnabled;
+
   return (
     <>
-      {/* Enable toggle */}
-      <SettingsCard>
-        <button
-          onClick={() => {
-            const next = !bellEnabled;
-            setBellEnabled(next);
-            save({ bellEnabled: next });
+      {showSetup && (
+        <BellSetupModal
+          onClose={() => setShowSetup(false)}
+          onDone={() => {
+            setShowSetup(false);
+            queryClient.invalidateQueries({ queryKey: ["/api/bell/preferences"] });
           }}
-          className="w-full flex items-center justify-between"
-        >
-          <div className="text-left">
+        />
+      )}
+
+      <SettingsCard>
+        <div className="flex items-center justify-between">
+          <div>
             <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Daily Bell 🔔</p>
             <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-              One daily calendar reminder with your practices for the day.
+              {isActive
+                ? `Ringing daily at ${formatTimeLabel(data?.dailyBellTime ?? "07:00")}`
+                : "One daily calendar reminder for all your practices."}
             </p>
           </div>
-          <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${bellEnabled ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
-            <div className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${bellEnabled ? "left-[21px]" : "left-[3px]"}`} style={{ background: "#F0EDE6" }} />
-          </div>
-        </button>
 
-        {/* Calendar status indicator */}
-        {bellEnabled && data?.calendarStatus && (
-          <div className="mt-2.5 flex items-center gap-2 px-1">
+          {isActive ? (
+            <button
+              onClick={() => deactivateMutation.mutate()}
+              disabled={deactivateMutation.isPending}
+              className="px-4 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
+              style={{ color: "#C17F7F", background: "rgba(193,127,127,0.1)", border: "1px solid rgba(193,127,127,0.2)" }}
+            >
+              {deactivateMutation.isPending ? "Removing..." : "Remove"}
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowSetup(true)}
+              className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 flex-shrink-0"
+              style={{ background: "#4a7c59", color: "#ffffff" }}
+            >
+              Activate
+            </button>
+          )}
+        </div>
+
+        {/* Calendar status */}
+        {isActive && data?.calendarStatus && data.calendarStatus !== "none" && (
+          <div className="mt-3 flex items-center gap-2">
             <div
               className="w-2 h-2 rounded-full flex-shrink-0"
               style={{
                 background: data.calendarStatus === "active" ? "#4A9E6A"
                   : data.calendarStatus === "pending" ? "#C4A94D"
-                  : data.calendarStatus === "declined" ? "#C17F7F"
-                  : "rgba(143,175,150,0.3)",
+                  : "#C17F7F",
               }}
             />
             <p className="text-[11px]" style={{ color: "#8FAF96" }}>
               {data.calendarStatus === "active" && "Active on your calendar"}
-              {data.calendarStatus === "pending" && "Calendar invite sent — accept it to activate"}
-              {data.calendarStatus === "declined" && "You declined the invite — toggle off and on to resend"}
-              {data.calendarStatus === "none" && "Setting up..."}
+              {data.calendarStatus === "pending" && "Calendar invite sent — accept it in your email"}
+              {data.calendarStatus === "declined" && "You declined the invite — remove and reactivate"}
             </p>
           </div>
         )}
       </SettingsCard>
-
-      {/* Time + timezone pickers (only shown when enabled) */}
-      {bellEnabled && (
-        <SettingsCard>
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
-                Bell time
-              </label>
-              <select
-                value={bellTime}
-                onChange={e => { setBellTime(e.target.value); save({ dailyBellTime: e.target.value }); }}
-                className="w-full px-4 py-2.5 rounded-xl border outline-none text-sm appearance-none cursor-pointer"
-                style={{
-                  background: "rgba(46,107,64,0.08)",
-                  border: "1px solid rgba(46,107,64,0.25)",
-                  color: "#F0EDE6",
-                }}
-              >
-                {TIME_OPTIONS.map(t => (
-                  <option key={t} value={t} style={{ background: "#091A10", color: "#F0EDE6" }}>
-                    {formatTimeLabel(t)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
-                Timezone
-              </label>
-              <select
-                value={timezone}
-                onChange={e => { setTimezone(e.target.value); save({ timezone: e.target.value }); }}
-                className="w-full px-4 py-2.5 rounded-xl border outline-none text-sm appearance-none cursor-pointer"
-                style={{
-                  background: "rgba(46,107,64,0.08)",
-                  border: "1px solid rgba(46,107,64,0.25)",
-                  color: "#F0EDE6",
-                }}
-              >
-                {TIMEZONE_OPTIONS.map(tz => (
-                  <option key={tz.value} value={tz.value} style={{ background: "#091A10", color: "#F0EDE6" }}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {saveMutation.isPending && (
-              <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.5)" }}>Saving...</p>
-            )}
-          </div>
-        </SettingsCard>
-      )}
     </>
   );
 }
