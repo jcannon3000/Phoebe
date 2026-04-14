@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1279,23 +1279,21 @@ export default function Dashboard() {
   }, []);
 
   const queryClient = useQueryClient();
-  const { showWelcome } = useBetaStatus();
+  const { isBeta } = useBetaStatus();
   const [betaWelcomeVisible, setBetaWelcomeVisible] = useState(false);
+  const betaWelcomeShownRef = useRef(false);
 
   useEffect(() => {
-    if (showWelcome) {
-      const seen = localStorage.getItem("phoebe:beta-welcome-seen");
-      if (!seen) setBetaWelcomeVisible(true);
+    if (isBeta && !betaWelcomeShownRef.current && !localStorage.getItem("phoebe:beta-welcome-seen")) {
+      betaWelcomeShownRef.current = true;
+      setBetaWelcomeVisible(true);
     }
-  }, [showWelcome]);
+  }, [isBeta]);
 
   const dismissBetaWelcome = useCallback(() => {
     setBetaWelcomeVisible(false);
     localStorage.setItem("phoebe:beta-welcome-seen", "1");
-    apiRequest("POST", "/api/beta/welcome-seen").then(() => {
-      queryClient.invalidateQueries({ queryKey: ["/api/beta/status"] });
-    }).catch(() => {});
-  }, [queryClient]);
+  }, []);
 
   useEffect(() => {
     const reset = () => setFilter(null);

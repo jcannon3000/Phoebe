@@ -516,7 +516,13 @@ router.post("/beta/users", async (req, res): Promise<void> => {
       email: emailLower,
       name: parsed.data.name ?? null,
       addedByUserId: user.id,
-    }).returning();
+    }).returning({
+      id: betaUsersTable.id,
+      email: betaUsersTable.email,
+      name: betaUsersTable.name,
+      isAdmin: betaUsersTable.isAdmin,
+      createdAt: betaUsersTable.createdAt,
+    });
 
     res.json({ user: betaUser });
   } catch (err) {
@@ -602,7 +608,13 @@ router.post("/beta/claim", async (req, res): Promise<void> => {
       name: u.name,
       addedByUserId: user.id,
       isAdmin: true,
-    }).returning();
+    }).returning({
+      id: betaUsersTable.id,
+      email: betaUsersTable.email,
+      name: betaUsersTable.name,
+      isAdmin: betaUsersTable.isAdmin,
+      createdAt: betaUsersTable.createdAt,
+    });
 
     res.json({ ok: true, user: betaUser });
   } catch (err) {
