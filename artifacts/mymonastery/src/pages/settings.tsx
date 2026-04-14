@@ -145,7 +145,7 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
         The Daily Bell
       </h2>
       <p className="text-sm leading-relaxed mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
-        For centuries, monastic bells have called communities to prayer — a single sound that gathers the day.
+        For centuries, monastic bells have called communities to prayer.
       </p>
       <p className="text-sm mt-4 leading-relaxed mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
         Create your bell — a daily calendar reminder that brings all your practices into one moment.
