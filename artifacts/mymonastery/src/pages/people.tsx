@@ -143,28 +143,20 @@ function PersonCard({ person, isPresent }: { person: PersonSummary; isPresent: b
         <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
         <div className="flex-1 px-4 pt-3 pb-2.5">
           <div className="flex items-start justify-between gap-3">
-            {/* Left: avatar + text */}
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-semibold flex-shrink-0"
-                style={{ backgroundColor: color.bg, color: color.text }}
-              >
-                {initials(person.name)}
+            {/* Left: text */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[15px] font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                  {person.name}
+                </span>
+                {isPresent && (
+                  <span
+                    className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: "#5C7A5F" }}
+                  />
+                )}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[15px] font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                    {person.name}
-                  </span>
-                  {isPresent && (
-                    <span
-                      className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: "#5C7A5F" }}
-                    />
-                  )}
-                </div>
-                <RotatingLine lines={flapLines} />
-              </div>
+              <RotatingLine lines={flapLines} />
             </div>
 
             {/* Right: streak or arrow */}
