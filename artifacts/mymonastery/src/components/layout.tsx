@@ -296,7 +296,7 @@ function BellNudge() {
                 Try the Daily Bell
               </p>
               <p className="text-xs leading-relaxed" style={{ color: "#8FAF96" }}>
-                One calm notification each morning instead of separate reminders for each practice.
+                One daily calendar reminder instead of separate invites for each practice.
               </p>
               <div className="flex gap-3 mt-3">
                 <button

@@ -45,11 +45,6 @@ const TIMEZONE_OPTIONS = [
   { value: "Australia/Sydney", label: "Sydney (AEST)" },
 ];
 
-const TIME_OPTIONS = [
-  "05:00", "05:30", "06:00", "06:30", "07:00", "07:30",
-  "08:00", "08:30", "09:00", "09:30", "10:00",
-];
-
 function formatTimeLabel(t: string): string {
   const [h, m] = t.split(":").map(Number);
   const ampm = h >= 12 ? "PM" : "AM";
@@ -74,9 +69,11 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
     catch { return "America/New_York"; }
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleAddToCalendar() {
     setSaving(true);
+    setError(null);
     try {
       await apiRequest("PUT", "/api/bell/preferences", {
         bellEnabled: true,
@@ -86,53 +83,52 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
       onDone();
     } catch (err) {
       console.error("Failed to activate bell:", err);
+      setError("Something went wrong. Please try again.");
       setSaving(false);
     }
   }
 
   const slides = [
-    // Slide 0: Intro
+    // Slide 0: Intro — monastic bell theme
     <div key="intro" className="text-center px-2">
       <div className="text-5xl mb-6">🔔</div>
-      <h2 className="text-xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
         The Daily Bell
       </h2>
-      <p className="text-sm leading-relaxed mx-auto max-w-xs" style={{ color: "#8FAF96" }}>
-        One quiet notification each day — a single moment to pause and open your practices.
+      <p className="text-sm leading-relaxed mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
+        For centuries, monastic bells have called communities to prayer — a single sound that gathers the day.
       </p>
-      <p className="text-sm mt-4 leading-relaxed mx-auto max-w-xs" style={{ color: "#8FAF96" }}>
-        It replaces all individual practice reminders with one gentle bell.
+      <p className="text-sm mt-4 leading-relaxed mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
+        Create your bell — a daily calendar reminder that brings all your practices into one moment.
       </p>
     </div>,
 
-    // Slide 1: Pick time
+    // Slide 1: Pick time — native time input for any time of day
     <div key="time" className="text-center px-2">
-      <div className="text-5xl mb-6">🕐</div>
+      <div className="text-5xl mb-6">🔔</div>
       <h2 className="text-xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-        When should it ring?
+        When should your bell ring?
       </h2>
-      <p className="text-sm mb-6 mx-auto max-w-xs" style={{ color: "#8FAF96" }}>
-        Choose a time for your daily bell.
+      <p className="text-sm mb-8 mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
+        Pick the time you'd like to be called to your practices each day.
       </p>
 
-      <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto mb-6">
-        {TIME_OPTIONS.map(t => (
-          <button
-            key={t}
-            onClick={() => setBellTime(t)}
-            className="py-2.5 rounded-xl text-sm font-medium transition-all"
-            style={{
-              background: bellTime === t ? "#2D5E3F" : "rgba(46,107,64,0.08)",
-              border: bellTime === t ? "1px solid #4A9E6A" : "1px solid rgba(46,107,64,0.18)",
-              color: bellTime === t ? "#F0EDE6" : "#8FAF96",
-            }}
-          >
-            {formatTimeLabel(t)}
-          </button>
-        ))}
+      <div className="max-w-[240px] mx-auto mb-6">
+        <input
+          type="time"
+          value={bellTime}
+          onChange={e => setBellTime(e.target.value)}
+          className="w-full px-5 py-4 rounded-2xl border outline-none text-center text-2xl font-semibold cursor-pointer"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.3)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
+        />
       </div>
 
-      <div className="max-w-xs mx-auto">
+      <div className="max-w-[240px] mx-auto">
         <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2 text-left" style={{ color: "rgba(200,212,192,0.4)" }}>
           Timezone
         </label>
@@ -155,24 +151,27 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
       </div>
     </div>,
 
-    // Slide 2: Confirm
+    // Slide 2: Confirm + Add to Calendar
     <div key="confirm" className="text-center px-2">
       <div className="text-5xl mb-6">📅</div>
-      <h2 className="text-xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
         Add to your calendar
       </h2>
-      <p className="text-sm mb-2 mx-auto max-w-xs" style={{ color: "#8FAF96" }}>
-        A recurring daily event will appear on your Google Calendar at:
+      <p className="text-sm mb-2 mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
+        A recurring daily calendar event will remind you at:
       </p>
-      <p className="text-lg font-semibold mt-4 mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-        {formatTimeLabel(bellTime)} every day
+      <p className="text-2xl font-bold mt-4 mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+        {formatTimeLabel(bellTime)}
       </p>
       <p className="text-xs mb-6" style={{ color: "rgba(143,175,150,0.5)" }}>
-        {TIMEZONE_OPTIONS.find(tz => tz.value === timezone)?.label ?? timezone}
+        every day · {TIMEZONE_OPTIONS.find(tz => tz.value === timezone)?.label ?? timezone}
       </p>
-      <p className="text-xs mx-auto max-w-xs leading-relaxed" style={{ color: "#8FAF96" }}>
-        Your existing practice calendar invites will be removed and replaced with this single bell.
+      <p className="text-xs mx-auto max-w-[280px] leading-relaxed" style={{ color: "#8FAF96" }}>
+        Your individual practice reminders will be replaced with this single bell.
       </p>
+      {error && (
+        <p className="text-xs mt-4" style={{ color: "#C17F7F" }}>{error}</p>
+      )}
     </div>,
   ];
 
@@ -188,7 +187,7 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
         style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)" }}
       >
         {/* Slide content */}
-        <div className="px-6 pt-10 pb-6 min-h-[360px] flex items-center justify-center">
+        <div className="px-6 pt-10 pb-6 min-h-[380px] flex items-center justify-center">
           {slides[step]}
         </div>
 
@@ -292,7 +291,7 @@ function BellPreferences() {
             <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
               {isActive
                 ? `Ringing daily at ${formatTimeLabel(data?.dailyBellTime ?? "07:00")}`
-                : "One daily calendar reminder for all your practices."}
+                : "A daily calendar reminder for all your practices."}
             </p>
           </div>
 
