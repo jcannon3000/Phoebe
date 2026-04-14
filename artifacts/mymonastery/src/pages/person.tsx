@@ -244,13 +244,13 @@ export default function PersonProfile() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: 0.05 }}
             className="mb-6 rounded-xl px-4 py-4"
-            style={{ background: "rgba(212,137,106,0.06)", border: "1px solid rgba(212,137,106,0.25)" }}
+            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)" }}
           >
-            <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: "#D4896A" }}>
+            <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: "#8FAF96" }}>
               Held in prayer 🙏🏽
             </p>
             <p className="text-sm leading-relaxed mb-1" style={{ color: "#F0EDE6" }}>{prayer.body}</p>
-            <p className="text-xs mb-3" style={{ color: "rgba(212,137,106,0.6)" }}>
+            <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.6)" }}>
               {prayerDaysLeft !== null && `${prayerDaysLeft} day${prayerDaysLeft !== 1 ? "s" : ""} remaining · `}
               {formatDistanceToNow(parseISO(prayer.createdAt), { addSuffix: true })}
             </p>
@@ -264,7 +264,7 @@ export default function PersonProfile() {
                   onChange={e => setPrayerWord(e.target.value.slice(0, 120))}
                   placeholder="Leave a word alongside this…"
                   className="flex-1 text-sm px-3 py-2 rounded-lg border focus:outline-none transition-colors placeholder:text-muted-foreground/40"
-                  style={{ background: "rgba(0,0,0,0.2)", borderColor: "rgba(212,137,106,0.25)", color: "#F0EDE6" }}
+                  style={{ background: "rgba(0,0,0,0.2)", borderColor: "rgba(46,107,64,0.25)", color: "#F0EDE6" }}
                 />
                 <button
                   onClick={() => {
@@ -272,7 +272,7 @@ export default function PersonProfile() {
                   }}
                   disabled={!prayerWord.trim() || sendWordMutation.isPending}
                   className="px-3 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-30"
-                  style={{ background: "rgba(212,137,106,0.15)", color: "#D4896A" }}
+                  style={{ background: "rgba(46,107,64,0.2)", color: "#8FAF96" }}
                 >
                   🙏🏽
                 </button>
