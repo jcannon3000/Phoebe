@@ -133,6 +133,7 @@ export default function BetaAdminPage() {
             <div className="flex gap-2">
               <input
                 type="text"
+                autoComplete="off"
                 value={newName}
                 onChange={e => { setNewName(e.target.value); setSuggestionQuery(e.target.value); setShowSuggestions(true); }}
                 onFocus={() => { setSuggestionQuery(newName); setShowSuggestions(true); }}
@@ -141,7 +142,8 @@ export default function BetaAdminPage() {
                 style={{ color: "#F0EDE6" }}
               />
               <input
-                type="email"
+                type="text"
+                autoComplete="off"
                 value={newEmail}
                 onChange={e => { setNewEmail(e.target.value); setSuggestionQuery(e.target.value); setShowSuggestions(true); }}
                 onFocus={() => { setSuggestionQuery(newEmail); setShowSuggestions(true); }}

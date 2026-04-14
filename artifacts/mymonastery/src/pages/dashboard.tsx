@@ -1283,11 +1283,15 @@ export default function Dashboard() {
   const [betaWelcomeVisible, setBetaWelcomeVisible] = useState(false);
 
   useEffect(() => {
-    if (showWelcome) setBetaWelcomeVisible(true);
+    if (showWelcome) {
+      const seen = localStorage.getItem("phoebe:beta-welcome-seen");
+      if (!seen) setBetaWelcomeVisible(true);
+    }
   }, [showWelcome]);
 
   const dismissBetaWelcome = useCallback(() => {
     setBetaWelcomeVisible(false);
+    localStorage.setItem("phoebe:beta-welcome-seen", "1");
     apiRequest("POST", "/api/beta/welcome-seen").then(() => {
       queryClient.invalidateQueries({ queryKey: ["/api/beta/status"] });
     }).catch(() => {});

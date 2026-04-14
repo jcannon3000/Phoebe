@@ -476,7 +476,13 @@ router.get("/beta/users", async (req, res): Promise<void> => {
       return;
     }
 
-    const betaUsers = await db.select().from(betaUsersTable).orderBy(desc(betaUsersTable.createdAt));
+    const betaUsers = await db.select({
+      id: betaUsersTable.id,
+      email: betaUsersTable.email,
+      name: betaUsersTable.name,
+      isAdmin: betaUsersTable.isAdmin,
+      createdAt: betaUsersTable.createdAt,
+    }).from(betaUsersTable).orderBy(desc(betaUsersTable.createdAt));
     res.json({ users: betaUsers });
   } catch (err) {
     console.error("GET /api/beta/users error:", err);
@@ -503,7 +509,7 @@ router.post("/beta/users", async (req, res): Promise<void> => {
     if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
     const emailLower = parsed.data.email.toLowerCase();
-    const [existing] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, emailLower));
+    const [existing] = await db.select({ id: betaUsersTable.id, email: betaUsersTable.email }).from(betaUsersTable).where(eq(betaUsersTable.email, emailLower));
     if (existing) { res.json({ user: existing, alreadyExists: true }); return; }
 
     const [betaUser] = await db.insert(betaUsersTable).values({
@@ -533,7 +539,7 @@ router.delete("/beta/users/:id", async (req, res): Promise<void> => {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-    const [target] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.id, id));
+    const [target] = await db.select({ id: betaUsersTable.id, isAdmin: betaUsersTable.isAdmin }).from(betaUsersTable).where(eq(betaUsersTable.id, id));
     const [selfUser] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
     if (target && selfUser && target.email === selfUser.email.toLowerCase()) {
       res.status(400).json({ error: "Cannot remove yourself" });
@@ -581,7 +587,7 @@ router.post("/beta/claim", async (req, res): Promise<void> => {
     if (!u) { res.status(400).json({ error: "User not found" }); return; }
 
     // Check if already a beta user
-    const [existing] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    const [existing] = await db.select({ id: betaUsersTable.id, isAdmin: betaUsersTable.isAdmin }).from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
     if (existing) {
       // Upgrade to admin if not already
       if (!existing.isAdmin) {
