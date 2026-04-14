@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus } from "lucide-react";
@@ -15,12 +14,11 @@ type Group = {
 export default function CommunitiesPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const { isBeta: communitiesEnabled, isLoading: betaLoading } = useBetaStatus();
 
   const { data: groupsData } = useQuery<{ groups: Group[] }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
-    enabled: !!user && communitiesEnabled,
+    enabled: !!user,
   });
 
   useEffect(() => {
@@ -47,51 +45,18 @@ export default function CommunitiesPage() {
                 Parishes, groups, and places that carry each other.
               </p>
             </div>
-            {communitiesEnabled && (
-              <Link href="/communities/new">
-                <span className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  <Plus size={14} /> New
-                </span>
-              </Link>
-            )}
+            <Link href="/communities/new">
+              <span className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                <Plus size={14} /> New
+              </span>
+            </Link>
           </div>
         </div>
 
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 
-        {!communitiesEnabled ? (
-          <div
-            className="rounded-2xl px-6 py-10 text-center"
-            style={{
-              background: "rgba(200,212,192,0.04)",
-              border: "1px dashed rgba(46,107,64,0.3)",
-            }}
-          >
-            <div className="text-5xl mb-5">🌱</div>
-            <p className="text-lg font-semibold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Communities are coming soon
-            </p>
-            <p className="text-sm max-w-md mx-auto leading-relaxed" style={{ color: "#8FAF96" }}>
-              Shared prayer, gatherings, and letters for your parish or group — a place where a whole community can keep showing up together.
-            </p>
-            <p className="text-xs italic mt-6" style={{ color: "rgba(143,175,150,0.55)" }}>
-              In the meantime, start a gathering or a practice with the people you already walk with.
-            </p>
-            <div className="flex justify-center gap-4 mt-5">
-              <Link href="/moment/new">
-                <span className="text-xs font-semibold" style={{ color: "#A8C5A0" }}>
-                  Start a practice →
-                </span>
-              </Link>
-              <Link href="/tradition/new">
-                <span className="text-xs font-semibold" style={{ color: "#A8C5A0" }}>
-                  Start a gathering →
-                </span>
-              </Link>
-            </div>
-          </div>
-        ) : groups.length === 0 ? (
+        {groups.length === 0 ? (
           <div
             className="rounded-2xl px-6 py-10 text-center"
             style={{

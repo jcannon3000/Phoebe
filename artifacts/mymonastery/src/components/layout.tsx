@@ -24,12 +24,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView } = useBetaStatus();
-  const communitiesEnabled = isBeta;
-
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
-    enabled: !!user && communitiesEnabled,
+    enabled: !!user,
   });
 
   const presenceToggle = useMutation({
@@ -143,7 +141,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
                 My Communities
               </p>
-              {communitiesEnabled && (groupsData?.groups ?? []).length > 0 ? (
+              {(groupsData?.groups ?? []).length > 0 ? (
                 <div className="space-y-1.5">
                   {groupsData!.groups.map((g) => (
                     <button
@@ -173,21 +171,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </div>
               ) : (
                 <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
-                  {communitiesEnabled ? (
-                    <>
-                      <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>No communities yet</p>
-                      <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
-                        Create one →
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>Communities are coming soon 🌱</p>
-                      <p className="text-xs" style={{ color: "rgba(200,212,192,0.4)" }}>
-                        Shared prayer, gatherings, and letters for your parish or group.
-                      </p>
-                    </>
-                  )}
+                  <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>No communities yet</p>
+                  <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
+                    Create one →
+                  </button>
                 </div>
               )}
             </div>
