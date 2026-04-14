@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
 const router: IRouter = Router();
@@ -299,6 +299,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
       const moments = await db.select({
         id: sharedMomentsTable.id,
         name: sharedMomentsTable.name,
+        intention: sharedMomentsTable.intention,
         currentStreak: sharedMomentsTable.currentStreak,
         longestStreak: sharedMomentsTable.longestStreak,
         totalBlooms: sharedMomentsTable.totalBlooms,
@@ -442,11 +443,24 @@ router.get("/people/:email", async (req, res): Promise<void> => {
       )
     ).orderBy(desc(prayerRequestsTable.createdAt)).limit(1);
     if (req) {
+      // Check if the viewing user already left a word
+      let myWord: string | null = null;
+      if (owner) {
+        const [wordRow] = await db.select({ content: prayerWordsTable.content })
+          .from(prayerWordsTable)
+          .where(and(
+            eq(prayerWordsTable.requestId, req.id),
+            eq(prayerWordsTable.authorUserId, owner.id),
+          ))
+          .limit(1);
+        myWord = wordRow?.content ?? null;
+      }
       activePrayerRequest = {
         id: req.id,
         body: req.body,
         createdAt: req.createdAt.toISOString(),
         expiresAt: req.expiresAt?.toISOString() ?? null,
+        myWord,
       };
     }
   }

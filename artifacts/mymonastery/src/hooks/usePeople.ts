@@ -61,6 +61,7 @@ export interface SharedRitual {
 export interface SharedPractice {
   id: number;
   name: string;
+  intention?: string | null;
   currentStreak: number;
   totalBlooms: number;
   frequency: string;
@@ -73,6 +74,7 @@ export interface PersonProfilePrayerRequest {
   body: string;
   createdAt: string;
   expiresAt: string | null;
+  myWord?: string | null;
 }
 
 export interface PersonProfile {

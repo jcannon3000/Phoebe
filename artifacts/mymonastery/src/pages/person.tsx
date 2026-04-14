@@ -124,7 +124,7 @@ export default function PersonProfile() {
   const queryClient = useQueryClient();
 
   const [prayerWord, setPrayerWord] = useState("");
-  const [wordSent, setWordSent] = useState(false);
+  const [wordJustSent, setWordJustSent] = useState(false);
 
   // Fetch all correspondences and filter to ones that include this person
   const { data: correspondencesData } = useQuery<CorrespondenceItem[]>({
@@ -155,7 +155,7 @@ export default function PersonProfile() {
       return res.json();
     },
     onSuccess: () => {
-      setWordSent(true);
+      setWordJustSent(true);
       setPrayerWord("");
       queryClient.invalidateQueries({ queryKey: ["/api/people", email] });
     },
@@ -196,6 +196,7 @@ export default function PersonProfile() {
   const color = colorFor(person.email);
   const prayer = person.activePrayerRequest;
   const prayerDaysLeft = prayer ? daysRemaining(prayer.expiresAt) : null;
+  const alreadyLeftWord = !!prayer?.myWord || wordJustSent;
 
   const totalTogether =
     sharedLetters.length +
@@ -253,7 +254,7 @@ export default function PersonProfile() {
               {prayerDaysLeft !== null && `${prayerDaysLeft} day${prayerDaysLeft !== 1 ? "s" : ""} remaining · `}
               {formatDistanceToNow(parseISO(prayer.createdAt), { addSuffix: true })}
             </p>
-            {wordSent ? (
+            {alreadyLeftWord ? (
               <p className="text-xs italic" style={{ color: "#8FAF96" }}>🌿 You left a word</p>
             ) : (
               <div className="flex gap-2">
@@ -364,6 +365,15 @@ export default function PersonProfile() {
                       : practice.totalBlooms > 0
                       ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
                       : "Just beginning";
+                    // For custom intercessions, show intention instead of generic name
+                    const displayName = (() => {
+                      const p = practice as any;
+                      if (practice.templateType === "intercession" && p.intention) {
+                        const norm = (s: string) => s.trim().toLowerCase();
+                        if (norm(p.intention) !== norm(practice.name)) return p.intention;
+                      }
+                      return practice.name;
+                    })();
                     return (
                       <BarCard
                         key={practice.id}
@@ -373,7 +383,7 @@ export default function PersonProfile() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
-                            {practiceEmoji(practice.templateType)} {practice.name}
+                            {practiceEmoji(practice.templateType)} {displayName}
                           </p>
                           {practice.currentStreak > 0 && (
                             <span className="text-[10px] font-semibold shrink-0 mt-0.5 uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.06em" }}>
