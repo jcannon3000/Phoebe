@@ -71,6 +71,53 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function downloadIcsFile(time: string, tz: string) {
+    const [hh, mm] = time.split(":").map(Number);
+    const now = new Date();
+    // Build DTSTART in the user's timezone as a local time
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const dtStart = `${year}${month}${day}T${String(hh).padStart(2, "0")}${String(mm).padStart(2, "0")}00`;
+    const endMm = mm + 15;
+    const endHh = hh + Math.floor(endMm / 60);
+    const dtEnd = `${year}${month}${day}T${String(endHh).padStart(2, "0")}${String(endMm % 60).padStart(2, "0")}00`;
+    const uid = `daily-bell-${Date.now()}@withphoebe.app`;
+
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Phoebe//Daily Bell//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "BEGIN:VEVENT",
+      `UID:${uid}`,
+      `DTSTART;TZID=${tz}:${dtStart}`,
+      `DTEND;TZID=${tz}:${dtEnd}`,
+      "RRULE:FREQ=DAILY",
+      `SUMMARY:🔔 Daily Bell — Phoebe`,
+      `DESCRIPTION:Your daily moment to pause and practice.\\nOpen your practices: https://withphoebe.app/bell`,
+      `URL:https://withphoebe.app/bell`,
+      "BEGIN:VALARM",
+      "TRIGGER:PT0M",
+      "ACTION:DISPLAY",
+      "DESCRIPTION:Daily Bell",
+      "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "daily-bell.ics";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   async function handleAddToCalendar() {
     setSaving(true);
     setError(null);
@@ -80,6 +127,8 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
         dailyBellTime: bellTime,
         timezone,
       });
+      // Download the .ics file so it pops up in their calendar app
+      downloadIcsFile(bellTime, timezone);
       onDone();
     } catch (err) {
       console.error("Failed to activate bell:", err);
