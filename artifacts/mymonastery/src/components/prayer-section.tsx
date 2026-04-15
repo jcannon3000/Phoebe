@@ -392,9 +392,9 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                               onClick={() => muteMutation.mutate(request.ownerId)}
                               disabled={muteMutation.isPending}
                               className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
-                              style={{ color: "rgba(143,175,150,0.5)" }}
+                              style={{ color: "#C25C5C" }}
                             >
-                              {muteMutation.isPending ? "…" : `Mute ${request.isAnonymous ? "this person" : request.ownerName ?? "this person"}'s requests`}
+                              {muteMutation.isPending ? "…" : `🔇 Mute ${request.isAnonymous ? "this person" : request.ownerName ?? "this person"}'s requests`}
                             </button>
                           )}
                         </div>
