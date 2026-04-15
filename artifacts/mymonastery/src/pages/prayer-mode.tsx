@@ -32,6 +32,7 @@ interface PrayerSlide {
   text: string;
   attribution: string;
   fullText?: string | null;
+  intention?: string | null;
 }
 
 function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () => void }) {
@@ -52,6 +53,15 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
       >
         {slide.text}
       </p>
+
+      {slide.intention && (
+        <p
+          className="text-sm italic"
+          style={{ color: "#8FAF96", marginTop: "-4px" }}
+        >
+          {slide.intention}
+        </p>
+      )}
 
       {slide.attribution && (
         <p className="text-sm" style={{ color: "#8FAF96" }}>
@@ -153,7 +163,8 @@ export default function PrayerModePage() {
   const slides: PrayerSlide[] = [
     ...intercessions.map((m) => ({
       kind: "intercession" as const,
-      text: m.intercessionTopic || m.intention || m.name,
+      text: m.intercessionTopic || m.name,
+      intention: m.intercessionTopic && m.intention ? m.intention : null,
       fullText: m.intercessionFullText?.trim() || null,
       attribution: m.members
         .filter((p) => p.email !== user?.email)
