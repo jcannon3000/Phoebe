@@ -244,6 +244,8 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
 function BellPreferences() {
   const queryClient = useQueryClient();
   const [showSetup, setShowSetup] = useState(false);
+  const [editTime, setEditTime] = useState<string | null>(null);
+  const [editTimezone, setEditTimezone] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<BellPrefs>({
     queryKey: ["/api/bell/preferences"],
@@ -262,6 +264,20 @@ function BellPreferences() {
     },
   });
 
+  const updateTimeMutation = useMutation({
+    mutationFn: (params: { dailyBellTime: string; timezone: string }) =>
+      apiRequest("PUT", "/api/bell/preferences", {
+        bellEnabled: true,
+        dailyBellTime: params.dailyBellTime,
+        timezone: params.timezone,
+      }),
+    onSuccess: () => {
+      setEditTime(null);
+      setEditTimezone(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/bell/preferences"] });
+    },
+  });
+
   if (isLoading) {
     return (
       <SettingsCard>
@@ -271,6 +287,12 @@ function BellPreferences() {
   }
 
   const isActive = data?.bellEnabled;
+  const currentTime = editTime ?? data?.dailyBellTime ?? "07:00";
+  const currentTimezone = editTimezone ?? data?.timezone ?? "America/New_York";
+  const hasChanges = isActive && (
+    (editTime !== null && editTime !== data?.dailyBellTime) ||
+    (editTimezone !== null && editTimezone !== data?.timezone)
+  );
 
   return (
     <>
@@ -315,6 +337,60 @@ function BellPreferences() {
           )}
         </div>
 
+        {/* Time & timezone editor (when active) */}
+        {isActive && (
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[120px]">
+              <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1" style={{ color: "rgba(200,212,192,0.4)" }}>
+                Time
+              </label>
+              <input
+                type="time"
+                value={currentTime}
+                onChange={e => setEditTime(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border outline-none text-sm"
+                style={{
+                  background: "rgba(46,107,64,0.08)",
+                  border: "1px solid rgba(46,107,64,0.25)",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1" style={{ color: "rgba(200,212,192,0.4)" }}>
+                Timezone
+              </label>
+              <select
+                value={currentTimezone}
+                onChange={e => setEditTimezone(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border outline-none text-sm appearance-none"
+                style={{
+                  background: "rgba(46,107,64,0.08)",
+                  border: "1px solid rgba(46,107,64,0.25)",
+                  color: "#F0EDE6",
+                }}
+              >
+                {TIMEZONE_OPTIONS.map(tz => (
+                  <option key={tz.value} value={tz.value} style={{ background: "#091A10", color: "#F0EDE6" }}>
+                    {tz.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {hasChanges && (
+              <button
+                onClick={() => updateTimeMutation.mutate({ dailyBellTime: currentTime, timezone: currentTimezone })}
+                disabled={updateTimeMutation.isPending}
+                className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                style={{ background: "#4a7c59", color: "#ffffff" }}
+              >
+                {updateTimeMutation.isPending ? "Saving..." : "Save"}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Calendar status */}
         {isActive && data?.calendarStatus && data.calendarStatus !== "none" && (
           <div className="mt-3 flex items-center gap-2">
@@ -330,7 +406,6 @@ function BellPreferences() {
               {data.calendarStatus === "active" && "Active on your calendar"}
               {data.calendarStatus === "pending" && "Calendar invite sent — accept it in your email"}
               {data.calendarStatus === "tentative" && "Marked as maybe — accept the invite to activate"}
-              {data.calendarStatus === "declined" && "You declined the invite — remove and reactivate"}
             </p>
           </div>
         )}
