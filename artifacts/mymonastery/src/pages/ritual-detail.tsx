@@ -634,15 +634,17 @@ export default function RitualDetail() {
                           {loggingId ? "Logging…" : "We gathered ✓"}
                         </button>
                       </div>
-                      <div className="pt-2 flex justify-end">
-                        <Link
-                          href={`/ritual/${ritualId}/schedule`}
-                          className="text-sm hover:underline"
-                          style={{ color: "#8FAF96" }}
-                        >
-                          Reschedule
-                        </Link>
-                      </div>
+                      {isOwner && (
+                        <div className="pt-2 flex justify-end">
+                          <Link
+                            href={`/ritual/${ritualId}/schedule`}
+                            className="text-sm hover:underline"
+                            style={{ color: "#8FAF96" }}
+                          >
+                            Reschedule
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   ) : timeline.confirmedTime ? (
                     /* Fixed future event — RSVP */
@@ -676,7 +678,29 @@ export default function RitualDetail() {
                           {rsvp === "going" ? "See you there" : "Noted. We'll keep meeting."}
                         </p>
                       )}
-                      <div className="pt-4 flex justify-end">
+                      {isOwner && (
+                        <div className="pt-4 flex justify-end">
+                          <Link
+                            href={`/ritual/${ritualId}/schedule`}
+                            className="text-sm hover:underline"
+                            style={{ color: "#8FAF96" }}
+                          >
+                            Reschedule
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Flexible pending event */
+                    isOwner && (
+                      <div className="flex items-center justify-end gap-5">
+                        <Link
+                          href={`/ritual/${ritualId}/schedule`}
+                          className="text-sm hover:underline"
+                          style={{ color: "#8FAF96" }}
+                        >
+                          Change options
+                        </Link>
                         <Link
                           href={`/ritual/${ritualId}/schedule`}
                           className="text-sm hover:underline"
@@ -685,47 +709,41 @@ export default function RitualDetail() {
                           Reschedule
                         </Link>
                       </div>
-                    </div>
-                  ) : (
-                    /* Flexible pending event */
-                    <div className="flex items-center justify-end gap-5">
-                      <Link
-                        href={`/ritual/${ritualId}/schedule`}
-                        className="text-sm hover:underline"
-                        style={{ color: "#8FAF96" }}
-                      >
-                        Change options
-                      </Link>
-                      <Link
-                        href={`/ritual/${ritualId}/schedule`}
-                        className="text-sm hover:underline"
-                        style={{ color: "#8FAF96" }}
-                      >
-                        Reschedule
-                      </Link>
-                    </div>
+                    )
                   )}
                 </div>
               ) : (
                 /* No gathering scheduled yet */
-                <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: isRhythmOverdue ? "1px dashed rgba(196,122,101,0.4)" : "1px dashed rgba(46,107,64,0.3)" }}>
-                  <div className="text-3xl mb-3">{isRhythmOverdue ? "🕯️" : "🤝🏽"}</div>
-                  <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {isRhythmOverdue ? "It's time to find a time" : "No gathering scheduled yet"}
-                  </p>
-                  <p className="mx-auto mb-5" style={{ fontSize: "14px", color: "#8FAF96", maxWidth: "280px" }}>
-                    {isRhythmOverdue
-                      ? `You're past your ${ritual.frequency} rhythm. Propose a few options and let everyone weigh in.`
-                      : "Propose a few times and let your people respond. Phoebe will send calendar invites once you confirm."}
-                  </p>
-                  <Link
-                    href={`/ritual/${ritualId}/schedule`}
-                    className="inline-flex items-center gap-2 rounded-full font-medium transition-colors hover:opacity-90"
-                    style={{ background: "#2D5E3F", color: "#F0EDE6", padding: "12px 24px", fontSize: "15px" }}
-                  >
-                    Find a time →
-                  </Link>
-                </div>
+                isOwner ? (
+                  <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: isRhythmOverdue ? "1px dashed rgba(196,122,101,0.4)" : "1px dashed rgba(46,107,64,0.3)" }}>
+                    <div className="text-3xl mb-3">{isRhythmOverdue ? "🕯️" : "🤝🏽"}</div>
+                    <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {isRhythmOverdue ? "It's time to find a time" : "No gathering scheduled yet"}
+                    </p>
+                    <p className="mx-auto mb-5" style={{ fontSize: "14px", color: "#8FAF96", maxWidth: "280px" }}>
+                      {isRhythmOverdue
+                        ? `You're past your ${ritual.frequency} rhythm. Propose a few options and let everyone weigh in.`
+                        : "Propose a few times and let your people respond. Phoebe will send calendar invites once you confirm."}
+                    </p>
+                    <Link
+                      href={`/ritual/${ritualId}/schedule`}
+                      className="inline-flex items-center gap-2 rounded-full font-medium transition-colors hover:opacity-90"
+                      style={{ background: "#2D5E3F", color: "#F0EDE6", padding: "12px 24px", fontSize: "15px" }}
+                    >
+                      Find a time →
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: "1px dashed rgba(46,107,64,0.3)" }}>
+                    <div className="text-3xl mb-3">🤝🏽</div>
+                    <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      No gathering scheduled yet
+                    </p>
+                    <p className="mx-auto" style={{ fontSize: "14px", color: "#8FAF96", maxWidth: "280px" }}>
+                      The organizer will schedule the next gathering soon.
+                    </p>
+                  </div>
+                )
               )}
 
               {/* Suggest a time — non-owner members */}
