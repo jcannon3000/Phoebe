@@ -26,6 +26,7 @@ import {
   momentUserTokensTable,
   lectioReflectionsTable,
   usersTable,
+  userMutesTable,
 } from "@workspace/db";
 import type { LectionaryReading } from "@workspace/db";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
@@ -315,6 +316,28 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
     if (r) mine[s] = r.reflectionText;
   }
 
+  // 6b. Build muted-email set so we can hide muted members' reflections.
+  let mutedEmails = new Set<string>();
+  {
+    const [currentUserRow] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, userRow.email));
+    if (currentUserRow) {
+      const mutedRows = await db
+        .select({ mutedUserId: userMutesTable.mutedUserId })
+        .from(userMutesTable)
+        .where(eq(userMutesTable.muterId, currentUserRow.id));
+      if (mutedRows.length > 0) {
+        const mutedUserRows = await db
+          .select({ email: usersTable.email })
+          .from(usersTable)
+          .where(inArray(usersTable.id, mutedRows.map(r => r.mutedUserId)));
+        mutedEmails = new Set(mutedUserRows.map(u => u.email.toLowerCase()));
+      }
+    }
+  }
+
   // 7. Apply THE GATE: for each unlocked stage, only reveal others' reflections
   // if the current user has submitted their own for that stage.
   const stageReveals: Record<Stage, {
@@ -349,7 +372,10 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       const mineRow = all.find((x) => x.userToken === userToken);
-      const others = all.filter((x) => x.userToken !== userToken);
+      const others = all.filter((x) =>
+        x.userToken !== userToken &&
+        !mutedEmails.has((x.userEmail ?? "").toLowerCase())
+      );
       const ordered = mineRow ? [mineRow, ...others] : all;
       stageReveals[s].reflections = ordered.map((r) => ({
         userName: r.userName,

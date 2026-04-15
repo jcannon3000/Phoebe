@@ -125,6 +125,7 @@ export default function PersonProfile() {
 
   const [prayerWord, setPrayerWord] = useState("");
   const [wordJustSent, setWordJustSent] = useState(false);
+  const [showMuteModal, setShowMuteModal] = useState(false);
 
   // Fetch all correspondences and filter to ones that include this person
   const { data: correspondencesData } = useQuery<CorrespondenceItem[]>({
@@ -142,6 +143,23 @@ export default function PersonProfile() {
   const sharedLetters = (correspondencesData ?? []).filter(c =>
     c.members.some(m => m.email.toLowerCase() === (email ?? "").toLowerCase())
   );
+
+  const muteMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/mutes/${(person as any)?.userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
+      setShowMuteModal(false);
+    },
+  });
+
+  const unmuteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/mutes/${(person as any)?.userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
+    },
+  });
 
   const sendWordMutation = useMutation({
     mutationFn: async ({ requestId, content }: { requestId: number; content: string }) => {
@@ -225,15 +243,47 @@ export default function PersonProfile() {
           >
             {initials(person.name)}
           </div>
-          <div>
-            <h1 className="font-semibold text-2xl leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-              {person.name}
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
-              {totalTogether === 0
-                ? "Nothing shared yet"
-                : `${totalTogether} thing${totalTogether !== 1 ? "s" : ""} together`}
-            </p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-semibold text-2xl leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                {person.name}
+              </h1>
+              {(person as any).isMuted && (
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(194,92,92,0.15)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.3)" }}
+                >
+                  🔇 Muted
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+              <p className="text-sm" style={{ color: "#8FAF96" }}>
+                {totalTogether === 0
+                  ? "Nothing shared yet"
+                  : `${totalTogether} thing${totalTogether !== 1 ? "s" : ""} together`}
+              </p>
+              {(person as any).userId && (
+                (person as any).isMuted ? (
+                  <button
+                    onClick={() => unmuteMutation.mutate()}
+                    disabled={unmuteMutation.isPending}
+                    className="text-xs font-medium px-2.5 py-1 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
+                    style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
+                  >
+                    {unmuteMutation.isPending ? "…" : "Unmute"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowMuteModal(true)}
+                    className="text-xs font-medium px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
+                    style={{ background: "rgba(194,92,92,0.1)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.25)" }}
+                  >
+                    🔇 Mute
+                  </button>
+                )
+              )}
+            </div>
           </div>
         </motion.div>
 
@@ -449,6 +499,49 @@ export default function PersonProfile() {
           </motion.div>
         )}
       </div>
+
+      {/* ── Mute confirmation modal ───────────────────────────────────── */}
+      {showMuteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+          onClick={() => setShowMuteModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-sm rounded-2xl px-6 py-6"
+            style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-4 text-center">🔇</div>
+            <h2 className="text-lg font-semibold text-center mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              Mute {firstName}?
+            </h2>
+            <p className="text-sm text-center leading-relaxed mb-6" style={{ color: "#8FAF96" }}>
+              Their prayer requests and Lectio reflections will be hidden from your view. You can unmute them any time in Settings.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowMuteModal(false)}
+                className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+                style={{ background: "rgba(46,107,64,0.08)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.18)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => muteMutation.mutate()}
+                disabled={muteMutation.isPending}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: "rgba(194,92,92,0.2)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.3)" }}
+              >
+                {muteMutation.isPending ? "Muting…" : "Mute"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </Layout>
   );
 }

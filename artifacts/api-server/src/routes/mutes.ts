@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, userMutesTable, usersTable } from "@workspace/db";
+import { z } from "zod/v4";
 
 const router: IRouter = Router();
 
@@ -29,6 +30,33 @@ router.get("/mutes", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("GET /api/mutes error:", err);
     res.json({ muted: [] });
+  }
+});
+
+// POST /api/mutes/by-email — mute a user by email (idempotent)
+router.post("/mutes/by-email", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const schema = z.object({ email: z.string().email() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Invalid email" }); return; }
+
+    const [target] = await db.select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, parsed.data.email.toLowerCase()));
+    if (!target) { res.status(404).json({ error: "User not found" }); return; }
+    if (target.id === user.id) { res.status(400).json({ error: "Cannot mute yourself" }); return; }
+
+    await db.insert(userMutesTable)
+      .values({ muterId: user.id, mutedUserId: target.id })
+      .onConflictDoNothing();
+
+    res.json({ ok: true, userId: target.id });
+  } catch (err) {
+    console.error("POST /api/mutes/by-email error:", err);
+    res.status(500).json({ error: "Failed to mute user" });
   }
 });
 

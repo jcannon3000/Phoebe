@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
 const router: IRouter = Router();
@@ -429,6 +429,16 @@ router.get("/people/:email", async (req, res): Promise<void> => {
   // hide them automatically after expiresAt.
   let activePrayerRequest: { id: number; body: string; createdAt: string; expiresAt: string | null } | null = null;
   const [personUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
+
+  // Check if the viewing user has muted this person
+  let isMuted = false;
+  if (personUser) {
+    const [muteRow] = await db.select({ id: userMutesTable.id })
+      .from(userMutesTable)
+      .where(and(eq(userMutesTable.muterId, ownerId), eq(userMutesTable.mutedUserId, personUser.id)));
+    isMuted = !!muteRow;
+  }
+
   if (personUser) {
     const [req] = await db.select({
       id: prayerRequestsTable.id,
@@ -468,6 +478,8 @@ router.get("/people/:email", async (req, res): Promise<void> => {
   res.json({
     name: personName,
     email,
+    userId: personUser?.id ?? null,
+    isMuted,
     stats: {
       sharedCircleCount: sharedRituals.length,
       sharedPracticesCount: sharedPractices.length,
