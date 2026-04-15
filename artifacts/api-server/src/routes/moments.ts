@@ -15,28 +15,41 @@ import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
 // ─── Beta-gated calendar creation ───────────────────────────────────────────
-// Beta users use the Daily Bell instead of individual calendar events.
-// These wrappers skip calendar creation for beta users.
+// Beta users with the Daily Bell enabled use a single bell event instead of
+// individual per-practice calendar events. These wrappers filter out
+// bell-enabled beta users from attendee lists so non-beta members still
+// receive calendar invites.
 // Uses raw SQL to avoid Drizzle schema mismatch with beta_users table.
 
-async function isUserBeta(userId: number): Promise<boolean> {
+async function isEmailBetaWithBell(email: string): Promise<boolean> {
   try {
-    const userResult = await pool.query(`SELECT email FROM users WHERE id = $1`, [userId]);
-    if (userResult.rows.length === 0) return false;
-    const email = (userResult.rows[0].email as string).toLowerCase();
-    const betaResult = await pool.query(`SELECT id FROM beta_users WHERE LOWER(email) = $1 LIMIT 1`, [email]);
-    return betaResult.rows.length > 0;
+    const lower = email.toLowerCase();
+    const betaResult = await pool.query(`SELECT id FROM beta_users WHERE LOWER(email) = $1 LIMIT 1`, [lower]);
+    if (betaResult.rows.length === 0) return false;
+    const userResult = await pool.query(`SELECT bell_enabled FROM users WHERE LOWER(email) = $1`, [lower]);
+    return userResult.rows.length > 0 && userResult.rows[0].bell_enabled === true;
   } catch { return false; }
 }
 
+async function filterBellAttendees(attendees: string[] | undefined): Promise<string[]> {
+  if (!attendees || attendees.length === 0) return [];
+  const filtered: string[] = [];
+  for (const email of attendees) {
+    if (!(await isEmailBetaWithBell(email))) filtered.push(email);
+  }
+  return filtered;
+}
+
 async function createCalendarEvent(userId: number, opts: Parameters<typeof _createCalendarEvent>[1]): Promise<string | null> {
-  if (await isUserBeta(userId)) return null;
-  return _createCalendarEvent(userId, opts);
+  const attendees = await filterBellAttendees(opts.attendees);
+  if (attendees.length === 0) return null; // all attendees use the bell
+  return _createCalendarEvent(userId, { ...opts, attendees });
 }
 
 async function createAllDayCalendarEvent(userId: number, opts: Parameters<typeof _createAllDayCalendarEvent>[1]): Promise<string | null> {
-  if (await isUserBeta(userId)) return null;
-  return _createAllDayCalendarEvent(userId, opts);
+  const attendees = await filterBellAttendees(opts.attendees);
+  if (attendees.length === 0) return null;
+  return _createAllDayCalendarEvent(userId, { ...opts, attendees });
 }
 
 // Monastic wisdom: depth over breadth. A person may only hold three Lectio
