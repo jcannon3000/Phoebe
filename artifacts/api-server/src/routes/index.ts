@@ -16,6 +16,7 @@ import lectioRouter from "./lectio";
 import gatheringsRouter from "./gatherings";
 import groupsRouter from "./groups";
 import bellRouter from "./bell";
+import feedbackRouter from "./feedback";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(lectioRouter);
 router.use(gatheringsRouter);
 router.use(groupsRouter);
 router.use(bellRouter);
+router.use(feedbackRouter);
 
 export default router;

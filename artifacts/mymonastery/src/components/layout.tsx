@@ -54,6 +54,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "🏘️", label: "Communities", path: "/communities" },
     { emoji: "👥", label: "People",      path: "/people"      },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
+    { emoji: "💬", label: "Feedback",    path: "/feedback"    },
     ...(isBetaAdmin ? [{ emoji: "🔐", label: "Beta Users", path: "/beta" }] : []),
     { emoji: "ℹ️", label: "About",       path: "/church-deck"  },
   ];
