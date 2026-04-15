@@ -185,31 +185,64 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
       await pool.query(`UPDATE users SET bell_calendar_event_id = NULL WHERE id = $1`, [user.id]);
     }
 
-    // ── When turning ON: remove all practice-specific calendar events ──
+    // ── When turning ON: remove ALL calendar events (practices, letters, gatherings) ──
     if (turningOn) {
+      let removed = 0;
+
+      // 1. Practice-level calendar events (moment_user_tokens)
       try {
         const tokensResult = await pool.query(
           `SELECT id, google_calendar_event_id FROM moment_user_tokens
            WHERE LOWER(email) = LOWER($1) AND google_calendar_event_id IS NOT NULL`,
           [u.email],
         );
-
-        let removed = 0;
         for (const t of tokensResult.rows) {
           if (!t.google_calendar_event_id) continue;
-          try {
-            await deleteCalendarEvent(user.id, t.google_calendar_event_id);
-            removed++;
-          } catch { /* non-fatal */ }
-          await pool.query(
-            `UPDATE moment_user_tokens SET google_calendar_event_id = NULL WHERE id = $1`,
-            [t.id],
-          );
+          try { await deleteCalendarEvent(user.id, t.google_calendar_event_id); removed++; } catch { /* non-fatal */ }
+          await pool.query(`UPDATE moment_user_tokens SET google_calendar_event_id = NULL WHERE id = $1`, [t.id]);
         }
-        console.log(`[bell] Removed ${removed} practice calendar events for user ${user.id}`);
       } catch (err) {
-        console.error("[bell] Calendar cleanup error (non-fatal):", err);
+        console.error("[bell] moment_user_tokens cleanup error (non-fatal):", err);
       }
+
+      // 2. Per-window/letter calendar events (moment_calendar_events)
+      try {
+        // Find moment_member IDs for this user's email
+        const memberResult = await pool.query(
+          `SELECT mut.id AS token_id, mce.id AS mce_id, mce.google_calendar_event_id
+           FROM moment_user_tokens mut
+           JOIN moment_calendar_events mce ON mce.moment_member_id = mut.id
+           WHERE LOWER(mut.email) = LOWER($1) AND mce.google_calendar_event_id IS NOT NULL`,
+          [u.email],
+        );
+        for (const r of memberResult.rows) {
+          if (!r.google_calendar_event_id) continue;
+          try { await deleteCalendarEvent(user.id, r.google_calendar_event_id); removed++; } catch { /* non-fatal */ }
+          await pool.query(`UPDATE moment_calendar_events SET google_calendar_event_id = NULL WHERE id = $1`, [r.mce_id]);
+        }
+      } catch (err) {
+        console.error("[bell] moment_calendar_events cleanup error (non-fatal):", err);
+      }
+
+      // 3. Gathering/meetup calendar events (meetups) — for rituals the user created
+      try {
+        const meetupsResult = await pool.query(
+          `SELECT m.id, m.google_calendar_event_id
+           FROM meetups m
+           JOIN rituals r ON r.id = m.ritual_id
+           WHERE r.created_by = $1 AND m.google_calendar_event_id IS NOT NULL`,
+          [user.id],
+        );
+        for (const r of meetupsResult.rows) {
+          if (!r.google_calendar_event_id) continue;
+          try { await deleteCalendarEvent(user.id, r.google_calendar_event_id); removed++; } catch { /* non-fatal */ }
+          await pool.query(`UPDATE meetups SET google_calendar_event_id = NULL WHERE id = $1`, [r.id]);
+        }
+      } catch (err) {
+        console.error("[bell] meetups cleanup error (non-fatal):", err);
+      }
+
+      console.log(`[bell] Removed ${removed} total calendar events for user ${user.id}`);
     }
 
     // ── Create bell calendar event if turning on or changing time ──
