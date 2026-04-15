@@ -740,7 +740,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? `Next fast on ${nextWindow}`
     : "";
   const fastingFlapLines: string[] = isMeatFast
-    ? [meatFastNextLine, meatFastWaterLine, meatFastParticipationLine]
+    ? [meatFastWaterLine, meatFastParticipationLine, meatFastNextLine]
     : [];
 
   const mobileFlapLines: string[] = (
