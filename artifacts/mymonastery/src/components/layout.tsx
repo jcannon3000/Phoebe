@@ -427,7 +427,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {user && (
           <div className="flex items-center gap-2">
             <Link
-              href="/prayer-list"
+              href="/prayer-mode"
               className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
@@ -437,7 +437,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 border: "1px solid rgba(122,158,125,0.28)",
               }}
             >
-              🕯️ Prayer List
+              🕯️ Pray
             </Link>
             <button
               onClick={() => setDrawerOpen(true)}

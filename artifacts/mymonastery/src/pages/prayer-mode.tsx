@@ -237,7 +237,7 @@ export default function PrayerModePage() {
 
     // Fade out then navigate
     setVisible(false);
-    setTimeout(() => setLocation("/dashboard"), 500);
+    setTimeout(() => setLocation("/prayer-list"), 500);
   };
 
   if (authLoading || !user) return null;
