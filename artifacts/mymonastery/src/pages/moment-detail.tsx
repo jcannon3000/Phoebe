@@ -273,6 +273,7 @@ export default function MomentDetail() {
   const [editIntention, setEditIntention] = useState("");
   const [editGoalDays, setEditGoalDays] = useState(7);
   const [editScheduledTime, setEditScheduledTime] = useState("");
+  const [editEmoji, setEditEmoji] = useState("");
 
   // Renew / extend-goal modal
   const [renewModalOpen, setRenewModalOpen] = useState(false);
@@ -1243,6 +1244,7 @@ export default function MomentDetail() {
                       setEditIntention(moment.intention ?? "");
                       setEditGoalDays(moment.goalDays);
                       setEditScheduledTime(moment.scheduledTime);
+                      setEditEmoji((moment as any).customEmoji ?? "");
                       setEditingPractice(true);
                     }}
                     className="shrink-0 ml-4 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-4 py-2 hover:bg-[#5C7A5F]/8 transition-colors min-h-[36px]"
@@ -1276,6 +1278,28 @@ export default function MomentDetail() {
                       className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20 resize-none"
                     />
                   </div>
+                  {isIntercession && (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">Emoji</label>
+                      <div className="flex flex-wrap gap-2">
+                        {["🙏🏽", "✝️", "🕊️", "💚", "🌿", "🕯️", "📖", "❤️", "🙌🏽", "☦️", "⛪", "🌹"].map(e => (
+                          <button
+                            key={e}
+                            type="button"
+                            onClick={() => setEditEmoji(editEmoji === e ? "" : e)}
+                            className="text-2xl w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+                            style={{
+                              background: editEmoji === e ? "rgba(92,122,95,0.3)" : "transparent",
+                              border: editEmoji === e ? "1.5px solid rgba(92,122,95,0.6)" : "1.5px solid transparent",
+                            }}
+                          >
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Shown on dashboard cards. Tap again to clear.</p>
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1">Goal (days)</label>
                     <input
@@ -1310,6 +1334,7 @@ export default function MomentDetail() {
                           payload.commitmentSessionsGoal = editGoalDays;
                         }
                         if (editScheduledTime && editScheduledTime !== moment.scheduledTime) payload.scheduledTime = editScheduledTime;
+                        if (editEmoji !== ((moment as any).customEmoji ?? "")) payload.customEmoji = editEmoji || null;
                         if (Object.keys(payload).length > 0) {
                           editMutation.mutate(payload);
                         } else {

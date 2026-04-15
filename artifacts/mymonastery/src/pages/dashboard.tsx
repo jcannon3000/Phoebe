@@ -561,7 +561,7 @@ function stripTrailingEmoji(s: string): string {
 }
 
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
-  const emoji = PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
+  const emoji = (m as any).customEmoji || PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
   // Lectio uses its per-user stage-done flag instead of todayPostCount since
   // reflections don't write to moment_posts. When the user is "caught up"
   // (has already submitted the current stage's reflection), the card still
@@ -1008,7 +1008,7 @@ function TimeSection({
         <div className="relative">
           <div
             className="overflow-y-auto pr-1"
-            style={{ maxHeight: "272px", scrollbarWidth: "none" }}
+            style={{ maxHeight: "310px", scrollbarWidth: "none" }}
           >
             {cards}
             {/* Bottom padding so last card isn't flush against the fade */}
@@ -1016,8 +1016,8 @@ function TimeSection({
           </div>
           {/* Fade out at bottom */}
           <div
-            className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent, #091A10)" }}
+            className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
           />
         </div>
       ) : (
@@ -1071,9 +1071,10 @@ function GoalReachedModal({
     .slice(0, 5);
 
   const gStreak = moment.groupStreak ?? moment.currentStreak;
-  const emoji = moment.templateType === "intercession" ? "🙏🏽"
+  const emoji = (moment as any).customEmoji
+    || (moment.templateType === "intercession" ? "🙏🏽"
     : moment.templateType === "fasting" ? "🌿"
-    : "🌸";
+    : "🌸");
 
   const slides = [
     // Slide 0: Celebration — group focused

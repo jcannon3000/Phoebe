@@ -253,33 +253,43 @@ export default function TraditionNew() {
               {connections.length > 0 && (
                 <div className="mb-5">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#C8D4C0" }}>People you know</p>
-                  <div className="space-y-2">
-                    {connections.map((person) => {
-                      const sel = selectedPeople.some((p) => p.email === person.email);
-                      return (
-                        <button
-                          key={person.email}
-                          onClick={() => togglePerson(person)}
-                          className="w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all"
-                          style={{
-                            background: sel ? "#2D5E3F" : "#0F2818",
-                            border: `1.5px solid ${sel ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.3)"}`,
-                          }}
-                        >
-                          <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
-                            style={{ background: sel ? "rgba(200,212,192,0.2)" : "rgba(200,212,192,0.1)", color: sel ? "#F0EDE6" : "#8FAF96" }}
+                  <div className="relative">
+                    <div
+                      className="space-y-2 overflow-y-auto"
+                      style={{
+                        maxHeight: "238px",
+                        scrollbarWidth: "none",
+                        maskImage: connections.length > 3 ? "linear-gradient(to bottom, black 70%, transparent)" : undefined,
+                        WebkitMaskImage: connections.length > 3 ? "linear-gradient(to bottom, black 70%, transparent)" : undefined,
+                      }}
+                    >
+                      {connections.map((person) => {
+                        const sel = selectedPeople.some((p) => p.email === person.email);
+                        return (
+                          <button
+                            key={person.email}
+                            onClick={() => togglePerson(person)}
+                            className="w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all"
+                            style={{
+                              background: sel ? "#2D5E3F" : "#0F2818",
+                              border: `1.5px solid ${sel ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.3)"}`,
+                            }}
                           >
-                            {(person.name || person.email).charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{person.name || person.email}</p>
-                            {person.name && <p className="text-xs truncate" style={{ color: "#8FAF96" }}>{person.email}</p>}
-                          </div>
-                          {sel && <span style={{ color: "#C8D4C0" }}>✓</span>}
-                        </button>
-                      );
-                    })}
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+                              style={{ background: sel ? "rgba(200,212,192,0.2)" : "rgba(200,212,192,0.1)", color: sel ? "#F0EDE6" : "#8FAF96" }}
+                            >
+                              {(person.name || person.email).charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{person.name || person.email}</p>
+                              {person.name && <p className="text-xs truncate" style={{ color: "#8FAF96" }}>{person.email}</p>}
+                            </div>
+                            {sel && <span style={{ color: "#C8D4C0" }}>✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}

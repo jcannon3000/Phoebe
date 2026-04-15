@@ -1,9 +1,11 @@
 import { pgTable, serial, text, integer, timestamp, boolean, date } from "drizzle-orm/pg-core";
 import { ritualsTable } from "./rituals";
+import { groupsTable } from "./groups";
 
 export const sharedMomentsTable = pgTable("shared_moments", {
   id: serial("id").primaryKey(),
   ritualId: integer("ritual_id").references(() => ritualsTable.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   intention: text("intention").notNull(),
   loggingType: text("logging_type").notNull().default("photo"),
@@ -62,6 +64,8 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   // Toggle: when true, any member of the practice can invite new people.
   // When false, only the creator can. Default is open.
   allowMemberInvites: boolean("allow_member_invites").notNull().default(true),
+  // Custom emoji chosen by the creator (intercessions)
+  customEmoji: text("custom_emoji"),
 });
 
 export type SharedMoment = typeof sharedMomentsTable.$inferSelect;

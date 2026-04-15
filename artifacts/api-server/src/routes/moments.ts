@@ -6,7 +6,7 @@ import {
   db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
-  lectioReflectionsTable,
+  lectioReflectionsTable, groupsTable, groupMembersTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
@@ -511,6 +511,8 @@ const StandalonePlantSchema = z.object({
   listeningAppleMusicUrl: z.string().max(500).optional(),
   listeningArtworkUrl: z.string().max(500).optional(),
   listeningManual: z.boolean().optional(),
+  // Group practice — only group admins can create
+  groupId: z.number().int().positive().optional(),
 });
 
 router.post("/moments", async (req, res): Promise<void> => {
@@ -524,7 +526,25 @@ router.post("/moments", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return;
   }
 
-  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual } = parsed.data;
+  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual, groupId } = parsed.data;
+
+  // ── Group practice validation — only admins can create ──
+  let groupMembers: Array<{ email: string; name: string }> | null = null;
+  if (groupId) {
+    const [group] = await db.select().from(groupsTable).where(eq(groupsTable.id, groupId));
+    if (!group) { res.status(404).json({ error: "Group not found" }); return; }
+
+    const [membership] = await db.select().from(groupMembersTable)
+      .where(and(eq(groupMembersTable.groupId, groupId), eq(groupMembersTable.userId, sessionUserId)));
+    if (!membership || membership.role !== "admin") {
+      res.status(403).json({ error: "Only group admins can create group practices" }); return;
+    }
+
+    // Auto-add all joined group members as participants
+    const members = await db.select().from(groupMembersTable)
+      .where(and(eq(groupMembersTable.groupId, groupId), sql`${groupMembersTable.joinedAt} IS NOT NULL`));
+    groupMembers = members.map(m => ({ email: m.email, name: m.name ?? m.email }));
+  }
 
   // Enforce the Lectio Divina group limit — depth, not breadth.
   if (templateType === "lectio-divina") {
@@ -564,6 +584,7 @@ router.post("/moments", async (req, res): Promise<void> => {
 
   const [moment] = await db.insert(sharedMomentsTable).values({
     ritualId: providedRitualId ?? null,
+    groupId: groupId ?? null,
     name,
     intention,
     loggingType,
@@ -606,9 +627,11 @@ router.post("/moments", async (req, res): Promise<void> => {
   const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
 
   // Merge organizer into participants, deduplicate by email
+  // For group practices, use group members instead of manually invited participants
+  const participantList = groupMembers ?? participants.map(p => ({ email: p.email, name: p.name || p.email }));
   const allMembers: Array<{ email: string; name: string }> = [
     { email: organizer.email, name: organizer.name ?? organizer.email },
-    ...participants.map(p => ({ email: p.email, name: p.name || p.email })),
+    ...participantList,
   ];
   const seen = new Set<string>();
   const uniqueMembers = allMembers.filter(m => {
@@ -2591,6 +2614,7 @@ const EditMomentSchema = z.object({
   intercessionTopic: z.string().max(300).nullable().optional(),
   contemplativeDurationMinutes: z.number().int().min(1).max(60).nullable().optional(),
   allowMemberInvites: z.boolean().optional(),
+  customEmoji: z.string().max(10).nullable().optional(),
 });
 
 router.patch("/moments/:id", async (req, res): Promise<void> => {
@@ -2627,6 +2651,7 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   if (d.intercessionTopic !== undefined) updates.intercessionTopic = d.intercessionTopic;
   if (d.contemplativeDurationMinutes !== undefined) updates.contemplativeDurationMinutes = d.contemplativeDurationMinutes;
   if (d.allowMemberInvites !== undefined) updates.allowMemberInvites = d.allowMemberInvites;
+  if (d.customEmoji !== undefined) updates.customEmoji = d.customEmoji;
 
   if (Object.keys(updates).length === 0) {
     res.json({ ok: true });
