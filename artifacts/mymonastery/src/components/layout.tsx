@@ -194,7 +194,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     <button
                       key={path}
                       onClick={() => navigate(path)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
                       onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
                       onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
                     >
