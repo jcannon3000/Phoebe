@@ -1709,18 +1709,19 @@ export default function MomentNew() {
                   </div>
                 </div>
               ) : step === "intention" && templateId === "intercession" && intercessionSource === "custom" ? (
-                <div className="space-y-7 flex-1">
+                <div className="space-y-8 flex-1">
                   <div>
-                    <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who are you praying for? 🙏🏽</h2>
+                    <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Create your intercession 🙏🏽</h2>
                     <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                      This will be shown to everyone in the practice when they open their link to pray.
+                      Everyone in this practice will see the title and pray this prayer together.
                     </p>
                   </div>
+
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Your intention</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Title</label>
                     <input autoFocus type="text" value={intention}
                       onChange={e => setIntention(e.target.value.slice(0, 120))}
-                      placeholder="e.g. My mother's health, Our parish community, The sick and suffering..."
+                      placeholder="e.g. For my mother's health, For our parish, For the sick and suffering..."
                       className="w-full px-4 py-3 rounded-2xl text-base focus:outline-none transition-colors"
                       style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
@@ -1728,15 +1729,13 @@ export default function MomentNew() {
                       <p className="text-right text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>{intention.length}/120</p>
                     )}
                   </div>
+
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Write a prayer for everyone to pray</label>
-                    <p className="text-xs" style={{ color: "rgba(143,175,150,0.6)" }}>
-                      This is the prayer your group will pray together each time they open their link.
-                    </p>
+                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Prayer</label>
                     <textarea value={intercessionFullText}
                       onChange={e => setIntercessionFullText(e.target.value)}
-                      rows={5}
-                      placeholder="Write a prayer for your group to pray together..."
+                      rows={6}
+                      placeholder="Write the prayer your group will pray together..."
                       className="w-full px-4 py-3 rounded-2xl resize-none text-base leading-relaxed focus:outline-none transition-colors font-serif italic"
                       style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
