@@ -212,11 +212,19 @@ export default function LettersPage() {
       <div className="max-w-2xl mx-auto w-full pb-24">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Letters 📮
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              Letters
+            </h1>
+            <span
+              className="text-[9px] font-semibold uppercase tracking-widest self-start mt-2"
+              style={{ color: "rgba(143,175,150,0.45)", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              beta
+            </span>
+          </div>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-            Letters have connected people for centuries. One letter every other week.
+            An experimental way to stay close to people you care about.
           </p>
         </div>
 
@@ -232,12 +240,14 @@ export default function LettersPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center text-center py-12"
+            className="flex flex-col items-center text-center py-12 max-w-xl mx-auto"
           >
             <div className="text-5xl mb-6">📮</div>
-            <p className="text-base font-medium mb-1" style={{ color: "#F0EDE6" }}>Letters are how belonging gets cultivated, one week at a time.</p>
-            <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-              A real dialogue. A shared history. A relationship that deepens.
+            <p className="text-sm mb-4" style={{ color: "#C8D4C0", lineHeight: 1.6 }}>
+              Most friendships fade not because we stop caring, but because we never find the time. Letters gives that a simple structure: you and a friend each write one letter every two weeks. It doesn't have to be long or profound — it just has to be sent. Over time you build a real shared history.
+            </p>
+            <p className="text-sm mb-8" style={{ color: "#8FAF96", lineHeight: 1.6 }}>
+              This is an early experiment and we're still learning what makes it feel meaningful. If you try it, we'd love to hear what you think.
             </p>
             <Link href="/letters/new">
               <button
