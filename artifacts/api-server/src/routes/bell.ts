@@ -110,7 +110,15 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
           const me = attendees.find(a => a.email.toLowerCase() === u.email.toLowerCase());
           if (me?.responseStatus === "accepted") calendarStatus = "active";
           else if (me?.responseStatus === "tentative") calendarStatus = "tentative";
-          else if (me?.responseStatus === "declined") calendarStatus = "declined";
+          else if (me?.responseStatus === "declined") {
+            // User declined = they removed it from their calendar. Reset bell.
+            calendarStatus = "none";
+            try { await deleteCalendarEvent(user.id, u.bellCalendarEventId!); } catch { /* may already be gone */ }
+            await updateBellPrefs(user.id, {
+              bellEnabled: false, dailyBellTime: u.dailyBellTime ?? "07:00",
+              timezone: u.timezone ?? "America/New_York", bellCalendarEventId: null,
+            });
+          }
           else calendarStatus = "pending";
         } else {
           calendarStatus = "none";
@@ -124,8 +132,11 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
       }
     }
 
+    // If declined, bell was auto-reset above — reflect that in response
+    const bellEnabled = calendarStatus === "none" ? false : u.bellEnabled;
+
     res.json({
-      bellEnabled: u.bellEnabled,
+      bellEnabled,
       dailyBellTime: u.dailyBellTime ?? "07:00",
       timezone: u.timezone ?? "America/New_York",
       calendarStatus,
