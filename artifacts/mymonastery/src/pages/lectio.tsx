@@ -71,6 +71,7 @@ type StageReveal = {
   reflections:
     | Array<{ userName: string; isYou: boolean; text: string; createdAt: string }>
     | null;
+  mutedReflections: Array<{ userName: string; text: string; createdAt: string }>;
   mutedCount: number;
   nonSubmitterNames: string[];
 };
@@ -579,7 +580,9 @@ export default function LectioPage() {
                   data={data}
                   onBegin={next}
                   onJumpToStage={(stage) => {
-                    const idx = slides.findIndex((sl) => sl.stage === stage && sl.kind === "prompt");
+                    const submitted = data.stages[stage].userHasSubmitted;
+                    const kind = submitted ? "responses" : "prompt";
+                    const idx = slides.findIndex((sl) => sl.stage === stage && sl.kind === kind);
                     if (idx >= 0) setSlideIdx(idx);
                   }}
                   onJumpToSummary={jumpToSummary}
@@ -1061,6 +1064,7 @@ function ResponsesSlide({
   stageData: StageReveal;
   memberCount: number;
 }) {
+  const [showMuted, setShowMuted] = useState(false);
   const hasSubmitted = stageData.userHasSubmitted;
 
   if (!hasSubmitted) {
@@ -1117,9 +1121,37 @@ function ResponsesSlide({
         </div>
       )}
       {stageData.mutedCount > 0 && (
-        <p style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 18 }}>
-          {stageData.mutedCount} muted {stageData.mutedCount === 1 ? "response" : "responses"}
-        </p>
+        <div style={{ marginTop: 18 }}>
+          <button
+            type="button"
+            onClick={() => setShowMuted(v => !v)}
+            style={{
+              color: FAINT_GREEN,
+              fontSize: 12,
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            {stageData.mutedCount} muted {stageData.mutedCount === 1 ? "response" : "responses"}
+          </button>
+          {showMuted && (
+            <div className="space-y-3 mt-3">
+              {stageData.mutedReflections.map((r, i) => (
+                <ReflectionCard
+                  key={i}
+                  name={r.userName}
+                  text={r.text}
+                  isYou={false}
+                  createdAt={r.createdAt}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       )}
       {memberCount <= 1 && (
         <p style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 18 }}>
