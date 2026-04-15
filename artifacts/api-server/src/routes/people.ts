@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
 const router: IRouter = Router();
@@ -475,6 +475,26 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     }
   }
 
+  // Find groups both users are members of
+  let sharedGroups: Array<{ id: number; name: string; slug: string; emoji: string | null }> = [];
+  const [ownerUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, ownerId));
+  if (ownerUser && personUser) {
+    const ownerMemberships = await db.select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(eq(groupMembersTable.email, owner?.email ?? ""));
+    const personMemberships = await db.select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(eq(groupMembersTable.email, email));
+    const ownerGroupIds = new Set(ownerMemberships.map(m => m.groupId));
+    const sharedGroupIds = personMemberships.map(m => m.groupId).filter(id => ownerGroupIds.has(id));
+    if (sharedGroupIds.length > 0) {
+      const groups = await db.select({ id: groupsTable.id, name: groupsTable.name, slug: groupsTable.slug, emoji: groupsTable.emoji })
+        .from(groupsTable)
+        .where(inArray(groupsTable.id, sharedGroupIds));
+      sharedGroups = groups;
+    }
+  }
+
   res.json({
     name: personName,
     email,
@@ -492,6 +512,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     },
     sharedRituals: enriched,
     sharedPractices,
+    sharedGroups,
     activePrayerRequest,
   });
 });

@@ -7,6 +7,7 @@ import { usePersonProfile } from "@/hooks/usePeople";
 import { Layout } from "@/components/layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Settings } from "lucide-react";
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -16,9 +17,10 @@ const AVATAR_COLORS = [
 ];
 
 const CATEGORY = {
-  letters:   { bar: "#8E9E42", border: "rgba(142,158,66,0.3)" },
-  practices: { bar: "#2E6B40", border: "rgba(46,107,64,0.3)"  },
-  gatherings:{ bar: "#6FAF85", border: "rgba(111,175,133,0.3)"},
+  letters:     { bar: "#8E9E42", border: "rgba(142,158,66,0.3)"  },
+  practices:   { bar: "#2E6B40", border: "rgba(46,107,64,0.3)"   },
+  gatherings:  { bar: "#6FAF85", border: "rgba(111,175,133,0.3)" },
+  communities: { bar: "#7A6FAF", border: "rgba(122,111,175,0.3)" },
 };
 
 function colorFor(email: string) {
@@ -126,6 +128,7 @@ export default function PersonProfile() {
   const [prayerWord, setPrayerWord] = useState("");
   const [wordJustSent, setWordJustSent] = useState(false);
   const [showMuteModal, setShowMuteModal] = useState(false);
+  const [showSettingsPopup, setShowSettingsPopup] = useState(false);
 
   // Fetch all correspondences and filter to ones that include this person
   const { data: correspondencesData } = useQuery<CorrespondenceItem[]>({
@@ -216,10 +219,14 @@ export default function PersonProfile() {
   const prayerDaysLeft = prayer ? daysRemaining(prayer.expiresAt) : null;
   const alreadyLeftWord = !!prayer?.myWord || wordJustSent;
 
+  const sharedGroups: Array<{ id: number; name: string; slug: string; emoji: string | null }> =
+    (person as any).sharedGroups ?? [];
+
   const totalTogether =
     sharedLetters.length +
     (person.sharedPractices?.length ?? 0) +
-    (person.sharedRituals?.length ?? 0);
+    (person.sharedRituals?.length ?? 0) +
+    sharedGroups.length;
 
   return (
     <Layout>
@@ -257,34 +264,51 @@ export default function PersonProfile() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-              <p className="text-sm" style={{ color: "#8FAF96" }}>
-                {totalTogether === 0
-                  ? "Nothing shared yet"
-                  : `${totalTogether} thing${totalTogether !== 1 ? "s" : ""} together`}
-              </p>
-              {(person as any).userId && (
-                (person as any).isMuted ? (
-                  <button
-                    onClick={() => unmuteMutation.mutate()}
-                    disabled={unmuteMutation.isPending}
-                    className="text-xs font-medium px-2.5 py-1 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
-                    style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
+            <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
+              {totalTogether === 0 ? "Nothing shared yet" : `${totalTogether} thing${totalTogether !== 1 ? "s" : ""} together`}
+            </p>
+          </div>
+
+          {/* Settings gear */}
+          {(person as any).userId && (
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowSettingsPopup(v => !v)}
+                className="p-2 rounded-xl transition-colors"
+                style={{ color: "#8FAF96", background: showSettingsPopup ? "rgba(46,107,64,0.12)" : "transparent" }}
+              >
+                <Settings size={18} />
+              </button>
+              {showSettingsPopup && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSettingsPopup(false)} />
+                  <div
+                    className="absolute right-0 top-10 z-50 rounded-xl py-1 min-w-[170px]"
+                    style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
                   >
-                    {unmuteMutation.isPending ? "…" : "Unmute"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setShowMuteModal(true)}
-                    className="text-xs font-medium px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
-                    style={{ background: "rgba(194,92,92,0.1)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.25)" }}
-                  >
-                    🔇 Mute
-                  </button>
-                )
+                    {(person as any).isMuted ? (
+                      <button
+                        onClick={() => { setShowSettingsPopup(false); unmuteMutation.mutate(); }}
+                        disabled={unmuteMutation.isPending}
+                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
+                        style={{ color: "#A8C5A0" }}
+                      >
+                        {unmuteMutation.isPending ? "Unmuting…" : "Unmute"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { setShowSettingsPopup(false); setShowMuteModal(true); }}
+                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                        style={{ color: "#C25C5C" }}
+                      >
+                        🔇 Mute {firstName}
+                      </button>
+                    )}
+                  </div>
+                </>
               )}
             </div>
-          </div>
+          )}
         </motion.div>
 
         {/* ── Prayer Request ──────────────────────────────────────────────── */}
@@ -482,6 +506,27 @@ export default function PersonProfile() {
                       </BarCard>
                     );
                   })}
+                </div>
+              </>
+            )}
+
+            {/* Communities */}
+            {sharedGroups.length > 0 && (
+              <>
+                <SectionHeader label="Communities" />
+                <div className="space-y-3">
+                  {sharedGroups.map(group => (
+                    <BarCard
+                      key={group.id}
+                      href={`/communities/${group.slug}`}
+                      barColor={CATEGORY.communities.bar}
+                      borderColor={CATEGORY.communities.border}
+                    >
+                      <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
+                        {group.emoji ?? "🏛️"} {group.name}
+                      </p>
+                    </BarCard>
+                  ))}
                 </div>
               </>
             )}
