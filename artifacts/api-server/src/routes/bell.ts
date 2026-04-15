@@ -209,7 +209,7 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
 
         const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
         const startLocalStr = `${todayStr}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`;
-        const endMm = mm + 15;
+        const endMm = mm + 5;
         const endHh = hh + Math.floor(endMm / 60);
         const endLocalStr = `${todayStr}T${String(endHh).padStart(2, "0")}:${String(endMm % 60).padStart(2, "0")}:00`;
 
@@ -220,7 +220,7 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
           description: [
             `Your daily moment to pause and practice.`,
             ``,
-            `Open your practices: ${APP_URL}/bell`,
+            `Open your practices: ${APP_URL}`,
           ].join("\n"),
           startDate: new Date(),
           startLocalStr,

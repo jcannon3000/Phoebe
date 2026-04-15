@@ -79,7 +79,7 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
     const dtStart = `${year}${month}${day}T${String(hh).padStart(2, "0")}${String(mm).padStart(2, "0")}00`;
-    const endMm = mm + 15;
+    const endMm = mm + 5;
     const endHh = hh + Math.floor(endMm / 60);
     const dtEnd = `${year}${month}${day}T${String(endHh).padStart(2, "0")}${String(endMm % 60).padStart(2, "0")}00`;
     const uid = `daily-bell-${Date.now()}@withphoebe.app`;
@@ -96,8 +96,8 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
       `DTEND;TZID=${tz}:${dtEnd}`,
       "RRULE:FREQ=DAILY",
       `SUMMARY:🔔 Daily Bell — Phoebe`,
-      `DESCRIPTION:Your daily moment to pause and practice.\\nOpen your practices: https://withphoebe.app/bell`,
-      `URL:https://withphoebe.app/bell`,
+      `DESCRIPTION:Your daily moment to pause and practice.\\nOpen your practices: https://withphoebe.app`,
+      `URL:https://withphoebe.app`,
       "BEGIN:VALARM",
       "TRIGGER:PT0M",
       "ACTION:DISPLAY",
