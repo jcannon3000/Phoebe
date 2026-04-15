@@ -289,62 +289,107 @@ function BellNudge() {
 
   const isAcceptNudge = nudgeType === "accept";
 
+  // Accept nudge: small bottom toast
+  if (isAcceptNudge) {
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: 40, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="fixed bottom-6 left-4 right-4 z-50 flex justify-center"
+        >
+          <div
+            className="w-full max-w-md rounded-2xl px-5 py-4 shadow-2xl"
+            style={{
+              background: "#0D1F14",
+              border: "1px solid rgba(46,107,64,0.3)",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <span className="text-2xl mt-0.5">🔔</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Accept your Daily Bell
+                </p>
+                <p className="text-xs leading-relaxed" style={{ color: "#8FAF96" }}>
+                  Accept the calendar invite so your bell rings each day. Check your email or calendar app.
+                </p>
+                <div className="flex gap-3 mt-3">
+                  <button
+                    onClick={dismiss}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ color: "#8FAF96" }}
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={dismiss}
+                className="flex-shrink-0 mt-0.5 transition-opacity hover:opacity-60"
+                style={{ color: "rgba(143,175,150,0.4)" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  // Setup nudge: fullscreen modal
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.95 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed bottom-6 left-4 right-4 z-50 flex justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
       >
-        <div
-          className="w-full max-w-md rounded-2xl px-5 py-4 shadow-2xl"
-          style={{
-            background: "#0D1F14",
-            border: "1px solid rgba(46,107,64,0.3)",
-            boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-md mx-4 rounded-2xl overflow-hidden"
+          style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)" }}
         >
-          <div className="flex items-start gap-4">
-            <span className="text-2xl mt-0.5">🔔</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {isAcceptNudge ? "Accept your Daily Bell" : "Try the Daily Bell"}
-              </p>
-              <p className="text-xs leading-relaxed" style={{ color: "#8FAF96" }}>
-                {isAcceptNudge
-                  ? "Accept the calendar invite so your bell rings each day. Check your email or calendar app."
-                  : "One daily calendar reminder instead of separate invites for each practice."}
-              </p>
-              <div className="flex gap-3 mt-3">
-                {!isAcceptNudge && (
-                  <button
-                    onClick={goToSettings}
-                    className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
-                    style={{ background: "#4a7c59", color: "#ffffff" }}
-                  >
-                    Set it up
-                  </button>
-                )}
-                <button
-                  onClick={dismiss}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                  style={{ color: "#8FAF96" }}
-                >
-                  {isAcceptNudge ? "Got it" : "Not now"}
-                </button>
-              </div>
-            </div>
+          <div className="px-6 pt-10 pb-6 text-center">
+            <div className="text-5xl mb-6">🔔</div>
+            <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              The Daily Bell
+            </h2>
+            <p className="text-sm leading-relaxed mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
+              For centuries, monastic bells have called communities to prayer.
+            </p>
+            <p className="text-sm mt-4 leading-relaxed mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
+              Set up your bell — a daily calendar reminder that brings all your practices into one moment.
+            </p>
+          </div>
+
+          <div className="px-6 pb-6 flex gap-3">
             <button
               onClick={dismiss}
-              className="flex-shrink-0 mt-0.5 transition-opacity hover:opacity-60"
-              style={{ color: "rgba(143,175,150,0.4)" }}
+              className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ color: "#8FAF96", background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}
             >
-              <X size={16} />
+              Not now
+            </button>
+            <button
+              onClick={goToSettings}
+              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{ background: "#4a7c59", color: "#ffffff" }}
+            >
+              Set it up
             </button>
           </div>
-        </div>
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   );
