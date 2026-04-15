@@ -6,8 +6,9 @@ import {
   db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
-  lectioReflectionsTable, betaUsersTable,
+  lectioReflectionsTable,
 } from "@workspace/db";
+import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import crypto from "crypto";
@@ -16,13 +17,15 @@ import { broadcastLog } from "../lib/ws";
 // ─── Beta-gated calendar creation ───────────────────────────────────────────
 // Beta users use the Daily Bell instead of individual calendar events.
 // These wrappers skip calendar creation for beta users.
+// Uses raw SQL to avoid Drizzle schema mismatch with beta_users table.
 
 async function isUserBeta(userId: number): Promise<boolean> {
   try {
-    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
-    if (!u) return false;
-    const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
-    return !!beta;
+    const userResult = await pool.query(`SELECT email FROM users WHERE id = $1`, [userId]);
+    if (userResult.rows.length === 0) return false;
+    const email = (userResult.rows[0].email as string).toLowerCase();
+    const betaResult = await pool.query(`SELECT id FROM beta_users WHERE LOWER(email) = $1 LIMIT 1`, [email]);
+    return betaResult.rows.length > 0;
   } catch { return false; }
 }
 

@@ -1,9 +1,8 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNotNull, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
-  db, usersTable, betaUsersTable,
-  sharedMomentsTable, momentUserTokensTable,
+  db, sharedMomentsTable, momentUserTokensTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
@@ -50,13 +49,14 @@ function getUser(req: any): { id: number } | null {
   return (req as any).user ?? null;
 }
 
-// ─── Check if user is beta ──────────────────────────────────────────────────
+// ─── Check if user is beta (raw SQL to avoid schema sync issues) ────────────
 async function isUserBeta(userId: number): Promise<boolean> {
   try {
-    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
-    if (!u) return false;
-    const [beta] = await db.select().from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
-    return !!beta;
+    const userResult = await pool.query(`SELECT email FROM users WHERE id = $1`, [userId]);
+    if (userResult.rows.length === 0) return false;
+    const email = (userResult.rows[0].email as string).toLowerCase();
+    const betaResult = await pool.query(`SELECT id FROM beta_users WHERE LOWER(email) = $1 LIMIT 1`, [email]);
+    return betaResult.rows.length > 0;
   } catch { return false; }
 }
 
