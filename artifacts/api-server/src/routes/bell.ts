@@ -102,13 +102,14 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
     if (!u) { res.status(404).json({ error: "User not found" }); return; }
 
     // Check if the calendar event is actually active (user accepted it)
-    let calendarStatus: "active" | "pending" | "declined" | "none" = "none";
+    let calendarStatus: "active" | "pending" | "tentative" | "declined" | "none" = "none";
     if (u.bellEnabled && u.bellCalendarEventId) {
       try {
         const attendees = await getCalendarEventAttendees(user.id, u.bellCalendarEventId);
         if (attendees) {
           const me = attendees.find(a => a.email.toLowerCase() === u.email.toLowerCase());
           if (me?.responseStatus === "accepted") calendarStatus = "active";
+          else if (me?.responseStatus === "tentative") calendarStatus = "tentative";
           else if (me?.responseStatus === "declined") calendarStatus = "declined";
           else calendarStatus = "pending";
         } else {

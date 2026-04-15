@@ -58,7 +58,7 @@ interface BellPrefs {
   bellEnabled: boolean;
   dailyBellTime: string;
   timezone: string;
-  calendarStatus?: "active" | "pending" | "declined" | "none";
+  calendarStatus?: "active" | "pending" | "tentative" | "declined" | "none";
 }
 
 function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
@@ -371,13 +371,14 @@ function BellPreferences() {
               className="w-2 h-2 rounded-full flex-shrink-0"
               style={{
                 background: data.calendarStatus === "active" ? "#4A9E6A"
-                  : data.calendarStatus === "pending" ? "#C4A94D"
-                  : "#C17F7F",
+                  : data.calendarStatus === "declined" ? "#C17F7F"
+                  : "#C4A94D",
               }}
             />
             <p className="text-[11px]" style={{ color: "#8FAF96" }}>
               {data.calendarStatus === "active" && "Active on your calendar"}
               {data.calendarStatus === "pending" && "Calendar invite sent — accept it in your email"}
+              {data.calendarStatus === "tentative" && "Marked as maybe — accept the invite to activate"}
               {data.calendarStatus === "declined" && "You declined the invite — remove and reactivate"}
             </p>
           </div>
