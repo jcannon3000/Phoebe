@@ -218,9 +218,9 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
         bellCalendarEventId = await createCalendarEvent(user.id, {
           summary: `🔔 Daily Bell — Phoebe`,
           description: [
-            `Your daily moment to pause and practice.`,
+            `A daily time to pause and pray with your community.`,
             ``,
-            `Open your practices: ${APP_URL}`,
+            `Open Phoebe: ${APP_URL}`,
           ].join("\n"),
           startDate: new Date(),
           startLocalStr,

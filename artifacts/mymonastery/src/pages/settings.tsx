@@ -96,7 +96,7 @@ function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () =
       `DTEND;TZID=${tz}:${dtEnd}`,
       "RRULE:FREQ=DAILY",
       `SUMMARY:🔔 Daily Bell — Phoebe`,
-      `DESCRIPTION:Your daily moment to pause and practice.\\nOpen your practices: https://withphoebe.app`,
+      `DESCRIPTION:A daily time to pause and pray with your community.\\nOpen Phoebe: https://withphoebe.app`,
       `URL:https://withphoebe.app`,
       "BEGIN:VALARM",
       "TRIGGER:PT0M",
