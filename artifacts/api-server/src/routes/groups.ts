@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -7,6 +7,8 @@ import {
   groupAnnouncementsTable,
   betaUsersTable,
   usersTable,
+  sharedMomentsTable,
+  momentUserTokensTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -324,8 +326,35 @@ router.post("/groups/:slug/prayer-requests", async (_req, res): Promise<void> =>
   res.status(503).json({ error: "Group prayer requests not yet available — schema migration pending" });
 });
 
-router.get("/groups/:slug/practices", async (_req, res): Promise<void> => {
-  res.json({ practices: [] });
+router.get("/groups/:slug/practices", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Not a member of this group" }); return; }
+
+  const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, req.params.slug));
+  if (!group) { res.status(404).json({ error: "Group not found" }); return; }
+
+  const practices = await db.select().from(sharedMomentsTable)
+    .where(and(eq(sharedMomentsTable.groupId, group.id), sql`${sharedMomentsTable.state} != 'archived'`));
+
+  const enriched = await Promise.all(practices.map(async (p) => {
+    const members = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, p.id));
+    return {
+      id: p.id,
+      name: p.name,
+      templateType: p.templateType,
+      intention: p.intention,
+      frequency: p.frequency,
+      memberCount: members.length,
+      state: p.state,
+      createdAt: p.createdAt,
+    };
+  }));
+
+  res.json({ practices: enriched });
 });
 
 router.get("/groups/:slug/gatherings", async (_req, res): Promise<void> => {

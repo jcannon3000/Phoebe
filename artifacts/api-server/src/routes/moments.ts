@@ -1116,6 +1116,14 @@ router.get("/moments", async (req, res): Promise<void> => {
       : [];
     const registeredEmails = new Set(registeredUsers.map(u => u.email.toLowerCase()));
 
+    // Batch-fetch group info for all group-linked practices
+    const groupIds = [...new Set(flatMoments.map(m => m.groupId).filter((id): id is number => id !== null))];
+    const groupMap = new Map<number, { id: number; name: string; slug: string; emoji: string | null }>();
+    if (groupIds.length > 0) {
+      const groups = await db.select().from(groupsTable).where(inArray(groupsTable.id, groupIds));
+      for (const g of groups) groupMap.set(g.id, { id: g.id, name: g.name, slug: g.slug, emoji: g.emoji });
+    }
+
     // Enrich each moment INDEPENDENTLY. If any single moment's enrichment
     // throws (bad timezone, computeWindowOpen edge case, a null-dereference
     // we didn't anticipate, etc.), we log it and fall back to the raw row
@@ -1295,6 +1303,7 @@ router.get("/moments", async (req, res): Promise<void> => {
 
         return {
           ...m,
+          group: m.groupId ? groupMap.get(m.groupId) ?? null : null,
           memberCount: allMembers.length,
           members: allMembers.map(t => ({
             name: t.name,
@@ -1351,6 +1360,7 @@ router.get("/moments", async (req, res): Promise<void> => {
         const myToken = userTokenRows.find(t => t.momentId === m.id);
         return {
           ...m,
+          group: m.groupId ? groupMap.get(m.groupId) ?? null : null,
           memberCount: 0,
           members: [],
           todayPostCount: 0,
@@ -1608,8 +1618,16 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     };
   }
 
+  // Fetch group info if this is a group practice
+  let group: { id: number; name: string; slug: string; emoji: string | null } | null = null;
+  if (moment.groupId) {
+    const [g] = await db.select().from(groupsTable).where(eq(groupsTable.id, moment.groupId));
+    if (g) group = { id: g.id, name: g.name, slug: g.slug, emoji: g.emoji };
+  }
+
   res.json({
     moment,
+    group,
     members: allMembers.map(t => ({
       name: t.name,
       email: t.email,

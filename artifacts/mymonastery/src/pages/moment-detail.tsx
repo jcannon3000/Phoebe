@@ -97,6 +97,7 @@ interface MomentDetail {
   minutesLeft: number;
   todayLogs: TodayLog[];
   isCreator: boolean;
+  group?: { id: number; name: string; slug: string; emoji: string | null } | null;
   calendarEventMissing?: boolean;
   fastingWaterStats?: {
     my:    { week: number; month: number; allTime: number };
@@ -549,6 +550,18 @@ export default function MomentDetail() {
               + Invite 🌿
             </button>
           </div>
+
+          {/* Group badge */}
+          {data.group && (
+            <a
+              href={`/community/${data.group.slug}`}
+              className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1 mb-1.5 transition-opacity hover:opacity-80"
+              style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
+            >
+              {data.group.emoji && <span>{data.group.emoji}</span>}
+              {data.group.name}
+            </a>
+          )}
 
           {/* Intercession: "Praying for" subtitle for BCP only; custom uses intention as h1 */}
           {showIntercessionSubtitle ? (

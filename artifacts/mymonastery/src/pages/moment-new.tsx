@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
@@ -528,6 +528,15 @@ export default function MomentNew() {
     return undefined;
   }, [showIntro]);
 
+  // Groups — fetch groups where user is admin for group practice creation
+  const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; myRole: string }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user,
+  });
+  const adminGroups = (groupsData?.groups ?? []).filter(g => g.myRole === "admin");
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+
   // Step navigation
   const [step, setStep] = useState<StepId>("template");
   const [done, setDone] = useState(false);
@@ -946,7 +955,7 @@ export default function MomentNew() {
     }
     if (step === "commitment") return commitmentSessionsGoal !== null;
     if (step === "duration") return practiceDurationDays !== null;
-    if (step === "invite") return invitedPeople.length > 0;
+    if (step === "invite") return selectedGroupId !== null || invitedPeople.length > 0;
     return false;
   };
 
@@ -1114,6 +1123,8 @@ export default function MomentNew() {
       listeningTitle: isListening ? listeningTitle.trim() || undefined : undefined,
       listeningArtist: isListening ? (listeningType === "artist" ? listeningTitle.trim() : listeningArtist.trim()) || undefined : undefined,
       listeningArtworkUrl: isListening && listeningArtworkUrl ? listeningArtworkUrl : undefined,
+      // Group practice
+      groupId: selectedGroupId ?? undefined,
     });
   }
 
@@ -1963,9 +1974,47 @@ export default function MomentNew() {
                 <div className="space-y-5 flex-1">
                   <div>
                     <h2 className="text-xl font-semibold mb-1">Who will tend this practice with you? 🌿</h2>
-                    <p className="text-sm text-muted-foreground">Add at least one person to begin.</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedGroupId ? "All group members will be added automatically." : "Add at least one person to begin."}
+                    </p>
                   </div>
-                  <InviteStep type="practice" onPeopleChange={setInvitedPeople} />
+
+                  {/* Group selector — only show if user is admin of at least one group */}
+                  {adminGroups.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>
+                        Create for a group
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => setSelectedGroupId(null)}
+                          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${!selectedGroupId ? "animate-turn-pulse" : ""}`}
+                          style={!selectedGroupId
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
+                        >
+                          Just me + people
+                        </button>
+                        {adminGroups.map(g => (
+                          <button
+                            key={g.id}
+                            onClick={() => setSelectedGroupId(g.id)}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${selectedGroupId === g.id ? "animate-turn-pulse" : ""}`}
+                            style={selectedGroupId === g.id
+                              ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
+                              : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
+                          >
+                            {g.emoji ? `${g.emoji} ` : ""}{g.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual invite — only when no group selected */}
+                  {!selectedGroupId && (
+                    <InviteStep type="practice" onPeopleChange={setInvitedPeople} />
+                  )}
                 </div>
               )}
 
@@ -2337,7 +2386,7 @@ export default function MomentNew() {
               )}
               <button
                 onClick={() => {
-                  if (step === "invite" && invitedPeople.length === 0) {
+                  if (step === "invite" && !selectedGroupId && invitedPeople.length === 0) {
                     setShowInviteDisabledMsg(true);
                     return;
                   }
@@ -2345,7 +2394,7 @@ export default function MomentNew() {
                 }}
                 disabled={(step !== "invite" && !canNext()) || plantMutation.isPending || bcpPlantMutation.isPending}
                 className={`w-full py-4 rounded-2xl text-white text-base font-semibold transition-colors ${
-                  (step === "invite" && invitedPeople.length === 0) || (!canNext() && step !== "invite")
+                  (step === "invite" && !selectedGroupId && invitedPeople.length === 0) || (!canNext() && step !== "invite")
                     ? "bg-[#5C7A5F]/40 cursor-not-allowed"
                     : "bg-[#5C7A5F] hover:bg-[#5a7a60]"
                 }`}
@@ -2355,11 +2404,13 @@ export default function MomentNew() {
                   : step === "bcp-invite"
                     ? "Plant this practice 🌿"
                     : step === "invite"
-                      ? invitedPeople.length === 0
-                        ? "Plant this practice 🌿"
-                        : invitedPeople.length === 1
-                          ? `Plant this practice with ${invitedPeople[0].name || invitedPeople[0].email.split("@")[0]} 🌿`
-                          : `Plant this practice with ${invitedPeople.length} people 🌿`
+                      ? selectedGroupId
+                        ? `Plant for ${adminGroups.find(g => g.id === selectedGroupId)?.name ?? "group"} 🌿`
+                        : invitedPeople.length === 0
+                          ? "Plant this practice 🌿"
+                          : invitedPeople.length === 1
+                            ? `Plant this practice with ${invitedPeople[0].name || invitedPeople[0].email.split("@")[0]} 🌿`
+                            : `Plant this practice with ${invitedPeople.length} people 🌿`
                       : "Continue →"}
               </button>
               {plantMutation.isError && (() => {
