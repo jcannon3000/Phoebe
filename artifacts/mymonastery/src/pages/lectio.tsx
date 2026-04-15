@@ -71,6 +71,7 @@ type StageReveal = {
   reflections:
     | Array<{ userName: string; isYou: boolean; text: string; createdAt: string }>
     | null;
+  mutedCount: number;
   nonSubmitterNames: string[];
 };
 
@@ -1114,6 +1115,11 @@ function ResponsesSlide({
             />
           ))}
         </div>
+      )}
+      {stageData.mutedCount > 0 && (
+        <p style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 18 }}>
+          {stageData.mutedCount} muted {stageData.mutedCount === 1 ? "response" : "responses"}
+        </p>
       )}
       {memberCount <= 1 && (
         <p style={{ color: FAINT_GREEN, fontSize: 12, marginTop: 18 }}>

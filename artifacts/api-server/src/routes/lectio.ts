@@ -352,11 +352,12 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
       text: string;
       createdAt: string;
     }> | null; // null if gated
+    mutedCount: number;
     nonSubmitterNames: string[];
   }> = {
-    lectio: { label: STAGE_LABELS.lectio, prompt: STAGE_PROMPTS.lectio, unlocked: false, userHasSubmitted: false, myReflection: null, reflections: null, nonSubmitterNames: [] },
-    meditatio: { label: STAGE_LABELS.meditatio, prompt: STAGE_PROMPTS.meditatio, unlocked: false, userHasSubmitted: false, myReflection: null, reflections: null, nonSubmitterNames: [] },
-    oratio: { label: STAGE_LABELS.oratio, prompt: STAGE_PROMPTS.oratio, unlocked: false, userHasSubmitted: false, myReflection: null, reflections: null, nonSubmitterNames: [] },
+    lectio: { label: STAGE_LABELS.lectio, prompt: STAGE_PROMPTS.lectio, unlocked: false, userHasSubmitted: false, myReflection: null, reflections: null, mutedCount: 0, nonSubmitterNames: [] },
+    meditatio: { label: STAGE_LABELS.meditatio, prompt: STAGE_PROMPTS.meditatio, unlocked: false, userHasSubmitted: false, myReflection: null, reflections: null, mutedCount: 0, nonSubmitterNames: [] },
+    oratio: { label: STAGE_LABELS.oratio, prompt: STAGE_PROMPTS.oratio, unlocked: false, userHasSubmitted: false, myReflection: null, reflections: null, mutedCount: 0, nonSubmitterNames: [] },
   };
 
   for (const s of STAGES) {
@@ -372,11 +373,12 @@ router.get("/lectio/:momentToken/:userToken", async (req, res): Promise<void> =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       const mineRow = all.find((x) => x.userToken === userToken);
-      const others = all.filter((x) =>
-        x.userToken !== userToken &&
-        !mutedEmails.has((x.userEmail ?? "").toLowerCase())
+      const othersAll = all.filter((x) => x.userToken !== userToken);
+      const others = othersAll.filter(
+        (x) => !mutedEmails.has((x.userEmail ?? "").toLowerCase())
       );
-      const ordered = mineRow ? [mineRow, ...others] : all;
+      stageReveals[s].mutedCount = othersAll.length - others.length;
+      const ordered = mineRow ? [mineRow, ...others] : others;
       stageReveals[s].reflections = ordered.map((r) => ({
         userName: r.userName,
         isYou: r.userToken === userToken,
