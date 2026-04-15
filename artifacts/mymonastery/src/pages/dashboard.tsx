@@ -730,15 +730,20 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? [subtitle, goalLengthLine]
     : [];
 
-  // Meat fast cards cycle through: rhythm day → water savings → participation
-  const fastingFlapLines: string[] = isMeatFast
+  // Meat fast cards cycle through: next prayer day → water savings → participation.
+  // (Desktop puts the rhythm subtitle — "Every Wednesday" — on the right so
+  // the left-hand flap can lead with "Weekly · Next Prayer Wednesday".)
+  const fastingFlapLinesDesktop: string[] = isMeatFast
+    ? [desktopStatusText, meatFastWaterLine, meatFastParticipationLine]
+    : [];
+  const fastingFlapLinesMobile: string[] = isMeatFast
     ? [subtitle, meatFastWaterLine, meatFastParticipationLine]
     : [];
 
   const mobileFlapLines: string[] = (
     showRenewPill ? renewFlapLines :
     isLectio ? lectioFlapLines :
-    isMeatFast ? fastingFlapLines :
+    isMeatFast ? fastingFlapLinesMobile :
     [subtitle, mobileStatusLine, logCountLine]
   )
     .map(s => (s ?? "").trim())
@@ -746,7 +751,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const desktopFlapLines: string[] = (
     showRenewPill ? renewFlapLines :
     isLectio ? lectioFlapLines :
-    isMeatFast ? fastingFlapLines :
+    isMeatFast ? fastingFlapLinesDesktop :
     [subtitle, logCountLine, intentionLine]
   )
     .map(s => (s ?? "").trim())
@@ -864,8 +869,10 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
               </span>
             </Link>
           ) : (
-            isDesktop && desktopStatusText && (
-              <span className="text-xs" style={{ color: "#8FAF96" }}>{desktopStatusText}</span>
+            isDesktop && (isMeatFast ? subtitle : desktopStatusText) && (
+              <span className="text-xs" style={{ color: "#8FAF96" }}>
+                {isMeatFast ? subtitle : desktopStatusText}
+              </span>
             )
           )}
         </div>
