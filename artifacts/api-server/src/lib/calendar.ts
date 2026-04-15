@@ -57,6 +57,7 @@ export async function createCalendarEvent(
     timeZone?: string;
     colorId?: string;
     status?: string;
+    transparency?: string;
     reminders?: Array<{ method: string; minutes: number }>;
   }
 ): Promise<string | null> {
@@ -94,6 +95,7 @@ export async function createCalendarEvent(
         recurrence: opts.recurrence,
         colorId: opts.colorId,
         status: opts.status,
+        transparency: opts.transparency,
         reminders: {
           useDefault: false,
           overrides: opts.reminders ?? defaultReminders,

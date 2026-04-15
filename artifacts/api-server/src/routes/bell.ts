@@ -229,6 +229,7 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
           timeZone: tz,
           recurrence: ["RRULE:FREQ=DAILY"],
           colorId: "2",
+          transparency: "transparent",
           reminders: [
             { method: "popup", minutes: 0 },
           ],
