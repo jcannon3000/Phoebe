@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -475,20 +475,13 @@ function BellPreferences() {
 
 type MutedUser = { userId: number; name: string; email: string };
 
-function MutedPeople() {
-  const queryClient = useQueryClient();
+// Each row is ~52px tall; show 3.5 rows = ~182px
+const PREVIEW_HEIGHT = 182;
 
+function MutedPeople() {
   const { data, isLoading } = useQuery<{ muted: MutedUser[] }>({
     queryKey: ["/api/mutes"],
     queryFn: () => apiRequest("GET", "/api/mutes"),
-  });
-
-  const unmuteMutation = useMutation({
-    mutationFn: (userId: number) => apiRequest("DELETE", `/api/mutes/${userId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    },
   });
 
   const muted = data?.muted ?? [];
@@ -506,28 +499,30 @@ function MutedPeople() {
           </p>
         )}
         {muted.length > 0 && (
-          <div className="space-y-3">
-            {muted.map((m) => (
-              <div key={m.userId} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{m.name}</p>
-                  <p className="text-xs truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{m.email}</p>
+          <>
+            <div
+              className="overflow-y-auto space-y-3"
+              style={{ maxHeight: PREVIEW_HEIGHT }}
+            >
+              {muted.map((m) => (
+                <div key={m.userId} className="flex items-center justify-between gap-3 py-0.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{m.name}</p>
+                    <p className="text-xs truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{m.email}</p>
+                  </div>
                 </div>
-                <button
-                  onClick={() => unmuteMutation.mutate(m.userId)}
-                  disabled={unmuteMutation.isPending}
-                  className="text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition-opacity hover:opacity-80 disabled:opacity-40"
-                  style={{
-                    background: "rgba(46,107,64,0.15)",
-                    color: "#A8C5A0",
-                    border: "1px solid rgba(46,107,64,0.25)",
-                  }}
-                >
-                  Unmute
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
+              <Link
+                href="/settings/muted"
+                className="text-sm font-medium transition-opacity hover:opacity-80"
+                style={{ color: "#A8C5A0" }}
+              >
+                See all ({muted.length}) →
+              </Link>
+            </div>
+          </>
         )}
       </SettingsCard>
     </>

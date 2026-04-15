@@ -85,6 +85,7 @@ import ChurchDeck from "./pages/church-deck";
 import FeaturesDeck from "./pages/features-deck";
 import BellPage from "./pages/bell";
 import FeedbackPage from "./pages/feedback";
+import MutedUsersPage from "./pages/muted-users";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -144,6 +145,7 @@ function Router() {
       <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/bell" component={BellPage} />
       <Route path="/feedback" component={FeedbackPage} />
+      <Route path="/settings/muted" component={MutedUsersPage} />
       <Route path="/people/:email" component={PersonProfile} />
       <Route component={NotFound} />
     </Switch>

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { MessageCircle } from "lucide-react";
 
 interface PrayerRequest {
@@ -24,6 +25,7 @@ interface PrayerRequest {
 export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
   // maxVisible: 0 = show all, N = show N then "See all" button
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   useAuth();
 
   const [isOpen, setIsOpen] = useState(true);
@@ -78,10 +80,15 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
   });
 
   const muteMutation = useMutation({
-    mutationFn: (ownerId: number) => apiRequest("POST", `/api/mutes/${ownerId}`),
-    onSuccess: () => {
+    mutationFn: ({ ownerId, ownerName }: { ownerId: number; ownerName: string }) =>
+      apiRequest("POST", `/api/mutes/${ownerId}`),
+    onSuccess: (_data, { ownerName }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
+      toast({
+        title: `${ownerName} has been muted`,
+        description: "You can unmute them in Settings.",
+      });
     },
   });
 
@@ -389,7 +396,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => muteMutation.mutate(request.ownerId)}
+                              onClick={() => muteMutation.mutate({ ownerId: request.ownerId, ownerName: request.isAnonymous ? "This person" : (request.ownerName ?? "This person") })}
                               disabled={muteMutation.isPending}
                               className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
                               style={{ color: "#C25C5C" }}
