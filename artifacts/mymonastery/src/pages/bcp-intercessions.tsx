@@ -58,8 +58,8 @@ export default function BcpIntercessionsPage() {
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
-            ← Book of Common Prayer
+          <Link href="/dashboard" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
+            ← Dashboard
           </Link>
           <h1
             className="text-2xl font-bold mb-1"
