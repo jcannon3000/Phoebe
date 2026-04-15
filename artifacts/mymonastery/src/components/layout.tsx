@@ -230,17 +230,21 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 // ─── Bell Nudge Popup ────────────────────────────────────────────────────────
-// Shows once per day for beta users who haven't activated the Daily Bell.
+// Shows once per day for beta users who either:
+// 1. Haven't activated the Daily Bell yet
+// 2. Have activated but haven't accepted the calendar invite (pending/tentative)
 
 const BELL_DISMISS_KEY = "phoebe:bell-nudge-dismissed";
+const BELL_ACCEPT_DISMISS_KEY = "phoebe:bell-accept-nudge-dismissed";
 
 function BellNudge() {
   const { rawIsBeta } = useBetaStatus();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [visible, setVisible] = useState(false);
+  const [nudgeType, setNudgeType] = useState<"setup" | "accept">("setup");
 
-  const { data: bellPrefs } = useQuery<{ bellEnabled: boolean }>({
+  const { data: bellPrefs } = useQuery<{ bellEnabled: boolean; calendarStatus?: string }>({
     queryKey: ["/api/bell/preferences"],
     queryFn: () => apiRequest("GET", "/api/bell/preferences"),
     enabled: !!user && rawIsBeta,
@@ -248,20 +252,31 @@ function BellNudge() {
 
   useEffect(() => {
     if (!rawIsBeta || !user || !bellPrefs) return;
-    if (bellPrefs.bellEnabled) return; // already active
 
     const today = new Date().toISOString().slice(0, 10);
-    const lastDismissed = localStorage.getItem(BELL_DISMISS_KEY);
-    if (lastDismissed === today) return; // already dismissed today
 
-    // Small delay so it doesn't flash on page load
-    const timer = setTimeout(() => setVisible(true), 1500);
-    return () => clearTimeout(timer);
+    // Priority 1: Bell is active but invite not accepted (pending/tentative)
+    if (bellPrefs.bellEnabled && (bellPrefs.calendarStatus === "pending" || bellPrefs.calendarStatus === "tentative")) {
+      const lastDismissed = localStorage.getItem(BELL_ACCEPT_DISMISS_KEY);
+      if (lastDismissed === today) return;
+      setNudgeType("accept");
+      const timer = setTimeout(() => setVisible(true), 1500);
+      return () => clearTimeout(timer);
+    }
+
+    // Priority 2: Bell not activated yet
+    if (!bellPrefs.bellEnabled) {
+      const lastDismissed = localStorage.getItem(BELL_DISMISS_KEY);
+      if (lastDismissed === today) return;
+      setNudgeType("setup");
+      const timer = setTimeout(() => setVisible(true), 1500);
+      return () => clearTimeout(timer);
+    }
   }, [rawIsBeta, user, bellPrefs]);
 
   function dismiss() {
     const today = new Date().toISOString().slice(0, 10);
-    localStorage.setItem(BELL_DISMISS_KEY, today);
+    localStorage.setItem(nudgeType === "accept" ? BELL_ACCEPT_DISMISS_KEY : BELL_DISMISS_KEY, today);
     setVisible(false);
   }
 
@@ -271,6 +286,8 @@ function BellNudge() {
   }
 
   if (!visible) return null;
+
+  const isAcceptNudge = nudgeType === "accept";
 
   return (
     <AnimatePresence>
@@ -293,25 +310,29 @@ function BellNudge() {
             <span className="text-2xl mt-0.5">🔔</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Try the Daily Bell
+                {isAcceptNudge ? "Accept your Daily Bell" : "Try the Daily Bell"}
               </p>
               <p className="text-xs leading-relaxed" style={{ color: "#8FAF96" }}>
-                One daily calendar reminder instead of separate invites for each practice.
+                {isAcceptNudge
+                  ? "Accept the calendar invite so your bell rings each day. Check your email or calendar app."
+                  : "One daily calendar reminder instead of separate invites for each practice."}
               </p>
               <div className="flex gap-3 mt-3">
-                <button
-                  onClick={goToSettings}
-                  className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
-                  style={{ background: "#4a7c59", color: "#ffffff" }}
-                >
-                  Set it up
-                </button>
+                {!isAcceptNudge && (
+                  <button
+                    onClick={goToSettings}
+                    className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+                    style={{ background: "#4a7c59", color: "#ffffff" }}
+                  >
+                    Set it up
+                  </button>
+                )}
                 <button
                   onClick={dismiss}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                   style={{ color: "#8FAF96" }}
                 >
-                  Not now
+                  {isAcceptNudge ? "Got it" : "Not now"}
                 </button>
               </div>
             </div>
