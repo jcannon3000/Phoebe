@@ -5,7 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { LogOut } from "lucide-react";
-import { useBetaStatus } from "@/hooks/useDemo";
+
 
 function SectionHeader({ label }: { label: string }) {
   return (
@@ -478,8 +478,6 @@ export default function SettingsPage() {
   const logout = useLogout();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const { rawIsBeta } = useBetaStatus();
-
   const presenceToggle = useMutation({
     mutationFn: (showPresence: boolean) =>
       apiRequest("PATCH", "/api/auth/me/presence", { showPresence }),
@@ -552,15 +550,7 @@ export default function SettingsPage() {
 
         {/* ── Notifications ── */}
         <SectionHeader label="Notifications" />
-        {rawIsBeta ? (
-          <BellPreferences />
-        ) : (
-          <SettingsCard>
-            <p className="text-sm" style={{ color: "#8FAF96" }}>
-              Notification preferences coming soon.
-            </p>
-          </SettingsCard>
-        )}
+        <BellPreferences />
         <div className="mb-8" />
 
         {/* ── Privacy ── */}

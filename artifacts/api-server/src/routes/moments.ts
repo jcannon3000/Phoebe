@@ -14,18 +14,14 @@ import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
-// ─── Beta-gated calendar creation ───────────────────────────────────────────
-// Beta users with the Daily Bell enabled use a single bell event instead of
+// ─── Bell-aware calendar creation ───────────────────────────────────────────
+// Users with the Daily Bell enabled use a single bell event instead of
 // individual per-practice calendar events. These wrappers filter out
-// bell-enabled beta users from attendee lists so non-beta members still
-// receive calendar invites.
-// Uses raw SQL to avoid Drizzle schema mismatch with beta_users table.
+// bell-enabled users from attendee lists so others still receive invites.
 
-async function isEmailBetaWithBell(email: string): Promise<boolean> {
+async function isEmailBellEnabled(email: string): Promise<boolean> {
   try {
     const lower = email.toLowerCase();
-    const betaResult = await pool.query(`SELECT id FROM beta_users WHERE LOWER(email) = $1 LIMIT 1`, [lower]);
-    if (betaResult.rows.length === 0) return false;
     const userResult = await pool.query(`SELECT bell_enabled FROM users WHERE LOWER(email) = $1`, [lower]);
     return userResult.rows.length > 0 && userResult.rows[0].bell_enabled === true;
   } catch { return false; }
@@ -35,7 +31,7 @@ async function filterBellAttendees(attendees: string[] | undefined): Promise<str
   if (!attendees || attendees.length === 0) return [];
   const filtered: string[] = [];
   for (const email of attendees) {
-    if (!(await isEmailBetaWithBell(email))) filtered.push(email);
+    if (!(await isEmailBellEnabled(email))) filtered.push(email);
   }
   return filtered;
 }

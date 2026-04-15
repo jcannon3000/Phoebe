@@ -238,7 +238,6 @@ const BELL_DISMISS_KEY = "phoebe:bell-nudge-dismissed";
 const BELL_ACCEPT_DISMISS_KEY = "phoebe:bell-accept-nudge-dismissed";
 
 function BellNudge() {
-  const { rawIsBeta } = useBetaStatus();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [visible, setVisible] = useState(false);
@@ -247,11 +246,11 @@ function BellNudge() {
   const { data: bellPrefs } = useQuery<{ bellEnabled: boolean; calendarStatus?: string }>({
     queryKey: ["/api/bell/preferences"],
     queryFn: () => apiRequest("GET", "/api/bell/preferences"),
-    enabled: !!user && rawIsBeta,
+    enabled: !!user,
   });
 
   useEffect(() => {
-    if (!rawIsBeta || !user || !bellPrefs) return;
+    if (!user || !bellPrefs) return;
 
     const today = new Date().toISOString().slice(0, 10);
 
@@ -272,7 +271,7 @@ function BellNudge() {
       const timer = setTimeout(() => setVisible(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, [rawIsBeta, user, bellPrefs]);
+  }, [user, bellPrefs]);
 
   function dismiss() {
     const today = new Date().toISOString().slice(0, 10);
