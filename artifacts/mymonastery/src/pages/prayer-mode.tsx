@@ -44,7 +44,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
         className="text-[10px] uppercase tracking-[0.18em] font-semibold"
         style={{ color: "rgba(143,175,150,0.45)" }}
       >
-        {slide.kind === "intercession" ? "Your Intercession" : "Prayer Request"}
+        {slide.kind === "intercession" ? "Community Intercession" : "Prayer Request"}
       </p>
 
       <p
@@ -164,7 +164,7 @@ export default function PrayerModePage() {
     ...intercessions.map((m) => ({
       kind: "intercession" as const,
       text: m.intercessionTopic || m.name,
-      intention: m.intercessionTopic && m.intention ? m.intention : null,
+      intention: m.intention || null,
       fullText: m.intercessionFullText?.trim() || null,
       attribution: m.members
         .filter((p) => p.email !== user?.email)
