@@ -45,14 +45,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     setLocation(path);
   }
 
-  const navItems: Array<{ emoji: string; label: string; path: string } | { divider: true }> = [
+  const navItems: Array<{ emoji: string; label: string; path: string; badge?: string } | { divider: true }> = [
     { emoji: "🙏🏽", label: "Practices",   path: "/practices"   },
     { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
-    { divider: true },
-    { emoji: "📮", label: "Letters",     path: "/letters"     },
-    { emoji: "🏘️", label: "Communities", path: "/communities" },
     { emoji: "👥", label: "People",      path: "/people"      },
+    { divider: true },
+    { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
     { emoji: "💬", label: "Feedback",    path: "/feedback"    },
     ...(isBetaAdmin ? [{ emoji: "🔐", label: "Beta Users", path: "/beta" }] : []),
@@ -190,7 +189,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   if ("divider" in item) {
                     return <div key={`divider-${i}`} className="my-2" style={{ height: 1, background: "rgba(46,107,64,0.18)" }} />;
                   }
-                  const { emoji, label, path } = item;
+                  const { emoji, label, path, badge } = item;
                   return (
                     <button
                       key={path}
@@ -202,6 +201,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                       <div className="flex items-center gap-3">
                         <span className="text-base leading-none w-5 text-center">{emoji}</span>
                         <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{label}</span>
+                        {badge && (
+                          <span className="text-[10px] font-medium" style={{ color: "rgba(143,175,150,0.45)" }}>{badge}</span>
+                        )}
                       </div>
                       <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
                     </button>
