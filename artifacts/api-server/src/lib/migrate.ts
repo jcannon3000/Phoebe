@@ -568,6 +568,17 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_bell_notifications_user_date ON bell_notifications (user_id, bell_date)`);
 
+    // ── User mutes ─────────────────────────────────────────────────────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS user_mutes (
+        id SERIAL PRIMARY KEY,
+        muter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        muted_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (muter_id, muted_user_id)
+      )
+    `);
+
     // ── Feedback ───────────────────────────────────────────────────────────────
     await run(client, `
       CREATE TABLE IF NOT EXISTS feedback (

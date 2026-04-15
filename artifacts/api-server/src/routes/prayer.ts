@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, inArray, and, isNull, or } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, usersTable, ritualsTable, momentUserTokensTable } from "@workspace/db";
+import { eq, desc, inArray, notInArray, and, isNull, or } from "drizzle-orm";
+import { db, prayerRequestsTable, prayerWordsTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 
@@ -56,6 +56,13 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   const gardenIds = await getGardenUserIds(sessionUserId);
   const visibleOwnerIds = [sessionUserId, ...gardenIds];
 
+  // Fetch muted user IDs so we can exclude their requests
+  const mutedRows = await db
+    .select({ mutedUserId: userMutesTable.mutedUserId })
+    .from(userMutesTable)
+    .where(eq(userMutesTable.muterId, sessionUserId));
+  const mutedIds = mutedRows.map(r => r.mutedUserId);
+
   const now = new Date();
 
   // Prayer requests are retained (not auto-filtered by expiry). They stay
@@ -63,10 +70,18 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   // `expiresAt` is used only as a freshness marker — once past, the owner
   // sees a "Renew" affordance they can tap to bump it forward three days.
   const requests = await db.select().from(prayerRequestsTable)
-    .where(and(
-      inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
-      isNull(prayerRequestsTable.closedAt),
-    ))
+    .where(
+      mutedIds.length > 0
+        ? and(
+            inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
+            isNull(prayerRequestsTable.closedAt),
+            notInArray(prayerRequestsTable.ownerId, mutedIds),
+          )
+        : and(
+            inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
+            isNull(prayerRequestsTable.closedAt),
+          )
+    )
     .orderBy(desc(prayerRequestsTable.createdAt));
 
   // Enrich with owner name, words, and per-user flags

@@ -471,6 +471,69 @@ function BellPreferences() {
   );
 }
 
+// ─── Muted People ───────────────────────────────────────────────────────────
+
+type MutedUser = { userId: number; name: string; email: string };
+
+function MutedPeople() {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery<{ muted: MutedUser[] }>({
+    queryKey: ["/api/mutes"],
+    queryFn: () => apiRequest("GET", "/api/mutes"),
+  });
+
+  const unmuteMutation = useMutation({
+    mutationFn: (userId: number) => apiRequest("DELETE", `/api/mutes/${userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
+  const muted = data?.muted ?? [];
+
+  return (
+    <>
+      <SectionHeader label="Muted People" />
+      <SettingsCard>
+        {isLoading && (
+          <p className="text-sm" style={{ color: "#8FAF96" }}>Loading…</p>
+        )}
+        {!isLoading && muted.length === 0 && (
+          <p className="text-sm" style={{ color: "#8FAF96" }}>
+            No one muted. You can mute someone from their prayer request.
+          </p>
+        )}
+        {muted.length > 0 && (
+          <div className="space-y-3">
+            {muted.map((m) => (
+              <div key={m.userId} className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{m.name}</p>
+                  <p className="text-xs truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{m.email}</p>
+                </div>
+                <button
+                  onClick={() => unmuteMutation.mutate(m.userId)}
+                  disabled={unmuteMutation.isPending}
+                  className="text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition-opacity hover:opacity-80 disabled:opacity-40"
+                  style={{
+                    background: "rgba(46,107,64,0.15)",
+                    color: "#A8C5A0",
+                    border: "1px solid rgba(46,107,64,0.25)",
+                  }}
+                >
+                  Unmute
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsCard>
+    </>
+  );
+}
+
 // ─── Main Settings Page ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -553,13 +616,8 @@ export default function SettingsPage() {
         <BellPreferences />
         <div className="mb-8" />
 
-        {/* ── Privacy ── */}
-        <SectionHeader label="Privacy" />
-        <SettingsCard>
-          <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Privacy settings coming soon. 🌱
-          </p>
-        </SettingsCard>
+        {/* ── Muted People ── */}
+        <MutedPeople />
         <div className="mb-8" />
 
         {/* ── Sign out ── */}

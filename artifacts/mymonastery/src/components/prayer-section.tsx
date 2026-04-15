@@ -77,6 +77,14 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
     },
   });
 
+  const muteMutation = useMutation({
+    mutationFn: (ownerId: number) => apiRequest("POST", `/api/mutes/${ownerId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
+    },
+  });
+
   const renewMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
     onSuccess: () => {
@@ -381,12 +389,12 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => deleteMutation.mutate(request.id)}
-                              disabled={deleteMutation.isPending}
+                              onClick={() => muteMutation.mutate(request.ownerId)}
+                              disabled={muteMutation.isPending}
                               className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
-                              style={{ color: "#8FAF96" }}
+                              style={{ color: "rgba(143,175,150,0.5)" }}
                             >
-                              Remove from my view
+                              {muteMutation.isPending ? "…" : `Mute ${request.isAnonymous ? "this person" : request.ownerName ?? "this person"}'s requests`}
                             </button>
                           )}
                         </div>
