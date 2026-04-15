@@ -730,20 +730,23 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
     ? [subtitle, goalLengthLine]
     : [];
 
-  // Meat fast cards cycle through: next prayer day → water savings → participation.
-  // (Desktop puts the rhythm subtitle — "Every Wednesday" — on the right so
-  // the left-hand flap can lead with "Weekly · Next Prayer Wednesday".)
-  const fastingFlapLinesDesktop: string[] = isMeatFast
-    ? [desktopStatusText, meatFastWaterLine, meatFastParticipationLine]
-    : [];
-  const fastingFlapLinesMobile: string[] = isMeatFast
-    ? [subtitle, meatFastWaterLine, meatFastParticipationLine]
+  // Meat fast cards: top-right shows the rhythm as a plural weekday
+  // ("Wednesdays") and the left flap leads with "Next fast on Wednesday".
+  const fastingDayCapitalized = isMeatFast && m.fastingDay
+    ? m.fastingDay.charAt(0).toUpperCase() + m.fastingDay.slice(1)
+    : "";
+  const fastingDayPlural = fastingDayCapitalized ? `${fastingDayCapitalized}s` : "";
+  const meatFastNextLine = isMeatFast && nextWindow
+    ? `Next fast on ${nextWindow}`
+    : "";
+  const fastingFlapLines: string[] = isMeatFast
+    ? [meatFastNextLine, meatFastWaterLine, meatFastParticipationLine]
     : [];
 
   const mobileFlapLines: string[] = (
     showRenewPill ? renewFlapLines :
     isLectio ? lectioFlapLines :
-    isMeatFast ? fastingFlapLinesMobile :
+    isMeatFast ? fastingFlapLines :
     [subtitle, mobileStatusLine, logCountLine]
   )
     .map(s => (s ?? "").trim())
@@ -751,7 +754,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const desktopFlapLines: string[] = (
     showRenewPill ? renewFlapLines :
     isLectio ? lectioFlapLines :
-    isMeatFast ? fastingFlapLinesDesktop :
+    isMeatFast ? fastingFlapLines :
     [subtitle, logCountLine, intentionLine]
   )
     .map(s => (s ?? "").trim())
@@ -780,6 +783,10 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
             style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}
           >
             Goal reached
+          </span>
+        ) : isMeatFast && fastingDayPlural ? (
+          <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
+            {fastingDayPlural}
           </span>
         ) : progressLabel ? (
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
@@ -869,10 +876,8 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
               </span>
             </Link>
           ) : (
-            isDesktop && (isMeatFast ? subtitle : desktopStatusText) && (
-              <span className="text-xs" style={{ color: "#8FAF96" }}>
-                {isMeatFast ? subtitle : desktopStatusText}
-              </span>
+            isDesktop && !isMeatFast && desktopStatusText && (
+              <span className="text-xs" style={{ color: "#8FAF96" }}>{desktopStatusText}</span>
             )
           )}
         </div>
