@@ -1244,8 +1244,8 @@ export default function MomentDetail() {
               transition={{ duration: 0.18 }}
               className="mt-4 space-y-3"
             >
-              {/* Edit practice */}
-              {!editingPractice ? (
+              {/* Edit practice — creator only */}
+              {isCreator && !editingPractice && (
                 <div className="flex items-start justify-between bg-card border border-border/60 rounded-2xl px-5 py-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">Edit practice</p>
@@ -1265,12 +1265,14 @@ export default function MomentDetail() {
                     Edit
                   </button>
                 </div>
-              ) : (
+              )}
+              {isCreator && editingPractice && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.97 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="bg-card border border-[#5C7A5F]/30 rounded-2xl px-5 py-4 space-y-4"
                 >
+
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1">Name</label>
                     <input

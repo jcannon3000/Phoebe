@@ -2674,11 +2674,14 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
 
-  // Only members can edit
+  // Only the creator can edit
   const allTokens = await db.select().from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.momentId, momentId));
-  const isMember = allTokens.some(t => t.email === user.email);
-  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+  const creatorToken = allTokens.length > 0
+    ? allTokens.reduce((min, t) => t.id < min.id ? t : min, allTokens[0])
+    : null;
+  const isCreator = creatorToken?.email?.toLowerCase() === user.email.toLowerCase();
+  if (!isCreator) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const parsed = EditMomentSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return; }
