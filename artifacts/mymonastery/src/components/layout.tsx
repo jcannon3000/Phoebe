@@ -47,8 +47,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // "Practices" doesn't go to /practices — it behaves like the dashboard
     // Practices pill: jump to the dashboard and scope the feed to practices.
     // The click handler below special-cases this path.
-    { emoji: "🙏🏽", label: "Practices",   path: "/dashboard#filter=practices" },
-    { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
+    { emoji: "🕯️", label: "Practices",   path: "/dashboard#filter=practices" },
+    { emoji: "🙏🏽", label: "Prayer List", path: "/prayer-list" },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "👥", label: "People",      path: "/people",     count: fellowInviteCount },
     { divider: true },
