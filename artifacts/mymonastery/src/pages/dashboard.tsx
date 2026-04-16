@@ -4,7 +4,7 @@ import { Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
+import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
@@ -232,6 +232,9 @@ function BarCard({
 function FAB() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
+  const [communityAdminView] = useCommunityAdminToggle();
+
+  if (!communityAdminView) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
