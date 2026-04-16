@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
-import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight } from "lucide-react";
 import { useDemoFlag, useBetaStatus } from "@/hooks/useDemo";
@@ -21,23 +21,12 @@ const SECTION_COLORS = {
 function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
-  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView, rawIsAdmin } = useBetaStatus();
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user,
-  });
-
-  const presenceToggle = useMutation({
-    mutationFn: (showPresence: boolean) =>
-      apiRequest("PATCH", "/api/auth/me/presence", { showPresence }),
-    onSuccess: (_data, showPresence) => {
-      queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
-        prev ? { ...prev, showPresence } : prev
-      );
-    },
   });
 
   function navigate(path: string) {
@@ -108,23 +97,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </div>
               </div>
 
-              {/* Presence toggle */}
-              <button
-                onClick={() => presenceToggle.mutate(!user?.showPresence)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors"
-                style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.15)" }}
-              >
-                <div className="text-left">
-                  <p className="text-sm" style={{ color: "#8FAF96" }}>Show when I'm here 🌿</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                    Let your people know you're present.
-                  </p>
-                </div>
-                <div className={`w-8 h-[18px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${user?.showPresence ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
-                  <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full shadow-sm transition-transform ${user?.showPresence ? "left-[16px]" : "left-[2px]"}`} style={{ background: "#F0EDE6" }} />
-                </div>
-              </button>
-
               {/* Beta view toggle — always visible for admins (even when toggled off) */}
               {rawIsAdmin && (
                 <button
@@ -146,8 +118,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
 
             {/* ── My Communities ── */}
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
+            <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.4)" }}>
                 My Communities
               </p>
               {(groupsData?.groups ?? []).length > 0 ? (
@@ -172,7 +144,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   ))}
                   <button
                     onClick={() => navigate("/communities")}
-                    className="w-full text-xs text-center py-1.5"
+                    className="w-full text-xs text-center py-0.5 mt-0.5"
                     style={{ color: "#8FAF96" }}
                   >
                     View all →

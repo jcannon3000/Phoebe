@@ -138,7 +138,7 @@ export default function MomentPlant() {
               <span className="font-medium text-foreground">{name}</span>
             </p>
             <p className="text-sm text-muted-foreground mb-8">
-              Eleanor will send calendar invites to your tradition. When the window opens, each member taps their personal link and shows up.
+              When the window opens, each member taps their personal link and shows up.
             </p>
             <button
               onClick={() => setLocation(`/ritual/${ritualId}`)}

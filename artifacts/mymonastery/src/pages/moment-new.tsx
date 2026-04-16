@@ -1054,6 +1054,7 @@ export default function MomentNew() {
     const isLectio = templateId === "lectio-divina";
 
     // Fasting: derive name/intention/scheduling from fasting-specific fields
+    const isCustomIntercession = templateId === "intercession" && intercessionSource === "custom";
     const finalName = isListening
       ? (name.trim() || `Listening to ${listeningTitle.trim()} together`)
       : isFasting && fastingTypeChoice === "meat"
@@ -1062,6 +1063,8 @@ export default function MomentNew() {
       ? customFastName.trim() || `Fasting from ${fastingFrom.trim()}`
       : isFasting
       ? `Fasting from ${fastingFrom.trim()}`
+      : isCustomIntercession
+      ? (intention.trim() || name.trim())
       : name.trim();
     const finalIntention = isFasting && fastingTypeChoice === "meat"
       ? "To practice restraint, care for creation, and shared discipline."
@@ -1091,7 +1094,7 @@ export default function MomentNew() {
         : undefined,
       templateType: templateId,
       intercessionTopic: intercessionTopic.trim() || undefined,
-      intercessionSource: intercessionTopic.trim() ? intercessionSource : undefined,
+      intercessionSource: (intercessionTopic.trim() || isCustomIntercession) ? intercessionSource : undefined,
       intercessionFullText: intercessionFullText.trim() || undefined,
       frequency: (isLectio ? "weekly" : fastingFreqForApi) as "daily" | "weekly" | "monthly",
       scheduledTime: isFasting || isLectio ? "00:00" : scheduledTime,

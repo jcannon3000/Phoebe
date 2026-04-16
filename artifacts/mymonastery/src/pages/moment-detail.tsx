@@ -55,6 +55,7 @@ interface MomentDetail {
     templateType: string | null;
     intercessionTopic: string | null;
     intercessionSource?: string | null;
+    intercessionFullText?: string | null;
     timezone?: string | null;
     practiceDays?: string | string[] | null;
     timeOfDay?: string | null;
@@ -1270,29 +1271,44 @@ export default function MomentDetail() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.97 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-card border border-[#5C7A5F]/30 rounded-2xl px-5 py-4 space-y-4"
+                  className="rounded-2xl px-5 py-4 space-y-4"
+                  style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.25)" }}
                 >
 
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">Name</label>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1">{isIntercession ? "Title" : "Name"}</label>
                     <input
                       type="text"
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
+                      value={isCustomIntercession ? editIntention : editName}
+                      onChange={e => isCustomIntercession ? setEditIntention(e.target.value) : setEditName(e.target.value)}
                       maxLength={100}
-                      className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20"
+                      className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]/20"
+                      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
                     />
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">Intention</label>
-                    <textarea
-                      value={editIntention}
-                      onChange={e => setEditIntention(e.target.value)}
-                      maxLength={500}
-                      rows={2}
-                      className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20 resize-none"
-                    />
-                  </div>
+                  {isCustomIntercession && moment.intercessionFullText ? (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">Prayer</label>
+                      <div
+                        className="rounded-xl px-3 py-2 text-sm italic leading-relaxed"
+                        style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.15)", color: "#8FAF96" }}
+                      >
+                        {moment.intercessionFullText}
+                      </div>
+                    </div>
+                  ) : !isIntercession ? (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">Intention</label>
+                      <textarea
+                        value={editIntention}
+                        onChange={e => setEditIntention(e.target.value)}
+                        maxLength={500}
+                        rows={2}
+                        className="w-full rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]/20"
+                        style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+                      />
+                    </div>
+                  ) : null}
                   {isIntercession && (
                     <div>
                       <label className="text-xs font-medium text-muted-foreground block mb-1">Emoji</label>
@@ -1323,17 +1339,19 @@ export default function MomentDetail() {
                       onChange={e => setEditGoalDays(Math.max(0, Math.min(365, parseInt(e.target.value) || 0)))}
                       min={0}
                       max={365}
-                      className="w-24 border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20"
+                      className="w-24 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]/20"
+                      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
                     />
                   </div>
-                  {!isFasting && (
+                  {!isFasting && !isIntercession && (
                     <div>
                       <label className="text-xs font-medium text-muted-foreground block mb-1">Scheduled time</label>
                       <input
                         type="time"
                         value={editScheduledTime}
                         onChange={e => setEditScheduledTime(e.target.value)}
-                        className="border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:border-[#5C7A5F] focus:ring-2 focus:ring-[#5C7A5F]/20"
+                        className="rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]/20"
+                        style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
                       />
                       <p className="text-xs text-muted-foreground mt-1">Everyone can log any time that day. 🌿</p>
                     </div>

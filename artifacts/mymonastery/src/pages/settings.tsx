@@ -536,7 +536,8 @@ function AccountSection() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingName, setEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [uploading, setUploading] = useState(false);
 
   const profileMutation = useMutation({
@@ -558,18 +559,36 @@ function AccountSection() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Image must be under 2MB");
-      return;
-    }
 
     setUploading(true);
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result as string;
-      profileMutation.mutate({ avatarUrl: dataUrl }, {
-        onSettled: () => setUploading(false),
-      });
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 512;
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { setUploading(false); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        profileMutation.mutate({ avatarUrl: dataUrl }, {
+          onSettled: () => setUploading(false),
+        });
+      };
+      img.onerror = () => {
+        alert("Could not process this image. Try a different one.");
+        setUploading(false);
+      };
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => {
+      alert("Could not read this image. Try a different one.");
+      setUploading(false);
     };
     reader.readAsDataURL(file);
   }
@@ -622,40 +641,64 @@ function AccountSection() {
         {/* Name + email */}
         <div className="flex-1 min-w-0">
           {editingName ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={nameValue}
-                onChange={e => setNameValue(e.target.value)}
-                maxLength={100}
-                autoFocus
-                className="flex-1 text-base font-semibold px-2 py-1 rounded-lg outline-none min-w-0"
-                style={{
-                  color: "#F0EDE6",
-                  background: "rgba(200,212,192,0.05)",
-                  border: "1px solid rgba(46,107,64,0.3)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && nameValue.trim()) profileMutation.mutate({ name: nameValue.trim() });
-                  if (e.key === "Escape") setEditingName(false);
-                }}
-              />
-              <button
-                onClick={() => { if (nameValue.trim()) profileMutation.mutate({ name: nameValue.trim() }); }}
-                disabled={!nameValue.trim() || profileMutation.isPending}
-                className="p-1.5 rounded-lg transition-opacity hover:opacity-80 disabled:opacity-40"
-                style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0" }}
-              >
-                <Check size={14} />
-              </button>
-              <button
-                onClick={() => setEditingName(false)}
-                className="p-1.5 rounded-lg transition-opacity hover:opacity-80"
-                style={{ color: "#8FAF96" }}
-              >
-                <X size={14} />
-              </button>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  placeholder="First name"
+                  maxLength={50}
+                  autoFocus
+                  className="flex-1 text-sm font-semibold px-2 py-1.5 rounded-lg outline-none min-w-0"
+                  style={{
+                    color: "#F0EDE6",
+                    background: "rgba(200,212,192,0.05)",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Escape") setEditingName(false);
+                  }}
+                />
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  placeholder="Last name"
+                  maxLength={50}
+                  className="flex-1 text-sm font-semibold px-2 py-1.5 rounded-lg outline-none min-w-0"
+                  style={{
+                    color: "#F0EDE6",
+                    background: "rgba(200,212,192,0.05)",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Escape") setEditingName(false);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const full = `${firstName.trim()} ${lastName.trim()}`.trim();
+                    if (full) profileMutation.mutate({ name: full });
+                  }}
+                  disabled={!firstName.trim() || profileMutation.isPending}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                  style={{ background: "rgba(46,107,64,0.2)", color: "#A8C5A0" }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingName(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80"
+                  style={{ color: "#8FAF96" }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -663,7 +706,12 @@ function AccountSection() {
                 {user.name}
               </p>
               <button
-                onClick={() => { setNameValue(user.name ?? ""); setEditingName(true); }}
+                onClick={() => {
+                  const parts = (user.name ?? "").split(" ");
+                  setFirstName(parts[0] ?? "");
+                  setLastName(parts.slice(1).join(" ") ?? "");
+                  setEditingName(true);
+                }}
                 className="p-1 rounded-lg transition-opacity hover:opacity-80"
                 style={{ color: "rgba(143,175,150,0.5)" }}
               >

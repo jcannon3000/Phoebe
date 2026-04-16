@@ -248,9 +248,9 @@ router.patch("/auth/me/profile", async (req, res): Promise<void> => {
     if (avatarUrl !== null && typeof avatarUrl !== "string") {
       res.status(400).json({ error: "avatarUrl must be a string or null" }); return;
     }
-    // Limit data URI size to ~2MB (base64)
-    if (avatarUrl && avatarUrl.startsWith("data:") && avatarUrl.length > 2_800_000) {
-      res.status(400).json({ error: "Avatar too large (max ~2MB)" }); return;
+    // Limit data URI size to ~5MB (base64) — client compresses images before upload
+    if (avatarUrl && avatarUrl.startsWith("data:") && avatarUrl.length > 7_000_000) {
+      res.status(400).json({ error: "Avatar too large" }); return;
     }
     updates.avatarUrl = avatarUrl;
   }
