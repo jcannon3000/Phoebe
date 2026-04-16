@@ -509,30 +509,27 @@ export default function PersonProfile() {
             {person.sharedPractices && person.sharedPractices.length > 0 && (
               <>
                 <SectionHeader label="Practices" />
-                <div className="overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-3 snap-x">
-                    {person.sharedPractices.map(practice => {
-                      const streakText = practice.currentStreak > 0
-                        ? `${practice.currentStreak} day streak`
-                        : practice.totalBlooms > 0
-                        ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
-                        : "Just beginning";
-                      // For custom intercessions, show intention instead of generic name
-                      const displayName = (() => {
-                        const p = practice as any;
-                        if (practice.templateType === "intercession" && p.intention) {
-                          const norm = (s: string) => s.trim().toLowerCase();
-                          if (norm(p.intention) !== norm(practice.name)) return p.intention;
-                        }
-                        return practice.name;
-                      })();
-                      return (
-                        <div
-                          key={practice.id}
-                          className="shrink-0 snap-start"
-                          style={{ width: "calc((100% - 2.25rem) / 3.5)" }}
-                        >
+                {(() => {
+                  const cards = (
+                    <div className="space-y-3">
+                      {person.sharedPractices.map(practice => {
+                        const streakText = practice.currentStreak > 0
+                          ? `${practice.currentStreak} day streak`
+                          : practice.totalBlooms > 0
+                          ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
+                          : "Just beginning";
+                        // For custom intercessions, show intention instead of generic name
+                        const displayName = (() => {
+                          const p = practice as any;
+                          if (practice.templateType === "intercession" && p.intention) {
+                            const norm = (s: string) => s.trim().toLowerCase();
+                            if (norm(p.intention) !== norm(practice.name)) return p.intention;
+                          }
+                          return practice.name;
+                        })();
+                        return (
                           <BarCard
+                            key={practice.id}
                             href={`/moments/${practice.id}`}
                             barColor={CATEGORY.practices.bar}
                             borderColor={CATEGORY.practices.border}
@@ -552,11 +549,23 @@ export default function PersonProfile() {
                               {practice.currentStreak === 0 && ` · ${streakText}`}
                             </p>
                           </BarCard>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                        );
+                      })}
+                    </div>
+                  );
+                  return person.sharedPractices.length > 3 ? (
+                    <div className="relative">
+                      <div className="overflow-y-auto pr-1" style={{ maxHeight: "310px", scrollbarWidth: "none" }}>
+                        {cards}
+                        <div className="h-4" />
+                      </div>
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+                        style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
+                      />
+                    </div>
+                  ) : cards;
+                })()}
               </>
             )}
 
@@ -564,45 +573,59 @@ export default function PersonProfile() {
             {((person as any).pastPractices?.length ?? 0) > 0 && (
               <>
                 <SectionHeader label="Past practices" />
-                <div className="overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
-                  <div className="flex gap-2 snap-x">
-                    {((person as any).pastPractices as typeof person.sharedPractices).map(practice => {
-                      const timesText = practice.totalBlooms > 0
-                        ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
-                        : "Practiced together";
-                      const displayName = (() => {
-                        const p = practice as any;
-                        if (practice.templateType === "intercession" && p.intention) {
-                          const norm = (s: string) => s.trim().toLowerCase();
-                          if (norm(p.intention) !== norm(practice.name)) return p.intention;
-                        }
-                        return practice.name;
-                      })();
-                      return (
-                        <div
-                          key={practice.id}
-                          className="shrink-0 snap-start relative flex rounded-xl overflow-hidden"
-                          style={{
-                            width: "calc((100% - 1.5rem) / 3.5)",
-                            background: "rgba(46,107,64,0.04)",
-                            border: "1px solid rgba(46,107,64,0.12)",
-                            opacity: 0.65,
-                          }}
-                        >
-                          <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} />
-                          <div className="flex-1 px-4 py-2.5 min-w-0">
-                            <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>
-                              {practiceEmoji(practice.templateType)} {displayName}
-                            </p>
-                            <p className="text-xs mt-0.5 capitalize" style={{ color: "rgba(143,175,150,0.55)" }}>
-                              {practice.frequency} · {timesText}
-                            </p>
+                {(() => {
+                  const pastList = (person as any).pastPractices as typeof person.sharedPractices;
+                  const cards = (
+                    <div className="space-y-2">
+                      {pastList.map(practice => {
+                        const timesText = practice.totalBlooms > 0
+                          ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
+                          : "Practiced together";
+                        const displayName = (() => {
+                          const p = practice as any;
+                          if (practice.templateType === "intercession" && p.intention) {
+                            const norm = (s: string) => s.trim().toLowerCase();
+                            if (norm(p.intention) !== norm(practice.name)) return p.intention;
+                          }
+                          return practice.name;
+                        })();
+                        return (
+                          <div
+                            key={practice.id}
+                            className="relative flex rounded-xl overflow-hidden"
+                            style={{
+                              background: "rgba(46,107,64,0.04)",
+                              border: "1px solid rgba(46,107,64,0.12)",
+                              opacity: 0.65,
+                            }}
+                          >
+                            <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} />
+                            <div className="flex-1 px-4 py-2.5 min-w-0">
+                              <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>
+                                {practiceEmoji(practice.templateType)} {displayName}
+                              </p>
+                              <p className="text-xs mt-0.5 capitalize" style={{ color: "rgba(143,175,150,0.55)" }}>
+                                {practice.frequency} · {timesText}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                        );
+                      })}
+                    </div>
+                  );
+                  return pastList.length > 3 ? (
+                    <div className="relative">
+                      <div className="overflow-y-auto pr-1" style={{ maxHeight: "260px", scrollbarWidth: "none" }}>
+                        {cards}
+                        <div className="h-4" />
+                      </div>
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+                        style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
+                      />
+                    </div>
+                  ) : cards;
+                })()}
               </>
             )}
 
