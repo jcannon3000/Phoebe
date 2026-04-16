@@ -640,12 +640,16 @@ export default function PrayerModePage() {
     }
   }, [slides.length, momentsData, prayerRequests]);
 
-  // Fade in on mount; prevent body scroll
+  // Fade in on mount; prevent body scroll; match Safari chrome to slide bg
   useEffect(() => {
     document.body.style.overflow = "hidden";
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content") ?? "#091A10";
+    meta?.setAttribute("content", "#0C1F12");
     const t = setTimeout(() => setVisible(true), 30);
     return () => {
       document.body.style.overflow = "";
+      meta?.setAttribute("content", prev);
       clearTimeout(t);
     };
   }, []);
