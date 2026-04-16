@@ -93,21 +93,21 @@ const CATEGORY_COLORS: Record<Category, {
 }> = {
   letters: {
     bar: "#14402A",
-    border: "rgba(20,64,42,0.18)",
+    border: "transparent",
     bg: "rgba(20,64,42,0.25)",
     pulseClass: "animate-turn-pulse-letters",
     barPulseClass: "animate-bar-pulse-letters",
   },
   practices: {
     bar: "#2E6B40",
-    border: "rgba(46,107,64,0.18)",
+    border: "transparent",
     bg: "rgba(46,107,64,0.15)",
     pulseClass: "animate-turn-pulse-practices",
     barPulseClass: "animate-bar-pulse-practices",
   },
   gatherings: {
     bar: "#6FAF85",
-    border: "rgba(111,175,133,0.18)",
+    border: "transparent",
     bg: "rgba(111,175,133,0.15)",
     pulseClass: "animate-turn-pulse-gatherings",
     barPulseClass: "animate-bar-pulse-gatherings",
