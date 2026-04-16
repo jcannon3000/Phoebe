@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Users, MessageCircle, X, Settings } from "lucide-react";
+import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -138,7 +139,8 @@ export default function CommunityDetailPage() {
   );
 
   const { group, myRole, members } = groupData;
-  const isAdmin = myRole === "admin";
+  const [communityAdminView] = useCommunityAdminToggle();
+  const isAdmin = myRole === "admin" && communityAdminView;
 
   const tabs = [
     { key: "prayer" as const, label: "Prayer Wall", emoji: "🙏🏽" },

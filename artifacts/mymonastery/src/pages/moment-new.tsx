@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { InviteStep } from "@/components/InviteStep";
+import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type StepId = "template" | "daily-office-choice" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "duration" | "invite"
@@ -534,7 +535,8 @@ export default function MomentNew() {
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user,
   });
-  const adminGroups = (groupsData?.groups ?? []).filter(g => g.myRole === "admin");
+  const [communityAdminView] = useCommunityAdminToggle();
+  const adminGroups = communityAdminView ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin") : [];
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
 
   // Step navigation

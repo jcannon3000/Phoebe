@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -222,7 +223,8 @@ export default function MomentsDashboard() {
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user,
   });
-  const isAdminOfAnyGroup = (groupsData?.groups ?? []).some(g => g.myRole === "admin");
+  const [communityAdminView] = useCommunityAdminToggle();
+  const isAdminOfAnyGroup = communityAdminView && (groupsData?.groups ?? []).some(g => g.myRole === "admin");
 
   // On-demand Apple Music check for listening practices where someone hasn't logged
   const amCheckedRef = useRef(false);

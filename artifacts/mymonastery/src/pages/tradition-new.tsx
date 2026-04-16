@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import ImprintSlideshow, { gatheringSlides } from "@/components/ImprintSlideshow";
+import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const TEMPLATE_OPTIONS = [
   { value: "coffee", emoji: "☕", label: "Coffee", tagline: "Share your first cup, again and again" },
@@ -67,7 +68,8 @@ export default function TraditionNew() {
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: step === 2,
   });
-  const canInviteNewPeople = (groupsData?.groups ?? []).some((g) => g.myRole === "admin");
+  const [communityAdminView] = useCommunityAdminToggle();
+  const canInviteNewPeople = communityAdminView && (groupsData?.groups ?? []).some((g) => g.myRole === "admin");
 
   function togglePerson(person: { name: string; email: string }) {
     setSelectedPeople((prev) =>

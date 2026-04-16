@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ExternalLink } from "lucide-react";
+import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -38,7 +39,8 @@ export default function CommunitySettingsPage() {
   });
 
   const group = groupData?.group;
-  const isAdmin = groupData?.myRole === "admin";
+  const [communityAdminView] = useCommunityAdminToggle();
+  const isAdmin = groupData?.myRole === "admin" && communityAdminView;
 
   // Redirect non-admins
   useEffect(() => {

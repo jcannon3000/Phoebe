@@ -5,7 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight } from "lucide-react";
-import { useDemoFlag, useBetaStatus } from "@/hooks/useDemo";
+import { useDemoFlag, useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -22,7 +22,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView, adminViewEnabled, toggleAdminView, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const [communityAdminView, toggleCommunityAdminView] = useCommunityAdminToggle();
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
@@ -128,21 +129,21 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </button>
               )}
 
-              {/* Admin view toggle — only for admins, lets them experience the app as a regular pilot user */}
-              {rawIsAdmin && (
+              {/* Community admin toggle — lets a community admin experience the app as a regular member */}
+              {(groupsData?.groups ?? []).some(g => g.myRole === "admin") && (
                 <button
-                  onClick={toggleAdminView}
+                  onClick={toggleCommunityAdminView}
                   className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors mt-2"
                   style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.15)" }}
                 >
                   <div className="text-left">
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>Admin view {adminViewEnabled ? "on" : "off"}</p>
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>Community admin {communityAdminView ? "on" : "off"}</p>
                     <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                      {adminViewEnabled ? "Seeing admin features." : "Experiencing the app as a pilot user."}
+                      {communityAdminView ? "Seeing admin tools." : "Viewing as a member."}
                     </p>
                   </div>
-                  <div className={`w-8 h-[18px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${adminViewEnabled ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
-                    <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full shadow-sm transition-transform ${adminViewEnabled ? "left-[16px]" : "left-[2px]"}`} style={{ background: "#F0EDE6" }} />
+                  <div className={`w-8 h-[18px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${communityAdminView ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
+                    <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full shadow-sm transition-transform ${communityAdminView ? "left-[16px]" : "left-[2px]"}`} style={{ background: "#F0EDE6" }} />
                   </div>
                 </button>
               )}

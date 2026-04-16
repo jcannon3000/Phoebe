@@ -8,6 +8,7 @@ import {
 } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { useListRituals } from "@workspace/api-client-react";
+import { useCommunityAdminToggle } from "@/hooks/useDemo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
@@ -224,7 +225,8 @@ export default function GatheringsPage() {
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user,
   });
-  const isAdminOfAnyGroup = (groupsData?.groups ?? []).some(g => g.myRole === "admin");
+  const [communityAdminView] = useCommunityAdminToggle();
+  const isAdminOfAnyGroup = communityAdminView && (groupsData?.groups ?? []).some(g => g.myRole === "admin");
 
   const removeSub = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/gatherings/calendars/${id}`),

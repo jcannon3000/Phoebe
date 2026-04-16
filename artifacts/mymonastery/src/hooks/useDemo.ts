@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 type BetaStatus = { isBeta: boolean; isAdmin: boolean; showWelcome?: boolean };
 
 const BETA_VIEW_KEY = "phoebe:betaView";
-const ADMIN_VIEW_KEY = "phoebe:adminView";
+const COMMUNITY_ADMIN_VIEW_KEY = "phoebe:communityAdminView";
 
 /** Read a boolean toggle from localStorage (defaults to true) */
 function readToggle(key: string): boolean {
@@ -49,12 +49,10 @@ export function useBetaViewToggle(): [boolean, () => void] {
 export function useBetaStatus(): BetaStatus & {
   isLoading: boolean;
   betaViewEnabled: boolean; toggleBetaView: () => void;
-  adminViewEnabled: boolean; toggleAdminView: () => void;
   showWelcome: boolean; rawIsBeta: boolean; rawIsAdmin: boolean;
 } {
   const { user } = useAuth();
   const [betaViewEnabled, toggleBetaView] = useBetaViewToggle();
-  const [adminViewEnabled, toggleAdminView] = useToggle(ADMIN_VIEW_KEY);
 
   const { data, isLoading } = useQuery<BetaStatus>({
     queryKey: ["/api/beta/status"],
@@ -69,15 +67,21 @@ export function useBetaStatus(): BetaStatus & {
   return {
     isBeta: rawIsBeta && betaViewEnabled,
     rawIsBeta,
-    isAdmin: rawIsAdmin && betaViewEnabled && adminViewEnabled,
+    isAdmin: rawIsAdmin && betaViewEnabled,
     rawIsAdmin,
     showWelcome: data?.showWelcome ?? false,
     isLoading,
     betaViewEnabled,
     toggleBetaView,
-    adminViewEnabled,
-    toggleAdminView,
   };
+}
+
+/**
+ * Toggle to let a community admin experience the app as a regular member.
+ * When off, myRole === "admin" checks should be treated as false.
+ */
+export function useCommunityAdminToggle(): [boolean, () => void] {
+  return useToggle(COMMUNITY_ADMIN_VIEW_KEY);
 }
 
 /**
