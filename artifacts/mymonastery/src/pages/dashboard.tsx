@@ -1461,10 +1461,10 @@ export default function Dashboard() {
                 className="text-lg font-bold mb-2"
                 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
               >
-                Welcome to the beta
+                Welcome to the pilot
               </h2>
               <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-                You've been added as a beta user. You now have access to early features as they roll out.
+                You've been added as a pilot user. You now have access to early features as they roll out.
               </p>
               <button
                 onClick={dismissBetaWelcome}

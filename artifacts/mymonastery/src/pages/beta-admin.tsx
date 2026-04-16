@@ -111,14 +111,14 @@ export default function BetaAdminPage() {
           </button>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Beta Users
+              Pilot Users
             </h1>
             <span className="text-[9px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "rgba(46,107,64,0.25)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.4)" }}>
               Admin
             </span>
           </div>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Manage who has access to beta features like Communities.
+            Manage who has access to pilot features like Communities.
           </p>
         </div>
 
@@ -142,7 +142,7 @@ export default function BetaAdminPage() {
         {/* Add user form */}
         <div className="mb-6">
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
-            Add Beta User
+            Add Pilot User
           </p>
           <div className="relative" ref={suggestionsRef}>
             <div className="flex gap-2">
@@ -204,11 +204,11 @@ export default function BetaAdminPage() {
         {/* User list */}
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
-            {betaUsers.length} Beta {betaUsers.length === 1 ? "User" : "Users"}
+            {betaUsers.length} Pilot {betaUsers.length === 1 ? "User" : "Users"}
           </p>
           {betaUsers.length === 0 ? (
             <p className="text-sm text-center py-6" style={{ color: "rgba(143,175,150,0.5)" }}>
-              No beta users yet. Add someone above.
+              No pilot users yet. Add someone above.
             </p>
           ) : (
             <div className="space-y-1.5">

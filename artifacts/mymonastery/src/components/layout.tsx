@@ -55,7 +55,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
     { emoji: "💬", label: "Feedback",    path: "/feedback"    },
-    ...(isBetaAdmin ? [{ emoji: "🔐", label: "Beta Users", path: "/beta" }] : []),
+    ...(isBetaAdmin ? [{ emoji: "🔐", label: "Pilot Users", path: "/beta" }] : []),
     { emoji: "ℹ️", label: "About",       path: "/church-deck"  },
   ];
 
@@ -117,9 +117,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.15)" }}
                 >
                   <div className="text-left">
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>Beta view {betaViewEnabled ? "on" : "off"}</p>
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>Pilot view {betaViewEnabled ? "on" : "off"}</p>
                     <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                      {betaViewEnabled ? "Seeing beta features." : "Previewing regular user view."}
+                      {betaViewEnabled ? "Seeing pilot features." : "Previewing regular user view."}
                     </p>
                   </div>
                   <div className={`w-8 h-[18px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${betaViewEnabled ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
@@ -425,11 +425,9 @@ export function Layout({ children }: { children: ReactNode }) {
             <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
               Phoebe
             </span>
-            {isBeta && (
-              <span className="text-[9px] font-semibold uppercase tracking-widest self-start mt-1.5" style={{ color: "rgba(143,175,150,0.45)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                beta
-              </span>
-            )}
+            <span className="text-[9px] font-semibold uppercase tracking-widest self-start mt-1.5" style={{ color: "rgba(143,175,150,0.45)", fontFamily: "'Space Grotesk', sans-serif" }}>
+              beta
+            </span>
           </Link>
         </div>
 

@@ -66,17 +66,17 @@ export default function BetaClaimPage() {
               Claiming admin access…
             </h1>
             <p className="text-sm" style={{ color: "#8FAF96" }}>
-              Setting you up as a beta admin for <strong style={{ color: "#F0EDE6" }}>{user.email}</strong>
+              Setting you up as a pilot admin for <strong style={{ color: "#F0EDE6" }}>{user.email}</strong>
             </p>
           </>
         ) : status === "done" ? (
           <>
             <div className="text-5xl mb-4">✅</div>
             <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              You're a beta admin!
+              You're a pilot admin!
             </h1>
             <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-              You now have access to manage beta users and all beta features.
+              You now have access to manage pilot users and all pilot features.
             </p>
             <div className="flex gap-3 justify-center">
               <button
@@ -84,7 +84,7 @@ export default function BetaClaimPage() {
                 className="px-6 py-3 rounded-xl text-sm font-semibold"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Manage Beta Users
+                Manage Pilot Users
               </button>
               <button
                 onClick={() => setLocation("/dashboard")}
