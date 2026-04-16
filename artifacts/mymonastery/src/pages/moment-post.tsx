@@ -536,13 +536,6 @@ function IntercessionPrayerPage({
               {attribution}
             </motion.p>
           )}
-          <motion.p
-            variants={headerItem}
-            className="text-[12px] italic mt-2"
-            style={{ color: "rgba(143,175,150,0.55)" }}
-          >
-            Your community is holding this.
-          </motion.p>
 
           {/* Prayer text — the existing card is what pulses */}
           {fullText && (
@@ -554,7 +547,7 @@ function IntercessionPrayerPage({
               style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.15)" }}
             >
               <p
-                className="text-[13px] leading-[1.85] italic whitespace-pre-wrap"
+                className="text-[17px] leading-[1.85] italic whitespace-pre-wrap"
                 style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#C8D4C0" }}
               >
                 {fullText}
