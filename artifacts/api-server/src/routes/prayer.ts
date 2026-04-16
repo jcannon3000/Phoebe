@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, fellowsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 
@@ -63,6 +63,13 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     .where(eq(userMutesTable.muterId, sessionUserId));
   const mutedIds = mutedRows.map(r => r.mutedUserId);
 
+  // Fetch fellow user IDs so we can flag and prioritize their requests
+  const fellowRows = await db
+    .select({ fellowUserId: fellowsTable.fellowUserId })
+    .from(fellowsTable)
+    .where(eq(fellowsTable.userId, sessionUserId));
+  const fellowIds = new Set(fellowRows.map(r => r.fellowUserId));
+
   const now = new Date();
 
   // Prayer requests are retained (not auto-filtered by expiry). They stay
@@ -114,12 +121,20 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       ...r,
       ownerName: r.isAnonymous ? null : (owner?.name ?? null),
       isOwnRequest,
+      isFellow: fellowIds.has(r.ownerId),
       words: words.map(w => ({ authorName: w.authorName, content: w.content })),
       myWord: myWordRow?.content ?? null,
       nearingExpiry,
       needsRenewal,
     };
   }));
+
+  // Sort: fellows' requests first, then by creation date (already ordered)
+  enriched.sort((a, b) => {
+    if (a.isFellow && !b.isFellow) return -1;
+    if (!a.isFellow && b.isFellow) return 1;
+    return 0;
+  });
 
   res.json(enriched);
 });

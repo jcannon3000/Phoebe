@@ -16,6 +16,7 @@ interface PrayerRequest {
   expiresAt: string | null;
   nearingExpiry: boolean;
   needsRenewal: boolean;
+  isFellow?: boolean;
   words: Array<{ authorName: string; content: string }>;
   myWord: string | null;
   createdAt: string;
@@ -227,6 +228,9 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                             {/* Attribution */}
                             <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-1">
                               From {request.ownerName ?? "someone"}
+                              {request.isFellow && (
+                                <span className="ml-1.5 normal-case tracking-normal" style={{ color: "rgba(92,138,95,0.7)" }}>· Fellow</span>
+                              )}
                             </p>
                             {/* Body */}
                             <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6" }}>

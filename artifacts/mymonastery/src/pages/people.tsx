@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { useGardenSocket } from "@/hooks/useGardenSocket";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
+import { Plus, X } from "lucide-react";
 
 function initials(name: string) {
   return name
@@ -179,6 +182,170 @@ function PersonCard({ person, isPresent }: { person: PersonSummary; isPresent: b
   );
 }
 
+/* ── Fellow type ──────────────────────────────────────────────────────── */
+
+type Fellow = {
+  id: number;
+  userId: number;
+  name: string;
+  email: string;
+  note: string | null;
+};
+
+/* ── Fellows section ─────────────────────────────────────────────────── */
+
+function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [showAdd, setShowAdd] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const { data: fellowsData } = useQuery<{ fellows: Fellow[] }>({
+    queryKey: ["/api/fellows"],
+    queryFn: () => apiRequest("GET", "/api/fellows"),
+    enabled: !!user,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (email: string) => apiRequest("POST", "/api/fellows", { email }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fellows"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      setSearch("");
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (userId: number) => apiRequest("DELETE", `/api/fellows/${userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fellows"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
+  const fellows = fellowsData?.fellows ?? [];
+  const fellowEmails = new Set(fellows.map(f => f.email.toLowerCase()));
+
+  // People available to add (from garden, not already fellows, not self)
+  const addablePeople = (people ?? []).filter(
+    p => !fellowEmails.has(p.email.toLowerCase()) && p.email.toLowerCase() !== user?.email?.toLowerCase()
+  );
+  const filteredAddable = search.trim()
+    ? addablePeople.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.email.toLowerCase().includes(search.toLowerCase())
+      )
+    : addablePeople;
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>Fellows</p>
+          </div>
+          <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>
+            People you've chosen to stay close to.
+          </p>
+        </div>
+        <button
+          onClick={() => { setShowAdd(v => !v); setSearch(""); }}
+          className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full transition-opacity hover:opacity-80"
+          style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
+        >
+          {showAdd ? <X size={12} /> : <Plus size={12} />}
+          {showAdd ? "Done" : "Add"}
+        </button>
+      </div>
+
+      {/* Add fellow modal */}
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mb-3"
+          >
+            <div className="rounded-xl px-4 py-3" style={{ background: "rgba(200,212,192,0.03)", border: "1px solid rgba(46,107,64,0.2)" }}>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name or email…"
+                className="w-full rounded-xl px-3 py-2 text-sm outline-none mb-2"
+                style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+              />
+              {filteredAddable.length === 0 && search.trim() && (
+                <p className="text-xs" style={{ color: "#8FAF96" }}>No one found.</p>
+              )}
+              {filteredAddable.length === 0 && !search.trim() && addablePeople.length === 0 && (
+                <p className="text-xs" style={{ color: "#8FAF96" }}>Everyone in your garden is already a fellow.</p>
+              )}
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {filteredAddable.slice(0, 10).map(p => (
+                  <div key={p.email} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                        style={{ ...colorFor(p.email) }}
+                      >
+                        {initials(p.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>{p.name}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => addMutation.mutate(p.email)}
+                      disabled={addMutation.isPending}
+                      className="text-[10px] font-medium px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
+                    >
+                      + Add
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {fellows.length === 0 ? (
+        <div className="rounded-xl px-4 py-4 text-center" style={{ background: "rgba(200,212,192,0.03)", border: "1px dashed rgba(46,107,64,0.2)" }}>
+          <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>
+            Add the people you want to stay closest to.
+            Their prayer requests will appear first.
+          </p>
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+          {fellows.map(f => {
+            const color = colorFor(f.email);
+            return (
+              <Link key={f.userId} href={`/people/${encodeURIComponent(f.email)}`} className="flex flex-col items-center gap-1.5 shrink-0 group">
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold transition-shadow group-hover:shadow-lg"
+                  style={{ backgroundColor: color.bg, color: color.text, border: "1.5px solid rgba(92,138,95,0.35)" }}
+                >
+                  {initials(f.name)}
+                </div>
+                <p className="text-[10px] font-medium text-center max-w-[56px] truncate" style={{ color: "#C8D4C0" }}>
+                  {f.name.split(" ")[0]}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Divider */}
+      <div className="h-px mt-4" style={{ background: "rgba(200,212,192,0.12)" }} />
+    </div>
+  );
+}
+
 /* ── Page ─────────────────────────────────────────────────────────────── */
 
 export default function People() {
@@ -220,6 +387,9 @@ export default function People() {
             People 🌿
           </h1>
         </div>
+
+        {/* Fellows */}
+        <FellowsSection people={people} />
 
         {/* Section divider */}
         <div className="flex items-center gap-2 mb-3">

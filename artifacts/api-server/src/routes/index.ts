@@ -18,6 +18,7 @@ import groupsRouter from "./groups";
 import bellRouter from "./bell";
 import feedbackRouter from "./feedback";
 import mutesRouter from "./mutes";
+import fellowsRouter from "./fellows";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(groupsRouter);
 router.use(bellRouter);
 router.use(feedbackRouter);
 router.use(mutesRouter);
+router.use(fellowsRouter);
 
 export default router;
