@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, or, sql, inArray, and, isNull } from "drizzle-orm";
+import { eq, desc, or, sql, inArray, and, isNull, ne } from "drizzle-orm";
 import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
@@ -316,7 +316,11 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         frequency: sharedMomentsTable.frequency,
         templateType: sharedMomentsTable.templateType,
         createdAt: sharedMomentsTable.createdAt,
-      }).from(sharedMomentsTable).where(inArray(sharedMomentsTable.id, sharedMomentIds));
+      }).from(sharedMomentsTable).where(
+        and(inArray(sharedMomentsTable.id, sharedMomentIds), ne(sharedMomentsTable.state, "archived"))
+      );
+      // Narrow sharedMomentIds to only active practices so bloom/streak stats match
+      sharedMomentIds = moments.map(m => m.id);
 
       // Compute live bloom counts per practice from windows table
       const bloomCountRows = await db

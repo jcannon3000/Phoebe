@@ -369,6 +369,31 @@ export default function PersonProfile() {
           )}
         </motion.div>
 
+        {/* ── Shared community pills ──────────────────────────────────────── */}
+        {sharedGroups.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.08 }}
+            className="flex flex-wrap gap-1.5 mb-5 -mt-2"
+          >
+            {sharedGroups.map(group => (
+              <Link
+                key={group.id}
+                href={`/communities/${group.slug}`}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-opacity hover:opacity-80"
+                style={{
+                  background: "rgba(122,111,175,0.12)",
+                  border: "1px solid rgba(122,111,175,0.28)",
+                  color: "#A8A0D0",
+                }}
+              >
+                {group.emoji ?? "🏛️"} {group.name}
+              </Link>
+            ))}
+          </motion.div>
+        )}
+
         {/* ── Prayer Request ──────────────────────────────────────────────── */}
         {prayer && (
           <motion.div
