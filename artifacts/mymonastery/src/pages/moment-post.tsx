@@ -15,7 +15,7 @@ const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "int
 const BCP_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer"]);
 const RRULE_DAY_MAP: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
 
-type MomentMember = { name: string; userToken: string; prayed: boolean };
+type MomentMember = { name: string; userToken: string; prayed: boolean; avatarUrl?: string | null };
 
 const TIME_OF_DAY_LABELS_POST: Record<string, string> = {
   "early-morning": "early morning", morning: "morning", midday: "midday",
@@ -232,13 +232,17 @@ function NamedPresence({ members, myToken }: { members: MomentMember[]; myToken?
             <motion.div
               animate={m.prayed ? { scale: [1.1, 1] } : {}}
               className={clsx(
-                "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors",
+                "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors overflow-hidden",
                 m.prayed
                   ? "bg-[#5C7A5F] border-[#5C7A5F] text-white"
                   : "bg-transparent border-[#5C7A5F]/40 text-[#5C7A5F]/60"
               )}
             >
-              {initial}
+              {m.avatarUrl ? (
+                <img src={m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                initial
+              )}
             </motion.div>
             <span className="text-[10px] text-[#6b5c4a]/60 max-w-[3rem] text-center leading-tight">
               {isMe ? "you" : (m.name ?? "?").split(" ")[0]}
@@ -294,7 +298,11 @@ function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: Mo
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border whitespace-nowrap shrink-0"
         style={{ color: m.prayed ? "#fff" : "rgba(200,230,210,0.5)" }}
       >
-        <span className="text-xs font-bold">{ini}</span>
+        {m.avatarUrl ? (
+          <img src={m.avatarUrl} alt={m.name} className="w-5 h-5 rounded-full object-cover" />
+        ) : (
+          <span className="text-xs font-bold">{ini}</span>
+        )}
         <span className="text-[11px] font-medium">{label}</span>
         {m.prayed && <span className="text-[9px] opacity-60">✓</span>}
       </motion.div>
@@ -904,9 +912,13 @@ export default function MomentPostPage() {
               <div className="flex justify-center gap-3 mb-8">
                 {data.members.slice(0, 6).map((mem, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-semibold text-primary">
-                      {(mem.name ?? "?")[0].toUpperCase()}
-                    </div>
+                    {mem.avatarUrl ? (
+                      <img src={mem.avatarUrl} alt={mem.name ?? "?"} className="w-10 h-10 rounded-full object-cover border border-primary/20" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-semibold text-primary">
+                        {(mem.name ?? "?")[0].toUpperCase()}
+                      </div>
+                    )}
                     <span className="text-[10px] text-muted-foreground truncate max-w-[3rem] text-center">
                       {(mem.name ?? "?").split(" ")[0]}
                     </span>
@@ -1127,6 +1139,7 @@ export default function MomentPostPage() {
     const memberInitials = members.map((m) => ({
       initial: (m.name || "?").charAt(0).toUpperCase(),
       name: m.name || "Someone",
+      avatarUrl: m.avatarUrl,
     }));
 
     return (
@@ -1154,19 +1167,32 @@ export default function MomentPostPage() {
           {memberInitials.length > 0 && (
             <div className="mb-6">
               <div className="flex items-center gap-1.5 mb-2">
-                {memberInitials.map((m: { initial: string; name: string }, i: number) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{
-                      background: "#1A4A2E",
-                      color: "#A8C5A0",
-                      border: "1px solid rgba(46,107,64,0.3)",
-                      opacity: fastingConfirmed && i === 0 ? 1 : 0.4,
-                    }}
-                  >
-                    {m.initial}
-                  </div>
+                {memberInitials.map((m: { initial: string; name: string; avatarUrl?: string | null }, i: number) => (
+                  m.avatarUrl ? (
+                    <img
+                      key={i}
+                      src={m.avatarUrl}
+                      alt={m.name}
+                      className="w-8 h-8 rounded-full object-cover"
+                      style={{
+                        border: "1px solid rgba(46,107,64,0.3)",
+                        opacity: fastingConfirmed && i === 0 ? 1 : 0.4,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      key={i}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{
+                        background: "#1A4A2E",
+                        color: "#A8C5A0",
+                        border: "1px solid rgba(46,107,64,0.3)",
+                        opacity: fastingConfirmed && i === 0 ? 1 : 0.4,
+                      }}
+                    >
+                      {m.initial}
+                    </div>
+                  )
                 ))}
               </div>
               <p className="text-xs" style={{ color: "rgba(143,175,150,0.6)" }}>

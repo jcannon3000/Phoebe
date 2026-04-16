@@ -607,6 +607,19 @@ export async function migrate() {
       )
     `);
 
+    // ── Fellow invites ────────────────────────────────────────────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fellow_invites (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        recipient_email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS fellow_invites_unique ON fellow_invites (sender_id, recipient_email) WHERE status = 'pending'`);
+
     // ── Gratitude sharing ──────────────────────────────────────────────────
     await run(client, `
       CREATE TABLE IF NOT EXISTS gratitude_responses (

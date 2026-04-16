@@ -7,7 +7,7 @@ import { useGardenSocket } from "@/hooks/useGardenSocket";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
-import { Plus, X } from "lucide-react";
+import { Plus, X, ChevronRight } from "lucide-react";
 
 function initials(name: string) {
   return name
@@ -146,8 +146,16 @@ function PersonCard({ person, isPresent }: { person: PersonSummary; isPresent: b
         <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
         <div className="flex-1 px-4 pt-3 pb-2.5">
           <div className="flex items-start justify-between gap-3">
-            {/* Left: text */}
-            <div className="min-w-0 flex-1">
+            {/* Left: avatar + text */}
+            <div className="min-w-0 flex-1 flex items-start gap-2.5">
+              {person.avatarUrl ? (
+                <img src={person.avatarUrl} alt={person.name} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                  {initials(person.name)}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-[15px] font-semibold truncate" style={{ color: "#F0EDE6" }}>
                   {person.name}
@@ -160,6 +168,7 @@ function PersonCard({ person, isPresent }: { person: PersonSummary; isPresent: b
                 )}
               </div>
               <RotatingLine lines={flapLines} />
+            </div>
             </div>
 
             {/* Right: streak or arrow */}
@@ -190,6 +199,7 @@ type Fellow = {
   name: string;
   email: string;
   note: string | null;
+  avatarUrl?: string | null;
 };
 
 /* ── Fellows section ─────────────────────────────────────────────────── */
@@ -286,12 +296,16 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
                 {filteredAddable.slice(0, 10).map(p => (
                   <div key={p.email} className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                        style={{ ...colorFor(p.email) }}
-                      >
-                        {initials(p.name)}
-                      </div>
+                      {p.avatarUrl ? (
+                        <img src={p.avatarUrl} alt={p.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                      ) : (
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                          style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                        >
+                          {initials(p.name)}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>{p.name}</p>
                       </div>
@@ -325,12 +339,16 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
             const color = colorFor(f.email);
             return (
               <Link key={f.userId} href={`/people/${encodeURIComponent(f.email)}`} className="flex flex-col items-center gap-1.5 shrink-0 group">
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold transition-shadow group-hover:shadow-lg"
-                  style={{ backgroundColor: color.bg, color: color.text, border: "1.5px solid rgba(92,138,95,0.35)" }}
-                >
-                  {initials(f.name)}
-                </div>
+                {f.avatarUrl ? (
+                  <img src={f.avatarUrl} alt={f.name} className="w-11 h-11 rounded-full object-cover transition-shadow group-hover:shadow-lg" style={{ border: "1.5px solid rgba(92,138,95,0.35)" }} />
+                ) : (
+                  <div
+                    className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold transition-shadow group-hover:shadow-lg"
+                    style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid rgba(92,138,95,0.35)" }}
+                  >
+                    {initials(f.name)}
+                  </div>
+                )}
                 <p className="text-[10px] font-medium text-center max-w-[56px] truncate" style={{ color: "#C8D4C0" }}>
                   {f.name.split(" ")[0]}
                 </p>

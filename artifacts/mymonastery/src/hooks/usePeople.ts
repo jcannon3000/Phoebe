@@ -21,6 +21,7 @@ export interface PersonPrayerRequest {
 export interface PersonSummary {
   name: string;
   email: string;
+  avatarUrl?: string | null;
   sharedCircleCount: number;
   firstCircleDate: string;
   maxSharedStreak: number;

@@ -90,8 +90,17 @@ router.get("/people", async (req, res): Promise<void> => {
     }
   }
 
-  // Build a set of all garden emails for prayer request lookup
+  // Batch-fetch avatarUrl for all garden members
   const allGardenEmails = Array.from(map.keys());
+  const avatarByEmail = new Map<string, string | null>();
+  if (allGardenEmails.length > 0) {
+    const avatarRows = await db.select({ email: usersTable.email, avatarUrl: usersTable.avatarUrl })
+      .from(usersTable)
+      .where(inArray(usersTable.email, allGardenEmails));
+    for (const row of avatarRows) {
+      avatarByEmail.set(row.email.toLowerCase(), row.avatarUrl);
+    }
+  }
 
   // Batch-fetch active prayer requests with body text for all garden members
   const activePrayerMap = new Map<string, { id: number; body: string; createdAt: string }>();
@@ -243,6 +252,7 @@ router.get("/people", async (req, res): Promise<void> => {
       return {
         name: p.name,
         email: p.email,
+        avatarUrl: avatarByEmail.get(p.email.toLowerCase()) ?? null,
         sharedCircleCount: p.sharedCircleCount,
         firstCircleDate: p.firstCircleDate.toISOString(),
         maxSharedStreak: maxStreak,

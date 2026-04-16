@@ -21,6 +21,7 @@ interface WindowPost {
 interface TodayLog {
   name: string;
   email: string;
+  avatarUrl: string | null;
   loggedAt: string | null;
   reflectionText: string | null;
   isCheckin: boolean;
@@ -81,7 +82,7 @@ interface MomentDetail {
     listeningSpotifyUri?: string | null;
     listeningAppleMusicUrl?: string | null;
   };
-  members: { name: string | null; email: string; joined?: boolean }[];
+  members: { name: string | null; email: string; joined?: boolean; avatarUrl?: string | null }[];
   memberCount: number;
   myStreak: number;
   groupStreak: number;
@@ -769,7 +770,8 @@ export default function MomentDetail() {
           <motion.div
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-5 bg-card border border-border/60 rounded-2xl px-4 py-4 flex items-center justify-between"
+            className="mb-5 rounded-2xl px-4 py-4 flex items-center justify-between"
+            style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
           >
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
@@ -851,15 +853,15 @@ export default function MomentDetail() {
 
           return (
             <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
+              <div className="rounded-2xl p-4 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                 <p className="text-2xl font-bold text-foreground">{displayMyStreak}</p>
                 <p className="text-xs text-muted-foreground mt-1">🙏🏽 Your streak</p>
               </div>
-              <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
+              <div className="rounded-2xl p-4 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                 <p className="text-2xl font-bold text-foreground">{groupStreak}</p>
                 <p className="text-xs text-muted-foreground mt-1">🔥 Group streak</p>
               </div>
-              <div className="bg-card border border-border/60 rounded-2xl p-4 text-center">
+              <div className="rounded-2xl p-4 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                 <p className="text-2xl font-bold text-foreground">{groupBest}</p>
                 <p className="text-xs text-muted-foreground mt-1">⭐ Group best</p>
               </div>
@@ -951,7 +953,7 @@ export default function MomentDetail() {
 
                 {/* Creator gets renewal controls */}
                 {isCreator && card && (
-                  <div className="bg-card border border-border/60 rounded-2xl p-5 mb-3">
+                  <div className="rounded-2xl p-5 mb-3" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                     <p className="text-sm font-medium text-muted-foreground mb-3" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                       Ready to go further? 🌿
                     </p>
@@ -1037,7 +1039,7 @@ export default function MomentDetail() {
 
                 {/* Non-creator: just show progress indicator */}
                 {!isCreator && (
-                  <div className="bg-card border border-border/60 rounded-2xl p-5 mb-3 text-center">
+                  <div className="rounded-2xl p-5 mb-3 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                     <p className="text-sm text-muted-foreground" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                       🌿 Goal complete · waiting for the group leader to set the next step
                     </p>
@@ -1105,7 +1107,7 @@ export default function MomentDetail() {
           {isTodayPracticeDay(moment.frequency, moment.dayOfWeek, parsedPracticeDays) && (
             <div className="mb-5">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">Today</p>
-              <div className="bg-card border border-border/60 rounded-2xl divide-y divide-border/20 overflow-hidden">
+              <div className="rounded-2xl divide-y divide-[rgba(46,107,64,0.15)] overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                 {todayLogs.map((log, i) => {
                   const firstName = (log.name || log.email || "?").split(" ")[0];
                   const initials = (log.name || log.email || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -1115,13 +1117,17 @@ export default function MomentDetail() {
                   return (
                     <div key={i} className="flex items-center gap-3 px-4 py-3">
                       {/* Avatar */}
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold ${
-                        log.loggedAt
-                          ? "bg-[#5C7A5F]/15 text-[#4a6b50]"
-                          : "bg-secondary/60 text-muted-foreground/50"
-                      }`}>
-                        {initials}
-                      </div>
+                      {log.avatarUrl ? (
+                        <img src={log.avatarUrl} alt={firstName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                      ) : (
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold ${
+                          log.loggedAt
+                            ? "bg-[#5C7A5F]/15 text-[#4a6b50]"
+                            : "bg-secondary/60 text-muted-foreground/50"
+                        }`}>
+                          {initials}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground/90">{firstName}</p>
                         {log.reflectionText && (
@@ -1178,8 +1184,8 @@ export default function MomentDetail() {
                     const today = new Date().toISOString().slice(0, 10);
                     const dateLabel = win.windowDate === today ? "Today" : format(date, "EEE, MMM d");
                     return (
-                      <div key={win.id} className="bg-card border border-border/60 rounded-2xl overflow-hidden">
-                        <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border/20">
+                      <div key={win.id} className="rounded-2xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
+                        <div className="flex items-center justify-between px-4 pt-3 pb-2" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                           <p className="text-xs font-semibold text-foreground/70">{dateLabel}</p>
                           <span className="text-xs text-muted-foreground/50">
                             {STATUS_ICON[win.status] ?? ""} {STATUS_LABEL[win.status] ?? win.status}
@@ -1247,7 +1253,7 @@ export default function MomentDetail() {
             >
               {/* Edit practice — creator only */}
               {isCreator && !editingPractice && (
-                <div className="flex items-start justify-between bg-card border border-border/60 rounded-2xl px-5 py-4">
+                <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   <div>
                     <p className="text-sm font-medium text-foreground">Edit practice</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Change name, intention, or goal.</p>
@@ -1391,7 +1397,7 @@ export default function MomentDetail() {
 
               {/* Members — creator can remove */}
               {isCreator && members.length > 1 && (
-                <div className="bg-card border border-border/60 rounded-2xl px-5 py-4">
+                <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   <p className="text-sm font-medium text-foreground mb-3">Members</p>
                   <div className="space-y-2">
                     {members.map(m => {
@@ -1400,9 +1406,13 @@ export default function MomentDetail() {
                       return (
                         <div key={m.email} className="flex items-center justify-between py-1.5">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium shrink-0">
-                              {(m.name ?? m.email).charAt(0).toUpperCase()}
-                            </div>
+                            {m.avatarUrl ? (
+                              <img src={m.avatarUrl} alt={m.name ?? ""} className="w-7 h-7 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                                {(m.name ?? m.email).charAt(0).toUpperCase()}
+                              </div>
+                            )}
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-sm text-foreground truncate">{m.name ?? m.email}{isMe ? " (you)" : ""}</p>
@@ -1453,7 +1463,7 @@ export default function MomentDetail() {
               {isCreator && (() => {
                 const currentAmi = (moment as unknown as { allowMemberInvites?: boolean }).allowMemberInvites ?? true;
                 return (
-                  <div className="flex items-center justify-between bg-card border border-border/60 rounded-2xl px-5 py-4">
+                  <div className="flex items-center justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                     <div>
                       <p className="text-sm font-medium text-foreground">Members can invite</p>
                       <p className="text-xs text-muted-foreground mt-0.5">Allow any member to invite new people</p>
@@ -1481,7 +1491,7 @@ export default function MomentDetail() {
               {!isCreator && (
                 <>
                   {!showLeaveConfirm ? (
-                    <div className="flex items-start justify-between bg-card border border-border/60 rounded-2xl px-5 py-4">
+                    <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                       <div>
                         <p className="text-sm font-medium text-foreground">Leave this practice</p>
                         <p className="text-xs text-muted-foreground mt-0.5">Removes it from your garden. History is preserved.</p>
@@ -1527,7 +1537,7 @@ export default function MomentDetail() {
               {isCreator && (
                 <>
                   {!showDeleteConfirm ? (
-                    <div className="flex items-start justify-between bg-card border border-border/60 rounded-2xl px-5 py-4">
+                    <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                       <div>
                         <p className="text-sm font-medium text-foreground">Delete this practice</p>
                         <p className="text-xs text-muted-foreground mt-0.5">Permanently removes it for everyone. Cannot be undone.</p>

@@ -148,6 +148,15 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
   const members = (await db.select().from(groupMembersTable)
     .where(eq(groupMembersTable.groupId, result.group.id))).filter(m => m.joinedAt !== null);
 
+  // Batch-fetch avatarUrl for all members
+  const memberEmails = members.map(m => m.email.toLowerCase());
+  const avatarRows = memberEmails.length > 0
+    ? await db.select({ email: usersTable.email, avatarUrl: usersTable.avatarUrl })
+        .from(usersTable)
+        .where(inArray(usersTable.email, memberEmails))
+    : [];
+  const avatarByEmail = new Map(avatarRows.map(u => [u.email.toLowerCase(), u.avatarUrl]));
+
   res.json({
     group: result.group,
     myRole: result.member.role,
@@ -157,6 +166,7 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
       email: m.email,
       role: m.role,
       joinedAt: m.joinedAt,
+      avatarUrl: avatarByEmail.get(m.email.toLowerCase()) ?? null,
     })),
   });
 });
@@ -426,7 +436,7 @@ router.get("/groups/users/search", async (req, res): Promise<void> => {
     if (q.length < 2) { res.json({ users: [] }); return; }
 
     const allUsers = await db
-      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, avatarUrl: usersTable.avatarUrl })
       .from(usersTable);
 
     const matches = allUsers

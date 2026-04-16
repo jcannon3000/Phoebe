@@ -34,11 +34,20 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     setLocation(path);
   }
 
-  const navItems: Array<{ emoji: string; label: string; path: string; badge?: string } | { divider: true }> = [
+  // Fetch pending fellow invites count for badge
+  const { data: inviteCountData } = useQuery<{ count: number }>({
+    queryKey: ["/api/fellows/invites/count"],
+    queryFn: () => apiRequest("GET", "/api/fellows/invites/count"),
+    enabled: !!user,
+    refetchInterval: 60_000,
+  });
+  const fellowInviteCount = inviteCountData?.count ?? 0;
+
+  const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
     { emoji: "🙏🏽", label: "Practices",   path: "/practices"   },
     { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
-    { emoji: "👥", label: "People",      path: "/people"      },
+    { emoji: "👥", label: "People",      path: "/people",     count: fellowInviteCount },
     { divider: true },
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
@@ -172,7 +181,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   if ("divider" in item) {
                     return <div key={`divider-${i}`} className="my-2" style={{ height: 1, background: "rgba(46,107,64,0.18)" }} />;
                   }
-                  const { emoji, label, path, badge } = item;
+                  const { emoji, label, path, badge, count } = item as { emoji: string; label: string; path: string; badge?: string; count?: number };
                   return (
                     <button
                       key={path}
@@ -186,6 +195,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                         <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{label}</span>
                         {badge && (
                           <span className="text-[10px] font-medium" style={{ color: "rgba(143,175,150,0.45)" }}>{badge}</span>
+                        )}
+                        {!!count && count > 0 && (
+                          <span
+                            className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
+                            style={{ background: "#2D5E3F", color: "#F0EDE6", minWidth: 18, height: 18, padding: "0 5px" }}
+                          >
+                            {count}
+                          </span>
                         )}
                       </div>
                       <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />

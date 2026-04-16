@@ -1142,10 +1142,11 @@ router.get("/moments", async (req, res): Promise<void> => {
       .where(inArray(momentUserTokensTable.momentId, flatMoments.map(m => m.id)));
     const uniqueMemberEmails = [...new Set(allMemberTokens.map(t => t.email.toLowerCase()))];
     const registeredUsers = uniqueMemberEmails.length > 0
-      ? await db.select({ email: usersTable.email }).from(usersTable)
+      ? await db.select({ email: usersTable.email, avatarUrl: usersTable.avatarUrl }).from(usersTable)
           .where(inArray(usersTable.email, uniqueMemberEmails))
       : [];
     const registeredEmails = new Set(registeredUsers.map(u => u.email.toLowerCase()));
+    const avatarByEmailList = new Map(registeredUsers.map(u => [u.email.toLowerCase(), u.avatarUrl]));
 
     // Batch-fetch group info for all group-linked practices
     const groupIds = [...new Set(flatMoments.map(m => m.groupId).filter((id): id is number => id !== null))];
@@ -1340,6 +1341,7 @@ router.get("/moments", async (req, res): Promise<void> => {
             name: t.name,
             email: t.email,
             joined: registeredEmails.has(t.email.toLowerCase()),
+            avatarUrl: avatarByEmailList.get(t.email.toLowerCase()) ?? null,
           })),
           todayPostCount: todayPosts.length,
           windowOpen: computeWindowOpen(m),
@@ -1446,13 +1448,14 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
   const allMembers = await db.select().from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.momentId, momentId));
 
-  // Check which members have actual user accounts (signed up)
+  // Check which members have actual user accounts (signed up) — also grab avatarUrl
   const memberEmails = allMembers.map(t => t.email.toLowerCase());
   const registeredUsersDetail = memberEmails.length > 0
-    ? await db.select({ email: usersTable.email }).from(usersTable)
+    ? await db.select({ email: usersTable.email, avatarUrl: usersTable.avatarUrl }).from(usersTable)
         .where(inArray(usersTable.email, memberEmails))
     : [];
   const registeredEmailsDetail = new Set(registeredUsersDetail.map(u => u.email.toLowerCase()));
+  const avatarByEmail = new Map(registeredUsersDetail.map(u => [u.email.toLowerCase(), u.avatarUrl]));
 
   // All windows sorted newest first
   let windows = await db.select().from(momentWindowsTable)
@@ -1531,6 +1534,7 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     return {
       name: member.name ?? member.email,
       email: member.email,
+      avatarUrl: avatarByEmail.get(member.email.toLowerCase()) ?? null,
       loggedAt: post?.createdAt?.toISOString() ?? null,
       reflectionText: post?.reflectionText ?? null,
       isCheckin: post ? post.isCheckin === 1 : false,
@@ -1663,6 +1667,7 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
       name: t.name,
       email: t.email,
       joined: registeredEmailsDetail.has(t.email.toLowerCase()),
+      avatarUrl: avatarByEmail.get(t.email.toLowerCase()) ?? null,
     })),
     memberCount: allMembers.length,
     myUserToken: myTokenRow[0]?.userToken ?? null,
@@ -2054,12 +2059,22 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
     : computeWindowOpen(moment);
   const minsLeft = minutesRemaining(moment);
 
+  // Fetch avatarUrl for all members
+  const publicMemberEmails = allMembers.map(m => m.email.toLowerCase());
+  const publicAvatarRows = publicMemberEmails.length > 0
+    ? await db.select({ email: usersTable.email, avatarUrl: usersTable.avatarUrl })
+        .from(usersTable)
+        .where(inArray(usersTable.email, publicMemberEmails))
+    : [];
+  const publicAvatarByEmail = new Map(publicAvatarRows.map(u => [u.email.toLowerCase(), u.avatarUrl]));
+
   // Build member presence: who has prayed today
   const prayedTokens = new Set(allTodayPosts.map(p => p.userToken));
   const memberPresence = allMembers.map(m => ({
     name: m.name ?? m.email.split("@")[0],
     userToken: m.userToken,
     prayed: prayedTokens.has(m.userToken),
+    avatarUrl: publicAvatarByEmail.get(m.email.toLowerCase()) ?? null,
   }));
 
   // Determine inviter — member with the lowest token row ID is the organizer/creator

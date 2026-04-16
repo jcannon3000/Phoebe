@@ -66,6 +66,7 @@ router.get("/api/gratitude/responses", async (req, res) => {
         gr.user_id,
         u.name AS author_name,
         u.email AS author_email,
+        u.avatar_url AS author_avatar_url,
         gs.id IS NOT NULL AS seen
       FROM gratitude_responses gr
       JOIN users u ON u.id = gr.user_id

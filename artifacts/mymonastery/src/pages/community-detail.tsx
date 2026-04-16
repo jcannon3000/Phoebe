@@ -13,7 +13,7 @@ type Group = {
   id: number; name: string; description: string | null; slug: string; emoji: string | null; createdAt: string;
 };
 type Member = {
-  id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean;
+  id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean; avatarUrl?: string | null;
 };
 type PrayerRequest = {
   id: number; body: string; ownerName: string | null; wordCount: number;
@@ -244,10 +244,14 @@ export default function CommunityDetailPage() {
                           setSearchFocused(false);
                         }}
                       >
+                        {(u as any).avatarUrl ? (
+                        <img src={(u as any).avatarUrl} alt={u.name || u.email} className="w-7 h-7 rounded-full object-cover flex-shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                      ) : (
                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                           style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
                           {(u.name || u.email).charAt(0).toUpperCase()}
                         </div>
+                      )}
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>{u.name || u.email}</p>
                           <p className="text-xs truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{u.email}</p>
@@ -518,6 +522,13 @@ export default function CommunityDetailPage() {
                 >
                   <Link href={`/people/${encodeURIComponent(m.email)}`} className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
+                      {m.avatarUrl ? (
+                        <img src={m.avatarUrl} alt={m.name || m.email} className="w-7 h-7 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                          {(m.name || m.email).charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
                         {m.name || m.email.split("@")[0]}
                       </p>

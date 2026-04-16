@@ -41,6 +41,7 @@ interface GratitudeResponse {
   createdAt: string;
   authorName: string;
   authorEmail: string;
+  avatarUrl?: string | null;
   isNew: boolean;
 }
 
@@ -314,11 +315,13 @@ function GratitudeInputSlide({
 
 function GratitudeCard({
   authorName,
+  avatarUrl,
   text,
   createdAt,
   isNew,
 }: {
   authorName: string;
+  avatarUrl?: string | null;
   text: string;
   createdAt: string;
   isNew: boolean;
@@ -337,14 +340,23 @@ function GratitudeCard({
       )}
 
       {/* Avatar */}
-      <div
-        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-        style={{ background: color.bg }}
-      >
-        <span className="text-[10px] font-bold" style={{ color: color.text }}>
-          {getInitials(authorName)}
-        </span>
-      </div>
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt={authorName}
+          className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5"
+          style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+        />
+      ) : (
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+        >
+          <span className="text-[10px] font-bold">
+            {getInitials(authorName)}
+          </span>
+        </div>
+      )}
 
       {/* Card */}
       <div
@@ -476,6 +488,7 @@ function GratitudeResponsesSlide({
             <div key={r.id} data-gratitude-id={r.id}>
               <GratitudeCard
                 authorName={r.authorName}
+                avatarUrl={r.avatarUrl}
                 text={r.text}
                 createdAt={r.createdAt}
                 isNew={r.isNew && !seenIds.has(r.id)}
