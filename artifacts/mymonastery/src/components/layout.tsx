@@ -22,7 +22,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView, rawIsAdmin } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView, rawIsAdmin, rawIsBeta } = useBetaStatus();
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
@@ -109,8 +109,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </div>
               </div>
 
-              {/* Beta view toggle — always visible for admins (even when toggled off) */}
-              {rawIsAdmin && (
+              {/* Pilot view toggle — visible for all pilot users (even when toggled off) */}
+              {rawIsBeta && (
                 <button
                   onClick={toggleBetaView}
                   className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors mt-2"
