@@ -85,12 +85,21 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             {/* ── Profile ── */}
             <div className="px-5 pb-5" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               <div className="flex items-center gap-3 mb-3">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0"
-                  style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
-                >
-                  {user?.name?.charAt(0).toUpperCase() ?? "?"}
-                </div>
+                {user?.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name ?? ""}
+                    className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                    style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0"
+                    style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
+                    {user?.name?.charAt(0).toUpperCase() ?? "?"}
+                  </div>
+                )}
                 <div className="min-w-0">
                   <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                     {user?.name}

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
 const router: IRouter = Router();
@@ -432,11 +432,23 @@ router.get("/people/:email", async (req, res): Promise<void> => {
 
   // Check if the viewing user has muted this person
   let isMuted = false;
+  let isFellow = false;
+  let avatarUrl: string | null = null;
   if (personUser) {
     const [muteRow] = await db.select({ id: userMutesTable.id })
       .from(userMutesTable)
       .where(and(eq(userMutesTable.muterId, ownerId), eq(userMutesTable.mutedUserId, personUser.id)));
     isMuted = !!muteRow;
+
+    const [fellowRow] = await db.select({ id: fellowsTable.id })
+      .from(fellowsTable)
+      .where(and(eq(fellowsTable.userId, ownerId), eq(fellowsTable.fellowUserId, personUser.id)));
+    isFellow = !!fellowRow;
+
+    const [personData] = await db.select({ avatarUrl: usersTable.avatarUrl })
+      .from(usersTable)
+      .where(eq(usersTable.id, personUser.id));
+    avatarUrl = personData?.avatarUrl ?? null;
   }
 
   if (personUser) {
@@ -499,7 +511,9 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     name: personName,
     email,
     userId: personUser?.id ?? null,
+    avatarUrl,
     isMuted,
+    isFellow,
     stats: {
       sharedCircleCount: sharedRituals.length,
       sharedPracticesCount: sharedPractices.length,

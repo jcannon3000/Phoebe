@@ -227,6 +227,48 @@ router.patch("/auth/me/presence", async (req, res): Promise<void> => {
   res.json({ showPresence });
 });
 
+// PATCH /auth/me/profile — update name and/or avatar
+router.patch("/auth/me/profile", async (req, res): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = (req.user as { id: number }).id;
+  const { name, avatarUrl } = req.body as { name?: string; avatarUrl?: string | null };
+
+  const updates: Record<string, unknown> = {};
+
+  if (name !== undefined) {
+    const trimmed = (name ?? "").trim();
+    if (trimmed.length < 1 || trimmed.length > 100) {
+      res.status(400).json({ error: "Name must be 1–100 characters" }); return;
+    }
+    updates.name = trimmed;
+  }
+
+  if (avatarUrl !== undefined) {
+    // Accept null (remove avatar), a URL, or a base64 data URI
+    if (avatarUrl !== null && typeof avatarUrl !== "string") {
+      res.status(400).json({ error: "avatarUrl must be a string or null" }); return;
+    }
+    // Limit data URI size to ~2MB (base64)
+    if (avatarUrl && avatarUrl.startsWith("data:") && avatarUrl.length > 2_800_000) {
+      res.status(400).json({ error: "Avatar too large (max ~2MB)" }); return;
+    }
+    updates.avatarUrl = avatarUrl;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "Nothing to update" }); return;
+  }
+
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
+
+  // Update session so /me reflects changes immediately
+  for (const [k, v] of Object.entries(updates)) {
+    (req.user as Record<string, unknown>)[k] = v;
+  }
+
+  res.json({ ok: true, ...updates });
+});
+
 router.post("/auth/logout", (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);

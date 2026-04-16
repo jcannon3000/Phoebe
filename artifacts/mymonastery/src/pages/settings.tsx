@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut } from "lucide-react";
+import { LogOut, Camera, Pencil, Check, X } from "lucide-react";
 
 
 function SectionHeader({ label }: { label: string }) {
@@ -529,6 +529,157 @@ function MutedPeople() {
   );
 }
 
+// ─── Account Section (photo + name editing) ────────────────────────────────
+
+function AccountSection() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  const profileMutation = useMutation({
+    mutationFn: (data: { name?: string; avatarUrl?: string | null }) =>
+      apiRequest("PATCH", "/api/auth/me/profile", data),
+    onSuccess: (_data, variables) => {
+      queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
+        if (!prev) return prev;
+        const updated = { ...prev };
+        if (variables.name) updated.name = variables.name;
+        if (variables.avatarUrl !== undefined) updated.avatarUrl = variables.avatarUrl;
+        return updated;
+      });
+      setEditingName(false);
+    },
+  });
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image must be under 2MB");
+      return;
+    }
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      profileMutation.mutate({ avatarUrl: dataUrl }, {
+        onSettled: () => setUploading(false),
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  if (!user) return null;
+
+  const hasAvatar = !!user.avatarUrl;
+
+  return (
+    <SettingsCard>
+      <div className="flex items-center gap-4">
+        {/* Avatar with upload overlay */}
+        <div className="relative flex-shrink-0">
+          {hasAvatar ? (
+            <img
+              src={user.avatarUrl!}
+              alt={user.name}
+              className="w-16 h-16 rounded-full object-cover"
+              style={{ border: "2px solid rgba(46,107,64,0.3)" }}
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold"
+              style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid rgba(46,107,64,0.3)" }}
+            >
+              {user.name?.charAt(0).toUpperCase() ?? "?"}
+            </div>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 disabled:opacity-40"
+            style={{ background: "#2D5E3F", border: "2px solid #091A10" }}
+          >
+            {uploading ? (
+              <span className="text-[10px]" style={{ color: "#F0EDE6" }}>…</span>
+            ) : (
+              <Camera size={12} style={{ color: "#F0EDE6" }} />
+            )}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoSelect}
+          />
+        </div>
+
+        {/* Name + email */}
+        <div className="flex-1 min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={nameValue}
+                onChange={e => setNameValue(e.target.value)}
+                maxLength={100}
+                autoFocus
+                className="flex-1 text-base font-semibold px-2 py-1 rounded-lg outline-none min-w-0"
+                style={{
+                  color: "#F0EDE6",
+                  background: "rgba(200,212,192,0.05)",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && nameValue.trim()) profileMutation.mutate({ name: nameValue.trim() });
+                  if (e.key === "Escape") setEditingName(false);
+                }}
+              />
+              <button
+                onClick={() => { if (nameValue.trim()) profileMutation.mutate({ name: nameValue.trim() }); }}
+                disabled={!nameValue.trim() || profileMutation.isPending}
+                className="p-1.5 rounded-lg transition-opacity hover:opacity-80 disabled:opacity-40"
+                style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0" }}
+              >
+                <Check size={14} />
+              </button>
+              <button
+                onClick={() => setEditingName(false)}
+                className="p-1.5 rounded-lg transition-opacity hover:opacity-80"
+                style={{ color: "#8FAF96" }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {user.name}
+              </p>
+              <button
+                onClick={() => { setNameValue(user.name ?? ""); setEditingName(true); }}
+                className="p-1 rounded-lg transition-opacity hover:opacity-80"
+                style={{ color: "rgba(143,175,150,0.5)" }}
+              >
+                <Pencil size={12} />
+              </button>
+            </div>
+          )}
+          <p className="text-sm truncate mt-0.5" style={{ color: "#8FAF96" }}>
+            {user.email}
+          </p>
+        </div>
+      </div>
+    </SettingsCard>
+  );
+}
+
 // ─── Main Settings Page ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -567,24 +718,7 @@ export default function SettingsPage() {
 
         {/* ── Account ── */}
         <SectionHeader label="Account" />
-        <SettingsCard>
-          <div className="flex items-center gap-4 mb-4">
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
-              style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
-            >
-              {user.name?.charAt(0).toUpperCase() ?? "?"}
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {user.name}
-              </p>
-              <p className="text-sm truncate" style={{ color: "#8FAF96" }}>
-                {user.email}
-              </p>
-            </div>
-          </div>
-        </SettingsCard>
+        <AccountSection />
 
         {/* ── Presence ── */}
         <div className="mb-8">

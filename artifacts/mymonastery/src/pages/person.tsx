@@ -164,6 +164,24 @@ export default function PersonProfile() {
     },
   });
 
+  const addFellowMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/fellows", { userId: (person as any)?.userId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fellows"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
+  const removeFellowMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/fellows/${(person as any)?.userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fellows"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
   const sendWordMutation = useMutation({
     mutationFn: async ({ requestId, content }: { requestId: number; content: string }) => {
       const res = await fetch(`/api/prayer-requests/${requestId}/words`, {
@@ -244,17 +262,34 @@ export default function PersonProfile() {
           transition={{ duration: 0.35 }}
           className="flex items-center gap-4 mb-6"
         >
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0"
-            style={{ backgroundColor: color.bg, color: color.text }}
-          >
-            {initials(person.name)}
-          </div>
+          {(person as any).avatarUrl ? (
+            <img
+              src={(person as any).avatarUrl}
+              alt={person.name}
+              className="w-14 h-14 rounded-full object-cover flex-shrink-0"
+              style={{ border: "2px solid rgba(46,107,64,0.3)" }}
+            />
+          ) : (
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0"
+              style={{ backgroundColor: color.bg, color: color.text }}
+            >
+              {initials(person.name)}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="font-semibold text-2xl leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
                 {person.name}
               </h1>
+              {(person as any).isFellow && (
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(92,138,95,0.15)", color: "#5C8A5F", border: "1px solid rgba(92,138,95,0.3)" }}
+                >
+                  Fellow
+                </span>
+              )}
               {(person as any).isMuted && (
                 <span
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -286,6 +321,29 @@ export default function PersonProfile() {
                     className="absolute right-0 top-10 z-50 rounded-xl py-1 min-w-[170px]"
                     style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
                   >
+                    {/* Fellow toggle */}
+                    {(person as any).isFellow ? (
+                      <button
+                        onClick={() => { setShowSettingsPopup(false); removeFellowMutation.mutate(); }}
+                        disabled={removeFellowMutation.isPending}
+                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
+                        style={{ color: "#8FAF96" }}
+                      >
+                        {removeFellowMutation.isPending ? "Removing…" : "Remove as fellow"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { setShowSettingsPopup(false); addFellowMutation.mutate(); }}
+                        disabled={addFellowMutation.isPending}
+                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
+                        style={{ color: "#A8C5A0" }}
+                      >
+                        {addFellowMutation.isPending ? "Adding…" : "Add as fellow"}
+                      </button>
+                    )}
+                    {/* Divider */}
+                    <div className="mx-3 h-px" style={{ background: "rgba(46,107,64,0.2)" }} />
+                    {/* Mute toggle */}
                     {(person as any).isMuted ? (
                       <button
                         onClick={() => { setShowSettingsPopup(false); unmuteMutation.mutate(); }}
