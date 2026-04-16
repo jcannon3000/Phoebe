@@ -151,13 +151,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                       <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
                     </button>
                   ))}
-                  <button
-                    onClick={() => navigate("/communities")}
-                    className="w-full text-xs text-center py-0.5 mt-0.5"
-                    style={{ color: "#8FAF96" }}
-                  >
-                    View all →
-                  </button>
                 </div>
               ) : (
                 <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
