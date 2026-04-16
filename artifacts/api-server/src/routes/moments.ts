@@ -2083,7 +2083,16 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
     : null;
   const inviterName = organizerToken?.name ?? organizerToken?.email?.split("@")[0] ?? "Phoebe";
 
+  // Group info — lets the client render "with <group name>" attribution to match
+  // the prayer slideshow when the practice is attached to a group.
+  let group: { id: number; name: string; slug: string; emoji: string | null } | null = null;
+  if (moment.groupId) {
+    const [g] = await db.select().from(groupsTable).where(eq(groupsTable.id, moment.groupId));
+    if (g) group = { id: g.id, name: g.name, slug: g.slug, emoji: g.emoji };
+  }
+
   res.json({
+    group,
     moment: {
       id: moment.id,
       name: moment.name,

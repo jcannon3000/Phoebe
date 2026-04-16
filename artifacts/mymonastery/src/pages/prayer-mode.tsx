@@ -40,10 +40,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
 
   return (
-    <div
-      className="w-full flex flex-col items-center text-center gap-5 rounded-2xl border px-6 py-8 animate-turn-pulse-practices"
-      style={{ background: "rgba(46,107,64,0.04)" }}
-    >
+    <div className="w-full flex flex-col items-center text-center gap-5">
       <p
         className="text-[10px] uppercase tracking-[0.18em] font-semibold"
         style={{ color: "rgba(143,175,150,0.45)" }}
@@ -85,7 +82,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
       {/* BCP enrichment — show the formal prayer text from the Book of Common Prayer */}
       {bcpPrayer && (
         <div
-          className="w-full rounded-2xl px-6 py-5 text-left mt-1"
+          className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
           style={{
             background: "rgba(46,107,64,0.12)",
             border: "1px solid rgba(46,107,64,0.15)",
@@ -109,7 +106,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
       {/* Custom intercession — show the user's own prayer text */}
       {!bcpPrayer && slide.fullText && (
         <div
-          className="w-full rounded-2xl px-6 py-5 text-left mt-1"
+          className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
           style={{
             background: "rgba(46,107,64,0.12)",
             border: "1px solid rgba(46,107,64,0.15)",

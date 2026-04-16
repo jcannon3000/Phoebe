@@ -97,6 +97,7 @@ type MomentData = {
   myPost: { photoUrl: string | null; reflectionText: string | null; isCheckin: boolean } | null;
   userName: string;
   inviterName: string;
+  group?: { id: number; name: string; slug: string; emoji: string | null } | null;
 };
 
 // ─── Presence dots ────────────────────────────────────────────────────────────
@@ -340,10 +341,10 @@ function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: Mo
 
 // ─── Intercession prayer page ─────────────────────────────────────────────────
 function IntercessionPrayerPage({
-  topic, fullText, intention, reflectionPrompt, intercessionSource, memberCount, todayPostCount,
+  topic, fullText, intention, attribution, reflectionPrompt, intercessionSource, memberCount, todayPostCount,
   members, myToken, canPray, alreadyPosted, myReflection, isPraying, postFailed, nextWindowLabel: _nwl, onComplete, onBack,
 }: {
-  topic: string; fullText: string; intention: string; reflectionPrompt: string;
+  topic: string; fullText: string; intention: string; attribution: string; reflectionPrompt: string;
   intercessionSource: string | null;
   memberCount: number; todayPostCount: number; members: MomentMember[]; myToken?: string;
   canPray: boolean; alreadyPosted: boolean; myReflection: string | null;
@@ -496,14 +497,12 @@ function IntercessionPrayerPage({
     >
       <div className="max-w-md mx-auto px-5 py-6 pb-28">
 
-        {/* Header + prayer text, wrapped in the same pulsing forest border
-            the slideshow uses for its slide card. */}
+        {/* Header — plain (no outer border); pulse lives on the inner prayer card only */}
         <motion.div
           variants={headerContainer}
           initial="hidden"
           animate="visible"
-          className="rounded-2xl border px-6 py-7 animate-turn-pulse-practices text-center mb-4"
-          style={{ background: "rgba(46,107,64,0.04)" }}
+          className="text-center mb-4"
         >
           <motion.p
             variants={headerItem}
@@ -528,6 +527,15 @@ function IntercessionPrayerPage({
               {intention}
             </motion.p>
           )}
+          {attribution && (
+            <motion.p
+              variants={headerItem}
+              className="text-sm mt-1"
+              style={{ color: "#8FAF96" }}
+            >
+              {attribution}
+            </motion.p>
+          )}
           <motion.p
             variants={headerItem}
             className="text-[12px] italic mt-2"
@@ -536,13 +544,13 @@ function IntercessionPrayerPage({
             Your community is holding this.
           </motion.p>
 
-          {/* Prayer text — nested card inside the pulsing border */}
+          {/* Prayer text — the existing card is what pulses */}
           {fullText && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-              className="mt-5 rounded-2xl px-6 py-5 text-left"
+              className="mt-5 rounded-2xl px-6 py-5 text-left animate-turn-pulse-practices"
               style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.15)" }}
             >
               <p
@@ -1049,6 +1057,15 @@ export default function MomentPostPage() {
       ...m,
       prayed: m.prayed || (posted && m.userToken === userToken),
     }));
+    // Attribution matches the slideshow: prefer group name, else list up to 3 fellow members.
+    const attributionLabel = data?.group?.name
+      ? data.group.name
+      : members
+          .filter(m => m.userToken !== userToken)
+          .map(m => m.name)
+          .slice(0, 3)
+          .join(", ");
+    const intercessionAttribution = attributionLabel ? `with ${attributionLabel}` : "";
     const detailUrl = `/moments/${moment.id}`;
     return (
       <div style={{ position: "relative" }}>
@@ -1062,6 +1079,7 @@ export default function MomentPostPage() {
         }
         fullText={moment.intercessionFullText ?? ""}
         intention={moment.intention}
+        attribution={intercessionAttribution}
         intercessionSource={moment.intercessionSource}
         reflectionPrompt={moment.reflectionPrompt ?? "What is on your heart today?"}
         memberCount={actualMemberCount}
