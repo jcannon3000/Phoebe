@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -574,7 +574,7 @@ function BellSlide({ onNext }: { onNext: () => void }) {
 
 // ─── Prayer request slide (interactive, final) ────────────────────────────────
 
-function PrayerRequestSlide({ onComplete }: { onComplete: () => void }) {
+function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () => void; preview?: boolean }) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -584,7 +584,9 @@ function PrayerRequestSlide({ onComplete }: { onComplete: () => void }) {
     if (!text.trim()) return;
     setSubmitting(true);
     try {
-      await apiRequest("POST", "/api/prayer-requests", { body: text.trim() });
+      if (!preview) {
+        await apiRequest("POST", "/api/prayer-requests", { body: text.trim() });
+      }
       setSubmitted(true);
       setTimeout(() => setDone(true), 1500);
     } catch {
@@ -706,17 +708,23 @@ function PrayerRequestSlide({ onComplete }: { onComplete: () => void }) {
 
 export default function UserOnboarding() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const isPreview = new URLSearchParams(search).get("preview") === "1";
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [index, setIndex] = useState(0);
 
-  // Guard: redirect away if not logged in or already completed
+  // Guard: redirect away if not logged in or (already completed and not previewing)
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
-    if (!isLoading && user?.onboardingCompleted) setLocation("/dashboard");
-  }, [user, isLoading, setLocation]);
+    if (!isLoading && user?.onboardingCompleted && !isPreview) setLocation("/dashboard");
+  }, [user, isLoading, isPreview, setLocation]);
 
   const completeOnboarding = useCallback(async () => {
+    if (isPreview) {
+      setLocation("/beta");
+      return;
+    }
     try {
       await apiRequest("PATCH", "/api/auth/me/onboarding");
       queryClient.setQueryData(["/api/auth/me"], (old: unknown) => {
@@ -727,7 +735,7 @@ export default function UserOnboarding() {
       // Best-effort — navigate regardless
     }
     setLocation("/dashboard");
-  }, [queryClient, setLocation]);
+  }, [isPreview, queryClient, setLocation]);
 
   const next = useCallback(
     () => setIndex(i => Math.min(i + 1, SLIDES.length - 1)),
@@ -782,7 +790,7 @@ export default function UserOnboarding() {
       case "bell":
         return <BellSlide onNext={next} />;
       case "prayer-request":
-        return <PrayerRequestSlide onComplete={completeOnboarding} />;
+        return <PrayerRequestSlide onComplete={completeOnboarding} preview={isPreview} />;
     }
   }
 

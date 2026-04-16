@@ -124,6 +124,21 @@ export default function BetaAdminPage() {
 
         <div className="h-px mb-5" style={{ background: "rgba(200,212,192,0.12)" }} />
 
+        {/* Preview onboarding */}
+        <div className="mb-6 flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)" }}>
+          <div>
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>New user onboarding</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>Preview the 10-slide flow shown to first-time users.</p>
+          </div>
+          <button
+            onClick={() => setLocation("/onboarding?preview=1")}
+            className="shrink-0 ml-4 px-4 py-2 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            Preview →
+          </button>
+        </div>
+
         {/* Add user form */}
         <div className="mb-6">
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
