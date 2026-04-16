@@ -595,6 +595,9 @@ export async function migrate() {
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_shared_moments_group_id ON shared_moments (group_id)`);
 
+    // ── User onboarding flag ──────────────────────────────────────────────
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT false`);
+
     // ── Fellows ────────────────────────────────────────────────────────────
     await run(client, `
       CREATE TABLE IF NOT EXISTS fellows (

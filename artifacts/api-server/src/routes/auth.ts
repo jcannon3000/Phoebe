@@ -183,6 +183,7 @@ router.get("/auth/me", (req, res) => {
     id: number; name: string; email: string; avatarUrl: string | null;
     googleId: string | null; showPresence: boolean;
     correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
+    onboardingCompleted: boolean; dailyBellTime: string | null;
   };
   res.json({
     id: u.id,
@@ -193,7 +194,19 @@ router.get("/auth/me", (req, res) => {
     showPresence: u.showPresence,
     correspondenceImprintCompleted: u.correspondenceImprintCompleted ?? false,
     gatheringImprintCompleted: u.gatheringImprintCompleted ?? false,
+    onboardingCompleted: u.onboardingCompleted ?? false,
+    dailyBellTime: u.dailyBellTime ?? null,
   });
+});
+
+router.patch("/auth/me/onboarding", async (req, res): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = (req.user as { id: number }).id;
+  await db.update(usersTable).set({ onboardingCompleted: true } as Record<string, unknown>).where(eq(usersTable.id, userId));
+  if (req.user) {
+    (req.user as Record<string, unknown>).onboardingCompleted = true;
+  }
+  res.json({ ok: true });
 });
 
 router.patch("/auth/me/imprints", async (req, res): Promise<void> => {

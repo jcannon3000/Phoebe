@@ -83,6 +83,7 @@ import BetaClaimPage from "./pages/beta-claim";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
 import FeaturesDeck from "./pages/features-deck";
+import UserOnboarding from "./pages/user-onboarding";
 import BellPage from "./pages/bell";
 import FeedbackPage from "./pages/feedback";
 import MutedUsersPage from "./pages/muted-users";
@@ -141,6 +142,7 @@ function Router() {
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/beta/claim" component={BetaClaimPage} />
       <Route path="/learn" component={LearnPage} />
+      <Route path="/onboarding" component={UserOnboarding} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
       <Route path="/bell" component={BellPage} />

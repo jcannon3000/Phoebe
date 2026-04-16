@@ -21,6 +21,7 @@ export const usersTable = pgTable("users", {
   dailyBellTime: text("daily_bell_time"),           // HH:MM format, e.g. "07:00"
   timezone: text("timezone"),                        // IANA timezone, e.g. "America/New_York"
   bellCalendarEventId: text("bell_calendar_event_id"), // Google Calendar event ID for the daily bell
+  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

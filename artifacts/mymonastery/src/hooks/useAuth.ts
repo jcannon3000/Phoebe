@@ -9,6 +9,8 @@ export interface AuthUser {
   showPresence: boolean;
   correspondenceImprintCompleted: boolean;
   gatheringImprintCompleted: boolean;
+  onboardingCompleted: boolean;
+  dailyBellTime: string | null;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

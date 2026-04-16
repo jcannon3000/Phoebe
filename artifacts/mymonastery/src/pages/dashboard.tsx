@@ -1398,6 +1398,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
+    if (!authLoading && user && !user.onboardingCompleted) setLocation("/onboarding");
   }, [user, authLoading, setLocation]);
 
   if (authLoading || !user) return null;
