@@ -21,3 +21,4 @@ export * from "./bell_notifications";
 export * from "./feedback";
 export * from "./user_mutes";
 export * from "./fellows";
+export * from "./gratitude";

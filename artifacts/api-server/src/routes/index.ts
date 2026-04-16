@@ -19,6 +19,7 @@ import bellRouter from "./bell";
 import feedbackRouter from "./feedback";
 import mutesRouter from "./mutes";
 import fellowsRouter from "./fellows";
+import gratitudeRouter from "./gratitude";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(bellRouter);
 router.use(feedbackRouter);
 router.use(mutesRouter);
 router.use(fellowsRouter);
+router.use(gratitudeRouter);
 
 export default router;

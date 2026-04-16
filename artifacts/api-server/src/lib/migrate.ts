@@ -607,6 +607,26 @@ export async function migrate() {
       )
     `);
 
+    // ── Gratitude sharing ──────────────────────────────────────────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS gratitude_responses (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS gratitude_seen (
+        id SERIAL PRIMARY KEY,
+        gratitude_id INTEGER NOT NULL REFERENCES gratitude_responses(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_prayer_at TIMESTAMPTZ`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS gratitude_seen_unique ON gratitude_seen (gratitude_id, user_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

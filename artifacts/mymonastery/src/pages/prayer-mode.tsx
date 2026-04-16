@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
@@ -34,6 +34,75 @@ interface PrayerSlide {
   fullText?: string | null;
   intention?: string | null;
 }
+
+interface GratitudeResponse {
+  id: number;
+  text: string;
+  createdAt: string;
+  authorName: string;
+  authorEmail: string;
+  isNew: boolean;
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatGratitudeTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60_000);
+    const diffHr = Math.floor(diffMs / 3_600_000);
+
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHr < 2) return "1 hour ago";
+    if (diffHr < 12) return `${diffHr} hours ago`;
+
+    const isToday =
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear();
+    if (isToday) return "this morning";
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday =
+      d.getDate() === yesterday.getDate() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getFullYear() === yesterday.getFullYear();
+
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    if (isYesterday) return `yesterday at ${time}`;
+    return `${d.toLocaleDateString("en-US", { weekday: "short" })} at ${time}`;
+  } catch {
+    return "";
+  }
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+const AVATAR_COLORS = [
+  { bg: "rgba(46,107,64,0.15)", text: "#4a6e50" },
+  { bg: "rgba(193,127,36,0.15)", text: "#8a5a18" },
+  { bg: "rgba(212,137,106,0.15)", text: "#9a5a3a" },
+  { bg: "rgba(100,140,180,0.15)", text: "#5a7a9a" },
+  { bg: "rgba(160,120,180,0.15)", text: "#7a5a8a" },
+];
+
+function colorForName(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// ── Prayer Slide Content ────────────────────────────────────────────────────
 
 function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () => void }) {
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
@@ -135,6 +204,311 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
   );
 }
 
+// ── Gratitude Input Slide ───────────────────────────────────────────────────
+
+function GratitudeInputSlide({
+  onSubmit,
+  onSkip,
+}: {
+  onSubmit: (text: string) => void;
+  onSkip: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const wordCount = words.length;
+  const meetsMin = wordCount >= 5;
+  const atLimit = wordCount >= 50;
+  const overLimit = wordCount > 50;
+
+  const handleSubmit = async () => {
+    if (!meetsMin || overLimit || submitting) return;
+    setSubmitting(true);
+    onSubmit(text.trim());
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center text-center gap-6">
+      <p
+        className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+        style={{ color: "rgba(143,175,150,0.45)" }}
+      >
+        Gratitude
+      </p>
+
+      <p
+        className="text-[22px] leading-[1.5] font-medium italic"
+        style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+      >
+        What are you grateful for today?
+      </p>
+
+      <p className="text-sm" style={{ color: "#8FAF96", marginTop: "-8px" }}>
+        Share something with your garden.
+      </p>
+
+      {/* Text input area */}
+      <div className="w-full relative">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Today I'm grateful for..."
+          rows={4}
+          className="w-full resize-none rounded-2xl px-5 py-4 text-[15px] leading-relaxed focus:outline-none"
+          style={{
+            background: "rgba(46,107,64,0.10)",
+            border: `1px solid ${text.length > 0 ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            transition: "border-color 0.2s ease",
+          }}
+        />
+        {/* Word count indicator */}
+        <p
+          className="text-[13px] text-right mt-2"
+          style={{
+            color: overLimit
+              ? "#D9B44A"
+              : meetsMin
+                ? "rgba(143,175,150,0.45)"
+                : "rgba(143,175,150,0.35)",
+            transition: "color 0.2s ease",
+          }}
+        >
+          {!meetsMin
+            ? `${wordCount}/5 words minimum`
+            : atLimit
+              ? `${wordCount}/50 words`
+              : `${wordCount} words`}
+        </p>
+      </div>
+
+      {/* Share button */}
+      <button
+        onClick={handleSubmit}
+        disabled={!meetsMin || overLimit || submitting}
+        className="px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-all active:scale-[0.98]"
+        style={{
+          background: meetsMin && !overLimit ? "#2D5E3F" : "rgba(46,107,64,0.18)",
+          color: meetsMin && !overLimit ? "#F0EDE6" : "rgba(200,212,192,0.35)",
+          cursor: meetsMin && !overLimit ? "pointer" : "default",
+          transition: "background 0.3s ease, color 0.3s ease",
+        }}
+      >
+        {submitting ? "Sharing..." : "Share"}
+      </button>
+
+      {/* Skip option */}
+      <button
+        onClick={onSkip}
+        className="text-sm transition-opacity hover:opacity-70"
+        style={{ color: "rgba(143,175,150,0.35)" }}
+      >
+        Skip for today
+      </button>
+    </div>
+  );
+}
+
+// ── Gratitude Response Card ─────────────────────────────────────────────────
+
+function GratitudeCard({
+  authorName,
+  text,
+  createdAt,
+  isNew,
+}: {
+  authorName: string;
+  text: string;
+  createdAt: string;
+  isNew: boolean;
+}) {
+  const color = colorForName(authorName);
+  const timeLabel = formatGratitudeTime(createdAt);
+
+  return (
+    <div className="relative flex gap-3">
+      {/* New indicator dot */}
+      {isNew && (
+        <div
+          className="absolute -left-4 top-5 w-2 h-2 rounded-full"
+          style={{ background: "#C25B4E" }}
+        />
+      )}
+
+      {/* Avatar */}
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+        style={{ background: color.bg }}
+      >
+        <span className="text-[10px] font-bold" style={{ color: color.text }}>
+          {getInitials(authorName)}
+        </span>
+      </div>
+
+      {/* Card */}
+      <div
+        className="flex-1 rounded-xl"
+        style={{
+          background: "#0F2818",
+          border: "1px solid rgba(200,212,192,0.15)",
+          padding: "14px 16px",
+        }}
+      >
+        <div className="flex items-baseline justify-between gap-3" style={{ marginBottom: 4 }}>
+          <p
+            style={{
+              color: "#8FAF96",
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            {authorName.split(" ")[0]}
+          </p>
+          {timeLabel && (
+            <p
+              style={{
+                color: "rgba(143,175,150,0.55)",
+                fontSize: 10,
+                letterSpacing: "0.04em",
+                whiteSpace: "nowrap",
+                margin: 0,
+              }}
+            >
+              {timeLabel}
+            </p>
+          )}
+        </div>
+        <p
+          style={{
+            color: "#F0EDE6",
+            fontSize: 15,
+            lineHeight: 1.65,
+            fontFamily: "'Space Grotesk', sans-serif",
+            whiteSpace: "pre-wrap",
+            margin: 0,
+          }}
+        >
+          {text}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Gratitude Responses Slide ───────────────────────────────────────────────
+
+function GratitudeResponsesSlide({
+  responses,
+  totalCount,
+  onDone,
+  onMarkSeen,
+}: {
+  responses: GratitudeResponse[];
+  totalCount: number;
+  onDone: () => void;
+  onMarkSeen: (ids: number[]) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
+
+  // Mark responses as seen as user scrolls
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const newSeen: number[] = [];
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = Number(entry.target.getAttribute("data-gratitude-id"));
+            if (id && !seenIds.has(id)) {
+              newSeen.push(id);
+            }
+          }
+        });
+        if (newSeen.length > 0) {
+          setSeenIds((prev) => {
+            const next = new Set(prev);
+            newSeen.forEach((id) => next.add(id));
+            return next;
+          });
+          onMarkSeen(newSeen);
+        }
+      },
+      { root: el, threshold: 0.5 },
+    );
+
+    const cards = el.querySelectorAll("[data-gratitude-id]");
+    cards.forEach((card) => observer.observe(card));
+
+    return () => observer.disconnect();
+  }, [responses, seenIds, onMarkSeen]);
+
+  const hasResponses = responses.length > 0;
+
+  return (
+    <div className="w-full flex flex-col items-center gap-6" style={{ maxHeight: "100dvh" }}>
+      <p
+        className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+        style={{ color: "rgba(143,175,150,0.45)" }}
+      >
+        From Your Garden
+      </p>
+
+      <p
+        className="text-[18px] leading-[1.5] font-medium"
+        style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
+      >
+        {hasResponses ? "What your garden is grateful for" : ""}
+      </p>
+
+      {hasResponses ? (
+        <div
+          ref={scrollRef}
+          className="w-full space-y-3 overflow-y-auto pl-5 pr-1"
+          style={{ maxHeight: "calc(100dvh - 320px)" }}
+        >
+          {responses.map((r) => (
+            <div key={r.id} data-gratitude-id={r.id}>
+              <GratitudeCard
+                authorName={r.authorName}
+                text={r.text}
+                createdAt={r.createdAt}
+                isNew={r.isNew && !seenIds.has(r.id)}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-3 py-8">
+          <p className="text-sm" style={{ color: "#8FAF96", lineHeight: 1.6 }}>
+            No new responses since your last prayer.
+          </p>
+          <p className="text-sm" style={{ color: "rgba(143,175,150,0.4)" }}>
+            {totalCount > 0
+              ? `${totalCount} gratitude${totalCount === 1 ? "" : "s"} shared so far. Check back after your garden prays today.`
+              : "Check back after your garden prays today."}
+          </p>
+        </div>
+      )}
+
+      <button
+        onClick={onDone}
+        className="mt-4 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+      >
+        Done
+      </button>
+    </div>
+  );
+}
+
+// ── Main Prayer Mode Page ───────────────────────────────────────────────────
+
 export default function PrayerModePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -182,14 +556,54 @@ export default function PrayerModePage() {
   ];
 
   const [index, setIndex] = useState(0);
-  const [phase, setPhase] = useState<"prayer" | "closing">("prayer");
+  const [phase, setPhase] = useState<
+    "prayer" | "gratitude-input" | "gratitude-responses" | "closing"
+  >("prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
+
+  // Gratitude data
+  const [gratitudeResponses, setGratitudeResponses] = useState<GratitudeResponse[]>([]);
+  const [gratitudeTotalCount, setGratitudeTotalCount] = useState(0);
+  const [responsesLoaded, setResponsesLoaded] = useState(false);
+
+  // Fetch gratitude responses when entering the gratitude flow
+  const fetchGratitudeResponses = async () => {
+    try {
+      const data = await apiRequest("GET", "/api/gratitude/responses");
+      setGratitudeResponses(data.responses ?? []);
+      setGratitudeTotalCount(data.totalCount ?? 0);
+    } catch {
+      setGratitudeResponses([]);
+      setGratitudeTotalCount(0);
+    }
+    setResponsesLoaded(true);
+  };
+
+  // Submit gratitude
+  const submitGratitude = useMutation({
+    mutationFn: (text: string) => apiRequest("POST", "/api/gratitude", { text }),
+    onSuccess: () => {
+      transitionTo("gratitude-responses");
+    },
+  });
+
+  // Mark seen
+  const markSeen = useMutation({
+    mutationFn: (responseIds: number[]) =>
+      apiRequest("POST", "/api/gratitude/seen", { responseIds }),
+  });
+
+  // Complete prayer session (update last_prayer_at)
+  const completePrayer = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/gratitude/complete-prayer"),
+  });
 
   // Initialise phase once slides are loaded
   useEffect(() => {
     if (slides.length === 0 && momentsData && prayerRequests) {
-      setPhase("closing");
+      setPhase("gratitude-input");
+      fetchGratitudeResponses();
     }
   }, [slides.length, momentsData, prayerRequests]);
 
@@ -203,26 +617,38 @@ export default function PrayerModePage() {
     };
   }, []);
 
+  const transitionTo = (nextPhase: typeof phase) => {
+    setSlideVisible(false);
+    setTimeout(() => {
+      setPhase(nextPhase);
+      setSlideVisible(true);
+    }, 220);
+  };
+
   const advance = () => {
     setSlideVisible(false);
     setTimeout(() => {
       if (index < slides.length - 1) {
         setIndex((i) => i + 1);
       } else {
-        setPhase("closing");
+        // Prayer slides done → enter gratitude flow
+        setPhase("gratitude-input");
+        fetchGratitudeResponses();
       }
       setSlideVisible(true);
     }, 220);
   };
 
+  const handleGratitudeSubmit = (text: string) => {
+    submitGratitude.mutate(text);
+  };
+
+  const handleGratitudeSkip = () => {
+    transitionTo("gratitude-responses");
+  };
+
   const handleDone = async () => {
     // Log a check-in for every intercession the user has just prayed through
-    // — that's the whole point of the slideshow, so streaks and "last
-    // prayed" timestamps register on the practices. We send `isCheckin: true`
-    // (the field the backend actually reads; the old `loggingType: "checkin"`
-    // was silently ignored), and we log every intercession with tokens,
-    // not just ones whose window is currently "open". The post endpoint
-    // de-dupes per day, so this is safe to call even if they already prayed.
     const toLog = intercessions.filter(
       (m) => m.momentToken && m.myUserToken,
     );
@@ -233,6 +659,10 @@ export default function PrayerModePage() {
         }),
       ),
     );
+
+    // Update last_prayer_at for gratitude response filtering
+    completePrayer.mutate();
+
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
 
     // Fade out then navigate
@@ -256,7 +686,10 @@ export default function PrayerModePage() {
     >
       {/* Exit button */}
       <button
-        onClick={() => setLocation("/prayer-list")}
+        onClick={() => {
+          completePrayer.mutate();
+          setLocation("/prayer-list");
+        }}
         aria-label="Exit prayer mode"
         className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
         style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
@@ -275,6 +708,32 @@ export default function PrayerModePage() {
             style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.22s ease" }}
           >
             <SlideContent slide={slide} onAdvance={advance} />
+          </div>
+        )}
+
+        {phase === "gratitude-input" && (
+          <div
+            className="w-full"
+            style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.3s ease" }}
+          >
+            <GratitudeInputSlide
+              onSubmit={handleGratitudeSubmit}
+              onSkip={handleGratitudeSkip}
+            />
+          </div>
+        )}
+
+        {phase === "gratitude-responses" && responsesLoaded && (
+          <div
+            className="w-full"
+            style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.3s ease" }}
+          >
+            <GratitudeResponsesSlide
+              responses={gratitudeResponses}
+              totalCount={gratitudeTotalCount}
+              onDone={handleDone}
+              onMarkSeen={(ids) => markSeen.mutate(ids)}
+            />
           </div>
         )}
 
