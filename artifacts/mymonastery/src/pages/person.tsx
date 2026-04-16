@@ -8,6 +8,7 @@ import { Layout } from "@/components/layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Settings } from "lucide-react";
+import { PrayForThemButton } from "@/components/pray-for-them";
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -387,6 +388,14 @@ export default function PersonProfile() {
             </div>
           )}
         </motion.div>
+
+        {/* ── Pray for them (private, directed prayer) ───────────────────── */}
+        {(person as any).userId && !(person as any).isMuted && (
+          <PrayForThemButton
+            recipientUserId={(person as any).userId as number}
+            recipientName={person.name}
+          />
+        )}
 
         {/* ── Prayer Request ──────────────────────────────────────────────── */}
         {prayer && (

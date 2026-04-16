@@ -20,6 +20,7 @@ import feedbackRouter from "./feedback";
 import mutesRouter from "./mutes";
 import fellowsRouter from "./fellows";
 import gratitudeRouter from "./gratitude";
+import prayersForRouter from "./prayers-for";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(feedbackRouter);
 router.use(mutesRouter);
 router.use(fellowsRouter);
 router.use(gratitudeRouter);
+router.use(prayersForRouter);
 
 export default router;

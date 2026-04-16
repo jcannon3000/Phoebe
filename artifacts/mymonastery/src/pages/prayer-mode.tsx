@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
+import type { MyActivePrayerFor } from "@/components/pray-for-them";
 
 type Moment = {
   id: number;
@@ -29,15 +30,151 @@ interface PrayerRequest {
 }
 
 interface PrayerSlide {
-  kind: "intercession" | "request";
+  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired";
   text: string;
   attribution: string;
   fullText?: string | null;
   intention?: string | null;
+  // prayer-for specific
+  prayerForId?: number;
+  recipientName?: string;
+  recipientAvatarUrl?: string | null;
+  dayLabel?: string;
 }
 
-function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () => void }) {
+function SlideContent({
+  slide,
+  onAdvance,
+  onRenew,
+  onEnd,
+}: {
+  slide: PrayerSlide;
+  onAdvance: () => void;
+  onRenew: (id: number, days: 3 | 7) => void;
+  onEnd: (id: number) => void;
+}) {
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
+
+  // ── Expired-prayer renewal prompt — shown instead of a normal slide ──────
+  if (slide.kind === "prayer-for-expired" && slide.prayerForId != null) {
+    return (
+      <div className="w-full flex flex-col items-center text-center gap-5">
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          Prayer ended
+        </p>
+        <p
+          className="text-[22px] leading-[1.5] font-medium italic"
+          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+        >
+          Your prayer for {slide.recipientName} has ended.
+        </p>
+        <div className="flex flex-col gap-3 w-full max-w-xs mt-2">
+          <button
+            onClick={() => onRenew(slide.prayerForId!, 7)}
+            className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            Pray for another 7 days
+          </button>
+          <button
+            onClick={() => onEnd(slide.prayerForId!)}
+            className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+            style={{
+              background: "rgba(200,212,192,0.06)",
+              border: "1px solid rgba(46,107,64,0.25)",
+              color: "#8FAF96",
+            }}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Active "prayer for someone" slide ───────────────────────────────────
+  if (slide.kind === "prayer-for") {
+    return (
+      <div className="w-full flex flex-col items-center text-center gap-5">
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          Praying for
+        </p>
+        {slide.recipientAvatarUrl ? (
+          <img
+            src={slide.recipientAvatarUrl}
+            alt={slide.recipientName}
+            className="w-16 h-16 rounded-full object-cover"
+            style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+          />
+        ) : (
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold"
+            style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+          >
+            {(slide.recipientName ?? "")
+              .split(" ")
+              .slice(0, 2)
+              .map(w => w[0]?.toUpperCase() ?? "")
+              .join("")}
+          </div>
+        )}
+        <p
+          className="text-[22px] leading-[1.4] font-medium"
+          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+        >
+          {slide.recipientName}
+        </p>
+
+        {slide.fullText && (
+          <div
+            className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
+            style={{
+              background: "rgba(46,107,64,0.12)",
+              border: "1px solid rgba(46,107,64,0.15)",
+            }}
+          >
+            <p
+              className="text-[13px] leading-[1.85] italic whitespace-pre-wrap"
+              style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
+            >
+              {slide.fullText}
+            </p>
+          </div>
+        )}
+
+        <p
+          className="text-[12px] italic"
+          style={{ color: "rgba(143,175,150,0.55)" }}
+        >
+          Hold {slide.recipientName?.split(" ")[0]} in prayer today.
+        </p>
+
+        {slide.dayLabel && (
+          <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.35)" }}>
+            {slide.dayLabel}
+          </p>
+        )}
+
+        <button
+          onClick={onAdvance}
+          className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-80 active:scale-[0.98]"
+          style={{
+            background: "rgba(46,107,64,0.28)",
+            border: "1px solid rgba(46,107,64,0.5)",
+            color: "#C8D4C0",
+          }}
+        >
+          Amen →
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col items-center text-center gap-5">
@@ -153,6 +290,22 @@ export default function PrayerModePage() {
     enabled: !!user,
   });
 
+  const { data: myPrayersFor = [] } = useQuery<MyActivePrayerFor[]>({
+    queryKey: ["/api/prayers-for/mine"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
+    enabled: !!user,
+  });
+
+  const renewMutation = useMutation({
+    mutationFn: ({ id, days }: { id: number; days: 3 | 7 }) =>
+      apiRequest("POST", `/api/prayers-for/${id}/renew`, { durationDays: days }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] }),
+  });
+  const endMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/prayers-for/${id}/end`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] }),
+  });
+
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
@@ -160,6 +313,11 @@ export default function PrayerModePage() {
   const intercessions = (momentsData?.moments ?? []).filter(
     (m) => m.templateType === "intercession" && m.windowOpen,
   );
+
+  // Split "pray for someone" records: active ones get normal slides, expired
+  // ones get a renewal prompt at the end of the run.
+  const activePrayersFor = myPrayersFor.filter(p => !p.expired);
+  const expiredPrayersFor = myPrayersFor.filter(p => p.expired);
 
   const slides: PrayerSlide[] = [
     ...intercessions.map((m) => {
@@ -186,13 +344,39 @@ export default function PrayerModePage() {
         attribution: attributionLabel ? `with ${attributionLabel}` : "",
       };
     }),
+    ...activePrayersFor.map((p): PrayerSlide => {
+      const started = new Date(p.startedAt).getTime();
+      const day = Math.min(
+        p.durationDays,
+        Math.max(1, Math.ceil((Date.now() - started) / (1000 * 60 * 60 * 24))),
+      );
+      return {
+        kind: "prayer-for",
+        text: p.recipientName,
+        attribution: "",
+        fullText: p.prayerText,
+        prayerForId: p.id,
+        recipientName: p.recipientName,
+        recipientAvatarUrl: p.recipientAvatarUrl,
+        dayLabel: `Day ${day} of ${p.durationDays}`,
+      };
+    }),
     ...prayerRequests
       .filter((r) => !r.isAnswered)
-      .map((r) => ({
-        kind: "request" as const,
+      .map((r): PrayerSlide => ({
+        kind: "request",
         text: r.body,
         attribution: r.ownerName ? `from ${r.ownerName}` : "from someone",
       })),
+    // Renewal prompts come last so the user prays through everything first.
+    ...expiredPrayersFor.map((p): PrayerSlide => ({
+      kind: "prayer-for-expired",
+      text: p.recipientName,
+      attribution: "",
+      prayerForId: p.id,
+      recipientName: p.recipientName,
+      recipientAvatarUrl: p.recipientAvatarUrl,
+    })),
   ];
 
   const [index, setIndex] = useState(0);
@@ -202,10 +386,10 @@ export default function PrayerModePage() {
 
   // Initialise phase once slides are loaded
   useEffect(() => {
-    if (slides.length === 0 && momentsData && prayerRequests) {
+    if (slides.length === 0 && momentsData && prayerRequests && myPrayersFor) {
       setPhase("closing");
     }
-  }, [slides.length, momentsData, prayerRequests]);
+  }, [slides.length, momentsData, prayerRequests, myPrayersFor]);
 
   // Fade in on mount; prevent body scroll; match Safari chrome to slide bg
   // so the top status-bar area and the bottom home-indicator area both
@@ -301,7 +485,18 @@ export default function PrayerModePage() {
             className="w-full"
             style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.22s ease" }}
           >
-            <SlideContent slide={slide} onAdvance={advance} />
+            <SlideContent
+              slide={slide}
+              onAdvance={advance}
+              onRenew={(id, days) => {
+                renewMutation.mutate({ id, days });
+                advance();
+              }}
+              onEnd={(id) => {
+                endMutation.mutate(id);
+                advance();
+              }}
+            />
           </div>
         )}
 

@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { Plus, X, ChevronRight } from "lucide-react";
+import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 
 function initials(name: string) {
   return name
@@ -111,7 +112,17 @@ function RotatingLine({ lines }: { lines: string[] }) {
 
 /* ── Person card ─────────────────────────────────────────────────────── */
 
-function PersonCard({ person, isPresent }: { person: PersonSummary; isPresent: boolean }) {
+function PersonCard({
+  person,
+  isPresent,
+  iPrayFor,
+  prayForMe,
+}: {
+  person: PersonSummary;
+  isPresent: boolean;
+  iPrayFor: boolean;
+  prayForMe: boolean;
+}) {
   const color = colorFor(person.email);
 
   // Build rotating subtitle lines
@@ -164,6 +175,22 @@ function PersonCard({ person, isPresent }: { person: PersonSummary; isPresent: b
                   <span
                     className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: "#5C7A5F" }}
+                  />
+                )}
+                {iPrayFor && (
+                  <span
+                    title="You're praying for them"
+                    className="text-[11px] flex-shrink-0"
+                    style={{ opacity: 0.75 }}
+                  >
+                    🙏
+                  </span>
+                )}
+                {prayForMe && (
+                  <span
+                    title={`${person.name.split(" ")[0]} is praying for you`}
+                    className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: "#C19A3A", boxShadow: "0 0 6px rgba(193,154,58,0.6)" }}
                   />
                 )}
               </div>
@@ -592,6 +619,26 @@ export default function People() {
   const { presentUsers } = useGardenSocket(user, gardenEmails, emptyMomentIds);
   const presentEmails = useMemo(() => new Set(presentUsers.map(u => u.email)), [presentUsers]);
 
+  // Subtle "pray for" indicators — both directions. Keyed by lowercase email.
+  const { data: iPrayFor = [] } = useQuery<MyActivePrayerFor[]>({
+    queryKey: ["/api/prayers-for/mine"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
+    enabled: !!user,
+  });
+  const { data: prayForMe = [] } = useQuery<PrayerForMe[]>({
+    queryKey: ["/api/prayers-for/for-me"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
+    enabled: !!user,
+  });
+  const iPrayForEmails = useMemo(
+    () => new Set(iPrayFor.filter(p => !p.expired).map(p => p.recipientEmail.toLowerCase())),
+    [iPrayFor],
+  );
+  const prayForMeEmails = useMemo(
+    () => new Set(prayForMe.map(p => p.prayerEmail.toLowerCase())),
+    [prayForMe],
+  );
+
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
@@ -664,6 +711,8 @@ export default function People() {
                   <PersonCard
                     person={person}
                     isPresent={presentEmails.has(person.email)}
+                    iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
+                    prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
                   />
                 </div>
               );

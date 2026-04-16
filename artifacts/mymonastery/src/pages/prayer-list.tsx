@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
+import type { PrayerForMe } from "@/components/pray-for-them";
 
 type Moment = {
   id: number;
@@ -57,6 +58,12 @@ export default function PrayerListPage() {
   const { data: momentsData } = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
+    enabled: !!user,
+  });
+
+  const { data: prayersForMe = [] } = useQuery<PrayerForMe[]>({
+    queryKey: ["/api/prayers-for/for-me"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
     enabled: !!user,
   });
 
@@ -205,7 +212,74 @@ export default function PrayerListPage() {
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 
         <PrayerSection />
+
+        {/* "Praying for you" — a quiet gift at the bottom of the page.
+             Only appears when someone is currently praying for the user. */}
+        {prayersForMe.length > 0 && (
+          <div className="mt-10">
+            <h2
+              className="text-2xl font-bold mb-4"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              praying for you 🌿
+            </h2>
+            <div className="space-y-2">
+              {prayersForMe.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3"
+                  style={{
+                    background: "rgba(46,107,64,0.08)",
+                    border: "1px solid rgba(46,107,64,0.2)",
+                  }}
+                >
+                  {p.prayerAvatarUrl ? (
+                    <img
+                      src={p.prayerAvatarUrl}
+                      alt={p.prayerName}
+                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                    />
+                  ) : (
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                    >
+                      {p.prayerName
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((w) => w[0]?.toUpperCase() ?? "")
+                        .join("")}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
+                      {p.prayerName}
+                    </p>
+                    <p className="text-xs" style={{ color: "#8FAF96" }}>
+                      {formatPrayingSince(p.startedAt)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
+}
+
+// Returns "Since Tuesday" for recent, otherwise "N days".
+function formatPrayingSince(iso: string): string {
+  const then = new Date(iso);
+  if (!Number.isFinite(then.getTime())) return "";
+  const days = Math.floor((Date.now() - then.getTime()) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return "Since today";
+  if (days === 1) return "Since yesterday";
+  if (days < 7) {
+    const dayName = then.toLocaleDateString(undefined, { weekday: "long" });
+    return `Since ${dayName}`;
+  }
+  return `${days} days`;
 }

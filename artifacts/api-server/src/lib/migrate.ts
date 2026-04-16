@@ -643,6 +643,23 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_prayer_at TIMESTAMPTZ`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS gratitude_seen_unique ON gratitude_seen (gratitude_id, user_id)`);
 
+    // ── prayers_for — private, directed prayers one user holds for another
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayers_for (
+        id SERIAL PRIMARY KEY,
+        prayer_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        prayer_text TEXT NOT NULL,
+        duration_days INTEGER NOT NULL,
+        started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        acknowledged_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS prayers_for_prayer_user ON prayers_for (prayer_user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS prayers_for_recipient ON prayers_for (recipient_user_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
