@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Users } from "lucide-react";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -88,7 +88,19 @@ export default function CommunitySettingsPage() {
         <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: FONT }}>
           Community Settings
         </h1>
-        <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>Edit details for {group.name}.</p>
+        <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>Edit details for {group.name}.</p>
+
+        <button
+          onClick={() => setLocation(`/communities/${slug}?tab=members`)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-6 transition-opacity hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
+        >
+          <span className="flex items-center gap-2.5">
+            <Users size={15} style={{ color: "#A8C5A0" }} />
+            <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Edit Members</span>
+          </span>
+          <span className="text-sm" style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
+        </button>
 
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 

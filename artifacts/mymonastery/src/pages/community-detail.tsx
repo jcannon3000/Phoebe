@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useLocation, Link } from "wouter";
+import { useParams, useLocation, useSearch, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 // Communities are now available to all users
@@ -37,7 +37,15 @@ export default function CommunityDetailPage() {
   const communitiesEnabled = true;
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<"prayer" | "practices" | "gatherings" | "announcements" | "members">("prayer");
+  // Allow deep-linking to a specific tab via `?tab=members` etc. — lets
+  // Community Settings "Edit Members" drop the viewer straight on the list.
+  const search = useSearch();
+  const initialTab = (() => {
+    const t = new URLSearchParams(search).get("tab");
+    return (["prayer", "practices", "gatherings", "announcements", "members"] as const)
+      .find((k) => k === t) ?? "prayer";
+  })();
+  const [activeTab, setActiveTab] = useState<"prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
