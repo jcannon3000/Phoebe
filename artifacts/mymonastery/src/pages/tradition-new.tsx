@@ -57,6 +57,18 @@ export default function TraditionNew() {
   });
   const connections = connectionsData?.connections ?? [];
 
+  // Only group admins can invite brand-new emails into a gathering. Regular
+  // members are limited to picking from their existing fellowship — they can't
+  // rope in outsiders without an admin's sign-off.
+  const { data: groupsData } = useQuery<{
+    groups: Array<{ id: number; name: string; myRole: string }>;
+  }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: step === 2,
+  });
+  const canInviteNewPeople = (groupsData?.groups ?? []).some((g) => g.myRole === "admin");
+
   function togglePerson(person: { name: string; email: string }) {
     setSelectedPeople((prev) =>
       prev.some((p) => p.email === person.email)
@@ -249,6 +261,19 @@ export default function TraditionNew() {
                 />
               </div>
 
+              {/* Non-admin with no fellows yet — nothing to invite, no new
+                  emails allowed. Explain rather than showing a blank step. */}
+              {!canInviteNewPeople && connections.length === 0 && (
+                <div
+                  className="mb-5 rounded-xl px-4 py-5 text-sm"
+                  style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)", color: "#8FAF96" }}
+                >
+                  You don't have anyone in your fellowship yet. Connect with
+                  people through a group or a shared practice first, then come
+                  back to invite them.
+                </div>
+              )}
+
               {/* Existing connections */}
               {connections.length > 0 && (
                 <div className="mb-5">
@@ -294,46 +319,50 @@ export default function TraditionNew() {
                 </div>
               )}
 
-              {/* New people */}
-              <div className="mb-5">
-                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#8FAF96" }}>
-                  {connections.length > 0 ? "Or invite someone new" : "Who's coming?"}
-                </p>
-                <div className="space-y-4">
-                  {newPeople.map((entry, i) => (
-                    <div key={i}>
-                      <div className="flex items-center gap-2 mb-2">
+              {/* New people — admins only. Regular members pick from
+                  their fellowship above; inviting outsiders requires an
+                  admin role in at least one group. */}
+              {canInviteNewPeople && (
+                <div className="mb-5">
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#8FAF96" }}>
+                    {connections.length > 0 ? "Or invite someone new" : "Who's coming?"}
+                  </p>
+                  <div className="space-y-4">
+                    {newPeople.map((entry, i) => (
+                      <div key={i}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <input
+                            type="text"
+                            value={entry.name}
+                            onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], name: e.target.value }; return c; })}
+                            placeholder="Name (optional)"
+                            className="flex-1 px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                            style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
+                          />
+                          {newPeople.length > 1 && (
+                            <button onClick={() => setNewPeople((p) => p.filter((_, j) => j !== i))} className="text-lg px-1" style={{ color: "#8FAF96" }}>×</button>
+                          )}
+                        </div>
                         <input
-                          type="text"
-                          value={entry.name}
-                          onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], name: e.target.value }; return c; })}
-                          placeholder="Name (optional)"
-                          className="flex-1 px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                          type="email"
+                          value={entry.email}
+                          onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], email: e.target.value }; return c; })}
+                          placeholder="Email address"
+                          className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
                           style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
                         />
-                        {newPeople.length > 1 && (
-                          <button onClick={() => setNewPeople((p) => p.filter((_, j) => j !== i))} className="text-lg px-1" style={{ color: "#8FAF96" }}>×</button>
-                        )}
                       </div>
-                      <input
-                        type="email"
-                        value={entry.email}
-                        onChange={(e) => setNewPeople((p) => { const c = [...p]; c[i] = { ...c[i], email: e.target.value }; return c; })}
-                        placeholder="Email address"
-                        className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
-                      />
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => setNewPeople((p) => [...p, { name: "", email: "" }])}
-                    className="text-sm font-medium"
-                    style={{ color: "#C8D4C0" }}
-                  >
-                    + Add another person
-                  </button>
+                    ))}
+                    <button
+                      onClick={() => setNewPeople((p) => [...p, { name: "", email: "" }])}
+                      className="text-sm font-medium"
+                      style={{ color: "#C8D4C0" }}
+                    >
+                      + Add another person
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
 
