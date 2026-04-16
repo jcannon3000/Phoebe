@@ -588,8 +588,18 @@ export default function PrayerModePage() {
 
   // Submit gratitude
   const submitGratitude = useMutation({
-    mutationFn: (text: string) => apiRequest("POST", "/api/gratitude", { text }),
+    mutationFn: async (text: string) => {
+      await apiRequest("POST", "/api/gratitude", { text });
+      // Refresh responses after submitting so the responses slide is ready
+      await fetchGratitudeResponses();
+    },
     onSuccess: () => {
+      transitionTo("gratitude-responses");
+    },
+    onError: (err) => {
+      console.error("Gratitude submit failed:", err);
+      // Still move forward — don't strand the user on the input slide
+      setResponsesLoaded(true);
       transitionTo("gratitude-responses");
     },
   });
