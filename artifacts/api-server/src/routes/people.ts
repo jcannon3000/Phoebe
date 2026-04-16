@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, or, sql, inArray, and, isNull, ne } from "drizzle-orm";
+import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
 import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
@@ -504,9 +504,10 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     ? new Date(Math.min(...sharedRituals.map(r => r.createdAt.getTime()))).toISOString()
     : null;
 
-  // Fetch active prayer request for this person. Prayer requests are
-  // retained until the owner releases/answers/deletes them — we no longer
-  // hide them automatically after expiresAt.
+  // Fetch active prayer request for this person. On another person's
+  // profile we only surface requests that are still current — expired
+  // (past expiresAt, not renewed) requests drop off until the owner
+  // renews them from their own dashboard.
   let activePrayerRequest: { id: number; body: string; createdAt: string; expiresAt: string | null } | null = null;
 
   // Check if the viewing user has muted this person
@@ -535,6 +536,10 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         eq(prayerRequestsTable.ownerId, personUser.id),
         eq(prayerRequestsTable.isAnswered, false),
         isNull(prayerRequestsTable.closedAt),
+        or(
+          isNull(prayerRequestsTable.expiresAt),
+          gt(prayerRequestsTable.expiresAt, new Date()),
+        ),
       )
     ).orderBy(desc(prayerRequestsTable.createdAt)).limit(1);
     if (req) {

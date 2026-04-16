@@ -663,27 +663,6 @@ export default function PersonProfile() {
               </>
             )}
 
-            {/* Communities */}
-            {sharedGroups.length > 0 && (
-              <>
-                <SectionHeader label="Communities" />
-                <div className="space-y-3">
-                  {sharedGroups.map(group => (
-                    <BarCard
-                      key={group.id}
-                      href={`/communities/${group.slug}`}
-                      barColor={CATEGORY.communities.bar}
-                      borderColor={CATEGORY.communities.border}
-                    >
-                      <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
-                        {group.emoji ?? "🏛️"} {group.name}
-                      </p>
-                    </BarCard>
-                  ))}
-                </div>
-              </>
-            )}
-
             {/* CTA */}
             <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
               <Link

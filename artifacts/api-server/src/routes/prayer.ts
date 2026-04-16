@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, inArray, notInArray, and, isNull, or } from "drizzle-orm";
+import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
 import { db, prayerRequestsTable, prayerWordsTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, fellowsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -72,10 +72,15 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
 
   const now = new Date();
 
-  // Prayer requests are retained (not auto-filtered by expiry). They stay
-  // visible until the owner explicitly releases, answers, or deletes them.
-  // `expiresAt` is used only as a freshness marker — once past, the owner
-  // sees a "Renew" affordance they can tap to bump it forward three days.
+  // Prayer requests stay visible until the owner explicitly releases,
+  // answers, or deletes them. For other viewers, once `expiresAt` has
+  // passed and the owner hasn't renewed, the request drops off. The
+  // owner themself continues to see it so they can tap "Renew".
+  const freshOrMine = or(
+    eq(prayerRequestsTable.ownerId, sessionUserId),
+    isNull(prayerRequestsTable.expiresAt),
+    gt(prayerRequestsTable.expiresAt, new Date()),
+  );
   const requests = await db.select().from(prayerRequestsTable)
     .where(
       mutedIds.length > 0
@@ -83,10 +88,12 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
             inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
             isNull(prayerRequestsTable.closedAt),
             notInArray(prayerRequestsTable.ownerId, mutedIds),
+            freshOrMine,
           )
         : and(
             inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
             isNull(prayerRequestsTable.closedAt),
+            freshOrMine,
           )
     )
     .orderBy(desc(prayerRequestsTable.createdAt));
