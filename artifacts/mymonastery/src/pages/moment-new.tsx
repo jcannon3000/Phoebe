@@ -537,7 +537,13 @@ export default function MomentNew() {
   });
   const [communityAdminView] = useCommunityAdminToggle();
   const adminGroups = communityAdminView ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin") : [];
+  // Auto-select when the user is admin of exactly one community
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  useEffect(() => {
+    if (adminGroups.length === 1 && selectedGroupId === null) {
+      setSelectedGroupId(adminGroups[0].id);
+    }
+  }, [adminGroups, selectedGroupId]);
 
   // Step navigation
   const [step, setStep] = useState<StepId>("template");
@@ -957,7 +963,7 @@ export default function MomentNew() {
     }
     if (step === "commitment") return commitmentSessionsGoal !== null;
     if (step === "duration") return practiceDurationDays !== null;
-    if (step === "invite") return selectedGroupId !== null || invitedPeople.length > 0;
+    if (step === "invite") return selectedGroupId !== null;
     return false;
   };
 
@@ -1980,28 +1986,19 @@ export default function MomentNew() {
               {step === "invite" && (
                 <div className="space-y-5 flex-1">
                   <div>
-                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who will tend this practice with you? 🌿</h2>
+                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Choose a community 🌿</h2>
                     <p className="text-sm text-muted-foreground">
-                      {selectedGroupId ? "All group members will be added automatically." : "Add at least one person to begin."}
+                      {selectedGroupId ? "All community members will be added automatically." : "Select which community this practice belongs to."}
                     </p>
                   </div>
 
-                  {/* Group selector — only show if user is admin of at least one group */}
+                  {/* Community selector */}
                   {adminGroups.length > 0 && (
                     <div className="space-y-2">
                       <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>
-                        Create for a group
+                        Community
                       </label>
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => setSelectedGroupId(null)}
-                          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${!selectedGroupId ? "animate-turn-pulse" : ""}`}
-                          style={!selectedGroupId
-                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
-                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
-                        >
-                          Just me + people
-                        </button>
                         {adminGroups.map(g => (
                           <button
                             key={g.id}
@@ -2016,11 +2013,6 @@ export default function MomentNew() {
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {/* Manual invite — only when no group selected */}
-                  {!selectedGroupId && (
-                    <InviteStep type="practice" onPeopleChange={setInvitedPeople} />
                   )}
                 </div>
               )}
@@ -2392,18 +2384,10 @@ export default function MomentNew() {
                 </div>
               )}
               <button
-                onClick={() => {
-                  if (step === "invite" && !selectedGroupId && invitedPeople.length === 0) {
-                    setShowInviteDisabledMsg(true);
-                    return;
-                  }
-                  goNext();
-                }}
-                disabled={(step !== "invite" && !canNext()) || plantMutation.isPending || bcpPlantMutation.isPending}
+                onClick={() => goNext()}
+                disabled={!canNext() || plantMutation.isPending || bcpPlantMutation.isPending}
                 className={`w-full py-4 rounded-2xl text-base font-semibold transition-colors ${
-                  (step === "invite" && !selectedGroupId && invitedPeople.length === 0) || (!canNext() && step !== "invite")
-                    ? "cursor-not-allowed opacity-40"
-                    : ""
+                  !canNext() ? "cursor-not-allowed opacity-40" : ""
                 }`}
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
@@ -2413,12 +2397,8 @@ export default function MomentNew() {
                     ? "Plant this practice 🌿"
                     : step === "invite"
                       ? selectedGroupId
-                        ? `Plant for ${adminGroups.find(g => g.id === selectedGroupId)?.name ?? "group"} 🌿`
-                        : invitedPeople.length === 0
-                          ? "Plant this practice 🌿"
-                          : invitedPeople.length === 1
-                            ? `Plant this practice with ${invitedPeople[0].name || invitedPeople[0].email.split("@")[0]} 🌿`
-                            : `Plant this practice with ${invitedPeople.length} people 🌿`
+                        ? `Plant for ${adminGroups.find(g => g.id === selectedGroupId)?.name ?? "community"} 🌿`
+                        : "Select a community"
                       : "Continue →"}
               </button>
               {plantMutation.isError && (() => {

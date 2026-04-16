@@ -27,7 +27,7 @@ const stepVariants = {
   exit: { opacity: 0, x: -20 },
 };
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 0 | 1 | 2 | 3 | 4;
 
 export default function TraditionNew() {
   const [, setLocation] = useLocation();
@@ -35,9 +35,10 @@ export default function TraditionNew() {
   const qc = useQueryClient();
 
   const [imprintDone, setImprintDone] = useState(false);
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>(0);
   const [template, setTemplate] = useState("");
   const [name, setName] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedPeople, setSelectedPeople] = useState<{ name: string; email: string }[]>([]);
   const [newPeople, setNewPeople] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [rhythm, setRhythm] = useState("");
@@ -62,14 +63,23 @@ export default function TraditionNew() {
   // members are limited to picking from their existing fellowship — they can't
   // rope in outsiders without an admin's sign-off.
   const { data: groupsData } = useQuery<{
-    groups: Array<{ id: number; name: string; myRole: string }>;
+    groups: Array<{ id: number; name: string; slug: string; emoji: string | null; myRole: string }>;
   }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
-    enabled: step === 2,
+    enabled: !!user,
   });
   const [communityAdminView] = useCommunityAdminToggle();
-  const canInviteNewPeople = communityAdminView && (groupsData?.groups ?? []).some((g) => g.myRole === "admin");
+  const adminGroups = communityAdminView ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin") : [];
+  const canInviteNewPeople = adminGroups.length > 0;
+
+  // Auto-select and skip community step when admin of exactly one community
+  useEffect(() => {
+    if (adminGroups.length === 1 && selectedGroupId === null) {
+      setSelectedGroupId(adminGroups[0].id);
+      if (step === 0) setStep(1);
+    }
+  }, [adminGroups, selectedGroupId, step]);
 
   function togglePerson(person: { name: string; email: string }) {
     setSelectedPeople((prev) =>
@@ -188,14 +198,14 @@ export default function TraditionNew() {
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
-          onClick={() => step === 1 ? setLocation("/dashboard") : setStep((s) => (s - 1) as Step)}
+          onClick={() => step === 0 ? setLocation("/dashboard") : setStep((s) => (s - 1) as Step)}
           className="text-sm"
           style={{ color: "#8FAF96" }}
         >
-          ← {step === 1 ? "Dashboard" : "Back"}
+          ← {step === 0 ? "Dashboard" : "Back"}
         </button>
         <div className="flex-1 flex gap-1.5">
-          {[1, 2, 3, 4].map((s) => (
+          {[0, 1, 2, 3, 4].map((s) => (
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
@@ -207,6 +217,32 @@ export default function TraditionNew() {
 
       <div className="flex-1 px-6 pt-4 pb-24 max-w-lg mx-auto w-full">
         <AnimatePresence mode="wait">
+
+          {/* Step 0 — Choose community */}
+          {step === 0 && (
+            <motion.div key="s0" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                Choose a community 🌿
+              </h1>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>Which community is this gathering for?</p>
+              <div className="flex flex-col gap-3">
+                {adminGroups.map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => { setSelectedGroupId(g.id); setStep(1); }}
+                    className={`px-5 py-4 rounded-xl text-left transition-all ${selectedGroupId === g.id ? "animate-turn-pulse" : ""}`}
+                    style={selectedGroupId === g.id
+                      ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
+                      : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
+                    <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+                      {g.emoji ? `${g.emoji} ` : ""}{g.name}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Step 1 — What */}
           {step === 1 && (
