@@ -22,6 +22,7 @@ export type PrayerForMe = {
   id: number;
   startedAt: string;
   expiresAt: string;
+  prayerText: string;
   prayerUserId: number;
   prayerName: string;
   prayerEmail: string;
@@ -150,8 +151,8 @@ function PrayForThemModal({
               Write a prayer for {firstName}
             </h2>
             <p className="text-xs mb-5 leading-relaxed" style={{ color: "#8FAF96" }}>
-              This prayer is between you and {firstName}. {firstName} will know you're
-              holding them in prayer, but won't see what you wrote.
+              {firstName} will see this on their prayer list — a quiet note
+              that you're holding them in prayer.
             </p>
 
             <textarea

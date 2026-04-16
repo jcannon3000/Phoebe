@@ -223,43 +223,57 @@ export default function PrayerListPage() {
             >
               praying for you 🌿
             </h2>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {prayersForMe.map((p) => (
                 <div
                   key={p.id}
-                  className="flex items-center gap-3 rounded-xl px-4 py-3"
+                  className="rounded-xl px-4 py-3"
                   style={{
                     background: "rgba(46,107,64,0.08)",
                     border: "1px solid rgba(46,107,64,0.2)",
                   }}
                 >
-                  {p.prayerAvatarUrl ? (
-                    <img
-                      src={p.prayerAvatarUrl}
-                      alt={p.prayerName}
-                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                      style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-                    />
-                  ) : (
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
-                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                    >
-                      {p.prayerName
-                        .split(" ")
-                        .slice(0, 2)
-                        .map((w) => w[0]?.toUpperCase() ?? "")
-                        .join("")}
+                  <div className="flex items-center gap-3">
+                    {p.prayerAvatarUrl ? (
+                      <img
+                        src={p.prayerAvatarUrl}
+                        alt={p.prayerName}
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                        style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                        style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                      >
+                        {p.prayerName
+                          .split(" ")
+                          .slice(0, 2)
+                          .map((w) => w[0]?.toUpperCase() ?? "")
+                          .join("")}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
+                        {p.prayerName}
+                      </p>
+                      <p className="text-xs" style={{ color: "#8FAF96" }}>
+                        {formatPrayingSince(p.startedAt)}
+                      </p>
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
-                      {p.prayerName}
-                    </p>
-                    <p className="text-xs" style={{ color: "#8FAF96" }}>
-                      {formatPrayingSince(p.startedAt)}
-                    </p>
                   </div>
+                  {p.prayerText && (
+                    <p
+                      className="text-sm mt-3 leading-relaxed"
+                      style={{
+                        color: "#F0EDE6",
+                        fontFamily: "Playfair Display, Georgia, serif",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {p.prayerText}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

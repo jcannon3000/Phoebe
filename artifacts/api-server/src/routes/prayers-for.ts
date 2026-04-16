@@ -41,7 +41,8 @@ router.get("/prayers-for/mine", async (req, res): Promise<void> => {
 });
 
 // ─── GET /api/prayers-for/for-me ────────────────────────────────────────────
-// Active prayers others are currently offering for me. Never includes text.
+// Active prayers others are currently offering for me. Includes the prayer
+// text so the recipient can read it on their prayer list.
 router.get("/prayers-for/for-me", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -65,6 +66,7 @@ router.get("/prayers-for/for-me", async (req, res): Promise<void> => {
     id: prayersForTable.id,
     startedAt: prayersForTable.startedAt,
     expiresAt: prayersForTable.expiresAt,
+    prayerText: prayersForTable.prayerText,
     prayerUserId: prayersForTable.prayerUserId,
     prayerName: usersTable.name,
     prayerEmail: usersTable.email,
