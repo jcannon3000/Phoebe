@@ -181,9 +181,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               ) : (
                 <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
                   <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>No communities yet</p>
-                  <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
-                    Create one →
-                  </button>
+                  {rawIsAdmin && (
+                    <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
+                      Create one →
+                    </button>
+                  )}
                 </div>
               )}
             </div>

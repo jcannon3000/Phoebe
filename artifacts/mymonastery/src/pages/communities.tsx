@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus } from "lucide-react";
@@ -25,6 +26,8 @@ export default function CommunitiesPage() {
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
+  const { rawIsAdmin: isBuilder } = useBetaStatus();
+
   if (isLoading || !user) return null;
 
   const groups = groupsData?.groups ?? [];
@@ -45,12 +48,14 @@ export default function CommunitiesPage() {
                 Parishes, groups, and places that carry each other.
               </p>
             </div>
-            <Link href="/communities/new">
-              <span className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                <Plus size={14} /> New
-              </span>
-            </Link>
+            {isBuilder && (
+              <Link href="/communities/new">
+                <span className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                  <Plus size={14} /> New
+                </span>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -69,14 +74,16 @@ export default function CommunitiesPage() {
               No communities yet
             </p>
             <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>
-              Create your first community to get started.
+              {isBuilder ? "Create your first community to get started." : "You haven't joined any communities yet."}
             </p>
-            <Link href="/communities/new">
-              <span className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                <Plus size={16} /> Create a Community
-              </span>
-            </Link>
+            {isBuilder && (
+              <Link href="/communities/new">
+                <span className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl text-sm font-semibold"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                  <Plus size={16} /> Create a Community
+                </span>
+              </Link>
+            )}
           </div>
         ) : (
           <div className="space-y-2">

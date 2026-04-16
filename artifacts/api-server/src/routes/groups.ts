@@ -60,11 +60,16 @@ async function requireAdmin(groupSlug: string, userId: number) {
 
 // ─── Group CRUD ─────────────────────────────────────────────────────────────
 
-// POST /api/groups — create a group
+// POST /api/groups — create a group (builders only)
 router.post("/groups", async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    // Only builders (platform admins) can create groups
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Only builders can create groups" }); return;
+    }
 
     const schema = z.object({
       name: z.string().min(1).max(100),
