@@ -1108,6 +1108,11 @@ router.get("/moments", async (req, res): Promise<void> => {
         if (m.templateType === "intercession") {
           const reachedAt = (m as Record<string, unknown>).commitmentGoalReachedAt as Date | null;
           if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > oneDayMs) return false;
+          // Intercessions that already hit their goal before the stamping code was
+          // deployed have totalBlooms > 0 but no commitmentGoalReachedAt. Treat
+          // them as expired immediately — they're past their goal with no known
+          // completion time, so the grace period is forfeit.
+          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return false;
         }
         return true;
       });
@@ -3067,6 +3072,25 @@ router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
         .set({ state: "archived" })
         .where(inArray(sharedMomentsTable.id, expiredIds));
       console.info(`Cleanup: archived ${expiredIds.length} expired intercession(s) past grace period`);
+    }
+
+    // Also archive intercessions that hit their goal before the stamping code was
+    // deployed (totalBlooms > 0 but no commitmentGoalReachedAt). Grace period is
+    // forfeit since we don't know when they finished.
+    const legacyExpired = await db.select({ id: sharedMomentsTable.id })
+      .from(sharedMomentsTable)
+      .where(
+        and(
+          eq(sharedMomentsTable.templateType, "intercession"),
+          sql`goal_days > 0 AND total_blooms > 0 AND commitment_goal_reached_at IS NULL AND state != 'archived'`
+        )
+      );
+    if (legacyExpired.length > 0) {
+      const legacyIds = legacyExpired.map(m => m.id);
+      await db.update(sharedMomentsTable)
+        .set({ state: "archived" })
+        .where(inArray(sharedMomentsTable.id, legacyIds));
+      console.info(`Cleanup: archived ${legacyIds.length} legacy expired intercession(s) (pre-stamping)`);
     }
 
     // Find all archived practices
