@@ -18,6 +18,7 @@ type Moment = {
   windowOpen: boolean;
   myUserToken: string | null;
   momentToken: string | null;
+  group?: { id: number; name: string; slug: string; emoji: string | null } | null;
 };
 
 interface PrayerRequest {
@@ -39,7 +40,10 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
 
   return (
-    <div className="w-full flex flex-col items-center text-center gap-5">
+    <div
+      className="w-full flex flex-col items-center text-center gap-5 rounded-2xl border px-6 py-8 animate-turn-pulse-practices"
+      style={{ background: "rgba(46,107,64,0.04)" }}
+    >
       <p
         className="text-[10px] uppercase tracking-[0.18em] font-semibold"
         style={{ color: "rgba(143,175,150,0.45)" }}
@@ -161,17 +165,30 @@ export default function PrayerModePage() {
   );
 
   const slides: PrayerSlide[] = [
-    ...intercessions.map((m) => ({
-      kind: "intercession" as const,
-      text: m.intercessionTopic || m.name,
-      intention: m.intention || null,
-      fullText: m.intercessionFullText?.trim() || null,
-      attribution: m.members
-        .filter((p) => p.email !== user?.email)
-        .map((p) => p.name || p.email.split("@")[0])
-        .slice(0, 3)
-        .join(", "),
-    })).map((s) => ({ ...s, attribution: s.attribution ? `with ${s.attribution}` : "" })),
+    ...intercessions.map((m) => {
+      const title = m.intercessionTopic || m.name;
+      // For custom intercessions the user-entered `intention` often duplicates
+      // `name` / `intercessionTopic` — hide it when it's the same text.
+      const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+      const intentionSub =
+        m.intention && norm(m.intention) !== norm(title) ? m.intention : null;
+      // Prefer the group name over listing individual members when the practice
+      // is attached to a group.
+      const attributionLabel = m.group?.name
+        ? m.group.name
+        : m.members
+            .filter((p) => p.email !== user?.email)
+            .map((p) => p.name || p.email.split("@")[0])
+            .slice(0, 3)
+            .join(", ");
+      return {
+        kind: "intercession" as const,
+        text: title,
+        intention: intentionSub,
+        fullText: m.intercessionFullText?.trim() || null,
+        attribution: attributionLabel ? `with ${attributionLabel}` : "",
+      };
+    }),
     ...prayerRequests
       .filter((r) => !r.isAnswered)
       .map((r) => ({
@@ -194,15 +211,27 @@ export default function PrayerModePage() {
   }, [slides.length, momentsData, prayerRequests]);
 
   // Fade in on mount; prevent body scroll; match Safari chrome to slide bg
+  // so the top status-bar area and the bottom home-indicator area both
+  // paint `#0C1F12` instead of flashing the app's default green/black.
   useEffect(() => {
-    document.body.style.overflow = "hidden";
+    const SLIDE_BG = "#0C1F12";
+    const html = document.documentElement;
+    const body = document.body;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyBg = body.style.backgroundColor;
+    const prevHtmlBg = html.style.backgroundColor;
+    body.style.overflow = "hidden";
+    body.style.backgroundColor = SLIDE_BG;
+    html.style.backgroundColor = SLIDE_BG;
     const meta = document.querySelector('meta[name="theme-color"]');
-    const prev = meta?.getAttribute("content") ?? "#091A10";
-    meta?.setAttribute("content", "#0C1F12");
+    const prevMeta = meta?.getAttribute("content") ?? "#091A10";
+    meta?.setAttribute("content", SLIDE_BG);
     const t = setTimeout(() => setVisible(true), 30);
     return () => {
-      document.body.style.overflow = "";
-      meta?.setAttribute("content", prev);
+      body.style.overflow = prevBodyOverflow;
+      body.style.backgroundColor = prevBodyBg;
+      html.style.backgroundColor = prevHtmlBg;
+      meta?.setAttribute("content", prevMeta);
       clearTimeout(t);
     };
   }, []);
