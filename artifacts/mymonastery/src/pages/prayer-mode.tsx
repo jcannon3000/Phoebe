@@ -570,7 +570,7 @@ export default function PrayerModePage() {
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<
-    "prayer" | "gratitude-input" | "gratitude-responses" | "closing"
+    "prayer" | "closing" | "gratitude-input" | "gratitude-responses"
   >("prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
@@ -631,9 +631,8 @@ export default function PrayerModePage() {
   // Initialise phase once slides are loaded
   useEffect(() => {
     if (slides.length === 0 && momentsData && prayerRequests) {
-      fetchGratitudeResponses().then((alreadyShared) => {
-        setPhase(alreadyShared ? "gratitude-responses" : "gratitude-input");
-      });
+      setPhase("closing");
+      fetchGratitudeResponses();
     }
   }, [slides.length, momentsData, prayerRequests]);
 
@@ -661,11 +660,9 @@ export default function PrayerModePage() {
       if (index < slides.length - 1) {
         setIndex((i) => i + 1);
       } else {
-        // Prayer slides done → enter gratitude flow
-        // Skip input if already shared today
-        fetchGratitudeResponses().then((alreadyShared) => {
-          setPhase(alreadyShared ? "gratitude-responses" : "gratitude-input");
-        });
+        // Prayer slides done → show closing message, then gratitude
+        setPhase("closing");
+        fetchGratitudeResponses();
       }
       setSlideVisible(true);
     }, 220);
@@ -679,8 +676,9 @@ export default function PrayerModePage() {
     transitionTo("gratitude-responses");
   };
 
-  const handleDone = async () => {
-    // Log a check-in for every intercession the user has just prayed through
+  // Closing slide → gratitude flow
+  const handleClosingContinue = async () => {
+    // Log check-ins for intercessions
     const toLog = intercessions.filter(
       (m) => m.momentToken && m.myUserToken,
     );
@@ -691,15 +689,23 @@ export default function PrayerModePage() {
         }),
       ),
     );
-
-    // Update last_prayer_at for gratitude response filtering
-    completePrayer.mutate();
-
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
 
-    // Fade out then navigate
-    setVisible(false);
-    setTimeout(() => setLocation("/prayer-list"), 500);
+    // Transition to gratitude (skip input if already shared today)
+    const alreadyShared = sharedToday;
+    transitionTo(alreadyShared ? "gratitude-responses" : "gratitude-input");
+  };
+
+  // Gratitude done → straight to dashboard
+  const handleDone = () => {
+    // Update last_prayer_at for gratitude response filtering
+    completePrayer.mutate();
+    // Fade out the slide first, then the whole page
+    setSlideVisible(false);
+    setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => setLocation("/prayer-list"), 500);
+    }, 300);
   };
 
   if (authLoading || !user) return null;
@@ -731,7 +737,7 @@ export default function PrayerModePage() {
 
       {/* Content — flex column centered vertically in the full viewport height */}
       <div
-        className="flex flex-col items-center text-center px-8 py-20 w-full"
+        className="flex flex-col items-center text-center px-6 py-10 w-full"
         style={{ maxWidth: 560, margin: "0 auto", minHeight: "100dvh", justifyContent: "center" }}
       >
         {phase === "prayer" && slide && (
@@ -781,11 +787,11 @@ export default function PrayerModePage() {
               You have carried what your community is carrying. 🌿
             </p>
             <button
-              onClick={handleDone}
+              onClick={handleClosingContinue}
               className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{ background: "#2D5E3F", color: "#F0EDE6" }}
             >
-              Done
+              Continue
             </button>
           </div>
         )}
