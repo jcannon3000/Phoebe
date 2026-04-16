@@ -1312,21 +1312,23 @@ export default function MomentNew() {
 
         {/* Header + progress */}
         {step !== "template" && (
-          <div className="mb-8">
-            <button onClick={goBack} className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 mb-6 transition-colors">
-              ← {(step === "name" || step === "contemplative-duration" || step === "fasting-what" || step === "listening-what" || step === "daily-office-choice") ? "Templates" : "Previous"}
+          <div className="mb-6 flex items-center gap-4">
+            <button onClick={goBack} className="text-sm transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
+              ← {(step === "name" || step === "contemplative-duration" || step === "fasting-what" || step === "listening-what" || step === "daily-office-choice") ? "Templates" : "Back"}
             </button>
-            <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-[#5C7A5F] rounded-full"
-                animate={{ width: `${((stepIndex) / (totalSteps - 1)) * 100}%` }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-              />
+            <div className="flex-1 flex gap-1.5">
+              {Array.from({ length: Math.max(totalSteps, 1) }, (_, i) => (
+                <div
+                  key={i}
+                  className="h-1 flex-1 rounded-full transition-colors duration-300"
+                  style={{ background: i <= stepIndex ? "#2D5E3F" : "rgba(200,212,192,0.2)" }}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        <div className={step === "template" ? "flex flex-col" : `bg-card rounded-[2rem] p-5 md:p-10 shadow-[var(--shadow-warm-lg)] border min-h-[440px] max-h-[calc(100dvh-160px)] flex flex-col overflow-hidden`} style={step !== "template" ? { borderColor: "rgba(46,107,64,0.4)" } : undefined}>
+        <div className={step === "template" ? "flex flex-col" : "flex flex-col min-h-[calc(100dvh-160px)]"}>
           <div className="flex-1 overflow-y-auto min-h-0">
           <AnimatePresence mode="wait">
             <motion.div key={step} variants={sv} initial="initial" animate="animate" exit="exit"
@@ -2396,11 +2398,12 @@ export default function MomentNew() {
                   goNext();
                 }}
                 disabled={(step !== "invite" && !canNext()) || plantMutation.isPending || bcpPlantMutation.isPending}
-                className={`w-full py-4 rounded-2xl text-white text-base font-semibold transition-colors ${
+                className={`w-full py-4 rounded-2xl text-base font-semibold transition-colors ${
                   (step === "invite" && !selectedGroupId && invitedPeople.length === 0) || (!canNext() && step !== "invite")
-                    ? "bg-[#5C7A5F]/40 cursor-not-allowed"
-                    : "bg-[#5C7A5F] hover:bg-[#5a7a60]"
+                    ? "cursor-not-allowed opacity-40"
+                    : ""
                 }`}
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
                 {(plantMutation.isPending || bcpPlantMutation.isPending)
                   ? "Planting..."
