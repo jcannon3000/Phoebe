@@ -566,18 +566,24 @@ export default function PrayerModePage() {
   const [gratitudeResponses, setGratitudeResponses] = useState<GratitudeResponse[]>([]);
   const [gratitudeTotalCount, setGratitudeTotalCount] = useState(0);
   const [responsesLoaded, setResponsesLoaded] = useState(false);
+  const [sharedToday, setSharedToday] = useState(false);
 
-  // Fetch gratitude responses when entering the gratitude flow
-  const fetchGratitudeResponses = async () => {
+  // Fetch gratitude responses and check if already shared today.
+  // Returns true if the user already shared today (skip input).
+  const fetchGratitudeResponses = async (): Promise<boolean> => {
     try {
       const data = await apiRequest("GET", "/api/gratitude/responses");
       setGratitudeResponses(data.responses ?? []);
       setGratitudeTotalCount(data.totalCount ?? 0);
+      setSharedToday(data.sharedToday ?? false);
+      setResponsesLoaded(true);
+      return data.sharedToday ?? false;
     } catch {
       setGratitudeResponses([]);
       setGratitudeTotalCount(0);
+      setResponsesLoaded(true);
+      return false;
     }
-    setResponsesLoaded(true);
   };
 
   // Submit gratitude
@@ -602,8 +608,9 @@ export default function PrayerModePage() {
   // Initialise phase once slides are loaded
   useEffect(() => {
     if (slides.length === 0 && momentsData && prayerRequests) {
-      setPhase("gratitude-input");
-      fetchGratitudeResponses();
+      fetchGratitudeResponses().then((alreadyShared) => {
+        setPhase(alreadyShared ? "gratitude-responses" : "gratitude-input");
+      });
     }
   }, [slides.length, momentsData, prayerRequests]);
 
@@ -632,8 +639,10 @@ export default function PrayerModePage() {
         setIndex((i) => i + 1);
       } else {
         // Prayer slides done → enter gratitude flow
-        setPhase("gratitude-input");
-        fetchGratitudeResponses();
+        // Skip input if already shared today
+        fetchGratitudeResponses().then((alreadyShared) => {
+          setPhase(alreadyShared ? "gratitude-responses" : "gratitude-input");
+        });
       }
       setSlideVisible(true);
     }, 220);

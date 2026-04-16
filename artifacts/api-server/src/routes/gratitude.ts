@@ -83,6 +83,15 @@ router.get("/api/gratitude/responses", async (req, res) => {
       [user.id],
     );
 
+    // Check if the user already shared a gratitude today
+    const todayCheck = await pool.query(
+      `SELECT id FROM gratitude_responses
+       WHERE user_id = $1 AND created_at >= CURRENT_DATE
+       LIMIT 1`,
+      [user.id],
+    );
+    const sharedToday = todayCheck.rows.length > 0;
+
     return res.json({
       responses: responses.rows.map((r: any) => ({
         id: r.id,
@@ -93,6 +102,7 @@ router.get("/api/gratitude/responses", async (req, res) => {
         isNew: !r.seen,
       })),
       totalCount: countResult.rows[0]?.total ?? 0,
+      sharedToday,
     });
   } catch (err) {
     console.error("GET /api/gratitude/responses error:", err);
