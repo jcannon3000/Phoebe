@@ -297,6 +297,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     id: number; name: string; currentStreak: number; longestStreak: number;
     totalBlooms: number; frequency: string; templateType: string | null; createdAt: string;
   }> = [];
+  let pastSharedPractices: typeof sharedPractices = [];
   let sharedMomentIds: number[] = [];
 
   if (ownerMomentIds.length > 0) {
@@ -305,8 +306,6 @@ router.get("/people/:email", async (req, res): Promise<void> => {
       .where(eq(momentUserTokensTable.email, email));
     const personMomentIdSet = new Set(personTokenRows.map(t => t.momentId));
     sharedMomentIds = ownerMomentIds.filter(id => personMomentIdSet.has(id));
-  // Will be populated below
-  let pastSharedPractices: typeof sharedPractices = [];
 
     if (sharedMomentIds.length > 0) {
       const allMoments = await db.select({
@@ -356,8 +355,46 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     }
   }
 
-  if (sharedRituals.length === 0 && sharedPractices.length === 0 && pastSharedPractices.length === 0) {
-    res.status(404).json({ error: "Person not found in any of your traditions or practices" });
+  // Look up person user + fellow status + shared groups before the existence
+  // check, since a person can be in the viewer's world via garden/groups alone.
+  const [personUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
+
+  let isFellow = false;
+  if (personUser) {
+    const [fellowRow] = await db.select({ id: fellowsTable.id })
+      .from(fellowsTable)
+      .where(and(eq(fellowsTable.userId, ownerId), eq(fellowsTable.fellowUserId, personUser.id)));
+    isFellow = !!fellowRow;
+  }
+
+  // Find groups both users are members of
+  let sharedGroups: Array<{ id: number; name: string; slug: string; emoji: string | null }> = [];
+  const [ownerUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, ownerId));
+  if (ownerUser && personUser) {
+    const ownerMemberships = await db.select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(eq(groupMembersTable.email, owner?.email ?? ""));
+    const personMemberships = await db.select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(eq(groupMembersTable.email, email));
+    const ownerGroupIds = new Set(ownerMemberships.map(m => m.groupId));
+    const sharedGroupIds = personMemberships.map(m => m.groupId).filter(id => ownerGroupIds.has(id));
+    if (sharedGroupIds.length > 0) {
+      const groups = await db.select({ id: groupsTable.id, name: groupsTable.name, slug: groupsTable.slug, emoji: groupsTable.emoji })
+        .from(groupsTable)
+        .where(inArray(groupsTable.id, sharedGroupIds));
+      sharedGroups = groups;
+    }
+  }
+
+  if (
+    sharedRituals.length === 0 &&
+    sharedPractices.length === 0 &&
+    pastSharedPractices.length === 0 &&
+    sharedGroups.length === 0 &&
+    !isFellow
+  ) {
+    res.status(404).json({ error: "Person not found in any of your shared practices, gatherings, communities, or garden" });
     return;
   }
 
@@ -454,22 +491,15 @@ router.get("/people/:email", async (req, res): Promise<void> => {
   // retained until the owner releases/answers/deletes them — we no longer
   // hide them automatically after expiresAt.
   let activePrayerRequest: { id: number; body: string; createdAt: string; expiresAt: string | null } | null = null;
-  const [personUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
 
   // Check if the viewing user has muted this person
   let isMuted = false;
-  let isFellow = false;
   let avatarUrl: string | null = null;
   if (personUser) {
     const [muteRow] = await db.select({ id: userMutesTable.id })
       .from(userMutesTable)
       .where(and(eq(userMutesTable.muterId, ownerId), eq(userMutesTable.mutedUserId, personUser.id)));
     isMuted = !!muteRow;
-
-    const [fellowRow] = await db.select({ id: fellowsTable.id })
-      .from(fellowsTable)
-      .where(and(eq(fellowsTable.userId, ownerId), eq(fellowsTable.fellowUserId, personUser.id)));
-    isFellow = !!fellowRow;
 
     const [personData] = await db.select({ avatarUrl: usersTable.avatarUrl })
       .from(usersTable)
@@ -510,26 +540,6 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         expiresAt: req.expiresAt?.toISOString() ?? null,
         myWord,
       };
-    }
-  }
-
-  // Find groups both users are members of
-  let sharedGroups: Array<{ id: number; name: string; slug: string; emoji: string | null }> = [];
-  const [ownerUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, ownerId));
-  if (ownerUser && personUser) {
-    const ownerMemberships = await db.select({ groupId: groupMembersTable.groupId })
-      .from(groupMembersTable)
-      .where(eq(groupMembersTable.email, owner?.email ?? ""));
-    const personMemberships = await db.select({ groupId: groupMembersTable.groupId })
-      .from(groupMembersTable)
-      .where(eq(groupMembersTable.email, email));
-    const ownerGroupIds = new Set(ownerMemberships.map(m => m.groupId));
-    const sharedGroupIds = personMemberships.map(m => m.groupId).filter(id => ownerGroupIds.has(id));
-    if (sharedGroupIds.length > 0) {
-      const groups = await db.select({ id: groupsTable.id, name: groupsTable.name, slug: groupsTable.slug, emoji: groupsTable.emoji })
-        .from(groupsTable)
-        .where(inArray(groupsTable.id, sharedGroupIds));
-      sharedGroups = groups;
     }
   }
 
