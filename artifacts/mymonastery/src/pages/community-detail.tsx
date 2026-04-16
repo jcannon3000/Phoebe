@@ -30,6 +30,28 @@ type Announcement = {
   id: number; title: string | null; content: string; authorName: string; createdAt: string;
 };
 
+// Shape of the moments returned by /api/moments — we only consume the
+// fields we render on the community home feed. Keeps this page decoupled
+// from the dashboard's much larger internal Moment type.
+type CommunityMoment = {
+  id: number;
+  name: string;
+  templateType: string | null;
+  intention: string;
+  intercessionTopic?: string | null;
+  todayPostCount: number;
+  memberCount: number;
+  windowOpen: boolean;
+  myUserToken: string | null;
+  momentToken: string | null;
+  commitmentSessionsGoal?: number | null;
+  commitmentSessionsLogged?: number | null;
+  computedSessionsLogged?: number;
+  goalDays?: number | null;
+  group?: { id: number; name: string; slug: string; emoji: string | null } | null;
+  members: Array<{ name: string; email: string }>;
+};
+
 export default function CommunityDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
@@ -42,10 +64,10 @@ export default function CommunityDetailPage() {
   const search = useSearch();
   const initialTab = (() => {
     const t = new URLSearchParams(search).get("tab");
-    return (["prayer", "practices", "gatherings", "announcements", "members"] as const)
-      .find((k) => k === t) ?? "prayer";
+    return (["home", "prayer", "practices", "gatherings", "announcements", "members"] as const)
+      .find((k) => k === t) ?? "home";
   })();
-  const [activeTab, setActiveTab] = useState<"prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
+  const [activeTab, setActiveTab] = useState<"home" | "prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -87,7 +109,21 @@ export default function CommunityDetailPage() {
   const { data: announcementsData } = useQuery<{ announcements: Announcement[] }>({
     queryKey: ["/api/groups", slug, "announcements"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/announcements`),
-    enabled: !!user && !!slug && activeTab === "announcements",
+    enabled: !!user && !!slug && (activeTab === "announcements" || activeTab === "home"),
+  });
+
+  // Home-feed data: pull the rich moments list + this community's prayer
+  // requests so the front page can render a dashboard-style mix of
+  // intercessions, practices, and prayer requests — scoped to this group.
+  const { data: momentsData } = useQuery<{ moments: CommunityMoment[] }>({
+    queryKey: ["/api/moments"],
+    queryFn: () => apiRequest("GET", "/api/moments"),
+    enabled: !!user && activeTab === "home",
+  });
+  const { data: homePrayerData } = useQuery<{ requests: PrayerRequest[] }>({
+    queryKey: ["/api/groups", slug, "prayer-requests"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-requests`),
+    enabled: !!user && !!slug && activeTab === "home",
   });
 
   const { data: searchData } = useQuery<{ users: { id: number; name: string | null; email: string }[] }>({
@@ -151,6 +187,7 @@ export default function CommunityDetailPage() {
   const isAdmin = myRole === "admin" && communityAdminView;
 
   const tabs = [
+    { key: "home" as const, label: "Home", emoji: "🏡" },
     { key: "prayer" as const, label: "Prayer Wall", emoji: "🙏🏽" },
     { key: "practices" as const, label: "Practices", emoji: "🌿" },
     { key: "gatherings" as const, label: "Gatherings", emoji: "🤝🏽" },
@@ -328,6 +365,182 @@ export default function CommunityDetailPage() {
             ))}
           </div>
         </div>
+
+        {/* ─── Home ─── Dashboard-style feed filtered to this community. */}
+        {activeTab === "home" && (() => {
+          const communityMoments = (momentsData?.moments ?? []).filter(
+            (m) => m.group?.slug === slug,
+          );
+          const intercessions = communityMoments.filter((m) => m.templateType === "intercession");
+          const otherPractices = communityMoments.filter((m) => m.templateType !== "intercession");
+          const recentPrayers = (homePrayerData?.requests ?? []).slice(0, 3);
+          const recentAnnouncements = (announcementsData?.announcements ?? []).slice(0, 2);
+
+          const stripEmoji = (s: string) =>
+            // eslint-disable-next-line no-misleading-character-class
+            s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
+
+          const renderMomentCard = (m: CommunityMoment, emoji: string) => {
+            const otherMembers = m.members
+              .filter((p) => p.email !== user.email)
+              .map((p) => p.name || p.email.split("@")[0])
+              .slice(0, 3)
+              .join(", ");
+            const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
+            const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
+            const progressLabel = goal ? `${logged}/${goal} days` : null;
+            const href = (m.windowOpen && m.momentToken && m.myUserToken)
+              ? `/moment/${m.momentToken}/${m.myUserToken}?from=community`
+              : `/moments/${m.id}`;
+            const prayedToday = m.todayPostCount > 0;
+            const cardTitle = stripEmoji(m.intercessionTopic || m.intention || m.name);
+
+            return (
+              <Link key={m.id} href={href} className="block">
+                <div
+                  className="relative flex rounded-xl overflow-hidden"
+                  style={{
+                    background: "rgba(46,107,64,0.15)",
+                    border: `1px solid ${m.windowOpen && !prayedToday ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.25)"}`,
+                  }}
+                >
+                  <div className="w-1 flex-shrink-0" style={{ background: m.windowOpen ? "#2E6B40" : "rgba(46,107,64,0.3)" }} />
+                  <div className="flex-1 px-4 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                        {emoji} {cardTitle}
+                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {progressLabel && (
+                          <span className="text-[10px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+                            {progressLabel}
+                          </span>
+                        )}
+                        {m.windowOpen && !prayedToday && (
+                          <span className="text-[10px] font-semibold rounded-full px-2 py-0.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                            Pray now
+                          </span>
+                        )}
+                        {prayedToday && (
+                          <span className="text-[10px]" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
+                        )}
+                        {!m.windowOpen && !prayedToday && (
+                          <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>Not today</span>
+                        )}
+                      </div>
+                    </div>
+                    {otherMembers && (
+                      <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            );
+          };
+
+          const nothingYet =
+            intercessions.length === 0 &&
+            otherPractices.length === 0 &&
+            recentPrayers.length === 0 &&
+            recentAnnouncements.length === 0;
+
+          return (
+            <div className="space-y-6">
+              {/* Intercessions — the most prayed-through surface, shown first */}
+              {intercessions.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
+                    Intercessions
+                  </p>
+                  <div className="space-y-2">
+                    {intercessions.map((m) => renderMomentCard(m, "🙏🏽"))}
+                  </div>
+                </div>
+              )}
+
+              {/* Other practices — fasts, lectio, morning prayer, etc. */}
+              {otherPractices.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
+                    Practices
+                  </p>
+                  <div className="space-y-2">
+                    {otherPractices.map((m) => renderMomentCard(m, "🌿"))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent prayer requests — preview + deep link into Prayer Wall */}
+              {recentPrayers.length > 0 && (
+                <div>
+                  <div className="flex items-baseline justify-between mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
+                      Recent Prayers
+                    </p>
+                    <button
+                      onClick={() => setActiveTab("prayer")}
+                      className="text-[11px] font-medium transition-opacity hover:opacity-80"
+                      style={{ color: "#A8C5A0" }}
+                    >
+                      See all →
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {recentPrayers.map((r) => (
+                      <div key={r.id} className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
+                        <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
+                        <div className="flex-1 px-4 py-3">
+                          <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
+                            From {r.isAnonymous ? "Someone" : r.ownerName}
+                          </p>
+                          <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                            {r.body}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Announcements — a small pinned section */}
+              {recentAnnouncements.length > 0 && (
+                <div>
+                  <div className="flex items-baseline justify-between mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
+                      Announcements
+                    </p>
+                    <button
+                      onClick={() => setActiveTab("announcements")}
+                      className="text-[11px] font-medium transition-opacity hover:opacity-80"
+                      style={{ color: "#A8C5A0" }}
+                    >
+                      See all →
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {recentAnnouncements.map((a) => (
+                      <div key={a.id} className="rounded-xl px-4 py-3" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
+                        {a.title && (
+                          <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>{a.title}</p>
+                        )}
+                        <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#C8D4C0" }}>
+                          {a.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {nothingYet && (
+                <p className="text-sm text-center py-10" style={{ color: "rgba(143,175,150,0.5)" }}>
+                  Nothing here yet.{isAdmin ? " Start a practice, gathering, or announcement from the tabs above." : ""}
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ─── Prayer Wall ─── */}
         {activeTab === "prayer" && (
