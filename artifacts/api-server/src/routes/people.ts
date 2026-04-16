@@ -318,11 +318,28 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         frequency: sharedMomentsTable.frequency,
         templateType: sharedMomentsTable.templateType,
         state: sharedMomentsTable.state,
+        goalDays: sharedMomentsTable.goalDays,
+        commitmentGoalReachedAt: sharedMomentsTable.commitmentGoalReachedAt,
         createdAt: sharedMomentsTable.createdAt,
       }).from(sharedMomentsTable).where(inArray(sharedMomentsTable.id, sharedMomentIds));
 
-      const activeMoments = allMoments.filter(m => m.state !== "archived");
-      const archivedMoments = allMoments.filter(m => m.state === "archived");
+      // Mirror the filter used by the main moments list: intercessions that
+      // have passed their 1-day grace period after hitting their goal are
+      // treated as past, not active (see routes/moments.ts).
+      const now = Date.now();
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      const isExpiredIntercession = (m: typeof allMoments[number]) => {
+        if (m.templateType !== "intercession") return false;
+        const reachedAt = m.commitmentGoalReachedAt;
+        if (reachedAt && (now - new Date(reachedAt).getTime()) > oneDayMs) return true;
+        // Legacy intercessions that hit their goal before the stamping code
+        // was deployed: totalBlooms > 0 with no reachedAt — treat as expired.
+        if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return true;
+        return false;
+      };
+
+      const activeMoments = allMoments.filter(m => m.state !== "archived" && !isExpiredIntercession(m));
+      const archivedMoments = allMoments.filter(m => m.state === "archived" || isExpiredIntercession(m));
 
       // Narrow sharedMomentIds to only active practices so bloom/streak stats match
       sharedMomentIds = activeMoments.map(m => m.id);
