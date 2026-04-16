@@ -290,11 +290,17 @@ async function evaluateWindow(momentId: number, windowDate: string) {
         sessionsGoal > 0 &&
         newSessionsLogged >= sessionsGoal &&
         !prevReachedAt;
+      // For intercessions: stamp goal-reached when the streak hits goalDays,
+      // so the 1-day grace period logic can hide/archive it afterward.
+      const intercessionGoalHit =
+        moment.templateType === "intercession" &&
+        goalHit &&
+        !prevReachedAt;
       await db.update(sharedMomentsTable)
         .set({
           currentStreak: nextStreak, longestStreak: newLongest, totalBlooms: newBlooms, state: nextState,
           commitmentSessionsLogged: newSessionsLogged,
-          ...(justCrossedGoal ? { commitmentGoalReachedAt: new Date() } : {}),
+          ...((justCrossedGoal || intercessionGoalHit) ? { commitmentGoalReachedAt: new Date() } : {}),
         } as Record<string, unknown>)
         .where(eq(sharedMomentsTable.id, momentId));
     }
@@ -1091,9 +1097,20 @@ router.get("/moments", async (req, res): Promise<void> => {
     const momentIds = [...new Set(userTokenRows.map(t => t.momentId))];
     if (momentIds.length === 0) { res.json({ moments: [] }); return; }
 
+    const now = new Date();
+    const oneDayMs = 24 * 60 * 60 * 1000;
     const flatMoments = (await db.select().from(sharedMomentsTable)
       .where(inArray(sharedMomentsTable.id, momentIds)))
-      .filter(m => m.ritualId === null && m.state !== "archived");
+      .filter(m => {
+        if (m.ritualId !== null || m.state === "archived") return false;
+        // Intercessions get a 1-day grace period after hitting their goal.
+        // After that they're hidden (and auto-archived by the cleanup job).
+        if (m.templateType === "intercession") {
+          const reachedAt = (m as Record<string, unknown>).commitmentGoalReachedAt as Date | null;
+          if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > oneDayMs) return false;
+        }
+        return true;
+      });
 
     // If any practices are Lectio Divina, fetch the current Sunday's reading
     // once and reuse it across all of them.
@@ -3030,6 +3047,25 @@ router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
+    // Auto-archive intercessions whose 1-day grace period has expired
+    const graceCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const expiredIntercessions = await db.select({ id: sharedMomentsTable.id })
+      .from(sharedMomentsTable)
+      .where(
+        and(
+          eq(sharedMomentsTable.templateType, "intercession"),
+          sql`commitment_goal_reached_at IS NOT NULL AND commitment_goal_reached_at < ${graceCutoff.toISOString()}`,
+          sql`state != 'archived'`
+        )
+      );
+    if (expiredIntercessions.length > 0) {
+      const expiredIds = expiredIntercessions.map(m => m.id);
+      await db.update(sharedMomentsTable)
+        .set({ state: "archived" })
+        .where(inArray(sharedMomentsTable.id, expiredIds));
+      console.info(`Cleanup: archived ${expiredIds.length} expired intercession(s) past grace period`);
+    }
+
     // Find all archived practices
     const archivedMoments = await db.select({ id: sharedMomentsTable.id })
       .from(sharedMomentsTable)
