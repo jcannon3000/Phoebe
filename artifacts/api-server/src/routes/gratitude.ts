@@ -58,6 +58,8 @@ router.get("/api/gratitude/responses", async (req, res) => {
       ? lastPrayerAt
       : new Date(Date.now() - 24 * 60 * 60 * 1000);
 
+    // Include everyone's responses (including the user's own) so they can
+    // see what they just shared alongside the garden's gratitudes.
     const responses = await pool.query(
       `SELECT
         gr.id,
@@ -71,8 +73,7 @@ router.get("/api/gratitude/responses", async (req, res) => {
       FROM gratitude_responses gr
       JOIN users u ON u.id = gr.user_id
       LEFT JOIN gratitude_seen gs ON gs.gratitude_id = gr.id AND gs.user_id = $1
-      WHERE gr.user_id != $1
-        AND gr.created_at > $2
+      WHERE gr.created_at > $2
       ORDER BY gr.created_at DESC
       LIMIT 50`,
       [user.id, sinceDate],
@@ -80,8 +81,7 @@ router.get("/api/gratitude/responses", async (req, res) => {
 
     // Also get total count of all responses (for empty state messaging)
     const countResult = await pool.query(
-      `SELECT COUNT(*)::int AS total FROM gratitude_responses WHERE user_id != $1`,
-      [user.id],
+      `SELECT COUNT(*)::int AS total FROM gratitude_responses`,
     );
 
     // Check if the user already shared a gratitude today
@@ -100,7 +100,9 @@ router.get("/api/gratitude/responses", async (req, res) => {
         createdAt: r.created_at,
         authorName: r.author_name || r.author_email?.split("@")[0] || "Someone",
         authorEmail: r.author_email,
-        isNew: !r.seen,
+        avatarUrl: r.author_avatar_url || null,
+        isYou: r.user_id === user.id,
+        isNew: !r.seen && r.user_id !== user.id,
       })),
       totalCount: countResult.rows[0]?.total ?? 0,
       sharedToday,

@@ -42,6 +42,7 @@ interface GratitudeResponse {
   authorName: string;
   authorEmail: string;
   avatarUrl?: string | null;
+  isYou?: boolean;
   isNew: boolean;
 }
 
@@ -319,12 +320,14 @@ function GratitudeCard({
   text,
   createdAt,
   isNew,
+  isYou,
 }: {
   authorName: string;
   avatarUrl?: string | null;
   text: string;
   createdAt: string;
   isNew: boolean;
+  isYou?: boolean;
 }) {
   const color = colorForName(authorName);
   const timeLabel = formatGratitudeTime(createdAt);
@@ -332,7 +335,7 @@ function GratitudeCard({
   return (
     <div className="relative flex gap-3">
       {/* New indicator dot */}
-      {isNew && (
+      {isNew && !isYou && (
         <div
           className="absolute -left-4 top-5 w-2 h-2 rounded-full"
           style={{ background: "#C25B4E" }}
@@ -345,7 +348,7 @@ function GratitudeCard({
           src={avatarUrl}
           alt={authorName}
           className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5"
-          style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+          style={{ border: `1px solid ${isYou ? "rgba(111,175,133,0.35)" : "rgba(46,107,64,0.3)"}` }}
         />
       ) : (
         <div
@@ -362,22 +365,22 @@ function GratitudeCard({
       <div
         className="flex-1 rounded-xl"
         style={{
-          background: "#0F2818",
-          border: "1px solid rgba(200,212,192,0.15)",
+          background: isYou ? "rgba(111,175,133,0.08)" : "#0F2818",
+          border: `1px solid ${isYou ? "rgba(111,175,133,0.35)" : "rgba(200,212,192,0.15)"}`,
           padding: "14px 16px",
         }}
       >
         <div className="flex items-baseline justify-between gap-3" style={{ marginBottom: 4 }}>
           <p
             style={{
-              color: "#8FAF96",
+              color: isYou ? "#6FAF85" : "#8FAF96",
               fontSize: 11,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
               margin: 0,
             }}
           >
-            {authorName.split(" ")[0]}
+            {isYou ? "You" : authorName.split(" ")[0]}
           </p>
           {timeLabel && (
             <p
@@ -492,6 +495,7 @@ function GratitudeResponsesSlide({
                 text={r.text}
                 createdAt={r.createdAt}
                 isNew={r.isNew && !seenIds.has(r.id)}
+                isYou={r.isYou}
               />
             </div>
           ))}
