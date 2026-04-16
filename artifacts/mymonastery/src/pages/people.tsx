@@ -202,6 +202,152 @@ type Fellow = {
   avatarUrl?: string | null;
 };
 
+type PendingInviteOutbound = {
+  id: number;
+  recipientEmail: string;
+  recipientName: string;
+  recipientUserId: number | null;
+  status: string;
+  createdAt: string;
+};
+
+type IncomingInvite = {
+  id: number;
+  senderId: number;
+  senderName: string;
+  senderEmail: string;
+  createdAt: string;
+  mutualPractices: string[];
+};
+
+/* ── Invite Response Popup ───────────────────────────────────────── */
+
+function InvitePopup({
+  invites,
+  onAccept,
+  onDismiss,
+  onClose,
+}: {
+  invites: IncomingInvite[];
+  onAccept: (id: number) => void;
+  onDismiss: (id: number) => void;
+  onClose: () => void;
+}) {
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  if (invites.length === 0) return null;
+
+  const invite = invites[currentIdx % invites.length];
+  if (!invite) return null;
+
+  const firstName = invite.senderName.split(" ")[0];
+
+  const handleAccept = () => {
+    onAccept(invite.id);
+    if (invites.length <= 1) {
+      onClose();
+    } else if (currentIdx >= invites.length - 1) {
+      setCurrentIdx(0);
+    }
+  };
+
+  const handleDismiss = () => {
+    onDismiss(invite.id);
+    if (invites.length <= 1) {
+      onClose();
+    } else if (currentIdx >= invites.length - 1) {
+      setCurrentIdx(0);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        {/* Backdrop */}
+        <div className="absolute inset-0" style={{ background: "rgba(6,18,10,0.85)" }} onClick={onClose} />
+
+        {/* Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 12 }}
+          className="relative z-10 w-[90vw] max-w-sm rounded-3xl px-8 py-8 flex flex-col items-center text-center"
+          style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)", boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }}
+        >
+          {/* Close */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full"
+            style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+          >
+            <X size={14} />
+          </button>
+
+          {invites.length > 1 && (
+            <p className="text-[10px] uppercase tracking-widest mb-4" style={{ color: "rgba(143,175,150,0.45)" }}>
+              {currentIdx + 1} of {invites.length}
+            </p>
+          )}
+
+          {/* Avatar */}
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold mb-4"
+            style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid rgba(92,138,95,0.35)" }}
+          >
+            {initials(invite.senderName)}
+          </div>
+
+          <p className="text-lg font-semibold mb-1" style={{ color: "#F0EDE6" }}>
+            {invite.senderName}
+          </p>
+
+          <p className="text-sm mb-4" style={{ color: "#8FAF96" }}>
+            {firstName} wants to be fellows with you on Phoebe.
+          </p>
+
+          {invite.mutualPractices.length > 0 && (
+            <p className="text-xs mb-5" style={{ color: "rgba(143,175,150,0.55)" }}>
+              You're both in {invite.mutualPractices.slice(0, 2).join(" and ")}
+            </p>
+          )}
+
+          <div className="flex items-center gap-3 w-full">
+            <button
+              onClick={handleDismiss}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ color: "#8FAF96", background: "rgba(200,212,192,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
+            >
+              Not now
+            </button>
+            <button
+              onClick={handleAccept}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            >
+              Add as fellow
+            </button>
+          </div>
+
+          {invites.length > 1 && (
+            <button
+              onClick={() => setCurrentIdx((i) => (i + 1) % invites.length)}
+              className="mt-4 text-xs transition-opacity hover:opacity-70"
+              style={{ color: "rgba(143,175,150,0.45)" }}
+            >
+              Next →
+            </button>
+          )}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 /* ── Fellows section ─────────────────────────────────────────────────── */
 
 function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
@@ -209,11 +355,32 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
+  const [showInvitePopup, setShowInvitePopup] = useState(false);
 
-  const { data: fellowsData } = useQuery<{ fellows: Fellow[] }>({
+  const { data: fellowsData } = useQuery<{ fellows: Fellow[]; pendingInvites: PendingInviteOutbound[] }>({
     queryKey: ["/api/fellows"],
     queryFn: () => apiRequest("GET", "/api/fellows"),
     enabled: !!user,
+  });
+
+  const { data: incomingData } = useQuery<{ invites: IncomingInvite[]; count: number }>({
+    queryKey: ["/api/fellows/invites"],
+    queryFn: () => apiRequest("GET", "/api/fellows/invites"),
+    enabled: !!user,
+  });
+
+  const acceptMutation = useMutation({
+    mutationFn: (inviteId: number) => apiRequest("POST", `/api/fellows/invites/${inviteId}/accept`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fellows"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fellows/invites"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fellows/invites/count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: (inviteId: number) => apiRequest("POST", `/api/fellows/invites/${inviteId}/dismiss`),
   });
 
   const addMutation = useMutation({
@@ -234,11 +401,17 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
   });
 
   const fellows = fellowsData?.fellows ?? [];
+  const pendingInvites = fellowsData?.pendingInvites ?? [];
+  const incomingInvites = incomingData?.invites ?? [];
+  const incomingCount = incomingData?.count ?? 0;
   const fellowEmails = new Set(fellows.map(f => f.email.toLowerCase()));
+  const pendingEmails = new Set(pendingInvites.map(p => p.recipientEmail.toLowerCase()));
 
-  // People available to add (from garden, not already fellows, not self)
+  // People available to add (from garden, not already fellows, not already invited, not self)
   const addablePeople = (people ?? []).filter(
-    p => !fellowEmails.has(p.email.toLowerCase()) && p.email.toLowerCase() !== user?.email?.toLowerCase()
+    p => !fellowEmails.has(p.email.toLowerCase())
+      && !pendingEmails.has(p.email.toLowerCase())
+      && p.email.toLowerCase() !== user?.email?.toLowerCase()
   );
   const filteredAddable = search.trim()
     ? addablePeople.filter(p =>
@@ -267,6 +440,20 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
           {showAdd ? "Done" : "Add"}
         </button>
       </div>
+
+      {/* Incoming invite banner */}
+      {incomingCount > 0 && (
+        <button
+          onClick={() => setShowInvitePopup(true)}
+          className="w-full flex items-center justify-between px-3 py-2.5 mb-3 rounded-xl transition-colors hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.2)" }}
+        >
+          <span className="text-xs font-medium" style={{ color: "#A8C5A0" }}>
+            {incomingCount} fellow invite{incomingCount !== 1 ? "s" : ""}
+          </span>
+          <ChevronRight size={14} style={{ color: "rgba(168,197,160,0.5)" }} />
+        </button>
+      )}
 
       {/* Add fellow modal */}
       <AnimatePresence>
@@ -316,7 +503,7 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
                       className="text-[10px] font-medium px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80 disabled:opacity-40"
                       style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
                     >
-                      + Add
+                      + Invite
                     </button>
                   </div>
                 ))}
@@ -326,7 +513,7 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
         )}
       </AnimatePresence>
 
-      {fellows.length === 0 ? (
+      {fellows.length === 0 && pendingInvites.length === 0 ? (
         <div className="rounded-xl px-4 py-4 text-center" style={{ background: "rgba(200,212,192,0.03)", border: "1px dashed rgba(46,107,64,0.2)" }}>
           <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>
             Add the people you want to stay closest to.
@@ -355,11 +542,38 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
               </Link>
             );
           })}
+          {/* Pending outbound invites — muted with "Invited" label */}
+          {pendingInvites.map(p => (
+            <div key={`pending-${p.id}`} className="flex flex-col items-center gap-1.5 shrink-0 opacity-50">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold"
+                style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px dashed rgba(92,138,95,0.25)" }}
+              >
+                {initials(p.recipientName)}
+              </div>
+              <p className="text-[10px] font-medium text-center max-w-[56px] truncate" style={{ color: "rgba(200,212,192,0.5)" }}>
+                {p.recipientName.split(" ")[0]}
+              </p>
+              <p className="text-[8px] uppercase tracking-wide" style={{ color: "rgba(143,175,150,0.4)", marginTop: -2 }}>
+                Invited
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Divider */}
       <div className="h-px mt-4" style={{ background: "rgba(200,212,192,0.12)" }} />
+
+      {/* Invite popup */}
+      {showInvitePopup && incomingInvites.length > 0 && (
+        <InvitePopup
+          invites={incomingInvites}
+          onAccept={(id) => acceptMutation.mutate(id)}
+          onDismiss={(id) => dismissMutation.mutate(id)}
+          onClose={() => setShowInvitePopup(false)}
+        />
+      )}
     </div>
   );
 }
