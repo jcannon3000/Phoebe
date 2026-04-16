@@ -1403,7 +1403,7 @@ export default function MomentNew() {
                   {intercessionMode === null && (
                     <>
                       <div className="mb-6">
-                        <h2 className="text-2xl font-semibold mb-1">What will you hold in prayer together? 🙏🏽</h2>
+                        <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What will you hold in prayer together? 🙏🏽</h2>
                         <p className="text-sm text-muted-foreground italic">Choose a prayer from the Book of Common Prayer, or name your own intention.</p>
                       </div>
                       <div className="grid gap-4">
@@ -1604,7 +1604,7 @@ export default function MomentNew() {
                 return (
                   <div className="flex-1 space-y-5">
                     <div>
-                      <h2 className="text-2xl font-bold mb-1">Who will pray with you? 🌿</h2>
+                      <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who will pray with you? 🌿</h2>
                       <p className="text-sm text-muted-foreground italic">
                         Invite someone to commit to this practice with you.<br />
                         They will choose their own time in the {isMorning ? "morning" : "evening"}.
@@ -1677,7 +1677,7 @@ export default function MomentNew() {
               {step === "name" && (
                 <div className="space-y-6 flex-1">
                   <div>
-                    <h2 className="text-3xl font-semibold mb-2">What is this practice called?</h2>
+                    <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What is this practice called?</h2>
                     <p className="text-muted-foreground text-sm">Pre-filled from your template — edit freely.</p>
                   </div>
                   <input autoFocus type="text" value={name}
@@ -1760,7 +1760,7 @@ export default function MomentNew() {
               ) : step === "intention" && (
                 <div className="space-y-6 flex-1">
                   <div>
-                    <h2 className="text-3xl font-semibold mb-2">What is the intention?</h2>
+                    <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What is the intention?</h2>
                     <p className="text-muted-foreground text-sm">The first thing everyone reads when they open their link.</p>
                   </div>
                   <textarea autoFocus value={intention}
@@ -1777,7 +1777,7 @@ export default function MomentNew() {
               {step === "logging" && templateId === "intercession" && intercessionSource === "custom" ? (
                 <div className="space-y-6 flex-1">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-1">What will you ask your group? 🌿</h2>
+                    <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What will you ask your group? 🌿</h2>
                     <p className="text-sm text-muted-foreground leading-relaxed">
                       This question appears on everyone's prayer page each time they pray.
                     </p>
@@ -1807,7 +1807,7 @@ export default function MomentNew() {
               ) : step === "logging" && (
                 <div className="space-y-5 flex-1">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-1">How will your practice be held? 🌿</h2>
+                    <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>How will your practice be held? 🌿</h2>
                     <p className="text-sm text-muted-foreground">Choose how members participate.</p>
                   </div>
                   <div className="grid gap-3">
@@ -1978,7 +1978,7 @@ export default function MomentNew() {
               {step === "invite" && (
                 <div className="space-y-5 flex-1">
                   <div>
-                    <h2 className="text-xl font-semibold mb-1">Who will tend this practice with you? 🌿</h2>
+                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who will tend this practice with you? 🌿</h2>
                     <p className="text-sm text-muted-foreground">
                       {selectedGroupId ? "All group members will be added automatically." : "Add at least one person to begin."}
                     </p>
@@ -2026,7 +2026,7 @@ export default function MomentNew() {
               {/* ── Contemplative Prayer — duration selection ────── */}
               {step === "contemplative-duration" && (
                 <div className="flex-1">
-                  <h2 className="text-2xl font-semibold mb-1">How long will you sit together? 🕯️</h2>
+                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>How long will you sit together? 🕯️</h2>
                   <p className="text-sm text-muted-foreground italic mb-6">Everyone sits for the same length of time, wherever they are.</p>
                   <div className="grid gap-3">
                     {([
@@ -2080,7 +2080,7 @@ export default function MomentNew() {
               {/* ── Listening — what are you listening to ────────── */}
               {step === "listening-what" && (
                 <div className="flex-1 flex flex-col">
-                  <h2 className="text-2xl font-semibold mb-1">What will you listen to together? 🎵</h2>
+                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What will you listen to together? 🎵</h2>
                   <p className="text-sm text-muted-foreground italic mb-6">Search Apple Music. Eleanor will auto-detect when everyone has listened.</p>
 
                   {/* Type tabs */}
@@ -2303,7 +2303,7 @@ export default function MomentNew() {
 
               {step === "fasting-what" && (
                 <div className="flex-1 flex flex-col">
-                  <h2 className="text-2xl font-semibold mb-1">What are you fasting from? 🌿</h2>
+                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What are you fasting from? 🌿</h2>
                   <p className="text-sm text-muted-foreground italic mb-6">Name the fast your group will keep together.</p>
                   <textarea value={fastingFrom}
                     onChange={e => setFastingFrom(e.target.value.slice(0, 140))}
@@ -2318,7 +2318,7 @@ export default function MomentNew() {
               {/* ── Fasting — why are you fasting ────────────────── */}
               {step === "fasting-why" && (
                 <div className="flex-1 flex flex-col">
-                  <h2 className="text-2xl font-semibold mb-1">Why are you fasting together? 🙏🏽</h2>
+                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Why are you fasting together? 🙏🏽</h2>
                   <p className="text-sm text-muted-foreground italic mb-6">The intention your group will hold. This is what gives the fast its meaning.</p>
                   <textarea value={fastingIntention}
                     onChange={e => setFastingIntention(e.target.value.slice(0, 200))}
