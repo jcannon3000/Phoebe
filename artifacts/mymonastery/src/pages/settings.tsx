@@ -494,9 +494,18 @@ function MutedPeople() {
           <p className="text-sm" style={{ color: "#8FAF96" }}>Loading…</p>
         )}
         {!isLoading && muted.length === 0 && (
-          <p className="text-sm" style={{ color: "#8FAF96" }}>
-            No one muted. You can mute someone from their prayer request.
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm" style={{ color: "#8FAF96" }}>
+              No one muted.
+            </p>
+            <Link
+              href="/settings/muted"
+              className="text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition-opacity hover:opacity-80"
+              style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
+            >
+              + Add
+            </Link>
+          </div>
         )}
         {muted.length > 0 && (
           <>
