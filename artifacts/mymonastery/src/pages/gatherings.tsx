@@ -346,23 +346,9 @@ export default function GatheringsPage() {
           </div>
         )}
 
-        {/* ── Add calendar CTA ── */}
-        <button
-          onClick={() => setShowAddSheet(true)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-5 transition-opacity hover:opacity-80"
-          style={{ background: "rgba(15,40,24,0.5)", border: "1px dashed rgba(46,107,64,0.25)" }}
-        >
-          <div className="flex items-center gap-2.5">
-            <Link2 size={15} style={{ color: "#6FAF85" }} />
-            <span className="text-sm" style={{ color: "#8FAF96" }}>
-              {subs.length === 0 ? "Add a public calendar" : "Add another calendar"}
-            </span>
-          </div>
-          <span className="text-xs" style={{ color: "rgba(143,175,150,0.4)" }}>
-            Google Calendar, iCal link
-          </span>
-        </button>
-
+        {/* Calendar subscriptions are managed by group admins in the group's
+            settings — not here. We still render `subs` above so users can see
+            what's feeding their gatherings view, but there's no add CTA. */}
         <div className="h-px mb-5" style={{ background: "rgba(200,212,192,0.1)" }} />
 
         {/* ── Loading ── */}
@@ -384,7 +370,7 @@ export default function GatheringsPage() {
             <div className="text-5xl mb-5">📅</div>
             <p className="text-base font-semibold mb-1" style={{ color: "#F0EDE6" }}>Nothing coming up yet.</p>
             <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-              Start a gathering or add a public calendar to see everything here.
+              Start a gathering to see it here.
             </p>
             <div className="flex gap-3 flex-wrap justify-center">
               <Link href="/tradition/new">
@@ -392,13 +378,6 @@ export default function GatheringsPage() {
                   Start a gathering
                 </button>
               </Link>
-              <button
-                onClick={() => setShowAddSheet(true)}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
-              >
-                Add a calendar
-              </button>
             </div>
           </motion.div>
         )}
