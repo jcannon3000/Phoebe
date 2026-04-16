@@ -78,7 +78,7 @@ export function PrayForThemButton({
       >
         <span className="flex items-center gap-2">
           <span>🙏</span>
-          <span>{existing ? `You're praying for ${firstName}` : `Pray for ${firstName}`}</span>
+          <span>{existing ? `You're praying for ${firstName}` : `Write a prayer for ${firstName}`}</span>
         </span>
         <span className="text-[11px]" style={{ color: existing ? "rgba(168,197,160,0.7)" : "rgba(240,237,230,0.7)" }}>
           {existing ? dayLabel : "Begin"}
@@ -147,10 +147,11 @@ function PrayForThemModal({
               A quiet prayer
             </p>
             <h2 className="text-xl font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Pray for {firstName}
+              Write a prayer for {firstName}
             </h2>
-            <p className="text-xs mb-5" style={{ color: "#8FAF96" }}>
-              This prayer is private. {firstName} won't see what you wrote.
+            <p className="text-xs mb-5 leading-relaxed" style={{ color: "#8FAF96" }}>
+              This prayer is between you and {firstName}. {firstName} will know you're
+              holding them in prayer, but won't see what you wrote.
             </p>
 
             <textarea
