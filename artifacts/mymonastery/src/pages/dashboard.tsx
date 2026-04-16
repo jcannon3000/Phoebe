@@ -233,8 +233,14 @@ function FAB() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const [communityAdminView] = useCommunityAdminToggle();
+  const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+  });
+  const isAdminOfAny = (groupsData?.groups ?? []).some(g => g.myRole === "admin");
 
-  if (!communityAdminView) return null;
+  // Only community admins see the FAB; toggle lets admins preview the member view
+  if (!isAdminOfAny || !communityAdminView) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
