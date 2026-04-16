@@ -27,8 +27,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
   const queryClient = useQueryClient();
   useAuth();
 
-  // Pending mute target — shown in the confirmation modal
-  const [pendingMute, setPendingMute] = useState<{ ownerId: number; ownerName: string } | null>(null);
+  // Mute is now only available on person detail page and in Settings
 
   const [isOpen, setIsOpen] = useState(true);
   const [inputValue, setInputValue] = useState("");
@@ -78,16 +77,6 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/prayer-requests/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    },
-  });
-
-  const muteMutation = useMutation({
-    mutationFn: ({ ownerId }: { ownerId: number; ownerName: string }) =>
-      apiRequest("POST", `/api/mutes/${ownerId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
-      setPendingMute(null);
     },
   });
 
@@ -395,16 +384,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                                 Release this 🌿
                               </button>
                             </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setPendingMute({ ownerId: request.ownerId, ownerName: request.isAnonymous ? "This person" : (request.ownerName ?? "This person") })}
-                              className="text-xs italic transition-opacity hover:opacity-70"
-                              style={{ color: "#C25C5C" }}
-                            >
-                              {`🔇 Mute ${request.isAnonymous ? "this person" : request.ownerName ?? "this person"}'s requests`}
-                            </button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     )}
@@ -506,47 +486,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
         </div>
       )}
 
-      {/* ── Mute confirmation modal ── */}
-      {pendingMute && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-6"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
-          onClick={() => setPendingMute(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl px-6 py-6"
-            style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)" }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="text-3xl mb-4 text-center">🔇</div>
-            <h2 className="text-lg font-semibold text-center mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Mute {pendingMute.ownerName}?
-            </h2>
-            <p className="text-sm text-center leading-relaxed mb-6" style={{ color: "#8FAF96" }}>
-              Their prayer requests and Lectio reflections will be hidden from your view. You can unmute them any time in Settings.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setPendingMute(null)}
-                className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-                style={{ background: "rgba(46,107,64,0.08)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.18)" }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => muteMutation.mutate(pendingMute)}
-                disabled={muteMutation.isPending}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: "rgba(194,92,92,0.2)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.3)" }}
-              >
-                {muteMutation.isPending ? "Muting…" : "Mute"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Mute is available on person detail page and in Settings */}
     </div>
   );
 }
