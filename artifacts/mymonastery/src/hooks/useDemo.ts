@@ -6,15 +6,31 @@ import { useAuth } from "@/hooks/useAuth";
 type BetaStatus = { isBeta: boolean; isAdmin: boolean; showWelcome?: boolean };
 
 const BETA_VIEW_KEY = "phoebe:betaView";
+const ADMIN_VIEW_KEY = "phoebe:adminView";
 
-/** Read the current beta view preference from localStorage */
-function readBetaView(): boolean {
+/** Read a boolean toggle from localStorage (defaults to true) */
+function readToggle(key: string): boolean {
   try {
-    const stored = localStorage.getItem(BETA_VIEW_KEY);
+    const stored = localStorage.getItem(key);
     return stored === null ? true : stored === "true";
   } catch {
     return true;
   }
+}
+
+/** Generic localStorage-backed toggle hook */
+function useToggle(key: string): [boolean, () => void] {
+  const [enabled, setEnabled] = useState<boolean>(() => readToggle(key));
+
+  const toggle = useCallback(() => {
+    setEnabled((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(key, String(next)); } catch {}
+      return next;
+    });
+  }, [key]);
+
+  return [enabled, toggle];
 }
 
 /**
@@ -22,17 +38,7 @@ function readBetaView(): boolean {
  * Returns [betaViewEnabled, toggle].
  */
 export function useBetaViewToggle(): [boolean, () => void] {
-  const [enabled, setEnabled] = useState<boolean>(readBetaView);
-
-  const toggle = useCallback(() => {
-    setEnabled((prev) => {
-      const next = !prev;
-      try { localStorage.setItem(BETA_VIEW_KEY, String(next)); } catch {}
-      return next;
-    });
-  }, []);
-
-  return [enabled, toggle];
+  return useToggle(BETA_VIEW_KEY);
 }
 
 /**
@@ -40,9 +46,15 @@ export function useBetaViewToggle(): [boolean, () => void] {
  * Returns { isBeta, isAdmin, betaViewEnabled, toggleBetaView }.
  * betaViewEnabled can be toggled to preview the regular user experience.
  */
-export function useBetaStatus(): BetaStatus & { isLoading: boolean; betaViewEnabled: boolean; toggleBetaView: () => void; showWelcome: boolean; rawIsBeta: boolean; rawIsAdmin: boolean } {
+export function useBetaStatus(): BetaStatus & {
+  isLoading: boolean;
+  betaViewEnabled: boolean; toggleBetaView: () => void;
+  adminViewEnabled: boolean; toggleAdminView: () => void;
+  showWelcome: boolean; rawIsBeta: boolean; rawIsAdmin: boolean;
+} {
   const { user } = useAuth();
   const [betaViewEnabled, toggleBetaView] = useBetaViewToggle();
+  const [adminViewEnabled, toggleAdminView] = useToggle(ADMIN_VIEW_KEY);
 
   const { data, isLoading } = useQuery<BetaStatus>({
     queryKey: ["/api/beta/status"],
@@ -57,12 +69,14 @@ export function useBetaStatus(): BetaStatus & { isLoading: boolean; betaViewEnab
   return {
     isBeta: rawIsBeta && betaViewEnabled,
     rawIsBeta,
-    isAdmin: rawIsAdmin && betaViewEnabled,
+    isAdmin: rawIsAdmin && betaViewEnabled && adminViewEnabled,
     rawIsAdmin,
     showWelcome: data?.showWelcome ?? false,
     isLoading,
     betaViewEnabled,
     toggleBetaView,
+    adminViewEnabled,
+    toggleAdminView,
   };
 }
 
