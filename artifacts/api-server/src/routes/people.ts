@@ -305,8 +305,11 @@ router.get("/people/:email", async (req, res): Promise<void> => {
       .where(eq(momentUserTokensTable.email, email));
     const personMomentIdSet = new Set(personTokenRows.map(t => t.momentId));
     sharedMomentIds = ownerMomentIds.filter(id => personMomentIdSet.has(id));
+  // Will be populated below
+  let pastSharedPractices: typeof sharedPractices = [];
+
     if (sharedMomentIds.length > 0) {
-      const moments = await db.select({
+      const allMoments = await db.select({
         id: sharedMomentsTable.id,
         name: sharedMomentsTable.name,
         intention: sharedMomentsTable.intention,
@@ -315,14 +318,17 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         totalBlooms: sharedMomentsTable.totalBlooms,
         frequency: sharedMomentsTable.frequency,
         templateType: sharedMomentsTable.templateType,
+        state: sharedMomentsTable.state,
         createdAt: sharedMomentsTable.createdAt,
-      }).from(sharedMomentsTable).where(
-        and(inArray(sharedMomentsTable.id, sharedMomentIds), ne(sharedMomentsTable.state, "archived"))
-      );
-      // Narrow sharedMomentIds to only active practices so bloom/streak stats match
-      sharedMomentIds = moments.map(m => m.id);
+      }).from(sharedMomentsTable).where(inArray(sharedMomentsTable.id, sharedMomentIds));
 
-      // Compute live bloom counts per practice from windows table
+      const activeMoments = allMoments.filter(m => m.state !== "archived");
+      const archivedMoments = allMoments.filter(m => m.state === "archived");
+
+      // Narrow sharedMomentIds to only active practices so bloom/streak stats match
+      sharedMomentIds = activeMoments.map(m => m.id);
+
+      // Compute live bloom counts for active practices
       const bloomCountRows = await db
         .select({
           momentId: momentWindowsTable.momentId,
@@ -330,13 +336,19 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         })
         .from(momentWindowsTable)
         .where(and(
-          inArray(momentWindowsTable.momentId, sharedMomentIds),
+          inArray(momentWindowsTable.momentId, allMoments.map(m => m.id)),
           eq(momentWindowsTable.status, "bloom")
         ))
         .groupBy(momentWindowsTable.momentId);
       const bloomCountMap = new Map(bloomCountRows.map(r => [r.momentId, r.count]));
 
-      sharedPractices = moments.map(m => ({
+      sharedPractices = activeMoments.map(m => ({
+        ...m,
+        totalBlooms: bloomCountMap.get(m.id) ?? m.totalBlooms,
+        createdAt: m.createdAt.toISOString(),
+      }));
+
+      pastSharedPractices = archivedMoments.map(m => ({
         ...m,
         totalBlooms: bloomCountMap.get(m.id) ?? m.totalBlooms,
         createdAt: m.createdAt.toISOString(),
@@ -344,7 +356,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     }
   }
 
-  if (sharedRituals.length === 0 && sharedPractices.length === 0) {
+  if (sharedRituals.length === 0 && sharedPractices.length === 0 && pastSharedPractices.length === 0) {
     res.status(404).json({ error: "Person not found in any of your traditions or practices" });
     return;
   }
@@ -540,6 +552,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     },
     sharedRituals: enriched,
     sharedPractices,
+    pastPractices: pastSharedPractices,
     sharedGroups,
     activePrayerRequest,
   });

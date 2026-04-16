@@ -299,9 +299,28 @@ export default function PersonProfile() {
                 </span>
               )}
             </div>
-            <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
-              {totalTogether === 0 ? "Nothing shared yet" : `${totalTogether} thing${totalTogether !== 1 ? "s" : ""} together`}
-            </p>
+            {sharedGroups.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {sharedGroups.map(group => (
+                  <Link
+                    key={group.id}
+                    href={`/communities/${group.slug}`}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-opacity hover:opacity-80"
+                    style={{
+                      background: "rgba(122,111,175,0.15)",
+                      border: "1px solid rgba(122,111,175,0.3)",
+                      color: "#A8A0D0",
+                    }}
+                  >
+                    {group.emoji ?? "🏛️"} {group.name}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
+                {totalTogether === 0 ? "Nothing shared yet" : `${totalTogether} thing${totalTogether !== 1 ? "s" : ""} together`}
+              </p>
+            )}
           </div>
 
           {/* Settings gear */}
@@ -368,31 +387,6 @@ export default function PersonProfile() {
             </div>
           )}
         </motion.div>
-
-        {/* ── Shared community pills ──────────────────────────────────────── */}
-        {sharedGroups.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.08 }}
-            className="flex flex-wrap gap-1.5 mb-5 -mt-2"
-          >
-            {sharedGroups.map(group => (
-              <Link
-                key={group.id}
-                href={`/communities/${group.slug}`}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-opacity hover:opacity-80"
-                style={{
-                  background: "rgba(122,111,175,0.12)",
-                  border: "1px solid rgba(122,111,175,0.28)",
-                  color: "#A8A0D0",
-                }}
-              >
-                {group.emoji ?? "🏛️"} {group.name}
-              </Link>
-            ))}
-          </motion.div>
-        )}
 
         {/* ── Prayer Request ──────────────────────────────────────────────── */}
         {prayer && (
@@ -553,6 +547,49 @@ export default function PersonProfile() {
                           {practice.currentStreak === 0 && ` · ${streakText}`}
                         </p>
                       </BarCard>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Past practices */}
+            {((person as any).pastPractices?.length ?? 0) > 0 && (
+              <>
+                <SectionHeader label="Past practices" />
+                <div className="space-y-2">
+                  {((person as any).pastPractices as typeof person.sharedPractices).map(practice => {
+                    const timesText = practice.totalBlooms > 0
+                      ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
+                      : "Practiced together";
+                    const displayName = (() => {
+                      const p = practice as any;
+                      if (practice.templateType === "intercession" && p.intention) {
+                        const norm = (s: string) => s.trim().toLowerCase();
+                        if (norm(p.intention) !== norm(practice.name)) return p.intention;
+                      }
+                      return practice.name;
+                    })();
+                    return (
+                      <div
+                        key={practice.id}
+                        className="relative flex rounded-xl overflow-hidden"
+                        style={{
+                          background: "rgba(46,107,64,0.04)",
+                          border: "1px solid rgba(46,107,64,0.12)",
+                          opacity: 0.65,
+                        }}
+                      >
+                        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} />
+                        <div className="flex-1 px-4 py-2.5 min-w-0">
+                          <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>
+                            {practiceEmoji(practice.templateType)} {displayName}
+                          </p>
+                          <p className="text-xs mt-0.5 capitalize" style={{ color: "rgba(143,175,150,0.55)" }}>
+                            {practice.frequency} · {timesText}
+                          </p>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
