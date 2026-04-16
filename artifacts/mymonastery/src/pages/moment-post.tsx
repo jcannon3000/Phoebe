@@ -353,6 +353,27 @@ function IntercessionPrayerPage({
   const [reflection, setReflection] = useState(myReflection ?? "");
   const [showReflection, setShowReflection] = useState(false);
 
+  // Match iOS Safari's top status bar + bottom home-indicator chrome to the
+  // slide bg while the intercession prayer screen is on — same behavior as
+  // pages/prayer-mode.tsx, so the two screens feel continuous.
+  useEffect(() => {
+    const SLIDE_BG = "#0C1F12";
+    const html = document.documentElement;
+    const body = document.body;
+    const prevBodyBg = body.style.backgroundColor;
+    const prevHtmlBg = html.style.backgroundColor;
+    body.style.backgroundColor = SLIDE_BG;
+    html.style.backgroundColor = SLIDE_BG;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prevMeta = meta?.getAttribute("content") ?? "#091A10";
+    meta?.setAttribute("content", SLIDE_BG);
+    return () => {
+      body.style.backgroundColor = prevBodyBg;
+      html.style.backgroundColor = prevHtmlBg;
+      meta?.setAttribute("content", prevMeta);
+    };
+  }, []);
+
   // Confirmation step: "prayer" → "amen-text" → "confirmed"
   // Always start on "prayer" — "confirmed" only appears immediately after tapping Amen
   const [confirmStep, setConfirmStep] = useState<"prayer" | "amen-text" | "confirmed">("prayer");
@@ -464,58 +485,83 @@ function IntercessionPrayerPage({
   );
 
   // ── Prayer screen (slides up and out on exit) ───────────────────────────────
+  // Bg + typography match pages/prayer-mode.tsx's slideshow so single-card
+  // prayer and the multi-card slideshow feel like the same surface.
   const prayerScreen = (
     <motion.div
       key="prayer"
       exit={{ y: "-100%", transition: { duration: 0.35, ease: [0.4, 0, 1, 1] } }}
       className="min-h-screen"
-      style={{ backgroundColor: "#1C3527" }}
+      style={{ backgroundColor: "#0C1F12" }}
     >
       <div className="max-w-md mx-auto px-5 py-6 pb-28">
 
-        {/* Header — staggered fade-in, condensed */}
-        <motion.div variants={headerContainer} initial="hidden" animate="visible" className="text-center mb-4">
-          <motion.p variants={headerItem} className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(200,230,210,0.5)" }}>
-            Intercession
+        {/* Header + prayer text, wrapped in the same pulsing forest border
+            the slideshow uses for its slide card. */}
+        <motion.div
+          variants={headerContainer}
+          initial="hidden"
+          animate="visible"
+          className="rounded-2xl border px-6 py-7 animate-turn-pulse-practices text-center mb-4"
+          style={{ background: "rgba(46,107,64,0.04)" }}
+        >
+          <motion.p
+            variants={headerItem}
+            className="text-[10px] uppercase font-semibold mb-3"
+            style={{ color: "rgba(143,175,150,0.45)", letterSpacing: "0.18em" }}
+          >
+            Community Intercession
           </motion.p>
-          <motion.h1 variants={headerItem} className="text-xl font-bold leading-snug mb-1"
-            style={{ fontFamily: "Space Grotesk, sans-serif", color: "#F0EDE6" }}>
+          <motion.h1
+            variants={headerItem}
+            className="text-[22px] leading-[1.5] font-medium italic mb-2"
+            style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#E8E4D8" }}
+          >
             {topic}
           </motion.h1>
           {intention && intention !== topic && (
-            <motion.p variants={headerItem} className="text-[12px]" style={{ color: "rgba(200,230,210,0.7)" }}>
-              Praying for: {intention}
+            <motion.p
+              variants={headerItem}
+              className="text-sm italic"
+              style={{ color: "#8FAF96", marginTop: "-2px" }}
+            >
+              {intention}
             </motion.p>
           )}
           <motion.p
             variants={headerItem}
-            className="text-[11px] italic mt-1"
-            style={{ color: "rgba(200,230,210,0.5)" }}
+            className="text-[12px] italic mt-2"
+            style={{ color: "rgba(143,175,150,0.55)" }}
           >
             Your community is holding this.
           </motion.p>
-        </motion.div>
 
-        {/* Prayer text card */}
-        {fullText && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-            className="mb-4 rounded-2xl px-5 py-5"
-            style={{ backgroundColor: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
-          >
-            <p className="font-serif text-[15px] leading-[1.8] whitespace-pre-wrap italic"
-              style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#F0EDE6" }}>
-              {fullText}
-            </p>
-            {intercessionSource === "bcp" && (
-              <p className="text-[11px] mt-4 italic border-t pt-2.5" style={{ color: "rgba(200,230,210,0.4)", borderColor: "rgba(46,107,64,0.25)" }}>
-                📖 From the Book of Common Prayer
+          {/* Prayer text — nested card inside the pulsing border */}
+          {fullText && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
+              className="mt-5 rounded-2xl px-6 py-5 text-left"
+              style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.15)" }}
+            >
+              <p
+                className="text-[13px] leading-[1.85] italic whitespace-pre-wrap"
+                style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#C8D4C0" }}
+              >
+                {fullText}
               </p>
-            )}
-          </motion.div>
-        )}
+              {intercessionSource === "bcp" && (
+                <p
+                  className="text-[9px] uppercase mt-3"
+                  style={{ color: "rgba(143,175,150,0.3)", letterSpacing: "0.14em" }}
+                >
+                  From the Book of Common Prayer
+                </p>
+              )}
+            </motion.div>
+          )}
+        </motion.div>
 
         <div className="w-full h-px mb-4" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
 
@@ -580,7 +626,7 @@ function IntercessionPrayerPage({
 
       {/* Floating bottom Amen button — always visible when on prayer screen */}
       {confirmStep === "prayer" && (
-        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: "linear-gradient(to top, #1C3527 60%, transparent)" }}>
+        <div className="fixed bottom-0 left-0 right-0 px-5 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: "linear-gradient(to top, #0C1F12 60%, transparent)" }}>
           <div className="max-w-md mx-auto py-4">
             {postFailed && (
               <p className="text-center text-sm text-red-400 mb-2">

@@ -172,11 +172,20 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
             </button>
           </div>
 
-          {/* Loading state */}
+          {/* Loading state — explicit dark sage so it blends into the
+              page while data loads (bg-card + border-border can render
+              as a pale/white-ish block against the dark theme). */}
           {isLoading && (
             <div className="space-y-2">
               {[1, 2].map(i => (
-                <div key={i} className="h-14 rounded bg-card border border-border/20 animate-pulse" />
+                <div
+                  key={i}
+                  className="h-14 rounded-xl animate-pulse"
+                  style={{
+                    background: "rgba(46,107,64,0.12)",
+                    border: "1px solid rgba(46,107,64,0.2)",
+                  }}
+                />
               ))}
             </div>
           )}
