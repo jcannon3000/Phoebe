@@ -215,6 +215,15 @@ export default function MomentsDashboard() {
     enabled: !!user,
   });
 
+  // Only group admins get the "+" FAB — creating a practice belongs to the
+  // admin role, not general membership.
+  const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user,
+  });
+  const isAdminOfAnyGroup = (groupsData?.groups ?? []).some(g => g.myRole === "admin");
+
   // On-demand Apple Music check for listening practices where someone hasn't logged
   const amCheckedRef = useRef(false);
   useEffect(() => {
@@ -371,15 +380,17 @@ export default function MomentsDashboard() {
         )}
       </div>
 
-      {/* Floating + FAB */}
-      <Link
-        href="/moment/new"
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#1A4A2E", color: "#F0EDE6" }}
-        aria-label="New practice"
-      >
-        <Plus size={24} />
-      </Link>
+      {/* Floating + FAB — admins only */}
+      {isAdminOfAnyGroup && (
+        <Link
+          href="/moment/new"
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
+          style={{ background: "#1A4A2E", color: "#F0EDE6" }}
+          aria-label="New practice"
+        >
+          <Plus size={24} />
+        </Link>
+      )}
     </Layout>
   );
 }

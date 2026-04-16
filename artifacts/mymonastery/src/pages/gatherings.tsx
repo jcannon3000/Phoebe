@@ -217,6 +217,15 @@ export default function GatheringsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Only group admins get the "+" FAB — starting a gathering belongs to the
+  // admin role, not general membership.
+  const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user,
+  });
+  const isAdminOfAnyGroup = (groupsData?.groups ?? []).some(g => g.myRole === "admin");
+
   const removeSub = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/gatherings/calendars/${id}`),
     onSuccess: () => {
@@ -372,13 +381,15 @@ export default function GatheringsPage() {
             <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
               Start a gathering to see it here.
             </p>
-            <div className="flex gap-3 flex-wrap justify-center">
-              <Link href="/tradition/new">
-                <button className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  Start a gathering
-                </button>
-              </Link>
-            </div>
+            {isAdminOfAnyGroup && (
+              <div className="flex gap-3 flex-wrap justify-center">
+                <Link href="/tradition/new">
+                  <button className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                    Start a gathering
+                  </button>
+                </Link>
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -431,15 +442,17 @@ export default function GatheringsPage() {
         )}
       </div>
 
-      {/* FAB */}
-      <Link
-        href="/tradition/new"
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#1A4A2E", color: "#F0EDE6" }}
-        aria-label="New gathering"
-      >
-        <Plus size={24} />
-      </Link>
+      {/* FAB — admins only */}
+      {isAdminOfAnyGroup && (
+        <Link
+          href="/tradition/new"
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
+          style={{ background: "#1A4A2E", color: "#F0EDE6" }}
+          aria-label="New gathering"
+        >
+          <Plus size={24} />
+        </Link>
+      )}
 
       {/* Add calendar sheet */}
       <AnimatePresence>
