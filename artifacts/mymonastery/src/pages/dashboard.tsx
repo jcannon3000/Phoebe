@@ -1310,8 +1310,27 @@ export default function Dashboard() {
 
   useEffect(() => {
     const reset = () => setFilter(null);
+    const setPracticesFilter = () => setFilter("practices");
     window.addEventListener("phoebe:reset-filter", reset);
-    return () => window.removeEventListener("phoebe:reset-filter", reset);
+    // Sidebar's "Practices" nav item dispatches this so it behaves like the
+    // dashboard's Practices filter pill even when we're already on /dashboard
+    // (wouter doesn't re-mount on a same-path query change).
+    window.addEventListener("phoebe:filter-practices", setPracticesFilter);
+    return () => {
+      window.removeEventListener("phoebe:reset-filter", reset);
+      window.removeEventListener("phoebe:filter-practices", setPracticesFilter);
+    };
+  }, []);
+
+  // Cross-page nav from the sidebar's "Practices" item writes a sessionStorage
+  // flag before navigating. Read + clear it on mount.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("phoebe:pending-filter") === "practices") {
+        sessionStorage.removeItem("phoebe:pending-filter");
+        setFilter("practices");
+      }
+    } catch { /* ignore */ }
   }, []);
 
   const { data: momentsData, isLoading: momentsLoading } = useQuery<{ moments: Moment[] }>({

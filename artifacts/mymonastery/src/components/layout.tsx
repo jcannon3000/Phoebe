@@ -44,7 +44,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const fellowInviteCount = inviteCountData?.count ?? 0;
 
   const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
-    { emoji: "🙏🏽", label: "Practices",   path: "/practices"   },
+    // "Practices" doesn't go to /practices — it behaves like the dashboard
+    // Practices pill: jump to the dashboard and scope the feed to practices.
+    // The click handler below special-cases this path.
+    { emoji: "🙏🏽", label: "Practices",   path: "/dashboard#filter=practices" },
     { emoji: "🕯️", label: "Prayer List", path: "/prayer-list" },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "👥", label: "People",      path: "/people",     count: fellowInviteCount },
@@ -175,10 +178,23 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     return <div key={`divider-${i}`} className="my-2" style={{ height: 1, background: "rgba(46,107,64,0.18)" }} />;
                   }
                   const { emoji, label, path, badge, count } = item as { emoji: string; label: string; path: string; badge?: string; count?: number };
+                  const handleNavClick = () => {
+                    // "Practices" behaves like the dashboard's Practices pill:
+                    // flag it via sessionStorage for cross-page nav, AND fire
+                    // an event for the already-mounted case (wouter doesn't
+                    // remount on a same-path nav).
+                    if (path === "/dashboard#filter=practices") {
+                      try { sessionStorage.setItem("phoebe:pending-filter", "practices"); } catch { /* ignore */ }
+                      window.dispatchEvent(new Event("phoebe:filter-practices"));
+                      navigate("/dashboard");
+                      return;
+                    }
+                    navigate(path);
+                  };
                   return (
                     <button
                       key={path}
-                      onClick={() => navigate(path)}
+                      onClick={handleNavClick}
                       className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
                       onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
                       onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
