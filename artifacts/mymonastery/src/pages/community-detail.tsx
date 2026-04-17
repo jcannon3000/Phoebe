@@ -173,6 +173,8 @@ export default function CommunityDetailPage() {
     },
   });
 
+  const [communityAdminView] = useCommunityAdminToggle();
+
   if (authLoading || !user) return null;
   if (!groupData) return (
     <Layout>
@@ -183,7 +185,6 @@ export default function CommunityDetailPage() {
   );
 
   const { group, myRole, members } = groupData;
-  const [communityAdminView] = useCommunityAdminToggle();
   const isAdmin = myRole === "admin" && communityAdminView;
 
   const tabs = [
