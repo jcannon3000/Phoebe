@@ -29,8 +29,16 @@ interface PrayerRequest {
   isAnswered: boolean;
 }
 
+interface PrayerForMeEntry {
+  id: number;
+  prayerName: string;
+  prayerAvatarUrl: string | null;
+  prayerText: string | null;
+  startedAt: string;
+}
+
 interface PrayerSlide {
-  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired";
+  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "praying-for-me";
   text: string;
   attribution: string;
   fullText?: string | null;
@@ -40,6 +48,23 @@ interface PrayerSlide {
   recipientName?: string;
   recipientAvatarUrl?: string | null;
   dayLabel?: string;
+  // praying-for-me specific — a single slide that lists everyone currently
+  // praying for the viewer. Contents are rendered in a vertically scrollable
+  // column so an arbitrary number of entries can fit without splitting into
+  // multiple slides.
+  prayingForMe?: PrayerForMeEntry[];
+}
+
+// Returns "Since Tuesday" for recent, otherwise "N days".
+function formatPrayingSince(iso: string): string {
+  const then = new Date(iso);
+  const days = Math.floor((Date.now() - then.getTime()) / (1000 * 60 * 60 * 24));
+  if (days < 1) return "Since today";
+  if (days < 7) {
+    const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return `Since ${weekdays[then.getDay()]}`;
+  }
+  return `${days} days`;
 }
 
 function SlideContent({
@@ -91,6 +116,98 @@ function SlideContent({
             Done
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // ── "Praying for you" reveal — one slide listing everyone currently
+  //    praying for the viewer. Rendered as a scrollable column so any
+  //    number of entries fit in a single slide.
+  if (slide.kind === "praying-for-me") {
+    const entries = slide.prayingForMe ?? [];
+    return (
+      <div className="w-full flex flex-col items-center text-center gap-5">
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          A quiet gift
+        </p>
+        <p
+          className="text-[22px] leading-[1.4] font-medium italic"
+          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+        >
+          praying for you 🌿
+        </p>
+
+        <div
+          className="w-full space-y-2 text-left"
+          style={{ maxHeight: "52vh", overflowY: "auto" }}
+        >
+          {entries.map((p) => (
+            <div
+              key={p.id}
+              className="rounded-xl px-4 py-3"
+              style={{
+                background: "rgba(46,107,64,0.12)",
+                border: "1px solid rgba(46,107,64,0.2)",
+              }}
+            >
+              <div className="flex items-center gap-3">
+                {p.prayerAvatarUrl ? (
+                  <img
+                    src={p.prayerAvatarUrl}
+                    alt={p.prayerName}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                  />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                    style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                  >
+                    {p.prayerName
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((w) => w[0]?.toUpperCase() ?? "")
+                      .join("")}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate" style={{ color: "#E8E4D8" }}>
+                    {p.prayerName}
+                  </p>
+                  <p className="text-xs" style={{ color: "#8FAF96" }}>
+                    {formatPrayingSince(p.startedAt)}
+                  </p>
+                </div>
+              </div>
+              {p.prayerText && (
+                <p
+                  className="text-[13px] mt-3 leading-relaxed italic"
+                  style={{
+                    color: "#C8D4C0",
+                    fontFamily: "Playfair Display, Georgia, serif",
+                  }}
+                >
+                  {p.prayerText}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onAdvance}
+          className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-80 active:scale-[0.98]"
+          style={{
+            background: "rgba(46,107,64,0.28)",
+            border: "1px solid rgba(46,107,64,0.5)",
+            color: "#C8D4C0",
+          }}
+        >
+          Amen →
+        </button>
       </div>
     );
   }
@@ -296,6 +413,12 @@ export default function PrayerModePage() {
     enabled: !!user,
   });
 
+  const { data: prayersForMe = [] } = useQuery<PrayerForMeEntry[]>({
+    queryKey: ["/api/prayers-for/for-me"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
+    enabled: !!user,
+  });
+
   const renewMutation = useMutation({
     mutationFn: ({ id, days }: { id: number; days: 3 | 7 }) =>
       apiRequest("POST", `/api/prayers-for/${id}/renew`, { durationDays: days }),
@@ -368,7 +491,9 @@ export default function PrayerModePage() {
         text: r.body,
         attribution: r.ownerName ? `from ${r.ownerName}` : "from someone",
       })),
-    // Renewal prompts come last so the user prays through everything first.
+    // Renewal prompts come before the closing reveal so the viewer is asked
+    // about their own commitments first, then offered the tender gift of
+    // seeing who's holding them.
     ...expiredPrayersFor.map((p): PrayerSlide => ({
       kind: "prayer-for-expired",
       text: p.recipientName,
@@ -377,6 +502,17 @@ export default function PrayerModePage() {
       recipientName: p.recipientName,
       recipientAvatarUrl: p.recipientAvatarUrl,
     })),
+    // A single slide at the very end showing who's praying for the viewer.
+    // Only appears when at least one active prayer exists. Scrolls internally
+    // so it stays a single slide no matter how many people are holding them.
+    ...(prayersForMe.length > 0
+      ? [{
+          kind: "praying-for-me" as const,
+          text: "",
+          attribution: "",
+          prayingForMe: prayersForMe,
+        }]
+      : []),
   ];
 
   const [index, setIndex] = useState(0);
@@ -386,10 +522,10 @@ export default function PrayerModePage() {
 
   // Initialise phase once slides are loaded
   useEffect(() => {
-    if (slides.length === 0 && momentsData && prayerRequests && myPrayersFor) {
+    if (slides.length === 0 && momentsData && prayerRequests && myPrayersFor && prayersForMe) {
       setPhase("closing");
     }
-  }, [slides.length, momentsData, prayerRequests, myPrayersFor]);
+  }, [slides.length, momentsData, prayerRequests, myPrayersFor, prayersForMe]);
 
   // Fade in on mount; prevent body scroll; match Safari chrome to slide bg
   // so the top status-bar area and the bottom home-indicator area both
