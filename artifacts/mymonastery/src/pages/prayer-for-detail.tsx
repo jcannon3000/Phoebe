@@ -173,14 +173,16 @@ function PrayerDetail({
   const firstName = prayer.recipientName.split(" ")[0];
   const started = new Date(prayer.startedAt);
   const expires = new Date(prayer.expiresAt);
-  const dayNumber = Math.min(
-    prayer.durationDays,
-    Math.max(1, Math.ceil((Date.now() - started.getTime()) / (1000 * 60 * 60 * 24))),
-  );
-  const daysRemaining = Math.max(
-    0,
-    Math.ceil((expires.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-  );
+  // Calendar-day math, not fractional time. If started yesterday and today
+  // is the second calendar day, we want "Day 2" and "N-1 days remaining",
+  // regardless of the hour the prayer began.
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startedStart = new Date(started.getFullYear(), started.getMonth(), started.getDate());
+  const expiresStart = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+  const daysElapsed = Math.round((todayStart.getTime() - startedStart.getTime()) / 86400000);
+  const dayNumber = Math.max(1, Math.min(prayer.durationDays, daysElapsed + 1));
+  const daysRemaining = Math.max(0, Math.round((expiresStart.getTime() - todayStart.getTime()) / 86400000));
 
   const startedLabel = started.toLocaleDateString("en-US", {
     month: "short", day: "numeric",
@@ -188,11 +190,7 @@ function PrayerDetail({
 
   return (
     <div>
-      {/* Banner — top metadata */}
-      <p className="text-[10px] uppercase tracking-[0.22em] mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-        A prayer held in private
-      </p>
-      <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+      <h1 className="text-2xl font-bold mb-1 mt-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
         You're praying for {firstName} 🌿
       </h1>
       <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>

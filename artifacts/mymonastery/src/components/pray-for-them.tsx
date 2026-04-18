@@ -59,14 +59,16 @@ export function PrayForThemButton({
 
   const { prayer: existing } = useMyPrayerForRecipient(recipientUserId);
 
-  // Day X of Y label — simple Math.ceil from startedAt.
+  // Day X of Y label — use calendar-day diff so a prayer started yesterday
+  // evening shows "Day 2" this morning, not still "Day 1".
   let dayLabel: string | null = null;
   if (existing) {
-    const started = new Date(existing.startedAt).getTime();
-    const day = Math.min(
-      existing.durationDays,
-      Math.max(1, Math.ceil((Date.now() - started) / (1000 * 60 * 60 * 24))),
-    );
+    const started = new Date(existing.startedAt);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startedStart = new Date(started.getFullYear(), started.getMonth(), started.getDate());
+    const daysElapsed = Math.round((todayStart.getTime() - startedStart.getTime()) / 86400000);
+    const day = Math.max(1, Math.min(existing.durationDays, daysElapsed + 1));
     dayLabel = `Day ${day} of ${existing.durationDays}`;
   }
 

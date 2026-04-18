@@ -140,7 +140,7 @@ function SlideContent({
             }}
           >
             <p
-              className="text-[13px] leading-[1.85] italic whitespace-pre-wrap"
+              className="text-[16px] leading-[1.75] italic whitespace-pre-wrap"
               style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
             >
               {slide.fullText}
@@ -354,11 +354,14 @@ export default function PrayerModePage() {
         attribution: r.ownerName ? `from ${r.ownerName}` : "from someone",
       })),
     ...activePrayersFor.map((p): PrayerSlide => {
-      const started = new Date(p.startedAt).getTime();
-      const day = Math.min(
-        p.durationDays,
-        Math.max(1, Math.ceil((Date.now() - started) / (1000 * 60 * 60 * 24))),
-      );
+      // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
+      // this morning rather than still "Day 1".
+      const started = new Date(p.startedAt);
+      const nowD = new Date();
+      const todayStart = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate());
+      const startedStart = new Date(started.getFullYear(), started.getMonth(), started.getDate());
+      const daysElapsed = Math.round((todayStart.getTime() - startedStart.getTime()) / 86400000);
+      const day = Math.max(1, Math.min(p.durationDays, daysElapsed + 1));
       return {
         kind: "prayer-for",
         text: p.recipientName,

@@ -580,8 +580,11 @@ export default function MomentDetail() {
 
           {/* Bell removed — logging window is ±2 hours around scheduled time */}
 
-          {/* Member names as tappable links + together count */}
-          {members.length > 0 && (() => {
+          {/* Member names as tappable links + together count.
+              When the practice is attached to a community, we hide the
+              member roll entirely — the community chip above is already
+              the anchor, and listing members becomes noisy. */}
+          {members.length > 0 && !moment.group && (() => {
             const togetherCount = windows.filter(w => w.postCount >= 2).length;
             const isPrayer = ["intercession", "morning-prayer", "evening-prayer"].includes(moment.templateType ?? "");
             const togetherVerb = isPrayer ? "prayed" : "practiced";

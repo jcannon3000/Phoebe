@@ -43,6 +43,7 @@ type Moment = {
   state: string;
   memberCount: number;
   members: Array<{ name: string; email: string; joined?: boolean }>;
+  group?: { id: number; name: string; slug: string; emoji: string | null } | null;
   todayPostCount: number;
   windowOpen: boolean;
   isActionableToday: boolean;
@@ -624,6 +625,10 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   if (isFasting && m.fastingDay) {
     const dayCapitalized = m.fastingDay.charAt(0).toUpperCase() + m.fastingDay.slice(1);
     subtitle = `Every ${dayCapitalized}`;
+  } else if (m.group?.name) {
+    // Group-attached practices: show the community name rather than listing
+    // individual members. Members come and go; the community is the anchor.
+    subtitle = `with ${m.group.name}`;
   } else if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
 
