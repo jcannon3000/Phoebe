@@ -3059,6 +3059,27 @@ router.get("/connections", async (req, res): Promise<void> => {
       if (c.contactEmail) addConnection(c.contactEmail, c.contactName ?? c.contactEmail, 0);
     }
 
+    // Members of any community (group) this user belongs to
+    try {
+      const myGroupRows = await db.select({ groupId: groupMembersTable.groupId })
+        .from(groupMembersTable)
+        .where(eq(groupMembersTable.userId, sessionUserId));
+      const myGroupIds = myGroupRows.map(r => r.groupId);
+      if (myGroupIds.length > 0) {
+        const groupMembers = await db.select({
+          name: groupMembersTable.name,
+          email: groupMembersTable.email,
+        })
+          .from(groupMembersTable)
+          .where(inArray(groupMembersTable.groupId, myGroupIds));
+        for (const gm of groupMembers) {
+          if (gm.email) addConnection(gm.email, gm.name ?? gm.email, 0);
+        }
+      }
+    } catch (gErr) {
+      console.warn("[connections] group members lookup failed:", gErr);
+    }
+
     // Sort by most recent practice first
     const connections = [...connectionMap.values()]
       .sort((a, b) => b.recentTs - a.recentTs)

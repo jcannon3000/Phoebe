@@ -963,7 +963,11 @@ export default function MomentNew() {
     }
     if (step === "commitment") return commitmentSessionsGoal !== null;
     if (step === "duration") return practiceDurationDays !== null;
-    if (step === "invite") return selectedGroupId !== null;
+    if (step === "invite") {
+      // Lectio Divina: invite is a person search (no community requirement)
+      if (templateId === "lectio-divina") return invitedPeople.length > 0;
+      return selectedGroupId !== null;
+    }
     return false;
   };
 
@@ -1983,7 +1987,18 @@ export default function MomentNew() {
               })()}
 
               {/* ── Invite ─────────────────────────────────────────── */}
-              {step === "invite" && (
+              {step === "invite" && templateId === "lectio-divina" && (
+                <div className="space-y-5 flex-1">
+                  <div>
+                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who will read together? 📜</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Search people from your communities and practices, or invite someone new.
+                    </p>
+                  </div>
+                  <InviteStep type="practice" onPeopleChange={setInvitedPeople} />
+                </div>
+              )}
+              {step === "invite" && templateId !== "lectio-divina" && (
                 <div className="space-y-5 flex-1">
                   <div>
                     <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Choose a community 🌿</h2>
@@ -2396,9 +2411,15 @@ export default function MomentNew() {
                   : step === "bcp-invite"
                     ? "Plant this practice 🌿"
                     : step === "invite"
-                      ? selectedGroupId
-                        ? `Plant for ${adminGroups.find(g => g.id === selectedGroupId)?.name ?? "community"} 🌿`
-                        : "Select a community"
+                      ? templateId === "lectio-divina"
+                        ? invitedPeople.length === 0
+                          ? "Add at least one person"
+                          : invitedPeople.length === 1
+                            ? `Plant with ${invitedPeople[0].name || invitedPeople[0].email.split("@")[0]} 📜`
+                            : `Plant with ${invitedPeople.length} people 📜`
+                        : selectedGroupId
+                          ? `Plant for ${adminGroups.find(g => g.id === selectedGroupId)?.name ?? "community"} 🌿`
+                          : "Select a community"
                       : "Continue →"}
               </button>
               {plantMutation.isError && (() => {
