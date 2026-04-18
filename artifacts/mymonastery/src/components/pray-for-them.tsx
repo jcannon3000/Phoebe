@@ -70,9 +70,13 @@ export function PrayForThemButton({
     dayLabel = `Day ${day} of ${existing.durationDays}`;
   }
 
+  const targetHref = existing
+    ? `/pray-for/${encodeURIComponent(recipientEmail)}`
+    : `/pray-for/new/${encodeURIComponent(recipientEmail)}`;
+
   return (
     <button
-      onClick={() => setLocation(`/pray-for/new/${encodeURIComponent(recipientEmail)}`)}
+      onClick={() => setLocation(targetHref)}
       className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-90 mb-6"
       style={{
         background: existing ? "rgba(46,107,64,0.12)" : "#2D5E3F",
