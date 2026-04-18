@@ -38,51 +38,82 @@ function generateToken(): string {
 }
 
 // ─── Dynamic practice membership ─────────────────────────────────────────────
-// A practice tied to a group derives its members from the group. When someone
-// joins the group, they gain a token on every attached practice. When they
-// leave, their tokens (and any session state) are removed.
+// A practice tied to a group reflects the group's current roster. Rather than
+// capture members statically at practice-creation time, we reconcile the
+// practice's `moment_user_tokens` rows against `group_members` every time the
+// group or the practice is read. That way, adding/removing someone from the
+// group flows into every attached practice automatically, and the two can
+// never drift even if a code path forgets to call the eager helpers below.
+//
+// The organizer (practice creator) is identified as the token with the
+// smallest `id` — the first row ever inserted for this practice. We preserve
+// the organizer even when they're not in the group, because a community
+// admin may create a practice for a group they don't personally belong to.
 
-async function addUserToGroupPractices(groupId: number, email: string, name: string | null): Promise<void> {
+export async function reconcileGroupPracticeMembers(momentId: number): Promise<void> {
   try {
-    const emailLower = email.toLowerCase();
-    const practices = await db.select({ id: sharedMomentsTable.id })
-      .from(sharedMomentsTable)
-      .where(and(eq(sharedMomentsTable.groupId, groupId), sql`${sharedMomentsTable.state} != 'archived'`));
-    if (practices.length === 0) return;
+    const [m] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+    if (!m || !m.groupId) return;
 
-    for (const p of practices) {
-      const [existing] = await db.select({ id: momentUserTokensTable.id })
-        .from(momentUserTokensTable)
-        .where(and(eq(momentUserTokensTable.momentId, p.id), eq(momentUserTokensTable.email, emailLower)));
-      if (existing) continue;
-      await db.insert(momentUserTokensTable).values({
-        momentId: p.id,
-        email: emailLower,
-        name: name ?? emailLower,
-        userToken: generateToken(),
-      });
+    // Current group roster (joined only — exclude pending invites)
+    const groupRows = await db.select().from(groupMembersTable)
+      .where(eq(groupMembersTable.groupId, m.groupId));
+    const joined = groupRows.filter(gm => gm.joinedAt !== null);
+    const groupEmailToName = new Map<string, string | null>();
+    for (const gm of joined) groupEmailToName.set(gm.email.toLowerCase(), gm.name);
+
+    // Existing tokens for the practice
+    const tokens = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, momentId));
+
+    // Organizer = smallest-id token (practice creator). Preserved unconditionally.
+    const organizerId = tokens.length > 0
+      ? tokens.reduce((min, t) => (t.id < min.id ? t : min), tokens[0]).id
+      : null;
+
+    const tokenEmailSet = new Set(tokens.map(t => t.email.toLowerCase()));
+    const groupEmailSet = new Set(groupEmailToName.keys());
+
+    // Add tokens for group members who don't have one yet.
+    const toAdd: { email: string; name: string }[] = [];
+    for (const email of groupEmailSet) {
+      if (!tokenEmailSet.has(email)) {
+        toAdd.push({ email, name: groupEmailToName.get(email) ?? email });
+      }
+    }
+    if (toAdd.length > 0) {
+      await db.insert(momentUserTokensTable).values(
+        toAdd.map(row => ({
+          momentId,
+          email: row.email,
+          name: row.name,
+          userToken: generateToken(),
+        }))
+      );
+    }
+
+    // Remove tokens for people no longer in the group (but never the organizer).
+    const toRemove = tokens.filter(t => {
+      if (t.id === organizerId) return false;
+      return !groupEmailSet.has(t.email.toLowerCase());
+    });
+    if (toRemove.length > 0) {
+      await db.delete(momentUserTokensTable)
+        .where(inArray(momentUserTokensTable.id, toRemove.map(t => t.id)));
     }
   } catch (err) {
-    console.error("[groups] addUserToGroupPractices failed:", err);
+    console.error("[groups] reconcileGroupPracticeMembers failed for moment", momentId, err);
   }
 }
 
-async function removeUserFromGroupPractices(groupId: number, email: string): Promise<void> {
+export async function reconcileAllPracticesForGroup(groupId: number): Promise<void> {
   try {
-    const emailLower = email.toLowerCase();
     const practices = await db.select({ id: sharedMomentsTable.id })
       .from(sharedMomentsTable)
-      .where(eq(sharedMomentsTable.groupId, groupId));
-    if (practices.length === 0) return;
-
-    const practiceIds = practices.map(p => p.id);
-    await db.delete(momentUserTokensTable)
-      .where(and(
-        inArray(momentUserTokensTable.momentId, practiceIds),
-        eq(momentUserTokensTable.email, emailLower),
-      ));
+      .where(and(eq(sharedMomentsTable.groupId, groupId), sql`${sharedMomentsTable.state} != 'archived'`));
+    await Promise.all(practices.map(p => reconcileGroupPracticeMembers(p.id)));
   } catch (err) {
-    console.error("[groups] removeUserFromGroupPractices failed:", err);
+    console.error("[groups] reconcileAllPracticesForGroup failed for group", groupId, err);
   }
 }
 
@@ -194,8 +225,11 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
   const result = await requireMember(req.params.slug, user.id);
   if (!result) { res.status(404).json({ error: "Group not found" }); return; }
 
-  const members = (await db.select().from(groupMembersTable)
-    .where(eq(groupMembersTable.groupId, result.group.id))).filter(m => m.joinedAt !== null);
+  // Return ALL members (both joined and pending-invite) so admins can manage
+  // pending invites in the UI. The client filters on `joinedAt` to separate
+  // the two sections.
+  const members = await db.select().from(groupMembersTable)
+    .where(eq(groupMembersTable.groupId, result.group.id));
 
   // Batch-fetch avatarUrl for all members
   const memberEmails = members.map(m => m.email.toLowerCase());
@@ -304,11 +338,12 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
       joinedAt: new Date(),
     }).returning();
 
-    // Practices attached to this group are dynamic — sync the new member in.
-    await addUserToGroupPractices(result.group.id, emailLower, person.name ?? null);
-
     added.push(member);
   }
+
+  // Practices attached to this group reflect the group roster — reconcile once
+  // at the end so every attached practice sees the newly-added members.
+  await reconcileAllPracticesForGroup(result.group.id);
 
   res.json({ added });
 });
@@ -335,8 +370,9 @@ router.post("/groups/:slug/join", async (req, res): Promise<void> => {
   }
 
   await db.update(groupMembersTable).set(updates).where(eq(groupMembersTable.id, member.id));
-  // On first join, sync them into any practices attached to the group.
-  await addUserToGroupPractices(group.id, member.email, updates.name ?? member.name);
+  // Practices attached to this group reflect the group roster — reconcile so
+  // this newly-joined user appears as a member everywhere.
+  await reconcileAllPracticesForGroup(group.id);
   res.json({ ok: true, group });
 });
 
@@ -380,8 +416,9 @@ router.delete("/groups/:slug/members/:memberId", async (req, res): Promise<void>
   if (target.userId === user.id) { res.status(400).json({ error: "Cannot remove yourself" }); return; }
 
   await db.delete(groupMembersTable).where(eq(groupMembersTable.id, memberId));
-  // Practices attached to this group are dynamic — sync the removed member out.
-  await removeUserFromGroupPractices(result.group.id, target.email);
+  // Practices attached to this group reflect the group roster — reconcile so
+  // the removed user loses their tokens across every attached practice.
+  await reconcileAllPracticesForGroup(result.group.id);
   res.json({ ok: true });
 });
 

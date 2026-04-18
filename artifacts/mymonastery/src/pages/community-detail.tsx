@@ -222,7 +222,10 @@ export default function CommunityDetailPage() {
                 <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>{group.description}</p>
               )}
               <p className="text-xs mt-1.5" style={{ color: "rgba(143,175,150,0.5)" }}>
-                {members.length} {members.length === 1 ? "member" : "members"}
+                {(() => {
+                  const joinedCount = members.filter(m => m.joinedAt !== null).length;
+                  return `${joinedCount} ${joinedCount === 1 ? "member" : "members"}`;
+                })()}
                 {isAdmin && " · You are admin"}
               </p>
             </div>
@@ -738,7 +741,7 @@ export default function CommunityDetailPage() {
         {activeTab === "members" && (
           <div>
             <div className="space-y-1.5">
-              {members.map(m => (
+              {members.filter(m => m.joinedAt !== null).map(m => (
                 <div
                   key={m.id}
                   className="flex items-center justify-between px-4 py-2.5 rounded-xl"
@@ -766,8 +769,16 @@ export default function CommunityDetailPage() {
                   </Link>
                   {isAdmin && m.role !== "admin" && (
                     <button
-                      onClick={() => removeMemberMutation.mutate(m.id)}
-                      className="text-[10px] px-2 py-1 rounded-lg shrink-0 ml-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const label = m.name || m.email;
+                        if (window.confirm(`Remove ${label} from ${group.name}? They'll lose access to every practice attached to this community.`)) {
+                          removeMemberMutation.mutate(m.id);
+                        }
+                      }}
+                      disabled={removeMemberMutation.isPending}
+                      className="text-[10px] px-2 py-1 rounded-lg shrink-0 ml-2 disabled:opacity-40"
                       style={{ color: "rgba(143,175,150,0.5)", border: "1px solid rgba(143,175,150,0.2)" }}
                     >
                       Remove
@@ -788,10 +799,27 @@ export default function CommunityDetailPage() {
                     <div className="space-y-1">
                       {groupData!.members.filter(m => !m.joinedAt).map(m => (
                         <div key={m.id} className="flex items-center justify-between px-4 py-2 rounded-xl" style={{ background: "rgba(46,107,64,0.05)" }}>
-                          <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
+                          <p className="text-xs truncate mr-2" style={{ color: "rgba(143,175,150,0.55)" }}>
                             {m.name || m.email}
                           </p>
-                          <span className="text-[10px] italic" style={{ color: "rgba(143,175,150,0.35)" }}>pending</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] italic" style={{ color: "rgba(143,175,150,0.35)" }}>pending</span>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const label = m.name || m.email;
+                                if (window.confirm(`Cancel the invite for ${label}?`)) {
+                                  removeMemberMutation.mutate(m.id);
+                                }
+                              }}
+                              disabled={removeMemberMutation.isPending}
+                              className="text-[10px] px-2 py-0.5 rounded-lg disabled:opacity-40"
+                              style={{ color: "rgba(143,175,150,0.5)", border: "1px solid rgba(143,175,150,0.2)" }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>

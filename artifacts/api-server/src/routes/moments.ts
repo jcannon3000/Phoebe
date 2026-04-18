@@ -11,6 +11,7 @@ import {
 import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
+import { reconcileGroupPracticeMembers } from "./groups";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
@@ -1090,6 +1091,28 @@ router.get("/moments", async (req, res): Promise<void> => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
+    // Reconcile every practice attached to any group this user belongs to.
+    // This runs BEFORE we read tokens so a user newly added to a group picks
+    // up that group's practices on their very next /moments request — no
+    // refresh, no delay, no dependency on the eager helpers firing.
+    try {
+      const myGroupRows = await db.select({ groupId: groupMembersTable.groupId })
+        .from(groupMembersTable)
+        .where(eq(groupMembersTable.userId, sessionUserId));
+      const myGroupIds = [...new Set(myGroupRows.map(r => r.groupId))];
+      if (myGroupIds.length > 0) {
+        const groupPractices = await db.select({ id: sharedMomentsTable.id })
+          .from(sharedMomentsTable)
+          .where(and(
+            inArray(sharedMomentsTable.groupId, myGroupIds),
+            sql`${sharedMomentsTable.state} != 'archived'`,
+          ));
+        await Promise.all(groupPractices.map(p => reconcileGroupPracticeMembers(p.id)));
+      }
+    } catch (err) {
+      console.error("[GET /api/moments] pre-reconcile failed:", err);
+    }
+
     // Find all moment_user_tokens for this user's email
     const userTokenRows = await db.select().from(momentUserTokensTable)
       .where(eq(momentUserTokensTable.email, user.email));
@@ -1134,6 +1157,16 @@ router.get("/moments", async (req, res): Promise<void> => {
         console.warn("[moments] lectio reading fetch failed:", err);
       }
     }
+
+    // Reconcile membership for every group-linked practice BEFORE we read
+    // tokens. Practices attached to a group reflect the group's current
+    // roster — this is the authoritative sync point, so a stale eager-path
+    // can't leak into the response.
+    await Promise.all(
+      flatMoments
+        .filter(m => m.groupId !== null && m.groupId !== undefined)
+        .map(m => reconcileGroupPracticeMembers(m.id))
+    );
 
     // Build a set of emails that have actual user accounts (i.e. have signed up).
     // Used to show "invited" vs "joined" status on member lists.
@@ -1439,6 +1472,11 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
 
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  // If the practice is attached to a group, the member roster derives from the
+  // group — reconcile before the auth check so newly-added members are
+  // recognized and removed members are rejected.
+  await reconcileGroupPracticeMembers(momentId);
 
   // Auth: must be a participant
   const myTokenRow = await db.select().from(momentUserTokensTable)
@@ -2032,6 +2070,11 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
   const [moment] = await db.select().from(sharedMomentsTable)
     .where(eq(sharedMomentsTable.momentToken, momentToken));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  // Group-linked practices reflect the group roster — reconcile so members
+  // added to the group since last read are visible here, and removed members
+  // can no longer hit this URL.
+  await reconcileGroupPracticeMembers(moment.id);
 
   const [userTokenRow] = await db.select().from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.userToken, userToken));
