@@ -226,7 +226,7 @@ function SlideContent({
           }}
         >
           <p
-            className="text-[13px] leading-[1.85] italic"
+            className="text-[16px] leading-[1.75] italic"
             style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
           >
             {bcpPrayer.text}
@@ -250,7 +250,7 @@ function SlideContent({
           }}
         >
           <p
-            className="text-[13px] leading-[1.85] italic"
+            className="text-[16px] leading-[1.75] italic"
             style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
           >
             {slide.fullText}
@@ -344,6 +344,15 @@ export default function PrayerModePage() {
         attribution: attributionLabel ? `with ${attributionLabel}` : "",
       };
     }),
+    // Other people's prayer requests come before the user's own private
+    // prayers-for — hearing others first, then turning inward.
+    ...prayerRequests
+      .filter((r) => !r.isAnswered)
+      .map((r): PrayerSlide => ({
+        kind: "request",
+        text: r.body,
+        attribution: r.ownerName ? `from ${r.ownerName}` : "from someone",
+      })),
     ...activePrayersFor.map((p): PrayerSlide => {
       const started = new Date(p.startedAt).getTime();
       const day = Math.min(
@@ -361,13 +370,6 @@ export default function PrayerModePage() {
         dayLabel: `Day ${day} of ${p.durationDays}`,
       };
     }),
-    ...prayerRequests
-      .filter((r) => !r.isAnswered)
-      .map((r): PrayerSlide => ({
-        kind: "request",
-        text: r.body,
-        attribution: r.ownerName ? `from ${r.ownerName}` : "from someone",
-      })),
     // Renewal prompts come last so the user prays through everything first.
     ...expiredPrayersFor.map((p): PrayerSlide => ({
       kind: "prayer-for-expired",

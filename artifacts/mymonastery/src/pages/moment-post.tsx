@@ -270,71 +270,70 @@ function presenceInitials(name: string | null | undefined): string {
   return parts[0].slice(0, 2).toUpperCase();
 }
 
-const PILL_GAP = 8;
-const PILL_SCROLL_SPEED = 30;
+// Circles-only presence: show just avatars (or initials) for members who
+// have already prayed today. If there are more than PAGE_SIZE, rotate through
+// pages with a soft fade. Members who haven't prayed yet are deliberately
+// hidden — this is a "who's here with me" indicator, not a checklist.
+const PAGE_SIZE = 8;
 
-function NamedPresenceWithBloom({ members, myToken, justBloomed }: { members: MomentMember[]; myToken?: string; justBloomed: Set<string> }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [needsTicker, setNeedsTicker] = useState(false);
+function NamedPresenceWithBloom({ members, justBloomed }: { members: MomentMember[]; myToken?: string; justBloomed: Set<string> }) {
+  const prayed = members.filter(m => m.prayed);
+  const pages: MomentMember[][] = [];
+  for (let i = 0; i < prayed.length; i += PAGE_SIZE) {
+    pages.push(prayed.slice(i, i + PAGE_SIZE));
+  }
 
+  const [pageIndex, setPageIndex] = useState(0);
   useEffect(() => {
-    const el = containerRef.current;
-    if (el) setNeedsTicker(el.scrollWidth > el.clientWidth + 4);
-  }, [members]);
+    if (pages.length <= 1) return;
+    const id = setInterval(() => {
+      setPageIndex(p => (p + 1) % pages.length);
+    }, 3000);
+    return () => clearInterval(id);
+  }, [pages.length]);
 
-  const pills = members.map((m, i) => {
-    const ini = presenceInitials(m.name);
-    const isMe = m.userToken === myToken;
-    const label = isMe ? "you" : (m.name ?? "?").split(" ")[0];
-    const isBloomin = justBloomed.has(m.userToken);
-    return (
-      <motion.div
-        key={`${m.userToken}-${i}`}
-        animate={{
-          scale: isBloomin ? [0.8, 1.15, 1] : 1,
-          backgroundColor: m.prayed ? "rgba(92,152,95,0.9)" : "rgba(46,107,64,0.15)",
-          borderColor: m.prayed ? "rgba(92,152,95,0.6)" : "rgba(200,230,210,0.2)",
-        }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border whitespace-nowrap shrink-0"
-        style={{ color: m.prayed ? "#fff" : "rgba(200,230,210,0.5)" }}
-      >
-        {m.avatarUrl ? (
-          <img src={m.avatarUrl} alt={m.name} className="w-5 h-5 rounded-full object-cover" />
-        ) : (
-          <span className="text-xs font-bold">{ini}</span>
-        )}
-        <span className="text-[11px] font-medium">{label}</span>
-        {m.prayed && <span className="text-[9px] opacity-60">✓</span>}
-      </motion.div>
-    );
-  });
+  if (prayed.length === 0) return null;
 
-  const tickerAnimId = "presence-ticker";
-  const totalW = members.length * 100; // approximate
-  const duration = totalW / PILL_SCROLL_SPEED;
+  const safeIndex = Math.min(pageIndex, Math.max(0, pages.length - 1));
+  const page = pages[safeIndex] ?? [];
 
   return (
-    <div className="relative overflow-hidden">
-      {needsTicker && (
-        <>
-          <style>{`@keyframes ${tickerAnimId} { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
-          <div className="absolute inset-y-0 left-0 w-6 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, #1C3527, transparent)" }} />
-          <div className="absolute inset-y-0 right-0 w-6 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, #1C3527, transparent)" }} />
-        </>
-      )}
-      <div
-        ref={containerRef}
-        className="flex items-center"
-        style={{
-          gap: PILL_GAP,
-          ...(needsTicker
-            ? { animation: `${tickerAnimId} ${duration}s linear infinite` }
-            : { justifyContent: "center", flexWrap: "wrap" as const }),
-        }}
-      >
-        {needsTicker ? <>{pills}{pills}</> : pills}
-      </div>
+    <div className="relative w-full flex items-center justify-center min-h-[44px]">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={safeIndex}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.6, ease: "easeInOut" }}
+          className="flex flex-wrap items-center justify-center gap-2.5"
+        >
+          {page.map((m, i) => {
+            const ini = presenceInitials(m.name);
+            const isBloomin = justBloomed.has(m.userToken);
+            return (
+              <motion.div
+                key={`${m.userToken}-${i}`}
+                initial={isBloomin ? { scale: 0.8 } : { scale: 1 }}
+                animate={{ scale: isBloomin ? [0.8, 1.15, 1] : 1 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center shrink-0"
+                style={{
+                  background: "rgba(92,152,95,0.9)",
+                  border: "1px solid rgba(92,152,95,0.6)",
+                  color: "#fff",
+                }}
+              >
+                {m.avatarUrl ? (
+                  <img src={m.avatarUrl} alt={m.name ?? ""} className="w-9 h-9 rounded-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold">{ini}</span>
+                )}
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
@@ -547,7 +546,7 @@ function IntercessionPrayerPage({
               style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.15)" }}
             >
               <p
-                className="text-[17px] leading-[1.85] italic whitespace-pre-wrap"
+                className="text-[15px] leading-[1.8] italic whitespace-pre-wrap"
                 style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#C8D4C0" }}
               >
                 {fullText}
@@ -636,12 +635,13 @@ function IntercessionPrayerPage({
             )}
             {alreadyPosted ? (
               <>
-                <div
-                  className="w-full py-5 rounded-2xl text-lg font-bold text-center"
-                  style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527", background: "rgba(240,237,230,0.4)" }}
+                <button
+                  onClick={onBack}
+                  className="w-full py-5 rounded-2xl text-lg font-bold text-center hover:opacity-90 transition-opacity"
+                  style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527", background: "#F0EDE6" }}
                 >
-                  Amen 🙏🏽
-                </div>
+                  Back
+                </button>
                 <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
                   You prayed this today.
                 </p>
