@@ -117,12 +117,15 @@ function PersonCard({
   isPresent,
   iPrayFor,
   prayForMe,
+  activePrayerFor,
 }: {
   person: PersonSummary;
   isPresent: boolean;
   iPrayFor: boolean;
   prayForMe: boolean;
+  activePrayerFor: MyActivePrayerFor | null;
 }) {
+  const [, setLocation] = useLocation();
   const color = colorFor(person.email);
 
   // Build rotating subtitle lines
@@ -141,6 +144,30 @@ function PersonCard({
 
   // Best streak across shared practices
   const bestStreak = Math.max(person.maxSharedStreak, ...person.sharedPractices.map(p => p.currentStreak), 0);
+
+  // CTA destination: if the user already has an active prayer for this
+  // person, the button links to the detail page; otherwise it opens the
+  // authoring flow. Matches the button on the person profile detail page.
+  const prayerHref = iPrayFor
+    ? `/pray-for/${encodeURIComponent(person.email)}`
+    : `/pray-for/new/${encodeURIComponent(person.email)}`;
+
+  // Active prayer card details — calendar-day math so "Day 2" shows the
+  // morning after a prayer was started, not after a full 24h elapses.
+  let prayerDayLabel = "";
+  let daysRemaining = 0;
+  if (activePrayerFor) {
+    const started = new Date(activePrayerFor.startedAt);
+    const expires = new Date(activePrayerFor.expiresAt);
+    const nowD = new Date();
+    const todayStart = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate());
+    const startedStart = new Date(started.getFullYear(), started.getMonth(), started.getDate());
+    const expiresStart = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+    const daysElapsed = Math.round((todayStart.getTime() - startedStart.getTime()) / 86400000);
+    const day = Math.max(1, Math.min(activePrayerFor.durationDays, daysElapsed + 1));
+    daysRemaining = Math.max(0, Math.round((expiresStart.getTime() - todayStart.getTime()) / 86400000));
+    prayerDayLabel = `Day ${day} of ${activePrayerFor.durationDays}`;
+  }
 
   return (
     <Link href={`/people/${encodeURIComponent(person.email)}`} className="block">
@@ -198,20 +225,66 @@ function PersonCard({
             </div>
             </div>
 
-            {/* Right: streak or arrow */}
-            <div className="flex flex-col items-end shrink-0 pt-0.5 gap-1">
-              {bestStreak > 0 ? (
-                <>
-                  <span className="text-[10px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-                    🔥 {bestStreak}
-                  </span>
-                  <span className="text-[9px]" style={{ color: "rgba(143,175,150,0.4)" }}>streak</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground/30 text-lg">→</span>
-              )}
+            {/* Right: prayer CTA. Stop-propagation so tapping the button
+                doesn't also navigate to the person's profile. */}
+            <div className="shrink-0 pt-0.5">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setLocation(prayerHref);
+                }}
+                className="px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-opacity hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  background: iPrayFor ? "rgba(46,107,64,0.2)" : "#2D5E3F",
+                  border: iPrayFor ? "1px solid rgba(46,107,64,0.45)" : "1px solid rgba(46,107,64,0.6)",
+                  color: iPrayFor ? "#A8C5A0" : "#F0EDE6",
+                }}
+              >
+                🙏 {iPrayFor ? "View prayer" : "Start a prayer"}
+              </button>
             </div>
           </div>
+
+          {/* Active-prayer card — shown inline when you're currently
+              praying for this person. Tapping goes to the detail page, same
+              target as the "View prayer" button above. */}
+          {activePrayerFor && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setLocation(prayerHref);
+              }}
+              className="mt-3 w-full text-left rounded-xl px-3 py-2.5 transition-opacity hover:opacity-90"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.35)",
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] mb-1" style={{ color: "rgba(168,197,160,0.6)" }}>
+                    You're praying 🙏
+                  </p>
+                  <p
+                    className="text-[13px] italic truncate"
+                    style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
+                  >
+                    {activePrayerFor.prayerText}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-[10px] font-semibold" style={{ color: "#A8C5A0" }}>
+                    {daysRemaining} {daysRemaining === 1 ? "day" : "days"} left
+                  </p>
+                  <p className="text-[9px]" style={{ color: "rgba(168,197,160,0.5)" }}>
+                    {prayerDayLabel}
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
         </div>
       </motion.div>
     </Link>
@@ -713,6 +786,11 @@ export default function People() {
                     isPresent={presentEmails.has(person.email)}
                     iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
                     prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
+                    activePrayerFor={
+                      iPrayFor.find(
+                        p => p.recipientEmail.toLowerCase() === person.email.toLowerCase() && !p.expired,
+                      ) ?? null
+                    }
                   />
                 </div>
               );

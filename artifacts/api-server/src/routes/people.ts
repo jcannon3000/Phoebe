@@ -172,7 +172,11 @@ router.get("/people", async (req, res): Promise<void> => {
         score += completedRows[0]?.count ?? 0;
       }
 
-      // Shared practices
+      // Shared practices — only ACTIVE ones count. We mirror the filter used
+      // by /people/:email and the main moments list: archived moments and
+      // intercessions past their 1-day post-goal grace period are treated
+      // as past, not active. Without this the People list surfaces stale
+      // streaks from practices that have long since ended.
       if (ownerMomentIds.length > 0) {
         const personTokenRows = await db.select({ momentId: momentUserTokensTable.momentId })
           .from(momentUserTokensTable)
@@ -181,15 +185,38 @@ router.get("/people", async (req, res): Promise<void> => {
         sharedMomentIds = ownerMomentIds.filter(id => personMomentIdSet.has(id));
 
         if (sharedMomentIds.length > 0) {
-          const sharedMoments = await db
+          const sharedMomentsRaw = await db
             .select({
               id: sharedMomentsTable.id,
               name: sharedMomentsTable.name,
               currentStreak: sharedMomentsTable.currentStreak,
               templateType: sharedMomentsTable.templateType,
+              state: sharedMomentsTable.state,
+              commitmentGoalReachedAt: sharedMomentsTable.commitmentGoalReachedAt,
+              goalDays: sharedMomentsTable.goalDays,
+              totalBlooms: sharedMomentsTable.totalBlooms,
             })
             .from(sharedMomentsTable)
             .where(inArray(sharedMomentsTable.id, sharedMomentIds));
+
+          const nowMs = Date.now();
+          const oneDayMs = 24 * 60 * 60 * 1000;
+          const isExpiredIntercession = (m: typeof sharedMomentsRaw[number]) => {
+            if (m.templateType !== "intercession") return false;
+            const reachedAt = m.commitmentGoalReachedAt;
+            if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > oneDayMs) return true;
+            if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return true;
+            return false;
+          };
+          const sharedMoments = sharedMomentsRaw.filter(
+            m => m.state !== "archived" && !isExpiredIntercession(m),
+          );
+          // Narrow sharedMomentIds so streak/bloom queries below only see active ones
+          sharedMomentIds = sharedMoments.map(m => m.id);
+          if (sharedMomentIds.length === 0) {
+            // No active shared practices — short-circuit so we don't query
+            // windows/posts for nothing.
+          }
 
           // Compute group streak from actual window data (DB field can be corrupted)
           const windowRows = await db
