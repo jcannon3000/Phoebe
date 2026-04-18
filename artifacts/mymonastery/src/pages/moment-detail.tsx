@@ -1103,41 +1103,39 @@ export default function MomentDetail() {
             <div className="flex-1 h-px" style={{ background: "rgba(46,107,64,0.35)" }} />
           </div>
 
-          {/* TODAY — per-member status (only on practice days) */}
-          {isTodayPracticeDay(moment.frequency, moment.dayOfWeek, parsedPracticeDays) && (
-            <div className="mb-5">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">Today</p>
-              <div className="rounded-2xl divide-y divide-[rgba(46,107,64,0.15)] overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
-                {todayLogs.map((log, i) => {
-                  const firstName = (log.name || log.email || "?").split(" ")[0];
-                  const initials = (log.name || log.email || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
-                  const loggedTime = log.loggedAt
-                    ? new Date(log.loggedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()
-                    : null;
-                  return (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3">
-                      {/* Avatar */}
-                      {log.avatarUrl ? (
-                        <img src={log.avatarUrl} alt={firstName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
-                      ) : (
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold ${
-                          log.loggedAt
-                            ? "bg-[#5C7A5F]/15 text-[#4a6b50]"
-                            : "bg-secondary/60 text-muted-foreground/50"
-                        }`}>
-                          {initials}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground/90">{firstName}</p>
-                        {log.reflectionText && (
-                          <p className="text-xs text-muted-foreground italic truncate">
-                            {isListening ? `🎵 ${log.reflectionText}` : `"${log.reflectionText}"`}
-                          </p>
+          {/* TODAY — per-member status (only on practice days).
+              We intentionally hide members who haven't prayed yet — this is a
+              log of what *has* happened, not a checklist of who's lagging. */}
+          {isTodayPracticeDay(moment.frequency, moment.dayOfWeek, parsedPracticeDays) && (() => {
+            const prayedToday = todayLogs.filter(l => !!l.loggedAt);
+            if (prayedToday.length === 0) return null;
+            return (
+              <div className="mb-5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">Today</p>
+                <div className="rounded-2xl divide-y divide-[rgba(46,107,64,0.15)] overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
+                  {prayedToday.map((log, i) => {
+                    const firstName = (log.name || log.email || "?").split(" ")[0];
+                    const initials = (log.name || log.email || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+                    const loggedTime = new Date(log.loggedAt!).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-4 py-3">
+                        {/* Avatar */}
+                        {log.avatarUrl ? (
+                          <img src={log.avatarUrl} alt={firstName} className="w-8 h-8 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold bg-[#5C7A5F]/15 text-[#4a6b50]">
+                            {initials}
+                          </div>
                         )}
-                      </div>
-                      <div className="shrink-0 text-right">
-                        {loggedTime ? (
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground/90">{firstName}</p>
+                          {log.reflectionText && (
+                            <p className="text-xs text-muted-foreground italic truncate">
+                              {isListening ? `🎵 ${log.reflectionText}` : `"${log.reflectionText}"`}
+                            </p>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
                           <p className="text-xs text-[#5C7A5F] font-medium">
                             {isFasting
                               ? "Fasting · all day"
@@ -1149,16 +1147,14 @@ export default function MomentDetail() {
                               ? `In silence · ${loggedTime}`
                               : `Practiced · ${loggedTime}`}
                           </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground/40">Not yet 🌱</p>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* RECENT — last 5 windows with at least one post, excluding today */}
           {(() => {
