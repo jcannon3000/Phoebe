@@ -147,6 +147,11 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
 });
 
 // POST /api/prayer-requests — create a request
+// Cap: a user can only hold 3 active prayer requests at a time. "Active" =
+// not answered, not closed — regardless of whether it has expired (owners
+// keep seeing their own expired requests so they can renew them).
+const ACTIVE_PRAYER_REQUEST_CAP = 3;
+
 router.post("/prayer-requests", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -158,6 +163,20 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const active = await db.select({ id: prayerRequestsTable.id })
+    .from(prayerRequestsTable)
+    .where(and(
+      eq(prayerRequestsTable.ownerId, sessionUserId),
+      eq(prayerRequestsTable.isAnswered, false),
+      isNull(prayerRequestsTable.closedAt),
+    ));
+  if (active.length >= ACTIVE_PRAYER_REQUEST_CAP) {
+    res.status(409).json({
+      error: `You can only hold ${ACTIVE_PRAYER_REQUEST_CAP} active prayer requests at a time. Mark one as answered or release it to share a new one.`,
+    });
+    return;
+  }
 
   const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
 

@@ -27,10 +27,12 @@ interface PrayerRequest {
   body: string;
   ownerName: string | null;
   isAnswered: boolean;
+  isOwnRequest?: boolean;
+  closedAt?: string | null;
 }
 
 interface PrayerSlide {
-  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired";
+  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "ask-request";
   text: string;
   attribution: string;
   fullText?: string | null;
@@ -47,13 +49,79 @@ function SlideContent({
   onAdvance,
   onRenew,
   onEnd,
+  onAskSubmit,
+  askSubmitting,
 }: {
   slide: PrayerSlide;
   onAdvance: () => void;
   onRenew: (id: number, days: 3 | 7) => void;
   onEnd: (id: number) => void;
+  onAskSubmit: (body: string) => void;
+  askSubmitting: boolean;
 }) {
+  const [askBody, setAskBody] = useState("");
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
+
+  // ── "How can the community pray for you?" — final slide when the viewer
+  // has no active prayer request. A gentle ask, skippable.
+  if (slide.kind === "ask-request") {
+    return (
+      <div className="w-full flex flex-col items-center text-center gap-5">
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          Before we close
+        </p>
+        <p
+          className="text-[22px] leading-[1.5] font-medium italic"
+          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+        >
+          How can the community pray for you?
+        </p>
+        <p
+          className="text-[12px] italic"
+          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+        >
+          A short note; your garden will hold it for 3 days.
+        </p>
+
+        <textarea
+          value={askBody}
+          onChange={(e) => setAskBody(e.target.value.slice(0, 1000))}
+          rows={3}
+          placeholder="What's on your heart?"
+          className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.3)",
+            color: "#F0EDE6",
+            fontFamily: "Playfair Display, Georgia, serif",
+            fontStyle: "italic",
+            lineHeight: 1.65,
+          }}
+        />
+
+        <div className="flex flex-col gap-3 w-full max-w-xs mt-1">
+          <button
+            onClick={() => askBody.trim() && onAskSubmit(askBody.trim())}
+            disabled={askBody.trim().length === 0 || askSubmitting}
+            className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            {askSubmitting ? "Sharing…" : "Share with my garden →"}
+          </button>
+          <button
+            onClick={onAdvance}
+            className="text-sm transition-opacity hover:opacity-80"
+            style={{ color: "rgba(143,175,150,0.55)" }}
+          >
+            Skip
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Expired-prayer renewal prompt — shown instead of a normal slide ──────
   if (slide.kind === "prayer-for-expired" && slide.prayerForId != null) {
@@ -306,6 +374,15 @@ export default function PrayerModePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] }),
   });
 
+  // Creating a prayer request from the final slide ("How can the community
+  // pray for you?"). On success we advance past the ask slide — the
+  // slideshow then ends naturally.
+  const createRequestMutation = useMutation({
+    mutationFn: (body: string) =>
+      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays: 3 }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] }),
+  });
+
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
@@ -383,6 +460,20 @@ export default function PrayerModePage() {
       recipientAvatarUrl: p.recipientAvatarUrl,
     })),
   ];
+
+  // Final "ask" slide — if the viewer has no active prayer request of their
+  // own, we gently ask what the community can pray for on the way out.
+  // Skippable.
+  const hasActiveOwnRequest = prayerRequests.some(
+    (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
+  );
+  if (!hasActiveOwnRequest) {
+    slides.push({
+      kind: "ask-request",
+      text: "",
+      attribution: "",
+    });
+  }
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<"prayer" | "closing">("prayer");
@@ -501,6 +592,10 @@ export default function PrayerModePage() {
                 endMutation.mutate(id);
                 advance();
               }}
+              onAskSubmit={(body) => {
+                createRequestMutation.mutate(body, { onSuccess: () => advance() });
+              }}
+              askSubmitting={createRequestMutation.isPending}
             />
           </div>
         )}
