@@ -393,6 +393,7 @@ export default function PersonProfile() {
         {(person as any).userId && !(person as any).isMuted && (
           <PrayForThemButton
             recipientUserId={(person as any).userId as number}
+            recipientEmail={person.email}
             recipientName={person.name}
           />
         )}
