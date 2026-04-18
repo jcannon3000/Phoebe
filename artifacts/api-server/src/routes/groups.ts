@@ -37,6 +37,55 @@ function generateToken(): string {
   return crypto.randomBytes(16).toString("hex");
 }
 
+// ─── Dynamic practice membership ─────────────────────────────────────────────
+// A practice tied to a group derives its members from the group. When someone
+// joins the group, they gain a token on every attached practice. When they
+// leave, their tokens (and any session state) are removed.
+
+async function addUserToGroupPractices(groupId: number, email: string, name: string | null): Promise<void> {
+  try {
+    const emailLower = email.toLowerCase();
+    const practices = await db.select({ id: sharedMomentsTable.id })
+      .from(sharedMomentsTable)
+      .where(and(eq(sharedMomentsTable.groupId, groupId), sql`${sharedMomentsTable.state} != 'archived'`));
+    if (practices.length === 0) return;
+
+    for (const p of practices) {
+      const [existing] = await db.select({ id: momentUserTokensTable.id })
+        .from(momentUserTokensTable)
+        .where(and(eq(momentUserTokensTable.momentId, p.id), eq(momentUserTokensTable.email, emailLower)));
+      if (existing) continue;
+      await db.insert(momentUserTokensTable).values({
+        momentId: p.id,
+        email: emailLower,
+        name: name ?? emailLower,
+        userToken: generateToken(),
+      });
+    }
+  } catch (err) {
+    console.error("[groups] addUserToGroupPractices failed:", err);
+  }
+}
+
+async function removeUserFromGroupPractices(groupId: number, email: string): Promise<void> {
+  try {
+    const emailLower = email.toLowerCase();
+    const practices = await db.select({ id: sharedMomentsTable.id })
+      .from(sharedMomentsTable)
+      .where(eq(sharedMomentsTable.groupId, groupId));
+    if (practices.length === 0) return;
+
+    const practiceIds = practices.map(p => p.id);
+    await db.delete(momentUserTokensTable)
+      .where(and(
+        inArray(momentUserTokensTable.momentId, practiceIds),
+        eq(momentUserTokensTable.email, emailLower),
+      ));
+  } catch (err) {
+    console.error("[groups] removeUserFromGroupPractices failed:", err);
+  }
+}
+
 type SessionUser = { id: number; email: string; name: string };
 
 function getUser(req: any): SessionUser | null {
@@ -255,6 +304,9 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
       joinedAt: new Date(),
     }).returning();
 
+    // Practices attached to this group are dynamic — sync the new member in.
+    await addUserToGroupPractices(result.group.id, emailLower, person.name ?? null);
+
     added.push(member);
   }
 
@@ -283,6 +335,8 @@ router.post("/groups/:slug/join", async (req, res): Promise<void> => {
   }
 
   await db.update(groupMembersTable).set(updates).where(eq(groupMembersTable.id, member.id));
+  // On first join, sync them into any practices attached to the group.
+  await addUserToGroupPractices(group.id, member.email, updates.name ?? member.name);
   res.json({ ok: true, group });
 });
 
@@ -326,6 +380,8 @@ router.delete("/groups/:slug/members/:memberId", async (req, res): Promise<void>
   if (target.userId === user.id) { res.status(400).json({ error: "Cannot remove yourself" }); return; }
 
   await db.delete(groupMembersTable).where(eq(groupMembersTable.id, memberId));
+  // Practices attached to this group are dynamic — sync the removed member out.
+  await removeUserFromGroupPractices(result.group.id, target.email);
   res.json({ ok: true });
 });
 
