@@ -57,7 +57,17 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
     const u = await getBellUser(user.id);
     if (!u) { res.status(404).json({ error: "User not found" }); return; }
 
-    // Check if the calendar event is actually active (user accepted it)
+    // Check if the calendar event is actually active (user accepted it).
+    //
+    // We ONLY reset the user's saved preferences when we have positive
+    // evidence the user no longer wants the bell — i.e. their RSVP is
+    // explicitly "declined". A null/throw from the Google API (which can
+    // happen for any transient reason: 5xx, rate limit, OAuth refresh
+    // glitch, scheduler-side 404 if the event was deleted out of band)
+    // must NOT silently nuke the user's preferences. This was the bug
+    // that erased people's bell settings while leaving the calendar
+    // event intact. When in doubt we report "pending" and keep the
+    // saved prefs as-is.
     let calendarStatus: "active" | "pending" | "tentative" | "declined" | "none" = "none";
     if (u.bellEnabled && u.bellCalendarEventId) {
       try {
@@ -67,29 +77,33 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
           if (me?.responseStatus === "accepted") calendarStatus = "active";
           else if (me?.responseStatus === "tentative") calendarStatus = "tentative";
           else if (me?.responseStatus === "declined") {
-            // User declined = they removed it from their calendar. Reset bell.
+            // Positive evidence: user removed the bell from their calendar.
             calendarStatus = "none";
             try { await deleteCalendarEvent(user.id, u.bellCalendarEventId!); } catch { /* may already be gone */ }
             await updateBellPrefs(user.id, {
               bellEnabled: false, dailyBellTime: u.dailyBellTime ?? "07:00",
               timezone: u.timezone ?? "America/New_York", bellCalendarEventId: null,
             });
+            console.log(`[bell] User ${user.id} declined bell event — prefs reset.`);
           }
           else calendarStatus = "pending";
         } else {
-          calendarStatus = "none";
-          await updateBellPrefs(user.id, {
-            bellEnabled: false, dailyBellTime: u.dailyBellTime ?? "07:00",
-            timezone: u.timezone ?? "America/New_York", bellCalendarEventId: null,
-          });
+          // No response from Google — treat as pending and leave prefs alone.
+          // The user clearly opted in (bellEnabled is true in our DB), so we
+          // trust that until we hear an explicit "declined".
+          calendarStatus = "pending";
+          console.warn(
+            `[bell] getCalendarEventAttendees returned null for user ${user.id} ` +
+            `(event ${u.bellCalendarEventId}) — assuming transient and keeping prefs intact.`,
+          );
         }
-      } catch {
+      } catch (err) {
         calendarStatus = "pending";
+        console.warn(`[bell] attendee lookup threw for user ${user.id}:`, err);
       }
     }
 
-    // If declined, bell was auto-reset above — reflect that in response
-    const bellEnabled = calendarStatus === "none" ? false : u.bellEnabled;
+    const bellEnabled = u.bellEnabled;
 
     res.json({
       bellEnabled,
