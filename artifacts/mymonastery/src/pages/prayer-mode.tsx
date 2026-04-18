@@ -128,6 +128,12 @@ function SlideContent({
     return (
       <div className="w-full flex flex-col items-center text-center gap-5">
         <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          A quiet gift
+        </p>
+        <p
           className="text-[22px] leading-[1.4] font-medium italic"
           style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
         >
@@ -200,7 +206,7 @@ function SlideContent({
             color: "#C8D4C0",
           }}
         >
-          Next →
+          Amen →
         </button>
       </div>
     );
