@@ -575,7 +575,6 @@ function IntercessionPrayerPage({
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mb-3 text-center rounded-2xl py-2"
         >
-          <p className="text-xs mb-2.5" style={{ color: "rgba(200,230,210,0.6)" }}>{todayPostCount} of {memberCount} have prayed this 🙏🏽</p>
           <NamedPresenceWithBloom members={members} myToken={myToken} justBloomed={justBloomed} />
         </motion.div>
 
