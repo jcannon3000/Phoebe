@@ -1189,6 +1189,107 @@ router.get("/moments", async (req, res): Promise<void> => {
       for (const g of groups) groupMap.set(g.id, { id: g.id, name: g.name, slug: g.slug, emoji: g.emoji });
     }
 
+    // Derive an "effective group" for practices that don't have groupId
+    // stamped in the DB yet. If every member of the practice belongs to
+    // exactly one shared community, we use that community as the card's
+    // anchor — matches how the frontend already treats group-stamped
+    // practices. This heals legacy practices created before the group-attach
+    // flow existed without requiring a destructive migration.
+    //
+    // Strategy:
+    //   1. Pull all group memberships for all token emails across all
+    //      ungrouped practices (one query).
+    //   2. For each practice, compute the intersection of group IDs that
+    //      every member belongs to. If that intersection has exactly one
+    //      group, that's the effective group.
+    const ungroupedMomentIds = flatMoments.filter(m => !m.groupId).map(m => m.id);
+    const effectiveGroupByMomentId = new Map<number, { id: number; name: string; slug: string; emoji: string | null }>();
+    if (ungroupedMomentIds.length > 0) {
+      // All token rows across all ungrouped practices (we already fetch
+      // per-moment later but doing it once here avoids an N+1 for group
+      // membership lookups).
+      const tokenRows = await db.select({
+        momentId: momentUserTokensTable.momentId,
+        email: momentUserTokensTable.email,
+      })
+        .from(momentUserTokensTable)
+        .where(inArray(momentUserTokensTable.momentId, ungroupedMomentIds));
+
+      const emailsByMoment = new Map<number, Set<string>>();
+      const allEmails = new Set<string>();
+      for (const t of tokenRows) {
+        const e = t.email.toLowerCase();
+        if (!emailsByMoment.has(t.momentId)) emailsByMoment.set(t.momentId, new Set());
+        emailsByMoment.get(t.momentId)!.add(e);
+        allEmails.add(e);
+      }
+
+      if (allEmails.size > 0) {
+        // Resolve emails → userIds (only registered users have groups)
+        const users = await db.select({ id: usersTable.id, email: usersTable.email })
+          .from(usersTable)
+          .where(inArray(usersTable.email, Array.from(allEmails)));
+        const userIdByEmail = new Map(users.map(u => [u.email.toLowerCase(), u.id]));
+
+        if (users.length > 0) {
+          // Only joined group memberships count — pending invites don't
+          // make the group "shared".
+          const memberships = await db.select({
+            userId: groupMembersTable.userId,
+            groupId: groupMembersTable.groupId,
+          })
+            .from(groupMembersTable)
+            .where(and(
+              inArray(groupMembersTable.userId, users.map(u => u.id)),
+              sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+            ));
+          const groupIdsByUserId = new Map<number, Set<number>>();
+          for (const m of memberships) {
+            // userId is nullable on pending invites — skip those.
+            if (m.userId == null) continue;
+            if (!groupIdsByUserId.has(m.userId)) groupIdsByUserId.set(m.userId, new Set());
+            groupIdsByUserId.get(m.userId)!.add(m.groupId);
+          }
+
+          // Fetch group metadata for any newly-referenced groups
+          const allGroupIds = new Set<number>();
+          for (const set of groupIdsByUserId.values()) for (const id of set) allGroupIds.add(id);
+          const missing = [...allGroupIds].filter(id => !groupMap.has(id));
+          if (missing.length > 0) {
+            const extra = await db.select().from(groupsTable).where(inArray(groupsTable.id, missing));
+            for (const g of extra) groupMap.set(g.id, { id: g.id, name: g.name, slug: g.slug, emoji: g.emoji });
+          }
+
+          // For each ungrouped moment, compute the intersection of its
+          // members' group IDs. If the intersection has exactly one
+          // group, use it.
+          for (const [momentId, emails] of emailsByMoment.entries()) {
+            const memberGroupSets: Set<number>[] = [];
+            let anyUnregistered = false;
+            for (const email of emails) {
+              const uid = userIdByEmail.get(email);
+              if (uid == null) { anyUnregistered = true; break; }
+              const s = groupIdsByUserId.get(uid);
+              if (!s || s.size === 0) { anyUnregistered = true; break; }
+              memberGroupSets.push(s);
+            }
+            if (anyUnregistered || memberGroupSets.length === 0) continue;
+            // Intersect all member sets
+            const [first, ...rest] = memberGroupSets;
+            const intersection = new Set<number>();
+            for (const id of first) {
+              if (rest.every(s => s.has(id))) intersection.add(id);
+            }
+            if (intersection.size === 1) {
+              const [gid] = [...intersection];
+              const g = groupMap.get(gid);
+              if (g) effectiveGroupByMomentId.set(momentId, g);
+            }
+          }
+        }
+      }
+    }
+
     // Enrich each moment INDEPENDENTLY. If any single moment's enrichment
     // throws (bad timezone, computeWindowOpen edge case, a null-dereference
     // we didn't anticipate, etc.), we log it and fall back to the raw row
@@ -1368,7 +1469,7 @@ router.get("/moments", async (req, res): Promise<void> => {
 
         return {
           ...m,
-          group: m.groupId ? groupMap.get(m.groupId) ?? null : null,
+          group: m.groupId ? groupMap.get(m.groupId) ?? null : effectiveGroupByMomentId.get(m.id) ?? null,
           memberCount: allMembers.length,
           members: allMembers.map(t => ({
             name: t.name,
@@ -1426,7 +1527,7 @@ router.get("/moments", async (req, res): Promise<void> => {
         const myToken = userTokenRows.find(t => t.momentId === m.id);
         return {
           ...m,
-          group: m.groupId ? groupMap.get(m.groupId) ?? null : null,
+          group: m.groupId ? groupMap.get(m.groupId) ?? null : effectiveGroupByMomentId.get(m.id) ?? null,
           memberCount: 0,
           members: [],
           todayPostCount: 0,
