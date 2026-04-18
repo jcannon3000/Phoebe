@@ -6,6 +6,19 @@ import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
 
+// Scale the big prayer-text block by character length so long prayers
+// (like the BCP collects) stay on one screen without scrolling, and short
+// ones still feel like liturgy.
+function fitPrayerText(text: string | null | undefined): { size: number; leading: number } {
+  const len = (text ?? "").length;
+  if (len < 100)  return { size: 18, leading: 1.8 };
+  if (len < 220)  return { size: 16, leading: 1.75 };
+  if (len < 360)  return { size: 15, leading: 1.7 };
+  if (len < 520)  return { size: 14, leading: 1.65 };
+  if (len < 720)  return { size: 13, leading: 1.6 };
+  return { size: 12, leading: 1.55 };
+}
+
 type Moment = {
   id: number;
   name: string;
@@ -207,12 +220,22 @@ function SlideContent({
               border: "1px solid rgba(46,107,64,0.15)",
             }}
           >
-            <p
-              className="text-[16px] leading-[1.75] italic whitespace-pre-wrap"
-              style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
-            >
-              {slide.fullText}
-            </p>
+            {(() => {
+              const fit = fitPrayerText(slide.fullText);
+              return (
+                <p
+                  className="italic whitespace-pre-wrap"
+                  style={{
+                    color: "#C8D4C0",
+                    fontFamily: "Playfair Display, Georgia, serif",
+                    fontSize: `${fit.size}px`,
+                    lineHeight: fit.leading,
+                  }}
+                >
+                  {slide.fullText}
+                </p>
+              );
+            })()}
           </div>
         )}
 
@@ -293,12 +316,22 @@ function SlideContent({
             border: "1px solid rgba(46,107,64,0.15)",
           }}
         >
-          <p
-            className="text-[16px] leading-[1.75] italic"
-            style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
-          >
-            {bcpPrayer.text}
-          </p>
+          {(() => {
+            const fit = fitPrayerText(bcpPrayer.text);
+            return (
+              <p
+                className="italic"
+                style={{
+                  color: "#C8D4C0",
+                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontSize: `${fit.size}px`,
+                  lineHeight: fit.leading,
+                }}
+              >
+                {bcpPrayer.text}
+              </p>
+            );
+          })()}
           <p
             className="text-[9px] uppercase tracking-[0.14em] mt-3"
             style={{ color: "rgba(143,175,150,0.3)" }}
@@ -317,12 +350,22 @@ function SlideContent({
             border: "1px solid rgba(46,107,64,0.15)",
           }}
         >
-          <p
-            className="text-[16px] leading-[1.75] italic"
-            style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
-          >
-            {slide.fullText}
-          </p>
+          {(() => {
+            const fit = fitPrayerText(slide.fullText);
+            return (
+              <p
+                className="italic"
+                style={{
+                  color: "#C8D4C0",
+                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontSize: `${fit.size}px`,
+                  lineHeight: fit.leading,
+                }}
+              >
+                {slide.fullText}
+              </p>
+            );
+          })()}
         </div>
       )}
 
@@ -422,9 +465,11 @@ export default function PrayerModePage() {
       };
     }),
     // Other people's prayer requests come before the user's own private
-    // prayers-for — hearing others first, then turning inward.
+    // prayers-for — hearing others first, then turning inward. We
+    // deliberately exclude the viewer's own requests; they don't need to
+    // be shown their own ask as a slide to pray for.
     ...prayerRequests
-      .filter((r) => !r.isAnswered)
+      .filter((r) => !r.isAnswered && !r.isOwnRequest)
       .map((r): PrayerSlide => ({
         kind: "request",
         text: r.body,
