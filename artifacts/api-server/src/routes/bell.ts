@@ -5,7 +5,7 @@ import {
   db, sharedMomentsTable, momentUserTokensTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
-import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
+import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
 
 const router: IRouter = Router();
 
@@ -103,12 +103,60 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
       }
     }
 
-    const bellEnabled = u.bellEnabled;
+    let bellEnabled = u.bellEnabled;
+    let resolvedTime = u.dailyBellTime ?? "07:00";
+    let resolvedTz = u.timezone ?? "America/New_York";
+
+    // ── Auto-recovery: scan the scheduler calendar for an accepted, active,
+    // recurring "Daily Bell" invite for this user. The calendar is the
+    // source of truth — if our DB cache lost the event ID (the old reset
+    // bug, a manual cleanup, anything), the bell heals itself the next
+    // time the user opens any page that hits this endpoint.
+    //
+    // Two recovery cases:
+    //   1. DB says enabled, but the event we have stored is unreachable
+    //      (calendarStatus came back "pending" from the block above).
+    //   2. DB says disabled — the user might have been silently reset by
+    //      the old bug and the calendar event still exists.
+    const needsRecovery = !bellEnabled || calendarStatus === "pending";
+    if (needsRecovery) {
+      try {
+        const found = await findActiveBellEventForUser(u.email);
+        if (found) {
+          // Avoid re-linking to the same event that just failed (case 1 with
+          // a transient API issue): if the stored ID matches what we found,
+          // the lookup is just flapping — keep prefs as-is, don't overwrite.
+          const isSameEvent = found.eventId === u.bellCalendarEventId;
+          if (!isSameEvent || !bellEnabled) {
+            await updateBellPrefs(user.id, {
+              bellEnabled: true,
+              dailyBellTime: found.localTime,
+              timezone: found.timeZone,
+              bellCalendarEventId: found.eventId,
+            });
+            bellEnabled = true;
+            resolvedTime = found.localTime;
+            resolvedTz = found.timeZone;
+            calendarStatus = "active";
+            console.log(
+              `[bell] Auto-recovered bell for user ${user.id} — relinked to event ${found.eventId} ` +
+              `(${found.localTime} ${found.timeZone}).`,
+            );
+          } else if (isSameEvent) {
+            // Same event found via search but the per-event get failed —
+            // promote status to active, the search succeeded.
+            calendarStatus = "active";
+          }
+        }
+      } catch (err) {
+        console.warn(`[bell] auto-recovery scan failed for user ${user.id}:`, err);
+      }
+    }
 
     res.json({
       bellEnabled,
-      dailyBellTime: u.dailyBellTime ?? "07:00",
-      timezone: u.timezone ?? "America/New_York",
+      dailyBellTime: resolvedTime,
+      timezone: resolvedTz,
       calendarStatus,
     });
   } catch (err) {

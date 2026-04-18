@@ -249,6 +249,73 @@ export async function getCalendarEvent(
   }
 }
 
+// ─── Bell discovery ─────────────────────────────────────────────────────────
+// Source-of-truth scan: walk the scheduler calendar for an *accepted*,
+// *recurring*, *active* "Daily Bell" event for a given user. Used to
+// auto-relink users whose DB-stored bell_calendar_event_id was lost — the
+// calendar event is the durable record, our DB row is just a cache.
+
+export async function findActiveBellEventForUser(
+  userEmail: string,
+): Promise<{ eventId: string; localTime: string; timeZone: string } | null> {
+  const auth = await getSchedulerClient();
+  if (!auth) return null;
+
+  const calendar = google.calendar({ version: "v3", auth });
+  const emailLower = userEmail.toLowerCase();
+
+  try {
+    // Search the scheduler's primary calendar for "Daily Bell" events.
+    // singleEvents=false so we get the recurring master, not expanded
+    // instances. maxResults is generous because all bells share the same
+    // summary; we'll filter by attendee on the client side.
+    const res = await calendar.events.list({
+      calendarId: "primary",
+      q: "Daily Bell",
+      singleEvents: false,
+      maxResults: 250,
+      showDeleted: false,
+    });
+    const events = res.data.items ?? [];
+
+    for (const ev of events) {
+      // Must be a confirmed, recurring, daily event with our bell summary.
+      if (ev.status === "cancelled") continue;
+      if (!ev.summary?.includes("Daily Bell")) continue;
+      const isDaily = (ev.recurrence ?? []).some(
+        r => /FREQ=DAILY/i.test(r),
+      );
+      if (!isDaily) continue;
+
+      // Must include our user as an *accepted* attendee.
+      const attendee = (ev.attendees ?? []).find(
+        a => (a.email ?? "").toLowerCase() === emailLower,
+      );
+      if (!attendee) continue;
+      if (attendee.responseStatus !== "accepted") continue;
+
+      // Pull the local time + timezone from the start record.
+      const startDateTime = ev.start?.dateTime ?? null;
+      const startTz = ev.start?.timeZone ?? "America/New_York";
+      if (!ev.id || !startDateTime) continue;
+
+      // startDateTime is an ISO string like "2026-04-18T07:00:00-04:00".
+      // We want the wall-clock HH:MM in the event's own timezone — that's
+      // already what the ISO string carries before the offset suffix.
+      // Strip the offset/Z and pull HH:MM out of the time portion.
+      const timePart = startDateTime.split("T")[1] ?? "";
+      const hhmm = timePart.slice(0, 5); // "07:00"
+      if (!/^\d{2}:\d{2}$/.test(hhmm)) continue;
+
+      return { eventId: ev.id, localTime: hhmm, timeZone: startTz };
+    }
+    return null;
+  } catch (err) {
+    console.warn("[calendar] findActiveBellEventForUser failed:", err);
+    return null;
+  }
+}
+
 export async function getCalendarEventAttendees(
   _userId: number,
   eventId: string
