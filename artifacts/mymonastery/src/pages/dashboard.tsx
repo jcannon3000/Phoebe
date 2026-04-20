@@ -1534,14 +1534,11 @@ export default function Dashboard() {
                 Today's prayer list
               </p>
               <h2
-                className="text-xl font-bold mb-2"
+                className="text-xl font-bold mb-6"
                 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
               >
                 {prayerInviteCount} {prayerInviteCount === 1 ? "prayer" : "prayers"} waiting for you
               </h2>
-              <p className="text-sm mb-6 leading-relaxed" style={{ color: "#8FAF96" }}>
-                Step into the slideshow and hold your community in prayer one by one.
-              </p>
               <div className="flex flex-col gap-2.5">
                 <button
                   onClick={beginPrayerInvite}
