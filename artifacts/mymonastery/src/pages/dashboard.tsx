@@ -1322,6 +1322,60 @@ export default function Dashboard() {
     localStorage.setItem("phoebe:beta-welcome-seen", "1");
   }, []);
 
+  // ── Daily prayer-slideshow invite ────────────────────────────────────────
+  // Once per calendar day, if the user has prayers queued up (open
+  // intercessions, others' prayer requests, or active prayers-for), show
+  // a popup inviting them into the slideshow. Dismisses until tomorrow.
+  const [prayerInviteVisible, setPrayerInviteVisible] = useState(false);
+  const [prayerInviteCount, setPrayerInviteCount] = useState(0);
+
+  type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
+  type DashPrayerFor = { id: number; expired: boolean };
+
+  const { data: dashPrayerRequests = [] } = useQuery<DashPrayerRequest[]>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    enabled: !!user,
+  });
+  const { data: dashPrayersFor = [] } = useQuery<DashPrayerFor[]>({
+    queryKey: ["/api/prayers-for/mine"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const lastShown = localStorage.getItem("phoebe:prayer-invite-last-shown");
+    if (lastShown === today) return;
+
+    const moments = momentsData?.moments ?? [];
+    const openIntercessions = moments.filter(
+      m => m.templateType === "intercession" && m.windowOpen,
+    ).length;
+    const othersRequests = dashPrayerRequests.filter(
+      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
+    ).length;
+    const activePrayersFor = dashPrayersFor.filter(p => !p.expired).length;
+    const total = openIntercessions + othersRequests + activePrayersFor;
+
+    if (total > 0) {
+      setPrayerInviteCount(total);
+      setPrayerInviteVisible(true);
+    }
+  }, [user, momentsData, dashPrayerRequests, dashPrayersFor]);
+
+  const dismissPrayerInvite = useCallback(() => {
+    setPrayerInviteVisible(false);
+    const today = new Date().toISOString().slice(0, 10);
+    try { localStorage.setItem("phoebe:prayer-invite-last-shown", today); } catch { /* ignore */ }
+  }, []);
+
+  const beginPrayerInvite = useCallback(() => {
+    dismissPrayerInvite();
+    setLocation("/prayer-mode");
+  }, [dismissPrayerInvite, setLocation]);
+
   useEffect(() => {
     const reset = () => setFilter(null);
     const setPracticesFilter = () => setFilter("practices");
@@ -1450,6 +1504,61 @@ export default function Dashboard() {
           }
         }
       `}</style>
+      {/* Daily prayer-slideshow invite — shown once per calendar day when
+          the user has prayers queued up. Takes priority over beta welcome. */}
+      <AnimatePresence>
+        {prayerInviteVisible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+            onClick={dismissPrayerInvite}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.25 }}
+              className="rounded-2xl px-8 py-8 text-center max-w-sm w-full"
+              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <p className="text-4xl mb-4">🙏</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+                Today's prayer list
+              </p>
+              <h2
+                className="text-xl font-bold mb-2"
+                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                {prayerInviteCount} {prayerInviteCount === 1 ? "prayer" : "prayers"} waiting for you
+              </h2>
+              <p className="text-sm mb-6 leading-relaxed" style={{ color: "#8FAF96" }}>
+                Step into the slideshow and hold your community in prayer one by one.
+              </p>
+              <div className="flex flex-col gap-2.5">
+                <button
+                  onClick={beginPrayerInvite}
+                  className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                >
+                  Begin praying →
+                </button>
+                <button
+                  onClick={dismissPrayerInvite}
+                  className="px-6 py-2.5 text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ color: "rgba(143,175,150,0.7)" }}
+                >
+                  Continue to home
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Beta welcome popup — one-time */}
       <AnimatePresence>
         {betaWelcomeVisible && (
