@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db, sharedMomentsTable, momentUserTokensTable,
+  groupsTable, groupMembersTable, circleDailyFocusTable, usersTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
@@ -391,6 +392,91 @@ router.get("/bell/today", async (req, res): Promise<void> => {
       return true;
     });
 
+    // ── Prayer Circles (beta) — surface today's focus alongside practices.
+    // For every circle group this user is a member of, include the stated
+    // intention plus today's focus entries (in the viewer's timezone). The
+    // existing bell cadence / delivery mechanism is untouched — we only
+    // enrich the payload the bell screen renders.
+    //
+    // `focusDate` is stored in the adder's timezone; we match against the
+    // *viewer's* "today". During the overlap window between timezones a
+    // circle member may briefly see yesterday's or tomorrow's focus — a
+    // known beta limitation we accept to keep the schema simple.
+    const circles = await (async () => {
+      try {
+        // Find circle groups this user belongs to. We match via user id first
+        // (the modern linkage), falling back to email to catch legacy rows
+        // whose userId wasn't stitched back on signup.
+        const memberRows = await db
+          .select({
+            groupId: groupsTable.id,
+            groupName: groupsTable.name,
+            groupSlug: groupsTable.slug,
+            groupEmoji: groupsTable.emoji,
+            intention: groupsTable.intention,
+          })
+          .from(groupMembersTable)
+          .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
+          .where(and(
+            eq(groupsTable.isPrayerCircle, true),
+            eq(groupMembersTable.userId, user.id),
+          ));
+
+        if (memberRows.length === 0) return [];
+
+        // Today in the *viewer's* timezone, in the same YYYY-MM-DD format the
+        // focus table stores.
+        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+
+        const groupIds = memberRows.map(r => r.groupId);
+        const focusRows = await db.select().from(circleDailyFocusTable)
+          .where(and(
+            inArray(circleDailyFocusTable.groupId, groupIds),
+            eq(circleDailyFocusTable.focusDate, todayStr),
+          ))
+          .orderBy(desc(circleDailyFocusTable.createdAt));
+
+        // Enrich subject users in a single query so each focus row can render
+        // the avatar + name without an N+1 fan-out.
+        const subjectIds = Array.from(new Set(
+          focusRows.map(r => r.subjectUserId).filter((x): x is number => x != null),
+        ));
+        const profiles = subjectIds.length > 0
+          ? await db.select({
+              id: usersTable.id,
+              name: usersTable.name,
+              avatarUrl: usersTable.avatarUrl,
+            }).from(usersTable).where(inArray(usersTable.id, subjectIds))
+          : [];
+        const profileById = new Map(profiles.map(p => [p.id, p]));
+
+        return memberRows.map(g => ({
+          groupId: g.groupId,
+          groupName: g.groupName,
+          groupSlug: g.groupSlug,
+          groupEmoji: g.groupEmoji,
+          intention: g.intention,
+          focus: focusRows
+            .filter(f => f.groupId === g.groupId)
+            .map(f => {
+              const subject = f.subjectUserId != null ? profileById.get(f.subjectUserId) ?? null : null;
+              return {
+                id: f.id,
+                focusType: f.focusType,
+                subjectName: subject?.name ?? null,
+                subjectAvatarUrl: subject?.avatarUrl ?? null,
+                subjectText: f.subjectText,
+              };
+            }),
+        }));
+      } catch (err) {
+        // Never let a circles query failure break the daily bell — log and
+        // fall back to an empty list so the screen still renders practices.
+        console.error("[bell] circles surfacing failed:", err);
+        return [];
+      }
+    })();
+
     res.json({
       userName: u.name ?? "friend",
       timezone,
@@ -404,6 +490,7 @@ router.get("/bell/today", async (req, res): Promise<void> => {
         momentToken: r.momentToken,
         userToken: r.userToken,
       })),
+      circles,
     });
   } catch (err) {
     console.error("GET /api/bell/today error:", err);

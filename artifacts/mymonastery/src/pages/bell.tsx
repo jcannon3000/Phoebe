@@ -56,10 +56,31 @@ interface BellPractice {
   userToken: string;
 }
 
+// ── Prayer Circles (beta) — daily focus surfaced alongside practices.
+// One entry per circle-group the viewer belongs to, with today's list of
+// what the circle is praying for. The bell mechanism itself is unchanged;
+// this is just extra content the bell screen knows how to render.
+interface BellCircleFocus {
+  id: number;
+  focusType: "person" | "situation" | "cause" | "custom";
+  subjectName: string | null;
+  subjectAvatarUrl: string | null;
+  subjectText: string | null;
+}
+interface BellCircle {
+  groupId: number;
+  groupName: string;
+  groupSlug: string;
+  groupEmoji: string | null;
+  intention: string | null;
+  focus: BellCircleFocus[];
+}
+
 interface BellTodayResponse {
   userName: string;
   timezone: string;
   practices: BellPractice[];
+  circles?: BellCircle[];
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -101,11 +122,101 @@ export default function BellPage() {
             {greeting}, {data?.userName ?? user.name ?? "friend"}.
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            {data?.practices && data.practices.length > 0
-              ? `You have ${data.practices.length} ${data.practices.length === 1 ? "practice" : "practices"} today.`
-              : "A gentle moment to pause and be present."}
+            {(() => {
+              const practiceCount = data?.practices?.length ?? 0;
+              const circleCount = data?.circles?.length ?? 0;
+              if (practiceCount > 0) {
+                return `You have ${practiceCount} ${practiceCount === 1 ? "practice" : "practices"} today.`;
+              }
+              if (circleCount > 0) {
+                return circleCount === 1
+                  ? "Your circle is praying together today."
+                  : "Your circles are praying together today.";
+              }
+              return "A gentle moment to pause and be present.";
+            })()}
           </p>
         </motion.div>
+
+        {/* ── Prayer Circles (beta) ─────────────────────────────────────
+            Each circle shows its stated intention and today's focus list.
+            Entries are read-only here — adding / removing lives on the
+            circle's community page — the bell is for bringing everything
+            named into one morning view. */}
+        {data?.circles && data.circles.length > 0 && (
+          <div className="space-y-4 mb-6">
+            {data.circles.map((c, ci) => (
+              <motion.div
+                key={c.groupId}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: ci * 0.06, ease: [0.22, 1, 0.36, 1] }}
+                className="rounded-2xl px-5 py-4"
+                style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+              >
+                <Link href={`/communities/${c.groupSlug}`} className="block">
+                  <div className="flex items-center gap-2 mb-2">
+                    {c.groupEmoji && <span className="text-lg leading-none">{c.groupEmoji}</span>}
+                    <p
+                      className="text-[10px] font-bold uppercase tracking-[0.2em]"
+                      style={{ color: "#C8D4C0" }}
+                    >
+                      {c.groupName}
+                    </p>
+                  </div>
+                  {c.intention && (
+                    <p
+                      className="text-base italic leading-snug mb-3"
+                      style={{
+                        color: "#F0EDE6",
+                        fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                      }}
+                    >
+                      {c.intention}
+                    </p>
+                  )}
+                </Link>
+                {c.focus.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {c.focus.map(f => {
+                      const label = f.subjectName || f.subjectText || "";
+                      return (
+                        <div
+                          key={f.id}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
+                          style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.2)" }}
+                        >
+                          {f.subjectAvatarUrl ? (
+                            <img
+                              src={f.subjectAvatarUrl}
+                              alt={f.subjectName ?? ""}
+                              className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                              style={{ border: "1px solid rgba(46,107,64,0.4)" }}
+                            />
+                          ) : (
+                            <span className="text-xs flex-shrink-0" style={{ color: "#E8B872" }}>
+                              {f.focusType === "person" ? "◉" : "✦"}
+                            </span>
+                          )}
+                          <p
+                            className="text-sm leading-snug truncate"
+                            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                          >
+                            {label}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[12px] italic" style={{ color: "rgba(143,175,150,0.6)" }}>
+                    Nothing named yet today.
+                  </p>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        )}
 
         {/* Practice cards */}
         {bellLoading ? (
@@ -151,6 +262,10 @@ export default function BellPage() {
               </motion.div>
             ))}
           </div>
+        ) : (data?.circles && data.circles.length > 0) ? (
+          // Circles are already on screen above — don't stack an "empty"
+          // practices card underneath; the bell has content.
+          null
         ) : (
           <motion.div
             initial={{ opacity: 0, y: 10 }}

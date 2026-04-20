@@ -14,6 +14,12 @@ const EMOJI_OPTIONS = ["🏘️","⛪","✝️","🕊️","🙏🏽","🌿","�
 type Group = {
   id: number; name: string; description: string | null; slug: string;
   emoji: string | null; calendarUrl: string | null;
+  // ── Prayer Circle (beta) — admins can flip an ordinary community into a
+  // prayer circle from this page. Turning it on requires an `intention`;
+  // turning it off clears intention + circleDescription server-side.
+  isPrayerCircle?: boolean;
+  intention?: string | null;
+  circleDescription?: string | null;
 };
 
 export default function CommunitySettingsPage() {
@@ -26,7 +32,18 @@ export default function CommunitySettingsPage() {
   const [description, setDescription] = useState("");
   const [emoji, setEmoji] = useState("🏘️");
   const [calendarUrl, setCalendarUrl] = useState("");
+  // ── Prayer Circle (beta) admin controls ─────────────────────────────
+  const [isPrayerCircle, setIsPrayerCircle] = useState(false);
+  const [intention, setIntention] = useState("");
+  const [circleDescription, setCircleDescription] = useState("");
   const [saved, setSaved] = useState(false);
+
+  const INTENTION_EXAMPLES = [
+    "For the sick in our parish.",
+    "For an end to gun violence.",
+    "For our neighbors who are new to this country.",
+    "For those who have left the church.",
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -54,6 +71,9 @@ export default function CommunitySettingsPage() {
       setDescription(group.description ?? "");
       setEmoji(group.emoji ?? "🏘️");
       setCalendarUrl(group.calendarUrl ?? "");
+      setIsPrayerCircle(!!group.isPrayerCircle);
+      setIntention(group.intention ?? "");
+      setCircleDescription(group.circleDescription ?? "");
     }
   }, [group]);
 
@@ -63,6 +83,14 @@ export default function CommunitySettingsPage() {
       description: description || undefined,
       emoji,
       calendarUrl: calendarUrl || "",
+      isPrayerCircle,
+      // Server clears intention/circleDescription when isPrayerCircle is false,
+      // but we pass the trimmed values anyway so the invariant is enforced
+      // consistently from both sides.
+      intention: isPrayerCircle ? intention.trim() : undefined,
+      circleDescription: isPrayerCircle && circleDescription.trim()
+        ? circleDescription.trim()
+        : undefined,
     }),
     onSuccess: () => {
       setSaved(true);
@@ -187,9 +215,105 @@ export default function CommunitySettingsPage() {
           )}
         </div>
 
+        <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
+
+        {/* ── Prayer Circle (beta) ──────────────────────────────────────────
+            Admins can turn any community into a prayer circle here, or toggle
+            an existing circle back to a normal community. When on, the
+            intention is required and both intention + description can be
+            edited; when off, the server nulls both on save so the detail page
+            reverts to its ordinary form. */}
+        <div
+          className="rounded-xl px-4 py-3.5 mb-4"
+          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+        >
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isPrayerCircle}
+              onChange={e => setIsPrayerCircle(e.target.checked)}
+              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
+              style={{ accentColor: "#2D5E3F" }}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                Prayer circle
+              </p>
+              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
+                A prayer circle is a group bound by a shared intention. Members see what the circle is praying for, and it surfaces in each member's daily bell.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        {isPrayerCircle && (
+          <>
+            <div className="mb-4">
+              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+                Intention
+              </label>
+              <input
+                type="text"
+                value={intention}
+                onChange={e => setIntention(e.target.value)}
+                placeholder="What does this circle pray for?"
+                maxLength={500}
+                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                style={{
+                  background: "rgba(46,107,64,0.08)",
+                  border: "1px solid rgba(46,107,64,0.25)",
+                  color: "#F0EDE6",
+                  fontFamily: FONT,
+                }}
+              />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {INTENTION_EXAMPLES.map(ex => (
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => setIntention(ex)}
+                    className="text-[11px] italic px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
+                    style={{
+                      background: "rgba(46,107,64,0.12)",
+                      border: "1px solid rgba(46,107,64,0.25)",
+                      color: "rgba(200,212,192,0.8)",
+                      fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                    }}
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+                About the circle <span style={{ opacity: 0.5 }}>(optional)</span>
+              </label>
+              <textarea
+                value={circleDescription}
+                onChange={e => setCircleDescription(e.target.value)}
+                placeholder="Say more about what this circle is for."
+                maxLength={2000}
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none resize-none"
+                style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+              />
+            </div>
+
+            <p className="text-[11px] italic mb-6" style={{ color: "rgba(143,175,150,0.65)" }}>
+              Prayer circles are a beta feature. We are learning what makes them flourish — we would love your feedback.
+            </p>
+          </>
+        )}
+
         <button
           onClick={() => saveMutation.mutate()}
-          disabled={!name.trim() || saveMutation.isPending}
+          disabled={
+            !name.trim() ||
+            (isPrayerCircle && !intention.trim()) ||
+            saveMutation.isPending
+          }
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
           style={{ background: saved ? "rgba(46,107,64,0.5)" : "#2D5E3F", color: "#F0EDE6" }}
         >

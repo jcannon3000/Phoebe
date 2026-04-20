@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 // Communities are now available to all users
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart } from "lucide-react";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -15,6 +15,27 @@ type Group = {
   // Only present for admin viewers — the shareable community-wide invite
   // token. Used by the "Share invite link" modal.
   inviteToken?: string | null;
+  // ── Prayer Circle (beta) ───────────────────────────────────────────────
+  // When `isPrayerCircle` is true we surface the stated `intention` above
+  // the regular community content and render the "Praying today" section
+  // on the Home tab. Non-circle groups leave these null and render exactly
+  // as before.
+  isPrayerCircle?: boolean;
+  intention?: string | null;
+  circleDescription?: string | null;
+};
+// Shape of an entry in GET /api/groups/:slug/focus. `subject` is populated
+// when focusType === "person"; the other types carry their subject in
+// `subjectText`. The "addedBy" string lets us show attribution and hide
+// the delete button for non-authors (admins see it on every row).
+type FocusEntry = {
+  id: number;
+  focusType: "person" | "situation" | "cause" | "custom";
+  subject: { userId: number; name: string | null; avatarUrl: string | null } | null;
+  subjectText: string | null;
+  notes: string | null;
+  addedBy: { name: string | null; email: string } | null;
+  createdAt: string;
 };
 type Member = {
   id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean; avatarUrl?: string | null;
@@ -77,6 +98,13 @@ export default function CommunityDetailPage() {
   const [newAnnouncementTitle, setNewAnnouncementTitle] = useState("");
   const [newAnnouncementContent, setNewAnnouncementContent] = useState("");
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+  // ── Prayer Circle — "Praying today" add form state ────────────────────
+  // Members can add what they are carrying in prayer today. The form is
+  // collapsed by default; when `showFocusForm` is true we reveal a type
+  // chooser + subject input. Only shown on circle groups.
+  const [showFocusForm, setShowFocusForm] = useState(false);
+  const [focusType, setFocusType] = useState<"situation" | "cause" | "custom">("situation");
+  const [focusSubject, setFocusSubject] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -124,6 +152,16 @@ export default function CommunityDetailPage() {
     queryKey: ["/api/groups", slug, "prayer-requests"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-requests`),
     enabled: !!user && !!slug && activeTab === "home",
+  });
+
+  // Today's prayer focus — only fetched once we know this is a circle group.
+  // Server returns an empty list for non-circles, but we still gate the
+  // query so the network request only fires where it's meaningful.
+  const isCircle = !!groupData?.group?.isPrayerCircle;
+  const { data: focusData } = useQuery<{ date: string | null; focus: FocusEntry[] }>({
+    queryKey: ["/api/groups", slug, "focus"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/focus`),
+    enabled: !!user && !!slug && isCircle && activeTab === "home",
   });
 
   // ── Admin "new arrival" popup ──────────────────────────────────────────
@@ -196,6 +234,29 @@ export default function CommunityDetailPage() {
     },
   });
 
+  // ── Prayer Circle focus mutations ─────────────────────────────────────
+  // add: submits one of situation/cause/custom with `subjectText`. We don't
+  //   (yet) expose a Phoebe-user picker from this form — adding a person by
+  //   name shows as "custom" until we wire it through a member search UX.
+  // remove: adder or group admin may delete. Server enforces.
+  const addFocusMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/focus`, {
+      focusType,
+      subjectText: focusSubject.trim(),
+    }),
+    onSuccess: () => {
+      setFocusSubject("");
+      setShowFocusForm(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "focus"] });
+    },
+  });
+  const removeFocusMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/groups/${slug}/focus/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "focus"] });
+    },
+  });
+
   const [communityAdminView] = useCommunityAdminToggle();
 
   if (authLoading || !user) return null;
@@ -249,6 +310,7 @@ export default function CommunityDetailPage() {
                   const joinedCount = members.filter(m => m.joinedAt !== null).length;
                   return `${joinedCount} ${joinedCount === 1 ? "member" : "members"}`;
                 })()}
+                {group.isPrayerCircle && " · Prayer circle"}
                 {isAdmin && " · You are admin"}
               </p>
             </div>
@@ -273,6 +335,45 @@ export default function CommunityDetailPage() {
             )}
           </div>
         </div>
+
+        {/* ── Prayer Circle intention banner ─────────────────────────────
+            For circle groups, surface the stated intention above the regular
+            community content. Rendered in the serif voice used elsewhere for
+            sacred phrases; small muted line names the form. A terse beta
+            note follows so members know this is still landing. */}
+        {group.isPrayerCircle && group.intention && (
+          <div
+            className="rounded-xl px-4 py-4 mb-5"
+            style={{
+              background: "rgba(46,107,64,0.08)",
+              border: "1px solid rgba(46,107,64,0.22)",
+            }}
+          >
+            <p
+              className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5"
+              style={{ color: "rgba(200,212,192,0.55)" }}
+            >
+              We pray
+            </p>
+            <p
+              className="text-lg italic leading-snug"
+              style={{
+                color: "#F0EDE6",
+                fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+              }}
+            >
+              {group.intention}
+            </p>
+            {group.circleDescription && (
+              <p className="text-sm leading-relaxed mt-2" style={{ color: "#C8D4C0" }}>
+                {group.circleDescription}
+              </p>
+            )}
+            <p className="text-[11px] italic mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+              A circle bound by shared purpose. Prayer circles are a beta feature.
+            </p>
+          </div>
+        )}
 
         {/* "New arrival" popup — appears over the page for community admins
             when someone has joined or posted a prayer request since the last
@@ -614,10 +715,189 @@ export default function CommunityDetailPage() {
             intercessions.length === 0 &&
             otherPractices.length === 0 &&
             recentPrayers.length === 0 &&
-            recentAnnouncements.length === 0;
+            recentAnnouncements.length === 0 &&
+            // On circle groups, a populated "Praying today" list also counts
+            // as "something here" so the dead-end empty-state doesn't shout
+            // over the intention + focus the member just came to see.
+            !(group.isPrayerCircle && (focusData?.focus.length ?? 0) > 0);
+
+          const focusEntries = focusData?.focus ?? [];
+          const currentUserEmail = user.email;
 
           return (
             <div className="space-y-6">
+              {/* ── Praying today — only rendered for circle groups ────────
+                  Lists every focus added for today (in the viewer's tz).
+                  Members can add via the "+ Add" button; entries are
+                  removable by the adder or any admin. We keep this above
+                  intercessions/practices so it reads as the heartbeat of a
+                  prayer circle. */}
+              {group.isPrayerCircle && (
+                <div>
+                  <div className="flex items-baseline justify-between mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
+                      Praying Today
+                    </p>
+                    {!showFocusForm && (
+                      <button
+                        onClick={() => setShowFocusForm(true)}
+                        className="text-[11px] font-semibold flex items-center gap-1 transition-opacity hover:opacity-80"
+                        style={{ color: "#A8C5A0" }}
+                      >
+                        <Plus size={12} /> Add
+                      </button>
+                    )}
+                  </div>
+
+                  {showFocusForm && (
+                    <div
+                      className="rounded-xl p-3 mb-3"
+                      style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.28)" }}
+                    >
+                      <div className="flex gap-1.5 mb-2">
+                        {(["situation", "cause", "custom"] as const).map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setFocusType(t)}
+                            className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full transition-all"
+                            style={{
+                              background: focusType === t ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                              color: focusType === t ? "#F0EDE6" : "#8FAF96",
+                              border: `1px solid ${focusType === t ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.18)"}`,
+                            }}
+                          >
+                            {t === "situation" ? "Situation" : t === "cause" ? "Cause" : "Other"}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        value={focusSubject}
+                        onChange={e => setFocusSubject(e.target.value)}
+                        placeholder={
+                          focusType === "situation"
+                            ? "A situation or event we're holding in prayer…"
+                            : focusType === "cause"
+                              ? "A cause we're lifting up…"
+                              : "What are we praying for?"
+                        }
+                        maxLength={280}
+                        className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
+                        style={{ color: "#F0EDE6", fontFamily: FONT }}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && focusSubject.trim()) addFocusMutation.mutate();
+                        }}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => { setShowFocusForm(false); setFocusSubject(""); }}
+                          className="text-[11px] px-3 py-1.5 rounded-lg"
+                          style={{ color: "#8FAF96" }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => addFocusMutation.mutate()}
+                          disabled={!focusSubject.trim() || addFocusMutation.isPending}
+                          className="text-[11px] font-semibold px-3 py-1.5 rounded-lg disabled:opacity-40"
+                          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                        >
+                          {addFocusMutation.isPending ? "Adding…" : "Add"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {focusEntries.length === 0 ? (
+                    <p className="text-[12px] italic text-center py-3" style={{ color: "rgba(143,175,150,0.55)" }}>
+                      Nothing named yet today. Be the first to bring something to the circle.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {focusEntries.map(f => {
+                        const isAdder = f.addedBy?.email === currentUserEmail;
+                        const canDelete = isAdder || isAdmin;
+                        const label = f.focusType === "situation"
+                          ? "Situation"
+                          : f.focusType === "cause"
+                            ? "Cause"
+                            : f.focusType === "person"
+                              ? "Person"
+                              : null;
+                        const subjectLine = f.subject
+                          ? (f.subject.name || "A friend")
+                          : (f.subjectText || "");
+                        return (
+                          <div
+                            key={f.id}
+                            className="flex rounded-xl overflow-hidden"
+                            style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
+                          >
+                            <div className="w-1 shrink-0" style={{ background: "#E8B872" }} />
+                            <div className="flex-1 flex items-center gap-3 px-4 py-3 min-w-0">
+                              {f.subject?.avatarUrl ? (
+                                <img
+                                  src={f.subject.avatarUrl}
+                                  alt={f.subject.name ?? ""}
+                                  className="w-8 h-8 rounded-full object-cover shrink-0"
+                                  style={{ border: "1px solid rgba(46,107,64,0.4)" }}
+                                />
+                              ) : f.focusType === "person" ? (
+                                <div
+                                  className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                                  style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                                >
+                                  {(f.subject?.name ?? f.subjectText ?? "?").charAt(0).toUpperCase()}
+                                </div>
+                              ) : (
+                                <div
+                                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                                  style={{ background: "rgba(232,184,114,0.15)", border: "1px solid rgba(232,184,114,0.3)" }}
+                                >
+                                  <Heart size={14} style={{ color: "#E8B872" }} />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                {label && (
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+                                    {label}
+                                  </p>
+                                )}
+                                <p className="text-sm leading-snug truncate" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                                  {subjectLine}
+                                </p>
+                                {f.addedBy && (
+                                  <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
+                                    added by {isAdder ? "you" : (f.addedBy.name || f.addedBy.email.split("@")[0])}
+                                  </p>
+                                )}
+                              </div>
+                              {canDelete && (
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm("Remove this from today's prayer?")) {
+                                      removeFocusMutation.mutate(f.id);
+                                    }
+                                  }}
+                                  disabled={removeFocusMutation.isPending}
+                                  className="shrink-0 p-1 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-40"
+                                  title="Remove"
+                                >
+                                  <X size={14} style={{ color: "rgba(143,175,150,0.55)" }} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Intercessions — the most prayed-through surface, shown first */}
               {intercessions.length > 0 && (
                 <div>

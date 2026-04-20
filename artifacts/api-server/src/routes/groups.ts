@@ -11,6 +11,7 @@ import {
   sharedMomentsTable,
   momentUserTokensTable,
   prayerRequestsTable,
+  circleDailyFocusTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -156,21 +157,34 @@ router.post("/groups", async (req, res): Promise<void> => {
       res.status(403).json({ error: "Only builders can create groups" }); return;
     }
 
+    // Prayer Circle fields are optional; when `isPrayerCircle` is true we
+    // require a non-empty `intention`. We don't branch into a separate
+    // schema — keeps the create flow one endpoint, one shape.
     const schema = z.object({
       name: z.string().min(1).max(100),
       description: z.string().max(500).optional(),
       emoji: z.string().max(10).optional(),
-    });
+      isPrayerCircle: z.boolean().optional(),
+      intention: z.string().max(500).optional(),
+      circleDescription: z.string().max(2000).optional(),
+    }).refine(
+      (d) => !d.isPrayerCircle || (d.intention && d.intention.trim().length > 0),
+      { message: "Prayer circles require an intention", path: ["intention"] },
+    );
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
 
     const slug = await uniqueSlug(parsed.data.name);
 
+    const isCircle = parsed.data.isPrayerCircle === true;
     const [group] = await db.insert(groupsTable).values({
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       emoji: parsed.data.emoji ?? null,
       slug,
+      isPrayerCircle: isCircle,
+      intention: isCircle ? (parsed.data.intention?.trim() ?? null) : null,
+      circleDescription: isCircle ? (parsed.data.circleDescription?.trim() || null) : null,
       createdByUserId: user.id,
     }).returning();
 
@@ -304,6 +318,13 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
       },
       { message: "Calendar URL must use http, https, or webcal" },
     ).optional().or(z.literal("")),
+    // Prayer-circle edits. `isPrayerCircle` is toggleable after creation,
+    // but turning it on without an intention is rejected; turning it off
+    // clears `intention` and `circleDescription` server-side so the detail
+    // page no longer renders them.
+    isPrayerCircle: z.boolean().optional(),
+    intention: z.string().max(500).optional().or(z.literal("")),
+    circleDescription: z.string().max(2000).optional().or(z.literal("")),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
@@ -313,6 +334,29 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
   if (parsed.data.description !== undefined) updates.description = parsed.data.description;
   if (parsed.data.emoji !== undefined) updates.emoji = parsed.data.emoji || null;
   if (parsed.data.calendarUrl !== undefined) updates.calendarUrl = parsed.data.calendarUrl || null;
+
+  // Circle toggle logic. Compose the effective-after-update values so we
+  // can enforce "intention required when circle is on" regardless of which
+  // fields the client sent in this request.
+  const nextIsCircle = parsed.data.isPrayerCircle ?? result.group.isPrayerCircle;
+  const nextIntention = parsed.data.intention !== undefined
+    ? (parsed.data.intention.trim() || null)
+    : result.group.intention;
+  if (nextIsCircle && (!nextIntention || nextIntention.length === 0)) {
+    res.status(400).json({ error: "Prayer circles require an intention" });
+    return;
+  }
+  if (parsed.data.isPrayerCircle !== undefined) updates.isPrayerCircle = parsed.data.isPrayerCircle;
+  if (parsed.data.intention !== undefined) updates.intention = nextIntention;
+  if (parsed.data.circleDescription !== undefined) {
+    updates.circleDescription = parsed.data.circleDescription.trim() || null;
+  }
+  // Turning the circle off clears the circle-only fields so the detail
+  // page immediately reverts to a normal group view.
+  if (parsed.data.isPrayerCircle === false) {
+    updates.intention = null;
+    updates.circleDescription = null;
+  }
 
   if (Object.keys(updates).length > 0) {
     await db.update(groupsTable).set(updates).where(eq(groupsTable.id, result.group.id));
@@ -1055,6 +1099,166 @@ router.post("/groups/:slug/announcements", async (req, res): Promise<void> => {
   }).returning();
 
   res.json({ announcement });
+});
+
+// ─── Prayer Circle: daily focus ─────────────────────────────────────────────
+// Members see and contribute to "Praying today" on the circle page and
+// through the daily bell. Focus entries are per-day — at end of day they
+// remain as history but the default view on the circle page is today.
+//
+// Date handling: a focus row's `focusDate` is stored as YYYY-MM-DD in the
+// *adder's* timezone. Reads default to the *viewer's* today in their
+// timezone. Matches how bell_notifications buckets days (see bell.ts).
+
+async function userTimezone(userId: number): Promise<string> {
+  const [u] = await db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, userId));
+  return (u?.timezone ?? "America/New_York");
+}
+function todayInTz(tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+}
+
+// GET /api/groups/:slug/focus?date=YYYY-MM-DD — list focus entries for a day
+// (defaults to today in the viewer's timezone). Member-gated.
+router.get("/groups/:slug/focus", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const result = await requireMember(req.params.slug, user.id);
+    if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+    if (!result.group.isPrayerCircle) {
+      // Non-circles never accumulate focus. Return empty so the client can
+      // render without branching on group type.
+      res.json({ date: null, focus: [] }); return;
+    }
+
+    const tz = await userTimezone(user.id);
+    const qDate = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+      ? req.query.date
+      : todayInTz(tz);
+
+    const rows = await db.select().from(circleDailyFocusTable)
+      .where(and(
+        eq(circleDailyFocusTable.groupId, result.group.id),
+        eq(circleDailyFocusTable.focusDate, qDate),
+      ))
+      .orderBy(desc(circleDailyFocusTable.createdAt));
+
+    // Enrich subject user + adder in one pass.
+    const userIds = Array.from(new Set([
+      ...rows.map(r => r.subjectUserId).filter((x): x is number => x != null),
+      ...rows.map(r => r.addedByUserId),
+    ]));
+    const profiles = userIds.length > 0
+      ? await db.select({
+          id: usersTable.id,
+          name: usersTable.name,
+          email: usersTable.email,
+          avatarUrl: usersTable.avatarUrl,
+        }).from(usersTable).where(inArray(usersTable.id, userIds))
+      : [];
+    const profileById = new Map(profiles.map(p => [p.id, p]));
+
+    const focus = rows.map(r => {
+      const subject = r.subjectUserId != null ? profileById.get(r.subjectUserId) ?? null : null;
+      const addedBy = profileById.get(r.addedByUserId) ?? null;
+      return {
+        id: r.id,
+        focusType: r.focusType,
+        subject: subject && {
+          userId: subject.id, name: subject.name, avatarUrl: subject.avatarUrl,
+        },
+        subjectText: r.subjectText,
+        notes: r.notes,
+        addedBy: addedBy ? { name: addedBy.name, email: addedBy.email } : null,
+        createdAt: r.createdAt,
+      };
+    });
+
+    res.json({ date: qDate, focus });
+  } catch (err) {
+    console.error("GET /api/groups/:slug/focus error:", err);
+    res.json({ date: null, focus: [] });
+  }
+});
+
+// POST /api/groups/:slug/focus — any member can add a focus entry for today
+// in the adder's timezone. `focusType` determines whether the subject is
+// a Phoebe user (subjectUserId) or free text (subjectText).
+router.post("/groups/:slug/focus", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+  if (!result.group.isPrayerCircle) {
+    res.status(400).json({ error: "This group is not a prayer circle" }); return;
+  }
+
+  const schema = z.object({
+    focusType: z.enum(["person", "situation", "cause", "custom"]),
+    subjectUserId: z.number().int().positive().optional(),
+    subjectText: z.string().min(1).max(280).optional(),
+    notes: z.string().max(1000).optional(),
+  }).refine(
+    (d) => (d.focusType === "person")
+      ? (d.subjectUserId != null || (d.subjectText && d.subjectText.trim().length > 0))
+      : (d.subjectText != null && d.subjectText.trim().length > 0),
+    { message: "Every focus entry needs a subject" },
+  );
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+
+  // If subjectUserId is given, sanity-check the user exists so we don't
+  // store a dangling FK-style id (the column is ON DELETE SET NULL, but
+  // catching at insert-time surfaces a clearer error).
+  if (parsed.data.subjectUserId != null) {
+    const [u] = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.id, parsed.data.subjectUserId));
+    if (!u) { res.status(400).json({ error: "Subject not found" }); return; }
+  }
+
+  const tz = await userTimezone(user.id);
+  const [row] = await db.insert(circleDailyFocusTable).values({
+    groupId: result.group.id,
+    focusDate: todayInTz(tz),
+    focusType: parsed.data.focusType,
+    subjectUserId: parsed.data.subjectUserId ?? null,
+    subjectText: parsed.data.subjectText?.trim() ?? null,
+    addedByUserId: user.id,
+    notes: parsed.data.notes?.trim() || null,
+  }).returning();
+
+  res.json({ focus: row });
+});
+
+// DELETE /api/groups/:slug/focus/:id — remove a focus entry. The adder can
+// remove their own; a group admin can remove any.
+router.delete("/groups/:slug/focus/:id", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [row] = await db.select().from(circleDailyFocusTable)
+    .where(and(
+      eq(circleDailyFocusTable.id, id),
+      eq(circleDailyFocusTable.groupId, result.group.id),
+    ));
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  const isAdmin = result.member.role === "admin";
+  if (!isAdmin && row.addedByUserId !== user.id) {
+    res.status(403).json({ error: "You can only remove your own additions" }); return;
+  }
+
+  await db.delete(circleDailyFocusTable).where(eq(circleDailyFocusTable.id, id));
+  res.json({ ok: true });
 });
 
 // ─── User Search ─────────────────────────────────────────────────────────────
