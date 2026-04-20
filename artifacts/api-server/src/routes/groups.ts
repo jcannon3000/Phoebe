@@ -12,6 +12,7 @@ import {
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
+import { sendEmail } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -399,8 +400,74 @@ router.post("/groups/:slug/join", async (req, res): Promise<void> => {
   // Practices attached to this group reflect the group roster — reconcile so
   // this newly-joined user appears as a member everywhere.
   await reconcileAllPracticesForGroup(group.id);
+
+  // Notify community admins. Fire-and-forget so the user's response isn't
+  // blocked on email delivery.
+  notifyAdminsOfNewMember(group.id, group.name, {
+    name: updates.name ?? member.name ?? member.email,
+    email: member.email,
+  }).catch(err => console.error("[groups/join] notify admins failed:", err));
+
   res.json({ ok: true, group });
 });
+
+// Exported so auth/register can call it after a community-invite signup
+// (the join is performed inside register, not via this endpoint).
+export async function notifyAdminsOfNewMember(
+  groupId: number,
+  groupName: string,
+  joiner: { name: string; email: string },
+): Promise<void> {
+  // Resolve admin emails for the group via the user records linked to
+  // joined admin members. Pending invites are skipped (they haven't joined
+  // yet themselves).
+  const adminMembers = await db.select({
+    userId: groupMembersTable.userId,
+  })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, groupId),
+      eq(groupMembersTable.role, "admin"),
+    ));
+  const userIds = adminMembers.map(a => a.userId).filter((id): id is number => id != null);
+  if (userIds.length === 0) return;
+
+  const adminUsers = await db.select({
+    email: usersTable.email,
+    name: usersTable.name,
+  })
+    .from(usersTable)
+    .where(inArray(usersTable.id, userIds));
+  if (adminUsers.length === 0) return;
+
+  const subject = `🌿 ${joiner.name} joined ${groupName}`;
+  const safeName = escapeHtml(joiner.name);
+  const safeEmail = escapeHtml(joiner.email);
+  const safeGroup = escapeHtml(groupName);
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#222">
+      <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#888;margin:0 0 8px">Phoebe community</p>
+      <h1 style="font-size:18px;margin:0 0 12px">${safeName} joined ${safeGroup}</h1>
+      <p style="margin:0 0 4px"><strong>Email:</strong> <a href="mailto:${safeEmail}">${safeEmail}</a></p>
+      <p style="margin:16px 0 0;color:#666">They accepted your invite and are now a member of ${safeGroup}.</p>
+    </div>
+  `;
+  const text = [
+    `${joiner.name} joined ${groupName}`,
+    ``,
+    `Email: ${joiner.email}`,
+    ``,
+    `They accepted your invite and are now a member of ${groupName}.`,
+  ].join("\n");
+
+  await Promise.all(adminUsers.map(a => sendEmail({ to: a.email, subject, html, text })));
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 
 // GET /api/groups/:slug/members — list all members
 router.get("/groups/:slug/members", async (req, res): Promise<void> => {

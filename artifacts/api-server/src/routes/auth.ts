@@ -6,6 +6,7 @@ import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth2
 import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { notifyAdminsOfNewMember } from "./groups";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 
@@ -415,6 +416,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       await db.update(groupMembersTable)
         .set({ userId: user.id, joinedAt: new Date(), name: user.name })
         .where(eq(groupMembersTable.id, inviteMember.id));
+      // Resolve the group's display name for the notification
+      const [group] = await db.select({ name: groupsTable.name })
+        .from(groupsTable).where(eq(groupsTable.id, inviteMember.groupId));
+      notifyAdminsOfNewMember(
+        inviteMember.groupId,
+        group?.name ?? inviteGroupSlug ?? "your community",
+        { name: user.name, email: user.email },
+      ).catch(err => console.error("[auth/register] notify admins failed:", err));
     } catch (err) {
       console.error("[auth/register] failed to link group member:", err);
       // Non-fatal: the user account exists; they can still tap the
