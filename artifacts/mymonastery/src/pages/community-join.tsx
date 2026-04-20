@@ -2,10 +2,213 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+
+// ─── Phone-shaped mockup shell ──────────────────────────────────────────────
+// Ported from features-deck.tsx so the community invite slideshow shows the
+// *same* visual mocks of each practice that the individual signup deck uses.
+// A brand-new visitor lands on `/communities/:slug/join/:token`, sees what
+// Phoebe actually looks like, and then meets the specific community.
+function MockPhone({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-[28px] p-4 mx-auto w-full max-w-[290px]"
+      style={{
+        background: "#091A10",
+        border: "1px solid rgba(200,212,192,0.15)",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PrayerRequestsMock() {
+  const requests = [
+    { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
+    { from: "David R.",    body: "Discernment about the new role. Grateful for your prayers.", words: 6 },
+    { from: "Anonymous",   body: "For peace in a difficult season.", words: 2 },
+  ];
+  return (
+    <MockPhone>
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-sm font-semibold shrink-0" style={{ color: "#F0EDE6" }}>
+          Prayer Requests 🙏🏽
+        </h2>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
+      <div className="flex gap-2 mb-4">
+        <div
+          className="flex-1 text-[11px] px-3 py-2 rounded-xl"
+          style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)" }}
+        >
+          Share a prayer request... 🌿
+        </div>
+        <div className="px-3 py-2 rounded-xl text-xs font-medium flex items-center" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+          🙏🏽
+        </div>
+      </div>
+      <div>
+        {requests.map((r, i) => (
+          <div
+            key={i}
+            className="flex gap-0"
+            style={{ borderBottom: i < requests.length - 1 ? "1px solid rgba(200,212,192,0.1)" : "none" }}
+          >
+            <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
+            <div className="flex-1 p-3 pl-2.5 flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-medium uppercase tracking-widest mb-1" style={{ color: "rgba(200,212,192,0.45)" }}>
+                  From {r.from}
+                </p>
+                <p className="text-[11px] leading-relaxed" style={{ color: "#F0EDE6" }}>
+                  {r.body}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0" style={{ color: "rgba(143,175,150,0.55)" }}>
+                <span className="text-[10px] tabular-nums">{r.words}</span>
+                <MessageCircle size={12} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </MockPhone>
+  );
+}
+
+function IntercessionMock() {
+  return (
+    <div
+      className="rounded-[28px] mx-auto w-full max-w-[290px] relative"
+      style={{
+        background: "#0C1F12",
+        border: "1px solid rgba(200,212,192,0.15)",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
+        minHeight: 380,
+      }}
+    >
+      <div
+        className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full text-base"
+        style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+      >
+        ×
+      </div>
+      <div className="flex flex-col items-center text-center px-5 pt-10 pb-10">
+        <p className="text-[9px] uppercase font-semibold mb-3" style={{ color: "rgba(143,175,150,0.45)", letterSpacing: "0.18em" }}>
+          Your Intercession
+        </p>
+        <p
+          className="text-[15px] leading-[1.5] font-medium italic mb-3"
+          style={{ color: "#E8E4D8", fontFamily: "'Playfair Display', Georgia, serif" }}
+        >
+          Margaret's mother, as she begins treatment this week.
+        </p>
+        <p className="text-[11px] mb-2" style={{ color: "#8FAF96" }}>
+          with David, Anna, James
+        </p>
+        <p className="text-[10px] italic mb-4" style={{ color: "rgba(143,175,150,0.55)" }}>
+          Your community is holding this.
+        </p>
+        <div
+          className="w-full rounded-xl px-3 py-3 text-left mb-4"
+          style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.15)" }}
+        >
+          <p
+            className="text-[10px] leading-[1.75] italic"
+            style={{ color: "#C8D4C0", fontFamily: "'Playfair Display', Georgia, serif" }}
+          >
+            O Father of mercies and God of all comfort, look graciously upon this thy servant, that her weakness may be banished and her strength restored.
+          </p>
+          <p className="text-[7px] uppercase mt-2" style={{ color: "rgba(143,175,150,0.3)", letterSpacing: "0.14em" }}>
+            From the Book of Common Prayer
+          </p>
+        </div>
+        <div
+          className="px-5 py-1.5 rounded-full text-[11px] font-medium tracking-wide"
+          style={{ background: "rgba(46,107,64,0.28)", border: "1px solid rgba(46,107,64,0.5)", color: "#C8D4C0" }}
+        >
+          Amen →
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LectioMock() {
+  const stages = [
+    { id: "lectio", label: "Lectio", day: "Mon", active: false, done: true },
+    { id: "meditatio", label: "Meditatio", day: "Wed", active: true, done: false },
+    { id: "oratio", label: "Oratio", day: "Fri", active: false, done: false },
+  ];
+  return (
+    <MockPhone>
+      <p className="text-[9px] uppercase font-semibold mb-1" style={{ color: "rgba(143,175,150,0.55)", letterSpacing: "0.16em" }}>
+        Lectio Divina 📜
+      </p>
+      <h2 className="text-base font-bold mb-3" style={{ color: "#F0EDE6" }}>
+        The Road to Emmaus
+      </h2>
+      <div className="flex gap-1.5 mb-4">
+        {stages.map((s) => (
+          <div
+            key={s.id}
+            className="flex-1 rounded-lg px-2 py-1.5 text-center"
+            style={{
+              background: s.active ? "rgba(46,107,64,0.35)" : s.done ? "rgba(46,107,64,0.15)" : "rgba(200,212,192,0.04)",
+              border: s.active ? "1px solid rgba(46,107,64,0.6)" : "1px solid rgba(200,212,192,0.08)",
+            }}
+          >
+            <p
+              className="text-[8px] uppercase tracking-widest mb-0.5"
+              style={{ color: s.active ? "#C8D4C0" : s.done ? "#8FAF96" : "rgba(200,212,192,0.35)" }}
+            >
+              {s.day}
+            </p>
+            <p
+              className="text-[10px] font-semibold italic"
+              style={{ color: s.active ? "#F0EDE6" : s.done ? "#8FAF96" : "rgba(200,212,192,0.35)" }}
+            >
+              {s.label}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div
+        className="rounded-xl p-3 mb-3"
+        style={{ background: "rgba(240,237,230,0.03)", border: "1px solid rgba(46,107,64,0.25)" }}
+      >
+        <p className="text-[10px] uppercase mb-1.5" style={{ color: "rgba(143,175,150,0.55)", letterSpacing: "0.12em" }}>
+          Luke 24:13–35
+        </p>
+        <p
+          className="text-[11px] leading-[1.55] italic"
+          style={{ color: "#E8E4D8", fontFamily: "'Playfair Display', Georgia, serif" }}
+        >
+          …and their eyes were opened, and they recognized him. And he vanished from their sight. They said to each other, "Did not our hearts burn within us…"
+        </p>
+      </div>
+      <p className="text-[10px] font-semibold mb-2" style={{ color: "#C8D4C0" }}>
+        Meditatio — sit with what caught you.
+      </p>
+      <div
+        className="rounded-xl p-2.5"
+        style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+      >
+        <p className="text-[8px] uppercase tracking-widest mb-1" style={{ color: "rgba(200,212,192,0.5)" }}>
+          From Margaret · Wed
+        </p>
+        <p className="text-[10px] leading-relaxed" style={{ color: "#F0EDE6" }}>
+          I keep returning to "hearts burn within us" — that line stopped me in the middle of an ordinary Wednesday.
+        </p>
+      </div>
+    </MockPhone>
+  );
+}
 
 type AuthMode = "signin" | "register";
 
@@ -228,45 +431,57 @@ export default function CommunityJoinPage() {
       ),
     });
 
-    // Slide — The three practices, as cards. Mirrors the "cards" slide in
-    // features-deck.tsx, compressed to the mobile aesthetic used below.
+    // Slides — three mock-screen previews, one per practice. Lifted from
+    // features-deck.tsx so the community invite shows the *same* previews
+    // the individual signup deck uses. Keep the caption short; the mock
+    // does the heavy lifting.
     s.push({
-      key: "phoebe-practices",
+      key: "mock-prayer",
       node: (
-        <div>
-          <div className="text-center mb-6">
-            <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-              Each plays a different role
-            </p>
-            <h2 className="text-2xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-              Held in common
-            </h2>
-          </div>
-          <div className="space-y-2">
-            {[
-              { emoji: "📖", label: "Lectio Divina", body: "Scripture, read slowly over the week — the community moves through the same Gospel together." },
-              { emoji: "🙏🏽", label: "Intercession", body: "A guided slideshow you move through at the same hour, bearing each other's burdens." },
-              { emoji: "🌿", label: "Prayer Requests", body: "A shared garden of what people are carrying — met by a word of prayer in return." },
-            ].map((p) => (
-              <div
-                key={p.label}
-                className="flex items-start gap-3 px-4 py-3 rounded-xl"
-                style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
-              >
-                <span className="text-2xl leading-none mt-0.5">{p.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                    {p.label}
-                  </p>
-                  <p className="text-[12px] leading-snug mt-0.5" style={{ color: "#8FAF96" }}>
-                    {p.body}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-center mt-5 italic" style={{ color: "rgba(143,175,150,0.6)" }}>
-            Not new. Recovered.
+        <div className="text-center">
+          <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+            The entry point
+          </p>
+          <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+            A shared garden of requests
+          </h2>
+          <PrayerRequestsMock />
+          <p className="text-[11px] leading-relaxed mt-4" style={{ color: "rgba(143,175,150,0.75)" }}>
+            People share what they're carrying — others respond, a word at a time.
+          </p>
+        </div>
+      ),
+    });
+    s.push({
+      key: "mock-intercession",
+      node: (
+        <div className="text-center">
+          <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+            Held at the same hour
+          </p>
+          <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+            Intercession, as a practice
+          </h2>
+          <IntercessionMock />
+          <p className="text-[11px] leading-relaxed mt-4" style={{ color: "rgba(143,175,150,0.75)" }}>
+            One intention at a time, with a prayer from the tradition underneath.
+          </p>
+        </div>
+      ),
+    });
+    s.push({
+      key: "mock-lectio",
+      node: (
+        <div className="text-center">
+          <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+            Mon. Wed. Fri.
+          </p>
+          <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+            Scripture, returned to slowly
+          </h2>
+          <LectioMock />
+          <p className="text-[11px] leading-relaxed mt-4" style={{ color: "rgba(143,175,150,0.75)" }}>
+            Three unhurried stages on this week's Gospel — together. Catch up any day.
           </p>
         </div>
       ),
