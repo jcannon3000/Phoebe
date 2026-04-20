@@ -16,6 +16,7 @@ import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendEmail } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
+import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -1330,6 +1331,94 @@ router.post("/beta/claim", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("POST /api/beta/claim error:", err);
     res.status(500).json({ error: "Table not ready — run schema push" });
+  }
+});
+
+// ─── GET /api/beta/bells ────────────────────────────────────────────────────
+// Admin-only overview of every user's daily bell status:
+//   - bellEnabled: did they ever turn the bell on?
+//   - dailyBellTime + timezone: what time (and local tz) it's scheduled for
+//   - hasCalendarEvent: whether a Google Calendar event is currently attached
+//   - lastSentAt: the most recent bell_notifications.sent_at for this user
+//   - lastSentDate: bell_date string on that row (useful cross-TZ)
+//
+// We read the bell columns via raw SQL because bell columns are managed by
+// the startup migration (not the Drizzle insert path) and older environments
+// occasionally drift, which has bitten us before in bellSender.ts. Raw SQL
+// is resilient to that; if the column genuinely doesn't exist, we fail open
+// with an empty list rather than 500ing the admin UI.
+router.get("/beta/bells", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+
+    // One round-trip: left join users → latest bell_notifications row per user.
+    // The DISTINCT ON (user_id) + ORDER BY sent_at DESC pattern gives us the
+    // single most-recent notification per user. NULLS LAST so a user who has
+    // never been sent a bell sorts after users who have.
+    const result = await pool.query(`
+      SELECT
+        u.id,
+        u.email,
+        u.name,
+        u.bell_enabled,
+        u.daily_bell_time,
+        u.timezone,
+        u.bell_calendar_event_id,
+        u.created_at,
+        latest.sent_at AS last_sent_at,
+        latest.bell_date AS last_sent_date
+      FROM users u
+      LEFT JOIN LATERAL (
+        SELECT sent_at, bell_date
+        FROM bell_notifications bn
+        WHERE bn.user_id = u.id
+        ORDER BY bn.sent_at DESC NULLS LAST, bn.created_at DESC
+        LIMIT 1
+      ) latest ON TRUE
+      ORDER BY
+        u.bell_enabled DESC,
+        latest.sent_at DESC NULLS LAST,
+        u.created_at DESC
+    `);
+
+    const users = result.rows.map((r: Record<string, unknown>) => ({
+      id: r["id"] as number,
+      email: r["email"] as string,
+      name: (r["name"] as string | null) ?? null,
+      bellEnabled: r["bell_enabled"] === true,
+      dailyBellTime: (r["daily_bell_time"] as string | null) ?? null,
+      timezone: (r["timezone"] as string | null) ?? null,
+      hasCalendarEvent: r["bell_calendar_event_id"] != null,
+      lastSentAt: r["last_sent_at"] as string | null,
+      lastSentDate: (r["last_sent_date"] as string | null) ?? null,
+      createdAt: r["created_at"] as string,
+    }));
+
+    // Summary counts for the header strip — computed server-side so the
+    // frontend never has to iterate the full list just to render a chip.
+    const summary = {
+      totalUsers: users.length,
+      bellsActive: users.filter(u => u.bellEnabled).length,
+      sentToday: users.filter(u => {
+        if (!u.lastSentAt || !u.timezone) return false;
+        try {
+          const todayLocal = new Intl.DateTimeFormat("en-CA", { timeZone: u.timezone })
+            .format(new Date());
+          return u.lastSentDate === todayLocal;
+        } catch { return false; }
+      }).length,
+    };
+
+    res.json({ users, summary });
+  } catch (err) {
+    console.error("GET /api/beta/bells error:", err);
+    res.json({ users: [], summary: { totalUsers: 0, bellsActive: 0, sentToday: 0 } });
   }
 });
 

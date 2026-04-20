@@ -82,6 +82,7 @@ import CommunitySettingsPage from "./pages/community-settings";
 import CommunityJoinPage from "./pages/community-join";
 import BetaAdminPage from "./pages/beta-admin";
 import WaitlistAdminPage from "./pages/waitlist-admin";
+import BellsAdminPage from "./pages/bells-admin";
 import BetaClaimPage from "./pages/beta-claim";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
@@ -146,6 +147,7 @@ function Router() {
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />
+      <Route path="/bells-admin" component={BellsAdminPage} />
       <Route path="/beta/claim" component={BetaClaimPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/onboarding" component={UserOnboarding} />
