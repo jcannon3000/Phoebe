@@ -563,6 +563,12 @@ export async function migrate() {
     // device silences it on every other device signed into the same
     // account for the rest of the local day.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_invite_last_shown_date TEXT`);
+    // One-time backfill: every user who already saw the popup before the
+    // column existed (the earlier PATCH 500'd, so their stamp never
+    // landed). Seed today's server-local date so we don't re-prompt them
+    // on this boot. Idempotent because it only touches NULL rows, and the
+    // subsequent ordinary flow overwrites per real dismissals.
+    await run(client, `UPDATE users SET prayer_invite_last_shown_date = to_char(CURRENT_DATE, 'YYYY-MM-DD') WHERE prayer_invite_last_shown_date IS NULL`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS bell_notifications (
         id SERIAL PRIMARY KEY,

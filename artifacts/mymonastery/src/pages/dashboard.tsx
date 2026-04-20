@@ -1397,12 +1397,12 @@ export default function Dashboard() {
   type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
   type DashPrayerFor = { id: number; expired: boolean };
 
-  const { data: dashPrayerRequests = [] } = useQuery<DashPrayerRequest[]>({
+  const { data: dashPrayerRequests, isLoading: dashPrayerRequestsLoading } = useQuery<DashPrayerRequest[]>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     enabled: !!user,
   });
-  const { data: dashPrayersFor = [] } = useQuery<DashPrayerFor[]>({
+  const { data: dashPrayersFor, isLoading: dashPrayersForLoading } = useQuery<DashPrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
     enabled: !!user,
@@ -1415,6 +1415,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     if (prayerInviteHandledThisSessionRef.current) return;
+
+    // CRITICAL: wait until every query has finished loading. Previously the
+    // effect fired as each query resolved independently — if /prayers-for/mine
+    // arrived first with 1 item and /moments was still pending, the count
+    // computed as "1" and the popup locked in before the other data arrived.
+    if (momentsLoading || dashPrayerRequestsLoading || dashPrayersForLoading) return;
 
     const today = todayLocalKey();
     // Account-scoped gate via the user record — dismissing on desktop also
@@ -1431,10 +1437,10 @@ export default function Dashboard() {
     const activeIntercessions = moments.filter(
       m => m.templateType === "intercession",
     ).length;
-    const othersRequests = dashPrayerRequests.filter(
+    const othersRequests = (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
     ).length;
-    const activePrayersFor = dashPrayersFor.filter(p => !p.expired).length;
+    const activePrayersFor = (dashPrayersFor ?? []).filter(p => !p.expired).length;
     const total = activeIntercessions + othersRequests + activePrayersFor;
 
     if (total > 0) {
@@ -1452,7 +1458,7 @@ export default function Dashboard() {
     }
     // If total === 0 we DON'T stamp — tomorrow's visit should still get a
     // chance if the user has prayers queued by then.
-  }, [user, momentsData, dashPrayerRequests, dashPrayersFor, queryClient]);
+  }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, queryClient]);
 
   const isLoading = momentsLoading;
 
