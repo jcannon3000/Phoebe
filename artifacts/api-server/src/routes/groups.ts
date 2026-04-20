@@ -348,6 +348,32 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
   res.json({ added });
 });
 
+// GET /api/groups/:slug/invite/:token — public lookup. Returns the group
+// name + the pre-invited email so the join page can pre-fill a signup
+// form. No auth required because brand-new users hit this before they
+// have an account. Validates token before returning anything.
+router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
+  const { slug, token } = req.params as { slug: string; token: string };
+  const [group] = await db.select({
+    id: groupsTable.id, name: groupsTable.name, slug: groupsTable.slug, emoji: groupsTable.emoji,
+  }).from(groupsTable).where(eq(groupsTable.slug, slug));
+  if (!group) { res.status(404).json({ error: "Group not found" }); return; }
+
+  const [member] = await db.select({
+    email: groupMembersTable.email,
+    name: groupMembersTable.name,
+    joinedAt: groupMembersTable.joinedAt,
+  })
+    .from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, group.id), eq(groupMembersTable.inviteToken, token)));
+  if (!member) { res.status(404).json({ error: "Invalid invite" }); return; }
+
+  res.json({
+    group: { name: group.name, slug: group.slug, emoji: group.emoji },
+    invitee: { email: member.email, name: member.name, joinedAt: member.joinedAt },
+  });
+});
+
 // POST /api/groups/:slug/join — accept invite
 router.post("/groups/:slug/join", async (req, res): Promise<void> => {
   const token = (req.query.token as string) || req.body?.token;

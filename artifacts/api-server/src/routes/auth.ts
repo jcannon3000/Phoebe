@@ -4,8 +4,8 @@ import { Router, type IRouter } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 
@@ -331,8 +331,17 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
 }
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
+// Account creation is invite-only right now. Two ways in:
+//   1. The email is in beta_users (pilot users — added by an admin).
+//   2. The request includes a valid groupSlug + groupInviteToken pair, and
+//      the email matches the pre-invited member row. After successful
+//      registration the new user is auto-joined to that community.
+// Anyone else is sent to the waitlist.
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const { email, name, password } = req.body as { email?: string; name?: string; password?: string };
+  const { email, name, password, groupSlug, groupInviteToken } = req.body as {
+    email?: string; name?: string; password?: string;
+    groupSlug?: string; groupInviteToken?: string;
+  };
 
   if (!email || !email.includes("@")) {
     res.status(400).json({ error: "A valid email address is required." }); return;
@@ -350,15 +359,72 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(400).json({ error: "An account with that email already exists." }); return;
   }
 
+  // ── Eligibility check ──────────────────────────────────────────────────
+  // Pilot/beta path
+  let allowed = false;
+  let inviteMember: { id: number; groupId: number; email: string } | null = null;
+  let inviteGroupSlug: string | null = null;
+  try {
+    const [beta] = await db.select({ email: betaUsersTable.email })
+      .from(betaUsersTable).where(eq(betaUsersTable.email, normalizedEmail));
+    if (beta) allowed = true;
+  } catch {
+    // beta_users table missing — fall through to invite check
+  }
+
+  // Community-invite path
+  if (!allowed && groupSlug && groupInviteToken) {
+    const [group] = await db.select({ id: groupsTable.id, slug: groupsTable.slug })
+      .from(groupsTable).where(eq(groupsTable.slug, groupSlug));
+    if (group) {
+      const [member] = await db.select({
+        id: groupMembersTable.id, groupId: groupMembersTable.groupId, email: groupMembersTable.email,
+      })
+        .from(groupMembersTable)
+        .where(and(
+          eq(groupMembersTable.groupId, group.id),
+          eq(groupMembersTable.inviteToken, groupInviteToken),
+        ));
+      if (member && member.email.toLowerCase() === normalizedEmail) {
+        allowed = true;
+        inviteMember = member;
+        inviteGroupSlug = group.slug;
+      }
+    }
+  }
+
+  if (!allowed) {
+    res.status(403).json({
+      error: "Phoebe is invite-only right now. Join the waitlist and we'll be in touch as we open seats.",
+    });
+    return;
+  }
+
+  // ── Create the user ────────────────────────────────────────────────────
   const passwordHash = await hashPassword(password);
   const [user] = await db
     .insert(usersTable)
     .values({ email: normalizedEmail, name: name.trim(), passwordHash })
     .returning();
 
+  // If this was a community-invite signup, link the new user to the
+  // pre-invited group_members row so they appear as a joined member of
+  // the community immediately.
+  if (inviteMember) {
+    try {
+      await db.update(groupMembersTable)
+        .set({ userId: user.id, joinedAt: new Date(), name: user.name })
+        .where(eq(groupMembersTable.id, inviteMember.id));
+    } catch (err) {
+      console.error("[auth/register] failed to link group member:", err);
+      // Non-fatal: the user account exists; they can still tap the
+      // invite link again to complete the join.
+    }
+  }
+
   req.login(user, (err) => {
     if (err) { res.status(500).json({ error: "Login failed after registration." }); return; }
-    req.session.save(() => res.json({ ok: true }));
+    req.session.save(() => res.json({ ok: true, joinedGroupSlug: inviteGroupSlug }));
   });
 });
 

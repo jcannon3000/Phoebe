@@ -563,6 +563,20 @@ export async function migrate() {
     // device silences it on every other device signed into the same
     // account for the rest of the local day.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_invite_last_shown_date TEXT`);
+
+    // ── Waitlist ─────────────────────────────────────────────────────────────
+    // Public-facing signup queue: people who want in before invite-based
+    // signup or pilot access opens to them.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS waitlist (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        reason TEXT,
+        source TEXT NOT NULL DEFAULT 'homepage',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
     // One-time backfill: every user who already saw the popup before the
     // column existed (the earlier PATCH 500'd, so their stamp never
     // landed). Seed today's server-local date so we don't re-prompt them
