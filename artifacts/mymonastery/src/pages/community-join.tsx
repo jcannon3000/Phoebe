@@ -193,12 +193,86 @@ export default function CommunityJoinPage() {
   // practice/member list doesn't render a hollow card — a brand-new community
   // with no members yet shouldn't brag about "join 0 others". Computed here
   // (before early returns) to respect the Rules of Hooks.
+  //
+  // Ordering logic:
+  //   1–2. Phoebe intro  — what the product *is*, borrowed from features-deck,
+  //        so a brand-new visitor who's never heard of Phoebe gets oriented
+  //        before the community-specific welcome. Matches the individual
+  //        signup deck's tone.
+  //   3+.  Community-specific — invited to pray with X, who's there, what
+  //        they do, signup CTA.
   const slides = useMemo(() => {
     if (!invite) return [];
     const s: Array<{ key: string; node: React.ReactNode }> = [];
     const preview = invite.preview;
 
-    // Slide 1 — Welcome. Always shown.
+    // Slide — Phoebe intro title. Lifted from features-deck.tsx so the
+    // copy stays in one voice across individual and community onboarding.
+    s.push({
+      key: "phoebe-intro",
+      node: (
+        <div className="text-center">
+          <p className="text-[10px] uppercase tracking-[0.2em] mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
+            What Phoebe is
+          </p>
+          <h1 className="text-4xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em", lineHeight: 1.05 }}>
+            Three practices.
+          </h1>
+          <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
+            Lectio divina. Intercession. Prayer requests.
+          </p>
+          <p className="text-sm leading-relaxed mt-4" style={{ color: "rgba(143,175,150,0.75)" }}>
+            Three of the Church's oldest rhythms, held in common across the scattered life of a modern parish.
+          </p>
+        </div>
+      ),
+    });
+
+    // Slide — The three practices, as cards. Mirrors the "cards" slide in
+    // features-deck.tsx, compressed to the mobile aesthetic used below.
+    s.push({
+      key: "phoebe-practices",
+      node: (
+        <div>
+          <div className="text-center mb-6">
+            <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+              Each plays a different role
+            </p>
+            <h2 className="text-2xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+              Held in common
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {[
+              { emoji: "📖", label: "Lectio Divina", body: "Scripture, read slowly over the week — the community moves through the same Gospel together." },
+              { emoji: "🙏🏽", label: "Intercession", body: "A guided slideshow you move through at the same hour, bearing each other's burdens." },
+              { emoji: "🌿", label: "Prayer Requests", body: "A shared garden of what people are carrying — met by a word of prayer in return." },
+            ].map((p) => (
+              <div
+                key={p.label}
+                className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
+              >
+                <span className="text-2xl leading-none mt-0.5">{p.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                    {p.label}
+                  </p>
+                  <p className="text-[12px] leading-snug mt-0.5" style={{ color: "#8FAF96" }}>
+                    {p.body}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-center mt-5 italic" style={{ color: "rgba(143,175,150,0.6)" }}>
+            Not new. Recovered.
+          </p>
+        </div>
+      ),
+    });
+
+    // Slide — Welcome to the specific community. Always shown.
     s.push({
       key: "welcome",
       node: (
