@@ -53,6 +53,16 @@ type Gathering = {
 type Announcement = {
   id: number; title: string | null; content: string; authorName: string; createdAt: string;
 };
+// One intention card in a prayer circle. The GET /api/groups/:slug response
+// carries an `intentions` array (non-archived, sorted). We render each as its
+// own card on the community home tab and surface them through the daily bell.
+type Intention = {
+  id: number;
+  title: string;
+  description: string | null;
+  createdByUserId: number;
+  createdAt: string;
+};
 
 // Shape of the moments returned by /api/moments — we only consume the
 // fields we render on the community home feed. Keeps this page decoupled
@@ -110,7 +120,7 @@ export default function CommunityDetailPage() {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
-  const { data: groupData } = useQuery<{ group: Group; myRole: string; members: Member[] }>({
+  const { data: groupData } = useQuery<{ group: Group; myRole: string; members: Member[]; intentions?: Intention[] }>({
     queryKey: ["/api/groups", slug],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}`),
     enabled: !!user && !!slug,
@@ -336,40 +346,50 @@ export default function CommunityDetailPage() {
           </div>
         </div>
 
-        {/* ── Prayer Circle intention banner ─────────────────────────────
-            For circle groups, surface the stated intention above the regular
-            community content. Rendered in the serif voice used elsewhere for
-            sacred phrases; small muted line names the form. A terse beta
-            note follows so members know this is still landing. */}
-        {group.isPrayerCircle && group.intention && (
-          <div
-            className="rounded-xl px-4 py-4 mb-5"
-            style={{
-              background: "rgba(46,107,64,0.08)",
-              border: "1px solid rgba(46,107,64,0.22)",
-            }}
-          >
+        {/* ── Prayer Circle intentions ──────────────────────────────────
+            For circle groups, surface every active intention as its own card
+            above the regular community content. Each card leads with the
+            prayer itself (serif voice for sacred phrases) and optionally
+            includes scripture / situation / person context below. A single
+            closing note marks the whole stack as circle-beta. Legacy circles
+            whose intentions still live on groups.intention are rendered as
+            one synthetic card (id=0 from the server fallback). */}
+        {group.isPrayerCircle && (groupData.intentions?.length ?? 0) > 0 && (
+          <div className="mb-5">
             <p
-              className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5"
+              className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 px-1"
               style={{ color: "rgba(200,212,192,0.55)" }}
             >
               We pray
             </p>
-            <p
-              className="text-lg italic leading-snug"
-              style={{
-                color: "#F0EDE6",
-                fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
-              }}
-            >
-              {group.intention}
-            </p>
-            {group.circleDescription && (
-              <p className="text-sm leading-relaxed mt-2" style={{ color: "#C8D4C0" }}>
-                {group.circleDescription}
-              </p>
-            )}
-            <p className="text-[11px] italic mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+            <div className="flex flex-col gap-2">
+              {groupData.intentions!.map((intn) => (
+                <div
+                  key={intn.id}
+                  className="rounded-xl px-4 py-4"
+                  style={{
+                    background: "rgba(46,107,64,0.08)",
+                    border: "1px solid rgba(46,107,64,0.22)",
+                  }}
+                >
+                  <p
+                    className="text-lg italic leading-snug"
+                    style={{
+                      color: "#F0EDE6",
+                      fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                    }}
+                  >
+                    {intn.title}
+                  </p>
+                  {intn.description && (
+                    <p className="text-sm leading-relaxed mt-2" style={{ color: "#C8D4C0" }}>
+                      {intn.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] italic mt-2 px-1" style={{ color: "rgba(143,175,150,0.6)" }}>
               A circle bound by shared purpose. Prayer circles are a beta feature.
             </p>
           </div>

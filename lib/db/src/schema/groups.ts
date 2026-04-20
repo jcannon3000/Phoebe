@@ -14,12 +14,13 @@ export const groupsTable = pgTable("groups", {
   // migration backfills every existing group with a fresh token.
   inviteToken: text("invite_token").unique(),
   // ── Prayer Circles (beta) ─────────────────────────────────────────────
-  // A prayer circle is a group with an added dimension of shared prayer:
-  // a stated `intention` the circle is praying for together, optionally
-  // expanded by `circleDescription`. When `isPrayerCircle` is true the
-  // creation UI requires `intention` and the detail page surfaces it above
-  // the regular group content. Non-circle groups leave these null and
-  // behave exactly as before.
+  // A prayer circle is a group with an added dimension of shared prayer.
+  // The circle holds one-or-more intentions (see `circleIntentionsTable`
+  // below) that surface as cards on the detail page and through the daily
+  // bell. The legacy `intention` / `circleDescription` columns still exist
+  // so the creation form has somewhere to stash the *first* intention at
+  // group-create time; the backfill migration moves them into their own
+  // row, and from that point on `circle_intentions` is the source of truth.
   isPrayerCircle: boolean("is_prayer_circle").notNull().default(false),
   intention: text("intention"),
   circleDescription: text("circle_description"),
@@ -58,6 +59,32 @@ export const circleDailyFocusTable = pgTable("circle_daily_focus", {
   addedByUserId: integer("added_by_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ── Prayer Circle: intentions ──────────────────────────────────────────────
+// A circle can hold many intentions at once — each rendered as its own card
+// on the community page and surfaced through every member's daily bell. The
+// creation flow is intentionally intercession-shaped: a short `title` (the
+// prayer itself) plus an optional `description` for context (scripture, a
+// situation, a person's story).
+//
+// `archivedAt` lets admins "complete" an intention without losing its
+// history — archived intentions disappear from the active card list but
+// stay in the DB for future reflection / review.
+//
+// `sortOrder` reserves room for manual reordering; for beta we just sort
+// by creation time and leave this default.
+export const circleIntentionsTable = pgTable("circle_intentions", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull()
+    .references(() => groupsTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  createdByUserId: integer("created_by_user_id").notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

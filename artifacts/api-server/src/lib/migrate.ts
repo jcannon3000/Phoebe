@@ -758,6 +758,66 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_circle_daily_focus_group_date ON circle_daily_focus (group_id, focus_date)`);
 
+    // ── Prayer Circles: multi-intention cards ─────────────────────────────
+    // A circle can hold many intentions at once, each as its own card.
+    // Replaces the old single groups.intention/circle_description column
+    // pair; the legacy columns stay put as a "first intention" stash
+    // used only during group creation.
+    //
+    // Idempotent creation + a one-time backfill that seeds one row per
+    // circle whose legacy intention was set and hasn't already been
+    // ported over (the NOT EXISTS guard is what makes the backfill
+    // safe to rerun on every boot).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS circle_intentions (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        archived_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_circle_intentions_group ON circle_intentions (group_id) WHERE archived_at IS NULL`);
+    await run(client, `
+      INSERT INTO circle_intentions (group_id, title, description, created_by_user_id, sort_order, created_at)
+      SELECT g.id, g.intention, g.circle_description, g.created_by_user_id, 0, g.created_at
+      FROM groups g
+      WHERE g.is_prayer_circle = TRUE
+        AND g.intention IS NOT NULL
+        AND length(trim(g.intention)) > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM circle_intentions ci
+          WHERE ci.group_id = g.id
+        )
+    `);
+
+    // ── device_tokens — APNs/FCM push tokens for native mobile clients ─────
+    // One row per (user_id, platform, token). Re-registration is an upsert
+    // via the UNIQUE index; `last_seen_at` is bumped so we can prune tokens
+    // idle longer than ~60 days (APNs returns "unregistered" for those
+    // anyway). `invalidated_at` is set when APNs reports a dead token.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS device_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        platform TEXT NOT NULL,
+        token TEXT NOT NULL,
+        first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        invalidated_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS device_tokens_user_platform_token_idx ON device_tokens (user_id, platform, token)`);
+
+    // ── Sign in with Apple — add apple_id column + partial-unique index ─────
+    // `sub` from a verified Apple identity token. Partial-unique so existing
+    // Google-only / email-only users don't trip a uniqueness check on NULL.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_id TEXT`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS users_apple_id_idx ON users (apple_id) WHERE apple_id IS NOT NULL`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

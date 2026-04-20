@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, isNull, sql } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -12,6 +12,7 @@ import {
   momentUserTokensTable,
   prayerRequestsTable,
   circleDailyFocusTable,
+  circleIntentionsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -199,6 +200,20 @@ router.post("/groups", async (req, res): Promise<void> => {
       joinedAt: new Date(),
     });
 
+    // Seed the first intention from the create-form `intention` field so the
+    // community page has something to render immediately. Subsequent additions
+    // flow through POST /groups/:slug/intentions. The legacy groups.intention
+    // column is also written for migration safety / older read paths.
+    if (isCircle && parsed.data.intention && parsed.data.intention.trim().length > 0) {
+      await db.insert(circleIntentionsTable).values({
+        groupId: group.id,
+        title: parsed.data.intention.trim(),
+        description: parsed.data.circleDescription?.trim() || null,
+        createdByUserId: user.id,
+        sortOrder: 0,
+      });
+    }
+
     res.json({ group });
   } catch (err) {
     console.error("POST /api/groups error:", err);
@@ -263,6 +278,48 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
   // the link, and we don't want every member handing it out. A member who
   // wants to share the community can ask an admin.
   const isAdminView = result.member.role === "admin";
+
+  // Active (non-archived) intentions for circles. Sorted by sortOrder then
+  // creation time so admins can eventually drag-to-reorder without losing
+  // stable positioning for ties. Non-circles always return an empty array.
+  let intentions: Array<{
+    id: number;
+    title: string;
+    description: string | null;
+    createdByUserId: number;
+    createdAt: Date;
+  }> = [];
+  if (result.group.isPrayerCircle) {
+    try {
+      const rows = await db.select().from(circleIntentionsTable)
+        .where(and(
+          eq(circleIntentionsTable.groupId, result.group.id),
+          isNull(circleIntentionsTable.archivedAt),
+        ))
+        .orderBy(asc(circleIntentionsTable.sortOrder), asc(circleIntentionsTable.createdAt));
+      intentions = rows.map(r => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        createdByUserId: r.createdByUserId,
+        createdAt: r.createdAt,
+      }));
+    } catch {
+      // Migration not yet applied on this instance — fall back to the legacy
+      // `groups.intention` single value (mapped to a synthetic id=0 row) so
+      // the UI still has something to show.
+      if (result.group.intention && result.group.intention.trim().length > 0) {
+        intentions = [{
+          id: 0,
+          title: result.group.intention,
+          description: result.group.circleDescription,
+          createdByUserId: result.group.createdByUserId,
+          createdAt: result.group.createdAt,
+        }];
+      }
+    }
+  }
+
   res.json({
     group: {
       ...result.group,
@@ -277,6 +334,7 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
       joinedAt: m.joinedAt,
       avatarUrl: avatarByEmail.get(m.email.toLowerCase()) ?? null,
     })),
+    intentions,
   });
 });
 
@@ -337,12 +395,30 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
 
   // Circle toggle logic. Compose the effective-after-update values so we
   // can enforce "intention required when circle is on" regardless of which
-  // fields the client sent in this request.
+  // fields the client sent in this request. Either the legacy groups.intention
+  // column or at least one active circle_intentions row satisfies the check —
+  // the multi-intention redesign moved the source of truth into that table,
+  // so a circle with intentions there but a null legacy column is valid.
   const nextIsCircle = parsed.data.isPrayerCircle ?? result.group.isPrayerCircle;
   const nextIntention = parsed.data.intention !== undefined
     ? (parsed.data.intention.trim() || null)
     : result.group.intention;
-  if (nextIsCircle && (!nextIntention || nextIntention.length === 0)) {
+  let hasActiveIntentionRow = false;
+  if (nextIsCircle) {
+    try {
+      const existing = await db.select({ id: circleIntentionsTable.id })
+        .from(circleIntentionsTable)
+        .where(and(
+          eq(circleIntentionsTable.groupId, result.group.id),
+          isNull(circleIntentionsTable.archivedAt),
+        ))
+        .limit(1);
+      hasActiveIntentionRow = existing.length > 0;
+    } catch {
+      hasActiveIntentionRow = false;
+    }
+  }
+  if (nextIsCircle && !hasActiveIntentionRow && (!nextIntention || nextIntention.length === 0)) {
     res.status(400).json({ error: "Prayer circles require an intention" });
     return;
   }
@@ -360,6 +436,32 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
 
   if (Object.keys(updates).length > 0) {
     await db.update(groupsTable).set(updates).where(eq(groupsTable.id, result.group.id));
+  }
+
+  // If this PATCH turns the circle on (or was already on) and an `intention`
+  // was supplied, mirror it into `circle_intentions` when there isn't an
+  // active one yet. Keeps the legacy form usable for circle-first-creation
+  // without producing duplicate cards on every subsequent settings save.
+  if (nextIsCircle && parsed.data.intention !== undefined && nextIntention) {
+    try {
+      const existing = await db.select({ id: circleIntentionsTable.id })
+        .from(circleIntentionsTable)
+        .where(and(
+          eq(circleIntentionsTable.groupId, result.group.id),
+          isNull(circleIntentionsTable.archivedAt),
+        ));
+      if (existing.length === 0) {
+        await db.insert(circleIntentionsTable).values({
+          groupId: result.group.id,
+          title: nextIntention,
+          description: parsed.data.circleDescription?.trim() || null,
+          createdByUserId: user.id,
+          sortOrder: 0,
+        });
+      }
+    } catch (err) {
+      console.error("PATCH circle intention seed error:", err);
+    }
   }
 
   const [updated] = await db.select().from(groupsTable).where(eq(groupsTable.id, result.group.id));
@@ -1099,6 +1201,205 @@ router.post("/groups/:slug/announcements", async (req, res): Promise<void> => {
   }).returning();
 
   res.json({ announcement });
+});
+
+// GET /api/groups/me/circle-intentions — flat list of every active intention
+// across all prayer circles this user belongs to. Consumed by the prayer-mode
+// slideshow so community intentions surface alongside intercessions + prayer
+// requests. Returns an empty list if the table isn't migrated yet or the user
+// is in no circles — never throws.
+router.get("/groups/me/circle-intentions", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    // Circles this user belongs to. Match via user id; legacy email-only rows
+    // get picked up wherever we stitch userId on signup.
+    const rows = await db.select({
+      groupId: groupsTable.id,
+      groupName: groupsTable.name,
+      groupSlug: groupsTable.slug,
+      groupEmoji: groupsTable.emoji,
+      legacyIntention: groupsTable.intention,
+    })
+      .from(groupMembersTable)
+      .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
+      .where(and(
+        eq(groupsTable.isPrayerCircle, true),
+        eq(groupMembersTable.userId, user.id),
+      ));
+
+    if (rows.length === 0) { res.json({ intentions: [] }); return; }
+
+    const groupIds = rows.map(r => r.groupId);
+    let active: Array<{ id: number; groupId: number; title: string; description: string | null }> = [];
+    try {
+      active = await db.select({
+        id: circleIntentionsTable.id,
+        groupId: circleIntentionsTable.groupId,
+        title: circleIntentionsTable.title,
+        description: circleIntentionsTable.description,
+      }).from(circleIntentionsTable)
+        .where(and(
+          inArray(circleIntentionsTable.groupId, groupIds),
+          isNull(circleIntentionsTable.archivedAt),
+        ))
+        .orderBy(asc(circleIntentionsTable.sortOrder), asc(circleIntentionsTable.createdAt));
+    } catch {
+      active = [];
+    }
+
+    // Flatten with group context. Fall back to the legacy groups.intention
+    // value for circles with no active rows yet (migration not yet run, or
+    // all rows archived) so the slideshow still has something to pray.
+    const out: Array<{
+      id: number;
+      title: string;
+      description: string | null;
+      groupId: number;
+      groupName: string;
+      groupSlug: string;
+      groupEmoji: string | null;
+    }> = [];
+    for (const g of rows) {
+      const forGroup = active.filter(a => a.groupId === g.groupId);
+      if (forGroup.length > 0) {
+        for (const a of forGroup) {
+          out.push({
+            id: a.id,
+            title: a.title,
+            description: a.description,
+            groupId: g.groupId,
+            groupName: g.groupName,
+            groupSlug: g.groupSlug,
+            groupEmoji: g.groupEmoji,
+          });
+        }
+      } else if (g.legacyIntention && g.legacyIntention.trim().length > 0) {
+        out.push({
+          id: 0,
+          title: g.legacyIntention,
+          description: null,
+          groupId: g.groupId,
+          groupName: g.groupName,
+          groupSlug: g.groupSlug,
+          groupEmoji: g.groupEmoji,
+        });
+      }
+    }
+
+    res.json({ intentions: out });
+  } catch (err) {
+    console.error("GET /api/groups/me/circle-intentions error:", err);
+    res.json({ intentions: [] });
+  }
+});
+
+// ─── Prayer Circle: intentions ──────────────────────────────────────────────
+// Each circle can hold many intentions at once. Members see them as stacked
+// cards on the community page and through the daily bell. Creation is shaped
+// like an intercession: a short `title` (the prayer) plus an optional
+// `description` for context. Any member can add; an intention's author or a
+// circle admin can archive it (soft delete so history survives).
+
+// GET /api/groups/:slug/intentions — list active intentions (member-gated)
+router.get("/groups/:slug/intentions", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const result = await requireMember(req.params.slug, user.id);
+    if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+    if (!result.group.isPrayerCircle) { res.json({ intentions: [] }); return; }
+
+    const rows = await db.select().from(circleIntentionsTable)
+      .where(and(
+        eq(circleIntentionsTable.groupId, result.group.id),
+        isNull(circleIntentionsTable.archivedAt),
+      ))
+      .orderBy(asc(circleIntentionsTable.sortOrder), asc(circleIntentionsTable.createdAt));
+
+    res.json({
+      intentions: rows.map(r => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        createdByUserId: r.createdByUserId,
+        createdAt: r.createdAt,
+      })),
+    });
+  } catch (err) {
+    console.error("GET /api/groups/:slug/intentions error:", err);
+    res.json({ intentions: [] });
+  }
+});
+
+// POST /api/groups/:slug/intentions — add a new intention (member-gated)
+router.post("/groups/:slug/intentions", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+  if (!result.group.isPrayerCircle) {
+    res.status(400).json({ error: "This group is not a prayer circle" }); return;
+  }
+
+  const schema = z.object({
+    title: z.string().min(1).max(500),
+    description: z.string().max(2000).optional(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
+
+  const [row] = await db.insert(circleIntentionsTable).values({
+    groupId: result.group.id,
+    title: parsed.data.title.trim(),
+    description: parsed.data.description?.trim() || null,
+    createdByUserId: user.id,
+    sortOrder: 0,
+  }).returning();
+
+  res.json({
+    intention: {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      createdByUserId: row.createdByUserId,
+      createdAt: row.createdAt,
+    },
+  });
+});
+
+// DELETE /api/groups/:slug/intentions/:id — archive an intention. The author
+// can archive their own; circle admins can archive any. Soft-delete via
+// `archivedAt` so the row remains for future reflection / audit.
+router.delete("/groups/:slug/intentions/:id", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(404).json({ error: "Group not found" }); return; }
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [row] = await db.select().from(circleIntentionsTable)
+    .where(and(
+      eq(circleIntentionsTable.id, id),
+      eq(circleIntentionsTable.groupId, result.group.id),
+    ));
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  const isAdmin = result.member.role === "admin";
+  if (!isAdmin && row.createdByUserId !== user.id) {
+    res.status(403).json({ error: "You can only archive your own intentions" }); return;
+  }
+
+  await db.update(circleIntentionsTable)
+    .set({ archivedAt: new Date() })
+    .where(eq(circleIntentionsTable.id, id));
+  res.json({ ok: true });
 });
 
 // ─── Prayer Circle: daily focus ─────────────────────────────────────────────

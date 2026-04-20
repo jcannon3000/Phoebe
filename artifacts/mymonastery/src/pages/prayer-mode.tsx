@@ -45,7 +45,7 @@ interface PrayerRequest {
 }
 
 interface PrayerSlide {
-  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "ask-request";
+  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "ask-request" | "circle-intention";
   text: string;
   attribution: string;
   fullText?: string | null;
@@ -55,6 +55,25 @@ interface PrayerSlide {
   recipientName?: string;
   recipientAvatarUrl?: string | null;
   dayLabel?: string;
+  // circle-intention specific — included so the slide can link back to the
+  // community, and so we can attribute the shared nature of the prayer in
+  // the subtitle.
+  groupName?: string;
+  groupEmoji?: string | null;
+  groupSlug?: string;
+}
+
+// One row from GET /api/groups/me/circle-intentions. Flattened across every
+// prayer circle the user belongs to; non-archived only; falls back to the
+// legacy single `groups.intention` for circles without migrated rows yet.
+interface CircleIntention {
+  id: number;
+  title: string;
+  description: string | null;
+  groupId: number;
+  groupName: string;
+  groupSlug: string;
+  groupEmoji: string | null;
 }
 
 function SlideContent({
@@ -273,7 +292,11 @@ function SlideContent({
         className="text-[10px] uppercase tracking-[0.18em] font-semibold"
         style={{ color: "rgba(143,175,150,0.45)" }}
       >
-        {slide.kind === "intercession" ? "Community Intercession" : "Prayer Request"}
+        {slide.kind === "intercession"
+          ? "Community Intercession"
+          : slide.kind === "circle-intention"
+            ? "Circle Intention"
+            : "Prayer Request"}
       </p>
 
       <p
@@ -304,6 +327,18 @@ function SlideContent({
           style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
         >
           Your community is holding this.
+        </p>
+      )}
+
+      {/* Circle intention — attribute to the circle by name. Different voice
+          from a solo intercession: this is the shared prayer of the whole
+          circle, held together. */}
+      {slide.kind === "circle-intention" && slide.groupName && (
+        <p
+          className="text-[12px] italic"
+          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+        >
+          {slide.groupEmoji ? `${slide.groupEmoji} ` : ""}The {slide.groupName} circle is praying this together.
         </p>
       )}
 
@@ -407,6 +442,15 @@ export default function PrayerModePage() {
     enabled: !!user,
   });
 
+  // Every active intention from every prayer circle this user belongs to.
+  // Surfaced as its own slide-kind so members carry the circle's shared
+  // intentions alongside their own intercessions and others' requests.
+  const { data: circleIntentionsData } = useQuery<{ intentions: CircleIntention[] }>({
+    queryKey: ["/api/groups/me/circle-intentions"],
+    queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"),
+    enabled: !!user,
+  });
+
   const renewMutation = useMutation({
     mutationFn: ({ id, days }: { id: number; days: 3 | 7 }) =>
       apiRequest("POST", `/api/prayers-for/${id}/renew`, { durationDays: days }),
@@ -468,6 +512,20 @@ export default function PrayerModePage() {
         attribution: attributionLabel ? `with ${attributionLabel}` : "",
       };
     }),
+    // Circle intentions — one slide per active intention in every prayer
+    // circle the viewer belongs to. Placed right after intercessions because
+    // they read in the same voice (the thing being prayed) and before
+    // prayer requests so shared communal intentions come before individual
+    // asks. Falls back silently to [] if the endpoint is missing or empty.
+    ...((circleIntentionsData?.intentions ?? []).map((intn): PrayerSlide => ({
+      kind: "circle-intention",
+      text: intn.title,
+      attribution: "",
+      intention: intn.description,
+      groupName: intn.groupName,
+      groupEmoji: intn.groupEmoji,
+      groupSlug: intn.groupSlug,
+    }))),
     // Other people's prayer requests come before the user's own private
     // prayers-for — hearing others first, then turning inward. We
     // deliberately exclude the viewer's own requests; they don't need to

@@ -67,12 +67,21 @@ interface BellCircleFocus {
   subjectAvatarUrl: string | null;
   subjectText: string | null;
 }
+interface BellCircleIntention {
+  id: number;
+  title: string;
+  description: string | null;
+}
 interface BellCircle {
   groupId: number;
   groupName: string;
   groupSlug: string;
   groupEmoji: string | null;
+  // Legacy single-intention string — kept for older server payloads. Current
+  // servers also populate `intentions[]`, which takes precedence when both
+  // are present.
   intention: string | null;
+  intentions?: BellCircleIntention[];
   focus: BellCircleFocus[];
 }
 
@@ -164,17 +173,43 @@ export default function BellPage() {
                       {c.groupName}
                     </p>
                   </div>
-                  {c.intention && (
-                    <p
-                      className="text-base italic leading-snug mb-3"
-                      style={{
-                        color: "#F0EDE6",
-                        fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
-                      }}
-                    >
-                      {c.intention}
-                    </p>
-                  )}
+                  {/* Each intention becomes its own stacked card — same
+                      serif voice as the community page so the two surfaces
+                      read as one continuous prayer. Falls back to the
+                      legacy single-string `intention` when the server
+                      hasn't populated `intentions[]` yet. */}
+                  {(() => {
+                    const list: BellCircleIntention[] = (c.intentions && c.intentions.length > 0)
+                      ? c.intentions
+                      : (c.intention ? [{ id: 0, title: c.intention, description: null }] : []);
+                    if (list.length === 0) return null;
+                    return (
+                      <div className="flex flex-col gap-2 mb-3">
+                        {list.map(intn => (
+                          <div
+                            key={intn.id}
+                            className="rounded-lg px-3 py-2.5"
+                            style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.2)" }}
+                          >
+                            <p
+                              className="text-base italic leading-snug"
+                              style={{
+                                color: "#F0EDE6",
+                                fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                              }}
+                            >
+                              {intn.title}
+                            </p>
+                            {intn.description && (
+                              <p className="text-xs mt-1 leading-relaxed" style={{ color: "#C8D4C0" }}>
+                                {intn.description}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </Link>
                 {c.focus.length > 0 ? (
                   <div className="space-y-1.5">

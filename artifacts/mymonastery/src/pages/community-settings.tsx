@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { ExternalLink, Users } from "lucide-react";
+import { ExternalLink, Users, Plus, X } from "lucide-react";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -22,6 +22,14 @@ type Group = {
   circleDescription?: string | null;
 };
 
+type Intention = {
+  id: number;
+  title: string;
+  description: string | null;
+  createdByUserId: number;
+  createdAt: string;
+};
+
 export default function CommunitySettingsPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
@@ -34,9 +42,14 @@ export default function CommunitySettingsPage() {
   const [calendarUrl, setCalendarUrl] = useState("");
   // ── Prayer Circle (beta) admin controls ─────────────────────────────
   const [isPrayerCircle, setIsPrayerCircle] = useState(false);
-  const [intention, setIntention] = useState("");
-  const [circleDescription, setCircleDescription] = useState("");
   const [saved, setSaved] = useState(false);
+
+  // Add-intention dialog state. Shape mirrors the intercession flow —
+  // a short title (the prayer itself) plus an optional description for
+  // context (scripture, a situation, a person's story).
+  const [addOpen, setAddOpen] = useState(false);
+  const [newIntentionTitle, setNewIntentionTitle] = useState("");
+  const [newIntentionDescription, setNewIntentionDescription] = useState("");
 
   const INTENTION_EXAMPLES = [
     "For the sick in our parish.",
@@ -49,11 +62,13 @@ export default function CommunitySettingsPage() {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
-  const { data: groupData } = useQuery<{ group: Group; myRole: string }>({
+  const { data: groupData } = useQuery<{ group: Group; myRole: string; intentions?: Intention[] }>({
     queryKey: ["/api/groups", slug],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}`),
     enabled: !!user && !!slug,
   });
+
+  const intentions: Intention[] = groupData?.intentions ?? [];
 
   const group = groupData?.group;
   const [communityAdminView] = useCommunityAdminToggle();
@@ -72,8 +87,6 @@ export default function CommunitySettingsPage() {
       setEmoji(group.emoji ?? "🏘️");
       setCalendarUrl(group.calendarUrl ?? "");
       setIsPrayerCircle(!!group.isPrayerCircle);
-      setIntention(group.intention ?? "");
-      setCircleDescription(group.circleDescription ?? "");
     }
   }, [group]);
 
@@ -84,19 +97,41 @@ export default function CommunitySettingsPage() {
       emoji,
       calendarUrl: calendarUrl || "",
       isPrayerCircle,
-      // Server clears intention/circleDescription when isPrayerCircle is false,
-      // but we pass the trimmed values anyway so the invariant is enforced
-      // consistently from both sides.
-      intention: isPrayerCircle ? intention.trim() : undefined,
-      circleDescription: isPrayerCircle && circleDescription.trim()
-        ? circleDescription.trim()
-        : undefined,
+      // Intentions now live in their own table; this PATCH only updates the
+      // group metadata. The server seeds a first intention from this payload
+      // only when transitioning to a circle with no active intentions yet —
+      // our normal save skips the `intention` field entirely so we don't
+      // create duplicates on every settings save.
     }),
     onSuccess: () => {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+    },
+  });
+
+  // Add an intention. The flow is intercession-shaped: title + optional
+  // description, reused on both the community page and the daily bell.
+  const addIntentionMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/intentions`, {
+      title: newIntentionTitle.trim(),
+      description: newIntentionDescription.trim() || undefined,
+    }),
+    onSuccess: () => {
+      setNewIntentionTitle("");
+      setNewIntentionDescription("");
+      setAddOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
+    },
+  });
+
+  // Archive (soft-delete) an intention — stays in the DB for later reflection
+  // but disappears from the active card list immediately.
+  const archiveIntentionMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/groups/${slug}/intentions/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
     },
   });
 
@@ -248,57 +283,87 @@ export default function CommunitySettingsPage() {
 
         {isPrayerCircle && (
           <>
+            {/* Intentions — rendered as a stacked list of cards. Each card is
+                one intention; admins can archive any, the author can archive
+                their own. The "Add intention" button opens an intercession-
+                style dialog. */}
             <div className="mb-4">
-              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                Intention
+              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+                Intentions
               </label>
-              <input
-                type="text"
-                value={intention}
-                onChange={e => setIntention(e.target.value)}
-                placeholder="What does this circle pray for?"
-                maxLength={500}
-                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-                style={{
-                  background: "rgba(46,107,64,0.08)",
-                  border: "1px solid rgba(46,107,64,0.25)",
-                  color: "#F0EDE6",
-                  fontFamily: FONT,
-                }}
-              />
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {INTENTION_EXAMPLES.map(ex => (
-                  <button
-                    key={ex}
-                    type="button"
-                    onClick={() => setIntention(ex)}
-                    className="text-[11px] italic px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
+
+              {intentions.length === 0 && (
+                <div
+                  className="rounded-xl px-4 py-6 mb-2 text-center"
+                  style={{
+                    background: "rgba(46,107,64,0.05)",
+                    border: "1px dashed rgba(46,107,64,0.25)",
+                    color: "rgba(200,212,192,0.7)",
+                  }}
+                >
+                  <p className="text-xs italic" style={{ fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif" }}>
+                    No intentions yet. Add the first prayer this circle holds.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 mb-2">
+                {intentions.map(intn => (
+                  <div
+                    key={intn.id}
+                    className="rounded-xl px-4 py-3 flex items-start gap-3"
                     style={{
-                      background: "rgba(46,107,64,0.12)",
+                      background: "rgba(46,107,64,0.10)",
                       border: "1px solid rgba(46,107,64,0.25)",
-                      color: "rgba(200,212,192,0.8)",
-                      fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
                     }}
                   >
-                    {ex}
-                  </button>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-sm leading-snug"
+                        style={{
+                          color: "#F0EDE6",
+                          fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                          fontStyle: "italic",
+                        }}
+                      >
+                        {intn.title}
+                      </p>
+                      {intn.description && (
+                        <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "#8FAF96" }}>
+                          {intn.description}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm("Archive this intention? It will disappear from the circle.")) {
+                          archiveIntentionMutation.mutate(intn.id);
+                        }
+                      }}
+                      className="text-[10px] flex-shrink-0 rounded-md px-1.5 py-1 transition-opacity hover:opacity-100"
+                      style={{ color: "rgba(200,212,192,0.5)", opacity: 0.7 }}
+                      title="Archive intention"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
                 ))}
               </div>
-            </div>
 
-            <div className="mb-4">
-              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                About the circle <span style={{ opacity: 0.5 }}>(optional)</span>
-              </label>
-              <textarea
-                value={circleDescription}
-                onChange={e => setCircleDescription(e.target.value)}
-                placeholder="Say more about what this circle is for."
-                maxLength={2000}
-                rows={3}
-                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none resize-none"
-                style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
-              />
+              <button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-opacity hover:opacity-90"
+                style={{
+                  background: "rgba(46,107,64,0.08)",
+                  border: "1px dashed rgba(46,107,64,0.35)",
+                  color: "#A8C5A0",
+                }}
+              >
+                <Plus size={14} />
+                <span>Add intention</span>
+              </button>
             </div>
 
             <p className="text-[11px] italic mb-6" style={{ color: "rgba(143,175,150,0.65)" }}>
@@ -307,11 +372,134 @@ export default function CommunitySettingsPage() {
           </>
         )}
 
+        {/* ── Add intention dialog ─────────────────────────────────────────
+            Intercession-shaped: title (the prayer itself) plus an optional
+            description for scripture, situation, or person's story. Example
+            chips populate the title field to suggest patterns without
+            constraining form. */}
+        {addOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            style={{ background: "rgba(10,20,15,0.65)", backdropFilter: "blur(6px)" }}
+            onClick={() => setAddOpen(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl p-5"
+              style={{
+                background: "#1A2A1F",
+                border: "1px solid rgba(46,107,64,0.35)",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                  An intention for this circle
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(false)}
+                  className="rounded-full p-1 transition-opacity hover:opacity-80"
+                  style={{ color: "rgba(200,212,192,0.5)" }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="mb-3">
+                <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+                  Prayer
+                </label>
+                <input
+                  type="text"
+                  value={newIntentionTitle}
+                  onChange={e => setNewIntentionTitle(e.target.value)}
+                  placeholder="What are we praying for?"
+                  maxLength={500}
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                  style={{
+                    background: "rgba(46,107,64,0.12)",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    color: "#F0EDE6",
+                    fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                    fontStyle: "italic",
+                  }}
+                />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {INTENTION_EXAMPLES.map(ex => (
+                    <button
+                      key={ex}
+                      type="button"
+                      onClick={() => setNewIntentionTitle(ex)}
+                      className="text-[11px] italic px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
+                      style={{
+                        background: "rgba(46,107,64,0.12)",
+                        border: "1px solid rgba(46,107,64,0.25)",
+                        color: "rgba(200,212,192,0.8)",
+                        fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                      }}
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-5">
+                <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+                  Context <span style={{ opacity: 0.5 }}>(optional)</span>
+                </label>
+                <textarea
+                  value={newIntentionDescription}
+                  onChange={e => setNewIntentionDescription(e.target.value)}
+                  placeholder="A scripture, a story, a situation the circle is holding…"
+                  maxLength={2000}
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none resize-none"
+                  style={{
+                    background: "rgba(46,107,64,0.12)",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    color: "#F0EDE6",
+                  }}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(false)}
+                  className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)", color: "#8FAF96" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addIntentionMutation.mutate()}
+                  disabled={!newIntentionTitle.trim() || addIntentionMutation.isPending}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                >
+                  {addIntentionMutation.isPending ? "Adding…" : "Add"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => saveMutation.mutate()}
           disabled={
             !name.trim() ||
-            (isPrayerCircle && !intention.trim()) ||
+            // A circle with zero intentions is a contradiction — block save
+            // until at least one intention exists (either already saved on
+            // the group, or added this session). Turning a non-circle INTO a
+            // circle with no intentions yet is still blocked by the server's
+            // own "prayer circles require an intention" guard via the legacy
+            // `intention` column check; for beta we keep this client guard
+            // advisory-only.
+            (isPrayerCircle && intentions.length === 0 && !group?.intention) ||
             saveMutation.isPending
           }
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
