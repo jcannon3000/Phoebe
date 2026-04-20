@@ -8,6 +8,10 @@ export const usersTable = pgTable("users", {
   email: text("email").notNull().unique(),
   avatarUrl: text("avatar_url"),
   googleId: text("google_id").unique(),
+  // Apple Sign In "sub" claim from the verified identity token — stable
+  // per Apple ID. Null for users who only signed in via Google or
+  // email/password. Mirrors googleId so native auth paths stay parallel.
+  appleId: text("apple_id").unique(),
   googleAccessToken: text("google_access_token"),
   googleRefreshToken: text("google_refresh_token"),
   googleTokenExpiry: timestamp("google_token_expiry", { withTimezone: true }),

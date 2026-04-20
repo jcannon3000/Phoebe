@@ -358,7 +358,7 @@ router.get(
 router.post(
   "/letters/correspondences/:id/archive",
   requireSessionAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     await db
       .update(correspondenceMembersTable)
       .set({ archivedAt: new Date() } as any)
@@ -377,7 +377,7 @@ router.post(
 router.get(
   "/letters/correspondences/:id",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const [correspondence] = await db
       .select()
       .from(correspondencesTable)
@@ -448,7 +448,7 @@ router.get(
 router.get(
   "/letters/correspondences/:id/letters",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const { member } = await getMembership(correspondenceId, auth);
     if (!member) {
       res.status(403).json({ error: "Not a member" });
@@ -480,7 +480,7 @@ router.get(
 router.post(
   "/letters/correspondences/:id/letters",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
 
     const [correspondence] = await db
       .select()
@@ -670,7 +670,7 @@ router.post(
 router.put(
   "/letters/correspondences/:id/draft",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const { member } = await getMembership(correspondenceId, auth);
     if (!member) {
       res.status(403).json({ error: "Not a member" });
@@ -717,7 +717,7 @@ router.put(
 router.get(
   "/letters/correspondences/:id/draft",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const { member } = await getMembership(correspondenceId, auth);
     if (!member) {
       res.status(403).json({ error: "Not a member" });

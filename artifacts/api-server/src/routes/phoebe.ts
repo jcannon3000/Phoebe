@@ -317,7 +317,7 @@ router.get(
 router.get(
   "/phoebe/correspondences/:id",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const [correspondence] = await db
       .select()
       .from(correspondencesTable)
@@ -397,7 +397,7 @@ router.get(
 router.get(
   "/phoebe/correspondences/:id/letters",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const { member } = await getMembership(correspondenceId, auth);
     if (!member) { res.status(403).json({ error: "Not a member" }); return; }
 
@@ -427,7 +427,7 @@ router.get(
 router.post(
   "/phoebe/correspondences/:id/letters",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
 
     const [correspondence] = await db
       .select()
@@ -687,7 +687,7 @@ router.post(
 router.put(
   "/phoebe/correspondences/:id/draft",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const { member } = await getMembership(correspondenceId, auth);
     if (!member) { res.status(403).json({ error: "Not a member" }); return; }
 
@@ -723,7 +723,7 @@ router.put(
 router.get(
   "/phoebe/correspondences/:id/draft",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const { member } = await getMembership(correspondenceId, auth);
     if (!member) { res.status(403).json({ error: "Not a member" }); return; }
 
@@ -757,7 +757,7 @@ router.get(
 router.post(
   "/phoebe/correspondences/:id/archive",
   requireSessionAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     await db
       .update(correspondenceMembersTable)
       .set({ archivedAt: new Date() } as any)
@@ -996,7 +996,7 @@ router.get("/phoebe/correspondences/:id/preview", async (req, res): Promise<void
 router.post(
   "/phoebe/correspondences/:id/calendar-prompt",
   requireAuth(async (req, res, auth) => {
-    const correspondenceId = parseInt(req.params.id, 10);
+    const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     const { state } = req.body as { state: "enabled" | "dismissed" };
     if (state !== "enabled" && state !== "dismissed") {
       res.status(400).json({ error: "state must be 'enabled' or 'dismissed'" }); return;

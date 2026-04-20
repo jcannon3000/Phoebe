@@ -171,7 +171,9 @@ async function checkAndAutoConfirm(opts: {
   if (!planned) return;
 
   await db.update(meetupsTable)
-    .set({ scheduledDate: confirmedDate })
+    // scheduledDate is a text column (YYYY-MM-DDTHH:mm or similar);
+    // consensus is already the ISO string we parsed `confirmedDate` from.
+    .set({ scheduledDate: consensus })
     .where(eq(meetupsTable.id, planned.id));
 
   if (!planned.googleCalendarEventId) return;
@@ -247,7 +249,9 @@ async function updateCalendarEventDescription(opts: {
 
   await updateCalendarEvent(organizerUserId, planned.googleCalendarEventId, {
     description: lines.join("\n"),
-    startDate: planned.scheduledDate,
+    // planned.scheduledDate is stored as a text column — parse to Date
+    // for the calendar API contract.
+    startDate: new Date(planned.scheduledDate),
   });
 }
 

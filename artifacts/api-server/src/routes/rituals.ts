@@ -170,7 +170,7 @@ router.post("/rituals", async (req, res): Promise<void> => {
       })
       .catch((err: unknown) => req.log.warn({ err }, "Failed to generate welcome message"));
 
-    res.status(201).json({ id: ritual.id, ...enriched });
+    res.status(201).json({ ...enriched, id: ritual.id });
   } catch (err: unknown) {
     req.log.error({ err }, "Failed to create ritual");
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to create ritual" });

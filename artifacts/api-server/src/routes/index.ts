@@ -22,6 +22,8 @@ import fellowsRouter from "./fellows";
 import gratitudeRouter from "./gratitude";
 import prayersForRouter from "./prayers-for";
 import waitlistRouter from "./waitlist";
+import pushRouter from "./push";
+import authAppleRouter from "./auth-apple";
 
 const router: IRouter = Router();
 
@@ -48,5 +50,7 @@ router.use(fellowsRouter);
 router.use(gratitudeRouter);
 router.use(prayersForRouter);
 router.use(waitlistRouter);
+router.use(pushRouter);
+router.use(authAppleRouter);
 
 export default router;

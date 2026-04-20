@@ -70,6 +70,40 @@ app.use(passport.session());
 
 app.use("/api", router);
 
+// ─── Universal Link association file ───────────────────────────────────────
+// Apple fetches https://withphoebe.app/.well-known/apple-app-site-association
+// when the Phoebe iOS app is installed and the user taps a Phoebe link
+// anywhere in the system. Must be served with no redirect, no auth,
+// Content-Type: application/json. Set APPLE_TEAM_ID env so the live file
+// doesn't contain a placeholder; if unset we still serve a 200 so the
+// route responds (Apple will just fail to associate until configured).
+app.get("/.well-known/apple-app-site-association", (_req, res) => {
+  const teamId = process.env["APPLE_TEAM_ID"] ?? "TEAM_ID";
+  const bundleId = process.env["APPLE_BUNDLE_ID"] ?? "app.withphoebe.mobile";
+  const appId = `${teamId}.${bundleId}`;
+  res
+    .setHeader("Content-Type", "application/json")
+    .setHeader("Cache-Control", "public, max-age=3600")
+    .json({
+      applinks: {
+        apps: [],
+        details: [
+          {
+            appIDs: [appId],
+            components: [
+              { "/": "/communities/join/*" },
+              { "/": "/m/*" },
+              { "/": "/lectio/*" },
+              { "/": "/moments/*" },
+              { "/": "/dashboard" },
+            ],
+          },
+        ],
+      },
+      webcredentials: { apps: [appId] },
+    });
+});
+
 // Serve letters-app at /mail (must come before the main app catch-all)
 const lettersDist = path.resolve(__dirname, "../../letters-app/dist/public");
 if (fs.existsSync(lettersDist)) {

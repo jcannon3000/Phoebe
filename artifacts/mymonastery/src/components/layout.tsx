@@ -47,10 +47,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const fellowInviteCount = isBeta ? (inviteCountData?.count ?? 0) : 0;
 
   const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
-    // "Practices" doesn't go to /practices — it behaves like the dashboard
-    // Practices pill: jump to the dashboard and scope the feed to practices.
-    // The click handler below special-cases this path.
-    { emoji: "🕯️", label: "Practices",   path: "/dashboard#filter=practices" },
+    // Practices used to have its own top-level entry that deep-linked into
+    // the dashboard's filter; removed — the dashboard itself is the home
+    // surface, and the Practices pill there is the canonical way to narrow.
     { emoji: "🙏🏽", label: "Prayer List", path: "/prayer-list" },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "👥", label: "People",      path: "/people",     count: fellowInviteCount },
@@ -205,16 +204,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   }
                   const { emoji, label, path, badge, count } = item as { emoji: string; label: string; path: string; badge?: string; count?: number };
                   const handleNavClick = () => {
-                    // "Practices" behaves like the dashboard's Practices pill:
-                    // flag it via sessionStorage for cross-page nav, AND fire
-                    // an event for the already-mounted case (wouter doesn't
-                    // remount on a same-path nav).
-                    if (path === "/dashboard#filter=practices") {
-                      try { sessionStorage.setItem("phoebe:pending-filter", "practices"); } catch { /* ignore */ }
-                      window.dispatchEvent(new Event("phoebe:filter-practices"));
-                      navigate("/dashboard");
-                      return;
-                    }
                     navigate(path);
                   };
                   return (

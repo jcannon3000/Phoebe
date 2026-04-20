@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, Camera, Pencil, Check, X } from "lucide-react";
+import { LogOut, Camera, Pencil, Check, X, Trash2 } from "lucide-react";
 
 
 function SectionHeader({ label }: { label: string }) {
@@ -815,7 +815,139 @@ export default function SettingsPage() {
           <LogOut size={15} />
           Sign out
         </button>
+
+        {/* ── Delete account ──
+            Required by Apple Guideline 5.1.1(v) for App Store distribution:
+            any app that creates accounts must offer in-app deletion. Also
+            a legitimate privacy affordance for web users. Gated behind a
+            confirm step (type your email) to prevent accidents. */}
+        <div className="mt-8">
+          <DeleteAccountSection email={user.email} />
+        </div>
       </div>
     </Layout>
+  );
+}
+
+// ─── Delete account section ────────────────────────────────────────────────
+// Two-step UI: a muted destructive button → expanded confirm form with
+// email-typing check → calls DELETE /api/users/me. On success, redirect
+// to /. The server endpoint enforces the same email check, so this is
+// belt-and-suspenders.
+function DeleteAccountSection({ email }: { email: string }) {
+  const [, setLocation] = useLocation();
+  const [expanded, setExpanded] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/users/me", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmEmail }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail ?? body.error ?? `HTTP ${res.status}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setLocation("/");
+      // Hard reload so every client-side cache clears.
+      setTimeout(() => window.location.href = "/", 100);
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+    },
+  });
+
+  const canDelete = confirmEmail.trim().toLowerCase() === email.trim().toLowerCase();
+
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-medium transition-opacity hover:opacity-90"
+        style={{
+          background: "transparent",
+          color: "rgba(217,122,122,0.75)",
+          border: "1px solid rgba(217,122,122,0.25)",
+        }}
+      >
+        <Trash2 size={13} />
+        Delete account
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="rounded-2xl px-5 py-4"
+      style={{
+        background: "rgba(217,122,122,0.06)",
+        border: "1px solid rgba(217,122,122,0.25)",
+      }}
+    >
+      <p className="text-sm font-medium mb-2" style={{ color: "#D97A7A", fontFamily: "'Space Grotesk', sans-serif" }}>
+        Delete your account
+      </p>
+      <p className="text-xs mb-3 leading-relaxed" style={{ color: "rgba(240,237,230,0.75)" }}>
+        This permanently removes your account and every prayer, practice, reflection, and invitation you've made in Phoebe. Shared prayer circles you created are not deleted for other members.
+      </p>
+      <p className="text-xs mb-3 leading-relaxed" style={{ color: "rgba(240,237,230,0.55)" }}>
+        This cannot be undone. Calendar events already sent are left in place — remove them from Google Calendar yourself if you like.
+      </p>
+      <label className="block text-xs mb-1.5" style={{ color: "rgba(143,175,150,0.75)" }}>
+        Type <span style={{ color: "#F0EDE6" }}>{email}</span> to confirm:
+      </label>
+      <input
+        type="email"
+        autoComplete="off"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        value={confirmEmail}
+        onChange={(e) => { setConfirmEmail(e.target.value); setError(null); }}
+        placeholder={email}
+        className="w-full px-3 py-2 rounded-lg text-sm mb-3"
+        style={{
+          background: "rgba(0,0,0,0.35)",
+          color: "#F0EDE6",
+          border: "1px solid rgba(217,122,122,0.35)",
+          outline: "none",
+        }}
+      />
+      {error && (
+        <p className="text-xs mb-3" style={{ color: "#D97A7A" }}>{error}</p>
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={() => deleteMutation.mutate()}
+          disabled={!canDelete || deleteMutation.isPending}
+          className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-opacity disabled:opacity-40"
+          style={{
+            background: "#8A2A2A",
+            color: "#F0EDE6",
+            cursor: canDelete && !deleteMutation.isPending ? "pointer" : "not-allowed",
+          }}
+        >
+          {deleteMutation.isPending ? "Deleting…" : "Permanently delete"}
+        </button>
+        <button
+          onClick={() => { setExpanded(false); setConfirmEmail(""); setError(null); }}
+          className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
+          style={{
+            background: "transparent",
+            color: "#8FAF96",
+            border: "1px solid rgba(143,175,150,0.3)",
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }

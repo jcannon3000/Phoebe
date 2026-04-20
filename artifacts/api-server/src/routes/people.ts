@@ -535,7 +535,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
   // profile we only surface requests that are still current — expired
   // (past expiresAt, not renewed) requests drop off until the owner
   // renews them from their own dashboard.
-  let activePrayerRequest: { id: number; body: string; createdAt: string; expiresAt: string | null } | null = null;
+  let activePrayerRequest: { id: number; body: string; createdAt: string; expiresAt: string | null; myWord: string | null } | null = null;
 
   // Check if the viewing user has muted this person
   let isMuted = false;
