@@ -118,12 +118,14 @@ function PersonCard({
   iPrayFor,
   prayForMe,
   activePrayerFor,
+  activePrayerForMe,
 }: {
   person: PersonSummary;
   isPresent: boolean;
   iPrayFor: boolean;
   prayForMe: boolean;
   activePrayerFor: MyActivePrayerFor | null;
+  activePrayerForMe: PrayerForMe | null;
 }) {
   const [, setLocation] = useLocation();
   const color = colorFor(person.email);
@@ -154,19 +156,35 @@ function PersonCard({
 
   // Active prayer card details — calendar-day math so "Day 2" shows the
   // morning after a prayer was started, not after a full 24h elapses.
-  let prayerDayLabel = "";
-  let daysRemaining = 0;
-  if (activePrayerFor) {
-    const started = new Date(activePrayerFor.startedAt);
-    const expires = new Date(activePrayerFor.expiresAt);
+  function calendarPrayerWindow(startedAt: string, expiresAt: string, durationDays?: number) {
+    const started = new Date(startedAt);
+    const expires = new Date(expiresAt);
     const nowD = new Date();
     const todayStart = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate());
     const startedStart = new Date(started.getFullYear(), started.getMonth(), started.getDate());
     const expiresStart = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+    const totalDays = durationDays
+      ?? Math.max(1, Math.round((expiresStart.getTime() - startedStart.getTime()) / 86400000));
     const daysElapsed = Math.round((todayStart.getTime() - startedStart.getTime()) / 86400000);
-    const day = Math.max(1, Math.min(activePrayerFor.durationDays, daysElapsed + 1));
-    daysRemaining = Math.max(0, Math.round((expiresStart.getTime() - todayStart.getTime()) / 86400000));
-    prayerDayLabel = `Day ${day} of ${activePrayerFor.durationDays}`;
+    const day = Math.max(1, Math.min(totalDays, daysElapsed + 1));
+    const daysLeft = Math.max(0, Math.round((expiresStart.getTime() - todayStart.getTime()) / 86400000));
+    return { day, daysLeft, totalDays };
+  }
+
+  let prayerDayLabel = "";
+  let daysRemaining = 0;
+  if (activePrayerFor) {
+    const w = calendarPrayerWindow(activePrayerFor.startedAt, activePrayerFor.expiresAt, activePrayerFor.durationDays);
+    prayerDayLabel = `Day ${w.day} of ${w.totalDays}`;
+    daysRemaining = w.daysLeft;
+  }
+
+  let prayerForMeDayLabel = "";
+  let prayerForMeDaysRemaining = 0;
+  if (activePrayerForMe) {
+    const w = calendarPrayerWindow(activePrayerForMe.startedAt, activePrayerForMe.expiresAt);
+    prayerForMeDayLabel = `Day ${w.day} of ${w.totalDays}`;
+    prayerForMeDaysRemaining = w.daysLeft;
   }
 
   return (
@@ -284,6 +302,42 @@ function PersonCard({
                 </div>
               </div>
             </button>
+          )}
+
+          {/* Mirror card — shown when this person is currently praying for
+              you. Warm amber accent to distinguish it from the green
+              "You're praying" card. Read-only (the text is theirs, not
+              yours to edit), so it's a div, not a button. */}
+          {activePrayerForMe && (
+            <div
+              className="mt-3 w-full rounded-xl px-3 py-2.5"
+              style={{
+                background: "rgba(193,154,58,0.1)",
+                border: "1px solid rgba(193,154,58,0.3)",
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] mb-1" style={{ color: "rgba(217,176,82,0.7)" }}>
+                    {person.name.split(" ")[0]} is praying for you 🕯️
+                  </p>
+                  <p
+                    className="text-[13px] italic truncate"
+                    style={{ color: "#E8D9B0", fontFamily: "Playfair Display, Georgia, serif" }}
+                  >
+                    {activePrayerForMe.prayerText}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-[10px] font-semibold" style={{ color: "#D9B052" }}>
+                    {prayerForMeDaysRemaining} {prayerForMeDaysRemaining === 1 ? "day" : "days"} left
+                  </p>
+                  <p className="text-[9px]" style={{ color: "rgba(217,176,82,0.55)" }}>
+                    {prayerForMeDayLabel}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </motion.div>
@@ -789,6 +843,11 @@ export default function People() {
                     activePrayerFor={
                       iPrayFor.find(
                         p => p.recipientEmail.toLowerCase() === person.email.toLowerCase() && !p.expired,
+                      ) ?? null
+                    }
+                    activePrayerForMe={
+                      prayForMe.find(
+                        p => p.prayerEmail.toLowerCase() === person.email.toLowerCase(),
                       ) ?? null
                     }
                   />
