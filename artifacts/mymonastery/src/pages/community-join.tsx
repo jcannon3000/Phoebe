@@ -70,6 +70,10 @@ export default function CommunityJoinPage() {
   const [authMode, setAuthMode] = useState<AuthMode>("register");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  // Honeypot for the register form. Real browser users never see or fill
+  // this; naive bots that autofill every <input> trip it and get rejected
+  // server-side with a generic validation error (no "bot detected" tell).
+  const [website, setWebsite] = useState("");
   // Email is user-entered only on community-wide links; per-member links
   // pre-fill it from the invite.
   const [email, setEmail] = useState("");
@@ -166,6 +170,7 @@ export default function CommunityJoinPage() {
           password,
           groupSlug: slug,
           groupInviteToken: token,
+          website, // honeypot; legitimate users always send ""
         }),
       });
       const data = await res.json();
@@ -648,6 +653,37 @@ export default function CommunityJoinPage() {
                 onSubmit={handleRegister}
                 className="flex flex-col gap-3"
               >
+                {/*
+                  Honeypot — visually hidden, off-tab, disabled for
+                  autocomplete, labeled like a real field so blind bots fill
+                  it. Real users never see or reach this input. We use inline
+                  style + aria-hidden + tabIndex=-1 rather than display:none
+                  because some bots specifically skip display:none fields.
+                */}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    left: "-9999px",
+                    top: "auto",
+                    width: 1,
+                    height: 1,
+                    overflow: "hidden",
+                  }}
+                >
+                  <label>
+                    Website
+                    <input
+                      type="text"
+                      name="website"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={website}
+                      onChange={e => setWebsite(e.target.value)}
+                    />
+                  </label>
+                </div>
+
                 <div className="flex gap-2.5">
                   <input
                     type="text"

@@ -15,6 +15,7 @@ import {
 import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendEmail } from "../lib/email";
+import { rateLimit, getClientIp } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -495,11 +496,28 @@ router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
 //      the link and land here. We INSERT a fresh group_members row for them.
 //   2. Per-member token (legacy) — pre-invited user redeems their token and
 //      we UPDATE the existing pending row.
-router.post("/groups/:slug/join", async (req, res): Promise<void> => {
+// Rate limit: a leaked invite link is the main abuse vector here. 20 joins
+// per hour per (slug + IP) lets a legit admin share a link in a room of ~20
+// people without friction, while throttling a scraped-link flood enough that
+// the admin has time to rotate the token. We key on slug+IP rather than slug
+// alone so that a single noisy IP can't deny access to the whole community.
+router.post(
+  "/groups/:slug/join",
+  rateLimit({
+    name: "groups_join",
+    max: 20,
+    windowMs: 60 * 60 * 1000,
+    keyFn: (req) => `${req.params.slug ?? "_"}::${getClientIp(req)}`,
+    message: "Too many join attempts for this community. Please try again shortly.",
+  }),
+  async (req, res): Promise<void> => {
   const token = (req.query.token as string) || req.body?.token;
   if (!token) { res.status(400).json({ error: "Token required" }); return; }
 
-  const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, req.params.slug));
+  // Express's typing narrows less precisely once middleware is composed, so
+  // we read :slug as a string explicitly (the route literal guarantees it).
+  const slug = String(req.params.slug ?? "");
+  const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, slug));
   if (!group) { res.status(404).json({ error: "Group not found" }); return; }
 
   // ── Community-wide token path ───────────────────────────────────────────
@@ -582,6 +600,7 @@ router.post("/groups/:slug/join", async (req, res): Promise<void> => {
 
   res.json({ ok: true, group });
 });
+
 
 // Exported so auth/register can call it after a community-invite signup
 // (the join is performed inside register, not via this endpoint).

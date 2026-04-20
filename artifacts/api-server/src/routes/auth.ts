@@ -7,6 +7,7 @@ import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
+import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 
@@ -338,11 +339,34 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
 //      the email matches the pre-invited member row. After successful
 //      registration the new user is auto-joined to that community.
 // Anyone else is sent to the waitlist.
-router.post("/auth/register", async (req, res): Promise<void> => {
-  const { email, name, password, groupSlug, groupInviteToken } = req.body as {
+//
+// Rate limit: 5 registrations per hour per IP. The invite-only gate already
+// blocks most abuse, but a leaked community link could let a bot blast
+// accounts — throttling per-IP means any one abuser is capped at 120
+// accounts/day, plenty of runway for the admin to rotate the link.
+router.post(
+  "/auth/register",
+  rateLimit({
+    name: "auth_register",
+    max: 5,
+    windowMs: 60 * 60 * 1000,
+    message: "Too many signup attempts from your network. Please try again in an hour.",
+  }),
+  async (req, res): Promise<void> => {
+  const { email, name, password, groupSlug, groupInviteToken, website } = req.body as {
     email?: string; name?: string; password?: string;
     groupSlug?: string; groupInviteToken?: string;
+    // Honeypot: a hidden field no real browser user will ever fill in.
+    // Bots that blindly fill every input trigger this and get a 400 that
+    // looks identical to a validation failure (no tell-tale "bot detected"
+    // response, so they won't adapt).
+    website?: string;
   };
+
+  // Honeypot trip — silently reject with a generic validation error.
+  if (website && website.trim().length > 0) {
+    res.status(400).json({ error: "Invalid submission." }); return;
+  }
 
   if (!email || !email.includes("@")) {
     res.status(400).json({ error: "A valid email address is required." }); return;
@@ -480,7 +504,29 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 });
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
-router.post("/auth/login", async (req, res): Promise<void> => {
+// Rate-limited per-email to defend existing accounts against credential
+// stuffing. 10 attempts per 15 minutes is generous for legit typo-prone users
+// while making brute force economically painful. We also bucket per-IP with a
+// looser cap as a backstop against enumeration attacks that rotate emails.
+router.post(
+  "/auth/login",
+  rateLimit({
+    name: "auth_login_ip",
+    max: 50,
+    windowMs: 15 * 60 * 1000,
+    message: "Too many login attempts from your network. Please try again in a few minutes.",
+  }),
+  rateLimit({
+    name: "auth_login_email",
+    max: 10,
+    windowMs: 15 * 60 * 1000,
+    keyFn: (req) => {
+      const e = (req.body as { email?: string } | undefined)?.email;
+      return typeof e === "string" && e.length > 0 ? e.trim().toLowerCase() : null;
+    },
+    message: "Too many login attempts for this account. Please try again in a few minutes.",
+  }),
+  async (req, res): Promise<void> => {
   const { email, password } = req.body as { email?: string; password?: string };
 
   if (!email || !password) {
