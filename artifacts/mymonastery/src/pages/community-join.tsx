@@ -205,7 +205,7 @@ export default function CommunityJoinPage() {
         <div className="text-center">
           <div className="text-6xl mb-5">{invite.group.emoji ?? "🏘️"}</div>
           <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-            You've been invited to
+            You've been invited to pray with
           </p>
           <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
             {invite.group.name}
@@ -530,7 +530,7 @@ export default function CommunityJoinPage() {
           >
             <div className="text-5xl mb-4">{invite.group.emoji ?? "🏘️"}</div>
             <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-              You've been invited to
+              You've been invited to pray with
             </p>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
               {invite.group.name}
