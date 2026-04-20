@@ -464,7 +464,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 border: "1px solid rgba(122,158,125,0.28)",
               }}
             >
-              🕯️ Pray
+              🕯️ Prayer List
             </Link>
             <button
               onClick={() => setDrawerOpen(true)}
