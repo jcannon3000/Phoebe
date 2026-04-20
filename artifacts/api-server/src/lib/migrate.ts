@@ -731,6 +731,33 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS prayers_for_prayer_user ON prayers_for (prayer_user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS prayers_for_recipient ON prayers_for (recipient_user_id)`);
 
+    // ── Prayer Circles (beta) ──────────────────────────────────────────────
+    // A prayer circle is a group with a shared intention. These columns are
+    // nullable/defaulted so existing groups keep working unchanged, and the
+    // new `circle_daily_focus` table stores what each circle is praying for
+    // on a given day. Idempotent — safe to run on every boot.
+    //
+    // CRITICAL: without these ALTERs, every `SELECT * FROM groups` fails
+    // against older databases and the whole community surface goes blank.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_prayer_circle BOOLEAN NOT NULL DEFAULT false`);
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS intention TEXT`);
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS circle_description TEXT`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS circle_daily_focus (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        focus_date TEXT NOT NULL,
+        focus_type TEXT NOT NULL,
+        subject_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        subject_text TEXT,
+        added_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_circle_daily_focus_group_date ON circle_daily_focus (group_id, focus_date)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
