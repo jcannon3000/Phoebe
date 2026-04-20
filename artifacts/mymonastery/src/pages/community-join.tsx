@@ -1,17 +1,46 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
 type AuthMode = "signin" | "register";
 
+// Two token flavors:
+//   - "community": group-wide shareable link. No invitee info; the visitor
+//     supplies their own email. New primary path.
+//   - "member": legacy per-email invite. Email is pre-filled and locked.
 interface InviteInfo {
-  group: { name: string; slug: string; emoji: string | null };
-  invitee: { email: string; name: string | null; joinedAt: string | null };
+  kind: "community" | "member";
+  group: { name: string; slug: string; emoji: string | null; description?: string | null };
+  invitee?: { email: string; name: string | null; joinedAt: string | null };
+  // Only present on community-wide invites — powers the onboarding slideshow
+  // shown to unauthenticated visitors before the signup form.
+  preview?: {
+    memberCount: number;
+    sampleMembers: Array<{ name: string | null; avatarUrl: string | null }>;
+    practices: Array<{ id: number; name: string; templateType: string | null; intention: string }>;
+  };
+}
+
+// Template-type → emoji/label for the "what you'll do" slide. Keep in step
+// with the dashboard's templateType vocabulary.
+const PRACTICE_ICON: Record<string, { emoji: string; label: string }> = {
+  "intercession": { emoji: "🙏🏽", label: "Intercession" },
+  "lectio-divina": { emoji: "📖", label: "Lectio Divina" },
+  "fast": { emoji: "🌾", label: "Fasting" },
+  "morning-prayer": { emoji: "🌅", label: "Morning Prayer" },
+  "evening-prayer": { emoji: "🌙", label: "Evening Prayer" },
+  "examen": { emoji: "🕯️", label: "Examen" },
+  "rosary": { emoji: "📿", label: "Rosary" },
+  "gratitude": { emoji: "🌿", label: "Gratitude" },
+};
+function iconForPractice(templateType: string | null): { emoji: string; label: string } {
+  if (templateType && PRACTICE_ICON[templateType]) return PRACTICE_ICON[templateType];
+  return { emoji: "🌿", label: "Practice" };
 }
 
 export default function CommunityJoinPage() {
@@ -29,23 +58,37 @@ export default function CommunityJoinPage() {
     retry: false,
   });
 
+  // Onboarding slideshow — community-wide invites get a short welcome
+  // carousel before the signup form. Visitors can skip it at any time
+  // (including on first land) to go straight to the form. Per-member
+  // legacy invites bypass the slideshow entirely; they already know
+  // what they're being invited to.
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(true);
+
   // Auth state for unauthenticated visitors
   const [authMode, setAuthMode] = useState<AuthMode>("register");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  // Email is user-entered only on community-wide links; per-member links
+  // pre-fill it from the invite.
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
 
-  // Pre-fill name from the invite when it loads
+  // Pre-fill name + email from the invite when it loads (per-member tokens only)
   useEffect(() => {
-    if (invite?.invitee.name && !firstName && !lastName) {
-      const parts = invite.invitee.name.trim().split(/\s+/);
-      if (parts.length === 1) setFirstName(parts[0]);
-      else { setFirstName(parts[0]); setLastName(parts.slice(1).join(" ")); }
+    if (invite?.kind === "member" && invite.invitee) {
+      if (invite.invitee.name && !firstName && !lastName) {
+        const parts = invite.invitee.name.trim().split(/\s+/);
+        if (parts.length === 1) setFirstName(parts[0]);
+        else { setFirstName(parts[0]); setLastName(parts.slice(1).join(" ")); }
+      }
+      if (!email) setEmail(invite.invitee.email);
     }
-  }, [invite, firstName, lastName]);
+  }, [invite, firstName, lastName, email]);
 
   // Auto-join for already-authenticated users.
   const [autoJoinStatus, setAutoJoinStatus] = useState<"idle" | "loading" | "success" | "already" | "error">("idle");
@@ -64,9 +107,18 @@ export default function CommunityJoinPage() {
     }
   }, [authLoading, user, slug, token, autoJoinStatus]);
 
+  // Effective email: pre-filled from invite on per-member tokens, user-entered
+  // on community-wide tokens. Both forms use this single resolver.
+  const effectiveEmail = (): string => {
+    if (invite?.kind === "member" && invite.invitee) return invite.invitee.email;
+    return email.trim().toLowerCase();
+  };
+
   async function handleSignin(e: React.FormEvent) {
     e.preventDefault();
     setAuthError("");
+    const em = effectiveEmail();
+    if (!em || !em.includes("@")) { setAuthError("Enter a valid email."); return; }
     if (!password || password.length < 6) {
       setAuthError("Password must be at least 6 characters."); return;
     }
@@ -76,7 +128,7 @@ export default function CommunityJoinPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: invite.invitee.email, password }),
+        body: JSON.stringify({ email: em, password }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -97,6 +149,8 @@ export default function CommunityJoinPage() {
     setAuthError("");
     if (!firstName.trim()) { setAuthError("Enter your first name."); return; }
     if (!lastName.trim()) { setAuthError("Enter your last name."); return; }
+    const em = effectiveEmail();
+    if (!em || !em.includes("@")) { setAuthError("Enter a valid email."); return; }
     if (!password || password.length < 6) {
       setAuthError("Password must be at least 6 characters."); return;
     }
@@ -107,7 +161,7 @@ export default function CommunityJoinPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: invite.invitee.email,
+          email: em,
           name: `${firstName.trim()} ${lastName.trim()}`,
           password,
           groupSlug: slug,
@@ -129,6 +183,158 @@ export default function CommunityJoinPage() {
       setAuthSubmitting(false);
     }
   }
+
+  // Build the slideshow payload. We compose slides conditionally so an empty
+  // practice/member list doesn't render a hollow card — a brand-new community
+  // with no members yet shouldn't brag about "join 0 others". Computed here
+  // (before early returns) to respect the Rules of Hooks.
+  const slides = useMemo(() => {
+    if (!invite) return [];
+    const s: Array<{ key: string; node: React.ReactNode }> = [];
+    const preview = invite.preview;
+
+    // Slide 1 — Welcome. Always shown.
+    s.push({
+      key: "welcome",
+      node: (
+        <div className="text-center">
+          <div className="text-6xl mb-5">{invite.group.emoji ?? "🏘️"}</div>
+          <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+            You've been invited to
+          </p>
+          <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+            {invite.group.name}
+          </h1>
+          {invite.group.description && (
+            <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
+              {invite.group.description}
+            </p>
+          )}
+        </div>
+      ),
+    });
+
+    // Slide 2 — Members. Only if there are members to showcase.
+    if (preview && preview.memberCount > 0) {
+      const sample = preview.sampleMembers.slice(0, 5);
+      const firstNames = sample
+        .map(m => (m.name ?? "").split(/\s+/)[0])
+        .filter(Boolean);
+      const shown = firstNames.slice(0, 3).join(", ");
+      const remainder = preview.memberCount - Math.min(3, firstNames.length);
+      const headline =
+        firstNames.length === 0
+          ? `${preview.memberCount} ${preview.memberCount === 1 ? "person is" : "people are"} praying together`
+          : remainder > 0
+            ? `Join ${shown} & ${remainder} ${remainder === 1 ? "other" : "others"}`
+            : `Join ${shown}`;
+      s.push({
+        key: "members",
+        node: (
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-[0.2em] mb-4" style={{ color: "rgba(143,175,150,0.55)" }}>
+              You're in good company
+            </p>
+            {sample.length > 0 && (
+              <div className="flex items-center justify-center mb-5">
+                {sample.map((m, i) => (
+                  <div
+                    key={i}
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden"
+                    style={{
+                      background: "#1A4A2E",
+                      color: "#A8C5A0",
+                      border: "2px solid #091A10",
+                      marginLeft: i === 0 ? 0 : -10,
+                      zIndex: sample.length - i,
+                    }}
+                  >
+                    {m.avatarUrl ? (
+                      <img src={m.avatarUrl} alt={m.name ?? ""} className="w-full h-full object-cover" />
+                    ) : (
+                      (m.name ?? "?").charAt(0).toUpperCase()
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <h2 className="text-2xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+              {headline}
+            </h2>
+            <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
+              {preview.memberCount === 1
+                ? "One soul is already walking this path — your arrival doubles the company."
+                : "A small community gathered around shared practice. No feed. No noise. Just rhythm."}
+            </p>
+          </div>
+        ),
+      });
+    }
+
+    // Slide 3 — Practices. Only if the group has any.
+    if (preview && preview.practices.length > 0) {
+      s.push({
+        key: "practices",
+        node: (
+          <div>
+            <div className="text-center mb-6">
+              <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+                What you'll do together
+              </p>
+              <h2 className="text-2xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+                Shared practices
+              </h2>
+            </div>
+            <div className="space-y-2">
+              {preview.practices.slice(0, 4).map(p => {
+                const icon = iconForPractice(p.templateType);
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                    style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
+                    <span className="text-2xl leading-none">{icon.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                        {p.name}
+                      </p>
+                      <p className="text-[11px] truncate" style={{ color: "#8FAF96" }}>
+                        {p.intention || icon.label}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {preview.practices.length > 4 && (
+              <p className="text-xs text-center mt-4" style={{ color: "rgba(143,175,150,0.55)" }}>
+                + {preview.practices.length - 4} more
+              </p>
+            )}
+          </div>
+        ),
+      });
+    }
+
+    // Slide N — Ready. Always last. Reveals the signup form on tap.
+    s.push({
+      key: "ready",
+      node: (
+        <div className="text-center">
+          <div className="text-5xl mb-5">✨</div>
+          <h2 className="text-2xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+            Ready to join?
+          </h2>
+          <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
+            Create a free Phoebe account — or sign in if you already have one — to step inside {invite.group.name}.
+          </p>
+        </div>
+      ),
+    });
+
+    return s;
+  }, [invite]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -207,9 +413,99 @@ export default function CommunityJoinPage() {
   }
 
   // ── Unauthenticated path: signup or sign-in tied to the invite ─────────
-  // If the invitee already joined (joinedAt != null) and isn't signed in,
-  // they should sign in rather than create a new account.
-  const alreadyHasAccount = invite.invitee.joinedAt !== null;
+  // For per-member tokens: if the invitee already joined (joinedAt != null)
+  // and isn't signed in, they should sign in rather than create a new account.
+  // Community-wide tokens don't have this hint since there's no per-invitee
+  // row — we show the full register/signin toggle.
+  const alreadyHasAccount =
+    invite.kind === "member" && (invite.invitee?.joinedAt ?? null) !== null;
+  const isCommunityWide = invite.kind === "community";
+
+  // Only community-wide invites use the slideshow. Per-member legacy invites
+  // skip straight to the form so the pre-filled email + name show immediately.
+  const slideshowActive = isCommunityWide && showOnboarding && slides.length > 0;
+  const currentSlide = slides[Math.min(slideIndex, slides.length - 1)];
+  const isLastSlide = slideIndex >= slides.length - 1;
+
+  // Full-screen slideshow render — takes over the page until the visitor
+  // taps "Get started" on the last slide (or "Skip").
+  if (slideshowActive) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: "#091A10", fontFamily: "'Space Grotesk', sans-serif" }}>
+        <header className="px-6 py-6 flex items-center justify-between">
+          <span className="text-2xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.03em" }}>
+            Phoebe
+          </span>
+          <button
+            onClick={() => setShowOnboarding(false)}
+            className="text-xs"
+            style={{ color: "rgba(143,175,150,0.65)" }}
+          >
+            Skip
+          </button>
+        </header>
+
+        <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
+          <div className="w-full max-w-sm mx-auto">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentSlide.key}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+              >
+                {currentSlide.node}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </main>
+
+        {/* Footer — progress dots + primary action */}
+        <footer className="px-6 pb-8 flex flex-col items-center gap-5">
+          <div className="flex items-center gap-1.5">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setSlideIndex(i)}
+                aria-label={`Go to slide ${i + 1}`}
+                className="h-1.5 rounded-full transition-all"
+                style={{
+                  width: i === slideIndex ? 20 : 6,
+                  background: i === slideIndex ? "#8FAF96" : "rgba(143,175,150,0.25)",
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="w-full max-w-sm flex flex-col gap-2">
+            <button
+              onClick={() => {
+                if (isLastSlide) {
+                  setShowOnboarding(false);
+                } else {
+                  setSlideIndex(slideIndex + 1);
+                }
+              }}
+              className="flex items-center justify-center gap-2 w-full px-6 py-3.5 rounded-xl font-semibold text-sm btn-sage"
+            >
+              {isLastSlide ? "Get started" : "Next"}
+              <ArrowRight size={15} />
+            </button>
+            {slideIndex > 0 && !isLastSlide && (
+              <button
+                onClick={() => setSlideIndex(slideIndex - 1)}
+                className="w-full py-2 text-xs"
+                style={{ color: "rgba(143,175,150,0.65)" }}
+              >
+                Back
+              </button>
+            )}
+          </div>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#091A10", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -237,7 +533,9 @@ export default function CommunityJoinPage() {
             <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
               {alreadyHasAccount
                 ? "Sign in to your Phoebe account to join."
-                : "Create your Phoebe account to join the community."}
+                : isCommunityWide
+                  ? "Create a Phoebe account to join — or sign in if you already have one."
+                  : "Create your Phoebe account to join the community."}
             </p>
           </motion.div>
 
@@ -272,13 +570,27 @@ export default function CommunityJoinPage() {
                 onSubmit={handleSignin}
                 className="flex flex-col gap-3"
               >
-                <input
-                  type="email"
-                  value={invite.invitee.email}
-                  disabled
-                  className="w-full px-4 py-3.5 rounded-xl text-sm opacity-70"
-                  style={{ background: "#091A10", color: "#F0EDE6" }}
-                />
+                {isCommunityWide ? (
+                  <input
+                    type="email"
+                    placeholder="Your email"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setAuthError(""); }}
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    autoComplete="email"
+                    required
+                    disabled={authSubmitting}
+                  />
+                ) : (
+                  <input
+                    type="email"
+                    value={invite.invitee?.email ?? ""}
+                    disabled
+                    className="w-full px-4 py-3.5 rounded-xl text-sm opacity-70"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                  />
+                )}
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -361,13 +673,27 @@ export default function CommunityJoinPage() {
                   />
                 </div>
 
-                <input
-                  type="email"
-                  value={invite.invitee.email}
-                  disabled
-                  className="w-full px-4 py-3.5 rounded-xl text-sm opacity-70"
-                  style={{ background: "#091A10", color: "#F0EDE6" }}
-                />
+                {isCommunityWide ? (
+                  <input
+                    type="email"
+                    placeholder="Your email"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setAuthError(""); }}
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    autoComplete="email"
+                    required
+                    disabled={authSubmitting}
+                  />
+                ) : (
+                  <input
+                    type="email"
+                    value={invite.invitee?.email ?? ""}
+                    disabled
+                    className="w-full px-4 py-3.5 rounded-xl text-sm opacity-70"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                  />
+                )}
 
                 <div className="relative">
                   <input

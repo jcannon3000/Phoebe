@@ -373,23 +373,39 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     // beta_users table missing — fall through to invite check
   }
 
-  // Community-invite path
+  // Community-invite path — two flavors:
+  //   A. Community-wide token (new primary): group.invite_token matches.
+  //      No email-match check; anyone with the link can sign up.
+  //   B. Per-member token (legacy): group_members.invite_token matches AND
+  //      the invitee email matches the email being registered.
+  let communityWideGroupId: number | null = null;
   if (!allowed && groupSlug && groupInviteToken) {
-    const [group] = await db.select({ id: groupsTable.id, slug: groupsTable.slug })
-      .from(groupsTable).where(eq(groupsTable.slug, groupSlug));
+    const [group] = await db.select({
+      id: groupsTable.id,
+      slug: groupsTable.slug,
+      inviteToken: groupsTable.inviteToken,
+    }).from(groupsTable).where(eq(groupsTable.slug, groupSlug));
     if (group) {
-      const [member] = await db.select({
-        id: groupMembersTable.id, groupId: groupMembersTable.groupId, email: groupMembersTable.email,
-      })
-        .from(groupMembersTable)
-        .where(and(
-          eq(groupMembersTable.groupId, group.id),
-          eq(groupMembersTable.inviteToken, groupInviteToken),
-        ));
-      if (member && member.email.toLowerCase() === normalizedEmail) {
+      // A. Community-wide token
+      if (group.inviteToken && group.inviteToken === groupInviteToken) {
         allowed = true;
-        inviteMember = member;
+        communityWideGroupId = group.id;
         inviteGroupSlug = group.slug;
+      } else {
+        // B. Per-member token (legacy)
+        const [member] = await db.select({
+          id: groupMembersTable.id, groupId: groupMembersTable.groupId, email: groupMembersTable.email,
+        })
+          .from(groupMembersTable)
+          .where(and(
+            eq(groupMembersTable.groupId, group.id),
+            eq(groupMembersTable.inviteToken, groupInviteToken),
+          ));
+        if (member && member.email.toLowerCase() === normalizedEmail) {
+          allowed = true;
+          inviteMember = member;
+          inviteGroupSlug = group.slug;
+        }
       }
     }
   }
@@ -408,15 +424,18 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .values({ email: normalizedEmail, name: name.trim(), passwordHash })
     .returning();
 
-  // If this was a community-invite signup, link the new user to the
-  // pre-invited group_members row so they appear as a joined member of
-  // the community immediately.
+  // If this was a community-invite signup, auto-join the group so the new
+  // user shows up as a member immediately.
+  //
+  //   - Per-member token (inviteMember set): UPDATE the pending row in place.
+  //   - Community-wide token (communityWideGroupId set): INSERT a fresh
+  //     membership row. group_members.invite_token is NOT NULL UNIQUE so
+  //     we mint a per-row random token just to satisfy the constraint.
   if (inviteMember) {
     try {
       await db.update(groupMembersTable)
         .set({ userId: user.id, joinedAt: new Date(), name: user.name })
         .where(eq(groupMembersTable.id, inviteMember.id));
-      // Resolve the group's display name for the notification
       const [group] = await db.select({ name: groupsTable.name })
         .from(groupsTable).where(eq(groupsTable.id, inviteMember.groupId));
       notifyAdminsOfNewMember(
@@ -428,6 +447,29 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       console.error("[auth/register] failed to link group member:", err);
       // Non-fatal: the user account exists; they can still tap the
       // invite link again to complete the join.
+    }
+  } else if (communityWideGroupId) {
+    try {
+      await db.insert(groupMembersTable).values({
+        groupId: communityWideGroupId,
+        userId: user.id,
+        email: user.email.toLowerCase(),
+        name: user.name,
+        role: "member",
+        inviteToken: randomBytes(16).toString("hex"),
+        joinedAt: new Date(),
+      });
+      const [group] = await db.select({ name: groupsTable.name })
+        .from(groupsTable).where(eq(groupsTable.id, communityWideGroupId));
+      notifyAdminsOfNewMember(
+        communityWideGroupId,
+        group?.name ?? inviteGroupSlug ?? "your community",
+        { name: user.name, email: user.email },
+      ).catch(err => console.error("[auth/register] notify admins failed:", err));
+    } catch (err) {
+      console.error("[auth/register] failed to insert community-wide member:", err);
+      // Non-fatal: the user account exists; they can click the link
+      // again from the authenticated flow to complete the join.
     }
   }
 

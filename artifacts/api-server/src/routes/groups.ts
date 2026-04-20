@@ -5,10 +5,12 @@ import {
   groupsTable,
   groupMembersTable,
   groupAnnouncementsTable,
+  groupAdminNotificationsAckTable,
   betaUsersTable,
   usersTable,
   sharedMomentsTable,
   momentUserTokensTable,
+  prayerRequestsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -241,8 +243,15 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
     : [];
   const avatarByEmail = new Map(avatarRows.map(u => [u.email.toLowerCase(), u.avatarUrl]));
 
+  // `inviteToken` is surfaced only to admins — they're the ones sharing
+  // the link, and we don't want every member handing it out. A member who
+  // wants to share the community can ask an admin.
+  const isAdminView = result.member.role === "admin";
   res.json({
-    group: result.group,
+    group: {
+      ...result.group,
+      ...(isAdminView ? {} : { inviteToken: undefined }),
+    },
     myRole: result.member.role,
     members: members.map(m => ({
       id: m.id,
@@ -253,6 +262,22 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
       avatarUrl: avatarByEmail.get(m.email.toLowerCase()) ?? null,
     })),
   });
+});
+
+// POST /api/groups/:slug/rotate-invite — regenerate the community-wide invite
+// token (admin only). Useful if the current link was shared too widely or the
+// admin wants to wall off new joiners without deleting existing memberships.
+router.post("/groups/:slug/rotate-invite", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+
+  const newToken = crypto.randomBytes(16).toString("hex");
+  await db.update(groupsTable).set({ inviteToken: newToken })
+    .where(eq(groupsTable.id, result.group.id));
+  res.json({ ok: true, inviteToken: newToken });
 });
 
 // PATCH /api/groups/:slug — update group (admin only)
@@ -359,16 +384,94 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
 });
 
 // GET /api/groups/:slug/invite/:token — public lookup. Returns the group
-// name + the pre-invited email so the join page can pre-fill a signup
-// form. No auth required because brand-new users hit this before they
-// have an account. Validates token before returning anything.
+// name and either the pre-invited email (per-member legacy tokens) or
+// nothing (community-wide link) so the join page can render appropriately.
+// No auth required because brand-new users hit this before they have an
+// account. Validates token before returning anything.
+//
+// Resolution order:
+//   1. Community-wide token on the group itself → kind: "community"
+//   2. Per-member token on group_members → kind: "member" (legacy/pending)
 router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
   const { slug, token } = req.params as { slug: string; token: string };
   const [group] = await db.select({
-    id: groupsTable.id, name: groupsTable.name, slug: groupsTable.slug, emoji: groupsTable.emoji,
+    id: groupsTable.id,
+    name: groupsTable.name,
+    slug: groupsTable.slug,
+    emoji: groupsTable.emoji,
+    description: groupsTable.description,
+    inviteToken: groupsTable.inviteToken,
   }).from(groupsTable).where(eq(groupsTable.slug, slug));
   if (!group) { res.status(404).json({ error: "Group not found" }); return; }
 
+  // 1. Community-wide token — the new primary path. Anyone with this
+  // token can join, no email match required.
+  if (group.inviteToken && group.inviteToken === token) {
+    // Enrich with preview data for the join-page onboarding slideshow:
+    // a small sample of joined members (names + avatars for social proof)
+    // and the group's active practices (so visitors see what they're
+    // signing up to do). All of this is read-only, non-sensitive, and
+    // already visible to any member — fine to surface pre-auth.
+    const joinedMembers = await db.select({
+      name: groupMembersTable.name,
+      email: groupMembersTable.email,
+      avatarUrl: usersTable.avatarUrl,
+    })
+      .from(groupMembersTable)
+      .leftJoin(usersTable, eq(groupMembersTable.userId, usersTable.id))
+      .where(and(
+        eq(groupMembersTable.groupId, group.id),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ))
+      .orderBy(desc(groupMembersTable.joinedAt))
+      .limit(6);
+
+    const [memberCountRow] = await db.select({
+      c: sql<number>`count(*)::int`,
+    })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, group.id),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ));
+
+    const practices = await db.select({
+      id: sharedMomentsTable.id,
+      name: sharedMomentsTable.name,
+      templateType: sharedMomentsTable.templateType,
+      intention: sharedMomentsTable.intention,
+    })
+      .from(sharedMomentsTable)
+      .where(and(
+        eq(sharedMomentsTable.groupId, group.id),
+        sql`${sharedMomentsTable.state} != 'archived'`,
+      ))
+      .limit(5);
+
+    res.json({
+      kind: "community",
+      group: { name: group.name, slug: group.slug, emoji: group.emoji, description: group.description },
+      preview: {
+        memberCount: memberCountRow?.c ?? 0,
+        sampleMembers: joinedMembers.map(m => ({
+          name: m.name,
+          // Strip email — we only surface first names / display names to
+          // pre-auth visitors. An email would be PII leakage.
+          avatarUrl: m.avatarUrl ?? null,
+        })),
+        practices: practices.map(p => ({
+          id: p.id,
+          name: p.name,
+          templateType: p.templateType,
+          intention: p.intention,
+        })),
+      },
+    });
+    return;
+  }
+
+  // 2. Per-member token — kept working so any pending email invites
+  // created before this change are still redeemable.
   const [member] = await db.select({
     email: groupMembersTable.email,
     name: groupMembersTable.name,
@@ -379,12 +482,19 @@ router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
   if (!member) { res.status(404).json({ error: "Invalid invite" }); return; }
 
   res.json({
-    group: { name: group.name, slug: group.slug, emoji: group.emoji },
+    kind: "member",
+    group: { name: group.name, slug: group.slug, emoji: group.emoji, description: group.description },
     invitee: { email: member.email, name: member.name, joinedAt: member.joinedAt },
   });
 });
 
 // POST /api/groups/:slug/join — accept invite
+//
+// Two token flavors:
+//   1. Community-wide token (new primary path) — anyone signed in can click
+//      the link and land here. We INSERT a fresh group_members row for them.
+//   2. Per-member token (legacy) — pre-invited user redeems their token and
+//      we UPDATE the existing pending row.
 router.post("/groups/:slug/join", async (req, res): Promise<void> => {
   const token = (req.query.token as string) || req.body?.token;
   if (!token) { res.status(400).json({ error: "Token required" }); return; }
@@ -392,6 +502,59 @@ router.post("/groups/:slug/join", async (req, res): Promise<void> => {
   const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, req.params.slug));
   if (!group) { res.status(404).json({ error: "Group not found" }); return; }
 
+  // ── Community-wide token path ───────────────────────────────────────────
+  // This is the new primary join flow. Users must be signed in so we know
+  // who to link the membership to; the landing page routes unauthenticated
+  // visitors through register-then-join instead of hitting this endpoint.
+  if (group.inviteToken && group.inviteToken === token) {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Sign in to join this community" }); return; }
+
+    // Already a member? Idempotent — the link is shareable, so retries
+    // and re-clicks should be harmless.
+    const [existing] = await db.select().from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, group.id),
+        eq(groupMembersTable.userId, user.id),
+      ));
+    if (existing) {
+      // Upgrade a pending row (userId matched via old email-invite path)
+      // to a joined row if somehow it isn't already.
+      if (!existing.joinedAt) {
+        await db.update(groupMembersTable)
+          .set({ joinedAt: new Date(), name: user.name || existing.name })
+          .where(eq(groupMembersTable.id, existing.id));
+        await reconcileAllPracticesForGroup(group.id);
+      }
+      res.json({ ok: true, alreadyJoined: true, group });
+      return;
+    }
+
+    // Fresh membership. group_members.inviteToken is NOT NULL UNIQUE (it
+    // was the per-member invite token in the old model), so we still mint
+    // a random one per row to satisfy the constraint even though it's no
+    // longer the sharing mechanism.
+    await db.insert(groupMembersTable).values({
+      groupId: group.id,
+      userId: user.id,
+      email: user.email?.toLowerCase() ?? "",
+      name: user.name ?? null,
+      role: "member",
+      inviteToken: crypto.randomBytes(16).toString("hex"),
+      joinedAt: new Date(),
+    });
+    await reconcileAllPracticesForGroup(group.id);
+
+    notifyAdminsOfNewMember(group.id, group.name, {
+      name: user.name ?? user.email ?? "A new member",
+      email: user.email ?? "",
+    }).catch(err => console.error("[groups/join] notify admins failed:", err));
+
+    res.json({ ok: true, group });
+    return;
+  }
+
+  // ── Per-member (legacy) token path ──────────────────────────────────────
   const [member] = await db.select().from(groupMembersTable)
     .where(and(eq(groupMembersTable.groupId, group.id), eq(groupMembersTable.inviteToken, token)));
   if (!member) { res.status(404).json({ error: "Invalid invite" }); return; }
@@ -472,6 +635,57 @@ export async function notifyAdminsOfNewMember(
   await Promise.all(adminUsers.map(a => sendEmail({ to: a.email, subject, html, text })));
 }
 
+// Mirror of notifyAdminsOfNewMember, for prayer requests. Called from the
+// POST /groups/:slug/prayer-requests handler so admins get the out-of-band
+// nudge even if they don't open the app for a while.
+async function notifyAdminsOfNewPrayerRequest(
+  groupId: number,
+  groupName: string,
+  body: string,
+  authorName: string | null,
+  isAnonymous: boolean,
+): Promise<void> {
+  const adminMembers = await db.select({ userId: groupMembersTable.userId })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, groupId),
+      eq(groupMembersTable.role, "admin"),
+    ));
+  const userIds = adminMembers.map(a => a.userId).filter((id): id is number => id != null);
+  if (userIds.length === 0) return;
+
+  const adminUsers = await db.select({
+    email: usersTable.email,
+    name: usersTable.name,
+  })
+    .from(usersTable)
+    .where(inArray(usersTable.id, userIds));
+  if (adminUsers.length === 0) return;
+
+  const displayAuthor = isAnonymous ? "Someone" : (authorName ?? "A member");
+  const subject = `🙏 New prayer request in ${groupName}`;
+  const safeAuthor = escapeHtml(displayAuthor);
+  const safeBody = escapeHtml(body);
+  const safeGroup = escapeHtml(groupName);
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#222">
+      <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#888;margin:0 0 8px">Phoebe community</p>
+      <h1 style="font-size:18px;margin:0 0 12px">${safeAuthor} shared a prayer in ${safeGroup}</h1>
+      <blockquote style="margin:12px 0;padding:12px 16px;border-left:3px solid #2D5E3F;background:#f6f8f6;color:#333;white-space:pre-wrap">${safeBody}</blockquote>
+      <p style="margin:16px 0 0;color:#666">Open Phoebe to pray for this request.</p>
+    </div>
+  `;
+  const text = [
+    `${displayAuthor} shared a prayer in ${groupName}:`,
+    ``,
+    body,
+    ``,
+    `Open Phoebe to pray for this request.`,
+  ].join("\n");
+
+  await Promise.all(adminUsers.map(a => sendEmail({ to: a.email, subject, html, text })));
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -524,16 +738,220 @@ router.delete("/groups/:slug/members/:memberId", async (req, res): Promise<void>
   res.json({ ok: true });
 });
 
-// ─── Group-Scoped Resources (stubbed until groupId columns are migrated) ───
-// These endpoints will return empty results until `drizzle-kit push` adds
-// the group_id column to shared_moments, rituals, and prayer_requests.
+// ─── Admin notifications (new-member + new-prayer popup) ───────────────────
+// GET  /api/groups/:slug/admin-notifications → events the admin hasn't
+//      acknowledged yet (new joiners + new prayer requests by members)
+// POST /api/groups/:slug/admin-notifications/acknowledge → body: { events: [{kind, id}] }
+//      Inserts ack rows (ON CONFLICT DO NOTHING) so the popup fires exactly
+//      once per admin per event even across devices and reloads.
+//
+// Scope: capped at the last 30 days to avoid retro-flooding a freshly
+// promoted admin with 2 years of history. Exclude the admin's own joins
+// and own prayer requests — they don't need a popup about themselves.
 
-router.get("/groups/:slug/prayer-requests", async (_req, res): Promise<void> => {
-  res.json({ requests: [] });
+const LOOKBACK_DAYS = 30;
+
+router.get("/groups/:slug/admin-notifications", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.json({ newMembers: [], newPrayers: [] }); return; }
+  const { group } = result;
+
+  // ── New members: joined within lookback window, not yet acknowledged ────
+  const recentMembers = await db.select({
+    id: groupMembersTable.id,
+    name: groupMembersTable.name,
+    email: groupMembersTable.email,
+    joinedAt: groupMembersTable.joinedAt,
+    userId: groupMembersTable.userId,
+    avatarUrl: usersTable.avatarUrl,
+  })
+    .from(groupMembersTable)
+    .leftJoin(usersTable, eq(groupMembersTable.userId, usersTable.id))
+    .where(and(
+      eq(groupMembersTable.groupId, group.id),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      sql`${groupMembersTable.joinedAt} > NOW() - INTERVAL '${sql.raw(String(LOOKBACK_DAYS))} days'`,
+      sql`${groupMembersTable.userId} <> ${user.id}`,
+    ))
+    .orderBy(desc(groupMembersTable.joinedAt));
+
+  // Filter out members the admin has already ack'd. One ack lookup, batch.
+  const memberIds = recentMembers.map(m => m.id);
+  let memberAckedSet = new Set<number>();
+  if (memberIds.length > 0) {
+    const acks = await db.select({ eventId: groupAdminNotificationsAckTable.eventId })
+      .from(groupAdminNotificationsAckTable)
+      .where(and(
+        eq(groupAdminNotificationsAckTable.adminUserId, user.id),
+        eq(groupAdminNotificationsAckTable.groupId, group.id),
+        eq(groupAdminNotificationsAckTable.kind, "member_joined"),
+        inArray(groupAdminNotificationsAckTable.eventId, memberIds),
+      ));
+    memberAckedSet = new Set(acks.map(a => a.eventId));
+  }
+  const newMembers = recentMembers
+    .filter(m => !memberAckedSet.has(m.id))
+    .map(m => ({
+      id: m.id,
+      name: m.name,
+      avatarUrl: m.avatarUrl ?? null,
+      joinedAt: m.joinedAt,
+    }));
+
+  // ── New prayer requests: direct group_id filter on prayer_requests ──────
+  // Exclude the admin's own requests (they don't need a popup about their
+  // own post) and filter out anything already acknowledged.
+  const recentPrayers = await db.select({
+    id: prayerRequestsTable.id,
+    body: prayerRequestsTable.body,
+    ownerName: prayerRequestsTable.createdByName,
+    isAnonymous: prayerRequestsTable.isAnonymous,
+    createdAt: prayerRequestsTable.createdAt,
+  })
+    .from(prayerRequestsTable)
+    .where(and(
+      eq(prayerRequestsTable.groupId, group.id),
+      sql`${prayerRequestsTable.ownerId} <> ${user.id}`,
+      sql`${prayerRequestsTable.createdAt} > NOW() - INTERVAL '${sql.raw(String(LOOKBACK_DAYS))} days'`,
+    ))
+    .orderBy(desc(prayerRequestsTable.createdAt));
+
+  const prayerIds = recentPrayers.map(p => p.id);
+  let prayerAckedSet = new Set<number>();
+  if (prayerIds.length > 0) {
+    const acks = await db.select({ eventId: groupAdminNotificationsAckTable.eventId })
+      .from(groupAdminNotificationsAckTable)
+      .where(and(
+        eq(groupAdminNotificationsAckTable.adminUserId, user.id),
+        eq(groupAdminNotificationsAckTable.groupId, group.id),
+        eq(groupAdminNotificationsAckTable.kind, "prayer_request"),
+        inArray(groupAdminNotificationsAckTable.eventId, prayerIds),
+      ));
+    prayerAckedSet = new Set(acks.map(a => a.eventId));
+  }
+  const newPrayers = recentPrayers.filter(p => !prayerAckedSet.has(p.id));
+
+  res.json({ newMembers, newPrayers });
 });
 
-router.post("/groups/:slug/prayer-requests", async (_req, res): Promise<void> => {
-  res.status(503).json({ error: "Group prayer requests not yet available — schema migration pending" });
+router.post("/groups/:slug/admin-notifications/acknowledge", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Not an admin" }); return; }
+  const { group } = result;
+
+  const schema = z.object({
+    events: z.array(z.object({
+      kind: z.enum(["member_joined", "prayer_request"]),
+      id: z.number().int().positive(),
+    })),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Bad payload" }); return; }
+  if (parsed.data.events.length === 0) { res.json({ ok: true, inserted: 0 }); return; }
+
+  // ON CONFLICT DO NOTHING — repeated dismissals of the same event are no-ops.
+  const values = parsed.data.events.map(e => ({
+    adminUserId: user.id,
+    groupId: group.id,
+    kind: e.kind,
+    eventId: e.id,
+  }));
+  await db.insert(groupAdminNotificationsAckTable)
+    .values(values)
+    .onConflictDoNothing();
+
+  res.json({ ok: true, inserted: values.length });
+});
+
+// ─── Group-scoped prayer requests ──────────────────────────────────────────
+// A community's prayer wall. Any member can read; any member can post.
+// Admins also receive a popup on the community-detail page when a new
+// request lands (via /admin-notifications).
+
+router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Not a member of this group" }); return; }
+  const { group } = result;
+
+  const rows = await db.select({
+    id: prayerRequestsTable.id,
+    body: prayerRequestsTable.body,
+    ownerId: prayerRequestsTable.ownerId,
+    createdByName: prayerRequestsTable.createdByName,
+    isAnonymous: prayerRequestsTable.isAnonymous,
+    createdAt: prayerRequestsTable.createdAt,
+    ownerDisplayName: usersTable.name,
+  })
+    .from(prayerRequestsTable)
+    .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
+    .where(and(
+      eq(prayerRequestsTable.groupId, group.id),
+      sql`${prayerRequestsTable.closedAt} IS NULL`,
+    ))
+    .orderBy(desc(prayerRequestsTable.createdAt));
+
+  // Word count is decorative on the community feed — reusable hook for
+  // "how much prayer has this received?" once we implement it. For now,
+  // return 0 so the UI renders consistently.
+  const requests = rows.map(r => ({
+    id: r.id,
+    body: r.body,
+    ownerName: r.isAnonymous ? null : (r.createdByName ?? r.ownerDisplayName),
+    wordCount: 0,
+    isOwnRequest: r.ownerId === user.id,
+    isAnonymous: r.isAnonymous,
+    createdAt: r.createdAt,
+  }));
+
+  res.json({ requests });
+});
+
+router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Not a member of this group" }); return; }
+  const { group, member } = result;
+
+  const schema = z.object({
+    body: z.string().trim().min(1, "Request cannot be empty").max(2000),
+    isAnonymous: z.boolean().optional(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid payload" });
+    return;
+  }
+
+  const [inserted] = await db.insert(prayerRequestsTable).values({
+    ownerId: user.id,
+    groupId: group.id,
+    body: parsed.data.body,
+    createdByName: member.name ?? user.name,
+    isAnonymous: parsed.data.isAnonymous ?? false,
+  }).returning({ id: prayerRequestsTable.id });
+
+  // Fire-and-forget notification to admins. Failure here must not block the
+  // happy path — the request is already saved.
+  notifyAdminsOfNewPrayerRequest(
+    group.id,
+    group.name,
+    parsed.data.body,
+    parsed.data.isAnonymous ? null : (member.name ?? user.name),
+    parsed.data.isAnonymous ?? false,
+  ).catch(err => console.error("[groups] notify admins of new prayer failed:", err));
+
+  res.json({ ok: true, id: inserted.id });
 });
 
 router.get("/groups/:slug/practices", async (req, res): Promise<void> => {

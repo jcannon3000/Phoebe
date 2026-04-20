@@ -5,13 +5,16 @@ import { useAuth } from "@/hooks/useAuth";
 // Communities are now available to all users
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Users, MessageCircle, X, Settings } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles } from "lucide-react";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
 
 type Group = {
   id: number; name: string; description: string | null; slug: string; emoji: string | null; createdAt: string;
+  // Only present for admin viewers — the shareable community-wide invite
+  // token. Used by the "Share invite link" modal.
+  inviteToken?: string | null;
 };
 type Member = {
   id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean; avatarUrl?: string | null;
@@ -69,10 +72,7 @@ export default function CommunityDetailPage() {
   })();
   const [activeTab, setActiveTab] = useState<"home" | "prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteName, setInviteName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
   const [newAnnouncementTitle, setNewAnnouncementTitle] = useState("");
   const [newAnnouncementContent, setNewAnnouncementContent] = useState("");
@@ -126,21 +126,44 @@ export default function CommunityDetailPage() {
     enabled: !!user && !!slug && activeTab === "home",
   });
 
-  const { data: searchData } = useQuery<{ users: { id: number; name: string | null; email: string }[] }>({
-    queryKey: ["/api/groups/users/search", searchQuery],
-    queryFn: () => apiRequest("GET", `/api/groups/users/search?q=${encodeURIComponent(searchQuery)}`),
-    enabled: searchQuery.length >= 2,
-    staleTime: 10_000,
+  // ── Admin "new arrival" popup ──────────────────────────────────────────
+  // Fetches any new-member / new-prayer-request events this admin hasn't
+  // acknowledged yet. Shown as a celebratory popup over the page on mount
+  // (and on tab refocus, since the query refetches). Exactly once per admin
+  // per event is enforced server-side by the ack table.
+  const { data: adminNotifs } = useQuery<{
+    newMembers: Array<{ id: number; name: string | null; avatarUrl: string | null; joinedAt: string }>;
+    newPrayers: Array<{ id: number; body: string; ownerName: string | null; isAnonymous: boolean; createdAt: string }>;
+  }>({
+    queryKey: ["/api/groups", slug, "admin-notifications"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/admin-notifications`),
+    // Enabled only for admins. The server also gates — this just avoids the
+    // network round-trip for regular members.
+    enabled: !!user && !!slug && groupData?.myRole === "admin",
+    // Refetch when the admin returns to the tab so a join that happened while
+    // they were away pops up the next time they open the community page.
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
-  const inviteMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/members`, {
-      people: [{ name: inviteName || undefined, email: inviteEmail }],
-    }),
+  // Within-session dismiss flag — prevents the popup from re-appearing in
+  // this tab during the optimistic window before the ack mutation lands.
+  const [notifsDismissed, setNotifsDismissed] = useState(false);
+
+  const acknowledgeNotifsMutation = useMutation({
+    mutationFn: (events: Array<{ kind: "member_joined" | "prayer_request"; id: number }>) =>
+      apiRequest("POST", `/api/groups/${slug}/admin-notifications/acknowledge`, { events }),
     onSuccess: () => {
-      setInviteEmail("");
-      setInviteName("");
-      setShowInvite(false);
+      // Invalidate so a re-open fetches a clean (empty) list.
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "admin-notifications"] });
+    },
+  });
+
+  // Rotate the community-wide invite link. After this fires, the previous
+  // URL stops working — useful if a link was shared too widely.
+  const rotateInviteMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/rotate-invite`),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
     },
   });
@@ -251,103 +274,248 @@ export default function CommunityDetailPage() {
           </div>
         </div>
 
-        {/* Invite modal */}
-        {showInvite && (
-          <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Add someone</p>
-              <button onClick={() => { setShowInvite(false); setSearchQuery(""); setInviteEmail(""); setInviteName(""); }}>
-                <X size={16} style={{ color: "#8FAF96" }} />
-              </button>
-            </div>
+        {/* "New arrival" popup — appears over the page for community admins
+            when someone has joined or posted a prayer request since the last
+            time this admin visited. Dismissing acknowledges the events
+            server-side so they won't reappear on any device. */}
+        {isAdmin && !notifsDismissed && adminNotifs &&
+          (adminNotifs.newMembers.length > 0 || adminNotifs.newPrayers.length > 0) && (() => {
+          const newMembers = adminNotifs.newMembers;
+          const newPrayers = adminNotifs.newPrayers;
+          const totalCount = newMembers.length + newPrayers.length;
 
-            {/* Search by name */}
-            <div className="relative mb-2">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => { setSearchQuery(e.target.value); setInviteEmail(""); setInviteName(""); }}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-                placeholder="Search by name…"
-                autoComplete="off"
-                className="w-full px-3 py-2.5 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-                style={{ color: "#F0EDE6" }}
-              />
-              {/* Dropdown results */}
-              {searchFocused && searchQuery.length >= 2 && (
-                <div className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
-                  style={{ background: "#0D2318", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
-                  {(searchData?.users ?? []).length === 0 ? (
-                    <p className="text-xs px-4 py-3" style={{ color: "rgba(143,175,150,0.55)" }}>No Phoebe users found</p>
-                  ) : (
-                    (searchData?.users ?? []).map(u => (
-                      <button
-                        key={u.id}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
-                        style={{ borderBottom: "1px solid rgba(46,107,64,0.12)" }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(46,107,64,0.15)"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                        onClick={() => {
-                          setInviteName(u.name || "");
-                          setInviteEmail(u.email);
-                          setSearchQuery(u.name || u.email);
-                          setSearchFocused(false);
-                        }}
-                      >
-                        {(u as any).avatarUrl ? (
-                        <img src={(u as any).avatarUrl} alt={u.name || u.email} className="w-7 h-7 rounded-full object-cover flex-shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                          style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
-                          {(u.name || u.email).charAt(0).toUpperCase()}
+          const headline = (() => {
+            if (newMembers.length > 0 && newPrayers.length > 0) {
+              return `${totalCount} new arrivals`;
+            }
+            if (newMembers.length > 0) {
+              if (newMembers.length === 1) {
+                const m = newMembers[0];
+                const first = (m.name ?? "").split(/\s+/)[0] || "Someone";
+                return `${first} joined ${group.name}`;
+              }
+              return `${newMembers.length} new members joined`;
+            }
+            if (newPrayers.length === 1) return "A new prayer request";
+            return `${newPrayers.length} new prayer requests`;
+          })();
+
+          const dismiss = () => {
+            // Optimistic local dismiss so the popup doesn't linger while
+            // the ack request is in flight.
+            setNotifsDismissed(true);
+            const events = [
+              ...newMembers.map(m => ({ kind: "member_joined" as const, id: m.id })),
+              ...newPrayers.map(p => ({ kind: "prayer_request" as const, id: p.id })),
+            ];
+            if (events.length > 0) acknowledgeNotifsMutation.mutate(events);
+          };
+
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center px-4"
+              style={{ background: "rgba(9,26,16,0.85)", backdropFilter: "blur(4px)" }}
+              onClick={dismiss}
+            >
+              <div
+                className="w-full max-w-sm rounded-2xl overflow-hidden"
+                style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="px-5 pt-5 pb-3 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Sparkles size={18} style={{ color: "#E8B872" }} />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "#C8D4C0" }}>
+                      Something new
+                    </p>
+                  </div>
+                  <h2 className="text-xl font-bold" style={{ color: "#F0EDE6", fontFamily: FONT, letterSpacing: "-0.02em" }}>
+                    {headline}
+                  </h2>
+                </div>
+
+                {/* New members list */}
+                {newMembers.length > 0 && (
+                  <div className="px-5 pb-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
+                      {newMembers.length === 1 ? "New member" : "New members"}
+                    </p>
+                    <div className="space-y-1.5">
+                      {newMembers.slice(0, 5).map(m => (
+                        <div
+                          key={m.id}
+                          className="flex items-center gap-3 px-3 py-2 rounded-lg"
+                          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.3)" }}
+                        >
+                          {m.avatarUrl ? (
+                            <img src={m.avatarUrl} alt={m.name ?? ""} className="w-8 h-8 rounded-full object-cover flex-shrink-0" style={{ border: "1px solid rgba(46,107,64,0.4)" }} />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                              {(m.name ?? "?").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
+                              {m.name || "A new friend"}
+                            </p>
+                            <p className="text-[11px]" style={{ color: "#8FAF96" }}>
+                              joined {new Date(m.joinedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                            </p>
+                          </div>
                         </div>
+                      ))}
+                      {newMembers.length > 5 && (
+                        <p className="text-[11px] text-center pt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
+                          + {newMembers.length - 5} more
+                        </p>
                       )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>{u.name || u.email}</p>
-                          <p className="text-xs truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{u.email}</p>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
+                    </div>
+                  </div>
+                )}
 
-            {/* Selected user or manual email fallback */}
-            {inviteEmail ? (
-              <div className="flex items-center justify-between px-3 py-2 rounded-lg mb-2"
-                style={{ background: "rgba(46,107,64,0.2)", border: "1px solid rgba(46,107,64,0.35)" }}>
-                <div>
-                  <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{inviteName || inviteEmail}</p>
-                  <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>{inviteEmail}</p>
+                {/* New prayer requests list */}
+                {newPrayers.length > 0 && (
+                  <div className="px-5 pb-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
+                      {newPrayers.length === 1 ? "New prayer request" : "New prayer requests"}
+                    </p>
+                    <div className="space-y-1.5">
+                      {newPrayers.slice(0, 3).map(p => (
+                        <div
+                          key={p.id}
+                          className="px-3 py-2 rounded-lg"
+                          style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
+                        >
+                          <p className="text-[10px] uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
+                            From {p.isAnonymous ? "Someone" : (p.ownerName ?? "A member")}
+                          </p>
+                          <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                            {p.body}
+                          </p>
+                        </div>
+                      ))}
+                      {newPrayers.length > 3 && (
+                        <p className="text-[11px] text-center pt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
+                          + {newPrayers.length - 3} more on the Prayer Wall
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="px-5 pb-5 pt-2 flex gap-2">
+                  {newPrayers.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setActiveTab("prayer");
+                        dismiss();
+                      }}
+                      className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
+                      style={{ background: "rgba(46,107,64,0.2)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)" }}
+                    >
+                      See prayers
+                    </button>
+                  )}
+                  {newMembers.length > 0 && newPrayers.length === 0 && (
+                    <button
+                      onClick={() => {
+                        setActiveTab("members");
+                        dismiss();
+                      }}
+                      className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
+                      style={{ background: "rgba(46,107,64,0.2)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)" }}
+                    >
+                      See members
+                    </button>
+                  )}
+                  <button
+                    onClick={dismiss}
+                    className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
+                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                  >
+                    Got it
+                  </button>
                 </div>
-                <button onClick={() => { setInviteEmail(""); setInviteName(""); setSearchQuery(""); }}>
-                  <X size={14} style={{ color: "#8FAF96" }} />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Share-invite modal — a single URL that anyone can use to join this
+            community. Admins can copy or rotate; rotation invalidates the old
+            link immediately (useful if it was shared too widely). */}
+        {showInvite && (() => {
+          const inviteUrl = group.inviteToken
+            ? `${window.location.origin}/communities/join/${group.slug}/${group.inviteToken}`
+            : "";
+          const copyToClipboard = async () => {
+            if (!inviteUrl) return;
+            try {
+              await navigator.clipboard.writeText(inviteUrl);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 2000);
+            } catch {
+              // Clipboard can fail in insecure contexts — surface the URL so
+              // the admin can copy it manually from the read-only input.
+            }
+          };
+          return (
+            <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Share invite link</p>
+                <button onClick={() => { setShowInvite(false); setLinkCopied(false); }}>
+                  <X size={16} style={{ color: "#8FAF96" }} />
                 </button>
               </div>
-            ) : searchQuery.includes("@") ? (
-              // Allow inviting by email directly if they typed one
-              <p className="text-xs mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Not on Phoebe yet? They'll get an invite link.
-              </p>
-            ) : null}
 
-            <button
-              onClick={() => {
-                const email = inviteEmail || (searchQuery.includes("@") ? searchQuery : "");
-                if (!email) return;
-                setInviteEmail(email);
-                inviteMutation.mutate();
-              }}
-              disabled={(!inviteEmail && !searchQuery.includes("@")) || inviteMutation.isPending}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 mt-1"
-              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-            >
-              {inviteMutation.isPending ? "Adding…" : "Add"}
-            </button>
-          </div>
-        )}
+              <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.75)" }}>
+                Anyone with this link can join {group.name}. If it's shared too widely, rotate it below.
+              </p>
+
+              {inviteUrl ? (
+                <>
+                  <div className="flex items-stretch gap-2 mb-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={inviteUrl}
+                      onFocus={e => e.currentTarget.select()}
+                      className="flex-1 px-3 py-2 rounded-lg border border-[#2E6B40]/40 outline-none bg-transparent text-xs font-mono"
+                      style={{ color: "#F0EDE6" }}
+                    />
+                    <button
+                      onClick={copyToClipboard}
+                      className="px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0"
+                      style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                      title="Copy to clipboard"
+                    >
+                      {linkCopied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Rotate the invite link? The current URL will stop working immediately.")) {
+                        rotateInviteMutation.mutate();
+                      }
+                    }}
+                    disabled={rotateInviteMutation.isPending}
+                    className="w-full py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+                    style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
+                    <RefreshCw size={12} /> {rotateInviteMutation.isPending ? "Rotating…" : "Rotate link"}
+                  </button>
+                </>
+              ) : (
+                <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
+                  Invite link not available.
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Tabs — auto-scrolling ticker (pauses when one is active) */}
         <style>{`@keyframes community-tabs-scroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>

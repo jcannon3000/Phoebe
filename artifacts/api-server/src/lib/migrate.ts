@@ -621,6 +621,51 @@ export async function migrate() {
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_shared_moments_group_id ON shared_moments (group_id)`);
 
+    // ── Community-wide invite link ─────────────────────────────────────────
+    // Each group has a single shareable token. Anyone with the link can
+    // join the community (replaces per-email invites in the UI). Admins
+    // can rotate via POST /api/groups/:slug/rotate-invite.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS invite_token TEXT`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_invite_token ON groups (invite_token) WHERE invite_token IS NOT NULL`);
+    // Backfill: every existing group gets a fresh random token. md5(random())
+    // is unique-enough for this — we just need an unguessable slug-like
+    // string. Only touches rows where the column is still NULL, so this is
+    // idempotent and safe to run on every boot.
+    await run(client, `UPDATE groups SET invite_token = replace(md5(random()::text || clock_timestamp()::text), '-', '') WHERE invite_token IS NULL`);
+
+    // ── Group admin notification acknowledgments ──────────────────────────
+    // One row per (admin, group, kind, event). Inserted when the admin
+    // dismisses the "new arrival" popup. The list query left-anti-joins
+    // against this table so an admin sees each event exactly once.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_admin_notifications_ack (
+        id SERIAL PRIMARY KEY,
+        admin_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        event_id INTEGER NOT NULL,
+        acknowledged_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_gana_unique
+      ON group_admin_notifications_ack (admin_user_id, group_id, kind, event_id)
+    `);
+
+    // ── Prayer-request group scoping ──────────────────────────────────────
+    // Prayer requests can now live on a community's prayer wall. Nullable —
+    // existing rows stay as personal (non-group) requests. Index on group_id
+    // keeps the community-wall lookup cheap.
+    await run(client, `
+      ALTER TABLE prayer_requests
+      ADD COLUMN IF NOT EXISTS group_id INTEGER
+      REFERENCES groups(id) ON DELETE CASCADE
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS idx_prayer_requests_group_id
+      ON prayer_requests (group_id) WHERE group_id IS NOT NULL
+    `);
+
     // ── User onboarding flag ──────────────────────────────────────────────
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT false`);
 

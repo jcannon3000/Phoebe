@@ -1,9 +1,14 @@
 import { pgTable, serial, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import { groupsTable } from "./groups";
 
 export const prayerRequestsTable = pgTable("prayer_requests", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  // Optional group scope. When set, the request lives on that community's
+  // prayer wall; when null it's a personal request. Nullable to keep
+  // existing rows valid through the migration.
+  groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
   createdByName: text("created_by_name"),
   isAnonymous: boolean("is_anonymous").notNull().default(false),
