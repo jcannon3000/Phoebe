@@ -1,6 +1,6 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type RequestHandler } from "express";
 import { eq, and, sql } from "drizzle-orm";
-import { db, fellowsTable, usersTable, pool } from "@workspace/db";
+import { db, fellowsTable, usersTable, betaUsersTable, pool } from "@workspace/db";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -9,8 +9,33 @@ function getUser(req: any): { id: number; email?: string } | null {
   return req.user ? (req.user as { id: number; email?: string }) : null;
 }
 
+// Fellows is a beta-gated feature. Every endpoint in this router rejects
+// non-beta callers with 403 so a stale UI build (or a curl) can't reach
+// it. Beta status comes from the same `beta_users` table the dashboard
+// uses for its `useBetaStatus` hook.
+const requireBeta: RequestHandler = async (req, res, next) => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [u] = await db.select({ email: usersTable.email })
+      .from(usersTable).where(eq(usersTable.id, user.id));
+    if (!u) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const [beta] = await db.select({ email: betaUsersTable.email })
+      .from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    if (!beta) {
+      res.status(403).json({ error: "Fellows is currently a beta-only feature." });
+      return;
+    }
+    next();
+  } catch {
+    // beta_users table missing or other infra issue — fail closed.
+    res.status(403).json({ error: "Fellows is currently a beta-only feature." });
+  }
+};
+
+
 // GET /api/fellows — list my fellows (with names for display)
-router.get("/fellows", async (req, res): Promise<void> => {
+router.get("/fellows", requireBeta, async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -57,7 +82,7 @@ router.get("/fellows", async (req, res): Promise<void> => {
 });
 
 // GET /api/fellows/invites — get incoming pending invites for current user
-router.get("/fellows/invites", async (req, res): Promise<void> => {
+router.get("/fellows/invites", requireBeta, async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -102,7 +127,7 @@ router.get("/fellows/invites", async (req, res): Promise<void> => {
 });
 
 // GET /api/fellows/invites/count — lightweight count for sidebar badge
-router.get("/fellows/invites/count", async (req, res): Promise<void> => {
+router.get("/fellows/invites/count", requireBeta, async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.json({ count: 0 }); return; }
@@ -121,7 +146,7 @@ router.get("/fellows/invites/count", async (req, res): Promise<void> => {
 });
 
 // POST /api/fellows — send a fellow invite (or add directly if mutual)
-router.post("/fellows", async (req, res): Promise<void> => {
+router.post("/fellows", requireBeta, async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -171,12 +196,12 @@ router.post("/fellows", async (req, res): Promise<void> => {
 });
 
 // POST /api/fellows/invites/:id/accept — accept an incoming invite
-router.post("/fellows/invites/:id/accept", async (req, res): Promise<void> => {
+router.post("/fellows/invites/:id/accept", requireBeta, async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-    const inviteId = parseInt(req.params.id, 10);
+    const inviteId = parseInt(req.params.id as string, 10);
     if (isNaN(inviteId)) { res.status(400).json({ error: "Invalid invite ID" }); return; }
 
     // Get the invite
@@ -215,12 +240,12 @@ router.post("/fellows/invites/:id/accept", async (req, res): Promise<void> => {
 });
 
 // POST /api/fellows/invites/:id/dismiss — dismiss (not now) an invite
-router.post("/fellows/invites/:id/dismiss", async (req, res): Promise<void> => {
+router.post("/fellows/invites/:id/dismiss", requireBeta, async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-    const inviteId = parseInt(req.params.id, 10);
+    const inviteId = parseInt(req.params.id as string, 10);
     if (isNaN(inviteId)) { res.status(400).json({ error: "Invalid invite ID" }); return; }
 
     // Just return ok — invite stays pending, badge count remains.
@@ -233,12 +258,12 @@ router.post("/fellows/invites/:id/dismiss", async (req, res): Promise<void> => {
 });
 
 // DELETE /api/fellows/:userId — remove a fellow
-router.delete("/fellows/:userId", async (req, res): Promise<void> => {
+router.delete("/fellows/:userId", requireBeta, async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-    const fellowUserId = parseInt(req.params.userId, 10);
+    const fellowUserId = parseInt(req.params.userId as string, 10);
     if (isNaN(fellowUserId)) { res.status(400).json({ error: "Invalid user ID" }); return; }
 
     await db

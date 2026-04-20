@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { MessageCircle } from "lucide-react";
 
 interface PrayerRequest {
@@ -26,6 +27,8 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
   // maxVisible: 0 = show all, N = show N then "See all" button
   const queryClient = useQueryClient();
   useAuth();
+  // Fellow tag on prayer requests is a beta-only affordance.
+  const { isBeta } = useBetaStatus();
 
   // Mute is now only available on person detail page and in Settings
 
@@ -226,7 +229,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                             {/* Attribution */}
                             <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-1">
                               From {request.ownerName ?? "someone"}
-                              {request.isFellow && (
+                              {isBeta && request.isFellow && (
                                 <span className="ml-1.5 normal-case tracking-normal" style={{ color: "rgba(92,138,95,0.7)" }}>· Fellow</span>
                               )}
                             </p>

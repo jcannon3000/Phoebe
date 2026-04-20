@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { useGardenSocket } from "@/hooks/useGardenSocket";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -506,6 +507,10 @@ function InvitePopup({
 
 function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
   const { user } = useAuth();
+  // Defense in depth: even though the parent only renders this component
+  // when isBeta is true, we still gate the queries here so a stale parent
+  // flag can never make us hit a now-403 endpoint.
+  const { isBeta } = useBetaStatus();
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
@@ -514,13 +519,13 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
   const { data: fellowsData } = useQuery<{ fellows: Fellow[]; pendingInvites: PendingInviteOutbound[] }>({
     queryKey: ["/api/fellows"],
     queryFn: () => apiRequest("GET", "/api/fellows"),
-    enabled: !!user,
+    enabled: !!user && isBeta,
   });
 
   const { data: incomingData } = useQuery<{ invites: IncomingInvite[]; count: number }>({
     queryKey: ["/api/fellows/invites"],
     queryFn: () => apiRequest("GET", "/api/fellows/invites"),
-    enabled: !!user,
+    enabled: !!user && isBeta,
   });
 
   const acceptMutation = useMutation({
@@ -737,6 +742,9 @@ function FellowsSection({ people }: { people: PersonSummary[] | undefined }) {
 export default function People() {
   const [location, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  // Fellows is currently a beta-only feature — without isBeta, the whole
+  // Fellows section, its queries, and the invite popup are suppressed.
+  const { isBeta } = useBetaStatus();
   const { data: people, isLoading } = usePeople(user?.id);
   const highlightEmail = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "").get("highlight") ?? null;
   const highlightRef = useRef<HTMLDivElement | null>(null);
@@ -794,8 +802,8 @@ export default function People() {
           </h1>
         </div>
 
-        {/* Fellows */}
-        <FellowsSection people={people} />
+        {/* Fellows — beta-only */}
+        {isBeta && <FellowsSection people={people} />}
 
         {/* Section divider */}
         <div className="flex items-center gap-2 mb-3">

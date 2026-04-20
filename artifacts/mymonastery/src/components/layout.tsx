@@ -35,14 +35,16 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     setLocation(path);
   }
 
-  // Fetch pending fellow invites count for badge
+  // Fetch pending fellow invites count for badge — beta only. The /api/fellows
+  // endpoints reject non-beta callers with 403, so we'd just be hammering the
+  // server with rejected requests every 60s otherwise.
   const { data: inviteCountData } = useQuery<{ count: number }>({
     queryKey: ["/api/fellows/invites/count"],
     queryFn: () => apiRequest("GET", "/api/fellows/invites/count"),
-    enabled: !!user,
+    enabled: !!user && isBeta,
     refetchInterval: 60_000,
   });
-  const fellowInviteCount = inviteCountData?.count ?? 0;
+  const fellowInviteCount = isBeta ? (inviteCountData?.count ?? 0) : 0;
 
   const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
     // "Practices" doesn't go to /practices — it behaves like the dashboard
