@@ -806,7 +806,13 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
             {progressLabel}
           </span>
-        ) : m.currentStreak > 0 ? (
+        ) : !isIntercession && !isFasting && m.currentStreak > 0 ? (
+          // For intercessions and fasts, the group streak (via progressLabel
+          // above) is authoritative — m.currentStreak is a DB field that can
+          // be stale (corrupted by double-bloom bugs, or left over from a
+          // chain that has since broken). Never fall back to it for those
+          // types; a group streak of 0 should render as no badge, not as
+          // "3 day streak" from yesterday's stale data.
           <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", marginTop: "1px" }}>
             {m.currentStreak} day streak
           </span>
