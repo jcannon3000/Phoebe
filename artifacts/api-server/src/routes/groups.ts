@@ -832,14 +832,22 @@ router.post("/beta/welcome-seen", async (req, res): Promise<void> => {
 });
 
 // POST /api/beta/claim — one-time admin claim with secret token
-// The claim token is set via BETA_CLAIM_TOKEN env var (or defaults to a hardcoded one for dev)
+// The claim token MUST be set via the BETA_CLAIM_TOKEN env var. If it's
+// unset we fail closed — previously this fell back to a hardcoded string
+// that was checked into the repo, so any signed-in user could self-promote
+// to beta admin on any environment missing the env var.
 router.post("/beta/claim", async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
+    const claimToken = process.env.BETA_CLAIM_TOKEN;
+    if (!claimToken) {
+      res.status(503).json({ error: "Claim disabled" });
+      return;
+    }
+
     const { token } = req.body ?? {};
-    const claimToken = process.env.BETA_CLAIM_TOKEN || "phoebe-admin-2026";
     if (token !== claimToken) {
       res.status(403).json({ error: "Invalid claim token" });
       return;
