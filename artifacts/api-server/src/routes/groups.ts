@@ -801,7 +801,7 @@ router.delete("/beta/users/:id", async (req, res): Promise<void> => {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-    const [target] = await db.select({ id: betaUsersTable.id, isAdmin: betaUsersTable.isAdmin }).from(betaUsersTable).where(eq(betaUsersTable.id, id));
+    const [target] = await db.select({ id: betaUsersTable.id, email: betaUsersTable.email, isAdmin: betaUsersTable.isAdmin }).from(betaUsersTable).where(eq(betaUsersTable.id, id));
     const [selfUser] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
     if (target && selfUser && target.email === selfUser.email.toLowerCase()) {
       res.status(400).json({ error: "Cannot remove yourself" });
