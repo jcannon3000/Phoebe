@@ -1335,8 +1335,9 @@ export default function Dashboard() {
   const [prayerInviteVisible, setPrayerInviteVisible] = useState(false);
   const [prayerInviteCount, setPrayerInviteCount] = useState(0);
 
-  // Local-timezone YYYY-MM-DD. Using ISO/UTC would fence-post west-of-UTC
-  // users the whole day late, showing the popup twice for them.
+  // Local-timezone YYYY-MM-DD. Used as the once-per-day gate; sent to the
+  // server so the stamp follows the account across devices rather than
+  // living in each device's localStorage.
   function todayLocalKey(): string {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -1347,9 +1348,7 @@ export default function Dashboard() {
 
   const dismissPrayerInvite = useCallback(() => {
     setPrayerInviteVisible(false);
-    // Date is already stamped at show-time, but keep this idempotent in case
-    // someone calls dismiss directly.
-    try { localStorage.setItem("phoebe:prayer-invite-last-shown", todayLocalKey()); } catch { /* ignore */ }
+    // Account-level stamp happens at show-time; this just hides the modal.
   }, []);
 
   const beginPrayerInvite = useCallback(() => {
@@ -1418,34 +1417,42 @@ export default function Dashboard() {
     if (prayerInviteHandledThisSessionRef.current) return;
 
     const today = todayLocalKey();
-    const lastShown = localStorage.getItem("phoebe:prayer-invite-last-shown");
-    if (lastShown === today) {
+    // Account-scoped gate via the user record — dismissing on desktop also
+    // silences the phone for the rest of the day.
+    if (user.prayerInviteLastShownDate === today) {
       prayerInviteHandledThisSessionRef.current = true;
       return;
     }
 
     const moments = momentsData?.moments ?? [];
-    const openIntercessions = moments.filter(
-      m => m.templateType === "intercession" && m.windowOpen,
+    // Count all *prayable* intercessions, not just the currently-open
+    // window. A user opening the app at 10pm should still see all daily
+    // intercessions reflected in "today's prayer list".
+    const activeIntercessions = moments.filter(
+      m => m.templateType === "intercession",
     ).length;
     const othersRequests = dashPrayerRequests.filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
     ).length;
     const activePrayersFor = dashPrayersFor.filter(p => !p.expired).length;
-    const total = openIntercessions + othersRequests + activePrayersFor;
+    const total = activeIntercessions + othersRequests + activePrayersFor;
 
     if (total > 0) {
-      // Stamp BEFORE show so a tab-close / reload before dismiss still
-      // counts as "already shown today". This is the main guarantee that
-      // the popup appears at most once per calendar day.
-      try { localStorage.setItem("phoebe:prayer-invite-last-shown", today); } catch { /* ignore */ }
+      // Stamp BEFORE show (fire-and-forget) so a tab-close / reload before
+      // dismiss still counts as "already shown today". This is the main
+      // guarantee that the popup appears at most once per calendar day.
+      apiRequest("PATCH", "/api/auth/me/prayer-invite-shown", { date: today })
+        .then(() => queryClient.setQueryData<typeof user>(["/api/auth/me"], prev =>
+          prev ? { ...prev, prayerInviteLastShownDate: today } : prev,
+        ))
+        .catch(() => { /* best-effort; next load will try again */ });
       prayerInviteHandledThisSessionRef.current = true;
       setPrayerInviteCount(total);
       setPrayerInviteVisible(true);
     }
     // If total === 0 we DON'T stamp — tomorrow's visit should still get a
     // chance if the user has prayers queued by then.
-  }, [user, momentsData, dashPrayerRequests, dashPrayersFor]);
+  }, [user, momentsData, dashPrayerRequests, dashPrayersFor, queryClient]);
 
   const isLoading = momentsLoading;
 

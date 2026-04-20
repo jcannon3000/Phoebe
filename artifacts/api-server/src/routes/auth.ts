@@ -184,6 +184,7 @@ router.get("/auth/me", (req, res) => {
     googleId: string | null; showPresence: boolean;
     correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
     onboardingCompleted: boolean; dailyBellTime: string | null;
+    prayerInviteLastShownDate: string | null;
   };
   res.json({
     id: u.id,
@@ -196,6 +197,7 @@ router.get("/auth/me", (req, res) => {
     gatheringImprintCompleted: u.gatheringImprintCompleted ?? false,
     onboardingCompleted: u.onboardingCompleted ?? false,
     dailyBellTime: u.dailyBellTime ?? null,
+    prayerInviteLastShownDate: u.prayerInviteLastShownDate ?? null,
   });
 });
 
@@ -238,6 +240,27 @@ router.patch("/auth/me/presence", async (req, res): Promise<void> => {
   }
   await db.update(usersTable).set({ showPresence } as Record<string, unknown>).where(eq(usersTable.id, userId));
   res.json({ showPresence });
+});
+
+// PATCH /auth/me/prayer-invite-shown — stamp today's local date so the
+// daily prayer-slideshow popup is silenced for the rest of the day across
+// every device this account is signed into.
+router.patch("/auth/me/prayer-invite-shown", async (req, res): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = (req.user as { id: number }).id;
+  const { date } = req.body as { date?: string };
+  // Accept YYYY-MM-DD in the client's local timezone — the server doesn't
+  // know the user's TZ reliably, so we trust the submitted date.
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    res.status(400).json({ error: "date must be YYYY-MM-DD" }); return;
+  }
+  await db.update(usersTable)
+    .set({ prayerInviteLastShownDate: date } as Record<string, unknown>)
+    .where(eq(usersTable.id, userId));
+  if (req.user) {
+    (req.user as Record<string, unknown>).prayerInviteLastShownDate = date;
+  }
+  res.json({ prayerInviteLastShownDate: date });
 });
 
 // PATCH /auth/me/profile — update name and/or avatar

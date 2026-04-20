@@ -430,8 +430,12 @@ export default function PrayerModePage() {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
+  // Include every active intercession the user participates in, regardless
+  // of the current window state. The slideshow is a "today's prayer list"
+  // experience — a daily intercession is prayable all day, not only during
+  // its 2-hour bloom window.
   const intercessions = (momentsData?.moments ?? []).filter(
-    (m) => m.templateType === "intercession" && m.windowOpen,
+    (m) => m.templateType === "intercession",
   );
 
   // Split "pray for someone" records: active ones get normal slides, expired

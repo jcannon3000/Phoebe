@@ -22,6 +22,10 @@ export const usersTable = pgTable("users", {
   timezone: text("timezone"),                        // IANA timezone, e.g. "America/New_York"
   bellCalendarEventId: text("bell_calendar_event_id"), // Google Calendar event ID for the daily bell
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  // Last local date (YYYY-MM-DD) we showed the daily prayer-slideshow invite
+  // popup on the dashboard. Account-scoped gate so dismissing on desktop
+  // also silences the phone for the rest of the day.
+  prayerInviteLastShownDate: text("prayer_invite_last_shown_date"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

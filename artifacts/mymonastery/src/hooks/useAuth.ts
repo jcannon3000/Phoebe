@@ -11,6 +11,7 @@ export interface AuthUser {
   gatheringImprintCompleted: boolean;
   onboardingCompleted: boolean;
   dailyBellTime: string | null;
+  prayerInviteLastShownDate: string | null;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {
