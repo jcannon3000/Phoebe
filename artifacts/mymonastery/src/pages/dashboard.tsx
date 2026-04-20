@@ -1329,10 +1329,21 @@ export default function Dashboard() {
   const [prayerInviteVisible, setPrayerInviteVisible] = useState(false);
   const [prayerInviteCount, setPrayerInviteCount] = useState(0);
 
+  // Local-timezone YYYY-MM-DD. Using ISO/UTC would fence-post west-of-UTC
+  // users the whole day late, showing the popup twice for them.
+  function todayLocalKey(): string {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
   const dismissPrayerInvite = useCallback(() => {
     setPrayerInviteVisible(false);
-    const today = new Date().toISOString().slice(0, 10);
-    try { localStorage.setItem("phoebe:prayer-invite-last-shown", today); } catch { /* ignore */ }
+    // Date is already stamped at show-time, but keep this idempotent in case
+    // someone calls dismiss directly.
+    try { localStorage.setItem("phoebe:prayer-invite-last-shown", todayLocalKey()); } catch { /* ignore */ }
   }, []);
 
   const beginPrayerInvite = useCallback(() => {
@@ -1392,11 +1403,20 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // In-session latch — even if momentsData refetches and re-runs the effect,
+  // we never re-trigger the popup within the same page load.
+  const prayerInviteHandledThisSessionRef = useRef(false);
+
   useEffect(() => {
     if (!user) return;
-    const today = new Date().toISOString().slice(0, 10);
+    if (prayerInviteHandledThisSessionRef.current) return;
+
+    const today = todayLocalKey();
     const lastShown = localStorage.getItem("phoebe:prayer-invite-last-shown");
-    if (lastShown === today) return;
+    if (lastShown === today) {
+      prayerInviteHandledThisSessionRef.current = true;
+      return;
+    }
 
     const moments = momentsData?.moments ?? [];
     const openIntercessions = moments.filter(
@@ -1409,9 +1429,16 @@ export default function Dashboard() {
     const total = openIntercessions + othersRequests + activePrayersFor;
 
     if (total > 0) {
+      // Stamp BEFORE show so a tab-close / reload before dismiss still
+      // counts as "already shown today". This is the main guarantee that
+      // the popup appears at most once per calendar day.
+      try { localStorage.setItem("phoebe:prayer-invite-last-shown", today); } catch { /* ignore */ }
+      prayerInviteHandledThisSessionRef.current = true;
       setPrayerInviteCount(total);
       setPrayerInviteVisible(true);
     }
+    // If total === 0 we DON'T stamp — tomorrow's visit should still get a
+    // chance if the user has prayers queued by then.
   }, [user, momentsData, dashPrayerRequests, dashPrayersFor]);
 
   const isLoading = momentsLoading;
