@@ -1322,48 +1322,12 @@ export default function Dashboard() {
     localStorage.setItem("phoebe:beta-welcome-seen", "1");
   }, []);
 
-  // ── Daily prayer-slideshow invite ────────────────────────────────────────
-  // Once per calendar day, if the user has prayers queued up (open
-  // intercessions, others' prayer requests, or active prayers-for), show
-  // a popup inviting them into the slideshow. Dismisses until tomorrow.
+  // Daily prayer-slideshow invite state. The effect that populates it is
+  // declared further down, AFTER the momentsData useQuery call — placing it
+  // before would read momentsData in the effect's dep array while it's
+  // still in the TDZ, crashing the first render.
   const [prayerInviteVisible, setPrayerInviteVisible] = useState(false);
   const [prayerInviteCount, setPrayerInviteCount] = useState(0);
-
-  type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
-  type DashPrayerFor = { id: number; expired: boolean };
-
-  const { data: dashPrayerRequests = [] } = useQuery<DashPrayerRequest[]>({
-    queryKey: ["/api/prayer-requests"],
-    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
-    enabled: !!user,
-  });
-  const { data: dashPrayersFor = [] } = useQuery<DashPrayerFor[]>({
-    queryKey: ["/api/prayers-for/mine"],
-    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
-    enabled: !!user,
-  });
-
-  useEffect(() => {
-    if (!user) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const lastShown = localStorage.getItem("phoebe:prayer-invite-last-shown");
-    if (lastShown === today) return;
-
-    const moments = momentsData?.moments ?? [];
-    const openIntercessions = moments.filter(
-      m => m.templateType === "intercession" && m.windowOpen,
-    ).length;
-    const othersRequests = dashPrayerRequests.filter(
-      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
-    ).length;
-    const activePrayersFor = dashPrayersFor.filter(p => !p.expired).length;
-    const total = openIntercessions + othersRequests + activePrayersFor;
-
-    if (total > 0) {
-      setPrayerInviteCount(total);
-      setPrayerInviteVisible(true);
-    }
-  }, [user, momentsData, dashPrayerRequests, dashPrayersFor]);
 
   const dismissPrayerInvite = useCallback(() => {
     setPrayerInviteVisible(false);
@@ -1409,6 +1373,46 @@ export default function Dashboard() {
     // mutations from the detail page are reflected immediately.
     staleTime: 0,
   });
+
+  // ── Daily prayer-slideshow invite ────────────────────────────────────────
+  // Declared here, AFTER momentsData, because the effect's dep array reads
+  // momentsData and would otherwise blow up on first render with a
+  // "Cannot access uninitialized variable" (TDZ).
+  type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
+  type DashPrayerFor = { id: number; expired: boolean };
+
+  const { data: dashPrayerRequests = [] } = useQuery<DashPrayerRequest[]>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    enabled: !!user,
+  });
+  const { data: dashPrayersFor = [] } = useQuery<DashPrayerFor[]>({
+    queryKey: ["/api/prayers-for/mine"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const lastShown = localStorage.getItem("phoebe:prayer-invite-last-shown");
+    if (lastShown === today) return;
+
+    const moments = momentsData?.moments ?? [];
+    const openIntercessions = moments.filter(
+      m => m.templateType === "intercession" && m.windowOpen,
+    ).length;
+    const othersRequests = dashPrayerRequests.filter(
+      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
+    ).length;
+    const activePrayersFor = dashPrayersFor.filter(p => !p.expired).length;
+    const total = openIntercessions + othersRequests + activePrayersFor;
+
+    if (total > 0) {
+      setPrayerInviteCount(total);
+      setPrayerInviteVisible(true);
+    }
+  }, [user, momentsData, dashPrayerRequests, dashPrayersFor]);
 
   const isLoading = momentsLoading;
 
