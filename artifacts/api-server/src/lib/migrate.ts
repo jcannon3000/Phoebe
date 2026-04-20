@@ -557,6 +557,12 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_bell_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS bell_calendar_event_id TEXT`);
+
+    // ── Daily prayer-slideshow invite gate ──────────────────────────────────
+    // Account-scoped "last shown" date so dismissing the popup on one
+    // device silences it on every other device signed into the same
+    // account for the rest of the local day.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_invite_last_shown_date TEXT`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS bell_notifications (
         id SERIAL PRIMARY KEY,
