@@ -9,6 +9,8 @@ import { logger } from "./lib/logger";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import { db, groupsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -86,30 +88,86 @@ if (fs.existsSync(frontendDist)) {
   app.use("/assets", express.static(path.join(frontendDist, "assets"), { maxAge: "1y", immutable: true }));
   app.use(express.static(frontendDist, { maxAge: 0 }));
 
-  // Route-specific OG meta for link previews (iMessage, Slack, etc.)
-  const ogOverrides: Record<string, { title: string; description: string }> = {
+  // Route-specific OG meta for link previews (iMessage, Slack, etc.).
+  // Preview crawlers don't run JS, so they only see whatever HTML we ship
+  // on the first response — dynamic content has to be baked into the
+  // initial index.html before the SPA boots.
+  const ogStaticOverrides: Record<string, { title: string; description: string }> = {
     "/church-deck": {
       title: "How Phoebe Cultivates Connection",
       description: "A place set apart for connection. Every day. Between Sundays.",
     },
   };
 
-  app.get("/{*path}", (_req, res) => {
+  // Minimal HTML escape for values we inject into <meta content="..."> and
+  // <title>…</title>. Community names/descriptions are user-editable so we
+  // can't trust them raw.
+  const escapeMeta = (s: string) =>
+    s.replace(/&/g, "&amp;")
+     .replace(/</g, "&lt;")
+     .replace(/>/g, "&gt;")
+     .replace(/"/g, "&quot;");
+
+  function renderIndexWithOg(title: string, description: string): string {
+    const indexPath = path.join(frontendDist, "index.html");
+    const html = fs.readFileSync(indexPath, "utf-8");
+    const t = escapeMeta(title);
+    const d = escapeMeta(description);
+    return html
+      .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
+      .replace(/(<meta property="og:title" content=")[^"]*"/, `$1${t}"`)
+      .replace(/(<meta property="og:description" content=")[^"]*"/, `$1${d}"`)
+      .replace(/(<meta name="twitter:title" content=")[^"]*"/, `$1${t}"`)
+      .replace(/(<meta name="twitter:description" content=")[^"]*"/, `$1${d}"`);
+  }
+
+  // Community invite links — render "Pray with <community> with Phoebe"
+  // so an iMessage/Slack preview names the specific community rather than
+  // the generic landing-page copy. Matches both:
+  //   /communities/join/:slug/:token
+  //   /communities/join/:slug  (legacy / bare-slug forms)
+  const invitePathRe = /^\/communities\/join\/([a-z0-9][a-z0-9-]*)\b/i;
+
+  app.get("/{*path}", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    const override = ogOverrides[_req.path];
-    if (override) {
-      const indexPath = path.join(frontendDist, "index.html");
-      let html = fs.readFileSync(indexPath, "utf-8");
-      html = html
-        .replace(/<title>[^<]*<\/title>/, `<title>${override.title}</title>`)
-        .replace(/(<meta property="og:title" content=")[^"]*"/, `$1${override.title}"`)
-        .replace(/(<meta property="og:description" content=")[^"]*"/, `$1${override.description}"`)
-        .replace(/(<meta name="twitter:title" content=")[^"]*"/, `$1${override.title}"`)
-        .replace(/(<meta name="twitter:description" content=")[^"]*"/, `$1${override.description}"`);
-      res.type("html").send(html);
-    } else {
-      res.sendFile(path.join(frontendDist, "index.html"));
+
+    // 1) Static per-path overrides (church-deck, etc.)
+    const staticOverride = ogStaticOverrides[req.path];
+    if (staticOverride) {
+      res.type("html").send(renderIndexWithOg(staticOverride.title, staticOverride.description));
+      return;
     }
+
+    // 2) Community invite → look up the group by slug so the preview names
+    // the actual community. We don't validate the token here — link preview
+    // crawlers just need the metadata, and if the token is stale the SPA
+    // will show the correct error once the user clicks through.
+    const inviteMatch = invitePathRe.exec(req.path);
+    if (inviteMatch) {
+      const slug = inviteMatch[1]!.toLowerCase();
+      try {
+        const [group] = await db
+          .select({ name: groupsTable.name, description: groupsTable.description })
+          .from(groupsTable)
+          .where(eq(groupsTable.slug, slug));
+        if (group) {
+          const title = `Pray with ${group.name} with Phoebe`;
+          const description = group.description && group.description.trim().length > 0
+            ? group.description
+            : "A place set apart for connection. Every day. Between Sundays.";
+          res.type("html").send(renderIndexWithOg(title, description));
+          return;
+        }
+      } catch (err) {
+        // Fail open — fall through to the default index.html rather than
+        // break the whole invite flow because Postgres hiccuped on a
+        // metadata lookup.
+        logger.warn({ err, slug }, "[og] invite preview lookup failed");
+      }
+    }
+
+    // 3) Default: just ship the SPA shell unchanged.
+    res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
 
