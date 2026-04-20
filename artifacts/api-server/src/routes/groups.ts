@@ -267,7 +267,16 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
     name: z.string().min(1).max(100).optional(),
     description: z.string().max(500).optional(),
     emoji: z.string().max(10).optional(),
-    calendarUrl: z.string().url().max(1000).optional().or(z.literal("")),
+    // Restrict to http(s)/webcal so the stored URL can't be rendered as a
+    // javascript: or data: href on the client — that would be stored XSS
+    // on every member viewing the group.
+    calendarUrl: z.string().url().max(1000).refine(
+      (v) => {
+        try { return ["http:", "https:", "webcal:"].includes(new URL(v).protocol); }
+        catch { return false; }
+      },
+      { message: "Calendar URL must use http, https, or webcal" },
+    ).optional().or(z.literal("")),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
