@@ -713,8 +713,33 @@ router.get("/beta/users", async (req, res): Promise<void> => {
       name: betaUsersTable.name,
       isAdmin: betaUsersTable.isAdmin,
       createdAt: betaUsersTable.createdAt,
+      addedByUserId: betaUsersTable.addedByUserId,
     }).from(betaUsersTable).orderBy(desc(betaUsersTable.createdAt));
-    res.json({ users: betaUsers });
+
+    // Resolve addedByUserId → display name in one batch query. We render
+    // "invited by X" in the admin UI so it's clear who owns each invite.
+    // Fall back to null silently if the inviter has been deleted.
+    const inviterIds = Array.from(new Set(betaUsers.map(u => u.addedByUserId).filter((v): v is number => typeof v === "number")));
+    const inviterMap = new Map<number, { name: string | null; email: string }>();
+    if (inviterIds.length > 0) {
+      const inviterRows = await db.select({
+        id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      }).from(usersTable).where(inArray(usersTable.id, inviterIds));
+      for (const r of inviterRows) inviterMap.set(r.id, { name: r.name, email: r.email });
+    }
+
+    const withInviter = betaUsers.map(u => {
+      const inv = u.addedByUserId != null ? inviterMap.get(u.addedByUserId) : undefined;
+      return {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        isAdmin: u.isAdmin,
+        createdAt: u.createdAt,
+        addedByName: inv ? (inv.name || inv.email.split("@")[0]) : null,
+      };
+    });
+    res.json({ users: withInviter });
   } catch (err) {
     console.error("GET /api/beta/users error:", err);
     res.json({ users: [] });

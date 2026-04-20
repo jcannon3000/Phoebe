@@ -738,7 +738,21 @@ export default function CommunityDetailPage() {
         )}
 
         {/* ─── Members ─── */}
-        {activeTab === "members" && (
+        {activeTab === "members" && (() => {
+          // "Recently joined" = within the last 7 calendar days. We deliberately
+          // use a calendar-day diff so the badge flips off at local midnight
+          // on day 8, not 168 hours after the exact join timestamp.
+          const sevenDaysAgo = (() => {
+            const d = new Date();
+            d.setDate(d.getDate() - 7);
+            d.setHours(0, 0, 0, 0);
+            return d;
+          })();
+          const isRecentlyJoined = (joinedAt: string | null): boolean => {
+            if (!joinedAt) return false;
+            return new Date(joinedAt) >= sevenDaysAgo;
+          };
+          return (
           <div>
             <div className="space-y-1.5">
               {members.filter(m => m.joinedAt !== null).map(m => (
@@ -762,6 +776,17 @@ export default function CommunityDetailPage() {
                       {m.role === "admin" && (
                         <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(46,107,64,0.3)", color: "#8FAF96" }}>
                           Admin
+                        </span>
+                      )}
+                      {isRecentlyJoined(m.joinedAt) && (
+                        // Amber accent — matches the "praying for you" card on People,
+                        // the other place where we quietly surface "something new".
+                        <span
+                          className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(193,127,36,0.18)", color: "#E8B872", border: "1px solid rgba(193,127,36,0.35)" }}
+                          title={`Joined ${new Date(m.joinedAt!).toLocaleDateString()}`}
+                        >
+                          New
                         </span>
                       )}
                     </div>
@@ -828,7 +853,8 @@ export default function CommunityDetailPage() {
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
       </div>
     </Layout>
   );

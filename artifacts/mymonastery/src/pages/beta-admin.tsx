@@ -13,6 +13,9 @@ type BetaUser = {
   name: string | null;
   isAdmin: boolean;
   createdAt: string;
+  // Display name of the admin who added this user, or null if the inviter
+  // account was deleted. Populated server-side from beta_users.added_by_user_id.
+  addedByName: string | null;
 };
 
 type AppUser = { id: number; name: string | null; email: string };
@@ -228,6 +231,11 @@ export default function BetaAdminPage() {
                       )}
                     </div>
                     <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{bu.email}</p>
+                    {bu.addedByName && (
+                      <p className="text-[10px] mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.4)" }}>
+                        Invited by {bu.addedByName}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
                     <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>

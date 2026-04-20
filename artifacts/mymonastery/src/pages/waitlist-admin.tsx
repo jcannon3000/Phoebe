@@ -105,6 +105,18 @@ export default function WaitlistAdminPage() {
                     <a href={`mailto:${entry.email}`} className="hover:underline">{entry.email}</a>
                     <span style={{ color: "rgba(143,175,150,0.4)" }}>
                       {" · "}{new Date(entry.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {(() => {
+                        // Calendar-day diff (midnight-to-midnight) so "1 day waiting"
+                        // flips at local midnight rather than 24h after signup.
+                        const created = new Date(entry.createdAt);
+                        const a = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+                        const now = new Date();
+                        const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        const days = Math.max(0, Math.round((b.getTime() - a.getTime()) / 86400000));
+                        if (days === 0) return " · today";
+                        if (days === 1) return " · 1 day waiting";
+                        return ` · ${days} days waiting`;
+                      })()}
                       {" · "}{entry.source}
                     </span>
                   </p>
