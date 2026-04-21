@@ -544,6 +544,12 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
 //   2. Per-member token on group_members → kind: "member" (legacy/pending)
 router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
   const { slug, token } = req.params as { slug: string; token: string };
+  // This is the launch-day landing-page entry point — every visitor who
+  // clicks an invite link hits here pre-auth. Wrap the whole handler so
+  // a transient DB hiccup returns a clean 500 that the client can render
+  // as the "Invalid invite" card, rather than bubbling to Express's
+  // default HTML error page and looking like a hard crash.
+  try {
   const [group] = await db.select({
     id: groupsTable.id,
     name: groupsTable.name,
@@ -636,6 +642,12 @@ router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
     group: { name: group.name, slug: group.slug, emoji: group.emoji, description: group.description },
     invitee: { email: member.email, name: member.name, joinedAt: member.joinedAt },
   });
+  } catch (err) {
+    console.error("[groups/invite-lookup] unhandled error:", { slug, err });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Couldn't load invite. Please try again." });
+    }
+  }
 });
 
 // POST /api/groups/:slug/join — accept invite

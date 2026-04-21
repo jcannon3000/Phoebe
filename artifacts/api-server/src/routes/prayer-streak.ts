@@ -84,38 +84,45 @@ router.post("/prayer-streak/log", async (req, res): Promise<void> => {
   }
 });
 
-// Read-only variant for the dashboard or account page.
+// Read-only variant for the dashboard or account page. The dashboard
+// fires this query on every home-screen render, so the handler is wrapped
+// in try/catch — an unexpected DB hiccup shouldn't blank the whole page.
 router.get("/prayer-streak", async (req, res): Promise<void> => {
   const sessionUser = req.user as { id: number } | undefined;
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const [row] = await db
-    .select({
-      timezone: usersTable.timezone,
-      prayerStreakCount: usersTable.prayerStreakCount,
-      prayerStreakLastDate: usersTable.prayerStreakLastDate,
-    })
-    .from(usersTable)
-    .where(eq(usersTable.id, sessionUser.id));
-  if (!row) { res.status(404).json({ error: "User not found" }); return; }
+  try {
+    const [row] = await db
+      .select({
+        timezone: usersTable.timezone,
+        prayerStreakCount: usersTable.prayerStreakCount,
+        prayerStreakLastDate: usersTable.prayerStreakLastDate,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUser.id));
+    if (!row) { res.status(404).json({ error: "User not found" }); return; }
 
-  const tz = row.timezone || "UTC";
-  const today = todayInTz(tz);
-  const last = row.prayerStreakLastDate;
-  const current = row.prayerStreakCount ?? 0;
+    const tz = row.timezone || "UTC";
+    const today = todayInTz(tz);
+    const last = row.prayerStreakLastDate;
+    const current = row.prayerStreakCount ?? 0;
 
-  // If the user has a streak but missed yesterday, surface streak=0
-  // (the next completion resets anyway). This keeps the dashboard
-  // honest: no ghost "7-day streak" badge if they skipped last night.
-  const stillActive = last === today || last === prevDay(today);
-  res.json({
-    streak: stillActive ? current : 0,
-    loggedToday: last === today,
-    // Both names kept so older layout.tsx callers keep working alongside
-    // any newer callers that prefer the snake-cased field.
-    lastDate: last ?? null,
-    lastPrayedDate: last ?? null,
-  });
+    // If the user has a streak but missed yesterday, surface streak=0
+    // (the next completion resets anyway). This keeps the dashboard
+    // honest: no ghost "7-day streak" badge if they skipped last night.
+    const stillActive = last === today || last === prevDay(today);
+    res.json({
+      streak: stillActive ? current : 0,
+      loggedToday: last === today,
+      // Both names kept so older layout.tsx callers keep working alongside
+      // any newer callers that prefer the snake-cased field.
+      lastDate: last ?? null,
+      lastPrayedDate: last ?? null,
+    });
+  } catch (err) {
+    console.error("[prayer-streak:get] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
 });
 
 export default router;
