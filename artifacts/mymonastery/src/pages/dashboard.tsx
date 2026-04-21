@@ -1170,10 +1170,15 @@ function PrayerListCard({
   pendingCount,
   streak,
   keyPrefix,
+  muted = false,
 }: {
   pendingCount: number;
   streak: number;
   keyPrefix: string;
+  // When true (Tomorrow section), the card renders without pulse —
+  // the user has already finished today and we're just previewing
+  // what's queued. Still clickable in case they want to pray ahead.
+  muted?: boolean;
 }) {
   const colors = CATEGORY_COLORS.practices;
   const subtitle = pendingCount === 1
@@ -1185,18 +1190,22 @@ function PrayerListCard({
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${colors.pulseClass}`}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${muted ? "" : colors.pulseClass}`}
         style={{
           background: colors.bg,
           border: `1px solid ${colors.border}`,
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >
-        <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
+        {muted ? (
+          <div className="w-1 flex-shrink-0" style={{ background: colors.bar }} />
+        ) : (
+          <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
+        )}
         <div className="flex-1 px-4 pt-3 pb-2">
           <div className="flex items-start justify-between gap-2">
             <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-              🕯️ Today's prayer list
+              🕯️ Daily prayer list
             </span>
             {streak > 0 && (
               <span
@@ -1389,14 +1398,20 @@ function TimeSection({
   userEmail,
   userName,
   onOpenService,
+  trailingCards,
 }: {
   label: string;
   items: DashboardItem[];
   userEmail: string;
   userName: string;
   onOpenService: (schedule: ServiceSchedule, nextDate: Date) => void;
+  // Extra cards to render after the typed items (e.g. the PrayerListCard
+  // when the user already finished today's list and we want to preview
+  // tomorrow's). If there are no items and no trailingCards, the section
+  // hides itself so empty days stay quiet.
+  trailingCards?: React.ReactNode;
 }) {
-  if (items.length === 0) return null;
+  if (items.length === 0 && !trailingCards) return null;
 
   const letterItems = items.filter(i => i.kind === "letter") as Array<Extract<DashboardItem, { kind: "letter" }>>;
   const momentItems = items.filter(i => i.kind === "moment") as Array<Extract<DashboardItem, { kind: "moment" }>>;
@@ -1420,7 +1435,8 @@ function TimeSection({
     actionLetters.length +
     (showPassiveAsSummary ? 1 : passiveLetters.length) +
     serviceItems.length +
-    feedItems.length;
+    feedItems.length +
+    (trailingCards ? 1 : 0);
   const scrollable = visibleCardCount > 3;
 
   const cards = (
@@ -1471,6 +1487,7 @@ function TimeSection({
           />
         ))
       )}
+      {trailingCards}
     </div>
   );
 
@@ -1984,13 +2001,17 @@ export default function Dashboard() {
 
   // Prayer-list streak (consecutive days finishing a full slideshow) — used
   // by the Today-empty fallback card to reward the habit.
-  const { data: prayerStreakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
+  const { data: prayerStreakData } = useQuery<{ streak: number; lastPrayedDate: string | null; loggedToday?: boolean }>({
     queryKey: ["/api/prayer-streak"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak"),
     enabled: !!user,
     staleTime: 60_000,
   });
   const prayerStreak = prayerStreakData?.streak ?? 0;
+  // Once the user has finished today's list, the PrayerListCard moves
+  // from the Today section down into Tomorrow — signalling "you're done
+  // for today; here's what's queued for next time" without nagging.
+  const prayerListDoneToday = prayerStreakData?.loggedToday ?? false;
 
   // Pending-prayer count — how many prayers are in the user's slideshow
   // right now. Same computation the invite-popup uses, but memoized so the
@@ -2170,12 +2191,17 @@ export default function Dashboard() {
       const isLectio = m.templateType === "lectio-divina";
       const isIntercession = m.templateType === "intercession";
       const isFasting = m.templateType === "fasting";
-      const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
 
-      // Beta feature: hide a daily intercession once prayed today.
-      if (isBeta && isIntercession && userDone) {
-        continue;
-      }
+      // Intercessions never appear as individual cards on the home
+      // dashboard — they live inside the prayer list (slideshow). The
+      // PrayerListCard surfaces the aggregated count of prayers waiting,
+      // so the user taps once to move through them all. This supersedes
+      // the earlier "hide if already prayed today" rule: the intention
+      // is that intercessions ONLY exist in the list, not as clutter on
+      // the home screen.
+      if (isIntercession) continue;
+
+      const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
 
       // Fasting override: decide Today/Tomorrow/elsewhere from the fasting
       // fields directly, ignoring server-side isActionable flags which
@@ -2316,7 +2342,7 @@ export default function Dashboard() {
             >
               <p className="text-4xl mb-4">🙏</p>
               <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Today's prayer list
+                Daily prayer list
               </p>
               <h2
                 className="text-xl font-bold mb-6"
@@ -2560,34 +2586,51 @@ export default function Dashboard() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {/* 1. Today */}
-                <TimeSection label="Today" items={fToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
-
-                {/* Today-empty fallback: if everything actionable for today
-                    is already done but there are still prayers queued in
-                    the slideshow, surface a single card that routes to
-                    /prayer-list. Streak lives in the top-right. We only
-                    show this on the unfiltered view — the per-category
-                    filters have their own empty states. */}
-                {filter === null && fToday.length === 0 && pendingPrayerCount > 0 && (
-                  <div className="mb-5">
-                    <SectionHeader label="Today" />
-                    <div className="space-y-3">
+                {/* 1. Today. The PrayerListCard trails the day's items
+                    when (a) the user still has prayers queued and (b)
+                    they haven't finished today's list yet. Once done,
+                    the card jumps down to the Tomorrow section (below).
+                    Filtered views skip the trailing card — each filter
+                    has its own empty state. */}
+                <TimeSection
+                  label="Today"
+                  items={fToday}
+                  userEmail={userEmail}
+                  userName={userName}
+                  onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                  trailingCards={
+                    filter === null && pendingPrayerCount > 0 && !prayerListDoneToday ? (
                       <PrayerListCard
                         pendingCount={pendingPrayerCount}
                         streak={prayerStreak}
                         keyPrefix="today"
                       />
-                    </div>
-                  </div>
-                )}
+                    ) : undefined
+                  }
+                />
 
-                {/* 2. Tomorrow — beta only. Shows practices actionable
-                    tomorrow and any gatherings whose next occurrence is
-                    tomorrow. Hidden when empty so it doesn't add visual
-                    noise on quiet days. */}
-                {isBeta && fTomorrow.length > 0 && (
-                  <TimeSection label="Tomorrow" items={fTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
+                {/* 2. Tomorrow — beta only. Practice items actionable
+                    tomorrow, plus the PrayerListCard if the user already
+                    finished today (so they see their next list is queued
+                    for tomorrow). Empty sections stay hidden. */}
+                {isBeta && (
+                  <TimeSection
+                    label="Tomorrow"
+                    items={fTomorrow}
+                    userEmail={userEmail}
+                    userName={userName}
+                    onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                    trailingCards={
+                      filter === null && prayerListDoneToday && pendingPrayerCount > 0 ? (
+                        <PrayerListCard
+                          pendingCount={pendingPrayerCount}
+                          streak={prayerStreak}
+                          keyPrefix="tomorrow"
+                          muted
+                        />
+                      ) : undefined
+                    }
+                  />
                 )}
 
                 {/* 3. This week */}
