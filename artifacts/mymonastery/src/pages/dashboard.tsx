@@ -2084,9 +2084,9 @@ export default function Dashboard() {
     }
 
     // ── Letters placement
-    // Actionable (unread, my turn, overdue) → Today. Otherwise bucket by
-    // most-recent postmark age: <=7 days → This week, else This month.
-    const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    // Only actionable correspondences (unread, my turn, overdue) surface on
+    // the dashboard. Letters I'm waiting on the other side for stay parked
+    // in /letters — showing them here just creates guilt with no action.
     for (const c of (dashCorrespondences ?? [])) {
       const actionable =
         c.unreadCount > 0 ||
@@ -2095,16 +2095,6 @@ export default function Dashboard() {
         c.turnState === "OVERDUE";
       if (actionable) {
         todayItems.push({ kind: "letter", data: c });
-        continue;
-      }
-      const latestMs = (c.recentPostmarks ?? [])
-        .map(p => Date.parse(p.sentAt))
-        .filter(ms => Number.isFinite(ms))
-        .reduce((max, ms) => Math.max(max, ms), 0);
-      if (latestMs && latestMs >= sevenDaysAgoMs) {
-        weekItems.push({ kind: "letter", data: c });
-      } else {
-        monthItems.push({ kind: "letter", data: c });
       }
     }
 

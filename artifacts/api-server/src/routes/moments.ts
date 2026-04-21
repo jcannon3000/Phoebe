@@ -12,6 +12,7 @@ import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import { reconcileGroupPracticeMembers } from "./groups";
+import { sendNewGroupMomentPush } from "../lib/pushSender";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
@@ -154,6 +155,57 @@ function computeWindowOpen(moment: { scheduledTime: string; windowMinutes: numbe
   return isWindowOpen(moment);
 }
 
+// ─── Day-of-month in tz — used by fasting's monthly option ───────────────────
+function getCurrentDayOfMonthInTz(tz: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, day: "numeric" }).formatToParts(new Date());
+    return parseInt(parts.find(p => p.type === "day")?.value ?? "1", 10);
+  } catch { return new Date().getDate(); }
+}
+
+// ─── Is a fasting practice actionable on a date offset from today? ────────────
+// Fasts store their cadence in their own fields (`fastingFrequency`,
+// `fastingDate`, `fastingDay`, `fastingDayOfMonth`) — `frequency`/`dayOfWeek`
+// aren't always mirrored, so the generic path misroutes them. We check the
+// fasting-specific fields directly.
+function isFastingActionableOnOffset(moment: {
+  fastingFrequency?: string | null;
+  fastingDate?: string | null;
+  fastingDay?: string | null;
+  fastingDayOfMonth?: number | null;
+  timezone?: string | null;
+}, dayOffset: number): boolean {
+  const tz = moment.timezone || "UTC";
+  if (moment.fastingFrequency === "specific" && moment.fastingDate) {
+    // Compute the target date-in-tz `dayOffset` days from now.
+    const target = new Date(Date.now() + dayOffset * 24 * 60 * 60 * 1000);
+    const targetStr = (() => {
+      try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(target); }
+      catch { return target.toISOString().slice(0, 10); }
+    })();
+    return targetStr === moment.fastingDate;
+  }
+  if (moment.fastingFrequency === "weekly" && moment.fastingDay) {
+    const todayDow = getCurrentDayOfWeekInTz(tz);
+    const targetDow = (todayDow + dayOffset + 7) % 7;
+    const wanted = DOW_LC[moment.fastingDay.toLowerCase()];
+    return wanted !== undefined && wanted === targetDow;
+  }
+  if (moment.fastingFrequency === "monthly" && moment.fastingDayOfMonth) {
+    // Approximate — check target's day-of-month in tz. For dayOffset 0/1 this
+    // is exact; longer offsets would need calendar math (not needed here).
+    const target = new Date(Date.now() + dayOffset * 24 * 60 * 60 * 1000);
+    const dom = (() => {
+      try {
+        const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, day: "numeric" }).formatToParts(target);
+        return parseInt(parts.find(p => p.type === "day")?.value ?? "0", 10);
+      } catch { return target.getDate(); }
+    })();
+    return dom === moment.fastingDayOfMonth;
+  }
+  return false;
+}
+
 // ─── Is this practice actionable TODAY for dashboard bucketing? ──────────────
 // Separate from windowOpen because: (a) lectio-divina has a weekday-across-the-
 // week rhythm that doesn't map to a single "today" window, and (b) the user's
@@ -166,6 +218,10 @@ function isActionableToday(moment: {
   dayOfWeek?: string | null;
   practiceDays?: string | null;
   timezone?: string | null;
+  fastingFrequency?: string | null;
+  fastingDate?: string | null;
+  fastingDay?: string | null;
+  fastingDayOfMonth?: number | null;
 }): boolean {
   // Lectio Divina: actionable Mon–Sat in the practice's timezone. Sunday is
   // the communal reveal ("this week's journey"), which moves to "this week".
@@ -173,9 +229,65 @@ function isActionableToday(moment: {
     const dow = getCurrentDayOfWeekInTz(moment.timezone || "UTC");
     return dow >= 1 && dow <= 6;
   }
+  // Fasting: day-of-cadence lives in its own fields. Specific-date fasts are
+  // only "today" on their exact date; weekly fasts on their weekday; monthly
+  // on their day-of-month.
+  if (moment.templateType === "fasting") {
+    return isFastingActionableOnOffset(moment, 0);
+  }
   // Everything else: actionable iff it's a practice day in the practice's TZ.
   // Daily practices are always actionable; weekly practices only on their day.
   return isPracticeDayInTz(moment);
+}
+
+// ─── Is this practice actionable TOMORROW? ───────────────────────────────────
+// Parallel to isActionableToday, but looks one day ahead in the practice's TZ.
+// Used by the beta-only "Tomorrow" dashboard section so users see what's on
+// the horizon without waiting for the day to flip. For daily practices this
+// is always true; for weekly practices it's true iff tomorrow's DOW matches.
+function isActionableTomorrow(moment: {
+  templateType: string | null;
+  frequency: string;
+  dayOfWeek?: string | null;
+  practiceDays?: string | null;
+  timezone?: string | null;
+  fastingFrequency?: string | null;
+  fastingDate?: string | null;
+  fastingDay?: string | null;
+  fastingDayOfMonth?: number | null;
+}): boolean {
+  const tz = moment.timezone || "UTC";
+  const todayDow = getCurrentDayOfWeekInTz(tz);
+  const tomorrowDow = (todayDow + 1) % 7;
+
+  if (moment.templateType === "lectio-divina") {
+    // Actionable tomorrow if tomorrow is Mon–Sat; Sunday is the reveal.
+    return tomorrowDow >= 1 && tomorrowDow <= 6;
+  }
+  // Fasting: cadence lives in fasting-specific fields.
+  if (moment.templateType === "fasting") {
+    return isFastingActionableOnOffset(moment, 1);
+  }
+  if (moment.frequency !== "weekly") return true;
+  // Weekly: check practiceDays (RRULE codes) or fallback dayOfWeek against tomorrow's DOW.
+  if (moment.practiceDays) {
+    try {
+      const days: string[] = JSON.parse(moment.practiceDays);
+      if (days.length > 0) {
+        return days.some(d => {
+          const up = d.toUpperCase();
+          if (RRULE_DOW[up] !== undefined) return RRULE_DOW[up] === tomorrowDow;
+          return DOW_LC[d.toLowerCase()] === tomorrowDow;
+        });
+      }
+    } catch { /* ignore */ }
+  }
+  if (moment.dayOfWeek) {
+    const up = moment.dayOfWeek.toUpperCase();
+    if (RRULE_DOW[up] !== undefined) return RRULE_DOW[up] === tomorrowDow;
+    return DOW_LC[moment.dayOfWeek.toLowerCase()] === tomorrowDow;
+  }
+  return true;
 }
 
 // ─── Intercession window: open during a generous band around time-of-day ─────
@@ -546,6 +658,8 @@ router.post("/moments", async (req, res): Promise<void> => {
 
   // ── Group practice validation — only admins can create ──
   let groupMembers: Array<{ email: string; name: string }> | null = null;
+  // Captured for push dispatch after the moment is created.
+  let groupPushContext: { slug: string; memberUserIds: number[] } | null = null;
   if (groupId) {
     const [group] = await db.select().from(groupsTable).where(eq(groupsTable.id, groupId));
     if (!group) { res.status(404).json({ error: "Group not found" }); return; }
@@ -560,6 +674,12 @@ router.post("/moments", async (req, res): Promise<void> => {
     const members = await db.select().from(groupMembersTable)
       .where(and(eq(groupMembersTable.groupId, groupId), sql`${groupMembersTable.joinedAt} IS NOT NULL`));
     groupMembers = members.map(m => ({ email: m.email, name: m.name ?? m.email }));
+    groupPushContext = {
+      slug: group.slug,
+      memberUserIds: members
+        .map(m => m.userId)
+        .filter((id): id is number => id != null && id !== sessionUserId),
+    };
   }
 
   // Enforce the Lectio Divina group limit — depth, not breadth.
@@ -1070,6 +1190,29 @@ router.post("/moments", async (req, res): Promise<void> => {
     console.error("Practice calendar event creation failed (non-fatal):", calErr);
   }
 
+  // Group-scoped push: every joined member of the group except the creator
+  // gets a "new practice" notification. Fire-and-forget; one bad device
+  // token can't break the response.
+  if (groupPushContext && groupPushContext.memberUserIds.length > 0) {
+    (async () => {
+      try {
+        const [creatorRow] = await db.select({ name: usersTable.name })
+          .from(usersTable).where(eq(usersTable.id, sessionUserId));
+        const creatorName = creatorRow?.name ?? "Someone";
+        for (const uid of groupPushContext.memberUserIds) {
+          sendNewGroupMomentPush(uid, {
+            groupSlug: groupPushContext.slug,
+            momentName: moment.name,
+            templateType: moment.templateType ?? "",
+            creatorName,
+          }).catch((err) => console.warn("[moments] group push failed:", err));
+        }
+      } catch (err) {
+        console.warn("[moments] group push dispatch setup failed:", err);
+      }
+    })();
+  }
+
   res.status(201).json({
     moment: { ...moment },
     memberCount: uniqueMembers.length,
@@ -1480,6 +1623,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           todayPostCount: todayPosts.length,
           windowOpen: computeWindowOpen(m),
           isActionableToday: isActionableToday(m),
+          isActionableTomorrow: isActionableTomorrow(m),
           minutesLeft: minutesRemaining(m),
           latestWindow,
           myUserToken: myToken?.userToken ?? null,
@@ -1533,6 +1677,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           todayPostCount: 0,
           windowOpen: false,
           isActionableToday: isActionableToday(m),
+          isActionableTomorrow: isActionableTomorrow(m),
           minutesLeft: 0,
           latestWindow: null,
           myUserToken: myToken?.userToken ?? null,
