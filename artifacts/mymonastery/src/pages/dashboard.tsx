@@ -1193,7 +1193,11 @@ function PrayerListCard({
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${muted ? "" : colors.pulseClass}`}
         style={{
           background: colors.bg,
-          border: `1px solid ${colors.border}`,
+          // Explicit practices-green border — the shared CATEGORY_COLORS
+          // border is "transparent", which reads as borderless on the
+          // dashboard and makes the prayer-list card visually disappear
+          // next to the fasting card (which sets its own border).
+          border: "1px solid rgba(46,107,64,0.45)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >

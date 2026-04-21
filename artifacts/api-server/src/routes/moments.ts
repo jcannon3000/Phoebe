@@ -3761,7 +3761,7 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
       .select({ email: usersTable.email, timezone: usersTable.timezone })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
-    if (!u) { res.json({ streak: 0, lastPrayedDate: null }); return; }
+    if (!u) { res.json({ streak: 0, lastPrayedDate: null, loggedToday: false }); return; }
 
     const tz = u.timezone || "UTC";
     const emailLower = u.email.toLowerCase();
@@ -3776,7 +3776,7 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
     const myTokens = tokens
       .filter(t => (t.email || "").toLowerCase() === emailLower)
       .map(t => t.userToken);
-    if (myTokens.length === 0) { res.json({ streak: 0, lastPrayedDate: null }); return; }
+    if (myTokens.length === 0) { res.json({ streak: 0, lastPrayedDate: null, loggedToday: false }); return; }
 
     // Distinct window dates this user has checked-in on. isCheckin=1 is the
     // signal written by prayer-mode's handleDone — one row per intercession
@@ -3796,11 +3796,12 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
         .map(r => r.windowDate)
         .filter((d): d is string => typeof d === "string" && d !== "seed" && /^\d{4}-\d{2}-\d{2}$/.test(d)),
     );
-    if (dates.size === 0) { res.json({ streak: 0, lastPrayedDate: null }); return; }
+    const today = todayDateInTz(tz);
+    const loggedToday = dates.has(today);
+    if (dates.size === 0) { res.json({ streak: 0, lastPrayedDate: null, loggedToday }); return; }
 
     // Walk consecutive days backward. YYYY-MM-DD arithmetic via UTC midnight
     // is safe because we only ever add/subtract whole days.
-    const today = todayDateInTz(tz);
     const stepBack = (ymd: string): string => {
       const [y, m, d] = ymd.split("-").map(Number);
       const t = Date.UTC(y, m - 1, d) - 86_400_000;
@@ -3814,7 +3815,7 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
     let cursor = today;
     if (!dates.has(cursor)) cursor = stepBack(cursor);
     // If the most recent candidate day still has no post, the streak is 0.
-    if (!dates.has(cursor)) { res.json({ streak: 0, lastPrayedDate: null }); return; }
+    if (!dates.has(cursor)) { res.json({ streak: 0, lastPrayedDate: null, loggedToday }); return; }
 
     let streak = 0;
     const lastPrayedDate = cursor;
@@ -3823,10 +3824,10 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
       cursor = stepBack(cursor);
     }
 
-    res.json({ streak, lastPrayedDate });
+    res.json({ streak, lastPrayedDate, loggedToday });
   } catch (err) {
     console.error("GET /api/prayer-streak error:", err);
-    res.json({ streak: 0, lastPrayedDate: null });
+    res.json({ streak: 0, lastPrayedDate: null, loggedToday: false });
   }
 });
 

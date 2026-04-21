@@ -1,22 +1,30 @@
 /**
- * Daily prayer-list streak.
+ * Daily prayer-list streak — write endpoint.
  *
- * Called once when the user finishes their prayer list. We compute the
- * user's local date (from users.timezone or UTC fallback) and:
- *   - If last_date === today → already logged; no increment, firstToday=false.
- *   - If last_date === yesterday → increment count, firstToday=true.
- *   - Otherwise → reset count to 1, firstToday=true.
+ * The GET lives in moments.ts (registered first, so it wins), and it counts
+ * distinct windowDate rows in moment_posts where isCheckin=1 — that's the
+ * authoritative source of truth because handleDone in prayer-mode.tsx writes
+ * one isCheckin row per intercession the moment the user taps "Done".
  *
- * The route is idempotent: calling it twice on the same day returns the
- * same `streak` number the second time with `firstToday: false`.
+ * This POST fires slightly earlier — when the user lands on the closing
+ * slide, before handleDone. It exists for the celebration flow only:
+ *   - If today is already in the check-in set, firstToday=false; the client
+ *     doesn't pop the celebration.
+ *   - If today is NOT yet in the set, firstToday=true and streak = existing
+ *     streak + 1 (because handleDone is about to write today's rows, which
+ *     will land in /api/moments + /api/prayer-streak on the next query).
  *
- * The client uses `firstToday` to decide whether to show the Duolingo-
- * style celebration — fire once per day, never twice.
+ * We intentionally do NOT write to users.prayer_streak_count /
+ * users.prayer_streak_last_date here. Those columns are vestigial — the
+ * overshadowed GET below read them and returned them as `loggedToday`, but
+ * since Express registers moments.ts first the GET is unreachable. Leaving
+ * those columns alone also means a failed POST doesn't corrupt anything: on
+ * the next render the moments-based GET computes the truth from posts.
  */
 
-import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { Router, type IRouter, type Request, type Response } from "express";
+import { eq, and, inArray } from "drizzle-orm";
+import { db, usersTable, momentUserTokensTable, momentPostsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -30,97 +38,74 @@ function todayInTz(tz: string): string {
   }
 }
 
-// Given a YYYY-MM-DD string, return the previous day's YYYY-MM-DD. Uses
-// UTC arithmetic so it's timezone-neutral for pure date math.
-function prevDay(ymd: string): string {
+function stepBack(ymd: string): string {
   const [y, m, d] = ymd.split("-").map(Number);
-  const date = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
-  date.setUTCDate(date.getUTCDate() - 1);
-  return date.toISOString().slice(0, 10);
+  const t = Date.UTC(y!, (m ?? 1) - 1, d ?? 1) - 86_400_000;
+  const dt = new Date(t);
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
 }
 
-router.post("/prayer-streak/log", async (req, res): Promise<void> => {
+router.post("/prayer-streak/log", async (req: Request, res: Response): Promise<void> => {
   const sessionUser = req.user as { id: number } | undefined;
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    const [row] = await db
-      .select({
-        timezone: usersTable.timezone,
-        prayerStreakCount: usersTable.prayerStreakCount,
-        prayerStreakLastDate: usersTable.prayerStreakLastDate,
-      })
+    const [u] = await db
+      .select({ email: usersTable.email, timezone: usersTable.timezone })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUser.id));
-    if (!row) { res.status(404).json({ error: "User not found" }); return; }
+    if (!u) { res.status(404).json({ error: "User not found" }); return; }
 
-    const tz = row.timezone || "UTC";
+    const tz = u.timezone || "UTC";
     const today = todayInTz(tz);
-    const last = row.prayerStreakLastDate;
-    const current = row.prayerStreakCount ?? 0;
+    const emailLower = u.email.toLowerCase();
 
-    // Already logged today → idempotent read.
-    if (last === today) {
-      res.json({ streak: current, firstToday: false });
+    // Collect every userToken that belongs to this user across all moments.
+    const tokens = await db
+      .select({ userToken: momentUserTokensTable.userToken, email: momentUserTokensTable.email })
+      .from(momentUserTokensTable);
+    const myTokens = tokens
+      .filter(t => (t.email || "").toLowerCase() === emailLower)
+      .map(t => t.userToken);
+
+    // No tokens = first moment ever = streak 1 after handleDone fires.
+    if (myTokens.length === 0) {
+      res.json({ streak: 1, firstToday: true });
       return;
     }
 
-    // Streak continues if last was yesterday (in TZ-local terms).
-    const yesterday = prevDay(today);
-    const newCount = last === yesterday ? current + 1 : 1;
+    const rows = await db
+      .select({ windowDate: momentPostsTable.windowDate })
+      .from(momentPostsTable)
+      .where(and(
+        inArray(momentPostsTable.userToken, myTokens),
+        eq(momentPostsTable.isCheckin, 1),
+      ));
+    const dates = new Set(
+      rows
+        .map(r => r.windowDate)
+        .filter((d): d is string => typeof d === "string" && d !== "seed" && /^\d{4}-\d{2}-\d{2}$/.test(d)),
+    );
 
-    await db
-      .update(usersTable)
-      .set({
-        prayerStreakCount: newCount,
-        prayerStreakLastDate: today,
-      })
-      .where(eq(usersTable.id, sessionUser.id));
+    const alreadyToday = dates.has(today);
+    // Count consecutive days ending at today (if already logged) or
+    // yesterday (if today not yet logged — we're about to log it via
+    // handleDone). Either way the returned `streak` reflects the number
+    // including today.
+    let cursor = alreadyToday ? today : stepBack(today);
+    let existingStreak = 0;
+    while (dates.has(cursor)) {
+      existingStreak++;
+      cursor = stepBack(cursor);
+    }
 
-    res.json({ streak: newCount, firstToday: true });
+    const streak = alreadyToday ? existingStreak : existingStreak + 1;
+    res.json({ streak, firstToday: !alreadyToday });
   } catch (err) {
     console.error("[prayer-streak:log] failed:", err);
-    res.status(500).json({ error: "internal_error" });
-  }
-});
-
-// Read-only variant for the dashboard or account page. The dashboard
-// fires this query on every home-screen render, so the handler is wrapped
-// in try/catch — an unexpected DB hiccup shouldn't blank the whole page.
-router.get("/prayer-streak", async (req, res): Promise<void> => {
-  const sessionUser = req.user as { id: number } | undefined;
-  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
-
-  try {
-    const [row] = await db
-      .select({
-        timezone: usersTable.timezone,
-        prayerStreakCount: usersTable.prayerStreakCount,
-        prayerStreakLastDate: usersTable.prayerStreakLastDate,
-      })
-      .from(usersTable)
-      .where(eq(usersTable.id, sessionUser.id));
-    if (!row) { res.status(404).json({ error: "User not found" }); return; }
-
-    const tz = row.timezone || "UTC";
-    const today = todayInTz(tz);
-    const last = row.prayerStreakLastDate;
-    const current = row.prayerStreakCount ?? 0;
-
-    // If the user has a streak but missed yesterday, surface streak=0
-    // (the next completion resets anyway). This keeps the dashboard
-    // honest: no ghost "7-day streak" badge if they skipped last night.
-    const stillActive = last === today || last === prevDay(today);
-    res.json({
-      streak: stillActive ? current : 0,
-      loggedToday: last === today,
-      // Both names kept so older layout.tsx callers keep working alongside
-      // any newer callers that prefer the snake-cased field.
-      lastDate: last ?? null,
-      lastPrayedDate: last ?? null,
-    });
-  } catch (err) {
-    console.error("[prayer-streak:get] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });
