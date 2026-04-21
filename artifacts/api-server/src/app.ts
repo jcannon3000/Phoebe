@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
@@ -204,5 +204,20 @@ if (fs.existsSync(frontendDist)) {
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
+
+// ─── JSON error handler ────────────────────────────────────────────────────
+// Last middleware in the stack: catches any synchronous throw from a
+// handler (or anything passed to next(err)) and returns a JSON 500
+// instead of Express's default HTML error page. Paired with the
+// process-level unhandledRejection guard in index.ts — together they
+// make sure a surprise error on launch day returns a clean response
+// the client can render, rather than either crashing the process or
+// showing a "Cannot GET /api/…" HTML dump. The 4-arg signature is how
+// Express recognises error middleware.
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction): void => {
+  logger.error({ err, path: req.path, method: req.method }, "[api] unhandled error");
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Something went wrong. Please try again." });
+});
 
 export default app;
