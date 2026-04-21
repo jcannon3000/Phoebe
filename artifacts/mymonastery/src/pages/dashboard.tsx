@@ -1160,6 +1160,65 @@ function ServiceCard({
   );
 }
 
+// ─── Prayer-list fallback card ──────────────────────────────────────────────
+// Shown in the Today section when nothing else is pending there but the user
+// still has prayers queued in their slideshow. Gives them a clear next step
+// ("pray for N people") instead of an empty home screen, and surfaces their
+// streak in the top-right corner as gentle reinforcement of the habit.
+
+function PrayerListCard({
+  pendingCount,
+  streak,
+  keyPrefix,
+}: {
+  pendingCount: number;
+  streak: number;
+  keyPrefix: string;
+}) {
+  const colors = CATEGORY_COLORS.practices;
+  const subtitle = pendingCount === 1
+    ? "1 prayer waiting for you"
+    : `${pendingCount} prayers waiting for you`;
+
+  return (
+    <Link key={`${keyPrefix}-prayer-list`} href="/prayer-list" className="block">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${colors.pulseClass}`}
+        style={{
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
+        <div className="flex-1 px-4 pt-3 pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+              🕯️ Today's prayer list
+            </span>
+            {streak > 0 && (
+              <span
+                className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+                style={{ color: "#E8A94C", letterSpacing: "0.08em" }}
+                aria-label={`${streak}-day prayer streak`}
+              >
+                🔥 {streak}-day streak
+              </span>
+            )}
+          </div>
+          <div className="mt-1.5">
+            <p className="text-sm" style={{ color: "#8FAF96", lineHeight: "20px", margin: 0 }}>
+              {subtitle}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
 // ─── Prayer-feed today card ─────────────────────────────────────────────────
 // Dashboard card for a prayer feed I'm subscribed to. Mirrors ServiceCard's
 // left-bar + content layout, using the `feeds` category color. Taps through
@@ -1923,6 +1982,41 @@ export default function Dashboard() {
   });
   const subscribedFeeds = subscribedFeedsData?.subscriptions ?? [];
 
+  // Prayer-list streak (consecutive days finishing a full slideshow) — used
+  // by the Today-empty fallback card to reward the habit.
+  const { data: prayerStreakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
+    queryKey: ["/api/prayer-streak"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const prayerStreak = prayerStreakData?.streak ?? 0;
+
+  // Pending-prayer count — how many prayers are in the user's slideshow
+  // right now. Same computation the invite-popup uses, but memoized so the
+  // dashboard can show it on a fallback card regardless of whether the
+  // popup fires.
+  const pendingPrayerCount = useMemo(() => {
+    const moments = momentsData?.moments ?? [];
+    const circleIntentions = dashCircleIntentions?.intentions ?? [];
+    const intentionCountByGroup = new Map<number, number>();
+    for (const i of circleIntentions) {
+      intentionCountByGroup.set(i.groupId, (intentionCountByGroup.get(i.groupId) ?? 0) + 1);
+    }
+    let activeIntercessions = 0;
+    for (const m of moments) {
+      if (m.templateType !== "intercession") continue;
+      const gid = m.group?.id;
+      const intentions = gid ? (intentionCountByGroup.get(gid) ?? 0) : 0;
+      activeIntercessions += intentions > 0 ? intentions : 1;
+    }
+    const othersRequests = (dashPrayerRequests ?? []).filter(
+      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
+    ).length;
+    const activePrayersFor = (dashPrayersFor ?? []).filter(p => !p.expired).length;
+    return activeIntercessions + othersRequests + activePrayersFor;
+  }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor]);
+
   // Detect new unread letters. Runs once per session. The localStorage key
   // stores the *set* of correspondence ids that were already shown unread
   // on last dismiss — a new unread correspondence id (or a previously-read
@@ -2468,6 +2562,25 @@ export default function Dashboard() {
               >
                 {/* 1. Today */}
                 <TimeSection label="Today" items={fToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
+
+                {/* Today-empty fallback: if everything actionable for today
+                    is already done but there are still prayers queued in
+                    the slideshow, surface a single card that routes to
+                    /prayer-list. Streak lives in the top-right. We only
+                    show this on the unfiltered view — the per-category
+                    filters have their own empty states. */}
+                {filter === null && fToday.length === 0 && pendingPrayerCount > 0 && (
+                  <div className="mb-5">
+                    <SectionHeader label="Today" />
+                    <div className="space-y-3">
+                      <PrayerListCard
+                        pendingCount={pendingPrayerCount}
+                        streak={prayerStreak}
+                        keyPrefix="today"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* 2. Tomorrow — beta only. Shows practices actionable
                     tomorrow and any gatherings whose next occurrence is
