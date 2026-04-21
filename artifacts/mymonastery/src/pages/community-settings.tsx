@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ExternalLink, Users, Plus, X } from "lucide-react";
-import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -71,8 +70,12 @@ export default function CommunitySettingsPage() {
   const intentions: Intention[] = groupData?.intentions ?? [];
 
   const group = groupData?.group;
-  const [communityAdminView] = useCommunityAdminToggle();
-  const isAdmin = groupData?.myRole === "admin" && communityAdminView;
+  // Intentionally not gated on useCommunityAdminToggle: the toggle is a UX
+  // choice to preview the member experience on the dashboard / nav, not an
+  // access-control flag. An admin who explicitly navigates to the settings
+  // URL should always see the settings page — otherwise a fresh login
+  // (toggle defaults off) silently redirects them back to the group page.
+  const isAdmin = groupData?.myRole === "admin";
 
   // Redirect non-admins
   useEffect(() => {

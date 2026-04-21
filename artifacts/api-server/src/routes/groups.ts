@@ -660,12 +660,19 @@ router.post(
     message: "Too many join attempts for this community. Please try again shortly.",
   }),
   async (req, res): Promise<void> => {
+  // Launch-day join wave routinely surfaces edge cases (expired sessions,
+  // duplicate membership races, unreachable SMTP for notify-admins). Wrap
+  // the whole handler body so one unexpected throw returns a clean 500
+  // instead of a 200-then-crash, and we get a single log line with the
+  // slug + acting user for forensics. Individual branches still
+  // short-circuit with their own status codes above the catch.
+  const slug = String(req.params.slug ?? "");
+  try {
   const token = (req.query.token as string) || req.body?.token;
   if (!token) { res.status(400).json({ error: "Token required" }); return; }
 
   // Express's typing narrows less precisely once middleware is composed, so
   // we read :slug as a string explicitly (the route literal guarantees it).
-  const slug = String(req.params.slug ?? "");
   const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, slug));
   if (!group) { res.status(404).json({ error: "Group not found" }); return; }
 
@@ -748,6 +755,13 @@ router.post(
   }).catch(err => console.error("[groups/join] notify admins failed:", err));
 
   res.json({ ok: true, group });
+  } catch (err) {
+    const userId = getUser(req)?.id ?? null;
+    console.error("[groups/join] unhandled error:", { slug, userId, err });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "We couldn't complete the join. Please try again." });
+    }
+  }
 });
 
 
