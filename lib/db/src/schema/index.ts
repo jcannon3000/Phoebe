@@ -10,6 +10,7 @@ export * from "./moment_user_tokens";
 export * from "./moment_posts";
 export * from "./moment_windows";
 export * from "./prayer_requests";
+export * from "./prayer_request_amens";
 export * from "./ritual_time_suggestions";
 export * from "./user_connections_cache";
 export * from "./morningPrayer";

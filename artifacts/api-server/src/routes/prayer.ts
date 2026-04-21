@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, fellowsTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, fellowsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 
@@ -98,6 +98,12 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     )
     .orderBy(desc(prayerRequestsTable.createdAt));
 
+  // Viewer's timezone — used to scope "today" for their own amen counts so
+  // the number in the UI matches the user's local day, not UTC.
+  const [viewer] = await db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+  const viewerTz = viewer?.timezone || "UTC";
+  const viewerTodayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(new Date());
+
   // Enrich with owner name, words, and per-user flags
   const enriched = await Promise.all(requests.map(async (r) => {
     const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, r.ownerId));
@@ -105,10 +111,30 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       authorName: prayerWordsTable.authorName,
       content: prayerWordsTable.content,
       authorUserId: prayerWordsTable.authorUserId,
+      createdAt: prayerWordsTable.createdAt,
     }).from(prayerWordsTable).where(eq(prayerWordsTable.requestId, r.id));
 
     const myWordRow = words.find(w => w.authorUserId === sessionUserId);
     const isOwnRequest = r.ownerId === sessionUserId;
+
+    // Amen counts — only surfaced to the owner of the request. We bucket
+    // "today" in the viewer's timezone so the number lines up with their
+    // lived day. For non-owners we return null to keep the wire small and
+    // avoid leaking a signal we don't want to expose.
+    let amenCountToday: number | null = null;
+    let amenCountTotal: number | null = null;
+    if (isOwnRequest) {
+      const amens = await db
+        .select({ prayedAt: prayerRequestAmensTable.prayedAt })
+        .from(prayerRequestAmensTable)
+        .where(eq(prayerRequestAmensTable.requestId, r.id));
+      amenCountTotal = amens.length;
+      amenCountToday = amens.reduce((acc, row) => {
+        if (!row.prayedAt) return acc;
+        const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
+        return ymd === viewerTodayYmd ? acc + 1 : acc;
+      }, 0);
+    }
 
     // Freshness flags based on expiresAt (which we no longer hard-filter on)
     let nearingExpiry = false;
@@ -129,10 +155,18 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       ownerName: r.isAnonymous ? null : (owner?.name ?? null),
       isOwnRequest,
       isFellow: fellowIds.has(r.ownerId),
-      words: words.map(w => ({ authorName: w.authorName, content: w.content })),
+      words: words.map(w => ({
+        authorName: w.authorName,
+        content: w.content,
+        // ISO timestamp — the dashboard uses this to detect new words on the
+        // viewer's own requests and surface a one-at-a-time popup.
+        createdAt: w.createdAt ? w.createdAt.toISOString() : null,
+      })),
       myWord: myWordRow?.content ?? null,
       nearingExpiry,
       needsRenewal,
+      amenCountToday,
+      amenCountTotal,
     };
   }));
 
@@ -303,6 +337,63 @@ router.delete("/prayer-requests/:id", async (req, res): Promise<void> => {
 
   await db.delete(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
   res.sendStatus(204);
+});
+
+// POST /api/prayer-requests/:id/amen — log an "Amen" tap. Unbounded: every
+// tap is its own row so we can tell "today" vs "all time" apart. Recording
+// the owner's own amen on their own request feels self-congratulatory, so
+// owners are a no-op. Any member of the app may record amens on anyone
+// else's request (the list endpoint already filters what they see).
+router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  if (request.closedAt) { res.status(400).json({ error: "Request is closed" }); return; }
+  if (request.ownerId === sessionUserId) { res.json({ ok: true, skipped: "own request" }); return; }
+
+  await db.insert(prayerRequestAmensTable).values({
+    requestId: id,
+    userId: sessionUserId,
+  });
+  res.json({ ok: true });
+});
+
+// GET /api/prayer-requests/:id/amens — owner-only count of how many amens
+// their request has received, split by today (in the owner's timezone) and
+// all-time. Used by the popover in the prayer list when the owner taps the
+// 🙏🏽 badge on their own row. Non-owners get 403 to preserve the "no
+// count leaks" invariant.
+router.get("/prayer-requests/:id/amens", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  if (request.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const [owner] = await db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+  const tz = owner?.timezone || "UTC";
+  const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+
+  const amens = await db
+    .select({ prayedAt: prayerRequestAmensTable.prayedAt })
+    .from(prayerRequestAmensTable)
+    .where(eq(prayerRequestAmensTable.requestId, id));
+
+  const allTime = amens.length;
+  const today = amens.reduce((acc, row) => {
+    if (!row.prayedAt) return acc;
+    const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(row.prayedAt);
+    return ymd === todayYmd ? acc + 1 : acc;
+  }, 0);
+
+  res.json({ today, allTime });
 });
 
 export default router;

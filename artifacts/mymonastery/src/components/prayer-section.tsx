@@ -18,9 +18,14 @@ interface PrayerRequest {
   nearingExpiry: boolean;
   needsRenewal: boolean;
   isFellow?: boolean;
-  words: Array<{ authorName: string; content: string }>;
+  words: Array<{ authorName: string; content: string; createdAt?: string | null }>;
   myWord: string | null;
   createdAt: string;
+  // Owner-only: how many times this request has been amened. Null for
+  // requests that aren't the viewer's own — we don't expose other people's
+  // counts to keep praying-for-someone anonymous.
+  amenCountToday?: number | null;
+  amenCountTotal?: number | null;
 }
 
 export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
@@ -40,6 +45,9 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [wordInputs, setWordInputs] = useState<Record<number, string>>({});
   const [showAll, setShowAll] = useState(false);
+  // Which own-request's "🙏🏽 N" badge is showing its today/all-time popover.
+  // Null = none. One at a time, anchored below the badge.
+  const [amenPopoverId, setAmenPopoverId] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -252,6 +260,69 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                               <span className="flex items-center gap-1" style={{ color: "rgba(143,175,150,0.35)" }}>
                                 <MessageCircle size={14} />
                               </span>
+                            )}
+
+                            {/* Amen count — own requests only. Shows a
+                                small 🙏🏽 N pill when anyone has prayed it.
+                                Click opens a popover with today / all-time. */}
+                            {request.isOwnRequest && (request.amenCountTotal ?? 0) > 0 && (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    setAmenPopoverId(prev => (prev === request.id ? null : request.id));
+                                  }}
+                                  className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full transition-opacity hover:opacity-80"
+                                  style={{
+                                    background: "rgba(46,107,64,0.15)",
+                                    color: "#A8C5A0",
+                                    border: "1px solid rgba(46,107,64,0.3)",
+                                  }}
+                                  aria-label="See prayer count"
+                                >
+                                  <span>🙏🏽</span>
+                                  <span className="tabular-nums">{request.amenCountTotal ?? 0}</span>
+                                </button>
+                                {amenPopoverId === request.id && (
+                                  <>
+                                    {/* Click-out catch — click anywhere else
+                                        dismisses. Sits behind the popover in
+                                        stacking order. */}
+                                    <div
+                                      className="fixed inset-0 z-40"
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        setAmenPopoverId(null);
+                                      }}
+                                    />
+                                    <div
+                                      className="absolute right-0 z-50 mt-2 rounded-xl px-3 py-2 text-[11px] whitespace-nowrap"
+                                      style={{
+                                        top: "100%",
+                                        background: "#0F2818",
+                                        border: "1px solid rgba(46,107,64,0.4)",
+                                        boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                                        color: "#F0EDE6",
+                                      }}
+                                      onClick={e => e.stopPropagation()}
+                                    >
+                                      <div className="flex items-center gap-1.5">
+                                        <span style={{ color: "#A8C5A0" }}>Today</span>
+                                        <span className="tabular-nums font-semibold">
+                                          {request.amenCountToday ?? 0}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span style={{ color: "rgba(168,197,160,0.7)" }}>All time</span>
+                                        <span className="tabular-nums font-semibold">
+                                          {request.amenCountTotal ?? 0}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             )}
 
                             {/* Days remaining — own requests */}

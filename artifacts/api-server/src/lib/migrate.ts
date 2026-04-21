@@ -812,6 +812,22 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS device_tokens_user_platform_token_idx ON device_tokens (user_id, platform, token)`);
 
+    // ── Prayer-request Amens ───────────────────────────────────────────────
+    // One row per "Amen" tap on someone else's prayer request. The owner sees
+    // an aggregate count (today / all-time) of how many times their request
+    // has been prayed over. Non-owners never see the number — praying for
+    // someone stays anonymous to the wider community, only visible to the
+    // person being carried. Cascades on request delete and on user delete.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_request_amens (
+        id SERIAL PRIMARY KEY,
+        request_id INTEGER NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        prayed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_id ON prayer_request_amens (request_id)`);
+
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing
     // Google-only / email-only users don't trip a uniqueness check on NULL.

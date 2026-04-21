@@ -3582,4 +3582,93 @@ router.post("/moments/:id/sync-calendar-title", async (req, res): Promise<void> 
   res.json({ updated });
 });
 
+// ─── Prayer-list streak ─────────────────────────────────────────────────────
+// How many consecutive days the viewer has prayed through their list. The
+// signal is any `moment_posts` row keyed to one of the user's tokens — this
+// is what the "Amen" handler in prayer-mode writes (isCheckin=true) when
+// someone finishes the slideshow, and also what direct posts on a practice
+// record. Distinct `windowDate` values per user define prayed-days.
+//
+// Rules:
+//   - Walk backward from today in the user's timezone.
+//   - If they haven't prayed today yet, start counting from yesterday so the
+//     streak doesn't vanish between midnight and their first prayer — common
+//     people pray in the evening, and ticking over at midnight would feel
+//     punishing.
+//   - Stop on the first gap. No grace beyond the single "yet-to-pray-today"
+//     allowance.
+//
+// Response is shallow on purpose (just `streak` + `lastPrayedDate`) — the
+// dashboard pill only needs a number and we don't want to leak post history.
+router.get("/prayer-streak", async (req, res): Promise<void> => {
+  try {
+    const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+    if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const [u] = await db
+      .select({ email: usersTable.email, timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    if (!u) { res.json({ streak: 0, lastPrayedDate: null }); return; }
+
+    const tz = u.timezone || "UTC";
+    const emailLower = u.email.toLowerCase();
+
+    // All tokens tied to this user's email across every moment they're in.
+    // We lowercase in JS rather than relying on column case — the email
+    // column is stored case-insensitively in practice but not all historical
+    // rows agree. Safer to do the match in app code.
+    const tokens = await db
+      .select({ userToken: momentUserTokensTable.userToken, email: momentUserTokensTable.email })
+      .from(momentUserTokensTable);
+    const myTokens = tokens
+      .filter(t => (t.email || "").toLowerCase() === emailLower)
+      .map(t => t.userToken);
+    if (myTokens.length === 0) { res.json({ streak: 0, lastPrayedDate: null }); return; }
+
+    // Distinct window dates this user has posted on. "seed" is a bookkeeping
+    // row written on moment creation — never counts as a day of prayer.
+    const rows = await db
+      .select({ windowDate: momentPostsTable.windowDate })
+      .from(momentPostsTable)
+      .where(inArray(momentPostsTable.userToken, myTokens));
+    const dates = new Set(
+      rows
+        .map(r => r.windowDate)
+        .filter((d): d is string => typeof d === "string" && d !== "seed" && /^\d{4}-\d{2}-\d{2}$/.test(d)),
+    );
+    if (dates.size === 0) { res.json({ streak: 0, lastPrayedDate: null }); return; }
+
+    // Walk consecutive days backward. YYYY-MM-DD arithmetic via UTC midnight
+    // is safe because we only ever add/subtract whole days.
+    const today = todayDateInTz(tz);
+    const stepBack = (ymd: string): string => {
+      const [y, m, d] = ymd.split("-").map(Number);
+      const t = Date.UTC(y, m - 1, d) - 86_400_000;
+      const dt = new Date(t);
+      const yy = dt.getUTCFullYear();
+      const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(dt.getUTCDate()).padStart(2, "0");
+      return `${yy}-${mm}-${dd}`;
+    };
+
+    let cursor = today;
+    if (!dates.has(cursor)) cursor = stepBack(cursor);
+    // If the most recent candidate day still has no post, the streak is 0.
+    if (!dates.has(cursor)) { res.json({ streak: 0, lastPrayedDate: null }); return; }
+
+    let streak = 0;
+    const lastPrayedDate = cursor;
+    while (dates.has(cursor)) {
+      streak++;
+      cursor = stepBack(cursor);
+    }
+
+    res.json({ streak, lastPrayedDate });
+  } catch (err) {
+    console.error("GET /api/prayer-streak error:", err);
+    res.json({ streak: 0, lastPrayedDate: null });
+  }
+});
+
 export default router;

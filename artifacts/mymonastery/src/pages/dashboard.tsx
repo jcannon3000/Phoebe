@@ -787,6 +787,17 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         bgColor: "rgba(70,130,190,0.12)",
       } : {})}
     >
+      {/* Group eyebrow — when a practice is attached to a circle, call out
+          the community by name. Stays visible even while the subtitle flap
+          is cycling through other lines, so the provenance is never hidden. */}
+      {m.group?.name && (
+        <p
+          className="text-[10px] uppercase tracking-[0.14em] mb-1 truncate"
+          style={{ color: "rgba(111,175,133,0.75)" }}
+        >
+          {m.group.emoji ? `${m.group.emoji} ` : "🏘️ "}From {m.group.name}
+        </p>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>
@@ -1312,6 +1323,18 @@ export default function Dashboard() {
   }, []);
 
   const queryClient = useQueryClient();
+
+  // Consecutive-days-prayed streak, surfaced as a tiny badge on the Prayer
+  // List pill. The server walks distinct `moment_posts.windowDate` values
+  // across every token tied to this user and allows one "grace" day (today,
+  // if they haven't prayed yet) so the streak doesn't vanish at midnight.
+  const { data: streakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
+    queryKey: ["/api/prayer-streak"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
+    enabled: !!user,
+  });
+  const prayerStreak = streakData?.streak ?? 0;
+
   const { isBeta } = useBetaStatus();
   const [betaWelcomeVisible, setBetaWelcomeVisible] = useState(false);
   const betaWelcomeShownRef = useRef(false);
@@ -1356,6 +1379,22 @@ export default function Dashboard() {
     setLocation("/prayer-mode");
   }, [dismissPrayerInvite, setLocation]);
 
+  // ── "Someone wrote a prayer word for you" popup ────────────────────────
+  // Queued after the prayer-invite and beta-welcome popups so the user only
+  // ever sees one modal at a time. We compare the max word.createdAt across
+  // the viewer's own requests against a localStorage timestamp — anything
+  // newer triggers a single summary popup. Dismiss bumps the timestamp to
+  // the newest word surfaced, so subsequent visits are quiet until another
+  // word arrives.
+  const [newWordsPopup, setNewWordsPopup] = useState<{
+    count: number;
+    latestAuthor: string;
+    latestContent: string;
+    latestRequestBody: string;
+    latestCreatedAt: string;
+  } | null>(null);
+  const newWordsHandledThisSessionRef = useRef(false);
+
   useEffect(() => {
     const reset = () => setFilter(null);
     const setPracticesFilter = () => setFilter("practices");
@@ -1394,7 +1433,16 @@ export default function Dashboard() {
   // Declared here, AFTER momentsData, because the effect's dep array reads
   // momentsData and would otherwise blow up on first render with a
   // "Cannot access uninitialized variable" (TDZ).
-  type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
+  type DashPrayerWord = { authorName: string; content: string; createdAt?: string | null };
+  type DashPrayerRequest = {
+    id: number;
+    body?: string;
+    isAnswered: boolean;
+    isOwnRequest?: boolean;
+    closedAt?: string | null;
+    // Only populated on own requests — used to detect new words.
+    words?: DashPrayerWord[];
+  };
   type DashPrayerFor = { id: number; expired: boolean };
 
   const { data: dashPrayerRequests, isLoading: dashPrayerRequestsLoading } = useQuery<DashPrayerRequest[]>({
@@ -1459,6 +1507,74 @@ export default function Dashboard() {
     // If total === 0 we DON'T stamp — tomorrow's visit should still get a
     // chance if the user has prayers queued by then.
   }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, queryClient]);
+
+  // Detect new prayer words on the viewer's own requests. Runs once per
+  // session. Intentionally *does not* race with the prayer-invite popup —
+  // render-side gating ensures only one modal shows at a time, and the
+  // prayer-invite takes precedence.
+  useEffect(() => {
+    if (!user) return;
+    if (newWordsHandledThisSessionRef.current) return;
+    if (dashPrayerRequestsLoading) return;
+
+    const lastSeenRaw = (() => {
+      try { return localStorage.getItem("phoebe:prayer-words-seen-at"); }
+      catch { return null; }
+    })();
+    const lastSeenMs = lastSeenRaw ? Date.parse(lastSeenRaw) : 0;
+
+    const ownRequests = (dashPrayerRequests ?? []).filter(
+      r => r.isOwnRequest && !r.closedAt && !r.isAnswered,
+    );
+
+    // Flatten all words on the viewer's own requests, keeping track of the
+    // request they belong to so we can display the request body in the popup.
+    type SeenWord = { authorName: string; content: string; createdAt: string; requestBody: string };
+    const newWords: SeenWord[] = [];
+    for (const r of ownRequests) {
+      for (const w of r.words ?? []) {
+        if (!w.createdAt) continue;
+        const ms = Date.parse(w.createdAt);
+        if (!Number.isFinite(ms)) continue;
+        if (ms > lastSeenMs) {
+          newWords.push({
+            authorName: w.authorName,
+            content: w.content,
+            createdAt: w.createdAt,
+            requestBody: r.body ?? "",
+          });
+        }
+      }
+    }
+
+    if (newWords.length === 0) {
+      newWordsHandledThisSessionRef.current = true;
+      return;
+    }
+
+    // Show a single popup; pick the most recent word as the visible quote.
+    newWords.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    const latest = newWords[0];
+    newWordsHandledThisSessionRef.current = true;
+    setNewWordsPopup({
+      count: newWords.length,
+      latestAuthor: latest.authorName,
+      latestContent: latest.content,
+      latestRequestBody: latest.requestBody,
+      latestCreatedAt: latest.createdAt,
+    });
+  }, [user, dashPrayerRequests, dashPrayerRequestsLoading]);
+
+  const dismissNewWordsPopup = useCallback(() => {
+    setNewWordsPopup(prev => {
+      if (prev) {
+        try {
+          localStorage.setItem("phoebe:prayer-words-seen-at", prev.latestCreatedAt);
+        } catch { /* ignore quota / private-mode */ }
+      }
+      return null;
+    });
+  }, []);
 
   const isLoading = momentsLoading;
 
@@ -1606,6 +1722,91 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      {/* "Someone wrote a prayer word for you" — queued after the daily
+          prayer-invite and the beta-welcome so only one modal ever shows
+          at a time. The gate on prayerInviteVisible/betaWelcomeVisible
+          is what keeps us last in the queue: while either is open, this
+          one waits. */}
+      <AnimatePresence>
+        {newWordsPopup && !prayerInviteVisible && !betaWelcomeVisible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+            onClick={dismissNewWordsPopup}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.25 }}
+              className="rounded-2xl px-8 py-8 text-center max-w-sm w-full"
+              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <p className="text-4xl mb-4">🌿</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+                Your community
+              </p>
+              <h2
+                className="text-xl font-bold mb-4"
+                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                {newWordsPopup.count === 1
+                  ? `${newWordsPopup.latestAuthor} wrote a prayer for you`
+                  : `${newWordsPopup.count} people wrote prayers for you`}
+              </h2>
+
+              {newWordsPopup.latestRequestBody && (
+                <p className="text-[11px] mb-3" style={{ color: "rgba(143,175,150,0.6)" }}>
+                  On: <span style={{ color: "#8FAF96" }}>{newWordsPopup.latestRequestBody}</span>
+                </p>
+              )}
+
+              <div
+                className="rounded-xl px-4 py-3 mb-5 text-left"
+                style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.2)" }}
+              >
+                <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(168,197,160,0.6)" }}>
+                  {newWordsPopup.latestAuthor}
+                </p>
+                <p
+                  className="text-sm italic leading-relaxed"
+                  style={{
+                    color: "#F0EDE6",
+                    fontFamily: "Playfair Display, Georgia, serif",
+                  }}
+                >
+                  {newWordsPopup.latestContent}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <button
+                  onClick={() => {
+                    dismissNewWordsPopup();
+                    setLocation("/prayer-list");
+                  }}
+                  className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                >
+                  See all →
+                </button>
+                <button
+                  onClick={dismissNewWordsPopup}
+                  className="px-6 py-2.5 text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ color: "rgba(143,175,150,0.7)" }}
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Beta welcome popup — one-time */}
       <AnimatePresence>
         {betaWelcomeVisible && (
@@ -1666,11 +1867,30 @@ export default function Dashboard() {
               fg: string;
               bg: string;
               border: string;
+              streak?: number;
             };
             const pillStyle = (p: Pill) => ({
               background: p.bg, color: p.fg, border: `1px solid ${p.border}`,
             });
             const pillClass = "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80";
+            const renderStreak = (n?: number) => (n && n > 0 ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 2,
+                  marginLeft: 2,
+                  paddingLeft: 6,
+                  paddingRight: 6,
+                  fontSize: "0.8em",
+                  lineHeight: 1,
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.08)",
+                }}
+              >
+                🔥 {n}
+              </span>
+            ) : null);
             const renderPill = (p: Pill, key: string | number) => {
               if (p.filterKey) {
                 const fk = p.filterKey;
@@ -1681,6 +1901,7 @@ export default function Dashboard() {
                     style={pillStyle(p)}
                   >
                     {p.label}
+                    {renderStreak(p.streak)}
                     {filter === fk && <span style={{ opacity: 0.7, fontSize: "0.85em", lineHeight: 1 }}>×</span>}
                   </button>
                 );
@@ -1688,13 +1909,14 @@ export default function Dashboard() {
               return (
                 <Link key={key} href={p.href!} className={pillClass} style={pillStyle(p)}>
                   {p.label}
+                  {renderStreak(p.streak)}
                 </Link>
               );
             };
 
             const PILLS: Pill[] = [
               { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
-              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
+              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)", streak: prayerStreak },
               { label: "📖 BCP Prayers",  href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },

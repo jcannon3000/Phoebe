@@ -50,6 +50,9 @@ interface PrayerSlide {
   attribution: string;
   fullText?: string | null;
   intention?: string | null;
+  // request specific — lets us record an amen against the originating
+  // prayer request when the viewer taps "Amen" to advance.
+  requestId?: number;
   // prayer-for specific
   prayerForId?: number;
   recipientName?: string;
@@ -536,6 +539,7 @@ export default function PrayerModePage() {
         kind: "request",
         text: r.body,
         attribution: r.ownerName ? `from ${r.ownerName}` : "from someone",
+        requestId: r.id,
       })),
     ...activePrayersFor.map((p): PrayerSlide => {
       // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
@@ -621,6 +625,16 @@ export default function PrayerModePage() {
   }, []);
 
   const advance = () => {
+    // Record an "Amen" for prayer requests as the viewer leaves the slide.
+    // Fire-and-forget — we don't want a slow network call to gate the fade.
+    // The list query is invalidated so the owner's badge updates next refresh.
+    const current = slides[index];
+    if (current && current.kind === "request" && typeof current.requestId === "number") {
+      const rid = current.requestId;
+      apiRequest("POST", `/api/prayer-requests/${rid}/amen`).catch(() => {
+        /* swallow — amen logging is best-effort, never blocks prayer flow */
+      });
+    }
     setSlideVisible(false);
     setTimeout(() => {
       if (index < slides.length - 1) {
