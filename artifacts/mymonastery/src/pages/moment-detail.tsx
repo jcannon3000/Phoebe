@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { InviteStep } from "@/components/InviteStep";
@@ -258,6 +259,7 @@ export default function MomentDetail() {
   const [, setLocation] = useLocation();
   const { id } = useParams<{ id: string }>();
   const { user, isLoading: authLoading } = useAuth();
+  const { isBeta } = useBetaStatus();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [seedText, setSeedText] = useState("");
@@ -850,6 +852,59 @@ export default function MomentDetail() {
                     );
                   })}
                 </div>
+              </div>
+            );
+          }
+
+          // Beta: simpler intercession view — streak + today's prayers + who prayed today
+          if (isBeta && isIntercession) {
+            const prayedToday = todayLogs ?? [];
+            const prayedTodayCount = prayedToday.length;
+            return (
+              <div className="mb-6 rounded-2xl p-5" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
+                <div className="flex items-baseline gap-6 mb-4">
+                  <div>
+                    <p className="text-3xl font-bold text-foreground tabular-nums">{groupStreak}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">🔥 Streak</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-foreground tabular-nums">{prayedTodayCount}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {prayedTodayCount === 1 ? "prayed today" : "prayed today"}
+                    </p>
+                  </div>
+                </div>
+                {prayedTodayCount > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {prayedToday.map((p, i) => (
+                      <div
+                        key={`${p.email}-${i}`}
+                        className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1"
+                        style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
+                      >
+                        {p.avatarUrl ? (
+                          <img
+                            src={p.avatarUrl}
+                            alt=""
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                            style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
+                          >
+                            {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-xs text-foreground">
+                          {p.name || p.email.split("@")[0]}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No one has prayed yet today.</p>
+                )}
               </div>
             );
           }
