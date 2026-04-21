@@ -12,7 +12,14 @@ import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import { reconcileGroupPracticeMembers } from "./groups";
-import { sendNewGroupMomentPush } from "../lib/pushSender";
+// Inline stub for new-group-moment push notifications. The real implementation
+// lives in ../lib/pushSender in the device-tokens branch of work; until that
+// file is committed, this stub keeps production builds green. Fire-and-forget
+// call site below already swallows errors, so a no-op is safe.
+async function sendNewGroupMomentPush(
+  _userId: number,
+  _payload: { groupSlug: string; momentName: string; templateType: string; creatorName: string },
+): Promise<void> { /* no-op until pushSender is committed */ }
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
