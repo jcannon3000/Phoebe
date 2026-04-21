@@ -258,7 +258,14 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const result = await requireMember(req.params.slug, user.id);
+  // Every community page load hits this — four DB reads (member check,
+  // roster, avatars, intentions). Wrap so a transient DB blip returns a
+  // clean 500 instead of blanking the page with Express's default HTML
+  // error. The inner intentions try/catch (migration fallback) stays; it
+  // handles a different error class (schema-not-yet-applied).
+  const slug = req.params.slug;
+  try {
+  const result = await requireMember(slug, user.id);
   if (!result) { res.status(404).json({ error: "Group not found" }); return; }
 
   // Return ALL members (both joined and pending-invite) so admins can manage
@@ -338,6 +345,12 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
     })),
     intentions,
   });
+  } catch (err) {
+    console.error("[groups/get] unhandled error:", { slug, userId: user.id, err });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Couldn't load community. Please try again." });
+    }
+  }
 });
 
 // POST /api/groups/:slug/rotate-invite — regenerate the community-wide invite
