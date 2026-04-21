@@ -1018,20 +1018,54 @@ function TimeSection({
   const momentItems = items.filter(i => i.kind === "moment") as Array<Extract<DashboardItem, { kind: "moment" }>>;
   const gatheringItems = items.filter(i => i.kind === "gathering") as Array<Extract<DashboardItem, { kind: "gathering" }>>;
 
-  // Letters where it's the user's turn always show as individual cards.
-  // Passive letters (waiting/sent) collapse into a summary when there are 2+.
-  const actionLetters = letterItems.filter(i => i.data.turnState === "OPEN" || i.data.turnState === "OVERDUE");
-  const passiveLetters = letterItems.filter(i => i.data.turnState !== "OPEN" && i.data.turnState !== "OVERDUE");
+  // Letters where it's the user's turn (or there are unread letters) always
+  // render as individual cards. Passive letters collapse into a summary
+  // card when there are 2+ of them, otherwise they render individually.
+  const actionLetters = letterItems.filter(
+    i => i.data.unreadCount > 0 || i.data.turnState === "OPEN" || i.data.turnState === "OVERDUE"
+  );
+  const passiveLetters = letterItems.filter(
+    i => !(i.data.unreadCount > 0 || i.data.turnState === "OPEN" || i.data.turnState === "OVERDUE")
+  );
+  const showPassiveAsSummary = passiveLetters.length >= 2;
 
-  // Dashboard shows practices only — letters + gatherings live in the menu.
-  const visibleCardCount = momentItems.length;
+  const visibleCardCount =
+    momentItems.length +
+    actionLetters.length +
+    (showPassiveAsSummary ? 1 : passiveLetters.length);
   const scrollable = visibleCardCount > 3;
 
   const cards = (
     <div className="space-y-3">
+      {actionLetters.map((item) => (
+        <LetterCard
+          key={`${label}-l-${item.data.id}`}
+          c={item.data}
+          userEmail={userEmail}
+          userName={userName}
+          keyPrefix={label}
+        />
+      ))}
       {momentItems.map((item) => (
         <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />
       ))}
+      {showPassiveAsSummary ? (
+        <LetterSummaryCard
+          key={`${label}-l-summary`}
+          correspondences={passiveLetters.map(i => i.data)}
+          userEmail={userEmail}
+        />
+      ) : (
+        passiveLetters.map((item) => (
+          <LetterCard
+            key={`${label}-l-${item.data.id}`}
+            c={item.data}
+            userEmail={userEmail}
+            userName={userName}
+            keyPrefix={label}
+          />
+        ))
+      )}
     </div>
   );
 
@@ -1415,6 +1449,7 @@ export default function Dashboard() {
   // "Cannot access uninitialized variable" (TDZ).
   type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
   type DashPrayerFor = { id: number; expired: boolean };
+  type DashCircleIntention = { id: number; groupId: number };
 
   const { data: dashPrayerRequests, isLoading: dashPrayerRequestsLoading } = useQuery<DashPrayerRequest[]>({
     queryKey: ["/api/prayer-requests"],
@@ -1426,6 +1461,15 @@ export default function Dashboard() {
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
     enabled: !!user,
   });
+  // Circle intentions — shared prayer intentions inside every prayer circle
+  // the user belongs to. Each intention is its own prayer (a circle can have
+  // many intentions), so we count rows, not circles.
+  const { data: dashCircleIntentions, isLoading: dashCircleIntentionsLoading } =
+    useQuery<{ intentions: DashCircleIntention[] }>({
+      queryKey: ["/api/groups/me/circle-intentions"],
+      queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"),
+      enabled: !!user,
+    });
 
   // In-session latch — even if momentsData refetches and re-runs the effect,
   // we never re-trigger the popup within the same page load.
@@ -1439,7 +1483,7 @@ export default function Dashboard() {
     // effect fired as each query resolved independently — if /prayers-for/mine
     // arrived first with 1 item and /moments was still pending, the count
     // computed as "1" and the popup locked in before the other data arrived.
-    if (momentsLoading || dashPrayerRequestsLoading || dashPrayersForLoading) return;
+    if (momentsLoading || dashPrayerRequestsLoading || dashPrayersForLoading || dashCircleIntentionsLoading) return;
 
     const today = todayLocalKey();
     // Account-scoped gate via the user record — dismissing on desktop also
@@ -1450,12 +1494,27 @@ export default function Dashboard() {
     }
 
     const moments = momentsData?.moments ?? [];
-    // Count all *prayable* intercessions, not just the currently-open
-    // window. A user opening the app at 10pm should still see all daily
-    // intercessions reflected in "today's prayer list".
-    const activeIntercessions = moments.filter(
-      m => m.templateType === "intercession",
-    ).length;
+    // A single prayer circle (intercession moment) can hold many intentions —
+    // each intention is its own prayer in the slideshow. Count intentions
+    // when they exist; only fall back to counting the circle itself for
+    // intercession moments that have zero intentions yet (legacy circles
+    // still driven by the old single-intention field).
+    const circleIntentions = dashCircleIntentions?.intentions ?? [];
+    const intentionCountByGroup = new Map<number, number>();
+    for (const i of circleIntentions) {
+      intentionCountByGroup.set(i.groupId, (intentionCountByGroup.get(i.groupId) ?? 0) + 1);
+    }
+    let activeIntercessions = 0;
+    for (const m of moments) {
+      if (m.templateType !== "intercession") continue;
+      const gid = m.group?.id;
+      const intentions = gid ? (intentionCountByGroup.get(gid) ?? 0) : 0;
+      // Each intention is its own slide; circles with no intentions still
+      // count once for the legacy single-topic flow.
+      activeIntercessions += intentions > 0 ? intentions : 1;
+    }
+    // Circles we're in but that aren't surfaced as moments (e.g. the user
+    // just joined and hasn't fetched) — don't double-count; skip.
     const othersRequests = (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
     ).length;
@@ -1477,18 +1536,11 @@ export default function Dashboard() {
     }
     // If total === 0 we DON'T stamp — tomorrow's visit should still get a
     // chance if the user has prayers queued by then.
-  }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, queryClient]);
+  }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, dashCircleIntentions, dashCircleIntentionsLoading, queryClient]);
 
-  // Correspondences — used solely to drive the "you have a new letter" popup
-  // on the dashboard. Dashboard doesn't *render* letters in the main feed
-  // (that lives on /letters), so we only care about the unreadCount signal.
-  type DashCorrespondence = {
-    id: number;
-    name: string;
-    unreadCount: number;
-    recentPostmarks?: Array<{ authorName: string; city: string; sentAt: string }>;
-  };
-  const { data: dashCorrespondences, isLoading: dashCorrespondencesLoading } = useQuery<DashCorrespondence[]>({
+  // Correspondences — drives both the "you have a new letter" popup and
+  // the letter cards mixed into the Today / This week / This month buckets.
+  const { data: dashCorrespondences, isLoading: dashCorrespondencesLoading } = useQuery<Correspondence[]>({
     queryKey: ["/api/phoebe/correspondences"],
     queryFn: async () => {
       // Same fallback the LettersPage uses — the route was renamed and some
@@ -1535,7 +1587,7 @@ export default function Dashboard() {
       return;
     }
 
-    const pickLatestPostmark = (c: DashCorrespondence): number => {
+    const pickLatestPostmark = (c: Correspondence): number => {
       const stamps = (c.recentPostmarks ?? [])
         .map(p => Date.parse(p.sentAt))
         .filter(ms => Number.isFinite(ms));
@@ -1638,8 +1690,33 @@ export default function Dashboard() {
       }
     }
 
+    // ── Letters placement
+    // Actionable (unread, my turn, overdue) → Today. Otherwise bucket by
+    // most-recent postmark age: <=7 days → This week, else This month.
+    const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    for (const c of (dashCorrespondences ?? [])) {
+      const actionable =
+        c.unreadCount > 0 ||
+        c.myTurn ||
+        c.turnState === "OPEN" ||
+        c.turnState === "OVERDUE";
+      if (actionable) {
+        todayItems.push({ kind: "letter", data: c });
+        continue;
+      }
+      const latestMs = (c.recentPostmarks ?? [])
+        .map(p => Date.parse(p.sentAt))
+        .filter(ms => Number.isFinite(ms))
+        .reduce((max, ms) => Math.max(max, ms), 0);
+      if (latestMs && latestMs >= sevenDaysAgoMs) {
+        weekItems.push({ kind: "letter", data: c });
+      } else {
+        monthItems.push({ kind: "letter", data: c });
+      }
+    }
+
     return { todayItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user]);
+  }, [momentsData, user, dashCorrespondences]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");

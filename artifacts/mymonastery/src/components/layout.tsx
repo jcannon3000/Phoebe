@@ -468,20 +468,10 @@ export function Layout({ children }: { children: ReactNode }) {
                 border: "1px solid rgba(122,158,125,0.28)",
               }}
             >
-              <span>🕯️ Prayer List</span>
+              <span>Prayer List</span>
               {prayerStreak > 0 && (
                 <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 2,
-                    paddingLeft: 6,
-                    paddingRight: 6,
-                    fontSize: "0.85em",
-                    lineHeight: 1,
-                    borderRadius: 999,
-                    background: "rgba(255,255,255,0.08)",
-                  }}
+                  style={{ fontSize: "0.95em", lineHeight: 1 }}
                   aria-label={`${prayerStreak}-day streak`}
                 >
                   🔥 {prayerStreak}
