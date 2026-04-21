@@ -91,6 +91,8 @@ import UserOnboarding from "./pages/user-onboarding";
 import BellPage from "./pages/bell";
 import FeedbackPage from "./pages/feedback";
 import MutedUsersPage from "./pages/muted-users";
+import PrayerFeedNewPage from "./pages/prayer-feed-new";
+import PrayerFeedManagePage from "./pages/prayer-feed-manage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -157,6 +159,8 @@ function Router() {
       <Route path="/feedback" component={FeedbackPage} />
       <Route path="/settings/muted" component={MutedUsersPage} />
       <Route path="/people/:email" component={PersonProfile} />
+      <Route path="/prayer-feeds/new" component={PrayerFeedNewPage} />
+      <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />
       <Route component={NotFound} />
     </Switch>
   );

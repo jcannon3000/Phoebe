@@ -27,3 +27,7 @@ export * from "./gratitude";
 export * from "./fellow_invites";
 export * from "./prayers_for";
 export * from "./waitlist";
+export * from "./prayer_feeds";
+export * from "./prayer_feed_entries";
+export * from "./prayer_feed_subscriptions";
+export * from "./prayer_feed_prayers";

@@ -849,6 +849,78 @@ export async function migrate() {
       ON group_service_schedules (group_id)
     `);
 
+    // ── Prayer Feeds (beta) ───────────────────────────────────────────────
+    // A subscribable cause (e.g. "Climate Justice") where the creator
+    // publishes a new intention every day. Four tables:
+    //   prayer_feeds               — the cause itself
+    //   prayer_feed_entries        — one per day; the intention
+    //   prayer_feed_subscriptions  — who follows the feed
+    //   prayer_feed_prayers        — who prayed which entry
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_feeds (
+        id SERIAL PRIMARY KEY,
+        slug TEXT NOT NULL,
+        title TEXT NOT NULL,
+        tagline TEXT,
+        cover_emoji TEXT,
+        cover_image_url TEXT,
+        creator_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        timezone TEXT NOT NULL DEFAULT 'America/New_York',
+        state TEXT NOT NULL DEFAULT 'draft',
+        subscriber_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feeds_slug ON prayer_feeds (slug)`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_feed_entries (
+        id SERIAL PRIMARY KEY,
+        feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        entry_date DATE NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        scripture_ref TEXT,
+        image_url TEXT,
+        state TEXT NOT NULL DEFAULT 'draft',
+        pray_count INTEGER NOT NULL DEFAULT 0,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        published_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feed_entries_feed_date ON prayer_feed_entries (feed_id, entry_date)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_entries_feed_date ON prayer_feed_entries (feed_id, entry_date)`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_feed_subscriptions (
+        id SERIAL PRIMARY KEY,
+        feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        muted_until TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feed_subscriptions_feed_user ON prayer_feed_subscriptions (feed_id, user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_subscriptions_user ON prayer_feed_subscriptions (user_id)`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_feed_prayers (
+        id SERIAL PRIMARY KEY,
+        feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        entry_id INTEGER NOT NULL REFERENCES prayer_feed_entries(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day_local DATE NOT NULL,
+        reflection_text TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feed_prayers_entry_user ON prayer_feed_prayers (entry_id, user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_prayers_feed_day ON prayer_feed_prayers (feed_id, day_local)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_prayers_user ON prayer_feed_prayers (user_id)`);
+
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing
     // Google-only / email-only users don't trip a uniqueness check on NULL.

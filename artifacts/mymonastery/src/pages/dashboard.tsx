@@ -47,6 +47,7 @@ type Moment = {
   todayPostCount: number;
   windowOpen: boolean;
   isActionableToday: boolean;
+  isActionableTomorrow: boolean;
   intercessionTopic?: string | null;
   fastingType?: string | null;
   fastingFrom?: string | null;
@@ -271,14 +272,19 @@ function FAB() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const [communityAdminView] = useCommunityAdminToggle();
+  const { isBeta } = useBetaStatus();
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
   });
   const isAdminOfAny = (groupsData?.groups ?? []).some(g => g.myRole === "admin");
+  const showAdminMenu = isAdminOfAny && communityAdminView;
 
-  // Only community admins see the FAB; toggle lets admins preview the member view
-  if (!isAdminOfAny || !communityAdminView) return null;
+  // Community admins (with admin-view on) see the practice/gathering
+  // templates. Beta users additionally see Prayer Feed as its own
+  // option — non-admins who are beta also get a FAB, but it shows
+  // only the Prayer Feed entry.
+  if (!showAdminMenu && !isBeta) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
@@ -295,30 +301,44 @@ function FAB() {
                 people can jump straight into the sub-flow they want.
                 Backgrounds are solid opaque practices-green; category
                 identity comes from the border color. */}
-            <button
-              onClick={() => { setOpen(false); setLocation("/moment/new?template=lectio-divina"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 Start a Lectio Divina group</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Read Sunday's gospel together, unhurried</p>
-            </button>
-            <button
-              onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a group intercession</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Build a rhythm of prayer together</p>
-            </button>
-            <button
-              onClick={() => { setOpen(false); setLocation("/moment/new?template=fasting"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 Start a group fast</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Keep a shared discipline on the same day</p>
-            </button>
+            {showAdminMenu && (
+              <>
+                <button
+                  onClick={() => { setOpen(false); setLocation("/moment/new?template=lectio-divina"); }}
+                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                  style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 Start a Lectio Divina group</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Read Sunday's gospel together, unhurried</p>
+                </button>
+                <button
+                  onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
+                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                  style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a group intercession</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Build a rhythm of prayer together</p>
+                </button>
+                <button
+                  onClick={() => { setOpen(false); setLocation("/moment/new?template=fasting"); }}
+                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                  style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 Start a group fast</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Keep a shared discipline on the same day</p>
+                </button>
+              </>
+            )}
+            {isBeta && (
+              <button
+                onClick={() => { setOpen(false); setLocation("/prayer-feeds/new"); }}
+                className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              >
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕊️ Start a prayer feed</p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>A cause with a new intention every day</p>
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1860,7 +1880,7 @@ export default function Dashboard() {
 
   // ── Placement + deduplication → three time buckets ────────────────────────
 
-  const { todayItems, weekItems, monthItems, totalCount } = useMemo(() => {
+  const { todayItems, tomorrowItems, weekItems, monthItems, totalCount } = useMemo(() => {
     const allMoments = momentsData?.moments ?? [];
 
     // Hide practices whose creator reached the goal more than two days ago
@@ -1884,6 +1904,7 @@ export default function Dashboard() {
     const totalCount = visibleMoments.length;
 
     const todayItems: DashboardItem[] = [];
+    const tomorrowItems: DashboardItem[] = [];
     const weekItems: DashboardItem[] = [];
     const monthItems: DashboardItem[] = [];
 
@@ -1892,23 +1913,46 @@ export default function Dashboard() {
     const sevenDaysFromToday = addDays(startOfDay(new Date()), 7);
 
     // ── Moments placement
-    // isActionableToday → Today section. Otherwise bucket by next window date:
-    // if the next occurrence falls within the next 7 days it goes to
-    // "This week"; otherwise it goes to "This month".
+    // isActionableToday → Today section. For beta users, a new Tomorrow
+    // bucket catches practices that aren't actionable today but are
+    // actionable tomorrow. Everything else goes to This week / This month
+    // based on the next occurrence date.
+    //
+    // Beta-only: intercessions that have already been prayed today are
+    // hidden entirely (not just moved to Tomorrow / This week). They
+    // "disappear" once completed, matching the "done, quiet for the rest
+    // of the day" feel the user asked for.
     for (const m of visibleMoments) {
       const isLectio = m.templateType === "lectio-divina";
+      const isIntercession = m.templateType === "intercession";
       const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
+
+      // Beta feature: hide a daily intercession once prayed today.
+      if (isBeta && isIntercession && userDone) {
+        continue;
+      }
+
       if (m.isActionableToday && !userDone) {
         todayItems.push({ kind: "moment", data: m });
+        continue;
+      }
+
+      // Beta-only: Tomorrow bucket. We surface practices that will be
+      // actionable tomorrow in their TZ — whether they're done for today
+      // or simply not a practice day today. Gives the user a heads-up
+      // without waiting for the day to flip.
+      if (isBeta && m.isActionableTomorrow) {
+        tomorrowItems.push({ kind: "moment", data: m, nextWindow: "Tomorrow" });
+        continue;
+      }
+
+      const label = nextWindowLabel(m);
+      const daysAhead = nextWindowDaysAhead(m);
+      const nextDate = addDays(startOfDay(new Date()), daysAhead);
+      if (isBefore(nextDate, sevenDaysFromToday)) {
+        weekItems.push({ kind: "moment", data: m, nextWindow: label });
       } else {
-        const label = nextWindowLabel(m);
-        const daysAhead = nextWindowDaysAhead(m);
-        const nextDate = addDays(startOfDay(new Date()), daysAhead);
-        if (isBefore(nextDate, sevenDaysFromToday)) {
-          weekItems.push({ kind: "moment", data: m, nextWindow: label });
-        } else {
-          monthItems.push({ kind: "moment", data: m, nextWindow: label });
-        }
+        monthItems.push({ kind: "moment", data: m, nextWindow: label });
       }
     }
 
@@ -1942,7 +1986,9 @@ export default function Dashboard() {
     // month. Each schedule is ONE card regardless of how many service
     // times it contains.
     const todayStart = startOfDay(new Date()).getTime();
-    const sevenDaysOutMs = todayStart + 7 * 24 * 60 * 60 * 1000;
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const tomorrowStart = todayStart + oneDayMs;
+    const sevenDaysOutMs = todayStart + 7 * oneDayMs;
     for (const s of serviceSchedules) {
       if (!s.times.length) continue;
       const next = nextOccurrenceDate(s.dayOfWeek);
@@ -1950,12 +1996,13 @@ export default function Dashboard() {
       const isOnDate = nextMs === todayStart;
       const item: DashboardItem = { kind: "service", data: s, nextDate: next, isOnDate };
       if (isOnDate) todayItems.push(item);
+      else if (isBeta && nextMs === tomorrowStart) tomorrowItems.push(item);
       else if (nextMs < sevenDaysOutMs) weekItems.push(item);
       else monthItems.push(item);
     }
 
-    return { todayItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences, serviceSchedules]);
+    return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
+  }, [momentsData, user, dashCorrespondences, serviceSchedules, isBeta]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -2231,9 +2278,10 @@ export default function Dashboard() {
             return true;
           };
           const fToday = todayItems.filter(byFilter);
+          const fTomorrow = tomorrowItems.filter(byFilter);
           const fWeek = weekItems.filter(byFilter);
           const fMonth = monthItems.filter(byFilter);
-          const filteredEmpty = filter !== null && fToday.length === 0 && fWeek.length === 0 && fMonth.length === 0;
+          const filteredEmpty = filter !== null && fToday.length === 0 && fTomorrow.length === 0 && fWeek.length === 0 && fMonth.length === 0;
 
           return (
             <AnimatePresence mode="wait">
@@ -2247,10 +2295,18 @@ export default function Dashboard() {
                 {/* 1. Today */}
                 <TimeSection label="Today" items={fToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
 
-                {/* 2. This week */}
+                {/* 2. Tomorrow — beta only. Shows practices actionable
+                    tomorrow and any gatherings whose next occurrence is
+                    tomorrow. Hidden when empty so it doesn't add visual
+                    noise on quiet days. */}
+                {isBeta && fTomorrow.length > 0 && (
+                  <TimeSection label="Tomorrow" items={fTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
+                )}
+
+                {/* 3. This week */}
                 <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
 
-                {/* 3. This month */}
+                {/* 4. This month */}
                 <TimeSection label="This month" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
 
                 {/* Filtered empty state */}
