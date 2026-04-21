@@ -2011,7 +2011,28 @@ export default function Dashboard() {
   // Once the user has finished today's list, the PrayerListCard moves
   // from the Today section down into Tomorrow — signalling "you're done
   // for today; here's what's queued for next time" without nagging.
-  const prayerListDoneToday = prayerStreakData?.loggedToday ?? false;
+  //
+  // We trust the server's `loggedToday` flag when it's true, but also fall
+  // back to a client-side signal: if every intercession the user sees has
+  // been prayed today (`todayPostCount > 0`), treat the list as done.
+  // That covers three real-world cases where `loggedToday` lags:
+  //   1. User advanced through all prayers but closed before the closing
+  //      slide fired POST /prayer-streak/log.
+  //   2. User's stored timezone is UTC but they live elsewhere — the
+  //      server-side "today" drifts half a day from their wall clock, so
+  //      the streak row shows yesterday's date.
+  //   3. The POST simply failed (network blip) — the per-prayer check-ins
+  //      still landed via handleDone's Promise.allSettled, so we can
+  //      infer completion from the moments list.
+  const allIntercessionsPrayedToday = useMemo(() => {
+    const intercessions = (momentsData?.moments ?? []).filter(
+      m => m.templateType === "intercession",
+    );
+    if (intercessions.length === 0) return false;
+    return intercessions.every(m => (m.todayPostCount ?? 0) > 0);
+  }, [momentsData]);
+  const prayerListDoneToday =
+    (prayerStreakData?.loggedToday ?? false) || allIntercessionsPrayedToday;
 
   // Pending-prayer count — how many prayers are in the user's slideshow
   // right now. Same computation the invite-popup uses, but memoized so the
