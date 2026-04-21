@@ -1315,17 +1315,6 @@ export default function Dashboard() {
 
   const queryClient = useQueryClient();
 
-  // Consecutive-days-prayed streak, surfaced as a tiny badge on the Prayer
-  // List pill. The server walks distinct `moment_posts.windowDate` values
-  // across every token tied to this user and allows one "grace" day (today,
-  // if they haven't prayed yet) so the streak doesn't vanish at midnight.
-  const { data: streakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
-    queryKey: ["/api/prayer-streak"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
-    enabled: !!user,
-  });
-  const prayerStreak = streakData?.streak ?? 0;
-
   const { isBeta } = useBetaStatus();
   const [betaWelcomeVisible, setBetaWelcomeVisible] = useState(false);
   const betaWelcomeShownRef = useRef(false);
@@ -1854,30 +1843,11 @@ export default function Dashboard() {
               fg: string;
               bg: string;
               border: string;
-              streak?: number;
             };
             const pillStyle = (p: Pill) => ({
               background: p.bg, color: p.fg, border: `1px solid ${p.border}`,
             });
             const pillClass = "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80";
-            const renderStreak = (n?: number) => (n && n > 0 ? (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 2,
-                  marginLeft: 2,
-                  paddingLeft: 6,
-                  paddingRight: 6,
-                  fontSize: "0.8em",
-                  lineHeight: 1,
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.08)",
-                }}
-              >
-                🔥 {n}
-              </span>
-            ) : null);
             const renderPill = (p: Pill, key: string | number) => {
               if (p.filterKey) {
                 const fk = p.filterKey;
@@ -1888,7 +1858,6 @@ export default function Dashboard() {
                     style={pillStyle(p)}
                   >
                     {p.label}
-                    {renderStreak(p.streak)}
                     {filter === fk && <span style={{ opacity: 0.7, fontSize: "0.85em", lineHeight: 1 }}>×</span>}
                   </button>
                 );
@@ -1896,14 +1865,13 @@ export default function Dashboard() {
               return (
                 <Link key={key} href={p.href!} className={pillClass} style={pillStyle(p)}>
                   {p.label}
-                  {renderStreak(p.streak)}
                 </Link>
               );
             };
 
             const PILLS: Pill[] = [
               { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
-              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)", streak: prayerStreak },
+              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
               { label: "📖 BCP Prayers",  href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },

@@ -428,6 +428,15 @@ export function Layout({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isBeta } = useBetaStatus();
 
+  // Personal streak = consecutive days I've finished a prayer-list slideshow.
+  const { data: streakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
+    queryKey: ["/api/prayer-streak"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const prayerStreak = streakData?.streak ?? 0;
+
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
       <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center" style={{ background: "#091A10" }}>
@@ -450,7 +459,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2">
             <Link
               href="/prayer-mode"
-              className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
                 letterSpacing: "-0.01em",
@@ -459,7 +468,25 @@ export function Layout({ children }: { children: ReactNode }) {
                 border: "1px solid rgba(122,158,125,0.28)",
               }}
             >
-              🕯️ Prayer List
+              <span>🕯️ Prayer List</span>
+              {prayerStreak > 0 && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 2,
+                    paddingLeft: 6,
+                    paddingRight: 6,
+                    fontSize: "0.85em",
+                    lineHeight: 1,
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.08)",
+                  }}
+                  aria-label={`${prayerStreak}-day streak`}
+                >
+                  🔥 {prayerStreak}
+                </span>
+              )}
             </Link>
             <button
               onClick={() => setDrawerOpen(true)}
