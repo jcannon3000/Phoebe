@@ -2234,7 +2234,7 @@ export default function Dashboard() {
           todayItems.push({ kind: "moment", data: m });
           continue;
         }
-        if (isBeta && fastTomorrow) {
+        if (fastTomorrow) {
           tomorrowItems.push({ kind: "moment", data: m, nextWindow: "Tomorrow" });
           continue;
         }
@@ -2245,11 +2245,11 @@ export default function Dashboard() {
           continue;
         }
 
-        // Beta-only: Tomorrow bucket. We surface practices that will be
-        // actionable tomorrow in their TZ — whether they're done for today
-        // or simply not a practice day today. Gives the user a heads-up
-        // without waiting for the day to flip.
-        if (isBeta && m.isActionableTomorrow) {
+        // Tomorrow bucket. We surface practices that will be actionable
+        // tomorrow in their TZ — whether they're done for today or simply
+        // not a practice day today. Gives the user a heads-up without
+        // waiting for the day to flip.
+        if (m.isActionableTomorrow) {
           tomorrowItems.push({ kind: "moment", data: m, nextWindow: "Tomorrow" });
           continue;
         }
@@ -2295,7 +2295,7 @@ export default function Dashboard() {
       const isOnDate = nextMs === todayStart;
       const item: DashboardItem = { kind: "service", data: s, nextDate: next, isOnDate };
       if (isOnDate) todayItems.push(item);
-      else if (isBeta && nextMs === tomorrowStart) tomorrowItems.push(item);
+      else if (nextMs === tomorrowStart) tomorrowItems.push(item);
       else if (nextMs < sevenDaysOutMs) weekItems.push(item);
       else monthItems.push(item);
     }
@@ -2630,29 +2630,28 @@ export default function Dashboard() {
                   }
                 />
 
-                {/* 2. Tomorrow — beta only. Practice items actionable
-                    tomorrow, plus the PrayerListCard if the user already
-                    finished today (so they see their next list is queued
-                    for tomorrow). Empty sections stay hidden. */}
-                {isBeta && (
-                  <TimeSection
-                    label="Tomorrow"
-                    items={fTomorrow}
-                    userEmail={userEmail}
-                    userName={userName}
-                    onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
-                    trailingCards={
-                      filter === null && prayerListDoneToday && pendingPrayerCount > 0 ? (
-                        <PrayerListCard
-                          pendingCount={pendingPrayerCount}
-                          streak={prayerStreak}
-                          keyPrefix="tomorrow"
-                          muted
-                        />
-                      ) : undefined
-                    }
-                  />
-                )}
+                {/* 2. Tomorrow. Practice items actionable tomorrow, plus the
+                    PrayerListCard if the user already finished today (so they
+                    see their next list is queued for tomorrow). Empty
+                    sections stay hidden. */}
+                <TimeSection
+                  label="Tomorrow"
+                  items={fTomorrow}
+                  userEmail={userEmail}
+                  userName={userName}
+                  onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                  trailingCards={
+                    filter === null && prayerListDoneToday && pendingPrayerCount > 0 ? (
+                      <PrayerListCard
+                        pendingCount={pendingPrayerCount}
+                        streak={prayerStreak}
+                        keyPrefix="tomorrow"
+                        muted
+                      />
+                    ) : undefined
+                  }
+                />
+
 
                 {/* 3. This week */}
                 <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
