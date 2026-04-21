@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -48,6 +48,7 @@ export default function WriteLetter() {
   const correspondenceId = params?.id;
   const token = new URLSearchParams(window.location.search).get("token");
   const tokenParam = token ? `?token=${token}` : "";
+  const queryClient = useQueryClient();
 
   const [content, setContent] = useState("");
   const [postmarkCity, setPostmarkCity] = useState("");
@@ -189,6 +190,16 @@ export default function WriteLetter() {
         })
       ),
     onSuccess: () => {
+      // Clear local draft state so we don't re-POST it on the way out.
+      lastSavedRef.current = content;
+      // Drop cached draft + correspondence detail + list so the thread
+      // we navigate to shows the new letter immediately.
+      queryClient.removeQueries({ queryKey: [`/api/phoebe/correspondences/${correspondenceId}/draft`] });
+      queryClient.removeQueries({ queryKey: [`/api/letters/correspondences/${correspondenceId}/draft`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/phoebe/correspondences/${correspondenceId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/letters/correspondences/${correspondenceId}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/phoebe/correspondences"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/letters/correspondences"] });
       setLocation(`/letters/${correspondenceId}${tokenParam}`);
     },
     onError: (err: Error) => {
