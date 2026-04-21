@@ -177,12 +177,49 @@ const PRACTICE_EMOJI: Record<string, string> = {
   "custom": "🌱",
 };
 
+// ─── Service schedules (e.g. Sunday Services) ───────────────────────────────
+
+type ServiceTime = { label: string; time: string; location?: string };
+
+type ServiceSchedule = {
+  id: number;
+  groupId: number;
+  groupName: string;
+  groupSlug: string;
+  groupEmoji: string | null;
+  name: string;
+  dayOfWeek: number; // 0=Sun..6=Sat
+  times: ServiceTime[];
+};
+
+const DAY_OF_WEEK_NAMES: Record<number, string> = {
+  0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday",
+  4: "Thursday", 5: "Friday", 6: "Saturday",
+};
+
+function nextOccurrenceDate(dayOfWeek: number, today: Date = new Date()): Date {
+  const out = startOfDay(today);
+  const diff = (dayOfWeek - out.getDay() + 7) % 7;
+  return addDays(out, diff);
+}
+
+function formatServiceTime(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(":");
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const suffix = h >= 12 ? "PM" : "AM";
+  h = ((h + 11) % 12) + 1;
+  return `${h}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
 // ─── Dashboard item union type ──────────────────────────────────────────────
 
 type DashboardItem =
   | { kind: "letter"; data: Correspondence }
   | { kind: "moment"; data: Moment; nextWindow?: string }
-  | { kind: "gathering"; data: any; badge?: string };
+  | { kind: "gathering"; data: any; badge?: string }
+  | { kind: "service"; data: ServiceSchedule; nextDate: Date; isOnDate: boolean };
 
 // ─── Reusable card sub-components ────────────────────────────────────────────
 
@@ -999,6 +1036,164 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   );
 }
 
+// ─── Service card ───────────────────────────────────────────────────────────
+// A single card on the dashboard representing a community's weekly service
+// schedule. Shows group + schedule name and a teaser of the first service
+// time. Clicking fires onOpen to reveal every time in the schedule.
+
+function ServiceCard({
+  schedule,
+  nextDate,
+  isOnDate,
+  onOpen,
+  keyPrefix,
+}: {
+  schedule: ServiceSchedule;
+  nextDate: Date;
+  isOnDate: boolean;
+  onOpen: () => void;
+  keyPrefix: string;
+}) {
+  const colors = CATEGORY_COLORS.gatherings;
+  const firstTime = schedule.times[0];
+  const extraCount = Math.max(0, schedule.times.length - 1);
+  const dayLabel = isOnDate ? "Today" : (isToday(addDays(startOfDay(new Date()), 1)) && nextDate.getTime() === addDays(startOfDay(new Date()), 1).getTime()
+    ? "Tomorrow" : format(nextDate, "EEE, MMM d"));
+  const timeLine = firstTime
+    ? `${dayLabel} · ${formatServiceTime(firstTime.time)}${extraCount > 0 ? ` + ${extraCount} more` : ""}`
+    : dayLabel;
+  const title = schedule.name || DAY_OF_WEEK_NAMES[schedule.dayOfWeek] + " Services";
+  const groupBadge = `${schedule.groupEmoji ?? "⛪"} From ${schedule.groupName}`;
+
+  return (
+    <button
+      key={`${keyPrefix}-service-${schedule.id}`}
+      type="button"
+      onClick={onOpen}
+      className="block w-full text-left"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isOnDate ? colors.pulseClass : ""}`}
+        style={{
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div
+          className={`w-1 flex-shrink-0 ${isOnDate ? colors.barPulseClass : ""}`}
+          style={{ background: isOnDate ? undefined : colors.bar }}
+        />
+        <div className="flex-1 px-4 pt-3 pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>⛪ {title}</span>
+            <span className="text-[10px] font-semibold uppercase shrink-0 mt-1" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+              Service times
+            </span>
+          </div>
+          <div className="mt-1.5">
+            <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0 }}>
+              {timeLine}
+            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.01em" }}>
+              {groupBadge}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </button>
+  );
+}
+
+// ─── Service detail modal ───────────────────────────────────────────────────
+// Full list of every service time in a group's schedule. Opened from
+// ServiceCard; dismissed by tapping the backdrop or the close button.
+
+function ServiceDetailModal({
+  schedule,
+  nextDate,
+  onClose,
+}: {
+  schedule: ServiceSchedule;
+  nextDate: Date;
+  onClose: () => void;
+}) {
+  const dayName = DAY_OF_WEEK_NAMES[schedule.dayOfWeek] ?? "Sunday";
+  const dateLabel = isToday(nextDate) ? "Today" : format(nextDate, "EEEE, MMM d");
+  const title = schedule.name || `${dayName} Services`;
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-6 pt-16"
+        style={{ background: "rgba(8,16,10,0.8)" }}
+      >
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 20, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto"
+          style={{ background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)" }}
+        >
+          <div className="sticky top-0 flex items-start justify-between gap-3 px-5 pt-5 pb-3" style={{ background: "#0F2618" }}>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.55)" }}>
+                {schedule.groupEmoji ?? "⛪"} {schedule.groupName}
+              </p>
+              <h2 className="text-xl font-bold mt-1" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+                {title}
+              </h2>
+              <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{dateLabel}</p>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="shrink-0 rounded-full p-1.5 transition-opacity hover:opacity-80"
+              style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="px-5 pb-5 pt-1">
+            {schedule.times.length === 0 ? (
+              <p className="text-sm" style={{ color: "#8FAF96" }}>No service times yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {schedule.times.map((t, idx) => (
+                  <li
+                    key={idx}
+                    className="rounded-xl px-4 py-3 flex items-start justify-between gap-3"
+                    style={{ background: "rgba(111,175,133,0.10)", border: "1px solid rgba(111,175,133,0.2)" }}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+                        {formatServiceTime(t.time)}
+                      </p>
+                      {t.label && (
+                        <p className="text-[13px] mt-0.5" style={{ color: "#C8D4C0" }}>{t.label}</p>
+                      )}
+                      {t.location && (
+                        <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📍 {t.location}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 // ─── Generic time section (Today / This week / This month) ──────────────────
 
 function TimeSection({
@@ -1006,17 +1201,20 @@ function TimeSection({
   items,
   userEmail,
   userName,
+  onOpenService,
 }: {
   label: string;
   items: DashboardItem[];
   userEmail: string;
   userName: string;
+  onOpenService: (schedule: ServiceSchedule, nextDate: Date) => void;
 }) {
   if (items.length === 0) return null;
 
   const letterItems = items.filter(i => i.kind === "letter") as Array<Extract<DashboardItem, { kind: "letter" }>>;
   const momentItems = items.filter(i => i.kind === "moment") as Array<Extract<DashboardItem, { kind: "moment" }>>;
   const gatheringItems = items.filter(i => i.kind === "gathering") as Array<Extract<DashboardItem, { kind: "gathering" }>>;
+  const serviceItems = items.filter(i => i.kind === "service") as Array<Extract<DashboardItem, { kind: "service" }>>;
 
   // Letters where it's the user's turn (or there are unread letters) always
   // render as individual cards. Passive letters collapse into a summary
@@ -1032,7 +1230,8 @@ function TimeSection({
   const visibleCardCount =
     momentItems.length +
     actionLetters.length +
-    (showPassiveAsSummary ? 1 : passiveLetters.length);
+    (showPassiveAsSummary ? 1 : passiveLetters.length) +
+    serviceItems.length;
   const scrollable = visibleCardCount > 3;
 
   const cards = (
@@ -1043,6 +1242,16 @@ function TimeSection({
           c={item.data}
           userEmail={userEmail}
           userName={userName}
+          keyPrefix={label}
+        />
+      ))}
+      {serviceItems.map((item) => (
+        <ServiceCard
+          key={`${label}-s-${item.data.id}`}
+          schedule={item.data}
+          nextDate={item.nextDate}
+          isOnDate={item.isOnDate}
+          onOpen={() => onOpenService(item.data, item.nextDate)}
           keyPrefix={label}
         />
       ))}
@@ -1322,6 +1531,9 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<"practices" | null>(null);
+  // Service-schedule modal: which schedule (and computed next occurrence) is
+  // currently showing its full list of service times.
+  const [openService, setOpenService] = useState<{ schedule: ServiceSchedule; nextDate: Date } | null>(null);
   // Goal popup: creator-only, persisted in localStorage, once per day, max 2 days.
   const [goalDismissed, setGoalDismissed] = useState<Set<number>>(() => {
     try {
@@ -1554,6 +1766,16 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // Service schedules — one card per schedule on the dashboard; each schedule
+  // can hold many service times but surfaces as a single card. Click the
+  // card to see every time in the schedule.
+  const { data: serviceSchedulesData } = useQuery<{ schedules: ServiceSchedule[] }>({
+    queryKey: ["/api/me/service-schedules"],
+    queryFn: () => apiRequest("GET", "/api/me/service-schedules"),
+    enabled: !!user,
+  });
+  const serviceSchedules = serviceSchedulesData?.schedules ?? [];
+
   // Detect new unread letters. Runs once per session. The localStorage key
   // stores the *set* of correspondence ids that were already shown unread
   // on last dismiss — a new unread correspondence id (or a previously-read
@@ -1715,8 +1937,25 @@ export default function Dashboard() {
       }
     }
 
+    // ── Service schedules placement
+    // Next occurrence today → Today. Within 7 days → This week. Else This
+    // month. Each schedule is ONE card regardless of how many service
+    // times it contains.
+    const todayStart = startOfDay(new Date()).getTime();
+    const sevenDaysOutMs = todayStart + 7 * 24 * 60 * 60 * 1000;
+    for (const s of serviceSchedules) {
+      if (!s.times.length) continue;
+      const next = nextOccurrenceDate(s.dayOfWeek);
+      const nextMs = next.getTime();
+      const isOnDate = nextMs === todayStart;
+      const item: DashboardItem = { kind: "service", data: s, nextDate: next, isOnDate };
+      if (isOnDate) todayItems.push(item);
+      else if (nextMs < sevenDaysOutMs) weekItems.push(item);
+      else monthItems.push(item);
+    }
+
     return { todayItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences]);
+  }, [momentsData, user, dashCorrespondences, serviceSchedules]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -2006,13 +2245,13 @@ export default function Dashboard() {
                 transition={{ duration: 0.15 }}
               >
                 {/* 1. Today */}
-                <TimeSection label="Today" items={fToday} userEmail={userEmail} userName={userName} />
+                <TimeSection label="Today" items={fToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
 
                 {/* 2. This week */}
-                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} />
+                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
 
                 {/* 3. This month */}
-                <TimeSection label="This month" items={fMonth} userEmail={userEmail} userName={userName} />
+                <TimeSection label="This month" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
 
                 {/* Filtered empty state */}
                 {filteredEmpty && (() => {
@@ -2085,6 +2324,14 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
+
+      {openService && (
+        <ServiceDetailModal
+          schedule={openService.schedule}
+          nextDate={openService.nextDate}
+          onClose={() => setOpenService(null)}
+        />
+      )}
     </Layout>
   );
 }

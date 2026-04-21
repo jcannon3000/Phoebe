@@ -6,6 +6,8 @@ import {
   groupMembersTable,
   groupAnnouncementsTable,
   groupAdminNotificationsAckTable,
+  groupServiceSchedulesTable,
+  type GroupServiceTime,
   betaUsersTable,
   usersTable,
   sharedMomentsTable,
@@ -1924,6 +1926,200 @@ router.get("/beta/bells", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("GET /api/beta/bells error:", err);
     res.json({ users: [], summary: { totalUsers: 0, bellsActive: 0, sentToday: 0 } });
+  }
+});
+
+// ─── Service schedules (e.g. Sunday Services) ────────────────────────────────
+//
+// A community can have one recurring service schedule with multiple service
+// times on the same weekday. Members see the schedule; only admins can edit.
+
+// Parse/validate the times JSONB column into a typed, trimmed array. Drops
+// rows with no time and caps length so a malformed PUT can't blow up the
+// dashboard card.
+function normalizeServiceTimes(raw: unknown): GroupServiceTime[] {
+  if (!Array.isArray(raw)) return [];
+  const out: GroupServiceTime[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const time = typeof rec.time === "string" ? rec.time.trim() : "";
+    if (!/^\d{1,2}:\d{2}$/.test(time)) continue;
+    const label = typeof rec.label === "string" ? rec.label.trim().slice(0, 80) : "";
+    const location = typeof rec.location === "string" && rec.location.trim()
+      ? rec.location.trim().slice(0, 120)
+      : undefined;
+    out.push({ label, time, ...(location ? { location } : {}) });
+    if (out.length >= 12) break;
+  }
+  // Sort earliest → latest so every consumer gets a consistent order.
+  out.sort((a, b) => a.time.localeCompare(b.time));
+  return out;
+}
+
+// GET /api/groups/:slug/service-schedule
+router.get("/groups/:slug/service-schedule", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const slug = String(req.params.slug ?? "");
+    const result = await requireMember(slug, user.id);
+    if (!result) { res.status(403).json({ error: "Not a member" }); return; }
+
+    const [row] = await db
+      .select()
+      .from(groupServiceSchedulesTable)
+      .where(eq(groupServiceSchedulesTable.groupId, result.group.id));
+
+    if (!row) {
+      res.json({ schedule: null, canEdit: result.member.role === "admin" });
+      return;
+    }
+
+    res.json({
+      schedule: {
+        id: row.id,
+        groupId: row.groupId,
+        name: row.name,
+        dayOfWeek: row.dayOfWeek,
+        times: normalizeServiceTimes(row.times),
+        updatedAt: row.updatedAt.toISOString(),
+      },
+      canEdit: result.member.role === "admin",
+    });
+  } catch (err) {
+    console.error("GET /api/groups/:slug/service-schedule error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// PUT /api/groups/:slug/service-schedule — admin-only upsert
+router.put("/groups/:slug/service-schedule", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const slug = String(req.params.slug ?? "");
+    const result = await requireAdmin(slug, user.id);
+    if (!result) { res.status(403).json({ error: "Admin only" }); return; }
+
+    const schema = z.object({
+      name: z.string().min(1).max(80).optional(),
+      dayOfWeek: z.number().int().min(0).max(6).optional(),
+      times: z.array(z.object({
+        label: z.string().max(80).optional(),
+        time: z.string().regex(/^\d{1,2}:\d{2}$/),
+        location: z.string().max(120).optional(),
+      })).max(12),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
+
+    const times = normalizeServiceTimes(parsed.data.times);
+    const name = parsed.data.name?.trim() || "Sunday Services";
+    const dayOfWeek = parsed.data.dayOfWeek ?? 0;
+    const now = new Date();
+
+    // One row per group — upsert by groupId unique index.
+    const [saved] = await db
+      .insert(groupServiceSchedulesTable)
+      .values({
+        groupId: result.group.id,
+        name,
+        dayOfWeek,
+        times,
+        updatedByUserId: user.id,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: groupServiceSchedulesTable.groupId,
+        set: { name, dayOfWeek, times, updatedByUserId: user.id, updatedAt: now },
+      })
+      .returning();
+
+    res.json({
+      schedule: {
+        id: saved.id,
+        groupId: saved.groupId,
+        name: saved.name,
+        dayOfWeek: saved.dayOfWeek,
+        times: normalizeServiceTimes(saved.times),
+        updatedAt: saved.updatedAt.toISOString(),
+      },
+      canEdit: true,
+    });
+  } catch (err) {
+    console.error("PUT /api/groups/:slug/service-schedule error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// DELETE /api/groups/:slug/service-schedule — admin-only
+router.delete("/groups/:slug/service-schedule", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const slug = String(req.params.slug ?? "");
+    const result = await requireAdmin(slug, user.id);
+    if (!result) { res.status(403).json({ error: "Admin only" }); return; }
+    await db
+      .delete(groupServiceSchedulesTable)
+      .where(eq(groupServiceSchedulesTable.groupId, result.group.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/groups/:slug/service-schedule error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /api/me/service-schedules — every schedule for groups I'm in (dashboard)
+router.get("/me/service-schedules", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const myGroups = await db
+      .select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.userId, user.id),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ));
+    const ids = myGroups.map(g => g.groupId);
+    if (ids.length === 0) { res.json({ schedules: [] }); return; }
+
+    const rows = await db
+      .select({
+        id: groupServiceSchedulesTable.id,
+        groupId: groupServiceSchedulesTable.groupId,
+        name: groupServiceSchedulesTable.name,
+        dayOfWeek: groupServiceSchedulesTable.dayOfWeek,
+        times: groupServiceSchedulesTable.times,
+        groupName: groupsTable.name,
+        groupSlug: groupsTable.slug,
+        groupEmoji: groupsTable.emoji,
+      })
+      .from(groupServiceSchedulesTable)
+      .innerJoin(groupsTable, eq(groupServiceSchedulesTable.groupId, groupsTable.id))
+      .where(inArray(groupServiceSchedulesTable.groupId, ids));
+
+    // Skip schedules with zero times — they'd render as empty cards.
+    const schedules = rows
+      .map(r => ({
+        id: r.id,
+        groupId: r.groupId,
+        groupName: r.groupName,
+        groupSlug: r.groupSlug,
+        groupEmoji: r.groupEmoji,
+        name: r.name,
+        dayOfWeek: r.dayOfWeek,
+        times: normalizeServiceTimes(r.times),
+      }))
+      .filter(s => s.times.length > 0);
+
+    res.json({ schedules });
+  } catch (err) {
+    console.error("GET /api/me/service-schedules error:", err);
+    res.json({ schedules: [] });
   }
 });
 

@@ -86,6 +86,258 @@ type CommunityMoment = {
   members: Array<{ name: string; email: string }>;
 };
 
+// ─── Service schedule (e.g. Sunday Services) ────────────────────────────────
+// One per group. Rendered inside the Gatherings tab: members see a list of
+// service times, admins can edit them.
+
+type ServiceTimeRow = { label: string; time: string; location: string };
+type ServiceScheduleRecord = {
+  id: number;
+  groupId: number;
+  name: string;
+  dayOfWeek: number;
+  times: Array<{ label: string; time: string; location?: string }>;
+  updatedAt: string;
+};
+
+const DOW_NAMES: Array<{ value: number; label: string }> = [
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+];
+
+function formatHM12(hhmm: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
+  if (!m) return hhmm;
+  let h = parseInt(m[1], 10);
+  const mm = m[2];
+  const suffix = h >= 12 ? "PM" : "AM";
+  h = ((h + 11) % 12) + 1;
+  return `${h}:${mm} ${suffix}`;
+}
+
+function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const qc = useQueryClient();
+  const { data } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
+    queryKey: ["/api/groups", slug, "service-schedule"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
+    enabled: !!slug,
+  });
+  const schedule = data?.schedule ?? null;
+
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState("Sunday Services");
+  const [dow, setDow] = useState(0);
+  const [times, setTimes] = useState<ServiceTimeRow[]>([]);
+
+  // Reset form from server state whenever we enter edit mode.
+  useEffect(() => {
+    if (!editing) return;
+    if (schedule) {
+      setName(schedule.name);
+      setDow(schedule.dayOfWeek);
+      setTimes(schedule.times.map(t => ({ label: t.label ?? "", time: t.time, location: t.location ?? "" })));
+    } else {
+      setName("Sunday Services");
+      setDow(0);
+      setTimes([{ label: "", time: "10:00", location: "" }]);
+    }
+  }, [editing, schedule]);
+
+  const saveMutation = useMutation({
+    mutationFn: () => apiRequest("PUT", `/api/groups/${slug}/service-schedule`, {
+      name: name.trim() || "Sunday Services",
+      dayOfWeek: dow,
+      times: times
+        .filter(t => /^\d{1,2}:\d{2}$/.test(t.time))
+        .map(t => ({
+          label: t.label.trim(),
+          time: t.time,
+          ...(t.location.trim() ? { location: t.location.trim() } : {}),
+        })),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/groups", slug, "service-schedule"] });
+      qc.invalidateQueries({ queryKey: ["/api/me/service-schedules"] });
+      setEditing(false);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/groups/${slug}/service-schedule`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/groups", slug, "service-schedule"] });
+      qc.invalidateQueries({ queryKey: ["/api/me/service-schedules"] });
+      setEditing(false);
+    },
+  });
+
+  const dayLabel = DOW_NAMES.find(d => d.value === (schedule?.dayOfWeek ?? 0))?.label ?? "Sunday";
+
+  // Non-editing view — hide entirely when there's nothing to show and the
+  // user can't edit. Admins see the empty-state "add" button.
+  if (!editing) {
+    if (!schedule && !isAdmin) return null;
+    return (
+      <div className="mb-4 rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}>
+        <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.55)" }}>
+              {dayLabel} schedule
+            </p>
+            <p className="text-base font-semibold mt-0.5" style={{ color: "#F0EDE6" }}>
+              ⛪ {schedule?.name ?? "Sunday Services"}
+            </p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => setEditing(true)}
+              className="shrink-0 text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full"
+              style={{ background: "rgba(111,175,133,0.18)", color: "#C8D4C0", border: "1px solid rgba(111,175,133,0.3)" }}
+            >
+              {schedule ? "Edit" : "Add"}
+            </button>
+          )}
+        </div>
+        {schedule && schedule.times.length > 0 ? (
+          <ul className="px-4 pb-3 flex flex-col gap-1.5">
+            {schedule.times.map((t, i) => (
+              <li key={i} className="text-sm flex items-baseline justify-between gap-3" style={{ color: "#C8D4C0" }}>
+                <span className="tabular-nums font-semibold" style={{ color: "#F0EDE6", minWidth: 84 }}>
+                  {formatHM12(t.time)}
+                </span>
+                <span className="flex-1 truncate">
+                  {t.label || "Service"}
+                  {t.location ? <span style={{ color: "#8FAF96" }}> · 📍 {t.location}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-4 pb-3 text-sm" style={{ color: "#8FAF96" }}>
+            {isAdmin ? "No service times yet. Tap Add to create the schedule." : "No service times yet."}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Editing view — admin only; guarded above via `isAdmin` check on entry.
+  return (
+    <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Service schedule</p>
+        <button onClick={() => setEditing(false)} aria-label="Close">
+          <X size={16} style={{ color: "#8FAF96" }} />
+        </button>
+      </div>
+      <label className="block text-[11px] font-semibold uppercase mb-1" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.08em" }}>
+        Name
+      </label>
+      <input
+        type="text"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        className="w-full px-3 py-2 mb-3 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
+        style={{ color: "#F0EDE6" }}
+      />
+      <label className="block text-[11px] font-semibold uppercase mb-1" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.08em" }}>
+        Day of week
+      </label>
+      <select
+        value={dow}
+        onChange={e => setDow(parseInt(e.target.value, 10))}
+        className="w-full px-3 py-2 mb-3 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
+        style={{ color: "#F0EDE6", background: "#091A10" }}
+      >
+        {DOW_NAMES.map(d => (
+          <option key={d.value} value={d.value}>{d.label}</option>
+        ))}
+      </select>
+      <label className="block text-[11px] font-semibold uppercase mb-1" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.08em" }}>
+        Service times
+      </label>
+      <div className="flex flex-col gap-2 mb-2">
+        {times.map((t, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              type="time"
+              value={t.time}
+              onChange={e => {
+                const v = e.target.value;
+                setTimes(prev => prev.map((row, idx) => idx === i ? { ...row, time: v } : row));
+              }}
+              className="px-2 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm tabular-nums"
+              style={{ color: "#F0EDE6", minWidth: 110 }}
+            />
+            <input
+              type="text"
+              value={t.label}
+              onChange={e => {
+                const v = e.target.value;
+                setTimes(prev => prev.map((row, idx) => idx === i ? { ...row, label: v } : row));
+              }}
+              placeholder="Label (optional)"
+              className="flex-1 min-w-0 px-2 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
+              style={{ color: "#F0EDE6" }}
+            />
+            <button
+              type="button"
+              onClick={() => setTimes(prev => prev.filter((_, idx) => idx !== i))}
+              aria-label="Remove time"
+              className="shrink-0 rounded-full p-1.5"
+              style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => setTimes(prev => [...prev, { label: "", time: "10:00", location: "" }])}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold mb-3"
+        style={{ background: "rgba(111,175,133,0.18)", color: "#C8D4C0", border: "1px solid rgba(111,175,133,0.3)" }}
+      >
+        <Plus size={12} /> Add time
+      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending || times.length === 0}
+          className="px-5 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          {saveMutation.isPending ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={() => setEditing(false)}
+          className="text-xs"
+          style={{ color: "#9a9390" }}
+        >
+          Cancel
+        </button>
+        {schedule && (
+          <button
+            onClick={() => {
+              if (confirm("Delete the service schedule?")) deleteMutation.mutate();
+            }}
+            disabled={deleteMutation.isPending}
+            className="ml-auto text-xs"
+            style={{ color: "#C47A65" }}
+          >
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CommunityDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
@@ -1108,6 +1360,7 @@ export default function CommunityDetailPage() {
         {/* ─── Gatherings ─── */}
         {activeTab === "gatherings" && (
           <div>
+            <ServicesSection slug={slug!} isAdmin={isAdmin} />
             {isAdmin && (
               <Link href="/tradition/new" className="block mb-4">
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: "rgba(46,107,64,0.15)", border: "1px dashed rgba(46,107,64,0.3)", color: "#8FAF96" }}>

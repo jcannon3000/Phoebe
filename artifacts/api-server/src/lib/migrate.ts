@@ -828,6 +828,27 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_id ON prayer_request_amens (request_id)`);
 
+    // ── Group service schedules ───────────────────────────────────────────
+    // A community can have one recurring service schedule — e.g. "Sunday
+    // Services" with multiple times on the same weekday. Rendered as ONE
+    // card on the dashboard; click reveals all service times.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_service_schedules (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        name TEXT NOT NULL DEFAULT 'Sunday Services',
+        day_of_week INTEGER NOT NULL DEFAULT 0,
+        times JSONB NOT NULL DEFAULT '[]'::jsonb,
+        updated_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_group_service_schedule_group_id
+      ON group_service_schedules (group_id)
+    `);
+
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing
     // Google-only / email-only users don't trip a uniqueness check on NULL.
