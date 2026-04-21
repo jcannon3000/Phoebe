@@ -188,12 +188,6 @@ export default function ReadLetter() {
           {letter.content}
         </div>
 
-        {/* Signature */}
-        {isOneToOne && (
-          <p className="text-base italic mt-6" style={{ color: "#9a9390", fontFamily: "Georgia, serif" }}>
-            — {letter.authorName}
-          </p>
-        )}
       </div>
 
       {/* Footer */}
