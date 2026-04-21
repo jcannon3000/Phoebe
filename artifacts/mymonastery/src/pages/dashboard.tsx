@@ -84,7 +84,7 @@ type Moment = {
 
 // ─── Category color system ──────────────────────────────────────────────────
 
-type Category = "letters" | "practices" | "gatherings";
+type Category = "letters" | "practices" | "gatherings" | "feeds";
 
 const CATEGORY_COLORS: Record<Category, {
   bar: string;
@@ -113,6 +113,16 @@ const CATEGORY_COLORS: Record<Category, {
     bg: "rgba(111,175,133,0.15)",
     pulseClass: "animate-turn-pulse-gatherings",
     barPulseClass: "animate-bar-pulse-gatherings",
+  },
+  // Prayer Feeds — distinct from practices (individual-scale) and
+  // gatherings (church-scale); these are cause-scale, a different tone.
+  // Cooler dove-blue-green to visually separate without shouting.
+  feeds: {
+    bar: "#3E7C7A",
+    border: "transparent",
+    bg: "rgba(62,124,122,0.16)",
+    pulseClass: "animate-turn-pulse-practices",
+    barPulseClass: "animate-bar-pulse-practices",
   },
 };
 
@@ -220,7 +230,30 @@ type DashboardItem =
   | { kind: "letter"; data: Correspondence }
   | { kind: "moment"; data: Moment; nextWindow?: string }
   | { kind: "gathering"; data: any; badge?: string }
-  | { kind: "service"; data: ServiceSchedule; nextDate: Date; isOnDate: boolean };
+  | { kind: "service"; data: ServiceSchedule; nextDate: Date; isOnDate: boolean }
+  | { kind: "feed"; data: SubscribedFeed };
+
+// Shape returned by GET /api/prayer-feeds/subscribed — one row per feed I
+// subscribe to, with the entry (if any) for today already attached.
+type SubscribedFeed = {
+  feed: {
+    id: number;
+    slug: string;
+    title: string;
+    tagline: string | null;
+    coverEmoji: string | null;
+    subscriberCount: number;
+  };
+  todayEntry: {
+    id: number;
+    entryDate: string;
+    title: string;
+    body: string | null;
+    scriptureRef: string | null;
+    prayCount: number;
+  } | null;
+  prayedToday: boolean;
+};
 
 // ─── Reusable card sub-components ────────────────────────────────────────────
 
@@ -1127,6 +1160,81 @@ function ServiceCard({
   );
 }
 
+// ─── Prayer-feed today card ─────────────────────────────────────────────────
+// Dashboard card for a prayer feed I'm subscribed to. Mirrors ServiceCard's
+// left-bar + content layout, using the `feeds` category color. Taps through
+// to the feed detail page where Pray is wired up.
+//
+// Two modes:
+//   - todayEntry present: big card announcing today's intention. Pulses if
+//     I haven't prayed yet.
+//   - no todayEntry: quiet card saying the creator hasn't published today.
+//     We still render so the subscription stays visible.
+
+function FeedTodayCard({
+  sf,
+  keyPrefix,
+}: {
+  sf: SubscribedFeed;
+  keyPrefix: string;
+}) {
+  const colors = CATEGORY_COLORS.feeds;
+  const pulse = !!sf.todayEntry && !sf.prayedToday;
+  const href = `/prayer-feeds/${sf.feed.slug}`;
+  const emoji = sf.feed.coverEmoji ?? "🕊️";
+  const eyebrow = sf.todayEntry
+    ? (sf.prayedToday ? "Prayed today" : "Praying today")
+    : "Subscribed";
+  const title = sf.todayEntry?.title ?? sf.feed.title;
+  const subtitle = sf.todayEntry
+    ? `${sf.todayEntry.prayCount} ${sf.todayEntry.prayCount === 1 ? "person" : "people"} praying · ${sf.feed.title}`
+    : (sf.feed.tagline ?? "No new intention today");
+
+  return (
+    <Link
+      key={`${keyPrefix}-feed-${sf.feed.id}`}
+      href={href}
+      className="block"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? colors.pulseClass : ""}`}
+        style={{
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div
+          className={`w-1 flex-shrink-0 ${pulse ? colors.barPulseClass : ""}`}
+          style={{ background: pulse ? undefined : colors.bar }}
+        />
+        <div className="flex-1 px-4 pt-3 pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+              {emoji} {title}
+            </span>
+            <span className="text-[10px] font-semibold uppercase shrink-0 mt-1" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+              {eyebrow}
+            </span>
+          </div>
+          <div className="mt-1.5">
+            <p className="text-sm" style={{ color: "#8FAF96", lineHeight: "20px", margin: 0 }}>
+              {subtitle}
+            </p>
+            {sf.todayEntry?.scriptureRef && (
+              <p className="text-[11px] mt-0.5 italic" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.01em" }}>
+                {sf.todayEntry.scriptureRef}
+              </p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
 // ─── Service detail modal ───────────────────────────────────────────────────
 // Full list of every service time in a group's schedule. Opened from
 // ServiceCard; dismissed by tapping the backdrop or the close button.
@@ -1235,6 +1343,7 @@ function TimeSection({
   const momentItems = items.filter(i => i.kind === "moment") as Array<Extract<DashboardItem, { kind: "moment" }>>;
   const gatheringItems = items.filter(i => i.kind === "gathering") as Array<Extract<DashboardItem, { kind: "gathering" }>>;
   const serviceItems = items.filter(i => i.kind === "service") as Array<Extract<DashboardItem, { kind: "service" }>>;
+  const feedItems = items.filter(i => i.kind === "feed") as Array<Extract<DashboardItem, { kind: "feed" }>>;
 
   // Letters where it's the user's turn (or there are unread letters) always
   // render as individual cards. Passive letters collapse into a summary
@@ -1251,7 +1360,8 @@ function TimeSection({
     momentItems.length +
     actionLetters.length +
     (showPassiveAsSummary ? 1 : passiveLetters.length) +
-    serviceItems.length;
+    serviceItems.length +
+    feedItems.length;
   const scrollable = visibleCardCount > 3;
 
   const cards = (
@@ -1272,6 +1382,13 @@ function TimeSection({
           nextDate={item.nextDate}
           isOnDate={item.isOnDate}
           onOpen={() => onOpenService(item.data, item.nextDate)}
+          keyPrefix={label}
+        />
+      ))}
+      {feedItems.map((item) => (
+        <FeedTodayCard
+          key={`${label}-f-${item.data.feed.id}`}
+          sf={item.data}
           keyPrefix={label}
         />
       ))}
@@ -1796,6 +1913,16 @@ export default function Dashboard() {
   });
   const serviceSchedules = serviceSchedulesData?.schedules ?? [];
 
+  // Subscribed prayer feeds — beta only. Each row carries the feed plus
+  // (optionally) today's entry and whether I've already prayed today, so
+  // the dashboard card can render without a second hop.
+  const { data: subscribedFeedsData } = useQuery<{ subscriptions: SubscribedFeed[] }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
+    enabled: !!user && isBeta,
+  });
+  const subscribedFeeds = subscribedFeedsData?.subscriptions ?? [];
+
   // Detect new unread letters. Runs once per session. The localStorage key
   // stores the *set* of correspondence ids that were already shown unread
   // on last dismiss — a new unread correspondence id (or a previously-read
@@ -2001,8 +2128,24 @@ export default function Dashboard() {
       else monthItems.push(item);
     }
 
+    // ── Prayer feeds placement (beta)
+    // Feeds with a published entry for today that I haven't yet prayed → Today.
+    // After I pray, the feed quiets down (same pattern as intercessions).
+    // Subscribed feeds without a today entry go to This week so the card
+    // stays visible but low-priority.
+    for (const sf of subscribedFeeds) {
+      const item: DashboardItem = { kind: "feed", data: sf };
+      if (sf.todayEntry && !sf.prayedToday) {
+        todayItems.push(item);
+      } else if (!sf.todayEntry) {
+        weekItems.push(item);
+      }
+      // If there's a todayEntry and I already prayed, the card goes quiet
+      // for the rest of the day (drop entirely).
+    }
+
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences, serviceSchedules, isBeta]);
+  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, isBeta]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");

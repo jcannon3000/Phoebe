@@ -118,6 +118,26 @@ const updateEntrySchema = entrySchema.partial().extend({
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
 
+// GET /api/prayer-feeds — discovery: every `live` feed. For Phase 2/3
+// beta this is a simple flat list; ranking / curation comes later.
+router.get("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const rows = await db.select().from(prayerFeedsTable)
+    .where(eq(prayerFeedsTable.state, "live"))
+    .orderBy(desc(prayerFeedsTable.subscriberCount), desc(prayerFeedsTable.createdAt));
+
+  // Annotate each row with whether the caller already subscribes.
+  const subRows = await db.select({
+    feedId: prayerFeedSubscriptionsTable.feedId,
+  }).from(prayerFeedSubscriptionsTable)
+    .where(eq(prayerFeedSubscriptionsTable.userId, user.id));
+  const subscribedIds = new Set(subRows.map(r => r.feedId));
+
+  res.json({
+    feeds: rows.map(f => ({ ...f, isSubscribed: subscribedIds.has(f.id) })),
+  });
+});
+
 // GET /api/prayer-feeds/mine — feeds the caller created
 router.get("/prayer-feeds/mine", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;

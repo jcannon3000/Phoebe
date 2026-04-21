@@ -93,6 +93,8 @@ import FeedbackPage from "./pages/feedback";
 import MutedUsersPage from "./pages/muted-users";
 import PrayerFeedNewPage from "./pages/prayer-feed-new";
 import PrayerFeedManagePage from "./pages/prayer-feed-manage";
+import PrayerFeedsBrowsePage from "./pages/prayer-feeds-browse";
+import PrayerFeedDetailPage from "./pages/prayer-feed-detail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -161,6 +163,8 @@ function Router() {
       <Route path="/people/:email" component={PersonProfile} />
       <Route path="/prayer-feeds/new" component={PrayerFeedNewPage} />
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />
+      <Route path="/prayer-feeds" component={PrayerFeedsBrowsePage} />
+      <Route path="/prayer-feeds/:slug" component={PrayerFeedDetailPage} />
       <Route component={NotFound} />
     </Switch>
   );
