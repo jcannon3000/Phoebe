@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
@@ -422,6 +423,118 @@ function SlideContent({
   );
 }
 
+// ─── Streak celebration ────────────────────────────────────────────────────
+// Duolingo-style: big streak number scales in with a bounce, label and
+// "you've held with your community" fade in underneath, and a ring of
+// leaf/sparkle emoji flies outward from the number. Fires once per
+// local-TZ day (gated by the server's firstToday check).
+function StreakCelebration({ streak }: { streak: number }) {
+  // 12 particles in a circle, staggered so the ring bursts outward.
+  const particles = Array.from({ length: 12 }, (_, i) => {
+    const angle = (i / 12) * Math.PI * 2;
+    const distance = 140;
+    return {
+      i,
+      emoji: i % 3 === 0 ? "🌿" : i % 3 === 1 ? "✨" : "🌱",
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance,
+    };
+  });
+
+  return (
+    <div className="w-full flex flex-col items-center text-center gap-3 relative" style={{ minHeight: 260 }}>
+      {/* Radial burst — emoji particles scaling from 0 outward */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {particles.map((p) => (
+          <motion.div
+            key={p.i}
+            initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
+            animate={{
+              opacity: [0, 1, 1, 0],
+              scale: [0, 1.2, 1, 0.6],
+              x: [0, p.x * 0.3, p.x * 0.7, p.x],
+              y: [0, p.y * 0.3, p.y * 0.7, p.y],
+            }}
+            transition={{
+              duration: 1.8,
+              delay: 0.2 + (p.i * 0.035),
+              ease: "easeOut",
+            }}
+            style={{
+              position: "absolute",
+              fontSize: 22,
+            }}
+          >
+            {p.emoji}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Streak number — spring scale-in */}
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.15 }}
+        className="flex items-baseline justify-center gap-2 relative z-10"
+      >
+        <span
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 96,
+            fontWeight: 700,
+            color: "#F0EDE6",
+            lineHeight: 1,
+            letterSpacing: "-0.03em",
+          }}
+        >
+          {streak}
+        </span>
+        <motion.span
+          initial={{ rotate: -20, scale: 0.8 }}
+          animate={{ rotate: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 180, damping: 10, delay: 0.35 }}
+          style={{ fontSize: 56 }}
+        >
+          🔥
+        </motion.span>
+      </motion.div>
+
+      {/* Streak label */}
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.6 }}
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: 13,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: "#8FAF96",
+          marginTop: 8,
+        }}
+      >
+        {streak === 1 ? "Day one" : `${streak}-day streak`}
+      </motion.p>
+
+      {/* Primary copy */}
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.8 }}
+        className="text-base leading-relaxed"
+        style={{
+          color: "#F0EDE6",
+          fontFamily: "'Space Grotesk', sans-serif",
+          maxWidth: 360,
+          marginTop: 8,
+        }}
+      >
+        You have carried what your community is carrying. 🌿
+      </motion.p>
+    </div>
+  );
+}
+
 export default function PrayerModePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -590,6 +703,10 @@ export default function PrayerModePage() {
   const [phase, setPhase] = useState<"prayer" | "closing">("prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
+  // Streak celebration state — set when the server tells us this is the
+  // user's first prayer-list completion today. Null outside that window
+  // so the closing slide falls back to the normal "you have carried…" copy.
+  const [celebration, setCelebration] = useState<{ streak: number } | null>(null);
 
   // Initialise phase once slides are loaded
   useEffect(() => {
@@ -597,6 +714,35 @@ export default function PrayerModePage() {
       setPhase("closing");
     }
   }, [slides.length, momentsData, prayerRequests, myPrayersFor]);
+
+  // When the user lands on the closing slide, log the prayer-list streak.
+  // The server is idempotent per TZ-local day — calling twice doesn't
+  // double-count. If this is the first completion today, we pop the
+  // Duolingo-style celebration with the new streak count.
+  useEffect(() => {
+    if (phase !== "closing") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiRequest("POST", "/api/prayer-streak/log");
+        if (cancelled) return;
+        const body = res as { streak: number; firstToday: boolean };
+        // Refresh the header pill regardless of firstToday — the count
+        // might have changed from a stale cache value to the real one.
+        queryClient.invalidateQueries({ queryKey: ["/api/prayer-streak"] });
+        if (body.firstToday) {
+          setCelebration({ streak: body.streak });
+          // Success haptic on the celebration entrance.
+          try {
+            window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } }));
+          } catch { /* ignore */ }
+        }
+      } catch {
+        /* non-fatal — celebration just won't fire */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [phase]);
 
   // Fade in on mount; prevent body scroll; match Safari chrome to slide bg
   // so the top status-bar area and the bottom home-indicator area both
@@ -659,6 +805,18 @@ export default function PrayerModePage() {
       ),
     );
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+
+    // Native haptic on finish — a quiet "success" buzz so the user's
+    // body knows the list is complete even before they look back at
+    // the screen. Silently no-ops on the web build (native-shell
+    // listens for this event only on iOS).
+    try {
+      window.dispatchEvent(
+        new CustomEvent("phoebe:haptic", { detail: { style: "success" } })
+      );
+    } catch {
+      /* non-fatal */
+    }
 
     // Fade out then navigate
     setSlideVisible(false);
@@ -726,12 +884,16 @@ export default function PrayerModePage() {
             className="w-full flex flex-col items-center text-center gap-8"
             style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.4s ease" }}
           >
-            <p
-              className="text-base leading-relaxed"
-              style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              You have carried what your community is carrying. 🌿
-            </p>
+            {celebration ? (
+              <StreakCelebration streak={celebration.streak} />
+            ) : (
+              <p
+                className="text-base leading-relaxed"
+                style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                You have carried what your community is carrying. 🌿
+              </p>
+            )}
             <button
               onClick={handleDone}
               className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"

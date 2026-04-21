@@ -23,6 +23,7 @@ import gratitudeRouter from "./gratitude";
 import prayersForRouter from "./prayers-for";
 import waitlistRouter from "./waitlist";
 import prayerFeedsRouter from "./prayer-feeds";
+import prayerStreakRouter from "./prayer-streak";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(gratitudeRouter);
 router.use(prayersForRouter);
 router.use(waitlistRouter);
 router.use(prayerFeedsRouter);
+router.use(prayerStreakRouter);
 
 export default router;

@@ -927,6 +927,13 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_id TEXT`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS users_apple_id_idx ON users (apple_id) WHERE apple_id IS NOT NULL`);
 
+    // ── Daily prayer-list streak (Duolingo-style celebration) ────────────────
+    // prayer_streak_count: current consecutive-days count.
+    // prayer_streak_last_date: YYYY-MM-DD in the user's local timezone.
+    // Compare vs today-local to decide increment / reset / no-op.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_streak_count INTEGER NOT NULL DEFAULT 0`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_streak_last_date TEXT`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

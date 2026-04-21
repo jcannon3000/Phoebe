@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -30,6 +30,11 @@ export const usersTable = pgTable("users", {
   // popup on the dashboard. Account-scoped gate so dismissing on desktop
   // also silences the phone for the rest of the day.
   prayerInviteLastShownDate: text("prayer_invite_last_shown_date"),
+  // Daily prayer-list streak. Incremented once per local-TZ day when the
+  // user completes their prayer list; resets to 1 if a day is missed.
+  // prayerStreakLastDate is YYYY-MM-DD in the user's timezone.
+  prayerStreakCount: integer("prayer_streak_count").notNull().default(0),
+  prayerStreakLastDate: text("prayer_streak_last_date"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
