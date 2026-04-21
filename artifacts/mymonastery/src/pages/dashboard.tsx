@@ -628,7 +628,9 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   } else if (m.group?.name) {
     // Group-attached practices: show the community name rather than listing
     // individual members. Members come and go; the community is the anchor.
-    subtitle = `with ${m.group.name}`;
+    // Lead with the group emoji so the attribution reads as the circle's
+    // own voice on the card's second line.
+    subtitle = `${m.group.emoji ? `${m.group.emoji} ` : ""}From ${m.group.name}`;
   } else if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
 
@@ -787,17 +789,6 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
         bgColor: "rgba(70,130,190,0.12)",
       } : {})}
     >
-      {/* Group eyebrow — when a practice is attached to a circle, call out
-          the community by name. Stays visible even while the subtitle flap
-          is cycling through other lines, so the provenance is never hidden. */}
-      {m.group?.name && (
-        <p
-          className="text-[10px] uppercase tracking-[0.14em] mb-1 truncate"
-          style={{ color: "rgba(111,175,133,0.75)" }}
-        >
-          {m.group.emoji ? `${m.group.emoji} ` : "🏘️ "}From {m.group.name}
-        </p>
-      )}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{emoji} {displayName}</span>
@@ -1379,21 +1370,21 @@ export default function Dashboard() {
     setLocation("/prayer-mode");
   }, [dismissPrayerInvite, setLocation]);
 
-  // ── "Someone wrote a prayer word for you" popup ────────────────────────
-  // Queued after the prayer-invite and beta-welcome popups so the user only
-  // ever sees one modal at a time. We compare the max word.createdAt across
-  // the viewer's own requests against a localStorage timestamp — anything
-  // newer triggers a single summary popup. Dismiss bumps the timestamp to
-  // the newest word surfaced, so subsequent visits are quiet until another
-  // word arrives.
-  const [newWordsPopup, setNewWordsPopup] = useState<{
-    count: number;
-    latestAuthor: string;
-    latestContent: string;
-    latestRequestBody: string;
-    latestCreatedAt: string;
+  // ── "You have a new letter" popup ──────────────────────────────────────
+  // Queued behind the daily prayer-invite and the beta-welcome so only one
+  // modal is ever visible. Fires when any correspondence returns
+  // unreadCount > 0 AND the viewer hasn't already dismissed that particular
+  // set this session. Dismiss stores the current set of unread correspondence
+  // ids so subsequent visits are quiet until a new one arrives.
+  const [newLetterPopup, setNewLetterPopup] = useState<{
+    correspondenceId: number;
+    correspondenceName: string;
+    fromAuthor: string | null;
+    fromCity: string | null;
+    sentAt: string | null;
+    totalUnread: number;
   } | null>(null);
-  const newWordsHandledThisSessionRef = useRef(false);
+  const newLetterHandledThisSessionRef = useRef(false);
 
   useEffect(() => {
     const reset = () => setFilter(null);
@@ -1433,16 +1424,7 @@ export default function Dashboard() {
   // Declared here, AFTER momentsData, because the effect's dep array reads
   // momentsData and would otherwise blow up on first render with a
   // "Cannot access uninitialized variable" (TDZ).
-  type DashPrayerWord = { authorName: string; content: string; createdAt?: string | null };
-  type DashPrayerRequest = {
-    id: number;
-    body?: string;
-    isAnswered: boolean;
-    isOwnRequest?: boolean;
-    closedAt?: string | null;
-    // Only populated on own requests — used to detect new words.
-    words?: DashPrayerWord[];
-  };
+  type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
   type DashPrayerFor = { id: number; expired: boolean };
 
   const { data: dashPrayerRequests, isLoading: dashPrayerRequestsLoading } = useQuery<DashPrayerRequest[]>({
@@ -1508,73 +1490,94 @@ export default function Dashboard() {
     // chance if the user has prayers queued by then.
   }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, queryClient]);
 
-  // Detect new prayer words on the viewer's own requests. Runs once per
-  // session. Intentionally *does not* race with the prayer-invite popup —
-  // render-side gating ensures only one modal shows at a time, and the
-  // prayer-invite takes precedence.
+  // Correspondences — used solely to drive the "you have a new letter" popup
+  // on the dashboard. Dashboard doesn't *render* letters in the main feed
+  // (that lives on /letters), so we only care about the unreadCount signal.
+  type DashCorrespondence = {
+    id: number;
+    name: string;
+    unreadCount: number;
+    recentPostmarks?: Array<{ authorName: string; city: string; sentAt: string }>;
+  };
+  const { data: dashCorrespondences, isLoading: dashCorrespondencesLoading } = useQuery<DashCorrespondence[]>({
+    queryKey: ["/api/phoebe/correspondences"],
+    queryFn: async () => {
+      // Same fallback the LettersPage uses — the route was renamed and some
+      // deployments still serve only the legacy path.
+      try {
+        return await apiRequest("GET", "/api/phoebe/correspondences");
+      } catch {
+        return await apiRequest("GET", "/api/letters/correspondences");
+      }
+    },
+    enabled: !!user,
+  });
+
+  // Detect new unread letters. Runs once per session. The localStorage key
+  // stores the *set* of correspondence ids that were already shown unread
+  // on last dismiss — a new unread correspondence id (or a previously-read
+  // one that has new mail again) re-triggers the popup.
   useEffect(() => {
     if (!user) return;
-    if (newWordsHandledThisSessionRef.current) return;
-    if (dashPrayerRequestsLoading) return;
+    if (newLetterHandledThisSessionRef.current) return;
+    if (dashCorrespondencesLoading) return;
 
-    const lastSeenRaw = (() => {
-      try { return localStorage.getItem("phoebe:prayer-words-seen-at"); }
-      catch { return null; }
+    const seenIds = (() => {
+      try {
+        const raw = localStorage.getItem("phoebe:letters-seen-unread-ids");
+        if (!raw) return new Set<number>();
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return new Set<number>(parsed.filter((n): n is number => typeof n === "number"));
+      } catch { /* ignore */ }
+      return new Set<number>();
     })();
-    const lastSeenMs = lastSeenRaw ? Date.parse(lastSeenRaw) : 0;
 
-    const ownRequests = (dashPrayerRequests ?? []).filter(
-      r => r.isOwnRequest && !r.closedAt && !r.isAnswered,
-    );
-
-    // Flatten all words on the viewer's own requests, keeping track of the
-    // request they belong to so we can display the request body in the popup.
-    type SeenWord = { authorName: string; content: string; createdAt: string; requestBody: string };
-    const newWords: SeenWord[] = [];
-    for (const r of ownRequests) {
-      for (const w of r.words ?? []) {
-        if (!w.createdAt) continue;
-        const ms = Date.parse(w.createdAt);
-        if (!Number.isFinite(ms)) continue;
-        if (ms > lastSeenMs) {
-          newWords.push({
-            authorName: w.authorName,
-            content: w.content,
-            createdAt: w.createdAt,
-            requestBody: r.body ?? "",
-          });
-        }
-      }
-    }
-
-    if (newWords.length === 0) {
-      newWordsHandledThisSessionRef.current = true;
+    const withUnread = (dashCorrespondences ?? []).filter(c => c.unreadCount > 0);
+    if (withUnread.length === 0) {
+      newLetterHandledThisSessionRef.current = true;
       return;
     }
 
-    // Show a single popup; pick the most recent word as the visible quote.
-    newWords.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-    const latest = newWords[0];
-    newWordsHandledThisSessionRef.current = true;
-    setNewWordsPopup({
-      count: newWords.length,
-      latestAuthor: latest.authorName,
-      latestContent: latest.content,
-      latestRequestBody: latest.requestBody,
-      latestCreatedAt: latest.createdAt,
-    });
-  }, [user, dashPrayerRequests, dashPrayerRequestsLoading]);
+    // Pick the most recent unread correspondence that hasn't been seen yet.
+    // Sort by most recent postmark so the popup highlights the newest arrival.
+    const unseen = withUnread.filter(c => !seenIds.has(c.id));
+    if (unseen.length === 0) {
+      newLetterHandledThisSessionRef.current = true;
+      return;
+    }
 
-  const dismissNewWordsPopup = useCallback(() => {
-    setNewWordsPopup(prev => {
-      if (prev) {
-        try {
-          localStorage.setItem("phoebe:prayer-words-seen-at", prev.latestCreatedAt);
-        } catch { /* ignore quota / private-mode */ }
-      }
-      return null;
+    const pickLatestPostmark = (c: DashCorrespondence): number => {
+      const stamps = (c.recentPostmarks ?? [])
+        .map(p => Date.parse(p.sentAt))
+        .filter(ms => Number.isFinite(ms));
+      return stamps.length ? Math.max(...stamps) : 0;
+    };
+    unseen.sort((a, b) => pickLatestPostmark(b) - pickLatestPostmark(a));
+    const primary = unseen[0];
+    const latestPostmark = (primary.recentPostmarks ?? [])
+      .slice()
+      .sort((a, b) => Date.parse(b.sentAt) - Date.parse(a.sentAt))[0] ?? null;
+
+    newLetterHandledThisSessionRef.current = true;
+    setNewLetterPopup({
+      correspondenceId: primary.id,
+      correspondenceName: primary.name,
+      fromAuthor: latestPostmark?.authorName ?? null,
+      fromCity: latestPostmark?.city ?? null,
+      sentAt: latestPostmark?.sentAt ?? null,
+      totalUnread: withUnread.reduce((acc, c) => acc + c.unreadCount, 0),
     });
-  }, []);
+  }, [user, dashCorrespondences, dashCorrespondencesLoading]);
+
+  const dismissNewLetterPopup = useCallback(() => {
+    setNewLetterPopup(null);
+    try {
+      const unreadIds = (dashCorrespondences ?? [])
+        .filter(c => c.unreadCount > 0)
+        .map(c => c.id);
+      localStorage.setItem("phoebe:letters-seen-unread-ids", JSON.stringify(unreadIds));
+    } catch { /* ignore quota / private-mode */ }
+  }, [dashCorrespondences]);
 
   const isLoading = momentsLoading;
 
@@ -1722,20 +1725,19 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* "Someone wrote a prayer word for you" — queued after the daily
-          prayer-invite and the beta-welcome so only one modal ever shows
-          at a time. The gate on prayerInviteVisible/betaWelcomeVisible
-          is what keeps us last in the queue: while either is open, this
-          one waits. */}
+      {/* "You have a new letter" popup — queued after the daily prayer-invite
+          and the beta-welcome so only one modal ever shows at a time. The
+          gate on prayerInviteVisible/betaWelcomeVisible keeps us last in
+          line: while either is open, this one waits. */}
       <AnimatePresence>
-        {newWordsPopup && !prayerInviteVisible && !betaWelcomeVisible && (
+        {newLetterPopup && !prayerInviteVisible && !betaWelcomeVisible && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center px-6"
             style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
-            onClick={dismissNewWordsPopup}
+            onClick={dismissNewLetterPopup}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 12 }}
@@ -1746,60 +1748,45 @@ export default function Dashboard() {
               style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
               onClick={e => e.stopPropagation()}
             >
-              <p className="text-4xl mb-4">🌿</p>
+              <p className="text-4xl mb-4">📮</p>
               <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Your community
+                {newLetterPopup.totalUnread > 1 ? `${newLetterPopup.totalUnread} new letters` : "A new letter"}
               </p>
               <h2
                 className="text-xl font-bold mb-4"
                 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
               >
-                {newWordsPopup.count === 1
-                  ? `${newWordsPopup.latestAuthor} wrote a prayer for you`
-                  : `${newWordsPopup.count} people wrote prayers for you`}
+                {newLetterPopup.fromAuthor
+                  ? `From ${newLetterPopup.fromAuthor}`
+                  : newLetterPopup.correspondenceName}
               </h2>
 
-              {newWordsPopup.latestRequestBody && (
-                <p className="text-[11px] mb-3" style={{ color: "rgba(143,175,150,0.6)" }}>
-                  On: <span style={{ color: "#8FAF96" }}>{newWordsPopup.latestRequestBody}</span>
+              {(newLetterPopup.fromCity || newLetterPopup.sentAt) && (
+                <p className="text-[12px] mb-5" style={{ color: "rgba(143,175,150,0.65)" }}>
+                  {newLetterPopup.fromCity ? newLetterPopup.fromCity : ""}
+                  {newLetterPopup.fromCity && newLetterPopup.sentAt ? " · " : ""}
+                  {newLetterPopup.sentAt ? format(new Date(newLetterPopup.sentAt), "MMM d") : ""}
                 </p>
               )}
-
-              <div
-                className="rounded-xl px-4 py-3 mb-5 text-left"
-                style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.2)" }}
-              >
-                <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(168,197,160,0.6)" }}>
-                  {newWordsPopup.latestAuthor}
-                </p>
-                <p
-                  className="text-sm italic leading-relaxed"
-                  style={{
-                    color: "#F0EDE6",
-                    fontFamily: "Playfair Display, Georgia, serif",
-                  }}
-                >
-                  {newWordsPopup.latestContent}
-                </p>
-              </div>
 
               <div className="flex flex-col gap-2.5">
                 <button
                   onClick={() => {
-                    dismissNewWordsPopup();
-                    setLocation("/prayer-list");
+                    const id = newLetterPopup.correspondenceId;
+                    dismissNewLetterPopup();
+                    setLocation(`/letters/${id}`);
                   }}
                   className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
-                  See all →
+                  Read letter →
                 </button>
                 <button
-                  onClick={dismissNewWordsPopup}
+                  onClick={dismissNewLetterPopup}
                   className="px-6 py-2.5 text-sm font-medium transition-opacity hover:opacity-80"
                   style={{ color: "rgba(143,175,150,0.7)" }}
                 >
-                  Close
+                  Later
                 </button>
               </div>
             </motion.div>

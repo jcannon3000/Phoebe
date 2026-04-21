@@ -3626,12 +3626,19 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
       .map(t => t.userToken);
     if (myTokens.length === 0) { res.json({ streak: 0, lastPrayedDate: null }); return; }
 
-    // Distinct window dates this user has posted on. "seed" is a bookkeeping
-    // row written on moment creation — never counts as a day of prayer.
+    // Distinct window dates this user has checked-in on. isCheckin=1 is the
+    // signal written by prayer-mode's handleDone — one row per intercession
+    // the user prayed through in the slideshow. Direct practice posts (likes,
+    // reflections, text posts) don't flip isCheckin, so they don't count
+    // toward this streak. This keeps "my prayer-list streak" literal: days
+    // the user has walked the slideshow.
     const rows = await db
       .select({ windowDate: momentPostsTable.windowDate })
       .from(momentPostsTable)
-      .where(inArray(momentPostsTable.userToken, myTokens));
+      .where(and(
+        inArray(momentPostsTable.userToken, myTokens),
+        eq(momentPostsTable.isCheckin, 1),
+      ));
     const dates = new Set(
       rows
         .map(r => r.windowDate)
