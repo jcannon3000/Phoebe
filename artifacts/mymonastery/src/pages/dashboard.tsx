@@ -2049,9 +2049,33 @@ export default function Dashboard() {
     // hidden entirely (not just moved to Tomorrow / This week). They
     // "disappear" once completed, matching the "done, quiet for the rest
     // of the day" feel the user asked for.
+    // Fasting has its own cadence fields (`fastingDay` etc.) that aren't
+    // always reflected in the generic frequency/dayOfWeek used by
+    // server-side isActionable. Client-side we recompute for fasts so
+    // bucketing is correct regardless of server deploy state.
+    const todayDowLocal = new Date().getDay();
+    const tomorrowDowLocal = (todayDowLocal + 1) % 7;
+    const isFastActionableOnDow = (m: Moment, dow: number): boolean => {
+      if (m.templateType !== "fasting") return false;
+      if (m.fastingDay) {
+        const wanted = DOW_LC[m.fastingDay.toLowerCase()];
+        if (wanted !== undefined) return wanted === dow;
+      }
+      // Fallback: generic dayOfWeek / practiceDays (matches server logic).
+      let rawDays: string[] = [];
+      try { rawDays = m.practiceDays ? (JSON.parse(m.practiceDays) as string[]) : []; } catch { /* */ }
+      if (!rawDays.length && m.dayOfWeek) rawDays = [m.dayOfWeek];
+      return rawDays.some(d => {
+        const up = d.toUpperCase();
+        if (RRULE_DOW[up] !== undefined) return RRULE_DOW[up] === dow;
+        return DOW_LC[d.toLowerCase()] === dow;
+      });
+    };
+
     for (const m of visibleMoments) {
       const isLectio = m.templateType === "lectio-divina";
       const isIntercession = m.templateType === "intercession";
+      const isFasting = m.templateType === "fasting";
       const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
 
       // Beta feature: hide a daily intercession once prayed today.
@@ -2059,18 +2083,35 @@ export default function Dashboard() {
         continue;
       }
 
-      if (m.isActionableToday && !userDone) {
-        todayItems.push({ kind: "moment", data: m });
-        continue;
-      }
+      // Fasting override: decide Today/Tomorrow/elsewhere from the fasting
+      // fields directly, ignoring server-side isActionable flags which
+      // don't always know about fasting cadence.
+      if (isFasting) {
+        const fastToday = isFastActionableOnDow(m, todayDowLocal);
+        const fastTomorrow = isFastActionableOnDow(m, tomorrowDowLocal);
+        if (fastToday && !userDone) {
+          todayItems.push({ kind: "moment", data: m });
+          continue;
+        }
+        if (isBeta && fastTomorrow) {
+          tomorrowItems.push({ kind: "moment", data: m, nextWindow: "Tomorrow" });
+          continue;
+        }
+        // Not today/tomorrow — fall through to week/month bucket below.
+      } else {
+        if (m.isActionableToday && !userDone) {
+          todayItems.push({ kind: "moment", data: m });
+          continue;
+        }
 
-      // Beta-only: Tomorrow bucket. We surface practices that will be
-      // actionable tomorrow in their TZ — whether they're done for today
-      // or simply not a practice day today. Gives the user a heads-up
-      // without waiting for the day to flip.
-      if (isBeta && m.isActionableTomorrow) {
-        tomorrowItems.push({ kind: "moment", data: m, nextWindow: "Tomorrow" });
-        continue;
+        // Beta-only: Tomorrow bucket. We surface practices that will be
+        // actionable tomorrow in their TZ — whether they're done for today
+        // or simply not a practice day today. Gives the user a heads-up
+        // without waiting for the day to flip.
+        if (isBeta && m.isActionableTomorrow) {
+          tomorrowItems.push({ kind: "moment", data: m, nextWindow: "Tomorrow" });
+          continue;
+        }
       }
 
       const label = nextWindowLabel(m);
