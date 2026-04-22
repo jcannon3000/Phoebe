@@ -324,11 +324,12 @@ function FAB() {
   const isAdminOfAny = (groupsData?.groups ?? []).some(g => g.myRole === "admin");
   const showAdminMenu = isAdminOfAny && communityAdminView;
 
-  // Community admins (with admin-view on) see the practice/gathering
-  // templates. Beta users additionally see Prayer Feed as its own
-  // option — non-admins who are beta also get a FAB, but it shows
-  // only the Prayer Feed entry.
-  if (!showAdminMenu && !isBeta) return null;
+  // Only community admins (with admin-view on) see the dashboard FAB.
+  // We used to also surface a prayer-feed-only FAB to any beta user, but
+  // that leaked the button to pilot viewers who shouldn't be starting
+  // anything from the home screen — the FAB is an admin affordance.
+  // Beta admins still see the prayer-feed option inside the menu below.
+  if (!showAdminMenu) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
@@ -1152,18 +1153,16 @@ function ServiceCard({
   // Title emoji is 🙌🏽 (hands lifted in worship) rather than a church
   // building — the card is about *gathering to worship together*, not
   // about a specific building, and many hosts aren't churches anyway.
-  const dayLabel = isOnDate
-    ? `Today · ${format(nextDate, "EEEE, MMMM d")}`
-    : (isToday(addDays(startOfDay(new Date()), 1)) &&
-       nextDate.getTime() === addDays(startOfDay(new Date()), 1).getTime())
-      ? `Tomorrow · ${format(nextDate, "EEEE, MMMM d")}`
-      : format(nextDate, "EEEE, MMMM d");
+  // Date is already implied by the section header (Today / Tomorrow /
+  // This week) that groups the card — repeating "Sunday, April 26" on
+  // the card itself adds noise without adding information. Drop it.
+  // Location stays — useful for multi-campus parishes.
   const perTimeLocation = schedule.times.find((t) => t.location)?.location ?? null;
   const locationLine = (schedule.location && schedule.location.trim())
     || perTimeLocation
     ? `📍 ${(schedule.location ?? perTimeLocation ?? "").trim()}`
     : "";
-  const flapLines = [dayLabel, locationLine]
+  const flapLines = [locationLine]
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
