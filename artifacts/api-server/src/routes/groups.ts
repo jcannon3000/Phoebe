@@ -1371,24 +1371,33 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     ),
   );
 
-  const rows = await db.select({
-    id: prayerRequestsTable.id,
-    body: prayerRequestsTable.body,
-    ownerId: prayerRequestsTable.ownerId,
-    createdByName: prayerRequestsTable.createdByName,
-    isAnonymous: prayerRequestsTable.isAnonymous,
-    createdAt: prayerRequestsTable.createdAt,
-    ownerDisplayName: usersTable.name,
-  })
-    .from(prayerRequestsTable)
-    .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
-    .where(and(
-      sql`${prayerRequestsTable.closedAt} IS NULL`,
-      memberUserIds.length > 0
-        ? sql`(${prayerRequestsTable.groupId} = ${group.id} OR (${prayerRequestsTable.groupId} IS NULL AND ${prayerRequestsTable.ownerId} = ANY(${memberUserIds})))`
-        : eq(prayerRequestsTable.groupId, group.id),
-    ))
-    .orderBy(desc(prayerRequestsTable.createdAt));
+  // Any active prayer request authored by a member of this community
+  // lands on the community wall — regardless of what groupId they
+  // scoped it to when posting. Users post prayers from many surfaces
+  // (personal /prayer-list compose with no groupId, the community
+  // home compose with groupId = this group, a different community's
+  // compose with groupId = that group). The mental model is "my
+  // community sees what my community is carrying," so we don't force
+  // them to pick a group every time. closedAt filters out
+  // answered/released requests.
+  const rows = memberUserIds.length === 0
+    ? []
+    : await db.select({
+        id: prayerRequestsTable.id,
+        body: prayerRequestsTable.body,
+        ownerId: prayerRequestsTable.ownerId,
+        createdByName: prayerRequestsTable.createdByName,
+        isAnonymous: prayerRequestsTable.isAnonymous,
+        createdAt: prayerRequestsTable.createdAt,
+        ownerDisplayName: usersTable.name,
+      })
+      .from(prayerRequestsTable)
+      .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
+      .where(and(
+        sql`${prayerRequestsTable.closedAt} IS NULL`,
+        sql`${prayerRequestsTable.ownerId} = ANY(${memberUserIds})`,
+      ))
+      .orderBy(desc(prayerRequestsTable.createdAt));
 
   // Word count is decorative on the community feed — reusable hook for
   // "how much prayer has this received?" once we implement it. For now,
