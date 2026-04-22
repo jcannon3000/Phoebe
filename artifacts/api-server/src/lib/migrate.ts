@@ -980,25 +980,71 @@ export async function migrate() {
 
     // ── Orphan cleanup: group_members rows pointing to deleted users ──
     // Accounts deleted before we wired explicit cleanup into
-    // DELETE /api/users/me left their group_members row behind because
-    // drizzle-kit push didn't propagate the ON DELETE CASCADE schema
-    // directive to prod. Result: a community's member count kept
-    // showing the ghost user. One-shot idempotent cleanup — only
-    // touches rows with a user_id that no longer exists. Invitee-only
-    // rows (user_id IS NULL) are left alone.
+    // DELETE /api/users/me left their group_members row behind. Two
+    // scenarios we have to cover separately:
+    //
+    //   (a) The FK had no cascade at all → user_id still points to a
+    //       users.id that no longer exists.
+    //   (b) The FK had ON DELETE SET NULL (older drizzle-kit push
+    //       behavior) → user_id became NULL but joined_at stayed,
+    //       so the row now looks exactly like a pending invitee.
+    //
+    // The distinguishing mark for (b) is joined_at IS NOT NULL — a
+    // legitimate invitee never has joined_at set. Both cleanups below
+    // run unconditionally; the second is the one that actually fixes
+    // the "still showing the deleted user in the member count" bug
+    // the user has been hitting. Idempotent and safe to re-run.
     await run(client, `
       DELETE FROM group_members
       WHERE user_id IS NOT NULL
         AND user_id NOT IN (SELECT id FROM users)
     `);
+    await run(client, `
+      DELETE FROM group_members
+      WHERE joined_at IS NOT NULL
+        AND LOWER(email) NOT IN (SELECT LOWER(email) FROM users)
+    `);
 
-    // Same cleanup for moment_posts whose user_token no longer maps
-    // to any moment_user_tokens row — those are stray posts from a
-    // deleted participant. (moment_user_tokens CASCADE on moment_id
-    // handles moment deletion; this handles user deletion.)
+    // Same story for moment_user_tokens (practice participation) — a
+    // deleted user's token lingers and keeps counting toward the
+    // practice's memberCount. The email-not-in-users heuristic sweeps
+    // both "deleted account" and "never-signed-up invitee" rows; we
+    // narrow to rows that had real activity (calendar connected OR
+    // posts logged) so pending email invites stay alive.
+    await run(client, `
+      DELETE FROM moment_posts mp
+      WHERE EXISTS (
+        SELECT 1 FROM moment_user_tokens mut
+        WHERE mut.user_token = mp.user_token
+          AND LOWER(mut.email) NOT IN (SELECT LOWER(email) FROM users)
+      )
+    `);
+    await run(client, `
+      DELETE FROM moment_user_tokens
+      WHERE LOWER(email) NOT IN (SELECT LOWER(email) FROM users)
+        AND (
+          calendar_connected = true
+          OR personal_time IS NOT NULL
+          OR google_calendar_event_id IS NOT NULL
+        )
+    `);
+
+    // Also drop stray moment_posts whose token is completely orphaned
+    // (its moment_user_tokens row is gone). Shouldn't happen after the
+    // step above, but keep as a sweep for any historical drift.
     await run(client, `
       DELETE FROM moment_posts
       WHERE user_token NOT IN (SELECT user_token FROM moment_user_tokens)
+    `);
+
+    // Clean up prayer_request_amens, lectio_reflections, and other
+    // email-keyed engagement surfaces for deleted users. These are all
+    // email-keyed (no users.id FK), so a cascade can't reach them.
+    // Each is idempotent — re-running is a no-op once orphans are gone.
+    await run(client, `
+      DELETE FROM lectio_reflections
+      WHERE user_email IS NOT NULL
+        AND LOWER(user_email) NOT IN (SELECT LOWER(email) FROM users)
     `);
 
     // Belt-and-suspenders: enforce cascade on group_members.user_id so
