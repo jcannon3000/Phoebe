@@ -210,10 +210,27 @@ router.get(
         ),
       );
 
+    // De-dupe by correspondenceId. A user can end up with two
+    // correspondence_members rows for the same correspondence — one
+    // created by email invite before their account linked, and a
+    // second created fresh with their userId. The OR-match above
+    // returns both, which was causing the dashboard to show the same
+    // "Dialogue with X" card twice (once per stale row). Keep the
+    // row with a userId when both variants are present; otherwise
+    // take whichever we saw first.
+    const bestByCorrespondence = new Map<number, typeof memberRows[number]>();
+    for (const row of memberRows) {
+      const existing = bestByCorrespondence.get(row.correspondenceId);
+      if (!existing || (!existing.userId && row.userId)) {
+        bestByCorrespondence.set(row.correspondenceId, row);
+      }
+    }
+    const uniqueMemberRows = Array.from(bestByCorrespondence.values());
+
     const results = [];
     const now = new Date();
 
-    for (const mRow of memberRows) {
+    for (const mRow of uniqueMemberRows) {
       const [correspondence] = await db
         .select()
         .from(correspondencesTable)
