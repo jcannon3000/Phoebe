@@ -58,7 +58,7 @@ interface BellPrefs {
   bellEnabled: boolean;
   dailyBellTime: string;
   timezone: string;
-  calendarStatus?: "active" | "pending" | "tentative" | "declined" | "none";
+  calendarStatus?: "active" | "pending" | "tentative" | "declined" | "ics-pending" | "none";
 }
 
 function BellSetupModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
@@ -515,6 +515,7 @@ function BellPreferences() {
               <p className="text-[11px] leading-snug" style={{ color: "#D8B858" }}>
                 {calendarStatus === "pending" && "Calendar invite sent, but not accepted yet. Check your email and tap Accept so the bell can ring."}
                 {calendarStatus === "tentative" && "You replied Maybe on the calendar invite. Switch to Accept so the bell rings reliably."}
+                {calendarStatus === "ics-pending" && "Calendar invite emailed. Open the message and tap the .ics attachment to add the bell to your calendar."}
                 {calendarStatus === "none" && "The bell is on, but we can't find a calendar invite. Resend it below."}
               </p>
               <button

@@ -617,6 +617,11 @@ function BellSlide({ onNext }: { onNext: () => void }) {
   // the event couldn't be created (Google unreachable, missing
   // refresh token, etc.) and we shouldn't pretend an invite went out.
   const [inviteSent, setInviteSent] = useState<boolean | null>(null);
+  // Which channel delivered the invite — "calendar" (Google Calendar
+  // API event, normal path) or "email" (ICS attachment fallback). The
+  // copy on the confirmation card changes slightly so the user knows
+  // where to look for the invite.
+  const [inviteChannel, setInviteChannel] = useState<"calendar" | "email">("calendar");
   const [savedTime, setSavedTime] = useState<string | null>(null);
   const [savedAmpm, setSavedAmpm] = useState<"AM" | "PM" | null>(null);
 
@@ -630,13 +635,14 @@ function BellSlide({ onNext }: { onNext: () => void }) {
     try {
       const time = `${to24h(hour, ampm)}:00`;
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const resp = await apiRequest<{ inviteSent?: boolean }>(
+      const resp = await apiRequest<{ inviteSent?: boolean; calendarStatus?: string }>(
         "PUT",
         "/api/bell/preferences",
         { bellEnabled: true, dailyBellTime: time, timezone },
       );
       setSaved(true);
       setInviteSent(resp?.inviteSent ?? null);
+      setInviteChannel(resp?.calendarStatus === "ics-pending" ? "email" : "calendar");
       setSavedTime(`${hour}:00`);
       setSavedAmpm(ampm);
     } catch {

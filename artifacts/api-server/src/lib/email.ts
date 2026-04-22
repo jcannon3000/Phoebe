@@ -88,6 +88,166 @@ export async function sendEmail(options: {
   }
 }
 
+// ─── Calendar invite email (ICS attachment) ─────────────────────────────────
+// Fallback path for the daily bell when the Google Calendar API is
+// unreachable: we ship a real text/calendar;method=REQUEST MIME part
+// that Apple Mail, Gmail, Outlook, etc. recognise as a proper
+// calendar invitation. No Google Workspace Calendar API dependency —
+// just the same Gmail-send pipe the rest of the product already
+// uses. On the receiving end the user taps "Add to calendar" and
+// the recurring daily event lands on their device calendar.
+//
+// `uid` must be stable for the same conceptual event (e.g. the
+// user's daily bell) so a re-send is treated as an UPDATE rather
+// than a new event. We pass the user ID through as the UID seed.
+function buildDailyBellIcs(opts: {
+  uid: string;
+  summary: string;
+  description: string;
+  timeZone: string;
+  startLocalStr: string; // "YYYY-MM-DDTHH:MM:SS"
+  endLocalStr: string;
+  attendeeEmail: string;
+  organizerEmail: string;
+  organizerName: string;
+}): string {
+  const toIcsLocal = (s: string) => s.replace(/[-:]/g, "").slice(0, 15);
+  const dtstart = toIcsLocal(opts.startLocalStr);
+  const dtend = toIcsLocal(opts.endLocalStr);
+  const dtstamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const escape = (v: string) =>
+    v.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Phoebe//Daily Bell//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:REQUEST",
+    "BEGIN:VEVENT",
+    `UID:${opts.uid}`,
+    `DTSTAMP:${dtstamp}`,
+    `DTSTART;TZID=${opts.timeZone}:${dtstart}`,
+    `DTEND;TZID=${opts.timeZone}:${dtend}`,
+    "RRULE:FREQ=DAILY",
+    `SUMMARY:${escape(opts.summary)}`,
+    `DESCRIPTION:${escape(opts.description)}`,
+    `ORGANIZER;CN=${escape(opts.organizerName)}:mailto:${opts.organizerEmail}`,
+    `ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${opts.attendeeEmail}`,
+    "STATUS:CONFIRMED",
+    "SEQUENCE:0",
+    "TRANSP:TRANSPARENT",
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    "DESCRIPTION:Daily Bell",
+    "TRIGGER:PT0M",
+    "END:VALARM",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+function encodeCalendarInviteMessage(options: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  ics: string;
+}): string {
+  const { to, subject, html, text, ics } = options;
+  const altBoundary = "PhoebeAlt";
+  const mixedBoundary = "PhoebeMixed";
+  // A tri-part body: text/plain + text/html inside multipart/alternative,
+  // then the ics attached as both an inline text/calendar part (so
+  // Apple Mail + Gmail render it as an "Add to Calendar" strip) AND
+  // as an .ics attachment for clients that require the file.
+  const message = [
+    `To: ${to}`,
+    `From: ${INVITES_FROM_HEADER}`,
+    `Subject: ${subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+    ``,
+    `--${mixedBoundary}`,
+    `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+    ``,
+    `--${altBoundary}`,
+    `Content-Type: text/plain; charset="UTF-8"`,
+    ``,
+    text,
+    ``,
+    `--${altBoundary}`,
+    `Content-Type: text/html; charset="UTF-8"`,
+    ``,
+    html,
+    ``,
+    `--${altBoundary}`,
+    `Content-Type: text/calendar; charset="UTF-8"; method=REQUEST`,
+    `Content-Transfer-Encoding: 7bit`,
+    ``,
+    ics,
+    ``,
+    `--${altBoundary}--`,
+    ``,
+    `--${mixedBoundary}`,
+    `Content-Type: application/ics; name="phoebe-daily-bell.ics"`,
+    `Content-Disposition: attachment; filename="phoebe-daily-bell.ics"`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    Buffer.from(ics).toString("base64"),
+    ``,
+    `--${mixedBoundary}--`,
+  ].join("\r\n");
+  return Buffer.from(message).toString("base64url");
+}
+
+export async function sendDailyBellIcsInvite(opts: {
+  to: string;
+  userId: number;
+  timeZone: string;
+  startLocalStr: string;
+  endLocalStr: string;
+  summary: string;
+  description: string;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) return false;
+  try {
+    const ics = buildDailyBellIcs({
+      uid: `phoebe-bell-${opts.userId}@withphoebe.app`,
+      summary: opts.summary,
+      description: opts.description,
+      timeZone: opts.timeZone,
+      startLocalStr: opts.startLocalStr,
+      endLocalStr: opts.endLocalStr,
+      attendeeEmail: opts.to,
+      organizerEmail: "invites@withphoebe.app",
+      organizerName: "Phoebe",
+    });
+    const subject = "🔔 Your Daily Bell — Phoebe";
+    const html = `
+      <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#222">
+        <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#888;margin:0 0 8px">Phoebe</p>
+        <h1 style="font-size:20px;margin:0 0 12px">Your daily bell is hung.</h1>
+        <p style="margin:12px 0;color:#444">Accept this invite so your calendar can remind you each day to pause and pray with your community.</p>
+        <p style="margin:20px 0 0;color:#666;font-size:13px">If the invite doesn't open automatically, open the attached <strong>phoebe-daily-bell.ics</strong> to add it to your calendar.</p>
+      </div>
+    `;
+    const text = [
+      "Your daily bell is hung.",
+      "",
+      "Accept this invite so your calendar can remind you each day to pause and pray with your community.",
+      "",
+      "If the invite doesn't open automatically, open the attached phoebe-daily-bell.ics.",
+    ].join("\n");
+    const raw = encodeCalendarInviteMessage({ to: opts.to, subject, html, text, ics });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    console.error("Failed to send bell ICS invite:", err);
+    return false;
+  }
+}
+
 export async function sendMagicLinkEmail(
   to: string,
   magicLink: string,

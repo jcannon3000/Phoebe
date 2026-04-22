@@ -1370,6 +1370,11 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         .filter((id): id is number => typeof id === "number"),
     ),
   );
+  console.log(
+    `[groups/${req.params.slug}/prayer-requests] resolved ${memberUserIds.length} member user IDs ` +
+    `from ${joinedMemberRows.length} joined_at-set rows:`,
+    memberUserIds,
+  );
 
   // Any active prayer request authored by a member of this community
   // lands on the community wall — regardless of what groupId they
@@ -1411,6 +1416,11 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     isAnonymous: r.isAnonymous,
     createdAt: r.createdAt,
   }));
+
+  console.log(
+    `[groups/${req.params.slug}/prayer-requests] returning ${requests.length} requests` +
+    (requests.length > 0 ? ` — owners: ${rows.map(r => r.ownerId).join(", ")}` : ""),
+  );
 
   res.json({ requests });
 });

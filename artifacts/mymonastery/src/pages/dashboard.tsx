@@ -2432,7 +2432,16 @@ export default function Dashboard() {
     const activePrayersFor = countActivePrayersFor(dashPrayersFor);
     const total = activeIntercessions + othersRequests + activePrayersFor;
 
-    if (total > 0) {
+    // First-ever dashboard visit (post-onboarding) — show the popup
+    // even if `total` is 0, so newcomers learn the prayer-list exists
+    // as a daily rhythm. Detected by `prayerInviteLastShownAt` never
+    // being stamped. Count gets shown as-is (the copy still reads
+    // "0 prayers waiting for you" or "X prayers waiting" depending)
+    // so it accurately reflects what they'll find.
+    const neverShownBefore = !Number.isFinite(lastShownAt);
+    const shouldShow = total > 0 || neverShownBefore;
+
+    if (shouldShow) {
       // Stamp BEFORE show (fire-and-forget) so a tab-close / reload before
       // dismiss still starts the 6-hour cooldown. We send both the date
       // (legacy) and let the server derive the timestamp from its own

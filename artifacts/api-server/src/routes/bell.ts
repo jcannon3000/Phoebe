@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
+import { sendDailyBellIcsInvite } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -69,7 +70,15 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
     // that erased people's bell settings while leaving the calendar
     // event intact. When in doubt we report "pending" and keep the
     // saved prefs as-is.
-    let calendarStatus: "active" | "pending" | "tentative" | "declined" | "none" = "none";
+    let calendarStatus: "active" | "pending" | "tentative" | "declined" | "ics-pending" | "none" = "none";
+    // Bell is enabled but we have no Google event ID — the only
+    // creation path left is the ICS email fallback, which doesn't
+    // give us an RSVP-pollable event. Report it as "ics-pending" so
+    // the UI can render an honest "invite emailed, open it to add to
+    // your calendar" state instead of the harsh "didn't send" error.
+    if (u.bellEnabled && !u.bellCalendarEventId) {
+      calendarStatus = "ics-pending";
+    }
     if (u.bellEnabled && u.bellCalendarEventId) {
       try {
         const attendees = await getCalendarEventAttendees(user.id, u.bellCalendarEventId);
@@ -260,20 +269,31 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
     }
 
     // ── Create bell calendar event if turning on or changing time ──
+    // Two paths, tried in order:
+    //   1. Google Calendar API event on the invites@withphoebe.app
+    //      workspace mailbox (preferred — gives us RSVP tracking via
+    //      getCalendarEventAttendees in the GET handler).
+    //   2. Fallback: send a real calendar invite as a MIME email with
+    //      a text/calendar;method=REQUEST part + .ics attachment. No
+    //      Google Calendar API dependency — Apple Mail, Gmail, and
+    //      Outlook all render it as a tappable "Add to calendar"
+    //      invitation. We lose per-attendee RSVP tracking but the
+    //      user gets a working reminder on their phone/laptop
+    //      calendar, which was the whole point of the bell.
     let bellCalendarEventId: string | null = null;
+    let icsInviteSent = false;
     if (parsed.bellEnabled) {
+      const [hh, mm] = parsed.dailyBellTime.split(":").map(Number);
+      const tz = parsed.timezone;
+
+      const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+      const startLocalStr = `${todayStr}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`;
+      const endMm = mm + 5;
+      const endHh = hh + Math.floor(endMm / 60);
+      const endLocalStr = `${todayStr}T${String(endHh).padStart(2, "0")}:${String(endMm % 60).padStart(2, "0")}:00`;
+
       try {
-        const [hh, mm] = parsed.dailyBellTime.split(":").map(Number);
-        const tz = parsed.timezone;
-
-        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-        const startLocalStr = `${todayStr}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`;
-        const endMm = mm + 5;
-        const endHh = hh + Math.floor(endMm / 60);
-        const endLocalStr = `${todayStr}T${String(endHh).padStart(2, "0")}:${String(endMm % 60).padStart(2, "0")}:00`;
-
         console.log(`[bell] Creating calendar event: ${startLocalStr} - ${endLocalStr} in ${tz}`);
-
         bellCalendarEventId = await createCalendarEvent(user.id, {
           summary: `🔔 Daily Bell — Phoebe`,
           description: [
@@ -296,10 +316,34 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
           console.error("[bell] Calendar event creation failed:", err);
           return null;
         });
-
         console.log(`[bell] Calendar event result: ${bellCalendarEventId ?? "null (no event created)"}`);
       } catch (err) {
         console.error("[bell] Calendar event creation error:", err);
+      }
+
+      // Fallback: if the Google Calendar API call didn't create an event,
+      // email an ICS invite instead. This keeps the bell feature working
+      // for users whose accounts can't be reached via the workspace
+      // calendar path (missing refresh token, scope issues, etc.).
+      if (!bellCalendarEventId) {
+        try {
+          icsInviteSent = await sendDailyBellIcsInvite({
+            to: u.email,
+            userId: user.id,
+            timeZone: tz,
+            startLocalStr,
+            endLocalStr,
+            summary: "🔔 Daily Bell — Phoebe",
+            description: [
+              "A daily time to pause and pray with your community.",
+              "",
+              `Open Phoebe: ${APP_URL}`,
+            ].join("\n"),
+          });
+          console.log(`[bell] ICS email fallback: ${icsInviteSent ? "sent" : "failed"} for user ${user.id}`);
+        } catch (err) {
+          console.error("[bell] ICS email fallback error:", err);
+        }
       }
     }
 
@@ -313,16 +357,20 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
 
     console.log(`[bell] Saved preferences for user ${user.id}, bellEnabled=${parsed.bellEnabled}`);
 
-    // Return enough for the client to show an honest confirmation:
-    //   - inviteSent: was a Google Calendar event actually created?
-    //   - calendarStatus: "pending" if the invite just went out, "none"
-    //     if the event couldn't be created at all. We never assume
-    //     "active" here — the user still has to accept the invite in
-    //     their email; the GET endpoint will promote to "active" once
-    //     Google reports the RSVP.
-    const inviteSent = parsed.bellEnabled && !!bellCalendarEventId;
-    const calendarStatus: "pending" | "none" =
-      parsed.bellEnabled && bellCalendarEventId ? "pending" : "none";
+    // Return enough for the client to show an honest confirmation.
+    // inviteSent is true if EITHER path succeeded — the user has a
+    // calendar invite on the way regardless of which channel delivered
+    // it. calendarStatus starts at "pending" (awaiting accept) when
+    // there's a real Google Calendar event to poll attendees for, or
+    // "ics-pending" when we fell back to an email invite (we have no
+    // RSVP signal to poll, so the status never auto-promotes — the
+    // user's acceptance just lands in their calendar directly).
+    const inviteSent = parsed.bellEnabled && (!!bellCalendarEventId || icsInviteSent);
+    let calendarStatus: "pending" | "ics-pending" | "none" = "none";
+    if (parsed.bellEnabled) {
+      if (bellCalendarEventId) calendarStatus = "pending";
+      else if (icsInviteSent) calendarStatus = "ics-pending";
+    }
     res.json({
       ok: true,
       ...parsed,
