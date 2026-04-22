@@ -871,7 +871,7 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   // preview. `nextWindow` is null/empty when today IS the fast day, so
   // its presence is the reliable "is today the day" signal.
   const meatFastTodayCountLine = isMeatFast && !nextWindow && m.memberCount > 0
-    ? `${m.todayPostCount} of ${m.memberCount} fasted today`
+    ? `${m.todayPostCount} ${m.todayPostCount === 1 ? "person" : "people"} fasted today`
     : "";
   const fastingFlapLines: string[] = isMeatFast
     ? [
@@ -1142,17 +1142,12 @@ function ServiceCard({
   const colors = CATEGORY_COLORS.gatherings;
   const title = schedule.name || DAY_OF_WEEK_NAMES[schedule.dayOfWeek] + " Services";
 
-  // Second line cycles through four facets of the service so no single
-  // detail dominates: when ("Sunday, April 26"), what times, where, and
-  // who is hosting. Each is optional — empty entries drop out so we never
-  // flip to a blank line.
-  //
-  //   1. Date         — full "Sunday, April 26" (today/tomorrow when close)
-  //   2. Service times— concatenated clock times ("8:00 AM · 10:00 AM …")
-  //   3. Location     — schedule-level location first, else any per-time
-  //                     location we happen to have (legacy data)
-  //   4. Host group   — "{group emoji} From Phoebe Architects" — moved off
-  //                     the old 3rd row and into the rotation.
+  // Layout:
+  //   Top row:     🙌🏽 Title            {emoji} Community
+  //   Time pills:  [8:00 AM] [10:00 AM] [6:00 PM]      ← one pill per service time
+  //   Sub line:    cycles through (date, location) — the community used to
+  //                 be in this rotation but now sits in the top-right so the
+  //                 sub line stays focused on the *when & where* facts.
   //
   // Title emoji is 🙌🏽 (hands lifted in worship) rather than a church
   // building — the card is about *gathering to worship together*, not
@@ -1163,19 +1158,12 @@ function ServiceCard({
        nextDate.getTime() === addDays(startOfDay(new Date()), 1).getTime())
       ? `Tomorrow · ${format(nextDate, "EEEE, MMMM d")}`
       : format(nextDate, "EEEE, MMMM d");
-  const timesLine = schedule.times
-    .map((t) => {
-      const formatted = formatServiceTime(t.time);
-      return t.label ? `${formatted} ${t.label}` : formatted;
-    })
-    .join(" · ");
   const perTimeLocation = schedule.times.find((t) => t.location)?.location ?? null;
   const locationLine = (schedule.location && schedule.location.trim())
     || perTimeLocation
     ? `📍 ${(schedule.location ?? perTimeLocation ?? "").trim()}`
     : "";
-  const groupLine = `${schedule.groupEmoji ?? "⛪"} From ${schedule.groupName}`;
-  const flapLines = [dayLabel, timesLine, locationLine, groupLine]
+  const flapLines = [dayLabel, locationLine]
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
@@ -1192,7 +1180,13 @@ function ServiceCard({
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isOnDate ? colors.pulseClass : ""}`}
         style={{
           background: colors.bg,
-          border: `1px solid ${colors.border}`,
+          // CATEGORY_COLORS.gatherings.border is "transparent" — which
+          // makes the card blend into the dashboard background, same
+          // bug the PrayerListCard already worked around. Use the
+          // category's accent bar color at reduced opacity so the
+          // border reads as a soft gatherings-green without fighting
+          // the card's hue.
+          border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >
@@ -1203,13 +1197,53 @@ function ServiceCard({
         <div className="flex-1 px-4 pt-3 pb-3">
           <div className="flex items-start justify-between gap-2">
             <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>🙌🏽 {title}</span>
-            <span className="text-[10px] font-semibold uppercase shrink-0 mt-1" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-              Service times
+            {/* Top-right: community eyebrow — replaces the old "SERVICE
+                TIMES" label. Emoji + name from the schedule's host group
+                so the user knows at a glance which community this card
+                belongs to. */}
+            <span
+              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+            >
+              {schedule.groupEmoji ?? "⛪"} {schedule.groupName}
             </span>
           </div>
-          <div className="mt-1.5 -mr-2">
-            <SplitFlapLine lines={flapLines} />
-          </div>
+
+          {/* Per-time pill row — each service time renders as its own
+              mini-card. Wraps onto multiple lines on narrow widths so
+              parishes with six Sunday services still read cleanly. */}
+          {schedule.times.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {schedule.times.map((t, i) => {
+                const label = t.label
+                  ? `${formatServiceTime(t.time)} · ${t.label}`
+                  : formatServiceTime(t.time);
+                return (
+                  <span
+                    key={`${t.time}-${i}`}
+                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                    style={{
+                      background: "rgba(46,107,64,0.2)",
+                      border: "1px solid rgba(46,107,64,0.3)",
+                      color: "#F0EDE6",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Date + location flap — community already sits in the
+              top-right eyebrow, so the sub line stays short and scoped
+              to the when / where. */}
+          {flapLines.length > 0 && (
+            <div className="mt-1.5 -mr-2">
+              <SplitFlapLine lines={flapLines} />
+            </div>
+          )}
         </div>
       </motion.div>
     </button>
