@@ -1153,18 +1153,10 @@ function ServiceCard({
   // Title emoji is 🙌🏽 (hands lifted in worship) rather than a church
   // building — the card is about *gathering to worship together*, not
   // about a specific building, and many hosts aren't churches anyway.
-  // Date is already implied by the section header (Today / Tomorrow /
-  // This week) that groups the card — repeating "Sunday, April 26" on
-  // the card itself adds noise without adding information. Drop it.
-  // Location stays — useful for multi-campus parishes.
-  const perTimeLocation = schedule.times.find((t) => t.location)?.location ?? null;
-  const locationLine = (schedule.location && schedule.location.trim())
-    || perTimeLocation
-    ? `📍 ${(schedule.location ?? perTimeLocation ?? "").trim()}`
-    : "";
-  const flapLines = [locationLine]
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
+  // Card stays minimal: title + pills only. The date is already implied
+  // by the section header (Today / Tomorrow / This week), and the
+  // address lives inside the ServiceDetailModal that opens on tap. No
+  // flap rotation needed anymore.
 
   return (
     <button
@@ -1235,14 +1227,6 @@ function ServiceCard({
             </div>
           )}
 
-          {/* Date + location flap — community already sits in the
-              top-right eyebrow, so the sub line stays short and scoped
-              to the when / where. */}
-          {flapLines.length > 0 && (
-            <div className="mt-1.5 -mr-2">
-              <SplitFlapLine lines={flapLines} />
-            </div>
-          )}
         </div>
       </motion.div>
     </button>
@@ -1450,13 +1434,38 @@ function ServiceDetailModal({
         >
           <div className="sticky top-0 flex items-start justify-between gap-3 px-5 pt-5 pb-3" style={{ background: "#0F2618" }}>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.55)" }}>
-                {schedule.groupEmoji ?? "⛪"} {schedule.groupName}
-              </p>
+              {/* Community eyebrow — tap to open the community page.
+                  Keeps the modal consistent with the rest of the app:
+                  every "from {community}" attribution should navigate. */}
+              {schedule.groupSlug ? (
+                <Link
+                  href={`/communities/${schedule.groupSlug}`}
+                  onClick={onClose}
+                >
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-widest transition-opacity hover:opacity-80 cursor-pointer"
+                    style={{ color: "rgba(200,212,192,0.55)" }}
+                  >
+                    {schedule.groupEmoji ?? "⛪"} {schedule.groupName}
+                  </p>
+                </Link>
+              ) : (
+                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.55)" }}>
+                  {schedule.groupEmoji ?? "⛪"} {schedule.groupName}
+                </p>
+              )}
               <h2 className="text-xl font-bold mt-1" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
                 {title}
               </h2>
               <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{dateLabel}</p>
+              {/* Parish address — moved here from the card so the
+                  dashboard stays quiet; surfaces when someone actually
+                  wants details. */}
+              {schedule.location && schedule.location.trim() && (
+                <p className="text-sm mt-1.5" style={{ color: "#C8D4C0" }}>
+                  📍 {schedule.location.trim()}
+                </p>
+              )}
             </div>
             <button
               onClick={onClose}

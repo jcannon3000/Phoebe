@@ -1900,6 +1900,27 @@ router.post("/beta/users", async (req, res): Promise<void> => {
     const [existing] = await db.select({ id: betaUsersTable.id, email: betaUsersTable.email }).from(betaUsersTable).where(eq(betaUsersTable.email, emailLower));
     if (existing) { res.json({ user: existing, alreadyExists: true }); return; }
 
+    // Also create the full users row if this email has never been seen.
+    // Admins asked for this so invited pilot users can be added to
+    // communities / referenced in Garden-style UI before they've even
+    // logged in themselves. When the real person signs up later, the
+    // Google auth upsert (routes/auth.ts) matches by email and links
+    // their Google ID to the existing row — no dup account created.
+    let userAccountCreated = false;
+    {
+      const [byEmail] = await db.select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.email, emailLower));
+      if (!byEmail) {
+        const display = parsed.data.name?.trim() || emailLower.split("@")[0];
+        await db.insert(usersTable).values({
+          name: display,
+          email: emailLower,
+        });
+        userAccountCreated = true;
+      }
+    }
+
     const [betaUser] = await db.insert(betaUsersTable).values({
       email: emailLower,
       name: parsed.data.name ?? null,
@@ -1912,7 +1933,7 @@ router.post("/beta/users", async (req, res): Promise<void> => {
       createdAt: betaUsersTable.createdAt,
     });
 
-    res.json({ user: betaUser });
+    res.json({ user: betaUser, userAccountCreated });
   } catch (err) {
     console.error("POST /api/beta/users error:", err);
     res.status(500).json({ error: "Table not ready — run schema push" });
