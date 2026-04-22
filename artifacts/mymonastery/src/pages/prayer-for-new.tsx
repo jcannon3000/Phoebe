@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search as SearchIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople, usePersonProfile } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
+import type { MyActivePrayerFor } from "@/components/pray-for-them";
 
 // Full-screen, step-by-step authoring flow for starting a private prayer for
 // another user. Mirrors the "gathering" (tradition-new) + "prayer-request-new"
@@ -334,14 +335,33 @@ function PersonPicker({
   const [q, setQ] = useState("");
   const { data: people = [], isLoading } = usePeople(ownerId);
 
+  // Hide anyone the viewer is already actively praying for. Starting
+  // a prayer for someone you already have an active prayer for is a
+  // soft-conflict — the existing prayer is the way to carry them;
+  // picking them from this list would just duplicate.
+  const { data: myPrayersFor = [] } = useQuery<MyActivePrayerFor[]>({
+    queryKey: ["/api/prayers-for/mine"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
+    enabled: !!ownerId,
+  });
+  const alreadyPrayingEmails = useMemo(
+    () => new Set(
+      myPrayersFor
+        .filter(p => !p.expired)
+        .map(p => p.recipientEmail.toLowerCase())
+    ),
+    [myPrayersFor],
+  );
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return people;
-    return people.filter((p) =>
+    const base = people.filter(p => !alreadyPrayingEmails.has(p.email.toLowerCase()));
+    if (!needle) return base;
+    return base.filter((p) =>
       p.name.toLowerCase().includes(needle)
       || p.email.toLowerCase().includes(needle),
     );
-  }, [people, q]);
+  }, [people, q, alreadyPrayingEmails]);
 
   const title = q.trim() ? "Results" : "Suggested";
 
