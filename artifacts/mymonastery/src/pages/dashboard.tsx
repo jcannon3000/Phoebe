@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -397,6 +397,155 @@ function FAB() {
         </motion.div>
       </button>
     </div>
+  );
+}
+
+// ─── Profile-picture prompt (one-shot overlay) ───────────────────────────────
+// Shown on the dashboard the first time a user without an avatar lands here
+// AFTER having finished onboarding. Mirrors the onboarding slide's look at a
+// more compact scale so it feels like the same moment, just carried forward.
+// "Skip" and "Upload" both close the prompt permanently — any action implies
+// "I've seen this." Users can add a photo anytime from Settings → Account.
+
+function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 512;
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { setUploading(false); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        setPreview(dataUrl);
+        apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
+          .then(() => {
+            queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
+              if (!prev) return prev;
+              return { ...prev, avatarUrl: dataUrl };
+            });
+            setSaved(true);
+            // Short beat so the check icon is visible, then close.
+            setTimeout(() => onDone(), 900);
+          })
+          .finally(() => setUploading(false));
+      };
+      img.onerror = () => setUploading(false);
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => setUploading(false);
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center px-6"
+      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+      onClick={onDone}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.25 }}
+        className="rounded-2xl px-8 pt-7 pb-6 text-center max-w-sm w-full"
+        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <h2
+          className="text-lg font-bold mb-2"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Add your face
+        </h2>
+        <p className="text-sm leading-relaxed mb-6" style={{ color: "#8FAF96" }}>
+          A photo helps the people praying with you feel like they're praying with you.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="relative mx-auto mb-5 block transition-opacity active:opacity-80 disabled:opacity-60"
+        >
+          {preview ? (
+            <img
+              src={preview}
+              alt="Your photo"
+              className="w-24 h-24 rounded-full object-cover"
+              style={{ border: "3px solid rgba(46,107,64,0.5)" }}
+            />
+          ) : (
+            <div
+              className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold"
+              style={{
+                background: "#1A4A2E",
+                color: "#A8C5A0",
+                border: "3px solid rgba(46,107,64,0.35)",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {user?.name?.charAt(0).toUpperCase() ?? "?"}
+            </div>
+          )}
+          <span
+            className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: "#2D5E3F", border: "3px solid #0F2818" }}
+          >
+            {uploading ? (
+              <span className="text-[10px]" style={{ color: "#F0EDE6" }}>…</span>
+            ) : saved ? (
+              <span className="text-[12px]" style={{ color: "#F0EDE6" }}>✓</span>
+            ) : (
+              <Camera size={14} style={{ color: "#F0EDE6" }} />
+            )}
+          </span>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePhotoSelect}
+        />
+
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading || saved}
+          className="w-full px-6 py-2.5 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60 mb-2"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          {saved ? "✓ Saved" : uploading ? "Uploading…" : "Upload a photo"}
+        </button>
+        <button
+          onClick={onDone}
+          className="text-xs transition-opacity hover:opacity-80"
+          style={{ color: "rgba(143,175,150,0.55)" }}
+        >
+          Skip for now — I'll add one later
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -2000,6 +2149,33 @@ export default function Dashboard() {
     localStorage.setItem("phoebe:beta-welcome-seen", "1");
   }, []);
 
+  // Profile-picture prompt for existing users who finished onboarding before
+  // we added the avatar slide. Shown once — any action (upload OR skip) sets
+  // the localStorage flag. New users reach this code path with the flag
+  // already set by the onboarding slide's completion. Users who re-install
+  // or switch browsers will see it once per browser, which is the desired
+  // "at least once" behavior: a gentle nudge, never nagging.
+  const [profilePicPromptVisible, setProfilePicPromptVisible] = useState(false);
+  const profilePicPromptShownRef = useRef(false);
+  useEffect(() => {
+    if (!user) return;
+    if (profilePicPromptShownRef.current) return;
+    if (user.avatarUrl) return;
+    if (localStorage.getItem("phoebe:profile-pic-prompted") === "1") return;
+    // Wait until the user has also finished onboarding, otherwise the
+    // onboarding slide is the right surface for this prompt.
+    if (!user.onboardingCompleted) return;
+    // Don't stack on top of other first-run modals.
+    if (betaWelcomeVisible) return;
+    profilePicPromptShownRef.current = true;
+    setProfilePicPromptVisible(true);
+  }, [user, betaWelcomeVisible]);
+
+  const dismissProfilePicPrompt = useCallback(() => {
+    setProfilePicPromptVisible(false);
+    localStorage.setItem("phoebe:profile-pic-prompted", "1");
+  }, []);
+
   // Daily prayer-slideshow invite state. The effect that populates it is
   // declared further down, AFTER the momentsData useQuery call — placing it
   // before would read momentsData in the effect's dep array while it's
@@ -2724,6 +2900,10 @@ export default function Dashboard() {
 
       {/* Beta welcome popup — one-time */}
       <AnimatePresence>
+        {profilePicPromptVisible && (
+          <ProfilePicturePrompt onDone={dismissProfilePicPrompt} />
+        )}
+
         {betaWelcomeVisible && (
           <motion.div
             initial={{ opacity: 0 }}

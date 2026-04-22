@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users, Camera } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -266,6 +266,7 @@ type InfoSlide = {
 
 type Slide =
   | { kind: "welcome" }
+  | { kind: "profile-picture" }
   | InfoSlide
   | { kind: "bell" }
   | { kind: "prayer-request" };
@@ -273,7 +274,10 @@ type Slide =
 const SLIDES: Slide[] = [
   // 1
   { kind: "welcome" },
-  // 2
+  // 2 — Profile picture (skippable). Asked early so the rest of onboarding
+  //     and the dashboard show the user's face right away.
+  { kind: "profile-picture" },
+  // 3
   {
     kind: "info",
     title: "Your community is already here.",
@@ -421,6 +425,159 @@ function InfoSlideView({ slide }: { slide: InfoSlide }) {
       >
         <Mock />
       </motion.div>
+    </div>
+  );
+}
+
+// ─── Profile picture slide (interactive) ────────────────────────────────────
+// One-shot prompt so the community roster, prayer-request bylines, and Circle
+// all show a face instead of an initial. Upload is optional — users who skip
+// (or existing accounts that already finished onboarding without one) can add
+// a photo anytime from Settings → Account. Reused by the post-onboarding
+// prompt overlay on the dashboard.
+
+function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(user?.avatarUrl ?? null);
+  const [saved, setSaved] = useState(!!user?.avatarUrl);
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 512;
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { setUploading(false); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        setPreview(dataUrl);
+        apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
+          .then(() => {
+            queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
+              if (!prev) return prev;
+              return { ...prev, avatarUrl: dataUrl };
+            });
+            setSaved(true);
+          })
+          .finally(() => setUploading(false));
+      };
+      img.onerror = () => setUploading(false);
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => setUploading(false);
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto w-full px-2">
+      <h2
+        className="text-2xl md:text-4xl font-semibold mb-4 leading-tight"
+        style={{ color: C.text, fontFamily: C.font }}
+      >
+        Add your face.
+      </h2>
+      <p
+        className="text-sm md:text-base leading-relaxed font-light mb-10"
+        style={{ color: C.sage, fontFamily: C.font }}
+      >
+        A photo helps the people praying with you feel like they're praying with <em>you</em>. It shows up on your prayer requests, in your community, and when someone holds you in prayer.
+      </p>
+
+      {/* Avatar + camera overlay */}
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="relative mb-4 transition-opacity active:opacity-80 disabled:opacity-60"
+      >
+        {preview ? (
+          <img
+            src={preview}
+            alt="Your photo"
+            className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover"
+            style={{ border: "3px solid rgba(46,107,64,0.5)" }}
+          />
+        ) : (
+          <div
+            className="w-32 h-32 md:w-40 md:h-40 rounded-full flex items-center justify-center text-5xl font-bold"
+            style={{
+              background: "#1A4A2E",
+              color: "#A8C5A0",
+              border: "3px solid rgba(46,107,64,0.35)",
+              fontFamily: C.font,
+            }}
+          >
+            {user?.name?.charAt(0).toUpperCase() ?? "?"}
+          </div>
+        )}
+        <span
+          className="absolute bottom-1 right-1 w-11 h-11 rounded-full flex items-center justify-center"
+          style={{ background: "#2D5E3F", border: "3px solid #091A10" }}
+        >
+          {uploading ? (
+            <span className="text-sm" style={{ color: C.text }}>…</span>
+          ) : (
+            <Camera size={18} style={{ color: C.text }} />
+          )}
+        </span>
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoSelect}
+      />
+
+      <AnimatePresence mode="wait">
+        {saved ? (
+          <motion.button
+            key="saved"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={onNext}
+            className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "#2D5E3F", color: C.text }}
+          >
+            ✓ Looks good — continue
+          </motion.button>
+        ) : (
+          <motion.button
+            key="choose"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60"
+            style={{ background: "#2D5E3F", color: C.text }}
+          >
+            {uploading ? "Uploading…" : "Upload a photo"}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <p className="text-xs mt-3 mb-3" style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}>
+        You can change this anytime in Settings.
+      </p>
+
+      <button
+        onClick={onNext}
+        className="text-sm transition-opacity hover:opacity-80"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
+      >
+        Skip for now
+      </button>
     </div>
   );
 }
@@ -779,12 +936,17 @@ export default function UserOnboarding() {
 
   const slide = SLIDES[index];
   const isFirst = index === 0;
-  const isInteractive = slide.kind === "bell" || slide.kind === "prayer-request";
+  const isInteractive =
+    slide.kind === "bell" ||
+    slide.kind === "prayer-request" ||
+    slide.kind === "profile-picture";
 
   function renderSlide() {
     switch (slide.kind) {
       case "welcome":
         return <WelcomeSlide />;
+      case "profile-picture":
+        return <ProfilePictureSlide onNext={next} />;
       case "info":
         return <InfoSlideView slide={slide} />;
       case "bell":

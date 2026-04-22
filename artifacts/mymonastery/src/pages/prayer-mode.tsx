@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -59,6 +59,12 @@ interface PrayerSlide {
   // request specific — lets us record an amen against the originating
   // prayer request when the viewer taps "Amen" to advance.
   requestId?: number;
+  // intercession specific — needed to fire a moment_posts check-in the
+  // instant the viewer taps "Amen", so a community intercession amen
+  // lands in both the intercession detail page and the streak count
+  // even if the viewer bails out of the slideshow before `handleDone`.
+  momentToken?: string | null;
+  myUserToken?: string | null;
   // prayer-for specific
   prayerForId?: number;
   recipientName?: string;
@@ -740,6 +746,8 @@ export default function PrayerModePage() {
         fullText: m.intercessionFullText?.trim() || null,
         attribution: attributionLabel ? `with ${attributionLabel}` : "",
         weekPrayCount: m.weekPostCount ?? 0,
+        momentToken: m.momentToken,
+        myUserToken: m.myUserToken,
       };
     }),
     // Circle intentions — one slide per active intention in every prayer
@@ -833,6 +841,12 @@ export default function PrayerModePage() {
   const [phase, setPhase] = useState<"prayer" | "closing">("prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
+  // Track which intercessions the viewer has already "amened" this
+  // session, keyed by momentToken. We POST a check-in the moment the
+  // viewer advances past a community intercession so it lands on the
+  // detail page + streak immediately; this set keeps `handleDone` from
+  // double-counting the same moment at the end of the slideshow.
+  const loggedIntercessionsRef = useRef<Set<string>>(new Set());
   // Streak celebration state — set when the server tells us this is the
   // user's first prayer-list completion today. Null outside that window
   // so the closing slide falls back to the normal "you have carried…" copy.
@@ -901,15 +915,35 @@ export default function PrayerModePage() {
   }, []);
 
   const advance = () => {
-    // Record an "Amen" for prayer requests as the viewer leaves the slide.
+    // Record the "Amen" side effect as the viewer leaves the slide.
     // Fire-and-forget — we don't want a slow network call to gate the fade.
-    // The list query is invalidated so the owner's badge updates next refresh.
+    // - request slide → POST /amen (the existing behaviour)
+    // - intercession slide → POST /moment/:momentToken/:userToken/post
+    //   with isCheckin=true, so a community intercession amen counts
+    //   on the intercession detail page and in the streak even if the
+    //   viewer bails out of the slideshow before the closing slide.
     const current = slides[index];
     if (current && current.kind === "request" && typeof current.requestId === "number") {
       const rid = current.requestId;
       apiRequest("POST", `/api/prayer-requests/${rid}/amen`).catch(() => {
         /* swallow — amen logging is best-effort, never blocks prayer flow */
       });
+    }
+    if (current && current.kind === "intercession" && current.momentToken && current.myUserToken) {
+      const mt = current.momentToken;
+      const ut = current.myUserToken;
+      if (!loggedIntercessionsRef.current.has(mt)) {
+        loggedIntercessionsRef.current.add(mt);
+        apiRequest("POST", `/api/moment/${mt}/${ut}/post`, { isCheckin: true })
+          .then(() => {
+            // Keep the detail page + dashboard fresh so the new amen shows
+            // up the moment the viewer lands there.
+            queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+          })
+          .catch(() => {
+            /* swallow — best-effort, handleDone will retry if still pending */
+          });
+      }
     }
     setSlideVisible(false);
     setTimeout(() => {
@@ -923,9 +957,15 @@ export default function PrayerModePage() {
   };
 
   const handleDone = async () => {
-    // Log a check-in for every intercession the user has just prayed through
+    // Log a check-in for every intercession the user has just prayed
+    // through — skipping ones we already logged per-slide in `advance`.
+    // Server-side check-ins are idempotent per day anyway, but avoiding
+    // the re-POST trims tail latency on the closing slide.
     const toLog = intercessions.filter(
-      (m) => m.momentToken && m.myUserToken,
+      (m) =>
+        m.momentToken &&
+        m.myUserToken &&
+        !loggedIntercessionsRef.current.has(m.momentToken),
     );
     await Promise.allSettled(
       toLog.map((m) =>
