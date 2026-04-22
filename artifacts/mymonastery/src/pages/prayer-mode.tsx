@@ -699,10 +699,22 @@ export default function PrayerModePage() {
     (m) => m.templateType === "intercession",
   );
 
-  // Split "pray for someone" records: active ones get normal slides, expired
-  // ones get a renewal prompt at the end of the run.
-  const activePrayersFor = myPrayersFor.filter(p => !p.expired);
-  const expiredPrayersFor = myPrayersFor.filter(p => p.expired);
+  // "Pray for someone" records, filtered to match the People-page CTA:
+  // we drop server-expired prayers AND prayers on their final day (0 days
+  // left). A prayer on Day N of N already reads "done" on /people — we
+  // don't want the slideshow to keep showing it, or to tack on a renewal
+  // prompt for something that was meant to quietly reset.
+  const prayerForCutoff = (() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  })();
+  const activePrayersFor = myPrayersFor.filter(p => {
+    if (p.expired) return false;
+    const expires = new Date(p.expiresAt);
+    const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+    const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - prayerForCutoff.getTime()) / 86400000));
+    return daysLeft > 0;
+  });
 
   const slides: PrayerSlide[] = [
     ...intercessions.map((m) => {
@@ -776,15 +788,10 @@ export default function PrayerModePage() {
         dayLabel: `Day ${day} of ${p.durationDays}`,
       };
     }),
-    // Renewal prompts come last so the user prays through everything first.
-    ...expiredPrayersFor.map((p): PrayerSlide => ({
-      kind: "prayer-for-expired",
-      text: p.recipientName,
-      attribution: "",
-      prayerForId: p.id,
-      recipientName: p.recipientName,
-      recipientAvatarUrl: p.recipientAvatarUrl,
-    })),
+    // Expired "pray-for" entries deliberately don't surface here anymore.
+    // Earlier we showed a renewal-prompt slide; the quieter, expected
+    // behaviour (and what /people does) is to just let the prayer end.
+    // The user can renew from the profile page if they want to continue.
   ];
 
   // Final slide logic:
@@ -796,8 +803,11 @@ export default function PrayerModePage() {
   const hasActiveOwnRequest = prayerRequests.some(
     (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
   );
+  // Use the same stricter filter we used for slides above — someone on
+  // their prayer's final day is effectively done, so they're fair game
+  // as a suggestion again.
   const prayingForEmails = new Set(
-    myPrayersFor.filter(p => !p.expired).map(p => p.recipientEmail.toLowerCase())
+    activePrayersFor.map(p => p.recipientEmail.toLowerCase())
   );
   const viewerEmail = (user?.email ?? "").toLowerCase();
   const suggestedFriends = friends.filter(f =>
