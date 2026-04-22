@@ -185,6 +185,11 @@ router.post("/groups", async (req, res): Promise<void> => {
       description: parsed.data.description ?? null,
       emoji: parsed.data.emoji ?? null,
       slug,
+      // Generate the community-wide invite token up front. Without this
+      // the Share-invite modal on the community detail page reads
+      // "Invite link not available" until an admin taps Rotate, because
+      // the legacy flow only set per-member invite tokens.
+      inviteToken: generateToken(),
       isPrayerCircle: isCircle,
       intention: isCircle ? (parsed.data.intention?.trim() ?? null) : null,
       circleDescription: isCircle ? (parsed.data.circleDescription?.trim() || null) : null,
@@ -287,6 +292,19 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
   // the link, and we don't want every member handing it out. A member who
   // wants to share the community can ask an admin.
   const isAdminView = result.member.role === "admin";
+
+  // Lazy-init the community-wide invite token. Older communities were
+  // created before we started generating this at create time, so their
+  // invite token is null — which reads as "Invite link not available"
+  // on the detail page. Generate one now on first admin view; members
+  // don't trigger this (they don't see the token anyway).
+  if (isAdminView && !result.group.inviteToken) {
+    const newToken = generateToken();
+    await db.update(groupsTable)
+      .set({ inviteToken: newToken })
+      .where(eq(groupsTable.id, result.group.id));
+    result.group.inviteToken = newToken;
+  }
 
   // Active (non-archived) intentions for circles. Sorted by sortOrder then
   // creation time so admins can eventually drag-to-reorder without losing
