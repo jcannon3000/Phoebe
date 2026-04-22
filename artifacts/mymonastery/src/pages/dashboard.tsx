@@ -2106,6 +2106,16 @@ export default function Dashboard() {
       enabled: !!user,
     });
 
+  // Communities the viewer is in. One pill per community renders in the
+  // category strip above — tapping a pill routes straight to that
+  // community's detail page. Replaces the old generic "Communities" pill.
+  type DashGroup = { id: number; name: string; slug: string; emoji: string | null };
+  const { data: dashGroups } = useQuery<{ groups: DashGroup[] }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user,
+  });
+
   // In-session latch — even if momentsData refetches and re-runs the effect,
   // we never re-trigger the popup within the same page load.
   const prayerInviteHandledThisSessionRef = useRef(false);
@@ -2798,12 +2808,28 @@ export default function Dashboard() {
               );
             };
 
+            // One pill per community the viewer is in — replaces the old
+            // generic "Communities" pill that linked to the list page. Each
+            // pill leads with the community emoji (or a fallback 🏘️) and
+            // routes straight to that community's detail page. Sorted by
+            // name for stable order across renders.
+            const communityPills: Pill[] = (dashGroups?.groups ?? [])
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map(g => ({
+                label: `${g.emoji ?? "🏘️"} ${g.name}`,
+                href: `/communities/${g.slug}`,
+                fg: "#6FAF85",
+                bg: "rgba(111,175,133,0.12)",
+                border: "rgba(111,175,133,0.25)",
+              }));
+
             const PILLS: Pill[] = [
               { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
               { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
               { label: "📖 BCP Prayers",  href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
-              { label: "🏘️ Communities",  href: "/communities",  fg: "#6FAF85", bg: "rgba(111,175,133,0.12)", border: "rgba(111,175,133,0.25)" },
+              ...communityPills,
             ];
 
             // When a filter is active, collapse to just the active pill with ×
