@@ -224,7 +224,7 @@ export default function MomentsDashboard() {
     enabled: !!user,
   });
   const [communityAdminView] = useCommunityAdminToggle();
-  const isAdminOfAnyGroup = communityAdminView && (groupsData?.groups ?? []).some(g => g.myRole === "admin");
+  const isAdminOfAnyGroup = communityAdminView && (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin");
 
   // On-demand Apple Music check for listening practices where someone hasn't logged
   const amCheckedRef = useRef(false);

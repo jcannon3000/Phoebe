@@ -811,7 +811,7 @@ export default function CommunityDetailPage() {
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/admin-notifications`),
     // Enabled only for admins. The server also gates — this just avoids the
     // network round-trip for regular members.
-    enabled: !!user && !!slug && groupData?.myRole === "admin",
+    enabled: !!user && !!slug && (groupData?.myRole === "admin" || groupData?.myRole === "hidden_admin"),
     // Refetch when the admin returns to the tab so a join that happened while
     // they were away pops up the next time they open the community page.
     refetchOnWindowFocus: true,

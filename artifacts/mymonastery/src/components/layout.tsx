@@ -135,7 +135,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               )}
 
               {/* Community admin toggle — lets a community admin experience the app as a regular member */}
-              {(groupsData?.groups ?? []).some(g => g.myRole === "admin") && (
+              {(groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin") && (
                 <button
                   onClick={toggleCommunityAdminView}
                   className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors mt-2"

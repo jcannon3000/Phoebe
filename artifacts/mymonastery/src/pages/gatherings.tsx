@@ -264,7 +264,7 @@ export default function GatheringsPage() {
     enabled: !!user,
   });
   const [communityAdminView] = useCommunityAdminToggle();
-  const isAdminOfAnyGroup = communityAdminView && (groupsData?.groups ?? []).some(g => g.myRole === "admin");
+  const isAdminOfAnyGroup = communityAdminView && (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin");
 
   const removeSub = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/gatherings/calendars/${id}`),

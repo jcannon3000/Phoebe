@@ -677,7 +677,7 @@ router.post("/moments", async (req, res): Promise<void> => {
 
     const [membership] = await db.select().from(groupMembersTable)
       .where(and(eq(groupMembersTable.groupId, groupId), eq(groupMembersTable.userId, sessionUserId)));
-    if (!membership || membership.role !== "admin") {
+    if (!membership || (membership.role !== "admin" && membership.role !== "hidden_admin")) {
       res.status(403).json({ error: "Only group admins can create group practices" }); return;
     }
 
@@ -691,6 +691,60 @@ router.post("/moments", async (req, res): Promise<void> => {
         .map(m => m.userId)
         .filter((id): id is number => id != null && id !== sessionUserId),
     };
+  }
+
+  // ── Additional groups (multi-group intercessions) validation ──
+  // The creator must be an admin (visible or hidden) of every additional
+  // group they're attaching. We gather those members here so we can add
+  // them as participants below alongside the primary group's members.
+  let additionalGroupRows: Array<{ groupId: number; slug: string; members: typeof groupMembersTable.$inferSelect[] }> = [];
+  if (additionalGroupIds && additionalGroupIds.length > 0) {
+    // Dedupe + strip the primary group so we don't double-insert.
+    const extraIds = [...new Set(additionalGroupIds.filter(id => id !== groupId))];
+    if (extraIds.length > 0) {
+      const extraGroups = await db.select().from(groupsTable).where(inArray(groupsTable.id, extraIds));
+      if (extraGroups.length !== extraIds.length) {
+        res.status(404).json({ error: "One or more groups not found" });
+        return;
+      }
+      const myMemberships = await db.select().from(groupMembersTable)
+        .where(and(
+          inArray(groupMembersTable.groupId, extraIds),
+          eq(groupMembersTable.userId, sessionUserId),
+        ));
+      const adminOf = new Set(
+        myMemberships
+          .filter(m => m.role === "admin" || m.role === "hidden_admin")
+          .map(m => m.groupId),
+      );
+      for (const g of extraGroups) {
+        if (!adminOf.has(g.id)) {
+          res.status(403).json({ error: `You must be an admin of ${g.name} to attach a practice to it` });
+          return;
+        }
+      }
+      // Collect each group's joined members so they all get a user token
+      // below. A single person who sits in two attached groups still only
+      // gets one token (we dedupe by email in `groupMembers`).
+      const extraMemberRows = await db.select().from(groupMembersTable)
+        .where(and(
+          inArray(groupMembersTable.groupId, extraIds),
+          sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        ));
+      additionalGroupRows = extraGroups.map(g => ({
+        groupId: g.id,
+        slug: g.slug,
+        members: extraMemberRows.filter(m => m.groupId === g.id),
+      }));
+      // Merge into the groupMembers list that gets turned into participants.
+      const byEmail = new Map<string, { email: string; name: string }>();
+      for (const m of (groupMembers ?? [])) byEmail.set(m.email.toLowerCase(), m);
+      for (const row of extraMemberRows) {
+        const k = row.email.toLowerCase();
+        if (!byEmail.has(k)) byEmail.set(k, { email: row.email, name: row.name ?? row.email });
+      }
+      if (byEmail.size > 0) groupMembers = [...byEmail.values()];
+    }
   }
 
   // Enforce the Lectio Divina group limit — depth, not breadth.
@@ -770,6 +824,15 @@ router.post("/moments", async (req, res): Promise<void> => {
     ...(listeningArtworkUrl !== undefined ? { listeningArtworkUrl } : {}),
     ...(listeningManual !== undefined ? { listeningManual } : {}),
   }).returning();
+
+  // Link any additional groups via the junction table. Primary group
+  // stays on sharedMoments.groupId — we skip it here to avoid a
+  // redundant "also visible from" row pointing at the owner group.
+  if (additionalGroupRows.length > 0) {
+    await db.insert(momentGroupsTable).values(
+      additionalGroupRows.map(row => ({ momentId: moment.id, groupId: row.groupId })),
+    );
+  }
 
   const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
 
@@ -2050,6 +2113,116 @@ const InviteMembersSchema = z.object({
     name: z.string().min(1),
     email: z.string().email(),
   })).min(1),
+});
+
+// ─── GET /api/moments/:id/groups — list groups an intercession is shared with
+// Primary group (sharedMoments.groupId) + any rows in moment_groups.
+router.get("/moments/:id/groups", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  const primary = moment.groupId
+    ? (await db.select().from(groupsTable).where(eq(groupsTable.id, moment.groupId)))[0]
+    : null;
+  const extraLinks = await db.select().from(momentGroupsTable).where(eq(momentGroupsTable.momentId, momentId));
+  const extraGroups = extraLinks.length > 0
+    ? await db.select().from(groupsTable).where(inArray(groupsTable.id, extraLinks.map(l => l.groupId)))
+    : [];
+
+  res.json({
+    primary: primary ? { id: primary.id, name: primary.name, slug: primary.slug, emoji: primary.emoji } : null,
+    additional: extraGroups.map(g => ({ id: g.id, name: g.name, slug: g.slug, emoji: g.emoji })),
+  });
+});
+
+// ─── POST /api/moments/:id/groups — attach an intercession to another group.
+// Body: { groupId: number }. Caller must be the intercession's creator
+// (their userToken row is the organizer) AND an admin of the target group.
+// Adds every joined member of the target group as a participant (new
+// moment_user_tokens rows for anyone not already a participant).
+const attachGroupSchema = z.object({ groupId: z.number().int().positive() });
+router.post("/moments/:id/groups", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  if (isNaN(momentId)) { res.status(400).json({ error: "Invalid moment id" }); return; }
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = attachGroupSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
+  const targetGroupId = parsed.data.groupId;
+
+  const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+  // Caller must admin the target group.
+  const [myMembership] = await db.select().from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, targetGroupId), eq(groupMembersTable.userId, sessionUserId)));
+  if (!myMembership || (myMembership.role !== "admin" && myMembership.role !== "hidden_admin")) {
+    res.status(403).json({ error: "You must be an admin of that community" });
+    return;
+  }
+
+  // No-op if target == primary or already linked.
+  if (moment.groupId === targetGroupId) {
+    res.json({ ok: true, alreadyLinked: true });
+    return;
+  }
+  const [existing] = await db.select().from(momentGroupsTable)
+    .where(and(eq(momentGroupsTable.momentId, momentId), eq(momentGroupsTable.groupId, targetGroupId)));
+  if (existing) {
+    res.json({ ok: true, alreadyLinked: true });
+    return;
+  }
+
+  await db.insert(momentGroupsTable).values({ momentId, groupId: targetGroupId });
+
+  // Add the new group's joined members as participants (skip anyone who
+  // already has a moment_user_tokens row for this moment).
+  const newMembers = await db.select().from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, targetGroupId), sql`${groupMembersTable.joinedAt} IS NOT NULL`));
+  const existingTokens = await db.select({ email: momentUserTokensTable.email })
+    .from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+  const existingEmails = new Set(existingTokens.map(t => t.email.toLowerCase()));
+  const toAdd = newMembers.filter(m => !existingEmails.has(m.email.toLowerCase()));
+  if (toAdd.length > 0) {
+    await db.insert(momentUserTokensTable).values(toAdd.map(m => ({
+      momentId,
+      email: m.email,
+      name: m.name ?? m.email,
+      userToken: generateToken(),
+    })));
+  }
+
+  res.json({ ok: true, addedParticipants: toAdd.length });
+});
+
+// ─── DELETE /api/moments/:id/groups/:groupId — detach an intercession from
+// a secondary group. Caller must admin the group being removed. We never
+// delete the primary groupId via this endpoint — that would orphan the
+// moment; the caller should archive the moment instead.
+router.delete("/moments/:id/groups/:groupId", async (req, res): Promise<void> => {
+  const momentId = parseInt(req.params.id, 10);
+  const targetGroupId = parseInt(req.params.groupId, 10);
+  if (isNaN(momentId) || isNaN(targetGroupId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [myMembership] = await db.select().from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, targetGroupId), eq(groupMembersTable.userId, sessionUserId)));
+  if (!myMembership || (myMembership.role !== "admin" && myMembership.role !== "hidden_admin")) {
+    res.status(403).json({ error: "You must be an admin of that community" });
+    return;
+  }
+
+  await db.delete(momentGroupsTable)
+    .where(and(eq(momentGroupsTable.momentId, momentId), eq(momentGroupsTable.groupId, targetGroupId)));
+
+  res.json({ ok: true });
 });
 
 router.post("/moments/:id/invite", async (req, res): Promise<void> => {

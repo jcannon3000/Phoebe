@@ -321,7 +321,7 @@ function FAB() {
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
   });
-  const isAdminOfAny = (groupsData?.groups ?? []).some(g => g.myRole === "admin");
+  const isAdminOfAny = (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin");
   const showAdminMenu = isAdminOfAny && communityAdminView;
 
   // Only community admins (with admin-view on) see the dashboard FAB.

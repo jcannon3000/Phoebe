@@ -92,7 +92,10 @@ export default function CommunitySettingsPage() {
   // access-control flag. An admin who explicitly navigates to the settings
   // URL should always see the settings page — otherwise a fresh login
   // (toggle defaults off) silently redirects them back to the group page.
-  const isAdmin = groupData?.myRole === "admin";
+  // Hidden admins have full admin powers (see routes/groups.ts isAdminRole)
+  // and must also reach the settings page, otherwise a pilot-designated
+  // hidden admin can't manage a community they're technically running.
+  const isAdmin = groupData?.myRole === "admin" || groupData?.myRole === "hidden_admin";
 
   // Redirect non-admins
   useEffect(() => {

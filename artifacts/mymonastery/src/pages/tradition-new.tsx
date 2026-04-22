@@ -75,7 +75,7 @@ export default function TraditionNew() {
     enabled: !!user,
   });
   const [communityAdminView] = useCommunityAdminToggle();
-  const adminGroups = communityAdminView ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin") : [];
+  const adminGroups = communityAdminView ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin" || g.myRole === "hidden_admin") : [];
   const canInviteNewPeople = adminGroups.length > 0;
 
   // Auto-select and skip community step:

@@ -536,14 +536,29 @@ export default function MomentNew() {
     enabled: !!user,
   });
   const [communityAdminView] = useCommunityAdminToggle();
-  const adminGroups = communityAdminView ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin") : [];
+  const adminGroups = communityAdminView
+    ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin" || g.myRole === "hidden_admin")
+    : [];
   // Auto-select when the user is admin of exactly one community
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  // Intercessions can span multiple communities. Stored separately from
+  // selectedGroupId so the primary ownership stays unambiguous — the
+  // primary group drives things like admin controls and the
+  // moment_calendar_events owner; extras are "also visible from".
+  const [additionalGroupIds, setAdditionalGroupIds] = useState<number[]>([]);
   useEffect(() => {
     if (adminGroups.length === 1 && selectedGroupId === null) {
       setSelectedGroupId(adminGroups[0].id);
     }
   }, [adminGroups, selectedGroupId]);
+  // Keep additionalGroupIds consistent with the primary selection. If
+  // the user switches primary to a group they had marked additional,
+  // drop it from the extras list so we don't double-count.
+  useEffect(() => {
+    if (selectedGroupId !== null && additionalGroupIds.includes(selectedGroupId)) {
+      setAdditionalGroupIds(ids => ids.filter(id => id !== selectedGroupId));
+    }
+  }, [selectedGroupId, additionalGroupIds]);
 
   // Step navigation
   const [step, setStep] = useState<StepId>("template");
@@ -1140,6 +1155,11 @@ export default function MomentNew() {
       listeningArtworkUrl: isListening && listeningArtworkUrl ? listeningArtworkUrl : undefined,
       // Group practice
       groupId: selectedGroupId ?? undefined,
+      // Intercessions can be attached to multiple communities at once.
+      // Server validates that the caller admins each additional group.
+      additionalGroupIds: templateId === "intercession" && additionalGroupIds.length > 0
+        ? additionalGroupIds
+        : undefined,
     });
   }
 
@@ -2026,6 +2046,43 @@ export default function MomentNew() {
                             {g.emoji ? `${g.emoji} ` : ""}{g.name}
                           </button>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Additional-groups multi-select (intercessions only).
+                      Lets one intercession be shared with multiple
+                      communities so members of each see it on their
+                      community page. Only admins of the extra group can
+                      attach — we filter the picker to admin-of groups
+                      that aren't the primary. */}
+                  {templateId === "intercession" && selectedGroupId !== null
+                    && adminGroups.filter(g => g.id !== selectedGroupId).length > 0 && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>
+                        Also share with
+                      </label>
+                      <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
+                        Other communities you admin can also see this intercession.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {adminGroups.filter(g => g.id !== selectedGroupId).map(g => {
+                          const on = additionalGroupIds.includes(g.id);
+                          return (
+                            <button
+                              key={g.id}
+                              onClick={() => setAdditionalGroupIds(ids =>
+                                on ? ids.filter(id => id !== g.id) : [...ids, g.id]
+                              )}
+                              className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                              style={on
+                                ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
+                                : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px dashed rgba(46,107,64,0.3)" }}
+                            >
+                              {on ? "✓ " : "+ "}{g.emoji ? `${g.emoji} ` : ""}{g.name}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

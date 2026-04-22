@@ -11,6 +11,7 @@ import {
   betaUsersTable,
   usersTable,
   sharedMomentsTable,
+  momentGroupsTable,
   momentUserTokensTable,
   momentPostsTable,
   prayerRequestsTable,
@@ -1430,8 +1431,20 @@ router.get("/groups/:slug/practices", async (req, res): Promise<void> => {
   const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, req.params.slug));
   if (!group) { res.status(404).json({ error: "Group not found" }); return; }
 
+  // Practices = moments whose primary group is this community OR whose
+  // moment_groups junction has this community listed. The junction lets
+  // one intercession show up in multiple communities' home views.
+  const linkedMomentIds = await db.select({ id: momentGroupsTable.momentId })
+    .from(momentGroupsTable)
+    .where(eq(momentGroupsTable.groupId, group.id));
+  const linkedIds = linkedMomentIds.map(r => r.id);
   const practices = await db.select().from(sharedMomentsTable)
-    .where(and(eq(sharedMomentsTable.groupId, group.id), sql`${sharedMomentsTable.state} != 'archived'`));
+    .where(and(
+      sql`${sharedMomentsTable.state} != 'archived'`,
+      linkedIds.length > 0
+        ? sql`(${sharedMomentsTable.groupId} = ${group.id} OR ${sharedMomentsTable.id} = ANY(${linkedIds}))`
+        : eq(sharedMomentsTable.groupId, group.id),
+    ));
 
   const enriched = await Promise.all(practices.map(async (p) => {
     const members = await db.select().from(momentUserTokensTable)
