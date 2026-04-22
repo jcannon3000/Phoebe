@@ -359,14 +359,17 @@ export default function CommunityJoinPage() {
         // Server already linked the new user to the group_members row.
         // Route through the full product onboarding (profile pic, BCP
         // intros, gatherings, bell setup, first prayer request), then
-        // land on this community as the destination. The dedicated
-        // post-signup community overlay was removed — the onboarding
-        // flow's closing "Welcome." fade is the only welcoming moment
-        // we need. Existing users who signed in (not registered) skip
-        // onboarding via the `onboardingCompleted` guard.
+        // land on the main HOME screen (/dashboard) — not the
+        // community detail page. Per user: "I want the user to land
+        // on the home screen when they first arrive, but then the
+        // pop up inviting them to do their prayer slide show comes
+        // up." The dashboard's existing daily-prayer-invite effect
+        // fires the popup automatically once the user's intercessions
+        // (auto-joined from this community) load. Existing users who
+        // signed in (not registered) skip onboarding via the
+        // `onboardingCompleted` guard.
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        const nextUrl = `/communities/${slug}`;
-        setLocation(`/onboarding?next=${encodeURIComponent(nextUrl)}`);
+        setLocation(`/onboarding`);
       } else {
         setAuthError(data.error ?? "Couldn't create your account.");
       }
