@@ -308,13 +308,6 @@ const SLIDES: Slide[] = [
   // 7
   {
     kind: "info",
-    title: "Your garden.",
-    body: "In Phoebe, the people you choose to stay close to are called your fellows — your garden. Their prayer requests surface first. Your connection grows over time, independent of any shared practice.",
-    mock: null,
-  },
-  // 8
-  {
-    kind: "info",
     title: "Phoebe is a safe space.",
     body: "This is a place built on trust. If anyone ever makes you feel uncomfortable — in a prayer request, a letter, or anywhere in the app — you can mute them at any time. Muting is quiet and private. They won't be notified, and their content will no longer appear for you.\n\nYou are always in control of your experience here.",
     mock: null,
