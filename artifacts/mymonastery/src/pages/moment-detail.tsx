@@ -749,8 +749,34 @@ export default function MomentDetail() {
         })()}
 
 
-        {/* Open Now Banner — only when actually open (morning prayer is always accessible) */}
-        {(isOpenNow || isMorningPrayer) ? (
+        {/* Open Now Banner — only when actually open (morning prayer is always accessible).
+            Intercession: when the viewer has already prayed today, the
+            banner drops the call-to-action copy and just shows "N has
+            prayed" — they've done their part, no need to be prompted. */}
+        {(() => {
+          const viewerPrayedToday = isIntercession && !!(todayLogs ?? []).find(
+            l => l.email.toLowerCase() === (user?.email ?? "").toLowerCase() && !!l.loggedAt
+          );
+          const prayedTodayCount = (todayLogs ?? []).filter(l => !!l.loggedAt).length;
+          const headline = isMorningPrayer
+            ? "📖 Morning Prayer · Today's office"
+            : isIntercession
+              ? (viewerPrayedToday
+                  ? (prayedTodayCount === 1 ? "1 has prayed" : `${prayedTodayCount} have prayed`)
+                  : "🙏🏽 Open today · Pray together")
+              : isListening
+                ? "🎵 Listening today"
+                : "🌿 Open today";
+          const subline = isMorningPrayer
+            ? `${todayPostCount} of ${memberCount} have prayed`
+            : isIntercession
+              ? (viewerPrayedToday
+                  // Viewer has prayed — headline already carries the count,
+                  // so the subline can be gentler / encouraging.
+                  ? "You've prayed today 🌿"
+                  : (prayedTodayCount === 1 ? "1 has prayed" : `${prayedTodayCount} have prayed`))
+              : `${todayPostCount} of ${memberCount} ${isListening ? "listened" : "logged"}`;
+          return (isOpenNow || isMorningPrayer) ? (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -758,20 +784,8 @@ export default function MomentDetail() {
             style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
           >
             <div>
-              <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>
-                {isMorningPrayer
-                  ? "📖 Morning Prayer · Today's office"
-                  : isIntercession
-                    ? "🙏🏽 Open today · Pray together"
-                    : isListening
-                      ? "🎵 Listening today"
-                      : "🌿 Open today"}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-                {isMorningPrayer
-                  ? `${todayPostCount} of ${memberCount} have prayed`
-                  : `${todayPostCount} of ${memberCount} ${isIntercession ? "have prayed" : isListening ? "listened" : "logged"}`}
-              </p>
+              <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>{headline}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{subline}</p>
             </div>
             {postUrl && !isListening && (
               <Link href={postUrl}>
@@ -808,7 +822,8 @@ export default function MomentDetail() {
               <span className="text-2xl" aria-hidden>🌿</span>
             )}
           </motion.div>
-        )}
+        );
+        })()}
 
         {/* Full intercession prayer text — for custom intercessions we show
             the prayer body above the streak/prayed-today card so the reader's
@@ -893,44 +908,58 @@ export default function MomentDetail() {
             );
           }
 
-          // Intercession: unified view — Your streak + Group streak side-
-          // by-side, count of people who actually prayed today, plus a pill
-          // row of members who prayed in the last 7 days.
+          // Intercession: unified view — two streak boxes (Your / Group)
+          // with inline label-number layout, plus a horizontally-scrolling
+          // pill row of members who've prayed this week.
           if (isIntercession) {
-            const prayedTodayLogs = (todayLogs ?? []).filter(l => !!l.loggedAt);
-            const prayedTodayCount = prayedTodayLogs.length;
             const prayedWeekLogs = (weekLogs ?? []).filter(l => !!l.loggedAt);
             return (
-              <div className="mb-6 rounded-2xl p-5" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
-                {/* Your streak · Group streak · N prayed today */}
-                <div className="flex items-baseline gap-6 mb-4">
-                  <div>
-                    <p className="text-3xl font-bold text-foreground tabular-nums">{myStreak ?? 0}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">🙏🏽 Your streak</p>
+              <div className="mb-6">
+                {/* Two-up streak boxes */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div
+                    className="rounded-2xl px-4 py-3 flex items-baseline gap-2"
+                    style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
+                    <p className="text-2xl font-bold text-foreground tabular-nums">{myStreak ?? 0}</p>
+                    <p className="text-sm text-muted-foreground">Your streak</p>
                   </div>
-                  <div>
-                    <p className="text-3xl font-bold text-foreground tabular-nums">{groupStreak}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">🔥 Group streak</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-foreground tabular-nums">{prayedTodayCount}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">prayed today</p>
+                  <div
+                    className="rounded-2xl px-4 py-3 flex items-baseline gap-2"
+                    style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
+                    <p className="text-2xl font-bold text-foreground tabular-nums">{groupStreak}</p>
+                    <p className="text-sm text-muted-foreground">Group streak</p>
                   </div>
                 </div>
 
-                {/* Prayed this week — one pill per member who posted any
-                    time in the last 7 days. A member shows up as soon as
-                    they pray once, so the row builds through the week. */}
+                {/* Prayed this week — single horizontal row. Overflow
+                    scrolls sideways so long member lists keep the card
+                    compact. `flex-nowrap` + `overflow-x-auto` is the
+                    combination Safari respects. */}
                 {prayedWeekLogs.length > 0 ? (
-                  <>
+                  <div
+                    className="rounded-2xl px-4 py-3"
+                    style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
+                  >
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-2" style={{ letterSpacing: "0.12em" }}>
                       Prayed this week
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div
+                      className="flex items-center gap-2 overflow-x-auto"
+                      style={{
+                        flexWrap: "nowrap",
+                        WebkitOverflowScrolling: "touch",
+                        // Hide scrollbar — users can swipe on touch, and the
+                        // list's right edge being off-screen is itself the
+                        // cue that there's more.
+                        scrollbarWidth: "none",
+                      }}
+                    >
                       {prayedWeekLogs.map((p, i) => (
                         <div
                           key={`${p.email}-${i}`}
-                          className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1"
+                          className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 shrink-0"
                           style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
                         >
                           {p.avatarUrl ? (
@@ -947,13 +976,13 @@ export default function MomentDetail() {
                               {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <span className="text-xs text-foreground">
+                          <span className="text-xs text-foreground whitespace-nowrap">
                             {p.name || p.email.split("@")[0]}
                           </span>
                         </div>
                       ))}
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <p className="text-xs text-muted-foreground italic">No one has prayed this week yet.</p>
                 )}
