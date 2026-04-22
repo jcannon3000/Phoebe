@@ -12,7 +12,9 @@ import {
   usersTable,
   sharedMomentsTable,
   momentUserTokensTable,
+  momentPostsTable,
   prayerRequestsTable,
+  prayerRequestAmensTable,
   circleDailyFocusTable,
   circleIntentionsTable,
 } from "@workspace/db";
@@ -2155,6 +2157,99 @@ function normalizeServiceTimes(raw: unknown): GroupServiceTime[] {
   out.sort((a, b) => a.time.localeCompare(b.time));
   return out;
 }
+
+// GET /api/groups/:slug/prayer-activity
+// Returns every community member who has prayed in the last 7 days — either
+// by checking in on an intercession/practice moment (`moment_posts` joined
+// via `moment_user_tokens.email` → `users.email`) or by tapping Amen on a
+// prayer request in this group (`prayer_request_amens`). One row per user,
+// keyed on `lastPrayedAt` (max of either signal), sorted most-recent first.
+//
+// Consumers: the "Prayed this week" ticker on the community home tab. We
+// cap at the last 7 days so the ticker stays fresh — older prayer activity
+// bleeds off naturally.
+router.get("/groups/:slug/prayer-activity", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const slug = String(req.params.slug ?? "");
+    const result = await requireMember(slug, user.id);
+    if (!result) { res.status(403).json({ error: "Not a member" }); return; }
+
+    const groupId = result.group.id;
+
+    // Union of two signals. We do them as two subqueries and combine in
+    // memory; both are group-scoped + 7-day-windowed, so the total row
+    // count stays small even for busy parishes.
+
+    // 1. Intercession + practice check-ins (moment_posts for this group's
+    //    shared moments), joined user-side via email-token → users.
+    const momentRows = await db
+      .select({
+        userId: usersTable.id,
+        name: usersTable.name,
+        avatarUrl: usersTable.avatarUrl,
+        prayedAt: momentPostsTable.createdAt,
+      })
+      .from(momentPostsTable)
+      .innerJoin(sharedMomentsTable, eq(momentPostsTable.momentId, sharedMomentsTable.id))
+      .innerJoin(momentUserTokensTable, eq(momentPostsTable.userToken, momentUserTokensTable.userToken))
+      .innerJoin(usersTable, eq(momentUserTokensTable.email, usersTable.email))
+      .where(and(
+        eq(sharedMomentsTable.groupId, groupId),
+        sql`${momentPostsTable.createdAt} > NOW() - INTERVAL '7 days'`,
+      ));
+
+    // 2. Prayer-request Amens — `prayer_request_amens.userId` already points
+    //    at `users.id`, so we join the request to scope to this group.
+    const amenRows = await db
+      .select({
+        userId: usersTable.id,
+        name: usersTable.name,
+        avatarUrl: usersTable.avatarUrl,
+        prayedAt: prayerRequestAmensTable.prayedAt,
+      })
+      .from(prayerRequestAmensTable)
+      .innerJoin(prayerRequestsTable, eq(prayerRequestAmensTable.requestId, prayerRequestsTable.id))
+      .innerJoin(usersTable, eq(prayerRequestAmensTable.userId, usersTable.id))
+      .where(and(
+        eq(prayerRequestsTable.groupId, groupId),
+        sql`${prayerRequestAmensTable.prayedAt} > NOW() - INTERVAL '7 days'`,
+      ));
+
+    // Fold both sources into a map keyed on userId, tracking the latest
+    // prayedAt. Drop the current viewer — the ticker reads better as
+    // "others in the community" and the viewer knows what they did.
+    const byUser = new Map<number, { userId: number; name: string; avatarUrl: string | null; lastPrayedAt: Date }>();
+    for (const row of [...momentRows, ...amenRows]) {
+      if (row.userId === user.id) continue;
+      const existing = byUser.get(row.userId);
+      const prayedAt = row.prayedAt instanceof Date ? row.prayedAt : new Date(row.prayedAt as any);
+      if (!existing || prayedAt > existing.lastPrayedAt) {
+        byUser.set(row.userId, {
+          userId: row.userId,
+          name: row.name,
+          avatarUrl: row.avatarUrl ?? null,
+          lastPrayedAt: prayedAt,
+        });
+      }
+    }
+
+    const users = Array.from(byUser.values())
+      .sort((a, b) => b.lastPrayedAt.getTime() - a.lastPrayedAt.getTime())
+      .map(u => ({
+        userId: u.userId,
+        name: u.name,
+        avatarUrl: u.avatarUrl,
+        lastPrayedAt: u.lastPrayedAt.toISOString(),
+      }));
+
+    res.json({ users });
+  } catch (err) {
+    console.error("GET /api/groups/:slug/prayer-activity error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // GET /api/groups/:slug/service-schedule
 router.get("/groups/:slug/service-schedule", async (req, res): Promise<void> => {

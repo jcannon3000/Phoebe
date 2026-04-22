@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart } from "lucide-react";
-import { useCommunityAdminToggle } from "@/hooks/useDemo";
+import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -359,6 +359,181 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
   );
 }
 
+// ─── Community home — Sunday Service card ──────────────────────────────────
+// Pill-based card that mirrors the home dashboard's `ServiceCard` visual so
+// the community home tab reads as a scoped sibling of the main home screen.
+// Fetches the same `/api/groups/:slug/service-schedule` endpoint the
+// Gatherings tab uses. Renders nothing when the community hasn't set up a
+// schedule yet — keeps the home tab quiet for new communities.
+function CommunityServiceHomeCard({ slug, onOpen }: { slug: string; onOpen: () => void }) {
+  const { data } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
+    queryKey: ["/api/groups", slug, "service-schedule"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
+    enabled: !!slug,
+  });
+  const schedule = data?.schedule ?? null;
+  if (!schedule || schedule.times.length === 0) return null;
+
+  const dayLabel = DOW_NAMES.find(d => d.value === schedule.dayOfWeek)?.label ?? "Sunday";
+  const title = schedule.name || `${dayLabel} Services`;
+
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
+        Gatherings
+      </p>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="block w-full text-left"
+      >
+        <div
+          className="relative flex rounded-xl overflow-hidden"
+          style={{
+            // `gatherings` category palette: bar #6FAF85, bg rgba(111,175,133,0.15)
+            background: "rgba(111,175,133,0.15)",
+            border: "1px solid rgba(111,175,133,0.35)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+          }}
+        >
+          <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
+          <div className="flex-1 px-4 pt-3 pb-3">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+                🙌🏽 {title}
+              </span>
+              {/* Day-of-week eyebrow — same slot the dashboard card uses for
+                  the community name. Here we already know the community, so
+                  we repurpose the slot for "when" instead. */}
+              <span
+                className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+                style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+              >
+                {dayLabel}
+              </span>
+            </div>
+
+            {/* One pill per service time. Wraps on narrow widths. */}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {schedule.times.map((t, i) => {
+                const label = t.label
+                  ? `${formatHM12(t.time)} · ${t.label}`
+                  : formatHM12(t.time);
+                return (
+                  <span
+                    key={`${t.time}-${i}`}
+                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                    style={{
+                      background: "rgba(46,107,64,0.2)",
+                      border: "1px solid rgba(46,107,64,0.3)",
+                      color: "#F0EDE6",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
+
+            {schedule.location && (
+              <p className="text-[11px] mt-2" style={{ color: "#8FAF96" }}>
+                📍 {schedule.location}
+              </p>
+            )}
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+// ─── Community home — "Prayed this week" ticker ────────────────────────────
+// Scrolls through every member who has prayed an intercession, checked in on
+// a practice, or amened a prayer request in the last 7 days. Data comes from
+// /api/groups/:slug/prayer-activity. Quiet (nothing rendered) when no one has
+// prayed this week yet so the tab stays clean for new communities.
+type PrayerActivityUser = {
+  userId: number;
+  name: string;
+  avatarUrl: string | null;
+  lastPrayedAt: string;
+};
+
+function PrayedThisWeekTicker({ slug }: { slug: string }) {
+  const { data } = useQuery<{ users: PrayerActivityUser[] }>({
+    queryKey: ["/api/groups", slug, "prayer-activity"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-activity`),
+    enabled: !!slug,
+  });
+  const users = data?.users ?? [];
+  if (users.length === 0) return null;
+
+  // Duplicate the list once so the CSS keyframes can translate -50% and
+  // loop seamlessly — exact same trick the auto-scrolling tab bar uses.
+  const doubled = [...users, ...users];
+
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
+        Prayed This Week
+      </p>
+      <style>{`@keyframes prayed-this-week-scroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
+      <div
+        className="overflow-hidden relative rounded-xl"
+        style={{
+          background: "rgba(46,107,64,0.08)",
+          border: "1px solid rgba(46,107,64,0.2)",
+          maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+        }}
+      >
+        <div
+          className="py-3"
+          style={{
+            display: "flex",
+            gap: 10,
+            width: "max-content",
+            animation: `prayed-this-week-scroll ${Math.max(20, users.length * 4)}s linear infinite`,
+          }}
+        >
+          {doubled.map((u, i) => {
+            const first = (u.name ?? "").split(/\s+/)[0] || "Friend";
+            return (
+              <div
+                key={`${u.userId}-${i}`}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full shrink-0"
+                style={{
+                  background: "rgba(46,107,64,0.15)",
+                  border: "1px solid rgba(46,107,64,0.28)",
+                }}
+              >
+                {u.avatarUrl ? (
+                  <img
+                    src={u.avatarUrl}
+                    alt={u.name}
+                    className="w-5 h-5 rounded-full object-cover shrink-0"
+                    style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                  />
+                ) : (
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                    style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                  >
+                    {(u.name ?? "?").charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-medium whitespace-nowrap" style={{ color: "#F0EDE6" }}>
+                  {first} prayed 🙏
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CommunityDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
@@ -388,6 +563,14 @@ export default function CommunityDetailPage() {
   const [showFocusForm, setShowFocusForm] = useState(false);
   const [focusType, setFocusType] = useState<"situation" | "cause" | "custom">("situation");
   const [focusSubject, setFocusSubject] = useState("");
+  // ── Invite-by-email form (Members tab) ─────────────────────────────────
+  // Pilot-admin affordance — lets a community admin type an email + optional
+  // name and add the person directly, without having to share the community
+  // invite link. Hidden for non-pilot admins (they still see the invite-link
+  // modal) and for regular members.
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteError, setInviteError] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -517,6 +700,23 @@ export default function CommunityDetailPage() {
     },
   });
 
+  // Pilot-admin "add member directly" mutation. The backend endpoint sets
+  // `joinedAt: new Date()` so the person shows up as a full member right
+  // away — no invite-email roundtrip, no pending-state purgatory.
+  const addMemberMutation = useMutation({
+    mutationFn: (person: { name?: string; email: string }) =>
+      apiRequest("POST", `/api/groups/${slug}/members`, { people: [person] }),
+    onSuccess: () => {
+      setInviteName("");
+      setInviteEmail("");
+      setInviteError("");
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
+    },
+    onError: (err: any) => {
+      setInviteError(err?.message || "Couldn't add that member. Please try again.");
+    },
+  });
+
   // ── Prayer Circle focus mutations ─────────────────────────────────────
   // add: submits one of situation/cause/custom with `subjectText`. We don't
   //   (yet) expose a Phoebe-user picker from this form — adding a person by
@@ -541,6 +741,10 @@ export default function CommunityDetailPage() {
   });
 
   const [communityAdminView] = useCommunityAdminToggle();
+  // Pilot (beta) flag — used to gate admin-only invite-by-email form on the
+  // Members tab. A community admin who is also a pilot user gets the form;
+  // non-pilot admins still have the shareable invite-link modal.
+  const { isBeta } = useBetaStatus();
 
   if (authLoading || !user) return null;
   if (!groupData) return (
@@ -553,6 +757,10 @@ export default function CommunityDetailPage() {
 
   const { group, myRole, members } = groupData;
   const isAdmin = myRole === "admin" && communityAdminView;
+  // "Can invite by email" = admin of this community AND viewing as a pilot
+  // user. Non-pilot admins still get the shareable invite-link modal; this
+  // unlocks the direct-add form on the Members tab.
+  const canInviteByEmail = isAdmin && isBeta;
 
   const tabs = [
     { key: "home" as const, label: "Home", emoji: "🏡" },
@@ -955,9 +1163,13 @@ export default function CommunityDetailPage() {
             const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
             const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
             const progressLabel = goal ? `${logged}/${goal} days` : null;
-            const href = (m.windowOpen && m.momentToken && m.myUserToken)
-              ? `/moment/${m.momentToken}/${m.myUserToken}?from=community`
-              : `/moments/${m.id}`;
+            // Always land on the deep detail page — /moments/:id — which now
+            // carries the full prayer + community ritual. Earlier we routed
+            // window-open intercessions to the tiny /moment/:token/:userToken
+            // Amen page, but that flattens the experience and contradicts the
+            // home dashboard + prayer-list behaviour. The detail page already
+            // surfaces a "Pray now" affordance when the window is open.
+            const href = `/moments/${m.id}`;
             const prayedToday = m.todayPostCount > 0;
             const cardTitle = stripEmoji(m.intercessionTopic || m.intention || m.name);
 
@@ -1190,6 +1402,25 @@ export default function CommunityDetailPage() {
                   )}
                 </div>
               )}
+
+              {/* Who-prayed-this-week ticker — scrolls through every
+                  community member who has prayed an intercession or amened
+                  a prayer request in the last 7 days. Kept just below the
+                  optional "Praying Today" list (circle groups) and above
+                  Intercessions so it reads as "here's the pulse of the
+                  community." Dormant (nothing rendered) when no one has
+                  prayed this week yet. */}
+              <PrayedThisWeekTicker slug={slug!} />
+
+              {/* Gatherings — Sunday Service card. Uses the same pill-
+                  based visual as the home dashboard's ServiceCard so the
+                  community page reads as a scoped sibling of the main
+                  home screen. Quiet (nothing rendered) when the community
+                  hasn't set up a schedule yet. */}
+              <CommunityServiceHomeCard
+                slug={slug!}
+                onOpen={() => setActiveTab("gatherings")}
+              />
 
               {/* Intercessions — the most prayed-through surface, shown first */}
               {intercessions.length > 0 && (
@@ -1494,8 +1725,91 @@ export default function CommunityDetailPage() {
             if (!joinedAt) return false;
             return new Date(joinedAt) >= sevenDaysAgo;
           };
+          // Simple email validation — we want to catch typos client-side so
+          // the backend doesn't have to reject. Server still validates.
+          const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+          const handleAdd = () => {
+            const email = inviteEmail.trim().toLowerCase();
+            if (!isValidEmail(email)) {
+              setInviteError("Please enter a valid email.");
+              return;
+            }
+            // Prevent adding someone who's already a member (matches the
+            // server's silent skip; this just surfaces the state to the admin).
+            const already = members.some(m => m.email.toLowerCase() === email);
+            if (already) {
+              setInviteError("That person is already in this community.");
+              return;
+            }
+            setInviteError("");
+            addMemberMutation.mutate({
+              email,
+              name: inviteName.trim() || undefined,
+            });
+          };
+
           return (
           <div>
+            {/* Pilot-admin "add directly" form — bypasses the invite-link
+                flow. Appears at the top of the members tab, above the
+                roster. Non-pilot admins still see the shareable invite-link
+                modal from the header; regular members don't see this at all. */}
+            {canInviteByEmail && (
+              <div
+                className="mb-4 rounded-xl p-4"
+                style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                    Add member
+                  </p>
+                  <span
+                    className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                    style={{ background: "rgba(232,184,114,0.15)", color: "#E8B872", border: "1px solid rgba(232,184,114,0.35)", letterSpacing: "0.08em" }}
+                  >
+                    Pilot
+                  </span>
+                </div>
+                <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.75)" }}>
+                  Add someone to {group.name} directly. They'll show up as a
+                  member right away — no invite link to share.
+                </p>
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={e => { setInviteName(e.target.value); setInviteError(""); }}
+                  placeholder="Name (optional)"
+                  className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
+                  style={{ color: "#F0EDE6" }}
+                />
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={e => { setInviteEmail(e.target.value); setInviteError(""); }}
+                  placeholder="Email"
+                  className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
+                  style={{ color: "#F0EDE6" }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && inviteEmail.trim()) handleAdd();
+                  }}
+                />
+                {inviteError && (
+                  <p className="text-xs mb-2" style={{ color: "#C47A65" }}>
+                    {inviteError}
+                  </p>
+                )}
+                <button
+                  onClick={handleAdd}
+                  disabled={!inviteEmail.trim() || addMemberMutation.isPending}
+                  className="px-5 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                >
+                  {addMemberMutation.isPending ? "Adding…" : "Add to community"}
+                </button>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               {members.filter(m => m.joinedAt !== null).map(m => (
                 <div
