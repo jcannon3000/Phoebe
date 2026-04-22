@@ -301,13 +301,6 @@ const SLIDES: Slide[] = [
   // 5
   {
     kind: "info",
-    title: "Group Lectio Divina.",
-    body: "Each week your community reads the Sunday gospel together — moving through each stage on Mondays, Wednesdays, and Fridays. You read, reflect, and see what others heard.",
-    mock: "lectio",
-  },
-  // 6
-  {
-    kind: "info",
     title: "Upcoming gatherings.",
     body: "Your parish's events and traditions live here. See what's happening this week and who's showing up.",
     mock: "gatherings",
