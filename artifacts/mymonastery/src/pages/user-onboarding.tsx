@@ -892,6 +892,7 @@ function BellSlide({ onNext }: { onNext: () => void }) {
 
 function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () => void; preview?: boolean }) {
   const [text, setText] = useState("");
+  const [submittedBody, setSubmittedBody] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [done, setDone] = useState(false);
@@ -900,13 +901,15 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
     if (!text.trim()) return;
     setSubmitting(true);
     try {
+      const body = text.trim();
       if (!preview) {
-        await apiRequest("POST", "/api/prayer-requests", { body: text.trim() });
+        await apiRequest("POST", "/api/prayer-requests", { body });
       }
-      // Skip the intermediate "🌿 Your community will hold this" slide
-      // per user request — they only want the single Welcome beat
-      // between the form and the home screen. `submitted` is still
-      // set so the Welcome slide can read it and show the tagline.
+      // Capture the submitted text so the final beat can render it as
+      // a card — the user wanted to see what they just shared, not a
+      // generic "Welcome.", so the last slide reflects back the actual
+      // prayer request as a card and then fades into the home screen.
+      setSubmittedBody(body);
       setSubmitted(true);
       setDone(true);
     } catch {
@@ -918,9 +921,12 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
     setDone(true);
   }
 
-  // Final beat — a big "Welcome" that pulses once, then fades out into
-  // the home screen. No tap required: the slide auto-advances so the
-  // user's last impression of onboarding is a breath, not a button.
+  // Final beat — show the user's own prayer request as a card (mirroring
+  // the in-app prayer-request visual) with the "Your community will be
+  // holding this" line underneath. After 2.6s the whole thing fades
+  // into the home screen, where the dashboard's existing daily-prayer
+  // invite popup picks up and offers the prayer slideshow. No tap
+  // required: a single breath before landing.
   useEffect(() => {
     if (!done) return;
     const t = setTimeout(() => onComplete(), 2600);
@@ -930,37 +936,73 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
   if (done) {
     return (
       <motion.div
-        className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto px-2"
+        className="flex flex-col items-center justify-center text-center max-w-lg mx-auto px-2 w-full"
         initial={{ opacity: 1 }}
         animate={{ opacity: [1, 1, 0] }}
         transition={{ duration: 2.6, times: [0, 0.75, 1], ease: "easeOut" }}
       >
-        <motion.h1
-          className="text-5xl md:text-7xl font-bold mb-6 tracking-tight"
-          style={{ color: C.text, fontFamily: C.font }}
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{
-            opacity: [0, 1, 1],
-            scale: [0.96, 1.02, 1],
-          }}
-          transition={{
-            duration: 1.8,
-            times: [0, 0.45, 1],
-            ease: [0.22, 1, 0.36, 1],
-          }}
-        >
-          Welcome.
-        </motion.h1>
-        {submitted && (
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="text-lg md:text-xl font-light leading-relaxed"
-            style={{ color: C.sage, fontFamily: C.font }}
+        {submittedBody ? (
+          <>
+            {/* The user's own prayer request, rendered as a card that
+                matches the in-app prayer-request visual — sage accent
+                bar + YOUR REQUEST eyebrow — so the final screen feels
+                like they've already been dropped into the rhythm of
+                the app. */}
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full relative flex rounded-xl overflow-hidden mb-6 text-left"
+              style={{
+                background: "rgba(143,175,150,0.12)",
+                border: "1px solid rgba(46,107,64,0.3)",
+              }}
+            >
+              <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+              <div className="flex-1 px-4 py-3">
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-1.5"
+                  style={{ color: "rgba(143,175,150,0.7)" }}
+                >
+                  Your request
+                </p>
+                <p
+                  className="text-base leading-relaxed"
+                  style={{ color: C.text, fontFamily: C.font }}
+                >
+                  {submittedBody}
+                </p>
+              </div>
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="text-base md:text-lg font-light leading-relaxed"
+              style={{ color: C.sage, fontFamily: C.font }}
+            >
+              Your community will be holding this. 🌿
+            </motion.p>
+          </>
+        ) : (
+          // Skip path — no request submitted, still give a soft final
+          // beat before fading out.
+          <motion.h1
+            className="text-5xl md:text-7xl font-bold tracking-tight"
+            style={{ color: C.text, fontFamily: C.font }}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{
+              opacity: [0, 1, 1],
+              scale: [0.96, 1.02, 1],
+            }}
+            transition={{
+              duration: 1.8,
+              times: [0, 0.45, 1],
+              ease: [0.22, 1, 0.36, 1],
+            }}
           >
-            Your community will hold this.
-          </motion.p>
+            Welcome.
+          </motion.h1>
         )}
       </motion.div>
     );
