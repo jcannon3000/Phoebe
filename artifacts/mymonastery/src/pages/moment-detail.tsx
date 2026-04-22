@@ -810,6 +810,31 @@ export default function MomentDetail() {
           </motion.div>
         )}
 
+        {/* Full intercession prayer text — for custom intercessions we show
+            the prayer body above the streak/prayed-today card so the reader's
+            eye lands on the prayer itself first, not the numbers. Matches the
+            serif/italic style used on the prayer-mode slide so the text reads
+            like a liturgy rather than a note. */}
+        {isIntercession && moment.intercessionFullText && moment.intercessionFullText.trim().length > 0 && (
+          <div
+            className="mb-5 rounded-2xl px-5 py-4"
+            style={{
+              background: "rgba(46,107,64,0.12)",
+              border: "1px solid rgba(46,107,64,0.25)",
+            }}
+          >
+            <p
+              className="italic whitespace-pre-wrap text-[15px] leading-[1.55]"
+              style={{
+                color: "#C8D4C0",
+                fontFamily: "'Playfair Display', Georgia, serif",
+              }}
+            >
+              {moment.intercessionFullText}
+            </p>
+          </div>
+        )}
+
         {/* Stats grid — water impact for fasting, streaks for everything else */}
         {(() => {
           // Use API-computed group streak from actual window bloom data —

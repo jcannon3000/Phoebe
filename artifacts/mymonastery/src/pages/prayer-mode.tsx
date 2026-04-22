@@ -831,15 +831,15 @@ export default function PrayerModePage() {
       /* non-fatal */
     }
 
-    // Fade out then navigate. Users now reach prayer-mode directly from
-    // the dashboard's PrayerListCard CTA (skipping the /prayer-list index),
-    // so sending them back to /dashboard after finishing lands them on the
-    // same screen they started from — one continuous arc rather than
-    // dropping them in a list they may never have visited.
+    // Fade out then navigate. The CTA flow now reads: dashboard card →
+    // slideshow (/prayer-mode) → prayer-list overview (/prayer-list). The
+    // overview page is the natural landing after the session — it shows
+    // the completed state, the streak, and anything else the user might
+    // want to peek at before returning home.
     setSlideVisible(false);
     setTimeout(() => {
       setVisible(false);
-      setTimeout(() => setLocation("/dashboard"), 500);
+      setTimeout(() => setLocation("/prayer-list"), 500);
     }, 300);
   };
 

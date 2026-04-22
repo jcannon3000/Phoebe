@@ -760,9 +760,12 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
       ? (effectiveGroupStreak > 0 ? `🔥 ${effectiveGroupStreak}` : null)
       : null;
 
-  const prayHref = isIntercession
-    ? (m.momentToken && m.myUserToken ? `/moment/${m.momentToken}/${m.myUserToken}` : `/moments/${m.id}`)
-    : null;
+  // Previously intercessions routed their Pray pill to the standalone
+  // /moment/:token/:userToken "Amen" screen — a quick tap page that sat
+  // outside the rest of the detail context. The detail page (/moments/:id)
+  // now carries the full prayer + community ritual the user wants to land
+  // on, so both the card and the Pray pill fall through to openHref.
+  const prayHref: string | null = null;
 
   const openHref = (isLectio && m.momentToken && m.myUserToken)
     ? `/lectio/${m.momentToken}/${m.myUserToken}`
