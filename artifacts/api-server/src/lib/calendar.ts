@@ -22,7 +22,10 @@ let cachedTokenExpiry: number | null = null;
 async function getSchedulerClient() {
   const refreshToken = getInvitesRefreshToken();
   if (!refreshToken) {
-    console.warn("No Google refresh token set — calendar features disabled");
+    console.error(
+      "[calendar] No Google refresh token set — calendar features disabled. " +
+      "Set INVITES_GOOGLE_REFRESH_TOKEN (or legacy SCHEDULER_GOOGLE_REFRESH_TOKEN) on the server.",
+    );
     return null;
   }
 
@@ -102,9 +105,37 @@ export async function createCalendarEvent(
         },
       },
     });
-    return event.data.id ?? null;
+    if (!event.data.id) {
+      console.error(
+        "[calendar] events.insert returned no id — response body:",
+        JSON.stringify(event.data),
+      );
+      return null;
+    }
+    console.log(
+      `[calendar] Created event ${event.data.id}` +
+      (attendeeList.length > 0 ? ` (invited ${attendeeList.map(a => a.email).join(", ")})` : ""),
+    );
+    return event.data.id;
   } catch (err) {
-    console.error("Calendar event create failed:", err);
+    // Dump as much as Google hands us — code, status, message, reason —
+    // so a production failure is diagnosable from Railway logs without
+    // another deploy to add instrumentation.
+    const e = err as {
+      code?: number;
+      status?: number;
+      message?: string;
+      response?: { status?: number; data?: unknown };
+      errors?: Array<{ reason?: string; message?: string }>;
+    };
+    console.error("[calendar] events.insert FAILED", {
+      code: e?.code ?? e?.status ?? e?.response?.status,
+      message: e?.message,
+      reason: e?.errors?.[0]?.reason,
+      data: e?.response?.data,
+      attendees: attendeeList.map(a => a.email),
+      summary: opts.summary,
+    });
     return null;
   }
 }

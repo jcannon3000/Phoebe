@@ -641,6 +641,32 @@ function BellSlide({ onNext }: { onNext: () => void }) {
       setSavedAmpm(ampm);
     } catch {
       setSaving(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Retry pathway for the "invite didn't send" failure state. Re-runs
+  // the same PUT with the already-saved time so the server tries
+  // createCalendarEvent again without the user having to re-pick the
+  // hour. Swaps the status dot to amber and the copy to "Invite sent"
+  // if the retry succeeds; stays red on continued failure.
+  async function handleRetry() {
+    if (!savedTime || !savedAmpm) return;
+    setSaving(true);
+    try {
+      const [hStr] = savedTime.split(":");
+      const h = parseInt(hStr ?? "7", 10);
+      const time = `${to24h(h, savedAmpm)}:00`;
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const resp = await apiRequest<{ inviteSent?: boolean }>(
+        "PUT",
+        "/api/bell/preferences",
+        { bellEnabled: true, dailyBellTime: time, timezone },
+      );
+      setInviteSent(resp?.inviteSent ?? null);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -709,8 +735,8 @@ function BellSlide({ onNext }: { onNext: () => void }) {
           <p className="text-[12px] leading-relaxed" style={{ color: C.sage, fontFamily: C.font }}>
             {inviteSent === false ? (
               <>
-                We couldn't reach your calendar. You can retry from
-                Settings — we'll try again.
+                We couldn't reach your calendar. Tap Retry below to try
+                again — the invite comes from <span style={{ color: C.text }}>invites@withphoebe.app</span>.
               </>
             ) : (
               <>
@@ -720,6 +746,18 @@ function BellSlide({ onNext }: { onNext: () => void }) {
               </>
             )}
           </p>
+
+          {inviteSent === false && (
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={saving}
+              className="mt-3 px-4 py-2 rounded-full text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "rgba(193,127,127,0.2)", color: "#F0EDE6", border: "1px solid rgba(193,127,127,0.4)" }}
+            >
+              {saving ? "Retrying…" : "Retry invite"}
+            </button>
+          )}
         </div>
 
         <button

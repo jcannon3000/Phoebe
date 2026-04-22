@@ -680,14 +680,30 @@ export default function CommunityJoinPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#091A10", fontFamily: "'Space Grotesk', sans-serif" }}>
+    // `min-h-[100dvh]` respects iOS Safari's dynamic viewport so the
+    // URL-bar retraction doesn't reflow the form the moment the
+    // keyboard opens. Bottom padding includes the home-indicator safe
+    // area plus a generous buffer so Create account never sits flush
+    // with the viewport edge (or below it) when the on-screen
+    // keyboard is up.
+    <div
+      className="flex flex-col"
+      style={{
+        background: "#091A10",
+        fontFamily: "'Space Grotesk', sans-serif",
+        minHeight: "100dvh",
+      }}
+    >
       <header className="px-6 py-6 flex items-center">
         <span className="text-2xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.03em" }}>
           Phoebe
         </span>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-start px-4 pb-12 pt-12">
+      <main
+        className="flex-1 flex flex-col items-center justify-start px-4 pt-8"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)" }}
+      >
         <div className="w-full max-w-sm mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -748,8 +764,8 @@ export default function CommunityJoinPage() {
                     placeholder="Your email"
                     value={email}
                     onChange={e => { setEmail(e.target.value); setAuthError(""); }}
-                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    className="w-full px-4 py-3.5 rounded-xl focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6", fontSize: 16 }}
                     autoComplete="email"
                     required
                     disabled={authSubmitting}
@@ -769,8 +785,8 @@ export default function CommunityJoinPage() {
                     placeholder="Password"
                     value={password}
                     onChange={e => { setPassword(e.target.value); setAuthError(""); }}
-                    className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    className="w-full px-4 py-3.5 pr-11 rounded-xl focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6", fontSize: 16 }}
                     autoComplete="current-password"
                     disabled={authSubmitting}
                   />
@@ -882,8 +898,8 @@ export default function CommunityJoinPage() {
                     placeholder="Your email"
                     value={email}
                     onChange={e => { setEmail(e.target.value); setAuthError(""); }}
-                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    className="w-full px-4 py-3.5 rounded-xl focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6", fontSize: 16 }}
                     autoComplete="email"
                     required
                     disabled={authSubmitting}
@@ -904,8 +920,8 @@ export default function CommunityJoinPage() {
                     placeholder="Choose a password"
                     value={password}
                     onChange={e => { setPassword(e.target.value); setAuthError(""); }}
-                    className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    className="w-full px-4 py-3.5 pr-11 rounded-xl focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6", fontSize: 16 }}
                     autoComplete="new-password"
                     disabled={authSubmitting}
                   />
