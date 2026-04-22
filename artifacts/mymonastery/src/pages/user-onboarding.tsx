@@ -864,24 +864,27 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
         So others can start walking with you. It doesn't have to be big — nothing is too small to be held together.
       </p>
 
-      {/* Match the in-app prayer-request card: sage-tinted dark surface
+      {/* Match the in-app prayer-request card: sage-tinted surface
           with a 1px accent bar on the left, YOUR REQUEST eyebrow, and
-          the compose textarea inside the card. Mirrors BarCard +
-          PrayerListComposeBar from the live app so this slide feels
-          like the same surface the user is about to live in. */}
+          the compose textarea inside the card. The user flagged the
+          earlier darker `rgba(46,107,64,0.15)` + shadow as reading
+          like a well sunk into the page; bumped the tint up and
+          dropped the shadow so the card reads as a gentle lift, and
+          explicitly forced the textarea into a transparent/appearance-
+          none style so Safari's default form-element background can't
+          peek through as a darker inner rectangle. */}
       <div
         className="w-full relative flex rounded-xl overflow-hidden mb-4"
         style={{
-          background: "rgba(46,107,64,0.15)",
-          border: "1px solid rgba(46,107,64,0.28)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+          background: "rgba(143,175,150,0.12)",
+          border: "1px solid rgba(46,107,64,0.3)",
         }}
       >
         <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
         <div className="flex-1 px-4 py-3 text-left">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-1.5"
-            style={{ color: "rgba(143,175,150,0.55)" }}
+            style={{ color: "rgba(143,175,150,0.7)" }}
           >
             Your request
           </p>
@@ -890,12 +893,17 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
             onChange={e => setText(e.target.value)}
             maxLength={1000}
             rows={3}
-            placeholder="Share a prayer... 🌿"
-            className="w-full text-sm resize-none outline-none bg-transparent"
+            placeholder="What's going on in your week? 🌿"
+            className="w-full text-sm resize-none outline-none"
             style={{
+              background: "transparent",
               color: C.text,
               fontFamily: C.font,
               lineHeight: "1.5",
+              WebkitAppearance: "none",
+              appearance: "none",
+              boxShadow: "none",
+              border: "none",
             }}
           />
         </div>
