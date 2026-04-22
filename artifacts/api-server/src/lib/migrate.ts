@@ -939,6 +939,13 @@ export async function migrate() {
     // still hasn't prayed — instead of the old once-per-day behavior.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_invite_last_shown_at TIMESTAMPTZ`);
 
+    // When a user's prayer request expires naturally (expiresAt passes
+    // without them marking it answered or released), we pop up a
+    // closing card the next time they visit /prayer-list showing how
+    // many people prayed for it. This column tracks which requests have
+    // had that closing moment acknowledged.
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS release_popup_seen_at TIMESTAMPTZ`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

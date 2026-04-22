@@ -1,11 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { apiRequest } from "@/lib/queryClient";
 import type { PrayerForMe } from "@/components/pray-for-them";
+
+type ReleasedRequest = {
+  id: number;
+  body: string;
+  createdAt: string;
+  expiresAt: string | null;
+  amenCount: number;
+};
 
 type Moment = {
   id: number;
@@ -54,6 +63,7 @@ function formatLastPrayed(iso: string | null | undefined): string | null {
 export default function PrayerListPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
 
   const { data: momentsData } = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],
@@ -65,6 +75,33 @@ export default function PrayerListPage() {
     queryKey: ["/api/prayers-for/for-me"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
     enabled: !!user,
+  });
+
+  // Released-but-not-yet-acknowledged prayer requests belonging to the
+  // viewer. First one in the list becomes a closing popup below — the
+  // moment we need to surface "here's how your prayer was carried."
+  const { data: releasedData } = useQuery<{ requests: ReleasedRequest[] }>({
+    queryKey: ["/api/prayer-requests/released-unread"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests/released-unread"),
+    enabled: !!user,
+    // Treat the answer as fresh enough for a minute — we only need the
+    // "new this visit" slice, not real-time updates.
+    staleTime: 60_000,
+  });
+  const released = releasedData?.requests ?? [];
+  const [releasedIndex, setReleasedIndex] = useState(0);
+  const currentReleased = released[releasedIndex] ?? null;
+
+  const acknowledgeReleaseMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("PATCH", `/api/prayer-requests/${id}/acknowledge-release`),
+    onSuccess: () => {
+      // Re-fetch so the list stays accurate if the user has multiple
+      // expired requests to walk through.
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/released-unread"] });
+      // Also nudge the prayer-requests list in case it's open in another tab.
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
   });
 
   useEffect(() => {
@@ -280,6 +317,128 @@ export default function PrayerListPage() {
           </div>
         )}
       </div>
+
+      {/* Released-prayer closing popup — surfaces once per expired request.
+          Shows the body text plus the amen count (how many times the
+          community carried it), and closes with a soft "Amen" acknowledge
+          button. Dismissing any one marks it seen server-side; if there
+          are more queued, the next one slides in behind it. */}
+      <AnimatePresence>
+        {currentReleased && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 100,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+            }}
+          >
+            <motion.div
+              key={currentReleased.id}
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              style={{
+                background: "#0F2818",
+                border: "1px solid rgba(46,107,64,0.4)",
+                borderRadius: 20,
+                boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+                padding: 28,
+                maxWidth: 440,
+                width: "100%",
+                textAlign: "center",
+                fontFamily: "'Space Grotesk', sans-serif",
+                color: "#F0EDE6",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: "rgba(143,175,150,0.7)",
+                  marginBottom: 10,
+                }}
+              >
+                Your prayer has been released
+              </p>
+              <p
+                style={{
+                  fontSize: 17,
+                  lineHeight: 1.5,
+                  color: "#F0EDE6",
+                  marginBottom: 22,
+                  fontStyle: "italic",
+                  fontFamily: "Playfair Display, Georgia, serif",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                "{currentReleased.body}"
+              </p>
+              <div
+                style={{
+                  background: "rgba(46,107,64,0.15)",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  marginBottom: 22,
+                }}
+              >
+                <p style={{ fontSize: 32, fontWeight: 700, color: "#F0EDE6", lineHeight: 1 }}>
+                  {currentReleased.amenCount}
+                </p>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "#8FAF96",
+                    marginTop: 6,
+                  }}
+                >
+                  {currentReleased.amenCount === 1 ? "time prayed" : "times prayed"} by your community
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  acknowledgeReleaseMutation.mutate(currentReleased.id);
+                  // Advance locally so the next queued one slides in even
+                  // before the query re-fetches.
+                  if (releasedIndex + 1 < released.length) {
+                    setReleasedIndex(i => i + 1);
+                  } else {
+                    setReleasedIndex(0);
+                  }
+                }}
+                className="rounded-full transition-opacity hover:opacity-90"
+                style={{
+                  background: "#2D5E3F",
+                  color: "#F0EDE6",
+                  padding: "10px 32px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: acknowledgeReleaseMutation.isPending ? "wait" : "pointer",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                Amen 🙏🏽
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 }

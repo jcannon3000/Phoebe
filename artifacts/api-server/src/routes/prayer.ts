@@ -306,6 +306,80 @@ router.patch("/prayer-requests/:id/renew", async (req, res): Promise<void> => {
   res.json(updated);
 });
 
+// GET /api/prayer-requests/released-unread — requests the owner hasn't
+// been shown the "released" popup for yet. Returns body + amen count per
+// request. Used by the /prayer-list page to show a closing card the first
+// time the owner visits after expiresAt passes. The popup is considered
+// shown only after PATCH /acknowledge-release below stamps the row.
+router.get("/prayer-requests/released-unread", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const rows = await db.select({
+    id: prayerRequestsTable.id,
+    body: prayerRequestsTable.body,
+    createdAt: prayerRequestsTable.createdAt,
+    expiresAt: prayerRequestsTable.expiresAt,
+  })
+    .from(prayerRequestsTable)
+    .where(and(
+      eq(prayerRequestsTable.ownerId, sessionUserId),
+      // Expired naturally (past expiresAt) and owner hasn't already
+      // closed it via the "release" button (closedAt NULL).
+      isNull(prayerRequestsTable.closedAt),
+      isNull(prayerRequestsTable.releasePopupSeenAt),
+      sql`${prayerRequestsTable.expiresAt} IS NOT NULL AND ${prayerRequestsTable.expiresAt} < now()`,
+    ));
+
+  // Amen count per request in a single pass.
+  const ids = rows.map(r => r.id);
+  const amensByRequest = new Map<number, number>();
+  if (ids.length > 0) {
+    const amens = await db
+      .select({ requestId: prayerRequestAmensTable.requestId })
+      .from(prayerRequestAmensTable)
+      .where(inArray(prayerRequestAmensTable.requestId, ids));
+    for (const a of amens) {
+      amensByRequest.set(a.requestId, (amensByRequest.get(a.requestId) ?? 0) + 1);
+    }
+  }
+
+  res.json({
+    requests: rows.map(r => ({
+      id: r.id,
+      body: r.body,
+      createdAt: r.createdAt.toISOString(),
+      expiresAt: r.expiresAt?.toISOString() ?? null,
+      amenCount: amensByRequest.get(r.id) ?? 0,
+    })),
+  });
+});
+
+// PATCH /api/prayer-requests/:id/acknowledge-release — owner dismisses
+// the "your request has been released" popup. Stamps releasePopupSeenAt
+// AND sets closedAt so the request doesn't keep appearing in other
+// owner-facing lists.
+router.patch("/prayer-requests/:id/acknowledge-release", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(String(req.params.id ?? ""), 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  if (request.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const now = new Date();
+  await db.update(prayerRequestsTable)
+    .set({
+      releasePopupSeenAt: now,
+      closedAt: request.closedAt ?? now,
+      closeReason: request.closeReason ?? "released",
+    })
+    .where(eq(prayerRequestsTable.id, id));
+  res.json({ ok: true });
+});
+
 // PATCH /api/prayer-requests/:id/release — release/close a request (owner only)
 router.patch("/prayer-requests/:id/release", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;

@@ -17,6 +17,12 @@ export const prayerRequestsTable = pgTable("prayer_requests", {
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   closedAt: timestamp("closed_at", { withTimezone: true }),
   closeReason: text("close_reason"),
+  // Timestamp of when the owner dismissed the "your request has been
+  // released" popup on /prayer-list. Null means the popup still needs
+  // to fire the next time they visit after expiresAt passes. We
+  // deliberately don't auto-set closedAt on expiry — the row stays
+  // visible to the user in "released" state until they acknowledge it.
+  releasePopupSeenAt: timestamp("release_popup_seen_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

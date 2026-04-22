@@ -850,7 +850,26 @@ export default function People() {
                     prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
                     activePrayerFor={
                       iPrayFor.find(
-                        p => p.recipientEmail.toLowerCase() === person.email.toLowerCase() && !p.expired,
+                        p => {
+                          if (p.recipientEmail.toLowerCase() !== person.email.toLowerCase()) return false;
+                          if (p.expired) return false;
+                          // Hide on the final day: "Day N of N" / "0 days left"
+                          // visually implies the commitment is done. Keeping
+                          // the card on screen with a 0-days-left chip makes
+                          // the list feel stale. We still keep the prayer in
+                          // /api/prayers-for/mine until the user explicitly
+                          // acknowledges it (so tomorrow's render resolves to
+                          // expired), but on the day of expiry we stop
+                          // surfacing it on the People page.
+                          const started = new Date(p.startedAt);
+                          const expires = new Date(p.expiresAt);
+                          const now = new Date();
+                          const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+                          const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                          const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
+                          void started;
+                          return daysLeft > 0;
+                        }
                       ) ?? null
                     }
                     activePrayerForMe={
