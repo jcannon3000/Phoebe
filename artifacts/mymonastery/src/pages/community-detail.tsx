@@ -701,13 +701,7 @@ function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupNam
   };
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center gap-3 mb-2">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-          Share a prayer request
-        </h2>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </div>
+    <div>
       <div className="flex gap-2">
         <input
           type="text"
@@ -1429,7 +1423,11 @@ export default function CommunityDetailPage() {
           );
           const intercessions = communityMoments.filter((m) => m.templateType === "intercession");
           const otherPractices = communityMoments.filter((m) => m.templateType !== "intercession");
-          const recentPrayers = (homePrayerData?.requests ?? []).slice(0, 3);
+          // Show every active prayer request on the home tab — no slice.
+          // Previously clamped to 3 with a "See all →" to the Prayer Wall
+          // tab, but users kept missing requests because the list was
+          // buried between announcements and the nothingYet empty-state.
+          const recentPrayers = homePrayerData?.requests ?? [];
           const recentAnnouncements = (announcementsData?.announcements ?? []).slice(0, 2);
 
           const stripEmoji = (s: string) =>
@@ -1752,38 +1750,38 @@ export default function CommunityDetailPage() {
                 </div>
               )}
 
-              {/* Recent prayer requests — preview + deep link into Prayer Wall */}
-              {recentPrayers.length > 0 && (
-                <div>
-                  <div className="flex items-baseline justify-between mb-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                      Recent Prayers
-                    </p>
-                    <button
-                      onClick={() => setActiveTab("prayer")}
-                      className="text-[11px] font-medium transition-opacity hover:opacity-80"
-                      style={{ color: "#A8C5A0" }}
-                    >
-                      See all →
-                    </button>
-                  </div>
-                  <div className="space-y-2">
+              {/* Prayer Requests — unified section combining the compose
+                  bar + the full list of active requests from any member
+                  of this community. Always visible for members so a
+                  drop-by can post without hunting for a tab, and the
+                  list appears right next to the composer so new posts
+                  show up in context. */}
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
+                    Prayer Requests
+                  </h2>
+                  <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+                </div>
+                <CommunityPrayerComposeBar slug={slug!} groupName={group.name} />
+                {recentPrayers.length > 0 && (
+                  <div className="space-y-2 mt-4">
                     {recentPrayers.map((r) => (
                       <div key={r.id} className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
                         <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
                         <div className="flex-1 px-4 py-3">
                           <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                            From {r.isAnonymous ? "Someone" : r.ownerName}
+                            {r.isOwnRequest ? "Your request" : `From ${r.isAnonymous ? "Someone" : r.ownerName}`}
                           </p>
-                          <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                          <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
                             {r.body}
                           </p>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Announcements — a small pinned section */}
               {recentAnnouncements.length > 0 && (
@@ -1820,12 +1818,10 @@ export default function CommunityDetailPage() {
                   Nothing here yet.{isAdmin ? " Start a practice, gathering, or announcement from the tabs above." : ""}
                 </p>
               )}
-
-              {/* Bottom-of-home prayer compose — same pattern as the
-                  /prayer-list compose bar, but scoped to this community.
-                  Always visible on the home tab so a member can drop a
-                  prayer without first hunting for the Prayer Wall tab. */}
-              <CommunityPrayerComposeBar slug={slug!} groupName={group.name} />
+              {/* Compose + list now live in the unified Prayer Requests
+                  section above, next to the intercession cards. The
+                  old bottom-of-home compose was removed once they
+                  merged. */}
             </div>
           );
         })()}
