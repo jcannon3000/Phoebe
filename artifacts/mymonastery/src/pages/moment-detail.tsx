@@ -99,6 +99,9 @@ interface MomentDetail {
   windowOpen: boolean;
   minutesLeft: number;
   todayLogs: TodayLog[];
+  // 7-day version of todayLogs. `loggedAt` is the most recent post in
+  // the last 7 calendar days, null if none.
+  weekLogs?: Array<{ name: string; email: string; avatarUrl: string | null; loggedAt: string | null }>;
   isCreator: boolean;
   group?: { id: number; name: string; slug: string; emoji: string | null } | null;
   calendarEventMissing?: boolean;
@@ -465,7 +468,7 @@ export default function MomentDetail() {
   // the generic streak/log/sessions logic below doesn't apply.
   if (data.moment.templateType === "lectio-divina") return null;
 
-  const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, isCreator } = data;
+  const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, weekLogs, isCreator } = data;
 
   const parsedPracticeDays = parsePracticeDays(moment.practiceDays);
   const isIntercession = moment.templateType === "intercession";
@@ -576,17 +579,26 @@ export default function MomentDetail() {
             <p className="text-sm text-muted-foreground italic mb-1.5">"{moment.intention}"</p>
           ) : null}
 
-          <p className="text-xs text-muted-foreground">
-            {scheduleLabel(moment.frequency, moment.scheduledTime, moment.dayOfWeek, parsedPracticeDays, moment.timeOfDay)}
-          </p>
+          {/* Intercessions suppress the schedule label — the card's
+              focus is the prayer itself, not when it's scheduled, and
+              the Pray CTA already makes today's action obvious. Other
+              practice types (morning prayer, fasting, etc.) still show
+              the schedule because it's informative to them. */}
+          {!isIntercession && (
+            <p className="text-xs text-muted-foreground">
+              {scheduleLabel(moment.frequency, moment.scheduledTime, moment.dayOfWeek, parsedPracticeDays, moment.timeOfDay)}
+            </p>
+          )}
 
           {/* Bell removed — logging window is ±2 hours around scheduled time */}
 
           {/* Member names as tappable links + together count.
               When the practice is attached to a community, we hide the
               member roll entirely — the community chip above is already
-              the anchor, and listing members becomes noisy. */}
-          {members.length > 0 && !moment.group && (() => {
+              the anchor, and listing members becomes noisy.
+              Intercessions also hide it: the "Prayed this week" pill
+              row in the stats card below already lists members by name. */}
+          {members.length > 0 && !moment.group && !isIntercession && (() => {
             const togetherCount = windows.filter(w => w.postCount >= 2).length;
             const isPrayer = ["intercession", "morning-prayer", "evening-prayer"].includes(moment.templateType ?? "");
             const togetherVerb = isPrayer ? "prayed" : "practiced";
@@ -856,54 +868,69 @@ export default function MomentDetail() {
             );
           }
 
-          // Beta: simpler intercession view — streak + today's prayers + who prayed today
-          if (isBeta && isIntercession) {
-            const prayedToday = todayLogs ?? [];
-            const prayedTodayCount = prayedToday.length;
+          // Intercession: unified view — Your streak + Group streak side-
+          // by-side, count of people who actually prayed today, plus a pill
+          // row of members who prayed in the last 7 days.
+          if (isIntercession) {
+            const prayedTodayLogs = (todayLogs ?? []).filter(l => !!l.loggedAt);
+            const prayedTodayCount = prayedTodayLogs.length;
+            const prayedWeekLogs = (weekLogs ?? []).filter(l => !!l.loggedAt);
             return (
               <div className="mb-6 rounded-2xl p-5" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
+                {/* Your streak · Group streak · N prayed today */}
                 <div className="flex items-baseline gap-6 mb-4">
                   <div>
+                    <p className="text-3xl font-bold text-foreground tabular-nums">{myStreak ?? 0}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">🙏🏽 Your streak</p>
+                  </div>
+                  <div>
                     <p className="text-3xl font-bold text-foreground tabular-nums">{groupStreak}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">🔥 Streak</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">🔥 Group streak</p>
                   </div>
                   <div>
                     <p className="text-3xl font-bold text-foreground tabular-nums">{prayedTodayCount}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {prayedTodayCount === 1 ? "prayed today" : "prayed today"}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">prayed today</p>
                   </div>
                 </div>
-                {prayedTodayCount > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {prayedToday.map((p, i) => (
-                      <div
-                        key={`${p.email}-${i}`}
-                        className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1"
-                        style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
-                      >
-                        {p.avatarUrl ? (
-                          <img
-                            src={p.avatarUrl}
-                            alt=""
-                            className="w-6 h-6 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
-                            style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
-                          >
-                            {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="text-xs text-foreground">
-                          {p.name || p.email.split("@")[0]}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+
+                {/* Prayed this week — one pill per member who posted any
+                    time in the last 7 days. A member shows up as soon as
+                    they pray once, so the row builds through the week. */}
+                {prayedWeekLogs.length > 0 ? (
+                  <>
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-2" style={{ letterSpacing: "0.12em" }}>
+                      Prayed this week
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {prayedWeekLogs.map((p, i) => (
+                        <div
+                          key={`${p.email}-${i}`}
+                          className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1"
+                          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
+                        >
+                          {p.avatarUrl ? (
+                            <img
+                              src={p.avatarUrl}
+                              alt=""
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                              style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
+                            >
+                              {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-xs text-foreground">
+                            {p.name || p.email.split("@")[0]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
-                  <p className="text-xs text-muted-foreground italic">No one has prayed yet today.</p>
+                  <p className="text-xs text-muted-foreground italic">No one has prayed this week yet.</p>
                 )}
               </div>
             );
@@ -927,8 +954,11 @@ export default function MomentDetail() {
           );
         })()}
 
-        {/* Progressive Goal Display */}
-        {(() => {
+        {/* Progressive Goal Display — suppressed for intercessions.
+            The daily prayer card above already surfaces the rhythm
+            (streaks, today's count, who's prayed this week). A second
+            "X-day goal" bar duplicates the signal and adds visual noise. */}
+        {!isIntercession && (() => {
           const sessionsGoal = moment.commitmentSessionsGoal ?? null;
           // Use API-computed session count from window bloom data — the DB
           // field commitmentSessionsLogged may be inflated by double-bloom bugs.
@@ -1154,8 +1184,11 @@ export default function MomentDetail() {
           );
         })()}
 
-        {/* ── LOG TIMELINE ─────────────────────────────────────────────────── */}
-        <div className="mb-8">
+        {/* ── LOG TIMELINE ───────────────────────────────────────────────────
+            Suppressed for intercessions. The "Prayed this week" pill row
+            in the stats card above captures who's been active; a full
+            timeline becomes duplicative and crowds the page. */}
+        {!isIntercession && <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Log Timeline</span>
             <div className="flex-1 h-px" style={{ background: "rgba(46,107,64,0.35)" }} />
@@ -1285,7 +1318,7 @@ export default function MomentDetail() {
               </div>
             );
           })()}
-        </div>
+        </div>}
 
         {/* ── Settings section — always visible on mobile ──────────────────── */}
         <div className="border-t border-border/30 pt-5">

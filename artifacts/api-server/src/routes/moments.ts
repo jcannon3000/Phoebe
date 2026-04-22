@@ -1862,6 +1862,29 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     };
   });
 
+  // Per-member 7-day log status — for the "prayed this week" pill row on
+  // the intercession detail view. A member qualifies if they have any post
+  // in the last 7 calendar days, even if they didn't pray today. We return
+  // `loggedAt` as the most-recent post in the window (null if none) so the
+  // client can render a pill row for everyone who's shown up this week.
+  const weekCutoffMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekLogs = allMembers.map(member => {
+    const memberName = (member.name ?? member.email).toLowerCase();
+    const memberPosts = allPosts
+      .filter(p =>
+        (p.guestName ?? "").toLowerCase() === memberName &&
+        p.createdAt && new Date(p.createdAt).getTime() >= weekCutoffMs
+      )
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const mostRecent = memberPosts[0];
+    return {
+      name: member.name ?? member.email,
+      email: member.email,
+      avatarUrl: avatarByEmail.get(member.email.toLowerCase()) ?? null,
+      loggedAt: mostRecent?.createdAt?.toISOString() ?? null,
+    };
+  });
+
   // Determine creator — member with the smallest token id
   const creatorToken = allMembers.length > 0
     ? allMembers.reduce((min, m) => m.id < min.id ? m : min, allMembers[0])
@@ -2006,6 +2029,7 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     windowOpen,
     minutesLeft: minsLeft,
     todayLogs,
+    weekLogs,
     isCreator,
     myStreak,
     groupStreak,
