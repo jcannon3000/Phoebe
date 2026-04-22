@@ -536,12 +536,80 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-activity`),
     enabled: !!slug,
   });
-  const users = data?.users ?? [];
+  // Dedupe server-side payload by userId as a belt-and-suspenders guard.
+  // The server already dedupes, but a stale client-side duplicate would
+  // show the same face twice — user flagged this explicitly.
+  const users = useMemo(() => {
+    const seen = new Set<number>();
+    const out: PrayerActivityUser[] = [];
+    for (const u of data?.users ?? []) {
+      if (seen.has(u.userId)) continue;
+      seen.add(u.userId);
+      out.push(u);
+    }
+    return out;
+  }, [data?.users]);
+
+  // Overflow-driven ticker: measure the intrinsic width of the pill row
+  // against the visible row width. If the pills fit, render them once
+  // statically (no animation, no duplication). Only when they overflow
+  // do we double + animate — earlier everyone saw a scrolling ticker
+  // with a duplicated list, which made a two-person community look
+  // like four.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [ticker, setTicker] = useState(false);
+  useEffect(() => {
+    const measure = () => {
+      if (!containerRef.current || !contentRef.current) return;
+      const overflow = contentRef.current.scrollWidth > containerRef.current.clientWidth + 1;
+      setTicker(overflow);
+    };
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (ro && containerRef.current) ro.observe(containerRef.current);
+    if (ro && contentRef.current) ro.observe(contentRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [users.length]);
+
   if (users.length === 0) return null;
 
-  // Duplicate the list once so the CSS keyframes can translate -50% and
-  // loop seamlessly — exact same trick the auto-scrolling tab bar uses.
-  const doubled = [...users, ...users];
+  const renderPill = (u: PrayerActivityUser, key: string) => {
+    const first = (u.name ?? "").split(/\s+/)[0] || "Friend";
+    return (
+      <div
+        key={key}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full shrink-0"
+        style={{
+          background: "rgba(46,107,64,0.15)",
+          border: "1px solid rgba(46,107,64,0.28)",
+        }}
+      >
+        {u.avatarUrl ? (
+          <img
+            src={u.avatarUrl}
+            alt={u.name}
+            className="w-5 h-5 rounded-full object-cover shrink-0"
+            style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+          />
+        ) : (
+          <div
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+            style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+          >
+            {(u.name ?? "?").charAt(0).toUpperCase()}
+          </div>
+        )}
+        <span className="text-xs font-medium whitespace-nowrap" style={{ color: "#F0EDE6" }}>
+          {first} prayed 🙏
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -550,54 +618,47 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
       </p>
       <style>{`@keyframes prayed-this-week-scroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
       <div
+        ref={containerRef}
         className="overflow-hidden relative rounded-xl"
         style={{
           background: "rgba(46,107,64,0.08)",
           border: "1px solid rgba(46,107,64,0.2)",
-          maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+          // Only apply the edge mask when the row is actually ticking —
+          // otherwise the mask fades pills that happen to sit near the
+          // rounded ends of a non-scrolling row.
+          maskImage: ticker ? "linear-gradient(to right, transparent, black 6%, black 94%, transparent)" : undefined,
         }}
       >
         <div
+          ref={contentRef}
           className="py-3"
-          style={{
-            display: "flex",
-            gap: 10,
-            width: "max-content",
-            animation: `prayed-this-week-scroll ${Math.max(20, users.length * 4)}s linear infinite`,
-          }}
+          style={
+            ticker
+              ? {
+                  display: "flex",
+                  gap: 10,
+                  width: "max-content",
+                  animation: `prayed-this-week-scroll ${Math.max(20, users.length * 4)}s linear infinite`,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                }
+              : {
+                  // Stationary mode: spread the pills across the row so
+                  // a small community doesn't look like it lost half
+                  // its width. Pills start from the left edge with the
+                  // usual padding so one or two pills don't feel like
+                  // they're floating.
+                  display: "flex",
+                  gap: 10,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  flexWrap: "nowrap",
+                }
+          }
         >
-          {doubled.map((u, i) => {
-            const first = (u.name ?? "").split(/\s+/)[0] || "Friend";
-            return (
-              <div
-                key={`${u.userId}-${i}`}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full shrink-0"
-                style={{
-                  background: "rgba(46,107,64,0.15)",
-                  border: "1px solid rgba(46,107,64,0.28)",
-                }}
-              >
-                {u.avatarUrl ? (
-                  <img
-                    src={u.avatarUrl}
-                    alt={u.name}
-                    className="w-5 h-5 rounded-full object-cover shrink-0"
-                    style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-                  />
-                ) : (
-                  <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-                    style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                  >
-                    {(u.name ?? "?").charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <span className="text-xs font-medium whitespace-nowrap" style={{ color: "#F0EDE6" }}>
-                  {first} prayed 🙏
-                </span>
-              </div>
-            );
-          })}
+          {ticker
+            ? [...users, ...users].map((u, i) => renderPill(u, `${u.userId}-${i}`))
+            : users.map((u) => renderPill(u, String(u.userId)))}
         </div>
       </div>
     </div>

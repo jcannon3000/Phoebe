@@ -2341,7 +2341,19 @@ router.get("/groups/:slug/prayer-activity", async (req, res): Promise<void> => {
     // count stays small even for busy parishes.
 
     // 1. Intercession + practice check-ins (moment_posts for this group's
-    //    shared moments), joined user-side via email-token → users.
+    //    shared moments), joined user-side via email-token → users. A
+    //    moment counts for this group if its PRIMARY group_id matches
+    //    this group OR if it's linked via moment_groups (multi-group
+    //    intercession). Before this fix, an intercession attached to
+    //    Community A but also shared with Community B showed activity
+    //    only in A — the user flagged members prayer activity silently
+    //    missing from B's "Prayed this week" row.
+    const linkedIds = await db
+      .select({ id: momentGroupsTable.momentId })
+      .from(momentGroupsTable)
+      .where(eq(momentGroupsTable.groupId, groupId));
+    const linkedMomentIds = linkedIds.map(r => r.id);
+
     const momentRows = await db
       .select({
         userId: usersTable.id,
@@ -2354,7 +2366,9 @@ router.get("/groups/:slug/prayer-activity", async (req, res): Promise<void> => {
       .innerJoin(momentUserTokensTable, eq(momentPostsTable.userToken, momentUserTokensTable.userToken))
       .innerJoin(usersTable, eq(momentUserTokensTable.email, usersTable.email))
       .where(and(
-        eq(sharedMomentsTable.groupId, groupId),
+        linkedMomentIds.length > 0
+          ? sql`(${sharedMomentsTable.groupId} = ${groupId} OR ${sharedMomentsTable.id} = ANY(${linkedMomentIds}))`
+          : eq(sharedMomentsTable.groupId, groupId),
         sql`${momentPostsTable.createdAt} > NOW() - INTERVAL '7 days'`,
       ));
 

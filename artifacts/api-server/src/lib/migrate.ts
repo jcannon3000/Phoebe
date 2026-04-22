@@ -978,6 +978,42 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_groups_moment ON moment_groups(moment_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_groups_group ON moment_groups(group_id)`);
 
+    // ── Orphan cleanup: group_members rows pointing to deleted users ──
+    // Accounts deleted before we wired explicit cleanup into
+    // DELETE /api/users/me left their group_members row behind because
+    // drizzle-kit push didn't propagate the ON DELETE CASCADE schema
+    // directive to prod. Result: a community's member count kept
+    // showing the ghost user. One-shot idempotent cleanup — only
+    // touches rows with a user_id that no longer exists. Invitee-only
+    // rows (user_id IS NULL) are left alone.
+    await run(client, `
+      DELETE FROM group_members
+      WHERE user_id IS NOT NULL
+        AND user_id NOT IN (SELECT id FROM users)
+    `);
+
+    // Same cleanup for moment_posts whose user_token no longer maps
+    // to any moment_user_tokens row — those are stray posts from a
+    // deleted participant. (moment_user_tokens CASCADE on moment_id
+    // handles moment deletion; this handles user deletion.)
+    await run(client, `
+      DELETE FROM moment_posts
+      WHERE user_token NOT IN (SELECT user_token FROM moment_user_tokens)
+    `);
+
+    // Belt-and-suspenders: enforce cascade on group_members.user_id so
+    // future deletes go through the DB even if a caller forgets the
+    // explicit cleanup. Drop + re-add is the safe idempotent path.
+    await run(client, `
+      ALTER TABLE group_members
+      DROP CONSTRAINT IF EXISTS group_members_user_id_fkey
+    `);
+    await run(client, `
+      ALTER TABLE group_members
+      ADD CONSTRAINT group_members_user_id_fkey
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    `);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
