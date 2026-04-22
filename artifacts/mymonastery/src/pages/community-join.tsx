@@ -27,10 +27,11 @@ function MockPhone({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Phone mock of the "Prayer Requests" surface — ported verbatim from
-// church-deck's PrayerRequestsMock. This is what the community-join
-// slideshow now shows for the "what praying together looks like" slide;
-// the earlier PrayerListMock didn't match the app and got replaced.
+// Phone mock of the /prayer-list surface. Kept in sync with the real
+// BarCard styling (sage-tinted background, 1-pixel accent bar on the
+// left, "From X" eyebrow + body + message-count pill) so newcomers see
+// what they're actually about to use. Section header + compose bar
+// placeholder match the live app verbatim.
 function PrayerRequestsMock() {
   const requests = [
     { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
@@ -39,13 +40,8 @@ function PrayerRequestsMock() {
   ];
   return (
     <MockPhone>
-      <div className="flex items-center gap-2 mb-3">
-        <h2 className="text-[14px] font-semibold" style={{ color: "#F0EDE6" }}>
-          Prayer Requests 🙏🏽
-        </h2>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-      </div>
-      <div className="flex gap-2 mb-3">
+      {/* Compose bar — matches PrayerListComposeBar exactly */}
+      <div className="flex gap-2 mb-4">
         <div
           className="flex-1 text-[12px] px-3 py-2.5 rounded-xl"
           style={{
@@ -54,30 +50,50 @@ function PrayerRequestsMock() {
             color: "rgba(143,175,150,0.5)",
           }}
         >
-          Share a prayer request... 🌿
+          Share a prayer... 🌿
         </div>
         <div className="px-3 py-2.5 rounded-xl text-[12px]" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
           🙏🏽
         </div>
       </div>
-      <div>
+
+      {/* Section header — matches SectionShell collapsed state */}
+      <div className="flex items-center gap-2 mb-2 mt-4">
+        <h2
+          className="text-[14px] font-semibold"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Prayer Requests
+        </h2>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
+
+      {/* Cards — match BarCard: rounded, sage bg, 1px accent bar, shadow */}
+      <div className="space-y-2">
         {requests.map((r, i) => (
           <div
             key={i}
-            className="flex gap-0"
-            style={{ borderBottom: i < requests.length - 1 ? "1px solid rgba(200,212,192,0.12)" : "none" }}
+            className="relative flex rounded-xl overflow-hidden"
+            style={{
+              background: "rgba(46,107,64,0.15)",
+              border: "1px solid rgba(46,107,64,0.28)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+            }}
           >
-            <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
-            <div className="flex-1 p-3 pl-2.5 flex items-start justify-between gap-2">
+            <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+            <div className="flex-1 px-3 py-2.5 flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
+                <p
+                  className="text-[9px] font-semibold uppercase tracking-[0.14em] mb-0.5"
+                  style={{ color: "rgba(143,175,150,0.55)" }}
+                >
                   From {r.from}
                 </p>
-                <p className="text-[12px] leading-relaxed" style={{ color: "#F0EDE6" }}>
+                <p className="text-[12px] leading-snug" style={{ color: "#F0EDE6" }}>
                   {r.body}
                 </p>
               </div>
-              <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
+              <div className="flex items-center gap-1 shrink-0" style={{ color: "rgba(143,175,150,0.45)" }}>
                 <span className="text-[10px] tabular-nums">{r.words}</span>
                 <MessageCircle size={12} />
               </div>
@@ -311,28 +327,13 @@ export default function CommunityJoinPage() {
     // and shown once on their first dashboard visit.
 
     // Slide — Welcome to the specific community. Always shown.
-    s.push({
-      key: "welcome",
-      node: (
-        <div className="text-center">
-          <div className="text-6xl mb-5">{invite.group.emoji ?? "🏘️"}</div>
-          <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-            You've been invited to pray with
-          </p>
-          <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-            {invite.group.name}
-          </h1>
-          {invite.group.description && (
-            <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
-              {invite.group.description}
-            </p>
-          )}
-        </div>
-      ),
-    });
-
-    // Slide 2 — Members. Only if there are members to showcase.
-    if (preview && preview.memberCount > 0) {
+    // The member avatars + "N people are praying together" summary lives
+    // directly under the community title — users repeatedly told us the
+    // old separate "You're in good company" slide read as a second
+    // welcome. Merging them makes the first impression do the full job:
+    // who you've been invited to + who's already there, in one beat.
+    const memberPreview = (() => {
+      if (!preview || preview.memberCount === 0) return null;
       const sample = preview.sampleMembers.slice(0, 5);
       const firstNames = sample
         .map(m => (m.name ?? "").split(/\s+/)[0])
@@ -345,48 +346,60 @@ export default function CommunityJoinPage() {
           : remainder > 0
             ? `Join ${shown} & ${remainder} ${remainder === 1 ? "other" : "others"}`
             : `Join ${shown}`;
-      s.push({
-        key: "members",
-        node: (
-          <div className="text-center">
-            <p className="text-[10px] uppercase tracking-[0.2em] mb-4" style={{ color: "rgba(143,175,150,0.55)" }}>
-              You're in good company
+      return { sample, headline };
+    })();
+
+    s.push({
+      key: "welcome",
+      node: (
+        <div className="text-center">
+          <div className="text-6xl mb-5">{invite.group.emoji ?? "🏘️"}</div>
+          <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+            You've been invited to pray with
+          </p>
+          <h1 className="text-3xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+            {invite.group.name}
+          </h1>
+
+          {memberPreview && (
+            <div className="mb-5">
+              {memberPreview.sample.length > 0 && (
+                <div className="flex items-center justify-center mb-3">
+                  {memberPreview.sample.map((m, i) => (
+                    <div
+                      key={i}
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden"
+                      style={{
+                        background: "#1A4A2E",
+                        color: "#A8C5A0",
+                        border: "2px solid #091A10",
+                        marginLeft: i === 0 ? 0 : -8,
+                        zIndex: memberPreview.sample.length - i,
+                      }}
+                    >
+                      {m.avatarUrl ? (
+                        <img src={m.avatarUrl} alt={m.name ?? ""} className="w-full h-full object-cover" />
+                      ) : (
+                        (m.name ?? "?").charAt(0).toUpperCase()
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>
+                {memberPreview.headline}
+              </p>
+            </div>
+          )}
+
+          {invite.group.description && (
+            <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
+              {invite.group.description}
             </p>
-            {sample.length > 0 && (
-              <div className="flex items-center justify-center mb-5">
-                {sample.map((m, i) => (
-                  <div
-                    key={i}
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden"
-                    style={{
-                      background: "#1A4A2E",
-                      color: "#A8C5A0",
-                      border: "2px solid #091A10",
-                      marginLeft: i === 0 ? 0 : -10,
-                      zIndex: sample.length - i,
-                    }}
-                  >
-                    {m.avatarUrl ? (
-                      <img src={m.avatarUrl} alt={m.name ?? ""} className="w-full h-full object-cover" />
-                    ) : (
-                      (m.name ?? "?").charAt(0).toUpperCase()
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            <h2 className="text-2xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-              {headline}
-            </h2>
-            <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-              {preview.memberCount === 1
-                ? "One soul is already walking this path — your arrival doubles the company."
-                : "A community gathered around praying for each other and the world."}
-            </p>
-          </div>
-        ),
-      });
-    }
+          )}
+        </div>
+      ),
+    });
 
     // Slide — Praying together. Single mock of the app's Prayer List
     // surface; the one "what you'll actually do" scene we show before
