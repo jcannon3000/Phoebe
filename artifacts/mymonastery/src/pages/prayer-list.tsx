@@ -912,6 +912,12 @@ export default function PrayerListPage() {
           </p>
         </div>
 
+        {/* Compose bar — same input shape as the home-page prayer
+            section. Tapping 🙏🏽 opens a centered popup asking whether
+            the prayer is for the viewer (→ prayer request for yourself)
+            or for someone else (→ pray-for-new flow). */}
+        <PrayerListComposeBar />
+
         {/* Community intercessions — intercession practices */}
         {intercessionsSorted.length > 0 && (
           <section>
@@ -1096,5 +1102,186 @@ export default function PrayerListPage() {
         )}
       </AnimatePresence>
     </Layout>
+  );
+}
+
+// ─── Compose bar ──────────────────────────────────────────────────────────
+// Top-of-page input for starting a prayer. Same shape as the home-page
+// PrayerSection composer, but tapping 🙏🏽 branches: a centered modal
+// asks whether the prayer is for the viewer themselves (→ personal
+// prayer request, same as homepage) or for someone else (→ route to
+// /pray-for/new which shows the friend picker + compose form).
+function PrayerListComposeBar() {
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const [value, setValue] = useState("");
+  const [chooseOpen, setChooseOpen] = useState(false);
+
+  const createOwnRequest = useMutation({
+    mutationFn: (body: string) =>
+      apiRequest("POST", "/api/prayer-requests", { body, durationDays: 3 }),
+    onSuccess: () => {
+      setValue("");
+      setChooseOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
+  const submit = () => {
+    if (!value.trim()) return;
+    setChooseOpen(true);
+  };
+
+  return (
+    <div className="mb-5">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          placeholder="Share a prayer... 🌿"
+          maxLength={1000}
+          className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
+          style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!value.trim()}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+          style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          🙏🏽
+        </button>
+      </div>
+
+      {/* Centered "who is this for?" popup */}
+      <AnimatePresence>
+        {chooseOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 100,
+              background: "rgba(0,0,0,0.65)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+            }}
+            onClick={() => !createOwnRequest.isPending && setChooseOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "#0F2818",
+                border: "1px solid rgba(46,107,64,0.45)",
+                borderRadius: 20,
+                boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+                padding: 24,
+                maxWidth: 400,
+                width: "100%",
+                textAlign: "center",
+                fontFamily: "'Space Grotesk', sans-serif",
+                color: "#F0EDE6",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  color: "rgba(143,175,150,0.75)",
+                  marginBottom: 8,
+                }}
+              >
+                Who is this prayer for?
+              </p>
+              <p
+                className="mb-5"
+                style={{
+                  fontSize: 15,
+                  lineHeight: 1.5,
+                  color: "rgba(240,237,230,0.9)",
+                  fontStyle: "italic",
+                  fontFamily: "Playfair Display, Georgia, serif",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                "{value.trim()}"
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => createOwnRequest.mutate(value.trim())}
+                  disabled={createOwnRequest.isPending}
+                  className="rounded-full transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{
+                    background: "#2D5E3F",
+                    color: "#F0EDE6",
+                    padding: "11px 20px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    border: "none",
+                    cursor: createOwnRequest.isPending ? "wait" : "pointer",
+                  }}
+                >
+                  {createOwnRequest.isPending ? "Sharing…" : "For me · share with my garden"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChooseOpen(false);
+                    // The /pray-for/new page has its own compose
+                    // textarea; we don't pass the body through since
+                    // the shape there is richer (duration, etc.).
+                    setLocation("/pray-for/new");
+                  }}
+                  className="rounded-full transition-opacity hover:opacity-90"
+                  style={{
+                    background: "rgba(46,107,64,0.18)",
+                    color: "#A8C5A0",
+                    border: "1px solid rgba(46,107,64,0.35)",
+                    padding: "11px 20px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  For someone else · start a prayer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChooseOpen(false)}
+                  className="transition-opacity hover:opacity-80"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "rgba(143,175,150,0.55)",
+                    fontSize: 12,
+                    padding: "6px 0 0",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
