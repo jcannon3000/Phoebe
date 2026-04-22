@@ -85,6 +85,9 @@ type CommunityMoment = {
   computedSessionsLogged?: number;
   goalDays?: number | null;
   group?: { id: number; name: string; slug: string; emoji: string | null } | null;
+  // Moments attached to multiple communities expose the extras here.
+  // Primary group stays on `group`; additionalGroups is the rest.
+  additionalGroups?: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
   members: Array<{ name: string; email: string }>;
 };
 
@@ -1410,10 +1413,19 @@ export default function CommunityDetailPage() {
           </div>
         </div>
 
-        {/* ─── Home ─── Dashboard-style feed filtered to this community. */}
+        {/* ─── Home ─── Dashboard-style feed filtered to this community.
+             A moment counts as "this community's" if either:
+               - its primary group matches the slug, OR
+               - it was attached post-creation via moment_groups and
+                 that junction row points here (surfaced in the
+                 /api/moments payload as `additionalGroups`).
+             Before this filter was widened, adding a second community
+             to an intercession silently failed to show up on that
+             community's home tab. */}
         {activeTab === "home" && (() => {
           const communityMoments = (momentsData?.moments ?? []).filter(
-            (m) => m.group?.slug === slug,
+            (m) => m.group?.slug === slug
+              || (m.additionalGroups ?? []).some(g => g.slug === slug),
           );
           const intercessions = communityMoments.filter((m) => m.templateType === "intercession");
           const otherPractices = communityMoments.filter((m) => m.templateType !== "intercession");

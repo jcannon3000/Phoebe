@@ -584,8 +584,22 @@ export default function CommunityJoinPage() {
   // taps "Get started" on the last slide (or "Skip").
   if (slideshowActive) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: "#091A10", fontFamily: "'Space Grotesk', sans-serif" }}>
-        <header className="px-6 py-6 flex items-center justify-between">
+      // `100dvh` (dynamic viewport height) instead of `100vh` / min-h-screen
+      // so iOS Safari's expanding/contracting URL bar doesn't push the
+      // Get-started button below the fold. Outer container is exactly the
+      // visible viewport; main scrolls internally if a slide's content is
+      // taller than the available middle; footer stays pinned at the
+      // bottom, padded for the home-indicator safe area.
+      <div
+        className="flex flex-col"
+        style={{
+          background: "#091A10",
+          fontFamily: "'Space Grotesk', sans-serif",
+          height: "100dvh",
+          overflow: "hidden",
+        }}
+      >
+        <header className="px-6 py-6 flex items-center justify-between shrink-0">
           <span className="text-2xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.03em" }}>
             Phoebe
           </span>
@@ -598,7 +612,7 @@ export default function CommunityJoinPage() {
           </button>
         </header>
 
-        <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
+        <main className="flex-1 flex flex-col items-center justify-center px-6 pb-4 overflow-y-auto">
           <div className="w-full max-w-sm mx-auto">
             <AnimatePresence mode="wait">
               <motion.div
@@ -614,8 +628,13 @@ export default function CommunityJoinPage() {
           </div>
         </main>
 
-        {/* Footer — progress dots + primary action */}
-        <footer className="px-6 pb-8 flex flex-col items-center gap-5">
+        {/* Footer — progress dots + primary action. shrink-0 + the
+            bottom-safe padding keep it pinned above the home indicator
+            regardless of how tall the slide content is. */}
+        <footer
+          className="px-6 pt-4 flex flex-col items-center gap-5 shrink-0"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+        >
           <div className="flex items-center gap-1.5">
             {slides.map((_, i) => (
               <button

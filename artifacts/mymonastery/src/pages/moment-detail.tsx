@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -507,7 +507,12 @@ export default function MomentDetail() {
   const { data: momentGroupsData } = useQuery<MomentGroupsData>({
     queryKey: [`/api/moments/${id}/groups`],
     queryFn: () => apiRequest("GET", `/api/moments/${id}/groups`),
-    enabled: !!user && !!id && editingPractice,
+    // Always fetch (not just in the edit pane) so the read-only
+    // intercession detail view can render every attached community as
+    // its own chip. The user reported "there should now be two groups
+    // in here" — the primary-only chip was ignoring moment_groups
+    // rows entirely.
+    enabled: !!user && !!id,
   });
 
   type MyGroup = { id: number; name: string; slug: string; emoji: string | null; myRole: string };
@@ -525,6 +530,17 @@ export default function MomentDetail() {
       qc.invalidateQueries({ queryKey: [`/api/moments/${id}`] });
       qc.invalidateQueries({ queryKey: ["/api/moments"] });
     },
+    // Surface server errors (403 "must be admin", etc.) — earlier a
+    // failed attach silently did nothing which is how the user ended
+    // up with "I added a group and it didn't go through".
+    onError: (err: any) => {
+      let msg = err?.message || "Couldn't share with that community. Please try again.";
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed && typeof parsed.error === "string") msg = parsed.error;
+      } catch { /* not JSON */ }
+      window.alert(msg);
+    },
   });
 
   const detachGroupMutation = useMutation({
@@ -534,6 +550,14 @@ export default function MomentDetail() {
       qc.invalidateQueries({ queryKey: [`/api/moments/${id}/groups`] });
       qc.invalidateQueries({ queryKey: [`/api/moments/${id}`] });
       qc.invalidateQueries({ queryKey: ["/api/moments"] });
+    },
+    onError: (err: any) => {
+      let msg = err?.message || "Couldn't remove that community. Please try again.";
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed && typeof parsed.error === "string") msg = parsed.error;
+      } catch { /* not JSON */ }
+      window.alert(msg);
     },
   });
 
@@ -713,16 +737,38 @@ export default function MomentDetail() {
             </button>
           </div>
 
-          {/* Group badge */}
-          {data.group && (
-            <a
-              href={`/community/${data.group.slug}`}
-              className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1 mb-1.5 transition-opacity hover:opacity-80"
-              style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
-            >
-              {data.group.emoji && <span>{data.group.emoji}</span>}
-              {data.group.name}
-            </a>
+          {/* Group badge(s). Multi-group intercessions can be attached
+              to several communities — we render every one as its own
+              chip so members of any attached community can navigate
+              straight to their home. `data.group` is the primary
+              attachment; `momentGroupsData.additional` comes from the
+              moment_groups junction. */}
+          {(data.group || (momentGroupsData?.additional?.length ?? 0) > 0) && (
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {data.group && (
+                <a
+                  href={`/community/${data.group.slug}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1 transition-opacity hover:opacity-80"
+                  style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
+                >
+                  {data.group.emoji && <span>{data.group.emoji}</span>}
+                  {data.group.name}
+                </a>
+              )}
+              {(momentGroupsData?.additional ?? [])
+                .filter(g => g.id !== data.group?.id)
+                .map(g => (
+                  <a
+                    key={g.id}
+                    href={`/community/${g.slug}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1 transition-opacity hover:opacity-80"
+                    style={{ background: "rgba(46,107,64,0.12)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.2)" }}
+                  >
+                    {g.emoji && <span>{g.emoji}</span>}
+                    {g.name}
+                  </a>
+                ))}
+            </div>
           )}
 
           {/* Intercession: "Praying for" subtitle for BCP only; custom uses intention as h1 */}
