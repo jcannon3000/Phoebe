@@ -68,6 +68,7 @@ import MomentRedirect from "./pages/moment-redirect";
 import PrayerListPage from "./pages/prayer-list";
 import PrayerModePage from "./pages/prayer-mode";
 import PrayerForNew from "./pages/prayer-for-new";
+import PrayerRequestNew from "./pages/prayer-request-new";
 import PrayerForDetail from "./pages/prayer-for-detail";
 import SettingsPage from "./pages/settings";
 import AboutPage from "./pages/about";
@@ -136,7 +137,11 @@ function Router() {
       <Route path="/people" component={People} />
       <Route path="/prayer-list" component={PrayerListPage} />
       <Route path="/prayer-mode" component={PrayerModePage} />
+      {/* /pray-for/new (no email) must sit above the two /pray-for/:email
+          routes, otherwise "new" would match as an email param. */}
+      <Route path="/pray-for/new" component={PrayerForNew} />
       <Route path="/pray-for/new/:email" component={PrayerForNew} />
+      <Route path="/pray-request/new" component={PrayerRequestNew} />
       <Route path="/pray-for/:email" component={PrayerForDetail} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/about" component={AboutPage} />
