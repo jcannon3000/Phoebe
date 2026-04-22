@@ -163,13 +163,15 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         <StatTile label="All time" value={data.prayedAllTime} />
       </div>
 
-      {/* Times prayed — one amen per user per day */}
+      {/* Times prayed — union of prayer-list completions + amens,
+          one per person per day */}
       <SectionHeader label="Times prayed" />
       <p
         className="text-[11px] leading-relaxed mb-3"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
       >
-        One per person per day, no matter how many amens they tapped.
+        Counts a day whenever a member either walks their prayer list
+        or taps Amen. One per person per day.
       </p>
       <div className="grid grid-cols-3 gap-3 mb-8">
         <StatTile label="Today" value={data.timesPrayedToday} />

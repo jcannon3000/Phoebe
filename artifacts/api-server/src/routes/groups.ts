@@ -377,13 +377,17 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
   if (!beta) { res.status(403).json({ error: "Metrics are beta only for now" }); return; }
 
   try {
-    // Metrics scope to *members of this community*, not to requests
-    // tagged with group_id. A parish admin asking "how active is our
-    // community in prayer?" cares about member engagement — which
-    // includes personal prayer requests and amens on them, not just
-    // requests posted inside the community tab. This also makes the
-    // counts tick for the common case where admins test with their
-    // own personal requests.
+    // A "prayer event" is one of two things logged by a member of this
+    // community:
+    //   1. A prayer-list completion check-in (moment_posts row with
+    //      isCheckin=1 — written by prayer-mode's handleDone for every
+    //      intercession the user is part of).
+    //   2. An Amen tap (prayer_request_amens row — fired once per non-
+    //      own request slide in prayer-mode, plus anywhere else we wire
+    //      an Amen button in future).
+    // We UNION both signals and dedup by (user, day), because when a
+    // user walks their list they generate several rows but that's still
+    // "one day of prayer" for metrics purposes.
     const q = await pool.query(`
       WITH now_range AS (
         SELECT
@@ -391,29 +395,42 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
           (date_trunc('day', now()) - interval '6 days') AS week_start
       ),
       members AS (
-        SELECT user_id
-        FROM group_members
-        WHERE group_id = $1
-          AND joined_at IS NOT NULL
-          AND user_id IS NOT NULL
+        SELECT u.id AS user_id, LOWER(u.email) AS email_lower
+        FROM users u
+        JOIN group_members gm ON gm.user_id = u.id
+        WHERE gm.group_id = $1
+          AND gm.joined_at IS NOT NULL
+      ),
+      -- Every userToken (across every moment) belonging to a member of
+      -- this community. moment_posts is keyed by userToken, so we need
+      -- this join to resolve posts back to users.
+      member_tokens AS (
+        SELECT t.user_token, m.user_id
+        FROM moment_user_tokens t
+        JOIN members m ON LOWER(t.email) = m.email_lower
       ),
       member_requests AS (
         SELECT id, created_at, owner_id
         FROM prayer_requests
         WHERE owner_id IN (SELECT user_id FROM members)
       ),
-      member_amens AS (
-        SELECT id, user_id, prayed_at
-        FROM prayer_request_amens
-        WHERE user_id IN (SELECT user_id FROM members)
-      ),
-      -- Collapse multiple amens from the same user on the same calendar
-      -- day to a single row. Tapping Amen five times in one afternoon is
-      -- one act of prayer, not five.
-      amens_per_user_day AS (
-        SELECT user_id, prayed_at::date AS day
-        FROM member_amens
-        GROUP BY user_id, prayed_at::date
+      -- Dedup "did this member pray today?" across both signals.
+      prayer_days AS (
+        SELECT DISTINCT user_id, day FROM (
+          -- Prayer-list completions (intercession check-ins).
+          SELECT mt.user_id, mp.window_date::date AS day
+          FROM moment_posts mp
+          JOIN member_tokens mt ON mt.user_token = mp.user_token
+          WHERE mp.is_checkin = 1
+            AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+
+          UNION
+
+          -- Explicit amens on other members' requests.
+          SELECT a.user_id, a.prayed_at::date AS day
+          FROM prayer_request_amens a
+          WHERE a.user_id IN (SELECT user_id FROM members)
+        ) _
       )
       SELECT
         (SELECT COUNT(*) FROM members)::int AS total_members,
@@ -422,15 +439,16 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(*) FROM member_requests, now_range WHERE created_at >= today_start)::int AS prayer_requests_today,
         (SELECT COUNT(*) FROM member_requests, now_range WHERE created_at >= week_start)::int AS prayer_requests_week,
 
-        -- "Times prayed" = one-per-user-per-day dedup.
-        (SELECT COUNT(*) FROM amens_per_user_day)::int AS times_prayed_total,
-        (SELECT COUNT(*) FROM amens_per_user_day, now_range WHERE day >= today_start::date)::int AS times_prayed_today,
-        (SELECT COUNT(*) FROM amens_per_user_day, now_range WHERE day >= week_start::date)::int AS times_prayed_week,
+        -- "Times prayed" = sum of (user, day) pairs. Five amens in one
+        -- afternoon still count as one day of prayer.
+        (SELECT COUNT(*) FROM prayer_days)::int AS times_prayed_total,
+        (SELECT COUNT(*) FROM prayer_days, now_range WHERE day >= today_start::date)::int AS times_prayed_today,
+        (SELECT COUNT(*) FROM prayer_days, now_range WHERE day >= week_start::date)::int AS times_prayed_week,
 
-        -- Distinct users who have prayed — same dedup set, unique by user.
-        (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day, now_range WHERE day >= today_start::date)::int AS prayed_today,
-        (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day, now_range WHERE day >= week_start::date)::int AS prayed_week,
-        (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day)::int AS prayed_all_time
+        -- Distinct users who have prayed in each window.
+        (SELECT COUNT(DISTINCT user_id) FROM prayer_days, now_range WHERE day >= today_start::date)::int AS prayed_today,
+        (SELECT COUNT(DISTINCT user_id) FROM prayer_days, now_range WHERE day >= week_start::date)::int AS prayed_week,
+        (SELECT COUNT(DISTINCT user_id) FROM prayer_days)::int AS prayed_all_time
     `, [result.group.id]);
     const row = q.rows[0] ?? {};
     res.json({
