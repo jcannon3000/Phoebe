@@ -284,13 +284,17 @@ export default function CommunityJoinPage() {
       });
       const data = await res.json();
       if (data.ok) {
-        // Server already linked the new user to the group_members row, so
-        // we can skip the join call and go straight to the community.
-        // `?welcome=1` triggers the post-signup tailored onboarding on
-        // the community detail page — members + practices preview
-        // specific to the group they just joined.
+        // Server already linked the new user to the group_members row.
+        // Route through the full product onboarding FIRST (profile pic,
+        // BCP/lectio/gatherings intros, bell setup, initial prayer
+        // request), then land on the community with ?welcome=1 for the
+        // tailored post-signup overlay. The `next` query param lets
+        // user-onboarding forward there on completion. Existing users
+        // who signed in (not registered) skip onboarding entirely via
+        // the `onboardingCompleted` guard on the onboarding page.
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        setLocation(`/communities/${slug}?welcome=1`);
+        const nextUrl = `/communities/${slug}?welcome=1`;
+        setLocation(`/onboarding?next=${encodeURIComponent(nextUrl)}`);
       } else {
         setAuthError(data.error ?? "Couldn't create your account.");
       }

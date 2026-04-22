@@ -866,7 +866,17 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
 export default function UserOnboarding() {
   const [, setLocation] = useLocation();
   const search = useSearch();
-  const isPreview = new URLSearchParams(search).get("preview") === "1";
+  const params = new URLSearchParams(search);
+  const isPreview = params.get("preview") === "1";
+  // Optional `?next=<path>` lands the user on a specific URL when
+  // onboarding finishes instead of the default /dashboard. Used by the
+  // community-invite signup flow so a newcomer gets the full product
+  // tour first and is then dropped on their community with the
+  // post-signup welcome overlay. Scoped to same-origin paths (must
+  // start with "/") to block arbitrary-URL redirects.
+  const rawNext = params.get("next");
+  const nextDestination =
+    rawNext && rawNext.startsWith("/") ? rawNext : "/dashboard";
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [index, setIndex] = useState(0);
@@ -874,8 +884,8 @@ export default function UserOnboarding() {
   // Guard: redirect away if not logged in or (already completed and not previewing)
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
-    if (!isLoading && user?.onboardingCompleted && !isPreview) setLocation("/dashboard");
-  }, [user, isLoading, isPreview, setLocation]);
+    if (!isLoading && user?.onboardingCompleted && !isPreview) setLocation(nextDestination);
+  }, [user, isLoading, isPreview, nextDestination, setLocation]);
 
   const completeOnboarding = useCallback(async () => {
     if (isPreview) {
@@ -891,8 +901,8 @@ export default function UserOnboarding() {
     } catch {
       // Best-effort — navigate regardless
     }
-    setLocation("/dashboard");
-  }, [isPreview, queryClient, setLocation]);
+    setLocation(nextDestination);
+  }, [isPreview, nextDestination, queryClient, setLocation]);
 
   const next = useCallback(
     () => setIndex(i => Math.min(i + 1, SLIDES.length - 1)),
