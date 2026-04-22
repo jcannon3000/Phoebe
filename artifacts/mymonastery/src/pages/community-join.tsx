@@ -27,23 +27,31 @@ function MockPhone({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Phone mock of the /prayer-list surface. Kept in sync with the real
-// BarCard styling (sage-tinted background, 1-pixel accent bar on the
-// left, "From X" eyebrow + body + message-count pill) so newcomers see
-// what they're actually about to use. Section header + compose bar
-// placeholder match the live app verbatim.
+// Phone mock of the /prayer-list surface. Matches the live app screen
+// pixel for pixel — left-aligned "Prayer List 🙏🏽" title + subtitle,
+// full-width compose bar with a circular 🙏🏽 button, community
+// intercession card with the "Prayed today 🌿" tag and days counter,
+// then a prayer-request card with a "YOUR REQUEST" eyebrow and days-
+// left pill. No centered content, no anonymous rows — Phoebe has
+// neither.
 function PrayerRequestsMock() {
-  const requests = [
-    { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
-    { from: "David R.", body: "Discernment about the new role.", words: 6 },
-    { from: "Anonymous", body: "For peace in a difficult season.", words: 2 },
-  ];
   return (
     <MockPhone>
-      {/* Compose bar — matches PrayerListComposeBar exactly */}
-      <div className="flex gap-2 mb-4">
+      {/* Page header — "Prayer List 🙏🏽" big title + subtitle line */}
+      <h2
+        className="text-[18px] font-bold leading-tight"
+        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.01em" }}
+      >
+        Prayer List 🙏🏽
+      </h2>
+      <p className="text-[11px] mt-1 mb-3" style={{ color: "#8FAF96" }}>
+        Carrying what your community is carrying.
+      </p>
+
+      {/* Compose bar — full-width input, circular pray button flush right */}
+      <div className="flex items-center gap-2 mb-4">
         <div
-          className="flex-1 text-[12px] px-3 py-2.5 rounded-xl"
+          className="flex-1 text-[11px] px-3 py-2 rounded-full"
           style={{
             background: "#091A10",
             border: "1px solid rgba(46,107,64,0.3)",
@@ -52,54 +60,118 @@ function PrayerRequestsMock() {
         >
           Share a prayer... 🌿
         </div>
-        <div className="px-3 py-2.5 rounded-xl text-[12px]" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] shrink-0"
+          style={{ background: "rgba(46,107,64,0.28)", border: "1px solid rgba(46,107,64,0.5)" }}
+        >
           🙏🏽
         </div>
       </div>
 
-      {/* Section header — matches SectionShell collapsed state */}
-      <div className="flex items-center gap-2 mb-2 mt-4">
-        <h2
-          className="text-[14px] font-semibold"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Prayer Requests
-        </h2>
+      {/* Community intercessions section */}
+      <div className="flex items-center gap-2 mt-5 mb-2">
+        <h3 className="text-[12px] font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+          Community intercessions
+        </h3>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>
-
-      {/* Cards — match BarCard: rounded, sage bg, 1px accent bar, shadow */}
-      <div className="space-y-2">
-        {requests.map((r, i) => (
-          <div
-            key={i}
-            className="relative flex rounded-xl overflow-hidden"
-            style={{
-              background: "rgba(46,107,64,0.15)",
-              border: "1px solid rgba(46,107,64,0.28)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-            }}
-          >
-            <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
-            <div className="flex-1 px-3 py-2.5 flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-[9px] font-semibold uppercase tracking-[0.14em] mb-0.5"
-                  style={{ color: "rgba(143,175,150,0.55)" }}
-                >
-                  From {r.from}
-                </p>
-                <p className="text-[12px] leading-snug" style={{ color: "#F0EDE6" }}>
-                  {r.body}
-                </p>
-              </div>
-              <div className="flex items-center gap-1 shrink-0" style={{ color: "rgba(143,175,150,0.45)" }}>
-                <span className="text-[10px] tabular-nums">{r.words}</span>
-                <MessageCircle size={12} />
-              </div>
+      <div
+        className="relative flex rounded-xl overflow-hidden mb-4"
+        style={{
+          background: "rgba(46,107,64,0.15)",
+          border: "1px solid rgba(46,107,64,0.28)",
+        }}
+      >
+        <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+        <div className="flex-1 px-3 py-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold leading-snug" style={{ color: "#F0EDE6" }}>
+                🙏🏽 For those in grief
+              </p>
+              <p className="text-[9px] mt-0.5" style={{ color: "#8FAF96" }}>
+                with Margaret, David
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[9px] font-bold tabular-nums" style={{ color: "#F0EDE6" }}>
+                2/7 <span style={{ color: "rgba(143,175,150,0.55)" }}>DAYS</span>
+              </p>
+              <p className="text-[8px] mt-0.5" style={{ color: "#A8C5A0" }}>
+                Prayed today 🌿
+              </p>
             </div>
           </div>
-        ))}
+        </div>
+      </div>
+
+      {/* Prayer Requests section — "YOUR REQUEST" eyebrow for self, "From X"
+          eyebrow for others. No "Anonymous" — Phoebe doesn't support that. */}
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="text-[12px] font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+          Prayer Requests
+        </h3>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
+      <div className="space-y-2">
+        <div
+          className="relative flex rounded-xl overflow-hidden"
+          style={{
+            background: "rgba(46,107,64,0.15)",
+            border: "1px solid rgba(46,107,64,0.28)",
+          }}
+        >
+          <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+          <div className="flex-1 px-3 py-2.5 flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p
+                className="text-[9px] font-semibold uppercase tracking-[0.14em] mb-0.5"
+                style={{ color: "rgba(143,175,150,0.55)" }}
+              >
+                Your request
+              </p>
+              <p className="text-[11px] leading-snug" style={{ color: "#F0EDE6" }}>
+                Guidance this week at work.
+              </p>
+            </div>
+            <span
+              className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
+              style={{
+                background: "rgba(46,107,64,0.15)",
+                color: "rgba(143,175,150,0.7)",
+                border: "1px solid rgba(46,107,64,0.2)",
+              }}
+            >
+              3d left
+            </span>
+          </div>
+        </div>
+        <div
+          className="relative flex rounded-xl overflow-hidden"
+          style={{
+            background: "rgba(46,107,64,0.15)",
+            border: "1px solid rgba(46,107,64,0.28)",
+          }}
+        >
+          <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+          <div className="flex-1 px-3 py-2.5 flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p
+                className="text-[9px] font-semibold uppercase tracking-[0.14em] mb-0.5"
+                style={{ color: "rgba(143,175,150,0.55)" }}
+              >
+                From Margaret W.
+              </p>
+              <p className="text-[11px] leading-snug" style={{ color: "#F0EDE6" }}>
+                My mother begins treatment this week.
+              </p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0" style={{ color: "rgba(143,175,150,0.45)" }}>
+              <span className="text-[9px] tabular-nums">4</span>
+              <MessageCircle size={11} />
+            </div>
+          </div>
+        </div>
       </div>
     </MockPhone>
   );
