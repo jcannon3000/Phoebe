@@ -377,45 +377,57 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
   if (!beta) { res.status(403).json({ error: "Metrics are beta only for now" }); return; }
 
   try {
+    // Metrics scope to *members of this community*, not to requests
+    // tagged with group_id. A parish admin asking "how active is our
+    // community in prayer?" cares about member engagement — which
+    // includes personal prayer requests and amens on them, not just
+    // requests posted inside the community tab. This also makes the
+    // counts tick for the common case where admins test with their
+    // own personal requests.
     const q = await pool.query(`
       WITH now_range AS (
         SELECT
           date_trunc('day', now()) AS today_start,
           (date_trunc('day', now()) - interval '6 days') AS week_start
       ),
-      group_requests AS (
-        SELECT id, created_at, owner_id FROM prayer_requests WHERE group_id = $1
+      members AS (
+        SELECT user_id
+        FROM group_members
+        WHERE group_id = $1
+          AND joined_at IS NOT NULL
+          AND user_id IS NOT NULL
       ),
-      group_amens AS (
-        SELECT a.id, a.user_id, a.prayed_at
-        FROM prayer_request_amens a
-        JOIN prayer_requests r ON a.request_id = r.id
-        WHERE r.group_id = $1
+      member_requests AS (
+        SELECT id, created_at, owner_id
+        FROM prayer_requests
+        WHERE owner_id IN (SELECT user_id FROM members)
+      ),
+      member_amens AS (
+        SELECT id, user_id, prayed_at
+        FROM prayer_request_amens
+        WHERE user_id IN (SELECT user_id FROM members)
       ),
       -- Collapse multiple amens from the same user on the same calendar
-      -- day to a single row. This is the "times prayed" definition the
-      -- user asked for: tapping Amen five times in one afternoon is one
-      -- act of prayer, not five.
+      -- day to a single row. Tapping Amen five times in one afternoon is
+      -- one act of prayer, not five.
       amens_per_user_day AS (
         SELECT user_id, prayed_at::date AS day
-        FROM group_amens
+        FROM member_amens
         GROUP BY user_id, prayed_at::date
       )
       SELECT
-        (SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND joined_at IS NOT NULL)::int AS total_members,
+        (SELECT COUNT(*) FROM members)::int AS total_members,
 
-        (SELECT COUNT(*) FROM group_requests)::int AS prayer_requests_total,
-        (SELECT COUNT(*) FROM group_requests, now_range WHERE created_at >= today_start)::int AS prayer_requests_today,
-        (SELECT COUNT(*) FROM group_requests, now_range WHERE created_at >= week_start)::int AS prayer_requests_week,
+        (SELECT COUNT(*) FROM member_requests)::int AS prayer_requests_total,
+        (SELECT COUNT(*) FROM member_requests, now_range WHERE created_at >= today_start)::int AS prayer_requests_today,
+        (SELECT COUNT(*) FROM member_requests, now_range WHERE created_at >= week_start)::int AS prayer_requests_week,
 
-        -- "Times prayed" = one-per-user-per-day dedup. Matches user's
-        -- spec: "every time there's been an amen only one per day".
+        -- "Times prayed" = one-per-user-per-day dedup.
         (SELECT COUNT(*) FROM amens_per_user_day)::int AS times_prayed_total,
         (SELECT COUNT(*) FROM amens_per_user_day, now_range WHERE day >= today_start::date)::int AS times_prayed_today,
         (SELECT COUNT(*) FROM amens_per_user_day, now_range WHERE day >= week_start::date)::int AS times_prayed_week,
 
-        -- Distinct users ("how many people have prayed") — same dedup
-        -- basis but unique on user_id.
+        -- Distinct users who have prayed — same dedup set, unique by user.
         (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day, now_range WHERE day >= today_start::date)::int AS prayed_today,
         (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day, now_range WHERE day >= week_start::date)::int AS prayed_week,
         (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day)::int AS prayed_all_time

@@ -148,10 +148,9 @@ export function MetricsDashboard({ slug }: { slug: string }) {
           }}
         >
           <p className="text-xs leading-relaxed" style={{ color: "#8FAF96", fontFamily: FONT }}>
-            No activity in this community yet. Metrics start filling in
-            once members post prayer requests and tap Amen on each
-            other's. Only amens from other members count — you can't
-            amen your own request.
+            No activity yet. Counts begin when members of this
+            community post prayer requests or tap Amen — in the
+            community tab or anywhere else in Phoebe.
           </p>
         </div>
       )}
@@ -196,8 +195,9 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         className="text-[11px] leading-relaxed text-center"
         style={{ color: "rgba(143,175,150,0.45)", fontFamily: FONT }}
       >
-        Refreshes every 30 seconds. "This week" means the last seven
-        days including today.
+        Counts member activity across Phoebe — community and personal
+        prayer requests alike. Refreshes every 30 seconds. "This week"
+        means the last seven days including today.
       </p>
     </div>
   );
