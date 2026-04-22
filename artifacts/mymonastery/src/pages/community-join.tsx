@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -27,50 +27,60 @@ function MockPhone({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Phone mock of the "Prayer List — what the community is holding together"
-// surface from church-deck. Ported here so the community-join slideshow
-// shows newcomers the practice of carrying each other's intentions as a
-// single group rhythm, instead of three separate product previews. Kept
-// visual parity with church-deck's PrayerListMock: soft "held" chip,
-// day counter, left accent bar.
-function PrayerListMock() {
-  const items = [
-    { name: "Margaret's mother", body: "Treatment this week.", held: "4 praying", days: "3d" },
-    { name: "David's discernment", body: "Clarity on the new role.", held: "7 praying", days: "6d" },
-    { name: "Peace in a hard season", body: "Anonymous.", held: "5 praying", days: "1d" },
+// Phone mock of the "Prayer Requests" surface — ported verbatim from
+// church-deck's PrayerRequestsMock. This is what the community-join
+// slideshow now shows for the "what praying together looks like" slide;
+// the earlier PrayerListMock didn't match the app and got replaced.
+function PrayerRequestsMock() {
+  const requests = [
+    { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
+    { from: "David R.", body: "Discernment about the new role.", words: 6 },
+    { from: "Anonymous", body: "For peace in a difficult season.", words: 2 },
   ];
   return (
     <MockPhone>
-      <h2 className="text-base font-bold mb-0.5" style={{ color: "#F0EDE6" }}>
-        🕯️ Prayer List
-      </h2>
-      <p className="text-[10px] mb-3" style={{ color: "#8FAF96" }}>
-        What the community is holding together
-      </p>
-      <div className="h-px mb-3" style={{ background: "rgba(46,107,64,0.25)" }} />
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-[14px] font-semibold" style={{ color: "#F0EDE6" }}>
+          Prayer Requests 🙏🏽
+        </h2>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
+      <div className="flex gap-2 mb-3">
+        <div
+          className="flex-1 text-[12px] px-3 py-2.5 rounded-xl"
+          style={{
+            background: "#091A10",
+            border: "1px solid rgba(46,107,64,0.3)",
+            color: "rgba(143,175,150,0.5)",
+          }}
+        >
+          Share a prayer request... 🌿
+        </div>
+        <div className="px-3 py-2.5 rounded-xl text-[12px]" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+          🙏🏽
+        </div>
+      </div>
       <div>
-        {items.map((item, i) => (
+        {requests.map((r, i) => (
           <div
             key={i}
             className="flex gap-0"
-            style={{ borderBottom: i < items.length - 1 ? "1px solid rgba(200,212,192,0.1)" : "none" }}
+            style={{ borderBottom: i < requests.length - 1 ? "1px solid rgba(200,212,192,0.12)" : "none" }}
           >
             <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
-            <div className="flex-1 p-2.5">
-              <div className="flex justify-between items-baseline">
-                <p className="text-[12px] font-medium" style={{ color: "#F0EDE6" }}>
-                  {item.name}
+            <div className="flex-1 p-3 pl-2.5 flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
+                  From {r.from}
                 </p>
-                <p className="text-[9px]" style={{ color: "rgba(143,175,150,0.4)" }}>
-                  {item.days}
+                <p className="text-[12px] leading-relaxed" style={{ color: "#F0EDE6" }}>
+                  {r.body}
                 </p>
               </div>
-              <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                {item.body}
-              </p>
-              <p className="text-[9px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>
-                🌿 {item.held}
-              </p>
+              <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
+                <span className="text-[10px] tabular-nums">{r.words}</span>
+                <MessageCircle size={12} />
+              </div>
             </div>
           </div>
         ))}
@@ -371,7 +381,7 @@ export default function CommunityJoinPage() {
             <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
               {preview.memberCount === 1
                 ? "One soul is already walking this path — your arrival doubles the company."
-                : "A small community gathered around shared practice. No feed. No noise. Just rhythm."}
+                : "A community gathered around praying for each other and the world."}
             </p>
           </div>
         ),
@@ -392,9 +402,9 @@ export default function CommunityJoinPage() {
             What praying together looks like
           </p>
           <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-            One list. Many of you.
+            Prayer, held in common.
           </h2>
-          <PrayerListMock />
+          <PrayerRequestsMock />
           <p className="text-[11px] leading-relaxed mt-4" style={{ color: "rgba(143,175,150,0.75)" }}>
             Everyone's intentions — members of {invite.group.name}, people you're praying for — gathered into one list you walk through once a day.
           </p>

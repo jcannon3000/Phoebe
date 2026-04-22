@@ -155,7 +155,7 @@ if (fs.existsSync(frontendDist)) {
       .replace(/(<meta name="twitter:description" content=")[^"]*"/, `$1${d}"`);
   }
 
-  // Community invite links — render "Pray with <community> with Phoebe"
+  // Community invite links — render "Pray Daily with <community>"
   // so an iMessage/Slack preview names the specific community rather than
   // the generic landing-page copy. Matches both:
   //   /communities/join/:slug/:token
@@ -185,7 +185,7 @@ if (fs.existsSync(frontendDist)) {
           .from(groupsTable)
           .where(eq(groupsTable.slug, slug));
         if (group) {
-          const title = `Pray with ${group.name} with Phoebe`;
+          const title = `Pray Daily with ${group.name}`;
           const description = group.description && group.description.trim().length > 0
             ? group.description
             : "A place set apart for connection. Every day. Between Sundays.";

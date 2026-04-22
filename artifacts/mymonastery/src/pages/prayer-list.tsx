@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X as CloseIcon, MessageCircle } from "lucide-react";
+import { ChevronLeft, X as CloseIcon, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import type { PrayerForMe, MyActivePrayerFor } from "@/components/pray-for-them";
@@ -121,17 +120,90 @@ function initials(name: string): string {
 // sibling of the home screen — same Space-Grotesk heading, same hairline
 // divider trailing off to the right, same left-accent-bar card shape.
 
-function SectionHeader({ label }: { label: string }) {
+// A section shell renders a clickable section header (tap to focus that
+// category — which collapses the page down to just this section plus a
+// back button). When unfocused, the card list is clamped to ~3.5 cards
+// tall with a fade-out gradient so overflow is obviously scrollable. When
+// focused, the clamp + fade lift and every card is shown at full height.
+type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from";
+
+function SectionShell({
+  id,
+  label,
+  count,
+  focused,
+  onFocus,
+  children,
+}: {
+  id: SectionKey;
+  label: string;
+  count: number;
+  focused: SectionKey | null;
+  onFocus: (id: SectionKey) => void;
+  children: React.ReactNode;
+}) {
+  const isFocused = focused === id;
+  const collapsed = focused === null;
+  // Clamp at ~3.5 card rows. Cards are ≈64px + 8px gap, so 3 full rows plus
+  // half a row of peek lands around 250–260px. We pad the bottom so the
+  // fade gradient doesn't sit on top of the last visible card's text.
+  const CLAMP = 260;
   return (
-    <div className="flex items-center gap-3 mb-2 mt-6">
-      <h2
-        className="text-lg font-semibold"
-        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+    <section>
+      <button
+        type="button"
+        onClick={() => !isFocused && onFocus(id)}
+        className="flex items-center gap-3 mb-2 mt-6 w-full text-left"
+        style={{ cursor: isFocused ? "default" : "pointer" }}
       >
-        {label}
-      </h2>
-      <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-    </div>
+        <h2
+          className="text-lg font-semibold"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {label}
+        </h2>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+        {collapsed && count > 3 && (
+          <span
+            className="text-[10px] font-semibold uppercase"
+            style={{ color: "rgba(143,175,150,0.55)", letterSpacing: "0.12em" }}
+          >
+            View all
+          </span>
+        )}
+      </button>
+      <div style={{ position: "relative" }}>
+        <div
+          className="space-y-2"
+          style={
+            collapsed
+              ? {
+                  maxHeight: CLAMP,
+                  overflowY: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  paddingBottom: 8,
+                }
+              : undefined
+          }
+        >
+          {children}
+        </div>
+        {collapsed && count > 3 && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 56,
+              pointerEvents: "none",
+              background:
+                "linear-gradient(to bottom, rgba(9,20,14,0) 0%, rgba(9,20,14,0.85) 60%, rgba(9,20,14,1) 100%)",
+            }}
+          />
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -578,7 +650,11 @@ function DetailModal({
                   </div>
                   <button
                     type="button"
-                    onClick={() => deleteMutation.mutate(req.id)}
+                    onClick={() => {
+                      if (window.confirm("Delete this prayer request? This can't be undone.")) {
+                        deleteMutation.mutate(req.id);
+                      }
+                    }}
                     disabled={deleteMutation.isPending}
                     className="text-xs transition-opacity hover:opacity-70"
                     style={{ color: "rgba(143,175,150,0.4)" }}
@@ -697,81 +773,6 @@ function DetailModal({
   );
 }
 
-// ─── Floating "+" action button (non-admin users) ─────────────────────────
-// Two options: start a request (self) or start a prayer for someone else.
-// Styled to match the dashboard's admin FAB so the affordance reads the
-// same across the app, but routed to prayer-specific flows.
-
-function PrayerListFAB() {
-  const [open, setOpen] = useState(false);
-  const [, setLocation] = useLocation();
-  useBetaStatus(); // no-op — kept in case we want to gate additional items later
-
-  return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="flex flex-col gap-2 mb-1"
-          >
-            <button
-              onClick={() => { setOpen(false); setLocation("/pray-request/new"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{
-                background: "#193F2A",
-                border: "1px solid rgba(46,107,64,0.45)",
-                minWidth: 240,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)",
-              }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Prayer Request</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Share something you're carrying</p>
-            </button>
-            <button
-              onClick={() => { setOpen(false); setLocation("/pray-for/new"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{
-                background: "#193F2A",
-                border: "1px solid rgba(46,107,64,0.45)",
-                minWidth: 240,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)",
-              }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 Pray for someone</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Hold a friend for 3 or 7 days</p>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-label={open ? "Close menu" : "Open create menu"}
-        className="rounded-full shadow-lg transition-transform active:scale-95"
-        style={{
-          background: "#2D5E3F",
-          color: "#F0EDE6",
-          width: 56,
-          height: 56,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 6px 20px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35)",
-          border: "1px solid rgba(46,107,64,0.55)",
-          transform: open ? "rotate(45deg)" : "rotate(0deg)",
-          transition: "transform 0.18s ease-out",
-        }}
-      >
-        <Plus size={24} />
-      </button>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 export default function PrayerListPage() {
@@ -825,6 +826,10 @@ export default function PrayerListPage() {
   });
 
   const [detail, setDetail] = useState<DetailTarget | null>(null);
+  // When non-null, the page collapses to a single category + a back button.
+  // When null, all four sections are visible, each clamped to ~3.5 cards
+  // with a scroll + fade so the list reads as "peek, don't bury."
+  const [focused, setFocused] = useState<SectionKey | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -874,62 +879,75 @@ export default function PrayerListPage() {
             section. Tapping 🙏🏽 opens a centered popup asking whether
             the prayer is for the viewer (→ prayer request for yourself)
             or for someone else (→ pray-for-new flow). */}
-        <PrayerListComposeBar />
+        {focused === null && <PrayerListComposeBar />}
+
+        {/* Back button when drilled into a single category */}
+        {focused !== null && (
+          <button
+            type="button"
+            onClick={() => setFocused(null)}
+            className="mt-1 mb-1 inline-flex items-center gap-1.5 px-2 py-1.5 rounded-full transition-opacity hover:opacity-80"
+            style={{ color: "#A8C5A0" }}
+          >
+            <ChevronLeft size={16} />
+            <span className="text-[12px] font-medium">All prayers</span>
+          </button>
+        )}
 
         {/* Community intercessions — intercession practices */}
-        {intercessionsSorted.length > 0 && (
-          <section>
-            <SectionHeader label="Community intercessions" />
-            <div className="space-y-2">
-              {intercessionsSorted.map((m) => (
-                <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
-              ))}
-            </div>
-          </section>
+        {intercessionsSorted.length > 0 && (focused === null || focused === "intercessions") && (
+          <SectionShell
+            id="intercessions"
+            label="Community intercessions"
+            count={intercessionsSorted.length}
+            focused={focused}
+            onFocus={setFocused}
+          >
+            {intercessionsSorted.map((m) => (
+              <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
+            ))}
+          </SectionShell>
         )}
 
         {/* Prayer Requests */}
-        {allRequests.length > 0 && (
-          <section>
-            <SectionHeader label="Prayer Requests" />
-            <div className="space-y-2">
-              {allRequests.map((r) => (
-                <RequestCard key={r.id} req={r} onOpen={() => setDetail({ kind: "request", id: r.id })} />
-              ))}
-            </div>
-          </section>
+        {allRequests.length > 0 && (focused === null || focused === "requests") && (
+          <SectionShell
+            id="requests"
+            label="Prayer Requests"
+            count={allRequests.length}
+            focused={focused}
+            onFocus={setFocused}
+          >
+            {allRequests.map((r) => (
+              <RequestCard key={r.id} req={r} onOpen={() => setDetail({ kind: "request", id: r.id })} />
+            ))}
+          </SectionShell>
         )}
 
-        {/* Prayers for others */}
-        {activePrayersFor.length > 0 && (
-          <section>
-            <SectionHeader label="Prayers for Others" />
-            <div className="space-y-2">
-              {activePrayersFor.map((p) => (
-                <PrayerForCard
-                  key={p.id}
-                  p={p}
-                  onOpen={() => setDetail({ kind: "prayer-for", id: p.id })}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Prayers for others — removed per product direction (2026-04):
+            the "Prayers for Others" list is owned by the dedicated
+            prayers-for detail surfaces and the Circle; showing it here
+            duplicated content and crowded the list. Keep
+            `activePrayersFor` in the data layer so the empty-state guard
+            below still works, but don't render a section. */}
 
         {/* Prayers for you */}
-        {prayersForMe.length > 0 && (
-          <section>
-            <SectionHeader label="Prayers for You" />
-            <div className="space-y-2">
-              {prayersForMe.map((p) => (
-                <PrayerFromCard
-                  key={p.id}
-                  p={p}
-                  onOpen={() => setDetail({ kind: "prayer-from", id: p.id })}
-                />
-              ))}
-            </div>
-          </section>
+        {prayersForMe.length > 0 && (focused === null || focused === "prayers-from") && (
+          <SectionShell
+            id="prayers-from"
+            label="Prayers for You"
+            count={prayersForMe.length}
+            focused={focused}
+            onFocus={setFocused}
+          >
+            {prayersForMe.map((p) => (
+              <PrayerFromCard
+                key={p.id}
+                p={p}
+                onOpen={() => setDetail({ kind: "prayer-from", id: p.id })}
+              />
+            ))}
+          </SectionShell>
         )}
 
         {/* Empty state — only when every section is empty, otherwise the
@@ -939,13 +957,10 @@ export default function PrayerListPage() {
           && activePrayersFor.length === 0
           && prayersForMe.length === 0 && (
           <p className="text-sm italic mt-10 text-center" style={{ color: "rgba(143,175,150,0.6)" }}>
-            Quiet today. Use the + button to share a request or start a prayer for someone.
+            Quiet today. Share a prayer above to start something.
           </p>
         )}
       </div>
-
-      {/* Floating create menu */}
-      <PrayerListFAB />
 
       {/* Detail popup — tap on a non-intercession card opens this */}
       {detail && (

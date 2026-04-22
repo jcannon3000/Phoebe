@@ -816,9 +816,18 @@ export default function CommunityDetailPage() {
       apiRequest("PATCH", `/api/groups/${slug}/members/${memberId}/role`, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "members"] });
     },
     onError: (err: any) => {
-      window.alert(err?.message || "Couldn't change that role. Please try again.");
+      // apiRequest hands us the raw response text; when the server replies
+      // with JSON like `{"error":"..."}` we extract the message so the
+      // user sees "Only pilot users can…" instead of a JSON blob.
+      let msg = err?.message || "Couldn't change that role. Please try again.";
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed && typeof parsed.error === "string") msg = parsed.error;
+      } catch { /* not JSON — show as-is */ }
+      window.alert(msg);
     },
   });
 
@@ -1526,6 +1535,8 @@ export default function CommunityDetailPage() {
                   hasn't set up a schedule yet. */}
               <CommunityServiceHomeCard
                 slug={slug!}
+                groupName={group.name}
+                groupEmoji={group.emoji}
                 onOpen={() => setActiveTab("gatherings")}
               />
 
@@ -1940,18 +1951,18 @@ export default function CommunityDetailPage() {
                     </div>
                     <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{m.email}</p>
                   </Link>
-                  {/* Admin-only management controls. A member can't change
-                      their own role here (the server blocks last-admin
-                      demotion anyway, but locally we just hide the
-                      controls — the person can always demote themselves
-                      from a separate "leave community" flow later). */}
-                  {isAdmin && !isSelf && (
+                  {/* Admin-only management controls. Split into two gates:
+                      - Peer actions (make-admin / demote / remove) stay
+                        `!isSelf`. A member can't change their own
+                        membership here — leaving is a separate flow.
+                      - Hidden-admin toggle is pilot-gated but *does*
+                        work on self, so a pilot can quietly make
+                        themselves invisible to the roster without
+                        needing a second admin to flip the bit. */}
+                  {isAdmin && (
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {/* Promote to / demote from admin. Hidden-admin rows
-                          don't get a promote button — they already have
-                          admin powers — but can be demoted straight to
-                          member via the menu. */}
-                      {!isRoleAdmin && !isHiddenAdmin && (
+                      {/* Peer-only: promote/demote. Hidden on self rows. */}
+                      {!isSelf && !isRoleAdmin && !isHiddenAdmin && (
                         <button
                           onClick={(e) => {
                             e.preventDefault();
@@ -1962,10 +1973,10 @@ export default function CommunityDetailPage() {
                           className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
                           style={{ color: "#A8C5A0", background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
                         >
-                          Make admin
+                          {changingThisRow ? "…" : "Make admin"}
                         </button>
                       )}
-                      {isRoleAdmin && (
+                      {!isSelf && isRoleAdmin && (
                         <button
                           onClick={(e) => {
                             e.preventDefault();
@@ -1978,18 +1989,22 @@ export default function CommunityDetailPage() {
                           className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
                           style={{ color: "rgba(143,175,150,0.75)", border: "1px solid rgba(143,175,150,0.2)" }}
                         >
-                          Demote
+                          {changingThisRow ? "…" : "Demote"}
                         </button>
                       )}
-                      {/* Pilot-only hidden-admin toggle. Shown next to the
-                          other role controls so pilots have it at hand
-                          without a separate sub-menu. */}
+                      {/* Pilot-only hidden-admin toggle — works on SELF too,
+                          so pilots can self-designate. Server pilot-gates
+                          it regardless. */}
                       {isBeta && !isHiddenAdmin && (
                         <button
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (window.confirm(`Make ${m.name || m.email} a hidden admin? They'll gain admin powers but won't appear in the roster for regular members.`)) {
+                            const who = isSelf ? "yourself" : (m.name || m.email);
+                            const msg = isSelf
+                              ? "Make yourself a hidden admin? You'll keep admin powers but disappear from the roster for regular members."
+                              : `Make ${who} a hidden admin? They'll gain admin powers but won't appear in the roster for regular members.`;
+                            if (window.confirm(msg)) {
                               changeRoleMutation.mutate({ memberId: m.id, role: "hidden_admin" });
                             }
                           }}
@@ -1998,7 +2013,7 @@ export default function CommunityDetailPage() {
                           style={{ color: "#E8B872", background: "rgba(193,127,36,0.1)", border: "1px solid rgba(193,127,36,0.3)" }}
                           title="Pilot-only"
                         >
-                          Hidden
+                          {changingThisRow ? "…" : "Hidden"}
                         </button>
                       )}
                       {isBeta && isHiddenAdmin && (
@@ -2006,7 +2021,11 @@ export default function CommunityDetailPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (window.confirm(`Reveal ${m.name || m.email} as a regular member? They'll appear in the roster and lose admin powers.`)) {
+                            const who = isSelf ? "yourself" : (m.name || m.email);
+                            const msg = isSelf
+                              ? "Reveal yourself as a regular member? You'll show up in the roster and lose admin powers."
+                              : `Reveal ${who} as a regular member? They'll appear in the roster and lose admin powers.`;
+                            if (window.confirm(msg)) {
                               changeRoleMutation.mutate({ memberId: m.id, role: "member" });
                             }
                           }}
@@ -2014,24 +2033,26 @@ export default function CommunityDetailPage() {
                           className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
                           style={{ color: "#E8B872", background: "rgba(193,127,36,0.1)", border: "1px solid rgba(193,127,36,0.3)" }}
                         >
-                          Reveal
+                          {changingThisRow ? "…" : "Reveal"}
                         </button>
                       )}
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const label = m.name || m.email;
-                          if (window.confirm(`Remove ${label} from ${group.name}? They'll lose access to every practice attached to this community.`)) {
-                            removeMemberMutation.mutate(m.id);
-                          }
-                        }}
-                        disabled={removeMemberMutation.isPending}
-                        className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
-                        style={{ color: "rgba(143,175,150,0.5)", border: "1px solid rgba(143,175,150,0.2)" }}
-                      >
-                        Remove
-                      </button>
+                      {!isSelf && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const label = m.name || m.email;
+                            if (window.confirm(`Remove ${label} from ${group.name}? They'll lose access to every practice attached to this community.`)) {
+                              removeMemberMutation.mutate(m.id);
+                            }
+                          }}
+                          disabled={removeMemberMutation.isPending}
+                          className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
+                          style={{ color: "rgba(143,175,150,0.5)", border: "1px solid rgba(143,175,150,0.2)" }}
+                        >
+                          Remove
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

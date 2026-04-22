@@ -143,10 +143,27 @@ async function requireMember(groupSlug: string, userId: number) {
   return { group, member };
 }
 
+// "hidden_admin" = invisible member with admin privileges. Designated by
+// pilot users for platform-side observation / management of a community.
+// For permission checks they behave exactly like an admin, but the role
+// value is filtered out of roster views so other members don't see them.
+function isAdminRole(role: string): boolean {
+  return role === "admin" || role === "hidden_admin";
+}
+
 async function requireAdmin(groupSlug: string, userId: number) {
   const result = await requireMember(groupSlug, userId);
-  if (!result || result.member.role !== "admin") return null;
+  if (!result || !isAdminRole(result.member.role)) return null;
   return result;
+}
+
+// Is this user a pilot (beta) user? Designating a hidden admin is gated
+// behind this flag — only pilots can create or change hidden-admin roles.
+async function isBetaUser(userId: number): Promise<boolean> {
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return false;
+  const beta = await safeBetaLookup(u.email);
+  return beta !== null;
 }
 
 // ─── Group CRUD ─────────────────────────────────────────────────────────────
@@ -247,10 +264,13 @@ router.get("/groups", async (req, res): Promise<void> => {
     const groups = await db.select().from(groupsTable).where(inArray(groupsTable.id, groupIds));
 
     const enriched = await Promise.all(groups.map(async (g) => {
-      const joinedMembers = (await db.select().from(groupMembersTable)
-        .where(eq(groupMembersTable.groupId, g.id))).filter(m => m.joinedAt !== null);
+      const allMembers = await db.select().from(groupMembersTable)
+        .where(eq(groupMembersTable.groupId, g.id));
+      // Hidden admins are invisible members (pilot-designated observers),
+      // so they don't count toward the community's public member tally.
+      const countable = allMembers.filter(m => m.joinedAt !== null && m.role !== "hidden_admin");
       const myRole = joined.find(m => m.groupId === g.id)?.role ?? "member";
-      return { ...g, memberCount: joinedMembers.length, myRole };
+      return { ...g, memberCount: countable.length, myRole };
     }));
 
     res.json({ groups: enriched });
@@ -293,7 +313,7 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
   // `inviteToken` is surfaced only to admins — they're the ones sharing
   // the link, and we don't want every member handing it out. A member who
   // wants to share the community can ask an admin.
-  const isAdminView = result.member.role === "admin";
+  const isAdminView = isAdminRole(result.member.role);
 
   // Lazy-init the community-wide invite token. Older communities were
   // created before we started generating this at create time, so their
@@ -349,13 +369,21 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
     }
   }
 
+  // Filter hidden admins out of the roster for non-admin viewers. Admin-
+  // level viewers still see them so they can manage / demote. The viewer's
+  // own row is always included even if they're a hidden admin (so `myRole`
+  // is consistent with what they find in the list).
+  const visibleMembers = isAdminView
+    ? members
+    : members.filter(m => m.role !== "hidden_admin" || m.userId === user.id);
+
   res.json({
     group: {
       ...result.group,
       ...(isAdminView ? {} : { inviteToken: undefined }),
     },
     myRole: result.member.role,
-    members: members.map(m => ({
+    members: visibleMembers.map(m => ({
       id: m.id,
       name: m.name,
       email: m.email,
@@ -650,10 +678,22 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
     people: z.array(z.object({
       name: z.string().optional(),
       email: z.string().email(),
+      // Optional per-person role. "admin" is open to all current admins;
+      // "hidden_admin" is pilot-gated (see check below). Unspecified → "member".
+      role: z.enum(["member", "admin", "hidden_admin"]).optional(),
     })).min(1).max(50),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+
+  // If any requested role is "hidden_admin", the inviting admin must also
+  // be a pilot (beta) user. This gate keeps hidden-admin designation
+  // reserved for people we've explicitly onboarded as pilots.
+  const wantsHiddenAdmin = parsed.data.people.some(p => p.role === "hidden_admin");
+  if (wantsHiddenAdmin && !(await isBetaUser(user.id))) {
+    res.status(403).json({ error: "Only pilot users can designate hidden admins" });
+    return;
+  }
 
   const added = [];
   for (const person of parsed.data.people) {
@@ -672,7 +712,7 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
       userId: existingUser?.id ?? null,
       email: emailLower,
       name: person.name ?? null,
-      role: "member",
+      role: person.role ?? "member",
       inviteToken: token,
       joinedAt: new Date(),
     }).returning();
@@ -732,6 +772,7 @@ router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
       .where(and(
         eq(groupMembersTable.groupId, group.id),
         sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        sql`${groupMembersTable.role} <> 'hidden_admin'`,
       ))
       .orderBy(desc(groupMembersTable.joinedAt))
       .limit(6);
@@ -743,6 +784,9 @@ router.get("/groups/:slug/invite/:token", async (req, res): Promise<void> => {
       .where(and(
         eq(groupMembersTable.groupId, group.id),
         sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        // Hidden admins are invisible observers — not part of the public
+        // member count or preview shown on the invite landing page.
+        sql`${groupMembersTable.role} <> 'hidden_admin'`,
       ));
 
     const practices = await db.select({
@@ -947,7 +991,7 @@ export async function notifyAdminsOfNewMember(
     .from(groupMembersTable)
     .where(and(
       eq(groupMembersTable.groupId, groupId),
-      eq(groupMembersTable.role, "admin"),
+      inArray(groupMembersTable.role, ["admin", "hidden_admin"]),
     ));
   const userIds = adminMembers.map(a => a.userId).filter((id): id is number => id != null);
   if (userIds.length === 0) return;
@@ -1051,8 +1095,15 @@ router.get("/groups/:slug/members", async (req, res): Promise<void> => {
   const members = await db.select().from(groupMembersTable)
     .where(eq(groupMembersTable.groupId, result.group.id));
 
+  // Hidden admins are visible only to other admins. The viewer's own row
+  // is always included so their client-side `myRole` stays consistent.
+  const isAdminView = isAdminRole(result.member.role);
+  const visibleMembers = isAdminView
+    ? members
+    : members.filter(m => m.role !== "hidden_admin" || m.userId === user.id);
+
   res.json({
-    members: members.map(m => ({
+    members: visibleMembers.map(m => ({
       id: m.id,
       name: m.name,
       email: m.email,
@@ -1084,6 +1135,73 @@ router.delete("/groups/:slug/members/:memberId", async (req, res): Promise<void>
   // the removed user loses their tokens across every attached practice.
   await reconcileAllPracticesForGroup(result.group.id);
   res.json({ ok: true });
+});
+
+// PATCH /api/groups/:slug/members/:memberId/role — change a member's role
+// between "member" | "admin" | "hidden_admin". Admin-gated. Designating or
+// removing a "hidden_admin" role is additionally pilot-gated (only users in
+// betaUsersTable can make that call). Guards against demoting the last
+// visible admin so a community can never end up without a reachable admin.
+router.patch("/groups/:slug/members/:memberId/role", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+
+  const memberId = parseInt(req.params.memberId, 10);
+  if (isNaN(memberId)) { res.status(400).json({ error: "Invalid member ID" }); return; }
+
+  const schema = z.object({
+    role: z.enum(["member", "admin", "hidden_admin"]),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid role" }); return; }
+  const nextRole = parsed.data.role;
+
+  const [target] = await db.select().from(groupMembersTable).where(eq(groupMembersTable.id, memberId));
+  if (!target || target.groupId !== result.group.id) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+
+  // No-op short circuit — keeps client retry-safe.
+  if (target.role === nextRole) {
+    res.json({ ok: true, member: { id: target.id, role: target.role } });
+    return;
+  }
+
+  // Pilot gate: either promoting INTO hidden_admin or demoting OUT of it
+  // requires the acting admin to be a beta/pilot user. A non-pilot admin
+  // can still shuffle members between "member" and "admin" freely.
+  const touchesHiddenAdmin = nextRole === "hidden_admin" || target.role === "hidden_admin";
+  if (touchesHiddenAdmin && !(await isBetaUser(user.id))) {
+    res.status(403).json({ error: "Only pilot users can manage hidden admins" });
+    return;
+  }
+
+  // Last-admin guard: if we're demoting an admin (either role) to "member",
+  // make sure someone with admin powers will remain. Count both visible and
+  // hidden admins — either is enough to keep the community reachable.
+  if (isAdminRole(target.role) && nextRole === "member") {
+    const remainingAdmins = await db.select({ id: groupMembersTable.id })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, result.group.id),
+        inArray(groupMembersTable.role, ["admin", "hidden_admin"]),
+        sql`${groupMembersTable.id} <> ${memberId}`,
+      ));
+    if (remainingAdmins.length === 0) {
+      res.status(400).json({ error: "Can't demote the last admin" });
+      return;
+    }
+  }
+
+  await db.update(groupMembersTable)
+    .set({ role: nextRole })
+    .where(eq(groupMembersTable.id, memberId));
+
+  res.json({ ok: true, member: { id: memberId, role: nextRole } });
 });
 
 // ─── Admin notifications (new-member + new-prayer popup) ───────────────────
@@ -1573,7 +1691,7 @@ router.delete("/groups/:slug/intentions/:id", async (req, res): Promise<void> =>
     ));
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
 
-  const isAdmin = result.member.role === "admin";
+  const isAdmin = isAdminRole(result.member.role);
   if (!isAdmin && row.createdByUserId !== user.id) {
     res.status(403).json({ error: "You can only archive your own intentions" }); return;
   }
@@ -1735,7 +1853,7 @@ router.delete("/groups/:slug/focus/:id", async (req, res): Promise<void> => {
     ));
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
 
-  const isAdmin = result.member.role === "admin";
+  const isAdmin = isAdminRole(result.member.role);
   if (!isAdmin && row.addedByUserId !== user.id) {
     res.status(403).json({ error: "You can only remove your own additions" }); return;
   }
@@ -2266,7 +2384,7 @@ router.get("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
       .where(eq(groupServiceSchedulesTable.groupId, result.group.id));
 
     if (!row) {
-      res.json({ schedule: null, canEdit: result.member.role === "admin" });
+      res.json({ schedule: null, canEdit: isAdminRole(result.member.role) });
       return;
     }
 
@@ -2280,7 +2398,7 @@ router.get("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
         times: normalizeServiceTimes(row.times),
         updatedAt: row.updatedAt.toISOString(),
       },
-      canEdit: result.member.role === "admin",
+      canEdit: isAdminRole(result.member.role),
     });
   } catch (err) {
     console.error("GET /api/groups/:slug/service-schedule error:", err);

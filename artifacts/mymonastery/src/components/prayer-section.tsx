@@ -342,13 +342,17 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                               );
                             })()}
 
-                            {/* Delete button for own requests */}
+                            {/* Delete button for own requests — confirm
+                                before firing so a mis-tap doesn't quietly
+                                destroy someone's request. */}
                             {request.isOwnRequest && (
                               <button
                                 type="button"
                                 onClick={e => {
                                   e.stopPropagation();
-                                  deleteMutation.mutate(request.id);
+                                  if (window.confirm("Delete this prayer request? This can't be undone.")) {
+                                    deleteMutation.mutate(request.id);
+                                  }
                                 }}
                                 disabled={deleteMutation.isPending}
                                 aria-label="Delete prayer request"
