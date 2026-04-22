@@ -206,6 +206,10 @@ type ServiceSchedule = {
   groupSlug: string;
   groupEmoji: string | null;
   name: string;
+  // Schedule-level location — single "where" for the whole schedule,
+  // cycled through the dashboard card's split-flap line. Optional; per-time
+  // locations still win when a given service happens elsewhere.
+  location?: string | null;
   dayOfWeek: number; // 0=Sun..6=Sat
   times: ServiceTime[];
 };
@@ -1136,15 +1140,44 @@ function ServiceCard({
   keyPrefix: string;
 }) {
   const colors = CATEGORY_COLORS.gatherings;
-  const firstTime = schedule.times[0];
-  const extraCount = Math.max(0, schedule.times.length - 1);
-  const dayLabel = isOnDate ? "Today" : (isToday(addDays(startOfDay(new Date()), 1)) && nextDate.getTime() === addDays(startOfDay(new Date()), 1).getTime()
-    ? "Tomorrow" : format(nextDate, "EEE, MMM d"));
-  const timeLine = firstTime
-    ? `${dayLabel} · ${formatServiceTime(firstTime.time)}${extraCount > 0 ? ` + ${extraCount} more` : ""}`
-    : dayLabel;
   const title = schedule.name || DAY_OF_WEEK_NAMES[schedule.dayOfWeek] + " Services";
-  const groupBadge = `${schedule.groupEmoji ?? "⛪"} From ${schedule.groupName}`;
+
+  // Second line cycles through four facets of the service so no single
+  // detail dominates: when ("Sunday, April 26"), what times, where, and
+  // who is hosting. Each is optional — empty entries drop out so we never
+  // flip to a blank line.
+  //
+  //   1. Date         — full "Sunday, April 26" (today/tomorrow when close)
+  //   2. Service times— concatenated clock times ("8:00 AM · 10:00 AM …")
+  //   3. Location     — schedule-level location first, else any per-time
+  //                     location we happen to have (legacy data)
+  //   4. Host group   — "{group emoji} From Phoebe Architects" — moved off
+  //                     the old 3rd row and into the rotation.
+  //
+  // Title emoji is 🙌🏽 (hands lifted in worship) rather than a church
+  // building — the card is about *gathering to worship together*, not
+  // about a specific building, and many hosts aren't churches anyway.
+  const dayLabel = isOnDate
+    ? `Today · ${format(nextDate, "EEEE, MMMM d")}`
+    : (isToday(addDays(startOfDay(new Date()), 1)) &&
+       nextDate.getTime() === addDays(startOfDay(new Date()), 1).getTime())
+      ? `Tomorrow · ${format(nextDate, "EEEE, MMMM d")}`
+      : format(nextDate, "EEEE, MMMM d");
+  const timesLine = schedule.times
+    .map((t) => {
+      const formatted = formatServiceTime(t.time);
+      return t.label ? `${formatted} ${t.label}` : formatted;
+    })
+    .join(" · ");
+  const perTimeLocation = schedule.times.find((t) => t.location)?.location ?? null;
+  const locationLine = (schedule.location && schedule.location.trim())
+    || perTimeLocation
+    ? `📍 ${(schedule.location ?? perTimeLocation ?? "").trim()}`
+    : "";
+  const groupLine = `${schedule.groupEmoji ?? "⛪"} From ${schedule.groupName}`;
+  const flapLines = [dayLabel, timesLine, locationLine, groupLine]
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 
   return (
     <button
@@ -1167,20 +1200,15 @@ function ServiceCard({
           className={`w-1 flex-shrink-0 ${isOnDate ? colors.barPulseClass : ""}`}
           style={{ background: isOnDate ? undefined : colors.bar }}
         />
-        <div className="flex-1 px-4 pt-3 pb-2">
+        <div className="flex-1 px-4 pt-3 pb-3">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>⛪ {title}</span>
+            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>🙌🏽 {title}</span>
             <span className="text-[10px] font-semibold uppercase shrink-0 mt-1" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
               Service times
             </span>
           </div>
-          <div className="mt-1.5">
-            <p className="text-sm" style={{ color: "#8FAF96", height: 20, lineHeight: "20px", margin: 0 }}>
-              {timeLine}
-            </p>
-            <p className="text-[11px] mt-0.5" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.01em" }}>
-              {groupBadge}
-            </p>
+          <div className="mt-1.5 -mr-2">
+            <SplitFlapLine lines={flapLines} />
           </div>
         </div>
       </motion.div>

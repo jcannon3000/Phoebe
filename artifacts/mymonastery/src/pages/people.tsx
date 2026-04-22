@@ -260,7 +260,7 @@ function PersonCard({
                   color: iPrayFor ? "#A8C5A0" : "#F0EDE6",
                 }}
               >
-                🙏 {iPrayFor ? "View prayer" : "Start a prayer"}
+                🙏 {iPrayFor ? "View prayer" : "Write a prayer"}
               </button>
             </div>
           </div>
@@ -765,8 +765,24 @@ export default function People() {
     queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
     enabled: !!user,
   });
+  // Match the active-prayer-card filter below: on the final day (0 days
+  // left) we consider the prayer done, so the CTA resets to "Write a
+  // prayer". Otherwise a just-expired-but-unacknowledged prayer keeps
+  // saying "View prayer" even though the card beneath it disappeared.
   const iPrayForEmails = useMemo(
-    () => new Set(iPrayFor.filter(p => !p.expired).map(p => p.recipientEmail.toLowerCase())),
+    () => {
+      const now = new Date();
+      const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const set = new Set<string>();
+      for (const p of iPrayFor) {
+        if (p.expired) continue;
+        const expires = new Date(p.expiresAt);
+        const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+        const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
+        if (daysLeft > 0) set.add(p.recipientEmail.toLowerCase());
+      }
+      return set;
+    },
     [iPrayFor],
   );
   const prayForMeEmails = useMemo(

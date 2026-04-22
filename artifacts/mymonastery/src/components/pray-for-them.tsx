@@ -35,8 +35,21 @@ export function useMyPrayerForRecipient(recipientUserId: number | null | undefin
     queryKey: ["/api/prayers-for/mine"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
   });
+  // Match the People-page filter: on the final day (0 days left) the
+  // prayer is visually "done" even though the server hasn't marked it
+  // expired yet. Treating it as inactive here keeps the CTA ("Write a
+  // prayer") in sync with the card state on /people.
+  const now = new Date();
+  const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const match = recipientUserId
-    ? (query.data ?? []).find(p => p.recipientUserId === recipientUserId && !p.expired) ?? null
+    ? (query.data ?? []).find(p => {
+        if (p.recipientUserId !== recipientUserId) return false;
+        if (p.expired) return false;
+        const expires = new Date(p.expiresAt);
+        const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+        const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
+        return daysLeft > 0;
+      }) ?? null
     : null;
   return { prayer: match, isLoading: query.isLoading };
 }

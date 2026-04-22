@@ -848,6 +848,10 @@ export async function migrate() {
       CREATE UNIQUE INDEX IF NOT EXISTS uniq_group_service_schedule_group_id
       ON group_service_schedules (group_id)
     `);
+    // Back-compat: add the optional schedule-level `location` column for
+    // communities whose db predates it. Nullable because most schedules won't
+    // have a single place yet.
+    await run(client, `ALTER TABLE group_service_schedules ADD COLUMN IF NOT EXISTS location TEXT`);
 
     // ── Prayer Feeds (beta) ───────────────────────────────────────────────
     // A subscribable cause (e.g. "Climate Justice") where the creator

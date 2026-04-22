@@ -165,7 +165,7 @@ export default function PrayerForNew() {
                   value={text}
                   onChange={(e) => { setText(e.target.value.slice(0, 1000)); setError(""); }}
                   rows={8}
-                  placeholder={`Lord, I lift up ${firstName} today…`}
+                  placeholder={`Praying ${firstName} has a good day today…`}
                   className="w-full rounded-xl px-4 py-3.5 text-base outline-none resize-none mb-2"
                   style={{
                     background: "#0F2818",

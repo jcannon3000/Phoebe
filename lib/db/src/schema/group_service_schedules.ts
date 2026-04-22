@@ -24,6 +24,11 @@ export const groupServiceSchedulesTable = pgTable(
       .notNull()
       .references(() => groupsTable.id, { onDelete: "cascade" }),
     name: text("name").notNull().default("Sunday Services"),
+    // Schedule-level location — a single place for the whole day's services
+    // so the dashboard card can cycle it in its split-flap line. Per-time
+    // locations (inside `times`) still override when the 10am and 8am
+    // services happen in different sanctuaries.
+    location: text("location"),
     dayOfWeek: integer("day_of_week").notNull().default(0),
     times: jsonb("times").notNull().default([]),
     updatedByUserId: integer("updated_by_user_id")

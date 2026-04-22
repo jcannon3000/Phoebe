@@ -95,6 +95,11 @@ type ServiceScheduleRecord = {
   id: number;
   groupId: number;
   name: string;
+  // Schedule-level location (e.g. "Phoebe Chapel, 12 Elm St"). Shown on
+  // the dashboard card's rotating second line; admins set it in the
+  // edit form below. Per-time `location` still wins when it's set on a
+  // specific service.
+  location: string | null;
   dayOfWeek: number;
   times: Array<{ label: string; time: string; location?: string }>;
   updatedAt: string;
@@ -131,6 +136,7 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("Sunday Services");
+  const [location, setLocation] = useState("");
   const [dow, setDow] = useState(0);
   const [times, setTimes] = useState<ServiceTimeRow[]>([]);
 
@@ -139,10 +145,12 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
     if (!editing) return;
     if (schedule) {
       setName(schedule.name);
+      setLocation(schedule.location ?? "");
       setDow(schedule.dayOfWeek);
       setTimes(schedule.times.map(t => ({ label: t.label ?? "", time: t.time, location: t.location ?? "" })));
     } else {
       setName("Sunday Services");
+      setLocation("");
       setDow(0);
       setTimes([{ label: "", time: "10:00", location: "" }]);
     }
@@ -151,6 +159,8 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
   const saveMutation = useMutation({
     mutationFn: () => apiRequest("PUT", `/api/groups/${slug}/service-schedule`, {
       name: name.trim() || "Sunday Services",
+      // Send empty string as null so the DB clears any previous value.
+      location: location.trim().length > 0 ? location.trim() : null,
       dayOfWeek: dow,
       times: times
         .filter(t => /^\d{1,2}:\d{2}$/.test(t.time))
@@ -242,6 +252,17 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
         type="text"
         value={name}
         onChange={e => setName(e.target.value)}
+        className="w-full px-3 py-2 mb-3 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
+        style={{ color: "#F0EDE6" }}
+      />
+      <label className="block text-[11px] font-semibold uppercase mb-1" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.08em" }}>
+        Location
+      </label>
+      <input
+        type="text"
+        value={location}
+        onChange={e => setLocation(e.target.value)}
+        placeholder="e.g. Phoebe Chapel · 12 Elm St"
         className="w-full px-3 py-2 mb-3 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
         style={{ color: "#F0EDE6" }}
       />

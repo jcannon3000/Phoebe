@@ -2141,6 +2141,7 @@ router.get("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
         id: row.id,
         groupId: row.groupId,
         name: row.name,
+        location: row.location ?? null,
         dayOfWeek: row.dayOfWeek,
         times: normalizeServiceTimes(row.times),
         updatedAt: row.updatedAt.toISOString(),
@@ -2164,6 +2165,7 @@ router.put("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
 
     const schema = z.object({
       name: z.string().min(1).max(80).optional(),
+      location: z.string().max(200).nullable().optional(),
       dayOfWeek: z.number().int().min(0).max(6).optional(),
       times: z.array(z.object({
         label: z.string().max(80).optional(),
@@ -2176,6 +2178,12 @@ router.put("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
 
     const times = normalizeServiceTimes(parsed.data.times);
     const name = parsed.data.name?.trim() || "Sunday Services";
+    // Trim location; treat empty string as null so the DB doesn't hold
+    // whitespace that the split-flap would render as a blank slide.
+    const rawLocation = parsed.data.location;
+    const location = rawLocation == null
+      ? null
+      : (rawLocation.trim().length > 0 ? rawLocation.trim() : null);
     const dayOfWeek = parsed.data.dayOfWeek ?? 0;
     const now = new Date();
 
@@ -2185,6 +2193,7 @@ router.put("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
       .values({
         groupId: result.group.id,
         name,
+        location,
         dayOfWeek,
         times,
         updatedByUserId: user.id,
@@ -2192,7 +2201,7 @@ router.put("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
       })
       .onConflictDoUpdate({
         target: groupServiceSchedulesTable.groupId,
-        set: { name, dayOfWeek, times, updatedByUserId: user.id, updatedAt: now },
+        set: { name, location, dayOfWeek, times, updatedByUserId: user.id, updatedAt: now },
       })
       .returning();
 
@@ -2201,6 +2210,7 @@ router.put("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
         id: saved.id,
         groupId: saved.groupId,
         name: saved.name,
+        location: saved.location ?? null,
         dayOfWeek: saved.dayOfWeek,
         times: normalizeServiceTimes(saved.times),
         updatedAt: saved.updatedAt.toISOString(),
@@ -2252,6 +2262,7 @@ router.get("/me/service-schedules", async (req, res): Promise<void> => {
         id: groupServiceSchedulesTable.id,
         groupId: groupServiceSchedulesTable.groupId,
         name: groupServiceSchedulesTable.name,
+        location: groupServiceSchedulesTable.location,
         dayOfWeek: groupServiceSchedulesTable.dayOfWeek,
         times: groupServiceSchedulesTable.times,
         groupName: groupsTable.name,
@@ -2271,6 +2282,7 @@ router.get("/me/service-schedules", async (req, res): Promise<void> => {
         groupSlug: r.groupSlug,
         groupEmoji: r.groupEmoji,
         name: r.name,
+        location: r.location ?? null,
         dayOfWeek: r.dayOfWeek,
         times: normalizeServiceTimes(r.times),
       }))
