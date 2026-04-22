@@ -148,6 +148,11 @@ function Router() {
       <Route path="/communities/new" component={CommunityNewPage} />
       <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
+      {/* /metrics and /settings both land on CommunitySettingsPage; the
+          page reads the URL and pre-selects the correct tab. The standalone
+          CommunityMetricsPage is kept as the module that exports the
+          reusable MetricsDashboard — it's no longer rendered as a route. */}
+      <Route path="/communities/:slug/metrics" component={CommunitySettingsPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />

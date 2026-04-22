@@ -353,6 +353,97 @@ router.get("/groups/:slug", async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/groups/:slug/metrics — community analytics dashboard
+// Admin-only (scoped to this community) and beta-only for now. Surfaces
+// the rough health of the community: how many members, how many prayer
+// requests, how many amens, and distinct-users-praying windows.
+//
+// All counts are computed in a single raw-SQL round trip so adding a
+// metric later doesn't balloon into 10 Drizzle queries.
+router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  // Admin gate — scoped to this specific group.
+  const result = await requireAdmin(String(req.params.slug ?? ""), user.id);
+  if (!result) { res.status(403).json({ error: "Only group admins can view metrics" }); return; }
+
+  // Beta gate — any beta user (admin role not required here, just presence
+  // in beta_users). Keeps the feature flag consistent with the client-side
+  // `useBetaStatus().isBeta` check.
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, user.id));
+  if (!u) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const beta = await safeBetaLookup(u.email);
+  if (!beta) { res.status(403).json({ error: "Metrics are beta only for now" }); return; }
+
+  try {
+    const q = await pool.query(`
+      WITH now_range AS (
+        SELECT
+          date_trunc('day', now()) AS today_start,
+          (date_trunc('day', now()) - interval '6 days') AS week_start
+      ),
+      group_requests AS (
+        SELECT id, created_at, owner_id FROM prayer_requests WHERE group_id = $1
+      ),
+      group_amens AS (
+        SELECT a.id, a.user_id, a.prayed_at
+        FROM prayer_request_amens a
+        JOIN prayer_requests r ON a.request_id = r.id
+        WHERE r.group_id = $1
+      ),
+      -- Collapse multiple amens from the same user on the same calendar
+      -- day to a single row. This is the "times prayed" definition the
+      -- user asked for: tapping Amen five times in one afternoon is one
+      -- act of prayer, not five.
+      amens_per_user_day AS (
+        SELECT user_id, prayed_at::date AS day
+        FROM group_amens
+        GROUP BY user_id, prayed_at::date
+      )
+      SELECT
+        (SELECT COUNT(*) FROM group_members WHERE group_id = $1 AND joined_at IS NOT NULL)::int AS total_members,
+
+        (SELECT COUNT(*) FROM group_requests)::int AS prayer_requests_total,
+        (SELECT COUNT(*) FROM group_requests, now_range WHERE created_at >= today_start)::int AS prayer_requests_today,
+        (SELECT COUNT(*) FROM group_requests, now_range WHERE created_at >= week_start)::int AS prayer_requests_week,
+
+        -- "Times prayed" = one-per-user-per-day dedup. Matches user's
+        -- spec: "every time there's been an amen only one per day".
+        (SELECT COUNT(*) FROM amens_per_user_day)::int AS times_prayed_total,
+        (SELECT COUNT(*) FROM amens_per_user_day, now_range WHERE day >= today_start::date)::int AS times_prayed_today,
+        (SELECT COUNT(*) FROM amens_per_user_day, now_range WHERE day >= week_start::date)::int AS times_prayed_week,
+
+        -- Distinct users ("how many people have prayed") — same dedup
+        -- basis but unique on user_id.
+        (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day, now_range WHERE day >= today_start::date)::int AS prayed_today,
+        (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day, now_range WHERE day >= week_start::date)::int AS prayed_week,
+        (SELECT COUNT(DISTINCT user_id) FROM amens_per_user_day)::int AS prayed_all_time
+    `, [result.group.id]);
+    const row = q.rows[0] ?? {};
+    res.json({
+      groupName: result.group.name,
+      totalMembers: Number(row.total_members ?? 0),
+
+      prayedToday: Number(row.prayed_today ?? 0),
+      prayedThisWeek: Number(row.prayed_week ?? 0),
+      prayedAllTime: Number(row.prayed_all_time ?? 0),
+
+      prayerRequestsTotal: Number(row.prayer_requests_total ?? 0),
+      prayerRequestsToday: Number(row.prayer_requests_today ?? 0),
+      prayerRequestsThisWeek: Number(row.prayer_requests_week ?? 0),
+
+      // "times prayed" — one amen per user per day
+      timesPrayedTotal: Number(row.times_prayed_total ?? 0),
+      timesPrayedToday: Number(row.times_prayed_today ?? 0),
+      timesPrayedThisWeek: Number(row.times_prayed_week ?? 0),
+    });
+  } catch (err) {
+    console.error("[groups/metrics] query failed:", err);
+    res.status(500).json({ error: "Couldn't load metrics" });
+  }
+});
+
 // POST /api/groups/:slug/rotate-invite — regenerate the community-wide invite
 // token (admin only). Useful if the current link was shared too widely or the
 // admin wants to wall off new joiners without deleting existing memberships.
