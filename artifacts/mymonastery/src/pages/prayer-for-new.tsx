@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search as SearchIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { usePeople, usePersonProfile } from "@/hooks/usePeople";
+import { usePeople, usePersonProfile, type PersonSummary } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
 
@@ -353,14 +353,20 @@ function PersonPicker({
     [myPrayersFor],
   );
 
-  const filtered = useMemo(() => {
+  // Split results into two lists: people available to start a new
+  // prayer for, and people already being prayed for (shown faded as
+  // read-only reference — tapping one is a no-op to avoid duplicates).
+  const { available, alreadyPraying } = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const base = people.filter(p => !alreadyPrayingEmails.has(p.email.toLowerCase()));
-    if (!needle) return base;
-    return base.filter((p) =>
-      p.name.toLowerCase().includes(needle)
-      || p.email.toLowerCase().includes(needle),
-    );
+    const match = (p: PersonSummary) =>
+      !needle ||
+      p.name.toLowerCase().includes(needle) ||
+      p.email.toLowerCase().includes(needle);
+    const hits = people.filter(match);
+    return {
+      available: hits.filter(p => !alreadyPrayingEmails.has(p.email.toLowerCase())),
+      alreadyPraying: hits.filter(p => alreadyPrayingEmails.has(p.email.toLowerCase())),
+    };
   }, [people, q, alreadyPrayingEmails]);
 
   const title = q.trim() ? "Results" : "Suggested";
@@ -377,12 +383,15 @@ function PersonPicker({
         Search anyone in your fellowship, or pick a friend from the list below.
       </p>
 
-      {/* Search input */}
+      {/* Search input — no visible border or focus ring. The tinted
+          background alone signals the field; the outer highlight bar
+          that browsers add on focus was visible above the card and
+          felt like a selection-state glitch. */}
       <div
         className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-4"
         style={{
           background: "#0F2818",
-          border: "1.5px solid rgba(46,107,64,0.35)",
+          border: "1px solid transparent",
         }}
       >
         <SearchIcon size={16} style={{ color: "#8FAF96" }} />
@@ -392,7 +401,13 @@ function PersonPicker({
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name or email…"
           className="flex-1 bg-transparent text-base outline-none"
-          style={{ color: "#F0EDE6" }}
+          style={{
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', system-ui, -apple-system, sans-serif",
+            WebkitTapHighlightColor: "transparent",
+            WebkitAppearance: "none",
+            boxShadow: "none",
+          }}
           autoFocus
         />
       </div>
@@ -413,7 +428,7 @@ function PersonPicker({
         </div>
       )}
 
-      {!isLoading && filtered.length === 0 && (
+      {!isLoading && available.length === 0 && alreadyPraying.length === 0 && (
         <p className="text-sm italic mt-6 text-center" style={{ color: "rgba(143,175,150,0.6)" }}>
           {q.trim()
             ? "No one in your fellowship matches that yet."
@@ -421,9 +436,9 @@ function PersonPicker({
         </p>
       )}
 
-      {!isLoading && filtered.length > 0 && (
+      {!isLoading && available.length > 0 && (
         <div className="space-y-2">
-          {filtered.map((p) => (
+          {available.map((p) => (
             <button
               key={p.email}
               type="button"
@@ -463,6 +478,72 @@ function PersonPicker({
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Already praying for — muted list below the picker. Visible
+          so the viewer sees who's already covered, but non-tappable
+          (duplicate prayer-for rows are a soft-conflict). A muted
+          "🙏🏽" chip marks the reason on each row. */}
+      {!isLoading && alreadyPraying.length > 0 && (
+        <div className="mt-6">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2"
+            style={{ color: "rgba(143,175,150,0.4)" }}
+          >
+            Already praying for
+          </p>
+          <div className="space-y-2" style={{ opacity: 0.55 }}>
+            {alreadyPraying.map((p) => (
+              <div
+                key={p.email}
+                className="w-full flex items-center gap-3 p-3 rounded-xl"
+                style={{
+                  background: "rgba(15,40,24,0.55)",
+                  border: "1px solid rgba(46,107,64,0.18)",
+                }}
+              >
+                {p.avatarUrl ? (
+                  <img
+                    src={p.avatarUrl}
+                    alt={p.name}
+                    className="w-10 h-10 rounded-full object-cover shrink-0"
+                    style={{ border: "1px solid rgba(46,107,64,0.2)", filter: "grayscale(0.4)" }}
+                  />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+                    style={{ background: "#1A4A2E", color: "rgba(168,197,160,0.7)" }}
+                  >
+                    {p.name
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((w) => w[0]?.toUpperCase() ?? "")
+                      .join("")}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate" style={{ color: "rgba(240,237,230,0.8)" }}>
+                    {p.name}
+                  </p>
+                  <p className="text-xs truncate" style={{ color: "rgba(143,175,150,0.55)" }}>
+                    {p.email}
+                  </p>
+                </div>
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wide shrink-0 rounded-full px-2 py-0.5"
+                  style={{
+                    color: "rgba(168,197,160,0.75)",
+                    background: "rgba(46,107,64,0.18)",
+                    border: "1px solid rgba(46,107,64,0.25)",
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  🙏🏽 Praying
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </>
