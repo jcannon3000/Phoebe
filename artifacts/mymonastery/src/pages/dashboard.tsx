@@ -77,9 +77,16 @@ type Moment = {
   // "2 prayed Wednesday" on off-days.
   lastWindowDate?: string | null;
   lastWindowPostCount?: number | null;
-  // Fasting weekly stats (meat fasts)
+  // Fasting stats. weekFastCount/weekGallonsSaved drive the "this week"
+  // line; allTimeFastCount/allTimeGallonsSaved drive the "all time" line
+  // so the card can show both (meat fasts only for gallons). myLoggedToday
+  // flips the third flap line to a "Fasted today ✓" acknowledgment once
+  // the viewer has posted a check-in for today's fast window.
   weekFastCount?: number | null;
   weekGallonsSaved?: number | null;
+  allTimeFastCount?: number | null;
+  allTimeGallonsSaved?: number | null;
+  myLoggedToday?: boolean | null;
 };
 
 // ─── Category color system ──────────────────────────────────────────────────
@@ -724,12 +731,17 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   } else if (memberNames) subtitle = `with ${memberNames}`;
   else if (m.fastingFrom) subtitle = `Fasting from ${m.fastingFrom}`;
 
-  // Meat fast enrichment — water savings and weekly participation
+  // Meat fast enrichment — the flap now rotates through three lines that
+  // read top-to-bottom: this week's water saved, all time water saved, and
+  // either "Next fast on …" when today isn't a fast day or "Fasted today ✓"
+  // once the viewer has logged the current fast. The all-time line is what
+  // gives the card its long-horizon weight — the number grows forever, so
+  // even a single-person community still feels the impact accumulate.
   const meatFastWaterLine = isMeatFast && (m.weekGallonsSaved ?? 0) > 0
     ? `💧 ${(m.weekGallonsSaved ?? 0).toLocaleString()} gallons saved this week`
     : "";
-  const meatFastParticipationLine = isMeatFast && (m.weekFastCount ?? 0) > 0
-    ? `${m.weekFastCount} ${m.weekFastCount === 1 ? "person" : "people"} fasted this week`
+  const meatFastAllTimeLine = isMeatFast && (m.allTimeGallonsSaved ?? 0) > 0
+    ? `💧 ${(m.allTimeGallonsSaved ?? 0).toLocaleString()} gallons saved all time`
     : "";
 
   // Never repeat the card title as a fallback — also strip leading emoji + "For "
@@ -1922,6 +1934,18 @@ export default function Dashboard() {
   // we never re-trigger the popup within the same page load.
   const prayerInviteHandledThisSessionRef = useRef(false);
 
+  // Local copy of the prayer-streak query. React Query dedupes by key,
+  // so this shares the cache entry with the canonical declaration lower
+  // down in the component — no double fetch. We need `loggedToday` here
+  // (above the `prayerListDoneToday` computation) to gate the popup.
+  const { data: popupStreakData } = useQuery<{ loggedToday?: boolean }>({
+    queryKey: ["/api/prayer-streak"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const popupLoggedToday = popupStreakData?.loggedToday ?? false;
+
   useEffect(() => {
     if (!user) return;
     if (prayerInviteHandledThisSessionRef.current) return;
@@ -1933,14 +1957,32 @@ export default function Dashboard() {
     if (momentsLoading || dashPrayerRequestsLoading || dashPrayersForLoading || dashCircleIntentionsLoading) return;
 
     const today = todayLocalKey();
-    // Account-scoped gate via the user record — dismissing on desktop also
-    // silences the phone for the rest of the day.
-    if (user.prayerInviteLastShownDate === today) {
+
+    // Gate #1 — they've already prayed today. Don't pester. We also accept
+    // a fallback signal: every intercession in their moments list has a
+    // `todayPostCount > 0`, meaning the per-prayer check-ins landed even
+    // if POST /prayer-streak/log didn't.
+    const moments = momentsData?.moments ?? [];
+    const intercessions = moments.filter(m => m.templateType === "intercession");
+    const allIntercessionsPrayedToday =
+      intercessions.length > 0 && intercessions.every(m => (m.todayPostCount ?? 0) > 0);
+    if (popupLoggedToday || allIntercessionsPrayedToday) {
       prayerInviteHandledThisSessionRef.current = true;
       return;
     }
 
-    const moments = momentsData?.moments ?? [];
+    // Gate #2 — the popup was shown within the last 6 hours. Give them
+    // breathing room. The server stamps prayerInviteLastShownAt on every
+    // show so the cooldown is account-wide, not per-device.
+    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+    const lastShownAt = user.prayerInviteLastShownAt
+      ? Date.parse(user.prayerInviteLastShownAt)
+      : NaN;
+    if (Number.isFinite(lastShownAt) && Date.now() - lastShownAt < SIX_HOURS_MS) {
+      prayerInviteHandledThisSessionRef.current = true;
+      return;
+    }
+
     // A single prayer circle (intercession moment) can hold many intentions —
     // each intention is its own prayer in the slideshow. Count intentions
     // when they exist; only fall back to counting the circle itself for
@@ -1970,20 +2012,26 @@ export default function Dashboard() {
 
     if (total > 0) {
       // Stamp BEFORE show (fire-and-forget) so a tab-close / reload before
-      // dismiss still counts as "already shown today". This is the main
-      // guarantee that the popup appears at most once per calendar day.
+      // dismiss still starts the 6-hour cooldown. We send both the date
+      // (legacy) and let the server derive the timestamp from its own
+      // now() — skewed device clocks can't shorten or extend the cooldown.
+      const nowIso = new Date().toISOString();
       apiRequest("PATCH", "/api/auth/me/prayer-invite-shown", { date: today })
         .then(() => queryClient.setQueryData<typeof user>(["/api/auth/me"], prev =>
-          prev ? { ...prev, prayerInviteLastShownDate: today } : prev,
+          prev ? {
+            ...prev,
+            prayerInviteLastShownDate: today,
+            prayerInviteLastShownAt: nowIso,
+          } : prev,
         ))
         .catch(() => { /* best-effort; next load will try again */ });
       prayerInviteHandledThisSessionRef.current = true;
       setPrayerInviteCount(total);
       setPrayerInviteVisible(true);
     }
-    // If total === 0 we DON'T stamp — tomorrow's visit should still get a
-    // chance if the user has prayers queued by then.
-  }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, dashCircleIntentions, dashCircleIntentionsLoading, queryClient]);
+    // If total === 0 we DON'T stamp — a later visit in the same day with
+    // a queued prayer should still get a chance to see the popup.
+  }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, dashCircleIntentions, dashCircleIntentionsLoading, queryClient, popupLoggedToday]);
 
   // Correspondences — drives both the "you have a new letter" popup and
   // the letter cards mixed into the Today / This week / This month buckets.

@@ -934,6 +934,11 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_streak_count INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_streak_last_date TEXT`);
 
+    // Timestamp for the re-showing daily-prayer-list popup. Lets the
+    // dashboard re-offer the list every six hours of idle when the user
+    // still hasn't prayed — instead of the old once-per-day behavior.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_invite_last_shown_at TIMESTAMPTZ`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

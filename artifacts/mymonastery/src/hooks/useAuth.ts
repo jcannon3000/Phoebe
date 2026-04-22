@@ -12,6 +12,7 @@ export interface AuthUser {
   onboardingCompleted: boolean;
   dailyBellTime: string | null;
   prayerInviteLastShownDate: string | null;
+  prayerInviteLastShownAt: string | null;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

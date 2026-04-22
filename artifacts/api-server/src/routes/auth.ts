@@ -187,6 +187,7 @@ router.get("/auth/me", (req, res) => {
     correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
     onboardingCompleted: boolean; dailyBellTime: string | null;
     prayerInviteLastShownDate: string | null;
+    prayerInviteLastShownAt: Date | string | null;
   };
   res.json({
     id: u.id,
@@ -200,6 +201,13 @@ router.get("/auth/me", (req, res) => {
     onboardingCompleted: u.onboardingCompleted ?? false,
     dailyBellTime: u.dailyBellTime ?? null,
     prayerInviteLastShownDate: u.prayerInviteLastShownDate ?? null,
+    // ISO 8601 string the client parses with Date.parse() to compute
+    // hours-since-shown for the re-show gate.
+    prayerInviteLastShownAt: u.prayerInviteLastShownAt
+      ? (u.prayerInviteLastShownAt instanceof Date
+          ? u.prayerInviteLastShownAt.toISOString()
+          : String(u.prayerInviteLastShownAt))
+      : null,
   });
 });
 
@@ -244,25 +252,42 @@ router.patch("/auth/me/presence", async (req, res): Promise<void> => {
   res.json({ showPresence });
 });
 
-// PATCH /auth/me/prayer-invite-shown — stamp today's local date so the
-// daily prayer-slideshow popup is silenced for the rest of the day across
-// every device this account is signed into.
+// PATCH /auth/me/prayer-invite-shown — record that the daily prayer-list
+// popup was just shown. The dashboard re-shows it every 6 hours of idle
+// when the user still hasn't prayed, so we stamp a timestamp rather than
+// a date. We also keep the legacy date column in sync for any downstream
+// tool that still reads it.
 router.patch("/auth/me/prayer-invite-shown", async (req, res): Promise<void> => {
   if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
   const userId = (req.user as { id: number }).id;
-  const { date } = req.body as { date?: string };
-  // Accept YYYY-MM-DD in the client's local timezone — the server doesn't
-  // know the user's TZ reliably, so we trust the submitted date.
-  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    res.status(400).json({ error: "date must be YYYY-MM-DD" }); return;
-  }
+  const { date, at } = req.body as { date?: string; at?: string };
+
+  // Server-truth timestamp. Clients can submit `at` (ISO), but we ignore
+  // it and stamp now() so skewed device clocks can't extend the cooldown.
+  const nowIso = new Date().toISOString();
+  void at;
+
+  // Preserve the YYYY-MM-DD legacy column — still accepted so old builds
+  // can roll in gradually. If the client doesn't send one, derive from
+  // the current UTC date (close enough — the new gate uses the timestamp).
+  const today = (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
+    ? date
+    : nowIso.slice(0, 10);
+
   await db.update(usersTable)
-    .set({ prayerInviteLastShownDate: date } as Record<string, unknown>)
+    .set({
+      prayerInviteLastShownDate: today,
+      prayerInviteLastShownAt: new Date(nowIso),
+    } as Record<string, unknown>)
     .where(eq(usersTable.id, userId));
   if (req.user) {
-    (req.user as Record<string, unknown>).prayerInviteLastShownDate = date;
+    (req.user as Record<string, unknown>).prayerInviteLastShownDate = today;
+    (req.user as Record<string, unknown>).prayerInviteLastShownAt = nowIso;
   }
-  res.json({ prayerInviteLastShownDate: date });
+  res.json({
+    prayerInviteLastShownDate: today,
+    prayerInviteLastShownAt: nowIso,
+  });
 });
 
 // PATCH /auth/me/profile — update name and/or avatar

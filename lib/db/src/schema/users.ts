@@ -27,9 +27,15 @@ export const usersTable = pgTable("users", {
   bellCalendarEventId: text("bell_calendar_event_id"), // Google Calendar event ID for the daily bell
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   // Last local date (YYYY-MM-DD) we showed the daily prayer-slideshow invite
-  // popup on the dashboard. Account-scoped gate so dismissing on desktop
-  // also silences the phone for the rest of the day.
+  // popup on the dashboard. Kept for historical reference — the live gate
+  // is prayerInviteLastShownAt below, which re-shows the popup every six
+  // hours if the user still hasn't prayed.
   prayerInviteLastShownDate: text("prayer_invite_last_shown_date"),
+  // Timestamp of the last time the daily-prayer-list popup was shown.
+  // The dashboard gate is: if the user hasn't prayed today AND the
+  // popup was last shown more than 6 hours ago (or never), show it
+  // again. Server-truth so every device sees the same cooldown.
+  prayerInviteLastShownAt: timestamp("prayer_invite_last_shown_at", { withTimezone: true }),
   // Daily prayer-list streak. Incremented once per local-TZ day when the
   // user completes their prayer list; resets to 1 if a day is missed.
   // prayerStreakLastDate is YYYY-MM-DD in the user's timezone.
