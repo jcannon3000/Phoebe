@@ -353,7 +353,11 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
   if (!request) { res.status(404).json({ error: "Not found" }); return; }
   if (request.closedAt) { res.status(400).json({ error: "Request is closed" }); return; }
-  if (request.ownerId === sessionUserId) { res.json({ ok: true, skipped: "own request" }); return; }
+  // Owners used to be a no-op here ("feels self-congratulatory"), but
+  // that silently broke the community metrics dashboard — when an admin
+  // was the only person touching the community, every amen was dropped
+  // and the tiles stayed at zero. Every tap now records; the UI still
+  // gets to decide whether to surface the author's own amen count.
 
   await db.insert(prayerRequestAmensTable).values({
     requestId: id,
