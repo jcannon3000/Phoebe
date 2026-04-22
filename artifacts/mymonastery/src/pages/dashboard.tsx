@@ -1201,31 +1201,68 @@ function ServiceCard({
           </div>
 
           {/* Per-time pill row — each service time renders as its own
-              mini-card. Wraps onto multiple lines on narrow widths so
-              parishes with six Sunday services still read cleanly. */}
-          {schedule.times.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {schedule.times.map((t, i) => {
-                const label = t.label
-                  ? `${formatServiceTime(t.time)} · ${t.label}`
-                  : formatServiceTime(t.time);
-                return (
-                  <span
-                    key={`${t.time}-${i}`}
-                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                    style={{
-                      background: "rgba(46,107,64,0.2)",
-                      border: "1px solid rgba(46,107,64,0.3)",
-                      color: "#F0EDE6",
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    {label}
-                  </span>
-                );
-              })}
-            </div>
-          )}
+              mini-card. Small parishes (≤3 services) render a static
+              row; larger schedules (>3) switch to an auto-scroll
+              ticker so the card stays a single line no matter how
+              many Sunday services are offered. */}
+          {schedule.times.length > 0 && (() => {
+            const renderPill = (t: typeof schedule.times[number], key: string) => {
+              const label = t.label
+                ? `${formatServiceTime(t.time)} · ${t.label}`
+                : formatServiceTime(t.time);
+              return (
+                <span
+                  key={key}
+                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
+                  style={{
+                    background: "rgba(46,107,64,0.2)",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    color: "#F0EDE6",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {label}
+                </span>
+              );
+            };
+
+            if (schedule.times.length <= 3) {
+              return (
+                <div className="mt-2 flex flex-nowrap gap-1.5 overflow-hidden">
+                  {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
+                </div>
+              );
+            }
+            // Overflow case: duplicate the list and animate a -50%
+            // translateX for a seamless ticker loop.
+            const durationSec = Math.max(16, schedule.times.length * 5);
+            return (
+              <div
+                className="mt-2 relative overflow-hidden"
+                style={{
+                  maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+                  WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+                }}
+              >
+                <style>{`@keyframes service-times-scroll-${schedule.id} {
+                  from { transform: translateX(0) }
+                  to { transform: translateX(-50%) }
+                }`}</style>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    width: "max-content",
+                    animation: `service-times-scroll-${schedule.id} ${durationSec}s linear infinite`,
+                  }}
+                >
+                  {[...schedule.times, ...schedule.times].map((t, i) =>
+                    renderPill(t, `${t.time}-${i}`)
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
       </motion.div>
