@@ -477,45 +477,11 @@ export default function CommunityJoinPage() {
       ),
     });
 
-    // Slide — Praying together. Single mock of the app's Prayer List
-    // surface; the one "what you'll actually do" scene we show before
-    // signup. The rest of the tour (lectio, intercession, members+
-    // practices deep dives) moves to the post-signup community
-    // welcome so newcomers meet this specific group before the
-    // product tour starts.
-    s.push({
-      key: "praying-together",
-      node: (
-        <div className="text-center">
-          <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-            What praying together looks like
-          </p>
-          <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-            Prayer, held in common.
-          </h2>
-          <PrayerRequestsMock />
-          <p className="text-[11px] leading-relaxed mt-4" style={{ color: "rgba(143,175,150,0.75)" }}>
-            Everyone's intentions — members of {invite.group.name}, people you're praying for — gathered into one list you walk through once a day.
-          </p>
-        </div>
-      ),
-    });
-
-    // Slide N — Ready. Always last. Reveals the signup form on tap.
-    s.push({
-      key: "ready",
-      node: (
-        <div className="text-center">
-          <div className="text-5xl mb-5">✨</div>
-          <h2 className="text-2xl font-bold mb-3" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-            Ready to join?
-          </h2>
-          <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
-            Create a free Phoebe account — or sign in if you already have one — to step inside {invite.group.name}.
-          </p>
-        </div>
-      ),
-    });
+    // Intentionally the ONLY slide — the user asked to drop the
+    // "Prayer, held in common" mock slide and the "Ready to join"
+    // outro so newcomers go invitation → signup in a single beat.
+    // The full product tour (PrayerRequestsMock, practices deep
+    // dives) now lives post-signup inside the main onboarding flow.
 
     return s;
   }, [invite]);
