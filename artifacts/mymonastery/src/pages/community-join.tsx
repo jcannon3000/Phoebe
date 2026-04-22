@@ -775,8 +775,8 @@ export default function CommunityJoinPage() {
                     type="email"
                     value={invite.invitee?.email ?? ""}
                     disabled
-                    className="w-full px-4 py-3.5 rounded-xl text-sm opacity-70"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    className="w-full px-4 py-3.5 rounded-xl opacity-70"
+                    style={{ background: "#091A10", color: "#F0EDE6", fontSize: 16 }}
                   />
                 )}
                 <div className="relative">
@@ -873,8 +873,8 @@ export default function CommunityJoinPage() {
                     placeholder="First name"
                     value={firstName}
                     onChange={e => { setFirstName(e.target.value); setAuthError(""); }}
-                    className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    className="w-1/2 px-4 py-3.5 rounded-xl focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6", fontSize: 16 }}
                     autoComplete="given-name"
                     required
                     disabled={authSubmitting}
@@ -884,8 +884,8 @@ export default function CommunityJoinPage() {
                     placeholder="Last name"
                     value={lastName}
                     onChange={e => { setLastName(e.target.value); setAuthError(""); }}
-                    className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    className="w-1/2 px-4 py-3.5 rounded-xl focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6", fontSize: 16 }}
                     autoComplete="family-name"
                     required
                     disabled={authSubmitting}
@@ -909,8 +909,8 @@ export default function CommunityJoinPage() {
                     type="email"
                     value={invite.invitee?.email ?? ""}
                     disabled
-                    className="w-full px-4 py-3.5 rounded-xl text-sm opacity-70"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    className="w-full px-4 py-3.5 rounded-xl opacity-70"
+                    style={{ background: "#091A10", color: "#F0EDE6", fontSize: 16 }}
                   />
                 )}
 
