@@ -1437,11 +1437,24 @@ export default function CommunityDetailPage() {
             s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
 
           const renderMomentCard = (m: CommunityMoment, emoji: string) => {
-            const otherMembers = m.members
-              .filter((p) => p.email !== user.email)
-              .map((p) => p.name || p.email.split("@")[0])
-              .slice(0, 3)
-              .join(", ");
+            // Intercessions are now group-scoped, not people-scoped —
+            // show which communities this practice is shared with
+            // instead of listing individual members. We're already on
+            // this community's page, so skip our own group in the list
+            // and only surface OTHER groups it's also in (if any).
+            const allGroups = [
+              ...(m.group ? [m.group] : []),
+              ...(m.additionalGroups ?? []),
+            ];
+            const otherGroups = allGroups
+              .filter((g) => g.slug !== slug)
+              .map((g) => `${g.emoji ?? "🏘️"} ${g.name}`);
+            const alsoSharedLabel =
+              otherGroups.length === 0
+                ? null
+                : otherGroups.length === 1
+                  ? `Also shared with ${otherGroups[0]}`
+                  : `Also shared with ${otherGroups.slice(0, 2).join(", ")}${otherGroups.length > 2 ? ` +${otherGroups.length - 2}` : ""}`;
             const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
             const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
             const progressLabel = goal ? `${logged}/${goal} days` : null;
@@ -1489,8 +1502,8 @@ export default function CommunityDetailPage() {
                         )}
                       </div>
                     </div>
-                    {otherMembers && (
-                      <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
+                    {alsoSharedLabel && (
+                      <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>{alsoSharedLabel}</p>
                     )}
                   </div>
                 </div>
