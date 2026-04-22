@@ -496,54 +496,94 @@ function BellPreferences() {
           )}
         </div>
 
-        {/* Calendar status */}
-        {isActive && data?.calendarStatus && data.calendarStatus !== "none" && (
+        {/* Calendar status — green dot + "Active on your calendar" only
+            when the invite has actually been accepted. Every other
+            state (pending / tentative / missing event) is surfaced as
+            a warning line with a Resend action. */}
+        {isConfirmed && (
           <div className="mt-3 flex items-center gap-2">
-            <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{
-                background: data.calendarStatus === "active" ? "#4A9E6A"
-                  : data.calendarStatus === "declined" ? "#C17F7F"
-                  : "#C4A94D",
-              }}
-            />
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#4A9E6A" }} />
             <p className="text-[11px]" style={{ color: "#8FAF96" }}>
-              {data.calendarStatus === "active" && "Active on your calendar"}
-              {data.calendarStatus === "pending" && "Calendar invite sent — accept it in your email"}
-              {data.calendarStatus === "tentative" && "Marked as maybe — accept the invite to activate"}
+              Active on your calendar
             </p>
           </div>
         )}
-
-        {/* Invite-didn't-send warning. Bell is enabled in the DB but
-            no calendar event exists — Google Calendar was unreachable
-            at save time. Surface the failure with a one-tap retry so
-            users don't quietly sit with a dead bell. */}
-        {isActive && data?.calendarStatus === "none" && (
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#C17F7F" }} />
-              <p className="text-[11px]" style={{ color: "#C17F7F" }}>
-                Calendar invite didn't send — try again.
+        {hasCalendarIssue && (
+          <div className="mt-3 flex items-start gap-2">
+            <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: "#C4A94D" }} />
+            <div className="flex-1">
+              <p className="text-[11px] leading-snug" style={{ color: "#D8B858" }}>
+                {calendarStatus === "pending" && "Calendar invite sent, but not accepted yet. Check your email and tap Accept so the bell can ring."}
+                {calendarStatus === "tentative" && "You replied Maybe on the calendar invite. Switch to Accept so the bell rings reliably."}
+                {calendarStatus === "none" && "The bell is on, but we can't find a calendar invite. Resend it below."}
               </p>
+              <button
+                type="button"
+                onClick={() => resendMutation.mutate()}
+                disabled={resendMutation.isPending}
+                className="mt-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
+                style={{ color: "#F0EDE6", background: "rgba(46,107,64,0.25)", border: "1px solid rgba(46,107,64,0.45)" }}
+              >
+                {resendMutation.isPending ? "Sending…" : "Resend invite"}
+              </button>
             </div>
-            <button
-              onClick={() =>
-                apiRequest("PUT", "/api/bell/preferences", {
-                  bellEnabled: true,
-                  dailyBellTime: data?.dailyBellTime ?? "07:00",
-                  timezone: data?.timezone ?? "America/New_York",
-                })
-                  .then(() => queryClient.invalidateQueries({ queryKey: ["/api/bell/preferences"] }))
-              }
-              className="text-[11px] font-medium px-3 py-1 rounded-full shrink-0"
-              style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
-            >
-              Retry
-            </button>
           </div>
         )}
       </SettingsCard>
+
+      {/* One-shot nudge popup when the bell is misconfigured. Shows
+          once per distinct status; dismissal is stored in localStorage
+          keyed by status so if the state changes later we'll surface
+          the new issue. */}
+      {issueModalStatus && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
+          style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+          onClick={dismissIssue}
+        >
+          <div
+            className="rounded-2xl px-7 pt-7 pb-6 text-center max-w-sm w-full"
+            style={{ background: "#0F2818", border: "1px solid rgba(196,169,77,0.45)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-4xl mb-3">🔔</p>
+            <h2
+              className="text-lg font-bold mb-2"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              Your bell isn't ringing yet
+            </h2>
+            <p className="text-sm leading-relaxed mb-5" style={{ color: "#C8D4C0" }}>
+              {issueModalStatus === "pending" &&
+                "We sent a calendar invite but you haven't accepted it. Accept it in your email and the bell will start ringing daily."}
+              {issueModalStatus === "tentative" &&
+                "You replied Maybe on the invite. Switch to Accept so the bell rings on time every day."}
+              {issueModalStatus === "none" &&
+                "Your bell is turned on, but we can't see a calendar event on your side. Resend the invite to fix it."}
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => { resendMutation.mutate(); dismissIssue(); }}
+                disabled={resendMutation.isPending}
+                className="px-6 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                {resendMutation.isPending ? "Sending…" : "Resend invite"}
+              </button>
+              <button
+                type="button"
+                onClick={dismissIssue}
+                className="text-xs transition-opacity hover:opacity-80"
+                style={{ color: "rgba(143,175,150,0.6)" }}
+              >
+                I'll handle this later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 }

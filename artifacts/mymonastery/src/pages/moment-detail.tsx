@@ -256,6 +256,118 @@ const STATUS_ICON: Record<string, string> = { bloom: "🌸", solo: "👤", withe
 const STATUS_LABEL: Record<string, string> = { bloom: "Bloomed", solo: "Solo", wither: "Withered" };
 const STATUS_COLOR: Record<string, string> = { bloom: "text-[#5C7A5F]", solo: "text-amber-600", wither: "text-rose-400/80" };
 
+// ─── Prayed-this-week ticker ─────────────────────────────────────────────
+// Renders the row of "who's prayed this week" avatar pills. Measures the
+// content width on mount / resize; only enables the marquee animation
+// when the pills actually overflow the container. A short list that
+// already fits just sits there statically — no motion, no duplicate
+// copy needed for the seam.
+
+function PrayedThisWeekRow({
+  logs,
+}: {
+  logs: Array<{ email: string; name?: string | null; avatarUrl?: string | null }>;
+}) {
+  const outerRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    const measure = () => {
+      // scrollWidth of the inner list vs clientWidth of the container.
+      // When the measured run is the duplicated version, we divide by
+      // 2 so the comparison is against a single copy. Detect that
+      // case via the current `overflows` state — if we're already
+      // showing the doubled list, inner.scrollWidth is ~2× the real.
+      const innerWidth = overflows ? inner.scrollWidth / 2 : inner.scrollWidth;
+      setOverflows(innerWidth > outer.clientWidth + 4);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(outer);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [logs, overflows]);
+
+  // Render the real list, and only when it overflows render a second
+  // copy for the seamless marquee loop.
+  const rendered = overflows ? [...logs, ...logs] : logs;
+
+  return (
+    <div
+      className="rounded-2xl px-4 py-3"
+      style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
+    >
+      <p className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-2" style={{ letterSpacing: "0.12em" }}>
+        Prayed this week
+      </p>
+      {overflows && (
+        <style>{`
+          @keyframes prayed-ticker-scroll {
+            from { transform: translateX(0) }
+            to   { transform: translateX(-50%) }
+          }
+          .prayed-ticker:hover > div { animation-play-state: paused; }
+        `}</style>
+      )}
+      <div
+        ref={outerRef}
+        className="relative overflow-hidden prayed-ticker"
+        style={
+          overflows
+            ? {
+                maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+                WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+              }
+            : undefined
+        }
+      >
+        <div
+          ref={innerRef}
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "nowrap",
+            width: overflows ? "max-content" : undefined,
+            animation: overflows
+              ? `prayed-ticker-scroll ${Math.max(18, logs.length * 6)}s linear infinite`
+              : undefined,
+          }}
+        >
+          {rendered.map((p, i) => (
+            <div
+              key={`${p.email}-${i}`}
+              className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 shrink-0"
+              style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
+            >
+              {p.avatarUrl ? (
+                <img
+                  src={p.avatarUrl}
+                  alt=""
+                  className="w-6 h-6 rounded-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                  style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
+                >
+                  {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="text-xs text-foreground whitespace-nowrap">
+                {p.name || p.email.split("@")[0]}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MomentDetail() {
@@ -984,69 +1096,13 @@ export default function MomentDetail() {
                   </div>
                 </div>
 
-                {/* Prayed this week — auto-scrolling ticker. The full
-                    pill row is duplicated inline so the CSS keyframe can
-                    translate from 0 → -50% and seam perfectly. Linear
-                    timing at a calm pace (~36s for a full pass). Pause on
-                    hover so a member trying to read a name can catch it. */}
+                {/* Prayed this week — auto-scrolling ticker ONLY when
+                    the pills overflow the container width. If the row
+                    fits, render once statically with no animation. The
+                    duplicated copy + translate-to-(-50%) seam trick
+                    only kicks in when we've measured real overflow. */}
                 {prayedWeekLogs.length > 0 ? (
-                  <div
-                    className="rounded-2xl px-4 py-3"
-                    style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
-                  >
-                    <p className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-2" style={{ letterSpacing: "0.12em" }}>
-                      Prayed this week
-                    </p>
-                    <style>{`
-                      @keyframes prayed-ticker-scroll {
-                        from { transform: translateX(0) }
-                        to   { transform: translateX(-50%) }
-                      }
-                      .prayed-ticker:hover > div { animation-play-state: paused; }
-                    `}</style>
-                    <div
-                      className="relative overflow-hidden prayed-ticker"
-                      style={{
-                        maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-                        WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          width: "max-content",
-                          animation: `prayed-ticker-scroll ${Math.max(18, prayedWeekLogs.length * 6)}s linear infinite`,
-                        }}
-                      >
-                        {[...prayedWeekLogs, ...prayedWeekLogs].map((p, i) => (
-                          <div
-                            key={`${p.email}-${i}`}
-                            className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 shrink-0"
-                            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
-                          >
-                            {p.avatarUrl ? (
-                              <img
-                                src={p.avatarUrl}
-                                alt=""
-                                className="w-6 h-6 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
-                                style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
-                              >
-                                {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <span className="text-xs text-foreground whitespace-nowrap">
-                              {p.name || p.email.split("@")[0]}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <PrayedThisWeekRow logs={prayedWeekLogs} />
                 ) : (
                   <p className="text-xs text-muted-foreground italic">No one has prayed this week yet.</p>
                 )}
@@ -1696,8 +1752,13 @@ export default function MomentDetail() {
                 </motion.div>
               )}
 
-              {/* Members — creator can remove */}
-              {isCreator && members.length > 1 && (
+              {/* Members — creator can remove. Hidden entirely for
+                  group-scoped practices: the roster is the community
+                  membership, edited on the community page, not here.
+                  Showing (and letting the creator edit) a parallel
+                  list was confusing and let the two sources of truth
+                  drift apart. */}
+              {isCreator && !moment.group && members.length > 1 && (
                 <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   <p className="text-sm font-medium text-foreground mb-3">Members</p>
                   <div className="space-y-2">

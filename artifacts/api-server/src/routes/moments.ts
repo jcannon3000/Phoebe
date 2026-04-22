@@ -1398,12 +1398,37 @@ router.get("/moments", async (req, res): Promise<void> => {
     const registeredEmails = new Set(registeredUsers.map(u => u.email.toLowerCase()));
     const avatarByEmailList = new Map(registeredUsers.map(u => [u.email.toLowerCase(), u.avatarUrl]));
 
-    // Batch-fetch group info for all group-linked practices
-    const groupIds = [...new Set(flatMoments.map(m => m.groupId).filter((id): id is number => id !== null))];
+    // Batch-fetch group info for all group-linked practices. "Linked"
+    // means either via the primary sharedMoments.group_id OR via the
+    // moment_groups junction (multi-group intercessions). Both sources
+    // need to be represented in the response so the community-home
+    // filter (m.group?.slug === slug || m.additionalGroups[].slug)
+    // can find a moment that was attached post-creation to a second
+    // community.
+    const flatMomentIds = flatMoments.map(m => m.id);
+    const extraLinkRows = flatMomentIds.length > 0
+      ? await db.select().from(momentGroupsTable).where(inArray(momentGroupsTable.momentId, flatMomentIds))
+      : [];
+    const primaryIds = flatMoments.map(m => m.groupId).filter((id): id is number => id !== null);
+    const extraIds = extraLinkRows.map(r => r.groupId);
+    const groupIds = [...new Set([...primaryIds, ...extraIds])];
     const groupMap = new Map<number, { id: number; name: string; slug: string; emoji: string | null }>();
     if (groupIds.length > 0) {
       const groups = await db.select().from(groupsTable).where(inArray(groupsTable.id, groupIds));
       for (const g of groups) groupMap.set(g.id, { id: g.id, name: g.name, slug: g.slug, emoji: g.emoji });
+    }
+    // momentId → additional groups (excluding the primary if the
+    // junction row duplicates it, which shouldn't happen but costs
+    // nothing to guard).
+    const additionalGroupsByMomentId = new Map<number, Array<{ id: number; name: string; slug: string; emoji: string | null }>>();
+    for (const link of extraLinkRows) {
+      const g = groupMap.get(link.groupId);
+      if (!g) continue;
+      const primaryForMoment = flatMoments.find(m => m.id === link.momentId)?.groupId ?? null;
+      if (primaryForMoment === link.groupId) continue;
+      const arr = additionalGroupsByMomentId.get(link.momentId) ?? [];
+      if (!arr.some(x => x.id === g.id)) arr.push(g);
+      additionalGroupsByMomentId.set(link.momentId, arr);
     }
 
     // Derive an "effective group" for practices that don't have groupId
@@ -1706,6 +1731,7 @@ router.get("/moments", async (req, res): Promise<void> => {
         return {
           ...m,
           group: m.groupId ? groupMap.get(m.groupId) ?? null : effectiveGroupByMomentId.get(m.id) ?? null,
+          additionalGroups: additionalGroupsByMomentId.get(m.id) ?? [],
           memberCount: allMembers.length,
           members: allMembers.map(t => ({
             name: t.name,
@@ -1775,6 +1801,7 @@ router.get("/moments", async (req, res): Promise<void> => {
         return {
           ...m,
           group: m.groupId ? groupMap.get(m.groupId) ?? null : effectiveGroupByMomentId.get(m.id) ?? null,
+          additionalGroups: additionalGroupsByMomentId.get(m.id) ?? [],
           memberCount: 0,
           members: [],
           todayPostCount: 0,
