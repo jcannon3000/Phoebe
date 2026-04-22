@@ -1684,7 +1684,12 @@ export default function CommunityDetailPage() {
                   Intercessions so it reads as "here's the pulse of the
                   community." Dormant (nothing rendered) when no one has
                   prayed this week yet. */}
-              <PrayedThisWeekTicker slug={slug!} />
+              {/* PrayedThisWeekTicker intentionally not rendered right
+                  now — user asked to take the section out while we
+                  work through the dedupe + motion behaviour. The
+                  component is still defined above so re-enabling is a
+                  one-line change. */}
+              {null}
 
               {/* Gatherings — Sunday Service card. Uses the same pill-
                   based visual as the home dashboard's ServiceCard so the

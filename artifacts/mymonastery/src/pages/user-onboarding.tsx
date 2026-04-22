@@ -766,8 +766,12 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
       if (!preview) {
         await apiRequest("POST", "/api/prayer-requests", { body: text.trim() });
       }
+      // Skip the intermediate "🌿 Your community will hold this" slide
+      // per user request — they only want the single Welcome beat
+      // between the form and the home screen. `submitted` is still
+      // set so the Welcome slide can read it and show the tagline.
       setSubmitted(true);
-      setTimeout(() => setDone(true), 1500);
+      setDone(true);
     } catch {
       setSubmitting(false);
     }
