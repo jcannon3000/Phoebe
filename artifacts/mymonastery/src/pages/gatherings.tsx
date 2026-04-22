@@ -38,7 +38,7 @@ interface ICalEvent {
 
 interface TimelineEvent {
   key: string;
-  kind: "phoebe" | "ical";
+  kind: "phoebe" | "ical" | "service";
   date: Date;
   startStr: string;
   endStr?: string;
@@ -50,6 +50,20 @@ interface TimelineEvent {
   colorHex?: string | null;
   participants?: string;
   allDay?: boolean;
+}
+
+// Mirror of the dashboard's ServiceSchedule type — kept narrow to just
+// what the timeline needs. One schedule expands to one timeline entry
+// per service time on its next occurrence.
+interface GatheringsServiceSchedule {
+  id: number;
+  name: string | null;
+  dayOfWeek: number; // 0 = Sunday
+  groupName: string;
+  groupSlug: string;
+  groupEmoji: string | null;
+  location: string | null;
+  times: Array<{ time: string; label: string | null; location: string | null }>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -66,6 +80,18 @@ function dateGroupLabel(d: Date): string {
 function timeStr(iso: string, allDay: boolean): string {
   if (allDay) return "All day";
   try { return format(parseISO(iso), "h:mm a"); } catch { return ""; }
+}
+
+// Format an "HH:mm" time (as stored on service schedules) to "8:00 AM".
+// The whole-day anchor differs from timeStr above which expects an ISO.
+function formatHHMM(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(":");
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const suffix = h >= 12 ? "PM" : "AM";
+  h = ((h + 11) % 12) + 1;
+  return `${h}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
 function rhythmLabel(r: any): string {
@@ -218,6 +244,18 @@ export default function GatheringsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Community service schedules — the Sunday-services cards on the
+  // dashboard. Previously only surfaced there; now also in the unified
+  // Gatherings timeline so "every event from every community I'm in"
+  // is readable in one place.
+  const { data: serviceSchedulesData } = useQuery<{ schedules: GatheringsServiceSchedule[] }>({
+    queryKey: ["/api/me/service-schedules"],
+    queryFn: () => apiRequest("GET", "/api/me/service-schedules"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const serviceSchedules = serviceSchedulesData?.schedules ?? [];
+
   // Only group admins get the "+" FAB — starting a gathering belongs to the
   // admin role, not general membership.
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
@@ -279,6 +317,39 @@ export default function GatheringsPage() {
       colorHex: ev.colorHex,
       allDay: ev.allDay,
     });
+  }
+
+  // Community service schedules — each schedule expands into one entry
+  // per service time on its next occurrence. "Sunday 8am", "Sunday
+  // 10am", "Sunday 5pm" read as three separate rows on the timeline so
+  // a user can see every service their community is offering.
+  for (const s of serviceSchedules) {
+    if (!s.times.length) continue;
+    const next = (() => {
+      const d = startOfDay(new Date());
+      const diff = (s.dayOfWeek - d.getDay() + 7) % 7;
+      return addDays(d, diff);
+    })();
+    const scheduleName = s.name || "Sunday Services";
+    for (const t of s.times) {
+      // Parse the HH:mm into a Date anchored on `next` so sorting and
+      // "Today / Tomorrow" grouping works the same as iCal events.
+      const [hStr, mStr] = t.time.split(":");
+      const h = parseInt(hStr, 10);
+      const m = parseInt(mStr, 10);
+      const when = new Date(next);
+      if (Number.isFinite(h) && Number.isFinite(m)) when.setHours(h, m, 0, 0);
+      events.push({
+        key: `service-${s.id}-${t.time}`,
+        kind: "service",
+        date: when,
+        startStr: formatHHMM(t.time),
+        title: t.label ? `${scheduleName} · ${t.label}` : scheduleName,
+        subtitle: `${s.groupEmoji ?? "⛪"} ${s.groupName}`,
+        location: t.location || s.location,
+        href: `/communities/${s.groupSlug}`,
+      });
+    }
   }
 
   events.sort((a, b) => a.date.getTime() - b.date.getTime());
