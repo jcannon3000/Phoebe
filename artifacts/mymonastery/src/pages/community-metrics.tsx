@@ -103,17 +103,59 @@ export function MetricsDashboard({ slug }: { slug: string }) {
   }
 
   if (error || !data) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
     return (
       <div className="py-10 text-center">
-        <p className="text-sm" style={{ color: "#8FAF96", fontFamily: FONT }}>
-          Couldn't load metrics. Try refreshing.
+        <p className="text-sm mb-3" style={{ color: "#8FAF96", fontFamily: FONT }}>
+          Couldn't load metrics.
+        </p>
+        <p
+          className="text-[11px] mx-auto max-w-md rounded-lg px-3 py-2 text-left"
+          style={{
+            color: "rgba(143,175,150,0.75)",
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            background: "rgba(0,0,0,0.25)",
+            border: "1px solid rgba(143,175,150,0.25)",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {msg}
         </p>
       </div>
     );
   }
 
+  // Zero-activity hint: differentiates "no one has prayed yet" from a
+  // broken endpoint (which shows the error block above instead). Only
+  // surfaces when every actionable count is 0 — an empty community is
+  // common right after launch.
+  const allZero =
+    data.prayedToday === 0 &&
+    data.prayedThisWeek === 0 &&
+    data.prayedAllTime === 0 &&
+    data.prayerRequestsTotal === 0 &&
+    data.timesPrayedTotal === 0;
+
   return (
     <div>
+      {allZero && (
+        <div
+          className="rounded-xl px-4 py-3 mb-6"
+          style={{
+            background: "rgba(46,107,64,0.08)",
+            border: "1px dashed rgba(46,107,64,0.35)",
+          }}
+        >
+          <p className="text-xs leading-relaxed" style={{ color: "#8FAF96", fontFamily: FONT }}>
+            No activity in this community yet. Metrics start filling in
+            once members post prayer requests and tap Amen on each
+            other's. Only amens from other members count — you can't
+            amen your own request.
+          </p>
+        </div>
+      )}
+
       {/* People praying — the headline metric */}
       <SectionHeader label="People praying" />
       <div className="grid grid-cols-3 gap-3 mb-8">
