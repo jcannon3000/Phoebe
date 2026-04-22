@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useLocation, useSearch, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 // Communities are now available to all users
 import { Layout } from "@/components/layout";
@@ -603,6 +604,85 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
   );
 }
 
+// ─── Community prayer compose bar ────────────────────────────────────────
+// Mirrors the /prayer-list compose bar, but scoped to this community —
+// posts directly to `POST /api/groups/:slug/prayer-requests`. Sits at
+// the bottom of the community home tab so sharing a request feels just
+// as immediate as the app-wide compose. No "for me / for someone else"
+// popup here — inside a community the submission is always "share
+// with this community", which matches how the existing Prayer Wall tab
+// compose already behaves.
+
+function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupName: string }) {
+  const queryClient = useQueryClient();
+  const [value, setValue] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const createRequest = useMutation({
+    mutationFn: (body: string) =>
+      apiRequest("POST", `/api/groups/${slug}/prayer-requests`, { body }),
+    onSuccess: () => {
+      setValue("");
+      setSaved(true);
+      // Auto-fade the confirmation so the bar returns to its idle state.
+      setTimeout(() => setSaved(false), 2400);
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "prayer-requests"] });
+    },
+  });
+
+  const submit = () => {
+    const trimmed = value.trim();
+    if (!trimmed || createRequest.isPending) return;
+    createRequest.mutate(trimmed);
+  };
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-3 mb-2">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
+          Share a prayer request
+        </h2>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          placeholder="Share a prayer... 🌿"
+          maxLength={1000}
+          disabled={createRequest.isPending}
+          className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
+          style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6", fontFamily: FONT }}
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!value.trim() || createRequest.isPending}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+          style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          🙏🏽
+        </button>
+      </div>
+      <AnimatePresence>
+        {saved && (
+          <motion.p
+            initial={{ opacity: 0, y: -2 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="text-xs mt-2"
+            style={{ color: "#A8C5A0", fontFamily: FONT }}
+          >
+            ✓ Shared with {groupName}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function CommunityDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
@@ -915,7 +995,12 @@ export default function CommunityDetailPage() {
               )}
               <p className="text-xs mt-1.5" style={{ color: "rgba(143,175,150,0.5)" }}>
                 {(() => {
-                  const joinedCount = members.filter(m => m.joinedAt !== null).length;
+                  // Hidden admins are invisible observers — don't count
+                  // them in the public roster count, even for admins
+                  // looking at their own community. Keeps the headline
+                  // honest about how many people the community will
+                  // *feel* like it has.
+                  const joinedCount = members.filter(m => m.joinedAt !== null && m.role !== "hidden_admin").length;
                   return `${joinedCount} ${joinedCount === 1 ? "member" : "members"}`;
                 })()}
               </p>
@@ -1632,6 +1717,12 @@ export default function CommunityDetailPage() {
                   Nothing here yet.{isAdmin ? " Start a practice, gathering, or announcement from the tabs above." : ""}
                 </p>
               )}
+
+              {/* Bottom-of-home prayer compose — same pattern as the
+                  /prayer-list compose bar, but scoped to this community.
+                  Always visible on the home tab so a member can drop a
+                  prayer without first hunting for the Prayer Wall tab. */}
+              <CommunityPrayerComposeBar slug={slug!} groupName={group.name} />
             </div>
           );
         })()}

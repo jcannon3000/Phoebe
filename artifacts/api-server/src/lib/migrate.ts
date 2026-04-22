@@ -950,6 +950,22 @@ export async function migrate() {
     // had that closing moment acknowledged.
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS release_popup_seen_at TIMESTAMPTZ`);
 
+    // Additional-groups junction for intercessions: a moment can show up
+    // in multiple communities' home feeds without duplicating the row.
+    // Primary ownership still lives on shared_moments.group_id; this
+    // table only lists the "also visible from" groups.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS moment_groups (
+        id SERIAL PRIMARY KEY,
+        moment_id INTEGER NOT NULL REFERENCES shared_moments(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (moment_id, group_id)
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_groups_moment ON moment_groups(moment_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_groups_group ON moment_groups(group_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

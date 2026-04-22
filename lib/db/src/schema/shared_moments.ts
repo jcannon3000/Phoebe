@@ -102,3 +102,15 @@ export const momentStreakDaysTable = pgTable("moment_streak_days", {
   bloomed: boolean("bloomed").notNull().default(false),
   evaluatedAt: timestamp("evaluated_at", { withTimezone: true }),
 });
+
+// Additional groups an intercession is shared with, beyond the primary
+// sharedMomentsTable.groupId. A row here means "this moment shows up in
+// this group's community view and contributes to this group's metrics".
+// The primary groupId is NOT duplicated here — treat it as the "owner"
+// group and this table as "also visible from".
+export const momentGroupsTable = pgTable("moment_groups", {
+  id: serial("id").primaryKey(),
+  momentId: integer("moment_id").notNull().references(() => sharedMomentsTable.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").notNull().references(() => groupsTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

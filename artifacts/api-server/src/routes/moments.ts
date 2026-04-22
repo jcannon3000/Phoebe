@@ -6,7 +6,7 @@ import {
   db, ritualsTable, inviteTokensTable, usersTable, meetupsTable,
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
-  lectioReflectionsTable, groupsTable, groupMembersTable,
+  lectioReflectionsTable, groupsTable, groupMembersTable, momentGroupsTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
@@ -648,6 +648,10 @@ const StandalonePlantSchema = z.object({
   listeningManual: z.boolean().optional(),
   // Group practice — only group admins can create
   groupId: z.number().int().positive().optional(),
+  // Additional groups an intercession is shared with. Each must be a
+  // group where the creator is an admin. Stored in moment_groups
+  // (primary ownership stays on shared_moments.group_id).
+  additionalGroupIds: z.array(z.number().int().positive()).max(10).optional(),
 });
 
 router.post("/moments", async (req, res): Promise<void> => {
@@ -661,7 +665,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return;
   }
 
-  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual, groupId } = parsed.data;
+  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual, groupId, additionalGroupIds } = parsed.data;
 
   // ── Group practice validation — only admins can create ──
   let groupMembers: Array<{ email: string; name: string }> | null = null;
