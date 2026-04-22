@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useLocation, useSearch, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 // Communities are now available to all users
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
+import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -359,13 +360,110 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
   );
 }
 
+// ─── Service-time pill row ────────────────────────────────────────────────
+// One pill per service time, rendered on a single line. When the row
+// overflows the container width (narrow phone + many times) we switch to
+// an auto-scroll ticker so the pills stay legible instead of wrapping or
+// clipping. Mirrors the dashboard's ServiceTimesPillRow verbatim so the
+// card looks identical to the one on the home screen.
+function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const measure = () => {
+      const container = containerRef.current;
+      const inner = innerRef.current;
+      if (!container || !inner) return;
+      // 2px slack to absorb subpixel rounding — only switch to ticker mode
+      // when it's really necessary, not on a 1px hair.
+      setIsOverflowing(inner.scrollWidth > container.clientWidth + 2);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [schedule.times.length]);
+
+  const renderPill = (t: ServiceScheduleRecord["times"][number], key: string) => {
+    const label = t.label ? `${formatHM12(t.time)} · ${t.label}` : formatHM12(t.time);
+    return (
+      <span
+        key={key}
+        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
+        style={{
+          background: "rgba(46,107,64,0.2)",
+          border: "1px solid rgba(46,107,64,0.3)",
+          color: "#F0EDE6",
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {label}
+      </span>
+    );
+  };
+
+  if (isOverflowing) {
+    const durationSec = Math.max(16, schedule.times.length * 5);
+    return (
+      <div
+        className="mt-2 relative overflow-hidden"
+        style={{
+          maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+          WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+        }}
+      >
+        <style>{`@keyframes community-service-times-scroll-${schedule.id} {
+          from { transform: translateX(0) }
+          to { transform: translateX(-50%) }
+        }`}</style>
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            width: "max-content",
+            animation: `community-service-times-scroll-${schedule.id} ${durationSec}s linear infinite`,
+          }}
+        >
+          {[...schedule.times, ...schedule.times].map((t, i) =>
+            renderPill(t, `${t.time}-${i}`),
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="mt-2 overflow-hidden">
+      <div ref={innerRef} className="flex flex-nowrap gap-1.5">
+        {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Community home — Sunday Service card ──────────────────────────────────
 // Pill-based card that mirrors the home dashboard's `ServiceCard` visual so
 // the community home tab reads as a scoped sibling of the main home screen.
 // Fetches the same `/api/groups/:slug/service-schedule` endpoint the
 // Gatherings tab uses. Renders nothing when the community hasn't set up a
 // schedule yet — keeps the home tab quiet for new communities.
-function CommunityServiceHomeCard({ slug, onOpen }: { slug: string; onOpen: () => void }) {
+function CommunityServiceHomeCard({
+  slug,
+  groupName,
+  groupEmoji,
+  onOpen,
+}: {
+  slug: string;
+  groupName: string;
+  groupEmoji: string | null;
+  onOpen: () => void;
+}) {
   const { data } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
     queryKey: ["/api/groups", slug, "service-schedule"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
@@ -382,11 +480,7 @@ function CommunityServiceHomeCard({ slug, onOpen }: { slug: string; onOpen: () =
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
         Gatherings
       </p>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="block w-full text-left"
-      >
+      <button type="button" onClick={onOpen} className="block w-full text-left">
         <div
           className="relative flex rounded-xl overflow-hidden"
           style={{
@@ -402,45 +496,20 @@ function CommunityServiceHomeCard({ slug, onOpen }: { slug: string; onOpen: () =
               <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
                 🙌🏽 {title}
               </span>
-              {/* Day-of-week eyebrow — same slot the dashboard card uses for
-                  the community name. Here we already know the community, so
-                  we repurpose the slot for "when" instead. */}
+              {/* Top-right eyebrow — matches the dashboard card, which puts
+                  the community's emoji + name here. Same slot, same look,
+                  even though the user is already inside that community. */}
               <span
                 className="text-[10px] font-semibold uppercase shrink-0 mt-1"
                 style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
               >
-                {dayLabel}
+                {groupEmoji ?? "⛪"} {groupName}
               </span>
             </div>
 
-            {/* One pill per service time. Wraps on narrow widths. */}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {schedule.times.map((t, i) => {
-                const label = t.label
-                  ? `${formatHM12(t.time)} · ${t.label}`
-                  : formatHM12(t.time);
-                return (
-                  <span
-                    key={`${t.time}-${i}`}
-                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                    style={{
-                      background: "rgba(46,107,64,0.2)",
-                      border: "1px solid rgba(46,107,64,0.3)",
-                      color: "#F0EDE6",
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    {label}
-                  </span>
-                );
-              })}
-            </div>
-
-            {schedule.location && (
-              <p className="text-[11px] mt-2" style={{ color: "#8FAF96" }}>
-                📍 {schedule.location}
-              </p>
-            )}
+            {/* Pills — single-line with runtime overflow detection, same as
+                the dashboard. Long rows auto-scroll instead of wrapping. */}
+            <ServiceTimesPillRow schedule={schedule} />
           </div>
         </div>
       </button>
@@ -550,6 +619,22 @@ export default function CommunityDetailPage() {
       .find((k) => k === t) ?? "home";
   })();
   const [activeTab, setActiveTab] = useState<"home" | "prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
+
+  // Post-signup welcome overlay. Fires when the user lands with
+  // `?welcome=1` — community-join sends newcomers here after register.
+  // Shows two slides tailored to this specific group (members +
+  // practices). One-shot; we strip the query param when dismissed so
+  // a refresh doesn't re-trigger.
+  const [welcomeOpen, setWelcomeOpen] = useState(() => {
+    return new URLSearchParams(search).get("welcome") === "1";
+  });
+  const [welcomeIdx, setWelcomeIdx] = useState(0);
+  const closeWelcome = () => {
+    setWelcomeOpen(false);
+    // Clean the URL so a reload doesn't reopen the overlay.
+    window.history.replaceState({}, "", `/communities/${slug}`);
+  };
+
   const [showInvite, setShowInvite] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
@@ -571,6 +656,9 @@ export default function CommunityDetailPage() {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteError, setInviteError] = useState("");
+  // Role the admin wants to assign when adding a new member. Toggle in the
+  // add-member panel; "hidden_admin" only shows for pilot (beta) users.
+  const [pendingRole, setPendingRole] = useState<"member" | "admin" | "hidden_admin">("member");
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -703,8 +791,10 @@ export default function CommunityDetailPage() {
   // Pilot-admin "add member directly" mutation. The backend endpoint sets
   // `joinedAt: new Date()` so the person shows up as a full member right
   // away — no invite-email roundtrip, no pending-state purgatory.
+  // `role` is optional — the server defaults to "member" and gates
+  // "hidden_admin" behind the acting admin being a pilot user.
   const addMemberMutation = useMutation({
-    mutationFn: (person: { name?: string; email: string }) =>
+    mutationFn: (person: { name?: string; email: string; role?: "member" | "admin" | "hidden_admin" }) =>
       apiRequest("POST", `/api/groups/${slug}/members`, { people: [person] }),
     onSuccess: () => {
       setInviteName("");
@@ -714,6 +804,21 @@ export default function CommunityDetailPage() {
     },
     onError: (err: any) => {
       setInviteError(err?.message || "Couldn't add that member. Please try again.");
+    },
+  });
+
+  // Change a member's role between member / admin / hidden_admin. The
+  // server enforces the pilot gate on anything touching hidden_admin and
+  // blocks demoting the last admin, so the client can stay naive about
+  // those guardrails — it just shows an error toast on failure.
+  const changeRoleMutation = useMutation({
+    mutationFn: ({ memberId, role }: { memberId: number; role: "member" | "admin" | "hidden_admin" }) =>
+      apiRequest("PATCH", `/api/groups/${slug}/members/${memberId}/role`, { role }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
+    },
+    onError: (err: any) => {
+      window.alert(err?.message || "Couldn't change that role. Please try again.");
     },
   });
 
@@ -756,7 +861,10 @@ export default function CommunityDetailPage() {
   );
 
   const { group, myRole, members } = groupData;
-  const isAdmin = myRole === "admin" && communityAdminView;
+  // Hidden admins have full admin powers — same gate as real admins. The
+  // only difference is that they're filtered from the roster for non-admin
+  // viewers (server-side, so the list never even hits the client).
+  const isAdmin = (myRole === "admin" || myRole === "hidden_admin") && communityAdminView;
   // "Can invite by email" = admin of this community AND viewing as a pilot
   // user. Non-pilot admins still get the shareable invite-link modal; this
   // unlocks the direct-add form on the Members tab.
@@ -1724,97 +1832,70 @@ export default function CommunityDetailPage() {
             if (!joinedAt) return false;
             return new Date(joinedAt) >= sevenDaysAgo;
           };
-          // Simple email validation — we want to catch typos client-side so
-          // the backend doesn't have to reject. Server still validates.
+          // Simple email validation — used by the free-email fallback in
+          // the member picker (for inviting someone not yet in the viewer's
+          // fellowship). Server still validates.
           const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
-          const handleAdd = () => {
-            const email = inviteEmail.trim().toLowerCase();
+          const memberEmails = new Set(members.map(m => m.email.toLowerCase()));
+
+          const addPerson = (person: { name?: string; email: string }, role?: "member" | "admin" | "hidden_admin") => {
+            const email = person.email.trim().toLowerCase();
             if (!isValidEmail(email)) {
               setInviteError("Please enter a valid email.");
               return;
             }
-            // Prevent adding someone who's already a member (matches the
-            // server's silent skip; this just surfaces the state to the admin).
-            const already = members.some(m => m.email.toLowerCase() === email);
-            if (already) {
+            if (memberEmails.has(email)) {
               setInviteError("That person is already in this community.");
               return;
             }
             setInviteError("");
             addMemberMutation.mutate({
               email,
-              name: inviteName.trim() || undefined,
+              name: person.name?.trim() || undefined,
+              role: role ?? pendingRole,
             });
           };
 
           return (
           <div>
-            {/* Pilot-admin "add directly" form — bypasses the invite-link
+            {/* Pilot-admin "add directly" block — bypasses the invite-link
                 flow. Appears at the top of the members tab, above the
                 roster. Non-pilot admins still see the shareable invite-link
                 modal from the header; regular members don't see this at all. */}
-            {canInviteByEmail && (
-              <div
-                className="mb-4 rounded-xl p-4"
-                style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                    Add member
-                  </p>
-                  <span
-                    className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
-                    style={{ background: "rgba(232,184,114,0.15)", color: "#E8B872", border: "1px solid rgba(232,184,114,0.35)", letterSpacing: "0.08em" }}
-                  >
-                    Pilot
-                  </span>
-                </div>
-                <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.75)" }}>
-                  Add someone to {group.name} directly. They'll show up as a
-                  member right away — no invite link to share.
-                </p>
-                <input
-                  type="text"
-                  value={inviteName}
-                  onChange={e => { setInviteName(e.target.value); setInviteError(""); }}
-                  placeholder="Name (optional)"
-                  className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
-                  style={{ color: "#F0EDE6" }}
-                />
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={e => { setInviteEmail(e.target.value); setInviteError(""); }}
-                  placeholder="Email"
-                  className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
-                  style={{ color: "#F0EDE6" }}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && inviteEmail.trim()) handleAdd();
-                  }}
-                />
-                {inviteError && (
-                  <p className="text-xs mb-2" style={{ color: "#C47A65" }}>
-                    {inviteError}
-                  </p>
-                )}
-                <button
-                  onClick={handleAdd}
-                  disabled={!inviteEmail.trim() || addMemberMutation.isPending}
-                  className="px-5 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                >
-                  {addMemberMutation.isPending ? "Adding…" : "Add to community"}
-                </button>
-              </div>
+            {canInviteByEmail && user && (
+              <MemberPicker
+                groupName={group.name}
+                ownerId={user.id}
+                memberEmails={memberEmails}
+                inviteName={inviteName}
+                inviteEmail={inviteEmail}
+                inviteError={inviteError}
+                pendingRole={pendingRole}
+                isBeta={isBeta}
+                isPending={addMemberMutation.isPending}
+                setInviteName={setInviteName}
+                setInviteEmail={setInviteEmail}
+                setInviteError={setInviteError}
+                setPendingRole={setPendingRole}
+                onPick={(person) => addPerson(person)}
+              />
             )}
 
             <div className="space-y-1.5">
-              {members.filter(m => m.joinedAt !== null).map(m => (
+              {members.filter(m => m.joinedAt !== null).map(m => {
+                const isSelf = m.email.toLowerCase() === (user.email ?? "").toLowerCase();
+                const isHiddenAdmin = m.role === "hidden_admin";
+                const isRoleAdmin = m.role === "admin";
+                const changingThisRow = changeRoleMutation.isPending && changeRoleMutation.variables?.memberId === m.id;
+                return (
                 <div
                   key={m.id}
                   className="flex items-center justify-between px-4 py-2.5 rounded-xl"
-                  style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)" }}
+                  style={{
+                    background: isHiddenAdmin ? "rgba(193,127,36,0.08)" : "rgba(46,107,64,0.08)",
+                    border: isHiddenAdmin ? "1px solid rgba(193,127,36,0.28)" : "1px solid rgba(46,107,64,0.2)",
+                  }}
                 >
                   <Link href={`/people/${encodeURIComponent(m.email)}`} className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -1828,9 +1909,21 @@ export default function CommunityDetailPage() {
                       <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
                         {m.name || m.email.split("@")[0]}
                       </p>
-                      {m.role === "admin" && (
+                      {isRoleAdmin && (
                         <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(46,107,64,0.3)", color: "#8FAF96" }}>
                           Admin
+                        </span>
+                      )}
+                      {isHiddenAdmin && (
+                        // Amber tag only shown to admins (the server filters
+                        // hidden admins from non-admin rosters so this row
+                        // never reaches a regular member anyway).
+                        <span
+                          className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(193,127,36,0.18)", color: "#E8B872", border: "1px solid rgba(193,127,36,0.35)" }}
+                          title="Invisible member with admin access (pilot-designated)"
+                        >
+                          Hidden admin
                         </span>
                       )}
                       {isRecentlyJoined(m.joinedAt) && (
@@ -1847,25 +1940,103 @@ export default function CommunityDetailPage() {
                     </div>
                     <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{m.email}</p>
                   </Link>
-                  {isAdmin && m.role !== "admin" && (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const label = m.name || m.email;
-                        if (window.confirm(`Remove ${label} from ${group.name}? They'll lose access to every practice attached to this community.`)) {
-                          removeMemberMutation.mutate(m.id);
-                        }
-                      }}
-                      disabled={removeMemberMutation.isPending}
-                      className="text-[10px] px-2 py-1 rounded-lg shrink-0 ml-2 disabled:opacity-40"
-                      style={{ color: "rgba(143,175,150,0.5)", border: "1px solid rgba(143,175,150,0.2)" }}
-                    >
-                      Remove
-                    </button>
+                  {/* Admin-only management controls. A member can't change
+                      their own role here (the server blocks last-admin
+                      demotion anyway, but locally we just hide the
+                      controls — the person can always demote themselves
+                      from a separate "leave community" flow later). */}
+                  {isAdmin && !isSelf && (
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {/* Promote to / demote from admin. Hidden-admin rows
+                          don't get a promote button — they already have
+                          admin powers — but can be demoted straight to
+                          member via the menu. */}
+                      {!isRoleAdmin && !isHiddenAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            changeRoleMutation.mutate({ memberId: m.id, role: "admin" });
+                          }}
+                          disabled={changingThisRow}
+                          className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
+                          style={{ color: "#A8C5A0", background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
+                        >
+                          Make admin
+                        </button>
+                      )}
+                      {isRoleAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm(`Demote ${m.name || m.email} back to a regular member?`)) {
+                              changeRoleMutation.mutate({ memberId: m.id, role: "member" });
+                            }
+                          }}
+                          disabled={changingThisRow}
+                          className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
+                          style={{ color: "rgba(143,175,150,0.75)", border: "1px solid rgba(143,175,150,0.2)" }}
+                        >
+                          Demote
+                        </button>
+                      )}
+                      {/* Pilot-only hidden-admin toggle. Shown next to the
+                          other role controls so pilots have it at hand
+                          without a separate sub-menu. */}
+                      {isBeta && !isHiddenAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm(`Make ${m.name || m.email} a hidden admin? They'll gain admin powers but won't appear in the roster for regular members.`)) {
+                              changeRoleMutation.mutate({ memberId: m.id, role: "hidden_admin" });
+                            }
+                          }}
+                          disabled={changingThisRow}
+                          className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
+                          style={{ color: "#E8B872", background: "rgba(193,127,36,0.1)", border: "1px solid rgba(193,127,36,0.3)" }}
+                          title="Pilot-only"
+                        >
+                          Hidden
+                        </button>
+                      )}
+                      {isBeta && isHiddenAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm(`Reveal ${m.name || m.email} as a regular member? They'll appear in the roster and lose admin powers.`)) {
+                              changeRoleMutation.mutate({ memberId: m.id, role: "member" });
+                            }
+                          }}
+                          disabled={changingThisRow}
+                          className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
+                          style={{ color: "#E8B872", background: "rgba(193,127,36,0.1)", border: "1px solid rgba(193,127,36,0.3)" }}
+                        >
+                          Reveal
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const label = m.name || m.email;
+                          if (window.confirm(`Remove ${label} from ${group.name}? They'll lose access to every practice attached to this community.`)) {
+                            removeMemberMutation.mutate(m.id);
+                          }
+                        }}
+                        disabled={removeMemberMutation.isPending}
+                        className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
+                        style={{ color: "rgba(143,175,150,0.5)", border: "1px solid rgba(143,175,150,0.2)" }}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Pending invites */}
@@ -1911,6 +2082,412 @@ export default function CommunityDetailPage() {
           );
         })()}
       </div>
+
+      {/* Post-signup welcome overlay — tailored to this community.
+          Fires when the user lands with ?welcome=1 (community-join
+          redirects here after register). Two slides: members +
+          practices preview. One-shot; dismissing strips the query. */}
+      {welcomeOpen && groupData?.group && (() => {
+        const joinedMembers = (groupData.members ?? []).filter(m => m.joinedAt !== null);
+        const practices = (practicesData?.practices ?? []).slice(0, 4);
+        const slides: Array<{ key: string; node: React.ReactNode }> = [];
+
+        slides.push({
+          key: "members",
+          node: (
+            <div className="text-center">
+              <div className="text-5xl mb-3">{groupData.group.emoji ?? "🏘️"}</div>
+              <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+                Welcome to
+              </p>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+                {groupData.group.name}
+              </h2>
+              {joinedMembers.length > 1 ? (
+                <>
+                  <div className="flex items-center justify-center mb-4">
+                    {joinedMembers.slice(0, 5).map((m, i) => (
+                      <div
+                        key={m.email}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
+                        style={{
+                          background: "#1A4A2E",
+                          color: "#A8C5A0",
+                          border: "2px solid #091A10",
+                          marginLeft: i === 0 ? 0 : -8,
+                          zIndex: joinedMembers.length - i,
+                        }}
+                      >
+                        {m.avatarUrl ? (
+                          <img src={m.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          (m.name ?? m.email ?? "?").charAt(0).toUpperCase()
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
+                    You're walking with{" "}
+                    {joinedMembers
+                      .filter(m => m.email !== user?.email)
+                      .slice(0, 3)
+                      .map(m => (m.name ?? "").split(/\s+/)[0])
+                      .filter(Boolean)
+                      .join(", ") || "your community"}
+                    {joinedMembers.length > 4 ? ` & ${joinedMembers.length - 4} others.` : "."}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
+                  You're early — the room is yours to set the tone for.
+                </p>
+              )}
+            </div>
+          ),
+        });
+
+        if (practices.length > 0) {
+          slides.push({
+            key: "practices",
+            node: (
+              <div>
+                <div className="text-center mb-5">
+                  <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+                    What you'll do together
+                  </p>
+                  <h2 className="text-xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
+                    Shared practices
+                  </h2>
+                </div>
+                <div className="space-y-2">
+                  {practices.map(p => {
+                    const tt = (p as { templateType?: string | null }).templateType ?? null;
+                    const emoji =
+                      tt === "intercession" ? "🙏🏽" :
+                      tt === "lectio-divina" ? "📜" :
+                      tt === "fasting" ? "🌿" :
+                      tt === "listening" ? "🎵" :
+                      tt === "morning-prayer" ? "🌅" :
+                      tt === "evening-prayer" ? "🌙" :
+                      "🌿";
+                    return (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                        style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
+                      >
+                        <span className="text-2xl leading-none">{emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                            {p.name}
+                          </p>
+                          <p className="text-[11px] truncate" style={{ color: "#8FAF96" }}>
+                            {(p as { intention?: string }).intention || "Practice"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {(practicesData?.practices?.length ?? 0) > practices.length && (
+                  <p className="text-xs text-center mt-3" style={{ color: "rgba(143,175,150,0.55)" }}>
+                    + {(practicesData?.practices?.length ?? 0) - practices.length} more
+                  </p>
+                )}
+              </div>
+            ),
+          });
+        }
+
+        const isLast = welcomeIdx >= slides.length - 1;
+        const currentSlide = slides[welcomeIdx] ?? slides[0];
+        return (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 100,
+              background: "rgba(0,0,0,0.72)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+            }}
+          >
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                background: "#0F2818",
+                border: "1px solid rgba(46,107,64,0.4)",
+                boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+                maxWidth: 440,
+                width: "100%",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              <div className="mb-5" style={{ minHeight: 200 }}>
+                {currentSlide?.node}
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5">
+                  {slides.map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full transition-colors"
+                      style={{ background: i === welcomeIdx ? "#8FAF96" : "rgba(143,175,150,0.3)" }}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => (isLast ? closeWelcome() : setWelcomeIdx(i => i + 1))}
+                  className="rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+                  style={{
+                    background: "#2D5E3F",
+                    color: "#F0EDE6",
+                    padding: "9px 22px",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  {isLast ? "Enter community →" : "Continue →"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </Layout>
+  );
+}
+
+// ─── Member picker ───────────────────────────────────────────────────────
+// Typeahead-backed add-member panel for pilot admins. Pulls the viewer's
+// fellowship from /api/people (via usePeople), filters locally on typing,
+// and hides anyone already in this community. If the admin wants to
+// invite someone outside their fellowship, the "Add by email" fallback
+// at the bottom accepts a free email + optional name.
+//
+// Role selection lives at the top as a segmented control. "Hidden admin"
+// only shows for pilot (beta) viewers — for everyone else, adding defaults
+// to "member" with an optional admin toggle.
+function MemberPicker({
+  groupName,
+  ownerId,
+  memberEmails,
+  inviteName,
+  inviteEmail,
+  inviteError,
+  pendingRole,
+  isBeta,
+  isPending,
+  setInviteName,
+  setInviteEmail,
+  setInviteError,
+  setPendingRole,
+  onPick,
+}: {
+  groupName: string;
+  ownerId: number;
+  memberEmails: Set<string>;
+  inviteName: string;
+  inviteEmail: string;
+  inviteError: string;
+  pendingRole: "member" | "admin" | "hidden_admin";
+  isBeta: boolean;
+  isPending: boolean;
+  setInviteName: (v: string) => void;
+  setInviteEmail: (v: string) => void;
+  setInviteError: (v: string) => void;
+  setPendingRole: (v: "member" | "admin" | "hidden_admin") => void;
+  onPick: (person: { name?: string; email: string }) => void;
+}) {
+  const [q, setQ] = useState("");
+  const { data: people = [], isLoading } = usePeople(ownerId);
+
+  // Candidates = people in the viewer's fellowship who are NOT already in
+  // this community, filtered live by the search string. We keep already-
+  // joined people out of the dropdown entirely so the admin isn't tempted
+  // to re-add them.
+  const candidates = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const match = (p: PersonSummary) =>
+      !needle ||
+      p.name.toLowerCase().includes(needle) ||
+      p.email.toLowerCase().includes(needle);
+    return people
+      .filter(p => !memberEmails.has(p.email.toLowerCase()))
+      .filter(match);
+  }, [people, q, memberEmails]);
+
+  // The free-email fallback only shows when the admin typed something
+  // that looks like an email and it doesn't match an existing candidate.
+  // Keeps the UI quiet while they're just browsing their fellowship.
+  const trimmed = q.trim();
+  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  const matchesCandidate = candidates.some(p => p.email.toLowerCase() === trimmed.toLowerCase());
+  const showEmailFallback = looksLikeEmail && !matchesCandidate;
+
+  const roleLabel = (r: "member" | "admin" | "hidden_admin") =>
+    r === "admin" ? "Admin" : r === "hidden_admin" ? "Hidden admin" : "Member";
+
+  return (
+    <div
+      className="mb-4 rounded-xl p-4"
+      style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Add member</p>
+        <span
+          className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
+          style={{ background: "rgba(232,184,114,0.15)", color: "#E8B872", border: "1px solid rgba(232,184,114,0.35)", letterSpacing: "0.08em" }}
+        >
+          Pilot
+        </span>
+      </div>
+      <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.75)" }}>
+        Add someone to {groupName} directly. Type to search your fellowship,
+        or enter an email to invite someone new.
+      </p>
+
+      {/* Role segmented control. Server-enforced — the "hidden_admin"
+          option is still only honored when the acting admin is a pilot,
+          so a non-pilot manipulating the DOM would still be rejected. */}
+      <div className="flex items-center gap-1 mb-3">
+        {(isBeta
+          ? (["member", "admin", "hidden_admin"] as const)
+          : (["member", "admin"] as const)
+        ).map(r => {
+          const active = pendingRole === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setPendingRole(r)}
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full transition-opacity"
+              style={{
+                background: active
+                  ? (r === "hidden_admin" ? "rgba(193,127,36,0.25)" : "rgba(46,107,64,0.35)")
+                  : "transparent",
+                color: active
+                  ? (r === "hidden_admin" ? "#E8B872" : "#F0EDE6")
+                  : "rgba(200,212,192,0.6)",
+                border: `1px solid ${active
+                  ? (r === "hidden_admin" ? "rgba(193,127,36,0.5)" : "rgba(46,107,64,0.5)")
+                  : "rgba(46,107,64,0.25)"}`,
+              }}
+            >
+              {roleLabel(r)}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search / typeahead */}
+      <div
+        className="flex items-center gap-2 rounded-lg px-3 py-2 mb-2"
+        style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)" }}
+      >
+        <SearchIcon size={14} style={{ color: "#8FAF96" }} />
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setInviteError(""); }}
+          placeholder="Search by name or email…"
+          className="flex-1 bg-transparent text-sm outline-none"
+          style={{ color: "#F0EDE6" }}
+        />
+      </div>
+
+      {inviteError && (
+        <p className="text-xs mb-2" style={{ color: "#C47A65" }}>{inviteError}</p>
+      )}
+
+      {/* Candidate list — clamped to ~4 rows so the form doesn't explode. */}
+      <div
+        className="space-y-1 mb-2"
+        style={{ maxHeight: 220, overflowY: "auto" }}
+      >
+        {isLoading && (
+          <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.55)" }}>Loading your fellowship…</p>
+        )}
+        {!isLoading && candidates.length === 0 && !showEmailFallback && (
+          <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.55)" }}>
+            {q.trim()
+              ? "No one in your fellowship matches. Type their email below to invite directly."
+              : "Everyone in your fellowship is already here."}
+          </p>
+        )}
+        {!isLoading && candidates.map(p => (
+          <button
+            key={p.email}
+            type="button"
+            onClick={() => onPick({ name: p.name, email: p.email })}
+            disabled={isPending}
+            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-colors disabled:opacity-40"
+            style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.25)" }}
+          >
+            {p.avatarUrl ? (
+              <img src={p.avatarUrl} alt={p.name} className="w-7 h-7 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+            ) : (
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                {p.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold truncate" style={{ color: "#F0EDE6" }}>{p.name}</p>
+              <p className="text-[10px] truncate" style={{ color: "rgba(143,175,150,0.65)" }}>{p.email}</p>
+            </div>
+            <span className="text-[10px] shrink-0" style={{ color: "rgba(168,197,160,0.75)" }}>
+              Add {roleLabel(pendingRole).toLowerCase()}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Free-email fallback. Optional name + the typed email. Lets the
+          admin invite someone who isn't in their fellowship yet. */}
+      {showEmailFallback && (
+        <div
+          className="rounded-lg p-3 mt-2"
+          style={{ background: "rgba(9,26,16,0.4)", border: "1px dashed rgba(46,107,64,0.35)" }}
+        >
+          <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+            Not in your fellowship yet
+          </p>
+          <input
+            type="text"
+            value={inviteName}
+            onChange={e => { setInviteName(e.target.value); setInviteError(""); }}
+            placeholder="Name (optional)"
+            className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
+            style={{ color: "#F0EDE6" }}
+          />
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={inviteEmail || trimmed}
+              onChange={e => { setInviteEmail(e.target.value); setInviteError(""); }}
+              placeholder="Email"
+              className="flex-1 px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
+              style={{ color: "#F0EDE6" }}
+            />
+            <button
+              onClick={() => onPick({
+                email: (inviteEmail || trimmed).trim(),
+                name: inviteName.trim() || undefined,
+              })}
+              disabled={isPending || !(inviteEmail || trimmed).trim()}
+              className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-40 shrink-0"
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            >
+              {isPending ? "Adding…" : `Add ${roleLabel(pendingRole).toLowerCase()}`}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

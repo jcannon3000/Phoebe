@@ -183,6 +183,17 @@ export default function CommunityJoinPage() {
     }
   }, [authLoading, user, slug, token, autoJoinStatus]);
 
+  // Already-logged-in visitors skip the onboarding slideshow entirely.
+  // Once the auto-join resolves (success OR already-joined), drop them
+  // straight on the community page. New signups still see the pre-
+  // signup slides; those start from autoJoinStatus="idle" because
+  // `user` is null.
+  useEffect(() => {
+    if (autoJoinStatus === "success" || autoJoinStatus === "already") {
+      setLocation(`/communities/${slug}`);
+    }
+  }, [autoJoinStatus, slug, setLocation]);
+
   // Effective email: pre-filled from invite on per-member tokens, user-entered
   // on community-wide tokens. Both forms use this single resolver.
   const effectiveEmail = (): string => {
@@ -249,8 +260,11 @@ export default function CommunityJoinPage() {
       if (data.ok) {
         // Server already linked the new user to the group_members row, so
         // we can skip the join call and go straight to the community.
+        // `?welcome=1` triggers the post-signup tailored onboarding on
+        // the community detail page — members + practices preview
+        // specific to the group they just joined.
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        setLocation(`/communities/${slug}`);
+        setLocation(`/communities/${slug}?welcome=1`);
       } else {
         setAuthError(data.error ?? "Couldn't create your account.");
       }
