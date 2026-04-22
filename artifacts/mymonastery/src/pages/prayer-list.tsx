@@ -395,33 +395,59 @@ function PrayerForCard({ p, onOpen }: { p: MyActivePrayerFor; onOpen: () => void
 }
 
 function PrayerFromCard({ p, onOpen }: { p: PrayerForMe; onOpen: () => void }) {
+  // Mirror the People-page "is praying for you" card: uppercase eyebrow
+  // with the pray-er's first name + candle, the actual prayer text in
+  // Playfair italic as the preview line, and the "since today / N days
+  // ago" timestamp as the small meta underneath. Before this, the card
+  // only rendered name + since, with no preview of what they were
+  // praying — the user asked for parity with the People card.
+  const firstName = p.prayerName.split(/\s+/)[0] || p.prayerName;
+  const preview = (p.prayerText ?? "").trim();
   return (
     <BarCard onClick={onOpen} accent="#C19A3A" bg="rgba(193,154,58,0.08)">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         {p.prayerAvatarUrl ? (
           <img
             src={p.prayerAvatarUrl}
             alt={p.prayerName}
-            className="w-9 h-9 rounded-full object-cover shrink-0"
+            className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
             style={{ border: "1px solid rgba(193,154,58,0.3)" }}
           />
         ) : (
           <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
             style={{ background: "#3A2E14", color: "#E4C97C" }}
           >
             {initials(p.prayerName)}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
-            {p.prayerName}
+          <p
+            className="text-[9px] font-semibold uppercase tracking-[0.16em] mb-1"
+            style={{ color: "rgba(217,176,82,0.75)" }}
+          >
+            {firstName} is praying for you 🕯️
           </p>
-          <p className="text-[11px]" style={{ color: "rgba(228,201,124,0.75)" }}>
+          {preview.length > 0 && (
+            <p
+              className="text-[13px] italic leading-snug"
+              style={{
+                color: "#E8D9B0",
+                fontFamily: "Playfair Display, Georgia, serif",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {preview}
+            </p>
+          )}
+          <p className="text-[11px] mt-1" style={{ color: "rgba(228,201,124,0.65)" }}>
             {formatPrayingSince(p.startedAt)}
           </p>
         </div>
-        <span className="text-[10px] shrink-0" style={{ color: "rgba(228,201,124,0.7)" }}>→</span>
+        <span className="text-[10px] shrink-0 mt-1" style={{ color: "rgba(228,201,124,0.7)" }}>→</span>
       </div>
     </BarCard>
   );
