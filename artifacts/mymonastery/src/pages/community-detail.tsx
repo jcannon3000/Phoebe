@@ -1614,7 +1614,7 @@ export default function CommunityDetailPage() {
           <div>
             <ServicesSection slug={slug!} isAdmin={isAdmin} />
             {isAdmin && (
-              <Link href="/tradition/new" className="block mb-4">
+              <Link href={`/tradition/new?community=${slug}`} className="block mb-4">
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: "rgba(46,107,64,0.15)", border: "1px dashed rgba(46,107,64,0.3)", color: "#8FAF96" }}>
                   <Plus size={16} /> Create a gathering for this community
                 </div>

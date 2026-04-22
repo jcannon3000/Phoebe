@@ -45,6 +45,11 @@ export default function TraditionNew() {
   const [firstPick, setFirstPick] = useState("");
   const [altTime1, setAltTime1] = useState("");
   const [altTime2, setAltTime2] = useState("");
+  // Fixed-time gatherings (e.g. a parish's Wednesday dinner) skip the
+  // alt-time coordination and just lock in the first pick. Flexible
+  // keeps the existing flow of First Pick + two optional alternates
+  // that members can weigh in on.
+  const [timeMode, setTimeMode] = useState<"fixed" | "flexible">("flexible");
   const [firstLocation, setFirstLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -73,9 +78,25 @@ export default function TraditionNew() {
   const adminGroups = communityAdminView ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin") : [];
   const canInviteNewPeople = adminGroups.length > 0;
 
-  // Auto-select and skip community step when admin of exactly one community
+  // Auto-select and skip community step:
+  //   1. If the URL carries ?community=<slug> (e.g. the "Create a
+  //      gathering" button inside a community page), pre-select that
+  //      community and skip step 0 — the user already chose.
+  //   2. Otherwise, if the user is an admin of exactly one community,
+  //      auto-select that one (preserves the original behavior).
   useEffect(() => {
-    if (adminGroups.length === 1 && selectedGroupId === null) {
+    if (selectedGroupId !== null) return;
+    const qs = new URLSearchParams(window.location.search);
+    const slug = qs.get("community");
+    if (slug) {
+      const match = adminGroups.find(g => g.slug === slug);
+      if (match) {
+        setSelectedGroupId(match.id);
+        if (step === 0) setStep(1);
+        return;
+      }
+    }
+    if (adminGroups.length === 1) {
       setSelectedGroupId(adminGroups[0].id);
       if (step === 0) setStep(1);
     }
@@ -138,7 +159,13 @@ export default function TraditionNew() {
     setError("");
     try {
       const participants = allPeople.filter((p) => p.email.trim());
-      const proposedTimes = [firstPick, altTime1, altTime2]
+      // Fixed-time gatherings don't offer alternates — the user already
+      // committed to a single time. Flexible mode keeps the coordination
+      // flow (first pick + up to two alternates).
+      const proposedTimes = (timeMode === "fixed"
+        ? [firstPick]
+        : [firstPick, altTime1, altTime2]
+      )
         .filter(Boolean)
         .map((t) => new Date(t).toISOString());
 
@@ -466,9 +493,47 @@ export default function TraditionNew() {
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 When will you first gather? 🌿
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-                Pick a time to meet. Alternates are optional — your group can weigh in.
+              <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>
+                {timeMode === "fixed"
+                  ? "This gathering meets at a set time. Just pick when."
+                  : "Pick a time to meet. Alternates are optional — your group can weigh in."}
               </p>
+
+              {/* Fixed vs flexible toggle — "fixed" is for recurring
+                  community events like a parish's Wednesday dinner,
+                  where the time never moves. "Flexible" keeps the
+                  alt-time coordination flow. */}
+              <div
+                className="grid grid-cols-2 gap-2 mb-6 p-1 rounded-2xl"
+                style={{ background: "rgba(15,40,24,0.6)", border: "1px solid rgba(46,107,64,0.25)" }}
+              >
+                {(["fixed", "flexible"] as const).map((mode) => {
+                  const active = timeMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setTimeMode(mode)}
+                      className="rounded-xl py-2.5 text-sm font-semibold transition-colors"
+                      style={{
+                        background: active ? "#2D5E3F" : "transparent",
+                        color: active ? "#F0EDE6" : "#8FAF96",
+                      }}
+                    >
+                      <span className="block text-sm">{mode === "fixed" ? "Fixed time" : "Flexible time"}</span>
+                      <span
+                        className="block text-[10px] font-normal mt-0.5"
+                        style={{
+                          color: active ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.6)",
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {mode === "fixed" ? "Always the same time" : "Let group suggest times"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* First Pick */}
               <div className="mb-5">
@@ -517,61 +582,67 @@ export default function TraditionNew() {
                 </p>
               </div>
 
-              {/* Alternatives */}
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3 mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                Alternative time suggestions (optional)
-              </p>
-              <div className="mb-5">
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={altTime1 ? altTime1.split("T")[0] : ""}
-                    onChange={(e) => {
-                      const time = altTime1 ? altTime1.split("T")[1] || "12:00" : "12:00";
-                      setAltTime1(e.target.value ? `${e.target.value}T${time}` : "");
-                    }}
-                    placeholder="Optional"
-                    className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
-                  />
-                  <input
-                    type="time"
-                    value={altTime1 ? altTime1.split("T")[1] || "" : ""}
-                    onChange={(e) => {
-                      const date = altTime1 ? altTime1.split("T")[0] : "";
-                      if (date) setAltTime1(`${date}T${e.target.value}`);
-                    }}
-                    className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
-                  />
-                </div>
-              </div>
+              {/* Alternatives — flexible mode only. Hidden entirely for
+                  fixed-time gatherings (parish dinners, scheduled
+                  services) where there's nothing to negotiate. */}
+              {timeMode === "flexible" && (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3 mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
+                    Alternative time suggestions (optional)
+                  </p>
+                  <div className="mb-5">
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        value={altTime1 ? altTime1.split("T")[0] : ""}
+                        onChange={(e) => {
+                          const time = altTime1 ? altTime1.split("T")[1] || "12:00" : "12:00";
+                          setAltTime1(e.target.value ? `${e.target.value}T${time}` : "");
+                        }}
+                        placeholder="Optional"
+                        className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+                        style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
+                      />
+                      <input
+                        type="time"
+                        value={altTime1 ? altTime1.split("T")[1] || "" : ""}
+                        onChange={(e) => {
+                          const date = altTime1 ? altTime1.split("T")[0] : "";
+                          if (date) setAltTime1(`${date}T${e.target.value}`);
+                        }}
+                        className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
+                        style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
+                      />
+                    </div>
+                  </div>
 
-              <div className="mb-2">
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={altTime2 ? altTime2.split("T")[0] : ""}
-                    onChange={(e) => {
-                      const time = altTime2 ? altTime2.split("T")[1] || "12:00" : "12:00";
-                      setAltTime2(e.target.value ? `${e.target.value}T${time}` : "");
-                    }}
-                    placeholder="Optional"
-                    className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
-                  />
-                  <input
-                    type="time"
-                    value={altTime2 ? altTime2.split("T")[1] || "" : ""}
-                    onChange={(e) => {
-                      const date = altTime2 ? altTime2.split("T")[0] : "";
-                      if (date) setAltTime2(`${date}T${e.target.value}`);
-                    }}
-                    className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
-                  />
-                </div>
-              </div>
+                  <div className="mb-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        value={altTime2 ? altTime2.split("T")[0] : ""}
+                        onChange={(e) => {
+                          const time = altTime2 ? altTime2.split("T")[1] || "12:00" : "12:00";
+                          setAltTime2(e.target.value ? `${e.target.value}T${time}` : "");
+                        }}
+                        placeholder="Optional"
+                        className="flex-1 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+                        style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
+                      />
+                      <input
+                        type="time"
+                        value={altTime2 ? altTime2.split("T")[1] || "" : ""}
+                        onChange={(e) => {
+                          const date = altTime2 ? altTime2.split("T")[0] : "";
+                          if (date) setAltTime2(`${date}T${e.target.value}`);
+                        }}
+                        className="w-28 px-3 py-3.5 rounded-xl text-sm focus:outline-none"
+                        style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.25)", color: "#F0EDE6", colorScheme: "dark" }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {error && <p className="text-sm mt-4 mb-2" style={{ color: "#C47A65" }}>{error}</p>}
 
