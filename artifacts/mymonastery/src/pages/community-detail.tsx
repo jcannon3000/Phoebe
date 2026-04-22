@@ -801,8 +801,6 @@ export default function CommunityDetailPage() {
                   const joinedCount = members.filter(m => m.joinedAt !== null).length;
                   return `${joinedCount} ${joinedCount === 1 ? "member" : "members"}`;
                 })()}
-                {group.isPrayerCircle && " · Prayer circle"}
-                {isAdmin && " · You are admin"}
               </p>
             </div>
             {isAdmin && (
@@ -841,20 +839,24 @@ export default function CommunityDetailPage() {
               className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 px-1"
               style={{ color: "rgba(200,212,192,0.55)" }}
             >
-              We pray
+              Group intentions
             </p>
-            <div className="flex flex-col gap-2">
+            {/* Compact intention cards — smaller than the earlier
+                "We pray" serif block. Keeps the italic voice for the
+                prayer text but shrinks padding + font so multiple
+                intentions read as a stack, not as headline slabs. */}
+            <div className="flex flex-col gap-1.5">
               {groupData.intentions!.map((intn) => (
                 <div
                   key={intn.id}
-                  className="rounded-xl px-4 py-4"
+                  className="rounded-xl px-3 py-2"
                   style={{
                     background: "rgba(46,107,64,0.08)",
                     border: "1px solid rgba(46,107,64,0.22)",
                   }}
                 >
                   <p
-                    className="text-lg italic leading-snug"
+                    className="text-sm italic leading-snug"
                     style={{
                       color: "#F0EDE6",
                       fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
@@ -863,16 +865,13 @@ export default function CommunityDetailPage() {
                     {intn.title}
                   </p>
                   {intn.description && (
-                    <p className="text-sm leading-relaxed mt-2" style={{ color: "#C8D4C0" }}>
+                    <p className="text-xs leading-relaxed mt-1" style={{ color: "rgba(200,212,192,0.75)" }}>
                       {intn.description}
                     </p>
                   )}
                 </div>
               ))}
             </div>
-            <p className="text-[11px] italic mt-2 px-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-              A circle bound by shared purpose. Prayer circles are a beta feature.
-            </p>
           </div>
         )}
 
