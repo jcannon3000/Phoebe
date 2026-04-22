@@ -837,30 +837,51 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
         className="text-2xl md:text-4xl font-semibold mb-4 leading-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        What are you carrying right now?
+        Share your first prayer request.
       </h2>
       <p
         className="text-sm md:text-base leading-relaxed font-light mb-8"
         style={{ color: C.sage, fontFamily: C.font }}
       >
-        Share it with your community. It doesn't have to be big. Nothing is too small to be held together.
+        So others can start walking with you. It doesn't have to be big — nothing is too small to be held together.
       </p>
 
-      <textarea
-        value={text}
-        onChange={e => setText(e.target.value)}
-        maxLength={1000}
-        rows={3}
-        placeholder="Share a prayer request..."
-        className="w-full rounded-2xl px-5 py-4 text-sm resize-none outline-none mb-4"
+      {/* Match the in-app prayer-request card: sage-tinted dark surface
+          with a 1px accent bar on the left, YOUR REQUEST eyebrow, and
+          the compose textarea inside the card. Mirrors BarCard +
+          PrayerListComposeBar from the live app so this slide feels
+          like the same surface the user is about to live in. */}
+      <div
+        className="w-full relative flex rounded-xl overflow-hidden mb-4"
         style={{
-          background: "#F5F0E8",
-          color: "#1A2E1F",
-          fontFamily: C.font,
-          border: "none",
-          lineHeight: "1.6",
+          background: "rgba(46,107,64,0.15)",
+          border: "1px solid rgba(46,107,64,0.28)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
-      />
+      >
+        <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+        <div className="flex-1 px-4 py-3 text-left">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-1.5"
+            style={{ color: "rgba(143,175,150,0.55)" }}
+          >
+            Your request
+          </p>
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            maxLength={1000}
+            rows={3}
+            placeholder="Share a prayer... 🌿"
+            className="w-full text-sm resize-none outline-none bg-transparent"
+            style={{
+              color: C.text,
+              fontFamily: C.font,
+              lineHeight: "1.5",
+            }}
+          />
+        </div>
+      </div>
 
       <button
         onClick={handleSubmit}
@@ -868,11 +889,11 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
         className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition-opacity disabled:opacity-40 mb-3"
         style={{ background: "#2D5E3F", color: C.text }}
       >
-        {submitting ? "Sharing…" : "Share with my community"}
+        {submitting ? "Sharing…" : "Share with my community 🙏🏽"}
       </button>
 
       <p className="text-xs mb-4" style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>
-        You can also do this anytime from your home screen.
+        You can also do this anytime from your prayer list.
       </p>
 
       <button
@@ -938,6 +959,19 @@ export default function UserOnboarding() {
   // Keyboard navigation
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // If the user is typing into an input/textarea/contentEditable on
+      // an interactive slide (prayer-request compose, etc.), don't hijack
+      // the keystroke for slide navigation. Previously spacebars in the
+      // prayer-request textarea were being swallowed into `next()`.
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isEditable =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        !!target?.isContentEditable;
+      if (isEditable) return;
+
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
       else if (e.key === "Escape") completeOnboarding();
