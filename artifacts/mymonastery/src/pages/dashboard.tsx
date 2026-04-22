@@ -2371,7 +2371,10 @@ export default function Dashboard() {
     // effect fired as each query resolved independently — if /prayers-for/mine
     // arrived first with 1 item and /moments was still pending, the count
     // computed as "1" and the popup locked in before the other data arrived.
+    // Also wait for popupStreakData so we don't pester someone who already
+    // prayed today just because the streak query hadn't resolved yet.
     if (momentsLoading || dashPrayerRequestsLoading || dashPrayersForLoading || dashCircleIntentionsLoading) return;
+    if (popupStreakData === undefined) return;
 
     const today = todayLocalKey();
 
@@ -2388,14 +2391,13 @@ export default function Dashboard() {
       return;
     }
 
-    // Gate #2 — the popup was shown within the last 6 hours. Give them
-    // breathing room. The server stamps prayerInviteLastShownAt on every
-    // show so the cooldown is account-wide, not per-device.
-    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
-    const lastShownAt = user.prayerInviteLastShownAt
-      ? Date.parse(user.prayerInviteLastShownAt)
-      : NaN;
-    if (Number.isFinite(lastShownAt) && Date.now() - lastShownAt < SIX_HOURS_MS) {
+    // Gate #2 — the popup has already been shown once today (any
+    // device). "Once per local calendar day" is the user-level rule:
+    // anyone who hasn't done the slideshow today should see this
+    // popup exactly one time. We key on the server-stamped local
+    // date string rather than a rolling N-hour timestamp so the
+    // window matches the user's subjective "today".
+    if (user.prayerInviteLastShownDate === today) {
       prayerInviteHandledThisSessionRef.current = true;
       return;
     }
@@ -2432,20 +2434,21 @@ export default function Dashboard() {
     const activePrayersFor = countActivePrayersFor(dashPrayersFor);
     const total = activeIntercessions + othersRequests + activePrayersFor;
 
-    // First-ever dashboard visit (post-onboarding) — show the popup
-    // even if `total` is 0, so newcomers learn the prayer-list exists
-    // as a daily rhythm. Detected by `prayerInviteLastShownAt` never
-    // being stamped. Count gets shown as-is (the copy still reads
-    // "0 prayers waiting for you" or "X prayers waiting" depending)
-    // so it accurately reflects what they'll find.
-    const neverShownBefore = !Number.isFinite(lastShownAt);
-    const shouldShow = total > 0 || neverShownBefore;
+    // Show the invite to anyone who hasn't already prayed today.
+    // Previously we additionally required `total > 0` (at least one
+    // prayer waiting), which meant a brand-new user in a community
+    // with no intercessions silently missed the popup. The user
+    // explicitly asked: "anyone who has not gone through their
+    // prayer list slideshow today gets a pop up just once". We now
+    // show it unconditionally once per calendar day (gate #1 above
+    // still suppresses it if they've already prayed).
+    const shouldShow = true;
 
     if (shouldShow) {
-      // Stamp BEFORE show (fire-and-forget) so a tab-close / reload before
-      // dismiss still starts the 6-hour cooldown. We send both the date
-      // (legacy) and let the server derive the timestamp from its own
-      // now() — skewed device clocks can't shorten or extend the cooldown.
+      // Stamp BEFORE show (fire-and-forget) so a tab-close / reload
+      // before dismiss still prevents a second popup today. We send
+      // both the local date (used by the gate above) and let the
+      // server derive the timestamp from its own now().
       const nowIso = new Date().toISOString();
       apiRequest("PATCH", "/api/auth/me/prayer-invite-shown", { date: today })
         .then(() => queryClient.setQueryData<typeof user>(["/api/auth/me"], prev =>
@@ -2462,7 +2465,7 @@ export default function Dashboard() {
     }
     // If total === 0 we DON'T stamp — a later visit in the same day with
     // a queued prayer should still get a chance to see the popup.
-  }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, dashCircleIntentions, dashCircleIntentionsLoading, queryClient, popupLoggedToday]);
+  }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, dashCircleIntentions, dashCircleIntentionsLoading, queryClient, popupLoggedToday, popupStreakData]);
 
   // Correspondences — drives both the "you have a new letter" popup and
   // the letter cards mixed into the Today / This week / This month buckets.
