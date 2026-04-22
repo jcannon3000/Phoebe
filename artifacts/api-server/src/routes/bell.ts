@@ -312,7 +312,24 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
     });
 
     console.log(`[bell] Saved preferences for user ${user.id}, bellEnabled=${parsed.bellEnabled}`);
-    res.json({ ok: true, ...parsed });
+
+    // Return enough for the client to show an honest confirmation:
+    //   - inviteSent: was a Google Calendar event actually created?
+    //   - calendarStatus: "pending" if the invite just went out, "none"
+    //     if the event couldn't be created at all. We never assume
+    //     "active" here — the user still has to accept the invite in
+    //     their email; the GET endpoint will promote to "active" once
+    //     Google reports the RSVP.
+    const inviteSent = parsed.bellEnabled && !!bellCalendarEventId;
+    const calendarStatus: "pending" | "none" =
+      parsed.bellEnabled && bellCalendarEventId ? "pending" : "none";
+    res.json({
+      ok: true,
+      ...parsed,
+      inviteSent,
+      calendarStatus,
+      bellCalendarEventId: bellCalendarEventId ?? null,
+    });
   } catch (err) {
     console.error("PUT /api/bell/preferences error:", err);
     res.status(500).json({ error: "Server error" });

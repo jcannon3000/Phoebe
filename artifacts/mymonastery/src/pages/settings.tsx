@@ -360,6 +360,7 @@ function BellPreferences() {
   const { data, isLoading } = useQuery<BellPrefs>({
     queryKey: ["/api/bell/preferences"],
     queryFn: () => apiRequest("GET", "/api/bell/preferences"),
+    refetchOnWindowFocus: true,
   });
 
   const deactivateMutation = useMutation({
@@ -374,6 +375,48 @@ function BellPreferences() {
     },
   });
 
+  // PUT /bell/preferences with the existing time — which the server
+  // uses to (re)create the calendar invite. Used by the "Resend
+  // invite" action when the bell is enabled but the calendar event
+  // is pending / tentative / missing.
+  const resendMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("PUT", "/api/bell/preferences", {
+        bellEnabled: true,
+        dailyBellTime: data?.dailyBellTime ?? "07:00",
+        timezone: data?.timezone ?? "America/New_York",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bell/preferences"] });
+    },
+  });
+
+  // One-shot popup state: fires when the bell is enabled in the DB
+  // but the calendar invite isn't actually "active" (pending,
+  // tentative, or the event is missing entirely). Lets the user see
+  // the issue and resend in one tap. Suppress-on-dismiss is keyed by
+  // the status so if it flips to a different issue, we show it again.
+  const [issueModalStatus, setIssueModalStatus] = useState<string | null>(null);
+  const issueShownRef = useRef(false);
+
+  useEffect(() => {
+    if (!data || !data.bellEnabled) return;
+    const status = data.calendarStatus ?? "none";
+    if (status === "active") return; // all good, no nudge
+    if (issueShownRef.current) return;
+    const dismissKey = `phoebe:bell-issue-dismissed:${status}`;
+    if (localStorage.getItem(dismissKey) === "1") return;
+    issueShownRef.current = true;
+    setIssueModalStatus(status);
+  }, [data]);
+
+  const dismissIssue = () => {
+    if (issueModalStatus) {
+      localStorage.setItem(`phoebe:bell-issue-dismissed:${issueModalStatus}`, "1");
+    }
+    setIssueModalStatus(null);
+  };
+
   if (isLoading) {
     return (
       <SettingsCard>
@@ -383,6 +426,11 @@ function BellPreferences() {
   }
 
   const isActive = data?.bellEnabled;
+  // "Confirmed" = bell is enabled AND the calendar invite is accepted.
+  // Everything else is a broken state the user should see and fix.
+  const calendarStatus = data?.calendarStatus ?? "none";
+  const isConfirmed = isActive && calendarStatus === "active";
+  const hasCalendarIssue = isActive && calendarStatus !== "active";
 
   return (
     <>
@@ -464,6 +512,35 @@ function BellPreferences() {
               {data.calendarStatus === "pending" && "Calendar invite sent — accept it in your email"}
               {data.calendarStatus === "tentative" && "Marked as maybe — accept the invite to activate"}
             </p>
+          </div>
+        )}
+
+        {/* Invite-didn't-send warning. Bell is enabled in the DB but
+            no calendar event exists — Google Calendar was unreachable
+            at save time. Surface the failure with a one-tap retry so
+            users don't quietly sit with a dead bell. */}
+        {isActive && data?.calendarStatus === "none" && (
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#C17F7F" }} />
+              <p className="text-[11px]" style={{ color: "#C17F7F" }}>
+                Calendar invite didn't send — try again.
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                apiRequest("PUT", "/api/bell/preferences", {
+                  bellEnabled: true,
+                  dailyBellTime: data?.dailyBellTime ?? "07:00",
+                  timezone: data?.timezone ?? "America/New_York",
+                })
+                  .then(() => queryClient.invalidateQueries({ queryKey: ["/api/bell/preferences"] }))
+              }
+              className="text-[11px] font-medium px-3 py-1 rounded-full shrink-0"
+              style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
+            >
+              Retry
+            </button>
           </div>
         )}
       </SettingsCard>
