@@ -860,18 +860,20 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const meatFastNextLine = isMeatFast && nextWindow
     ? `Next fast on ${nextWindow}`
     : "";
-  // When the viewer has already fasted today, the third flap line swaps to
-  // a quiet "Fasted today ✓" so they feel acknowledged without a separate
-  // streak badge. On non-fast days or before they log, we fall back to the
-  // "Next fast on …" preview.
-  const meatFastLoggedTodayLine = isMeatFast && m.myLoggedToday
-    ? "Fasted today ✓"
+  // On a fasting day we show the whole-group progress ("N of M fasted
+  // today") rather than just the viewer's own status — the card's
+  // purpose is communal accountability, not a private "you logged it"
+  // chip. On non-fast days we fall back to the "Next fast on …"
+  // preview. `nextWindow` is null/empty when today IS the fast day, so
+  // its presence is the reliable "is today the day" signal.
+  const meatFastTodayCountLine = isMeatFast && !nextWindow && m.memberCount > 0
+    ? `${m.todayPostCount} of ${m.memberCount} fasted today`
     : "";
   const fastingFlapLines: string[] = isMeatFast
     ? [
         meatFastWaterLine,
         meatFastAllTimeLine,
-        meatFastLoggedTodayLine || meatFastNextLine,
+        meatFastTodayCountLine || meatFastNextLine,
       ]
     : [];
 
