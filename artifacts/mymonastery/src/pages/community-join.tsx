@@ -357,15 +357,15 @@ export default function CommunityJoinPage() {
       const data = await res.json();
       if (data.ok) {
         // Server already linked the new user to the group_members row.
-        // Route through the full product onboarding FIRST (profile pic,
-        // BCP/lectio/gatherings intros, bell setup, initial prayer
-        // request), then land on the community with ?welcome=1 for the
-        // tailored post-signup overlay. The `next` query param lets
-        // user-onboarding forward there on completion. Existing users
-        // who signed in (not registered) skip onboarding entirely via
-        // the `onboardingCompleted` guard on the onboarding page.
+        // Route through the full product onboarding (profile pic, BCP
+        // intros, gatherings, bell setup, first prayer request), then
+        // land on this community as the destination. The dedicated
+        // post-signup community overlay was removed — the onboarding
+        // flow's closing "Welcome." fade is the only welcoming moment
+        // we need. Existing users who signed in (not registered) skip
+        // onboarding via the `onboardingCompleted` guard.
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        const nextUrl = `/communities/${slug}?welcome=1`;
+        const nextUrl = `/communities/${slug}`;
         setLocation(`/onboarding?next=${encodeURIComponent(nextUrl)}`);
       } else {
         setAuthError(data.error ?? "Couldn't create your account.");

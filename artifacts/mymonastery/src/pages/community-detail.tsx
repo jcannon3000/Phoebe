@@ -700,20 +700,15 @@ export default function CommunityDetailPage() {
   })();
   const [activeTab, setActiveTab] = useState<"home" | "prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
 
-  // Post-signup welcome overlay. Fires when the user lands with
-  // `?welcome=1` — community-join sends newcomers here after register.
-  // Shows two slides tailored to this specific group (members +
-  // practices). One-shot; we strip the query param when dismissed so
-  // a refresh doesn't re-trigger.
-  const [welcomeOpen, setWelcomeOpen] = useState(() => {
-    return new URLSearchParams(search).get("welcome") === "1";
-  });
-  const [welcomeIdx, setWelcomeIdx] = useState(0);
-  const closeWelcome = () => {
-    setWelcomeOpen(false);
-    // Clean the URL so a reload doesn't reopen the overlay.
-    window.history.replaceState({}, "", `/communities/${slug}`);
-  };
+  // Strip the legacy `?welcome=1` query param if it's still in the URL
+  // (older links). The dedicated post-signup community welcome overlay
+  // was removed — the onboarding flow's final "Welcome." fade is the
+  // only welcoming moment we need now.
+  useEffect(() => {
+    if (new URLSearchParams(search).get("welcome") === "1") {
+      window.history.replaceState({}, "", `/communities/${slug}`);
+    }
+  }, [search, slug]);
 
   const [showInvite, setShowInvite] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -2212,182 +2207,6 @@ export default function CommunityDetailPage() {
         })()}
       </div>
 
-      {/* Post-signup welcome overlay — tailored to this community.
-          Fires when the user lands with ?welcome=1 (community-join
-          redirects here after register). Two slides: members +
-          practices preview. One-shot; dismissing strips the query. */}
-      {welcomeOpen && groupData?.group && (() => {
-        const joinedMembers = (groupData.members ?? []).filter(m => m.joinedAt !== null);
-        const practices = (practicesData?.practices ?? []).slice(0, 4);
-        const slides: Array<{ key: string; node: React.ReactNode }> = [];
-
-        slides.push({
-          key: "members",
-          node: (
-            <div className="text-center">
-              <div className="text-5xl mb-3">{groupData.group.emoji ?? "🏘️"}</div>
-              <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Welcome to
-              </p>
-              <h2 className="text-2xl font-bold mb-4" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-                {groupData.group.name}
-              </h2>
-              {joinedMembers.length > 1 ? (
-                <>
-                  <div className="flex items-center justify-center mb-4">
-                    {joinedMembers.slice(0, 5).map((m, i) => (
-                      <div
-                        key={m.email}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
-                        style={{
-                          background: "#1A4A2E",
-                          color: "#A8C5A0",
-                          border: "2px solid #091A10",
-                          marginLeft: i === 0 ? 0 : -8,
-                          zIndex: joinedMembers.length - i,
-                        }}
-                      >
-                        {m.avatarUrl ? (
-                          <img src={m.avatarUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          (m.name ?? m.email ?? "?").charAt(0).toUpperCase()
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                    You're walking with{" "}
-                    {joinedMembers
-                      .filter(m => m.email !== user?.email)
-                      .slice(0, 3)
-                      .map(m => (m.name ?? "").split(/\s+/)[0])
-                      .filter(Boolean)
-                      .join(", ") || "your community"}
-                    {joinedMembers.length > 4 ? ` & ${joinedMembers.length - 4} others.` : "."}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                  You're early — the room is yours to set the tone for.
-                </p>
-              )}
-            </div>
-          ),
-        });
-
-        if (practices.length > 0) {
-          slides.push({
-            key: "practices",
-            node: (
-              <div>
-                <div className="text-center mb-5">
-                  <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                    What you'll do together
-                  </p>
-                  <h2 className="text-xl font-bold" style={{ color: "#F0EDE6", letterSpacing: "-0.02em" }}>
-                    Shared practices
-                  </h2>
-                </div>
-                <div className="space-y-2">
-                  {practices.map(p => {
-                    const tt = (p as { templateType?: string | null }).templateType ?? null;
-                    const emoji =
-                      tt === "intercession" ? "🙏🏽" :
-                      tt === "lectio-divina" ? "📜" :
-                      tt === "fasting" ? "🌿" :
-                      tt === "listening" ? "🎵" :
-                      tt === "morning-prayer" ? "🌅" :
-                      tt === "evening-prayer" ? "🌙" :
-                      "🌿";
-                    return (
-                      <div
-                        key={p.id}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                        style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
-                      >
-                        <span className="text-2xl leading-none">{emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                            {p.name}
-                          </p>
-                          <p className="text-[11px] truncate" style={{ color: "#8FAF96" }}>
-                            {(p as { intention?: string }).intention || "Practice"}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {(practicesData?.practices?.length ?? 0) > practices.length && (
-                  <p className="text-xs text-center mt-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-                    + {(practicesData?.practices?.length ?? 0) - practices.length} more
-                  </p>
-                )}
-              </div>
-            ),
-          });
-        }
-
-        const isLast = welcomeIdx >= slides.length - 1;
-        const currentSlide = slides[welcomeIdx] ?? slides[0];
-        return (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 100,
-              background: "rgba(0,0,0,0.72)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 20,
-            }}
-          >
-            <div
-              className="rounded-2xl p-6"
-              style={{
-                background: "#0F2818",
-                border: "1px solid rgba(46,107,64,0.4)",
-                boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
-                maxWidth: 440,
-                width: "100%",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              <div className="mb-5" style={{ minHeight: 200 }}>
-                {currentSlide?.node}
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5">
-                  {slides.map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-1.5 h-1.5 rounded-full transition-colors"
-                      style={{ background: i === welcomeIdx ? "#8FAF96" : "rgba(143,175,150,0.3)" }}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => (isLast ? closeWelcome() : setWelcomeIdx(i => i + 1))}
-                  className="rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-                  style={{
-                    background: "#2D5E3F",
-                    color: "#F0EDE6",
-                    padding: "9px 22px",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  {isLast ? "Enter community →" : "Continue →"}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </Layout>
   );
 }

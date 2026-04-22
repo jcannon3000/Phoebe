@@ -413,12 +413,17 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  // Inflight PATCH so the Save & close button can await it and we
+  // never dismiss with the server still un-saved. `null` = nothing
+  // pending. Same pattern as the onboarding ProfilePictureSlide fix.
+  const pendingSaveRef = useRef<Promise<void> | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
     setUploading(true);
+    setSaveError(null);
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
@@ -435,23 +440,36 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
         ctx.drawImage(img, 0, 0, w, h);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
         setPreview(dataUrl);
-        apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
+        pendingSaveRef.current = apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
           .then(() => {
             queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
               if (!prev) return prev;
               return { ...prev, avatarUrl: dataUrl };
             });
-            setSaved(true);
-            // Short beat so the check icon is visible, then close.
-            setTimeout(() => onDone(), 900);
+          })
+          .catch((err) => {
+            setSaveError(err?.message ?? "Couldn't save your photo. Try again?");
+            throw err;
           })
           .finally(() => setUploading(false));
       };
-      img.onerror = () => setUploading(false);
+      img.onerror = () => { setUploading(false); setSaveError("Couldn't read that image."); };
       img.src = reader.result as string;
     };
-    reader.onerror = () => setUploading(false);
+    reader.onerror = () => { setUploading(false); setSaveError("Couldn't read that image."); };
     reader.readAsDataURL(file);
+  }
+
+  async function handleSaveAndClose() {
+    if (pendingSaveRef.current) {
+      try {
+        await pendingSaveRef.current;
+      } catch {
+        // Error already surfaced via saveError; don't dismiss.
+        return;
+      }
+    }
+    onDone();
   }
 
   return (
@@ -514,8 +532,6 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
           >
             {uploading ? (
               <span className="text-[10px]" style={{ color: "#F0EDE6" }}>…</span>
-            ) : saved ? (
-              <span className="text-[12px]" style={{ color: "#F0EDE6" }}>✓</span>
             ) : (
               <Camera size={14} style={{ color: "#F0EDE6" }} />
             )}
@@ -529,14 +545,29 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
           onChange={handlePhotoSelect}
         />
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || saved}
-          className="w-full px-6 py-2.5 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60 mb-2"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-        >
-          {saved ? "✓ Saved" : uploading ? "Uploading…" : "Upload a photo"}
-        </button>
+        {preview ? (
+          <button
+            onClick={handleSaveAndClose}
+            disabled={uploading}
+            className="w-full px-6 py-2.5 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60 mb-2"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            {uploading ? "Saving…" : "Save & close"}
+          </button>
+        ) : (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full px-6 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 mb-2"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            Upload a photo
+          </button>
+        )}
+        {saveError && (
+          <p className="text-[11px] mb-2" style={{ color: "#D98C4A" }}>
+            {saveError}
+          </p>
+        )}
         <button
           onClick={onDone}
           className="text-xs transition-opacity hover:opacity-80"

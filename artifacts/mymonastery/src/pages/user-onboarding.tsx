@@ -780,30 +780,51 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
     setDone(true);
   }
 
+  // Final beat — a big "Welcome" that pulses once, then fades out into
+  // the home screen. No tap required: the slide auto-advances so the
+  // user's last impression of onboarding is a breath, not a button.
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => onComplete(), 2600);
+    return () => clearTimeout(t);
+  }, [done, onComplete]);
+
   if (done) {
     return (
-      <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto w-full px-2">
+      <motion.div
+        className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto px-2"
+        initial={{ opacity: 1 }}
+        animate={{ opacity: [1, 1, 0] }}
+        transition={{ duration: 2.6, times: [0, 0.75, 1], ease: "easeOut" }}
+      >
+        <motion.h1
+          className="text-5xl md:text-7xl font-bold mb-6 tracking-tight"
+          style={{ color: C.text, fontFamily: C.font }}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{
+            opacity: [0, 1, 1],
+            scale: [0.96, 1.02, 1],
+          }}
+          transition={{
+            duration: 1.8,
+            times: [0, 0.45, 1],
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          Welcome.
+        </motion.h1>
         {submitted && (
           <motion.p
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-base mb-8"
+            transition={{ delay: 0.4, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="text-lg md:text-xl font-light leading-relaxed"
             style={{ color: C.sage, fontFamily: C.font }}
           >
             Your community will hold this.
           </motion.p>
         )}
-        <motion.button
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: submitted ? 0.1 : 0 }}
-          onClick={onComplete}
-          className="px-8 py-3.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: "#2D5E3F", color: C.text }}
-        >
-          Done
-        </motion.button>
-      </div>
+      </motion.div>
     );
   }
 
