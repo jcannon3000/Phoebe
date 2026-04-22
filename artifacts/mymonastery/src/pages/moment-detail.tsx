@@ -382,6 +382,49 @@ export default function MomentDetail() {
     },
   });
 
+  // ─── Moment ↔ Group linking (intercessions only) ────────────────────────
+  // Groups the moment is shared with. `primary` is the original creator
+  // group (stored on sharedMoments.groupId); `additional` are extra groups
+  // via the moment_groups junction. The creator can add any group they
+  // admin, and can remove any secondary group they admin (primary is
+  // never detachable here — archiving the moment is the right move).
+  type MomentGroupsData = {
+    primary: { id: number; name: string; slug: string; emoji: string | null } | null;
+    additional: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
+  };
+  const { data: momentGroupsData } = useQuery<MomentGroupsData>({
+    queryKey: [`/api/moments/${id}/groups`],
+    queryFn: () => apiRequest("GET", `/api/moments/${id}/groups`),
+    enabled: !!user && !!id && editingPractice,
+  });
+
+  type MyGroup = { id: number; name: string; slug: string; emoji: string | null; myRole: string };
+  const { data: myGroupsData } = useQuery<{ groups: MyGroup[] }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+    enabled: !!user && editingPractice,
+  });
+
+  const attachGroupMutation = useMutation({
+    mutationFn: (groupId: number) =>
+      apiRequest("POST", `/api/moments/${id}/groups`, { groupId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/moments/${id}/groups`] });
+      qc.invalidateQueries({ queryKey: [`/api/moments/${id}`] });
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+    },
+  });
+
+  const detachGroupMutation = useMutation({
+    mutationFn: (groupId: number) =>
+      apiRequest("DELETE", `/api/moments/${id}/groups/${groupId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/moments/${id}/groups`] });
+      qc.invalidateQueries({ queryKey: [`/api/moments/${id}`] });
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+    },
+  });
+
   const updateGoalMutation = useMutation({
     mutationFn: (payload: { commitmentSessionsGoal: number | null; commitmentTendFreely?: boolean }) =>
       apiRequest("PATCH", `/api/moments/${id}/goal`, payload),
@@ -1524,6 +1567,102 @@ export default function MomentDetail() {
                       <p className="text-xs text-muted-foreground mt-1">Everyone can log any time that day. 🌿</p>
                     </div>
                   )}
+
+                  {/* Share with groups — intercessions only. The primary
+                      group is pinned; additional groups can be added or
+                      removed. Adding a group pulls every joined member of
+                      that community in as a participant (server-side).
+                      Only groups the viewer is an admin of can be attached. */}
+                  {isIntercession && (() => {
+                    const primary = momentGroupsData?.primary ?? null;
+                    const additional = momentGroupsData?.additional ?? [];
+                    const linkedIds = new Set([
+                      ...(primary ? [primary.id] : []),
+                      ...additional.map(g => g.id),
+                    ]);
+                    const addableGroups = (myGroupsData?.groups ?? []).filter(g =>
+                      !linkedIds.has(g.id) && (g.myRole === "admin" || g.myRole === "hidden_admin")
+                    );
+                    const attaching = attachGroupMutation.isPending ? attachGroupMutation.variables : null;
+                    const detaching = detachGroupMutation.isPending ? detachGroupMutation.variables : null;
+                    return (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-2">Share with</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {primary && (
+                            <span
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                              style={{
+                                background: "rgba(46,107,64,0.18)",
+                                border: "1px solid rgba(46,107,64,0.35)",
+                                color: "#C8D4C0",
+                              }}
+                              title="Primary community — can't be detached here; archive the practice instead."
+                            >
+                              {primary.emoji ?? "🏘️"} {primary.name}
+                            </span>
+                          )}
+                          {additional.map(g => (
+                            <span
+                              key={g.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                              style={{
+                                background: "rgba(46,107,64,0.12)",
+                                border: "1px solid rgba(46,107,64,0.28)",
+                                color: "#C8D4C0",
+                              }}
+                            >
+                              {g.emoji ?? "🏘️"} {g.name}
+                              <button
+                                type="button"
+                                onClick={() => detachGroupMutation.mutate(g.id)}
+                                disabled={detachGroupMutation.isPending}
+                                className="-mr-1 hover:opacity-100 transition-opacity"
+                                style={{ opacity: detaching === g.id ? 0.4 : 0.6 }}
+                                title="Remove from this community"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                          {!primary && additional.length === 0 && (
+                            <span className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
+                              Not shared with any community yet.
+                            </span>
+                          )}
+                        </div>
+
+                        {addableGroups.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {addableGroups.map(g => (
+                              <button
+                                key={g.id}
+                                type="button"
+                                onClick={() => attachGroupMutation.mutate(g.id)}
+                                disabled={attachGroupMutation.isPending}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
+                                style={{
+                                  background: "transparent",
+                                  border: "1px dashed rgba(143,175,150,0.45)",
+                                  color: "#A8C5A0",
+                                }}
+                              >
+                                {attaching === g.id ? "Adding…" : `+ ${g.emoji ?? "🏘️"} ${g.name}`}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs" style={{ color: "rgba(143,175,150,0.45)" }}>
+                            {myGroupsData ? "No other communities you admin to add." : "Loading communities…"}
+                          </p>
+                        )}
+                        <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.45)" }}>
+                          Adding a community brings its members in as participants.
+                        </p>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex gap-3">
                     <button
                       onClick={() => {

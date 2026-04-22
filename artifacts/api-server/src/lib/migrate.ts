@@ -1,7 +1,19 @@
 import { pool } from "@workspace/db";
 import { logger } from "./logger";
 
-async function run(client: Awaited<ReturnType<typeof pool.connect>>, sql: string) {
+// Minimal structural type for the object pool.connect() gives us — just
+// what run() actually uses. Previously typed as
+// `Awaited<ReturnType<typeof pool.connect>>` which resolves to `void`
+// under the rebuilt @workspace/db declarations (pg's Pool.connect
+// overload leaks through differently after the project-reference
+// build). A local structural type avoids needing @types/pg in this
+// package.
+interface MigrateClient {
+  query: (sql: string) => Promise<unknown>;
+  release: () => void;
+}
+
+async function run(client: MigrateClient, sql: string) {
   try {
     await client.query(sql);
   } catch (err: unknown) {
