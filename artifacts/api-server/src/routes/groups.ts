@@ -1342,16 +1342,34 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
   //      belong to" so the common case of "I am in one community, I
   //      post on the prayer wall" just works without making the user
   //      pick a group every time.
-  const joinedMemberRows = await db.select({ userId: groupMembersTable.userId })
+  // Member resolution joins on users.email as a fallback so members
+  // whose `group_members.user_id` is NULL (they joined via email
+  // invite and the row was never back-linked) still contribute their
+  // global requests to the wall. Previously those members' posts
+  // silently missed their own community — the user flagged
+  // "Anabelle's prayer request should be showing up here" because
+  // Anabelle's membership row didn't have a user_id set.
+  const joinedMemberRows = await db
+    .select({
+      rowUserId: groupMembersTable.userId,
+      emailUserId: usersTable.id,
+    })
     .from(groupMembersTable)
+    .leftJoin(
+      usersTable,
+      sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
+    )
     .where(and(
       eq(groupMembersTable.groupId, group.id),
       sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-      sql`${groupMembersTable.userId} IS NOT NULL`,
     ));
-  const memberUserIds = joinedMemberRows
-    .map(r => r.userId)
-    .filter((id): id is number => typeof id === "number");
+  const memberUserIds = Array.from(
+    new Set(
+      joinedMemberRows
+        .map(r => r.rowUserId ?? r.emailUserId)
+        .filter((id): id is number => typeof id === "number"),
+    ),
+  );
 
   const rows = await db.select({
     id: prayerRequestsTable.id,
