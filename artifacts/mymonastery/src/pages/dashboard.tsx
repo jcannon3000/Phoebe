@@ -1122,6 +1122,112 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   );
 }
 
+// ─── Service times pill row ────────────────────────────────────────────────
+// Measures actual overflow on the inner pill row and switches to a seamless
+// auto-scroll ticker whenever the static row wouldn't fit. We do this at
+// runtime rather than using a pill-count threshold because "too many pills"
+// depends entirely on the viewport width and the labels the parish chose —
+// a 2-pill row with long labels can still overflow a narrow phone, and a
+// 5-pill row of bare times can still fit on a wide screen.
+//
+// Implementation detail: render the static row once in a hidden measurement
+// wrapper, compare scrollWidth to clientWidth on mount + resize, then flip
+// to the ticker version if the content overflows. The ticker duplicates the
+// pill list so the CSS keyframe can translate from 0 to -50% and seam.
+
+function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const measure = () => {
+      const container = containerRef.current;
+      const inner = innerRef.current;
+      if (!container || !inner) return;
+      // 2px slack to absorb subpixel rounding — we only want to switch
+      // to ticker mode when it's really necessary, not on a 1px hair.
+      setIsOverflowing(inner.scrollWidth > container.clientWidth + 2);
+    };
+    measure();
+    // Remeasure on window resize (rotating a phone from portrait to
+    // landscape changes the available width) and whenever the number
+    // of pills changes (admin just added or removed a time).
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [schedule.times.length]);
+
+  const renderPill = (t: typeof schedule.times[number], key: string) => {
+    const label = t.label
+      ? `${formatServiceTime(t.time)} · ${t.label}`
+      : formatServiceTime(t.time);
+    return (
+      <span
+        key={key}
+        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
+        style={{
+          background: "rgba(46,107,64,0.2)",
+          border: "1px solid rgba(46,107,64,0.3)",
+          color: "#F0EDE6",
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {label}
+      </span>
+    );
+  };
+
+  // Ticker mode: duplicated pill list, -50% translateX keyframe. Duration
+  // scales with content so a long row doesn't whip past too fast.
+  if (isOverflowing) {
+    const durationSec = Math.max(16, schedule.times.length * 5);
+    return (
+      <div
+        className="mt-2 relative overflow-hidden"
+        style={{
+          maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+          WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+        }}
+      >
+        <style>{`@keyframes service-times-scroll-${schedule.id} {
+          from { transform: translateX(0) }
+          to { transform: translateX(-50%) }
+        }`}</style>
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            width: "max-content",
+            animation: `service-times-scroll-${schedule.id} ${durationSec}s linear infinite`,
+          }}
+        >
+          {[...schedule.times, ...schedule.times].map((t, i) =>
+            renderPill(t, `${t.time}-${i}`),
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Static mode — fits on one line. `overflow-hidden` is still there as
+  // a safety rail in case measurement is late by a frame on first paint.
+  return (
+    <div
+      ref={containerRef}
+      className="mt-2 overflow-hidden"
+    >
+      <div ref={innerRef} className="flex flex-nowrap gap-1.5">
+        {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Service card ───────────────────────────────────────────────────────────
 // A single card on the dashboard representing a community's weekly service
 // schedule. Shows group + schedule name and a teaser of the first service
@@ -1201,68 +1307,15 @@ function ServiceCard({
           </div>
 
           {/* Per-time pill row — each service time renders as its own
-              mini-card. Small parishes (≤3 services) render a static
-              row; larger schedules (>3) switch to an auto-scroll
-              ticker so the card stays a single line no matter how
-              many Sunday services are offered. */}
-          {schedule.times.length > 0 && (() => {
-            const renderPill = (t: typeof schedule.times[number], key: string) => {
-              const label = t.label
-                ? `${formatServiceTime(t.time)} · ${t.label}`
-                : formatServiceTime(t.time);
-              return (
-                <span
-                  key={key}
-                  className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
-                  style={{
-                    background: "rgba(46,107,64,0.2)",
-                    border: "1px solid rgba(46,107,64,0.3)",
-                    color: "#F0EDE6",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  {label}
-                </span>
-              );
-            };
-
-            if (schedule.times.length <= 3) {
-              return (
-                <div className="mt-2 flex flex-nowrap gap-1.5 overflow-hidden">
-                  {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
-                </div>
-              );
-            }
-            // Overflow case: duplicate the list and animate a -50%
-            // translateX for a seamless ticker loop.
-            const durationSec = Math.max(16, schedule.times.length * 5);
-            return (
-              <div
-                className="mt-2 relative overflow-hidden"
-                style={{
-                  maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-                  WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-                }}
-              >
-                <style>{`@keyframes service-times-scroll-${schedule.id} {
-                  from { transform: translateX(0) }
-                  to { transform: translateX(-50%) }
-                }`}</style>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 6,
-                    width: "max-content",
-                    animation: `service-times-scroll-${schedule.id} ${durationSec}s linear infinite`,
-                  }}
-                >
-                  {[...schedule.times, ...schedule.times].map((t, i) =>
-                    renderPill(t, `${t.time}-${i}`)
-                  )}
-                </div>
-              </div>
-            );
-          })()}
+              mini-card. We measure actual overflow at runtime (not pill
+              count) and switch to an auto-scroll ticker only when the
+              static row wouldn't fit on the card's width. That way a
+              2-service parish on a narrow phone scrolls if the pills
+              overflow, while a 5-service parish on a wide screen still
+              renders statically when there's room. */}
+          {schedule.times.length > 0 && (
+            <ServiceTimesPillRow schedule={schedule} />
+          )}
 
         </div>
       </motion.div>
