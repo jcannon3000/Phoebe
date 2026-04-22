@@ -135,6 +135,30 @@ const CATEGORY_COLORS: Record<Category, {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Count prayers-for that will actually make it into the slideshow.
+// Mirrors prayer-mode.tsx's filter exactly: drop server-expired AND
+// prayers on their final day (daysLeft === 0). The People-page CTA
+// uses the same cutoff — a prayer on Day N of N reads "done" there,
+// so the slideshow (and therefore the invite popup's count) should
+// not include it either. Before this helper was used, the daily
+// prayer invite card said "7 prayers waiting" while the actual
+// slideshow had 6 slides, which the user flagged directly.
+function countActivePrayersFor(prayersFor: Array<{ id: number; expired: boolean; expiresAt: string }> | undefined): number {
+  if (!prayersFor) return 0;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let n = 0;
+  for (const p of prayersFor) {
+    if (p.expired) continue;
+    const expires = new Date(p.expiresAt);
+    if (Number.isNaN(expires.getTime())) { n++; continue; }
+    const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+    const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayStart.getTime()) / 86400000));
+    if (daysLeft > 0) n++;
+  }
+  return n;
+}
+
 function nextDayLabel(date: Date): string {
   if (isToday(date)) return "Today";
   const tomorrow = addDays(startOfDay(new Date()), 1);
@@ -2290,7 +2314,7 @@ export default function Dashboard() {
   // momentsData and would otherwise blow up on first render with a
   // "Cannot access uninitialized variable" (TDZ).
   type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
-  type DashPrayerFor = { id: number; expired: boolean };
+  type DashPrayerFor = { id: number; expired: boolean; expiresAt: string };
   type DashCircleIntention = { id: number; groupId: number };
 
   const { data: dashPrayerRequests, isLoading: dashPrayerRequestsLoading } = useQuery<DashPrayerRequest[]>({
@@ -2400,7 +2424,12 @@ export default function Dashboard() {
     const othersRequests = (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
     ).length;
-    const activePrayersFor = (dashPrayersFor ?? []).filter(p => !p.expired).length;
+    // Match prayer-mode's filter exactly: drop server-expired AND
+    // final-day prayers (daysLeft === 0). Previously the dashboard
+    // counted every non-expired prayer-for, but the slideshow hides
+    // the final-day ones, so the popup claimed "7 prayers waiting"
+    // while the user saw 6 slides — the user flagged that directly.
+    const activePrayersFor = countActivePrayersFor(dashPrayersFor);
     const total = activeIntercessions + othersRequests + activePrayersFor;
 
     if (total > 0) {
@@ -2518,7 +2547,7 @@ export default function Dashboard() {
     const othersRequests = (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
     ).length;
-    const activePrayersFor = (dashPrayersFor ?? []).filter(p => !p.expired).length;
+    const activePrayersFor = countActivePrayersFor(dashPrayersFor);
     return activeIntercessions + othersRequests + activePrayersFor;
   }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor]);
 
