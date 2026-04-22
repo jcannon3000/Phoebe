@@ -30,6 +30,10 @@ type Moment = {
   intercessionSource?: string | null;
   members: Array<{ name: string; email: string }>;
   todayPostCount: number;
+  // Rolling 7-day distinct-prayers count (inclusive of today). Surfaced
+  // under each intercession slide so the viewer sees that others have
+  // carried this prayer even on days nobody has prayed yet today.
+  weekPostCount?: number;
   windowOpen: boolean;
   myUserToken: string | null;
   momentToken: string | null;
@@ -65,6 +69,10 @@ interface PrayerSlide {
   groupName?: string;
   groupEmoji?: string | null;
   groupSlug?: string;
+  // Rolling 7-day unique-prayers count. Rendered as a soft affirmation
+  // under the prayer text ("3 people have prayed this this week") so the
+  // viewer feels part of a rhythm even on low-activity days.
+  weekPrayCount?: number;
 }
 
 // One row from GET /api/groups/me/circle-intentions. Flattened across every
@@ -330,7 +338,11 @@ function SlideContent({
           className="text-[12px] italic"
           style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
         >
-          Your community is holding this.
+          {slide.weekPrayCount && slide.weekPrayCount > 0
+            ? slide.weekPrayCount === 1
+              ? "1 person has prayed this this week."
+              : `${slide.weekPrayCount} people have prayed this this week.`
+            : "Your community is holding this."}
         </p>
       )}
 
@@ -626,6 +638,7 @@ export default function PrayerModePage() {
         intention: intentionSub,
         fullText: m.intercessionFullText?.trim() || null,
         attribution: attributionLabel ? `with ${attributionLabel}` : "",
+        weekPrayCount: m.weekPostCount ?? 0,
       };
     }),
     // Circle intentions — one slide per active intention in every prayer
@@ -818,11 +831,15 @@ export default function PrayerModePage() {
       /* non-fatal */
     }
 
-    // Fade out then navigate
+    // Fade out then navigate. Users now reach prayer-mode directly from
+    // the dashboard's PrayerListCard CTA (skipping the /prayer-list index),
+    // so sending them back to /dashboard after finishing lands them on the
+    // same screen they started from — one continuous arc rather than
+    // dropping them in a list they may never have visited.
     setSlideVisible(false);
     setTimeout(() => {
       setVisible(false);
-      setTimeout(() => setLocation("/prayer-list"), 500);
+      setTimeout(() => setLocation("/dashboard"), 500);
     }, 300);
   };
 

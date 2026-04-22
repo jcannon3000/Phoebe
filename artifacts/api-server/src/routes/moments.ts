@@ -1532,6 +1532,25 @@ router.get("/moments", async (req, res): Promise<void> => {
           if (!postsByWindow.has(p.windowDate)) postsByWindow.set(p.windowDate, new Set());
           postsByWindow.get(p.windowDate)!.add(p.userToken);
         }
+        // Rolling 7-day unique-prayer count. Used by the prayer-list slideshow
+        // to tell viewers "3 people have prayed this this week" under each
+        // intercession — a gentler signal than the daily count because it
+        // still shows warmth on days with zero check-ins yet. Dates are
+        // YYYY-MM-DD strings in the moment's timezone, so lex-compare matches
+        // calendar order.
+        const weekCutoff = (() => {
+          const [y, m2, d] = todayDate.split("-").map(Number);
+          const t = Date.UTC(y!, (m2 ?? 1) - 1, d ?? 1) - 6 * 86_400_000;
+          const dt = new Date(t);
+          return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+        })();
+        const weekUserTokens = new Set<string>();
+        for (const [date, tokens] of postsByWindow.entries()) {
+          if (date >= weekCutoff && date <= todayDate) {
+            for (const t of tokens) weekUserTokens.add(t);
+          }
+        }
+        const weekPostCount = weekUserTokens.size;
         const pastWindowDatesWithPosts = [...postsByWindow.keys()]
           .filter(d => d !== todayDate)
           .sort((a, b) => b.localeCompare(a));
@@ -1628,6 +1647,7 @@ router.get("/moments", async (req, res): Promise<void> => {
             avatarUrl: avatarByEmailList.get(t.email.toLowerCase()) ?? null,
           })),
           todayPostCount: todayPosts.length,
+          weekPostCount,
           windowOpen: computeWindowOpen(m),
           isActionableToday: isActionableToday(m),
           isActionableTomorrow: isActionableTomorrow(m),
@@ -1648,8 +1668,11 @@ router.get("/moments", async (req, res): Promise<void> => {
           lectioMyStageDone,
           lectioCurrentStageLabel,
           lectioNextStageLabel,
-          // Fasting weekly stats — used by the dashboard card for meat fasts
-          // to show "X people fasted this week · Y gallons saved".
+          // Fasting stats — weekly numbers drive the dashboard card's flap
+          // line 1 ("💧 1,200 gallons saved this week"), all-time numbers
+          // drive line 2 ("💧 6,800 gallons saved all time"), and
+          // myLoggedToday swaps line 3 into "Fasted today ✓" once the
+          // current viewer has posted a check-in for today's fast.
           ...(m.templateType === "fasting" ? (() => {
             const GALLONS_PER_FAST = 400;
             const isMeat = (m as Record<string, unknown>).fastingType === "meat";
@@ -1658,12 +1681,18 @@ router.get("/moments", async (req, res): Promise<void> => {
             startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
             const weekStr = startOfWeek.toISOString().split("T")[0];
             let weekFastCount = 0;
+            let allTimeFastCount = 0;
             for (const [date, tokens] of postsByWindow.entries()) {
+              allTimeFastCount += tokens.size;
               if (date >= weekStr) weekFastCount += tokens.size;
             }
+            const myLoggedToday = !!myToken && (postsByWindow.get(todayDate)?.has(myToken.userToken) ?? false);
             return {
               weekFastCount,
               weekGallonsSaved: isMeat ? weekFastCount * GALLONS_PER_FAST : 0,
+              allTimeFastCount,
+              allTimeGallonsSaved: isMeat ? allTimeFastCount * GALLONS_PER_FAST : 0,
+              myLoggedToday,
             };
           })() : {}),
         };
@@ -1682,6 +1711,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           memberCount: 0,
           members: [],
           todayPostCount: 0,
+          weekPostCount: 0,
           windowOpen: false,
           isActionableToday: isActionableToday(m),
           isActionableTomorrow: isActionableTomorrow(m),

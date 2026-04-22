@@ -857,8 +857,19 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
   const meatFastNextLine = isMeatFast && nextWindow
     ? `Next fast on ${nextWindow}`
     : "";
+  // When the viewer has already fasted today, the third flap line swaps to
+  // a quiet "Fasted today ✓" so they feel acknowledged without a separate
+  // streak badge. On non-fast days or before they log, we fall back to the
+  // "Next fast on …" preview.
+  const meatFastLoggedTodayLine = isMeatFast && m.myLoggedToday
+    ? "Fasted today ✓"
+    : "";
   const fastingFlapLines: string[] = isMeatFast
-    ? [meatFastWaterLine, meatFastParticipationLine, meatFastNextLine]
+    ? [
+        meatFastWaterLine,
+        meatFastAllTimeLine,
+        meatFastLoggedTodayLine || meatFastNextLine,
+      ]
     : [];
 
   const mobileFlapLines: string[] = (
@@ -1198,7 +1209,7 @@ function PrayerListCard({
     : `${pendingCount} prayers waiting for you`;
 
   return (
-    <Link key={`${keyPrefix}-prayer-list`} href="/prayer-list" className="block">
+    <Link key={`${keyPrefix}-prayer-list`} href="/prayer-mode" className="block">
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
