@@ -1206,7 +1206,7 @@ function PrayerListCard({
         ) : (
           <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
         )}
-        <div className="flex-1 px-4 pt-3 pb-2">
+        <div className="flex-1 px-4 pt-3 pb-3">
           <div className="flex items-start justify-between gap-2">
             <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
               🕯️ Daily prayer list
@@ -1221,10 +1221,28 @@ function PrayerListCard({
               </span>
             )}
           </div>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex items-center justify-between gap-3">
             <p className="text-sm" style={{ color: "#8FAF96", lineHeight: "20px", margin: 0 }}>
               {subtitle}
             </p>
+            {/* Begin CTA — renders only on today's card (muted=false).
+                The outer Link already makes the whole card tappable; the
+                pill is a visible affordance that tells the user "this is
+                the action", matching the pulse animation. */}
+            {!muted && (
+              <span
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold shrink-0"
+                style={{
+                  background: "#2D5E3F",
+                  color: "#F0EDE6",
+                  letterSpacing: "-0.01em",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                Begin
+                <span aria-hidden>→</span>
+              </span>
+            )}
           </div>
         </div>
       </motion.div>
@@ -2234,7 +2252,12 @@ export default function Dashboard() {
       if (isFasting) {
         const fastToday = isFastActionableOnDow(m, todayDowLocal);
         const fastTomorrow = isFastActionableOnDow(m, tomorrowDowLocal);
-        if (fastToday && !userDone) {
+        // A fast on a fasting day stays in Today for the whole day, even
+        // after the user has logged it. The fast itself continues — the
+        // card serves as a visible reminder / status strip, not just an
+        // action surface. Done state is still reflected inside the card
+        // (streak, "fasted today" chip, etc.).
+        if (fastToday) {
           todayItems.push({ kind: "moment", data: m });
           continue;
         }

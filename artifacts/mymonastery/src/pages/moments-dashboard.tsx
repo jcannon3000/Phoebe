@@ -265,7 +265,11 @@ export default function MomentsDashboard() {
 
   const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   for (const m of moments) {
-    if (m.isActionableToday && m.todayPostCount === 0) {
+    // Fasts stay in Today for the whole fasting day, even after logged.
+    // The fast itself is ongoing — the card is a status strip, not just
+    // a "you haven't done this yet" prompt. Matches dashboard.tsx.
+    const isFasting = m.templateType === "fasting";
+    if (m.isActionableToday && (m.todayPostCount === 0 || isFasting)) {
       todayMoments.push(m);
     } else {
       const next = nextWindowDate(m);
