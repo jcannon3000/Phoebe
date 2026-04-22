@@ -181,9 +181,14 @@ export default function PrayerListPage() {
                     const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
                     const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
                     const progressLabel = goal ? `${logged}/${goal} days` : null;
-                    const href = (m.windowOpen && m.momentToken && m.myUserToken)
-                      ? `/moment/${m.momentToken}/${m.myUserToken}?from=prayer-list`
-                      : `/moments/${m.id}`;
+                    // Intercession cards on the prayer-list dashboard always
+                    // route to the detail page. The prayer itself happens in
+                    // the prayer-mode slideshow (the big Prayer List CTA at
+                    // the top of this page), not through the per-moment
+                    // /moment/:token/:userToken "amen" page anymore. Sending
+                    // the card tap straight to /moments/:id surfaces the
+                    // community context + streaks + who's prayed this week.
+                    const href = `/moments/${m.id}`;
                     const prayedToday = m.todayPostCount > 0;
                     const cardTitle = stripEmoji(m.intercessionTopic || m.intention || m.name);
                     // 4th card fades out
