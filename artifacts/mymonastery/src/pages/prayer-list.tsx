@@ -468,35 +468,34 @@ function DetailModal({
           position: "fixed",
           inset: 0,
           zIndex: 90,
-          background: "rgba(0,0,0,0.55)",
+          background: "rgba(0,0,0,0.65)",
           backdropFilter: "blur(4px)",
           WebkitBackdropFilter: "blur(4px)",
           display: "flex",
-          alignItems: "flex-end",
+          alignItems: "center",
           justifyContent: "center",
-          padding: 0,
+          padding: 20,
         }}
       >
         <motion.div
           key="sheet"
-          initial={{ y: 32, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 20, opacity: 0 }}
+          initial={{ y: 12, opacity: 0, scale: 0.97 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 6, opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.22, ease: "easeOut" }}
           onClick={(e) => e.stopPropagation()}
           style={{
             background: "#0F2818",
             border: "1px solid rgba(46,107,64,0.4)",
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            maxWidth: 560,
+            borderRadius: 20,
+            maxWidth: 480,
             width: "100%",
             maxHeight: "85vh",
             overflow: "auto",
-            padding: "22px 22px 32px",
+            padding: "22px 22px 26px",
             fontFamily: "'Space Grotesk', sans-serif",
             color: "#F0EDE6",
-            boxShadow: "0 -16px 48px rgba(0,0,0,0.5)",
+            boxShadow: "0 16px 48px rgba(0,0,0,0.55)",
           }}
         >
           {/* close */}
