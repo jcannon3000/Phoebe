@@ -912,13 +912,10 @@ export default function PrayerListPage() {
           </p>
         </div>
 
-        {/* Pulsing Begin-Prayer pill */}
-        <PrayerModePill count={pillCount} hasUnprayedToday={hasUnprayedToday} />
-
-        {/* Group Sessions — intercession practices */}
+        {/* Community intercessions — intercession practices */}
         {intercessionsSorted.length > 0 && (
           <section>
-            <SectionHeader label="Group Sessions" />
+            <SectionHeader label="Community intercessions" />
             <div className="space-y-2">
               {intercessionsSorted.map((m) => (
                 <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
