@@ -1268,40 +1268,19 @@ router.get("/groups/:slug/admin-notifications", async (req, res): Promise<void> 
       joinedAt: m.joinedAt,
     }));
 
-  // ── New prayer requests: direct group_id filter on prayer_requests ──────
-  // Exclude the admin's own requests (they don't need a popup about their
-  // own post) and filter out anything already acknowledged.
-  const recentPrayers = await db.select({
-    id: prayerRequestsTable.id,
-    body: prayerRequestsTable.body,
-    ownerName: prayerRequestsTable.createdByName,
-    isAnonymous: prayerRequestsTable.isAnonymous,
-    createdAt: prayerRequestsTable.createdAt,
-  })
-    .from(prayerRequestsTable)
-    .where(and(
-      eq(prayerRequestsTable.groupId, group.id),
-      sql`${prayerRequestsTable.ownerId} <> ${user.id}`,
-      sql`${prayerRequestsTable.createdAt} > NOW() - INTERVAL '${sql.raw(String(LOOKBACK_DAYS))} days'`,
-    ))
-    .orderBy(desc(prayerRequestsTable.createdAt));
-
-  const prayerIds = recentPrayers.map(p => p.id);
-  let prayerAckedSet = new Set<number>();
-  if (prayerIds.length > 0) {
-    const acks = await db.select({ eventId: groupAdminNotificationsAckTable.eventId })
-      .from(groupAdminNotificationsAckTable)
-      .where(and(
-        eq(groupAdminNotificationsAckTable.adminUserId, user.id),
-        eq(groupAdminNotificationsAckTable.groupId, group.id),
-        eq(groupAdminNotificationsAckTable.kind, "prayer_request"),
-        inArray(groupAdminNotificationsAckTable.eventId, prayerIds),
-      ));
-    prayerAckedSet = new Set(acks.map(a => a.eventId));
-  }
-  const newPrayers = recentPrayers.filter(p => !prayerAckedSet.has(p.id));
-
-  res.json({ newMembers, newPrayers });
+  // New-prayer-request popup intentionally disabled.
+  //
+  // Admins of a community were previously shown a "A new prayer
+  // request" popup whenever any member posted in the community. The
+  // user flagged this as noise: "I dont need a pop up for a general
+  // prayer request, but if they comment on my prayer request, or
+  // write one directly to me i want to see it". Direct-to-me
+  // surfaces (prayers_for, words on your own request) have their
+  // own channels and aren't touched here. We keep the ack-table
+  // columns + schema around so we can bring this back later with a
+  // narrower trigger (e.g. only "posted while praying for YOUR
+  // request" or a digest) without another migration.
+  res.json({ newMembers, newPrayers: [] });
 });
 
 router.post("/groups/:slug/admin-notifications/acknowledge", async (req, res): Promise<void> => {
@@ -1435,15 +1414,12 @@ router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => 
     isAnonymous: parsed.data.isAnonymous ?? false,
   }).returning({ id: prayerRequestsTable.id });
 
-  // Fire-and-forget notification to admins. Failure here must not block the
-  // happy path — the request is already saved.
-  notifyAdminsOfNewPrayerRequest(
-    group.id,
-    group.name,
-    parsed.data.body,
-    parsed.data.isAnonymous ? null : (member.name ?? user.name),
-    parsed.data.isAnonymous ?? false,
-  ).catch(err => console.error("[groups] notify admins of new prayer failed:", err));
+  // Admin notification on a new community prayer request is disabled
+  // per product direction — admins don't need an email (or the
+  // in-app popup) for every request posted in a community they
+  // admin; the user described the noise explicitly. The helper
+  // stays defined so we can re-enable it with narrower logic (e.g.
+  // daily digest, or only for prayer circles the admin leads).
 
   res.json({ ok: true, id: inserted.id });
 });

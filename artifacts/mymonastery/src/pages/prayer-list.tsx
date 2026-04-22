@@ -36,6 +36,11 @@ type Moment = {
   computedSessionsLogged?: number;
   goalDays?: number | null;
   myLastPostAt?: string | null;
+  // Group scoping — primary community + any extras it's shared with.
+  // Rendered under the intercession title on the prayer list since
+  // practices are group-based rather than people-based now.
+  group?: { id: number; name: string; slug: string; emoji: string | null } | null;
+  additionalGroups?: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
 };
 
 type PrayerRequest = {
@@ -256,11 +261,22 @@ function BarCard({
 // ─── Card variants ────────────────────────────────────────────────────────
 
 function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail: string }) {
-  const otherMembers = moment.members
-    .filter((p) => p.email !== viewerEmail)
-    .map((p) => p.name || p.email.split("@")[0])
-    .slice(0, 3)
-    .join(", ");
+  // Practices are group-scoped now — show the community the
+  // intercession is held in, not the individual members. If the
+  // moment is in multiple groups, list the primary first then a
+  // "+N more" tail. viewerEmail is accepted for API compatibility
+  // but no longer used (we stopped filtering the member list here).
+  void viewerEmail;
+  const allGroups = [
+    ...(moment.group ? [moment.group] : []),
+    ...(moment.additionalGroups ?? []),
+  ];
+  const groupLabel =
+    allGroups.length === 0
+      ? null
+      : allGroups.length === 1
+        ? `${allGroups[0].emoji ?? "🏘️"} ${allGroups[0].name}`
+        : `${allGroups[0].emoji ?? "🏘️"} ${allGroups[0].name} +${allGroups.length - 1}`;
   const goal =
     moment.commitmentSessionsGoal
     ?? (moment.goalDays && moment.goalDays > 0 && moment.goalDays < 365 ? moment.goalDays : null);
@@ -295,8 +311,8 @@ function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail
           )}
         </div>
       </div>
-      {otherMembers && (
-        <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
+      {groupLabel && (
+        <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>{groupLabel}</p>
       )}
     </BarCard>
   );
