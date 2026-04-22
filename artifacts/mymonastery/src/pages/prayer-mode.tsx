@@ -805,15 +805,18 @@ export default function PrayerModePage() {
   // Final slide logic:
   //   - No active own request → "How can the community pray for you?"
   //     (the existing ask-request slide).
-  //   - Has an active own request → offer to start a prayer for a
-  //     friend they're not already praying for. Only shown when we
-  //     actually have suggestions; an empty pill row would be noise.
+  //   - Otherwise → no trailing slide. We previously appended a
+  //     "Would you like to pray for one of your friends?" suggester
+  //     ("pray-for-suggest") here, but the user asked for it to be
+  //     removed from the slideshow — the list should end quietly on
+  //     the last prayer, not nudge the viewer to add more.
   const hasActiveOwnRequest = prayerRequests.some(
     (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
   );
-  // Use the same stricter filter we used for slides above — someone on
-  // their prayer's final day is effectively done, so they're fair game
-  // as a suggestion again.
+  // Still computed because the SlideContent component still accepts
+  // `suggestedFriends` as a prop (the type signature spans several
+  // slide kinds, even though we no longer push a suggester slide).
+  // Filtering cost is trivial.
   const prayingForEmails = new Set(
     activePrayersFor.map(p => p.recipientEmail.toLowerCase())
   );
@@ -823,13 +826,7 @@ export default function PrayerModePage() {
     !prayingForEmails.has(f.email.toLowerCase())
   );
 
-  if (hasActiveOwnRequest && suggestedFriends.length > 0) {
-    slides.push({
-      kind: "pray-for-suggest",
-      text: "",
-      attribution: "",
-    });
-  } else if (!hasActiveOwnRequest) {
+  if (!hasActiveOwnRequest) {
     slides.push({
       kind: "ask-request",
       text: "",

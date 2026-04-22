@@ -798,6 +798,19 @@ export default function CommunityDetailPage() {
     enabled: !!user && !!slug && isCircle && activeTab === "home",
   });
 
+  // Pull the service schedule at the parent level too (React Query
+  // dedupes by key with the one inside CommunityServiceHomeCard, so no
+  // extra network call) — the "nothing here yet" guard below needs to
+  // know whether a Sunday Service card will render before it decides
+  // to paint the empty-state message. Previously the empty-state fired
+  // even though a Gatherings card was plainly visible on the page.
+  const { data: serviceScheduleData } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
+    queryKey: ["/api/groups", slug, "service-schedule"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
+    enabled: !!user && !!slug && activeTab === "home",
+  });
+  const hasServiceSchedule = !!serviceScheduleData?.schedule && serviceScheduleData.schedule.times.length > 0;
+
   // ── Admin "new arrival" popup ──────────────────────────────────────────
   // Fetches any new-member / new-prayer-request events this admin hasn't
   // acknowledged yet. Shown as a celebratory popup over the page on mount
@@ -1422,6 +1435,10 @@ export default function CommunityDetailPage() {
             otherPractices.length === 0 &&
             recentPrayers.length === 0 &&
             recentAnnouncements.length === 0 &&
+            // A visible Sunday Service card is plenty to fill the page —
+            // earlier we printed "nothing here yet" right under it, which
+            // the user flagged as wrong ("cause there is something there").
+            !hasServiceSchedule &&
             // On circle groups, a populated "Praying today" list also counts
             // as "something here" so the dead-end empty-state doesn't shout
             // over the intention + focus the member just came to see.

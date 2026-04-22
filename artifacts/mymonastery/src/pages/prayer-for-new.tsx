@@ -383,15 +383,17 @@ function PersonPicker({
         Search anyone in your fellowship, or pick a friend from the list below.
       </p>
 
-      {/* Search input — no visible border or focus ring. The tinted
-          background alone signals the field; the outer highlight bar
-          that browsers add on focus was visible above the card and
-          felt like a selection-state glitch. */}
+      {/* Search input — a faint green lift off the page background
+          rather than a darker well. Earlier the field was #0F2818,
+          which read as a "hole" punched into the page; the user
+          flagged it as too dark. The translucent green we use on
+          community rows keeps the field present without sinking
+          below the page. */}
       <div
         className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-4"
         style={{
-          background: "#0F2818",
-          border: "1px solid transparent",
+          background: "rgba(46,107,64,0.12)",
+          border: "1px solid rgba(46,107,64,0.25)",
         }}
       >
         <SearchIcon size={16} style={{ color: "#8FAF96" }} />

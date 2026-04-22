@@ -1349,6 +1349,31 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
   if (!result) { res.status(403).json({ error: "Not a member of this group" }); return; }
   const { group } = result;
 
+  // Two kinds of requests land in a community's feed:
+  //   1. Requests directly scoped to this community
+  //      (prayer_requests.group_id = group.id) — created via the
+  //      community-home compose bar or POST /groups/:slug/prayer-requests.
+  //   2. "Global" requests from any member of this community
+  //      (prayer_requests.group_id IS NULL, owned by a joined member).
+  //      Before this fix, someone who typed a prayer on the prayer-wall
+  //      surface got a row with group_id = null, and it silently failed
+  //      to show up in their own community — the user flagged "my
+  //      prayer request is not showing up in the group I am in". We
+  //      treat a null-scoped request as "share with every community I
+  //      belong to" so the common case of "I am in one community, I
+  //      post on the prayer wall" just works without making the user
+  //      pick a group every time.
+  const joinedMemberRows = await db.select({ userId: groupMembersTable.userId })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, group.id),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      sql`${groupMembersTable.userId} IS NOT NULL`,
+    ));
+  const memberUserIds = joinedMemberRows
+    .map(r => r.userId)
+    .filter((id): id is number => typeof id === "number");
+
   const rows = await db.select({
     id: prayerRequestsTable.id,
     body: prayerRequestsTable.body,
@@ -1361,8 +1386,10 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     .from(prayerRequestsTable)
     .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
     .where(and(
-      eq(prayerRequestsTable.groupId, group.id),
       sql`${prayerRequestsTable.closedAt} IS NULL`,
+      memberUserIds.length > 0
+        ? sql`(${prayerRequestsTable.groupId} = ${group.id} OR (${prayerRequestsTable.groupId} IS NULL AND ${prayerRequestsTable.ownerId} = ANY(${memberUserIds})))`
+        : eq(prayerRequestsTable.groupId, group.id),
     ))
     .orderBy(desc(prayerRequestsTable.createdAt));
 
