@@ -442,12 +442,18 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(user?.avatarUrl ?? null);
-  const [saved, setSaved] = useState(!!user?.avatarUrl);
+  // The inflight PATCH promise — the continue button awaits it so the
+  // server-side save is guaranteed complete by the time we advance.
+  // `null` means "nothing to wait on" (either no upload yet, or it
+  // already resolved).
+  const pendingSaveRef = useRef<Promise<void> | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
     setUploading(true);
+    setSaveError(null);
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
@@ -464,21 +470,48 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
         ctx.drawImage(img, 0, 0, w, h);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
         setPreview(dataUrl);
-        apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
+
+        // Kick off the PATCH immediately so the save and the
+        // "Continue" tap race; whichever happens second wins (the
+        // continue handler awaits pendingSaveRef).
+        pendingSaveRef.current = apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
           .then(() => {
             queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
               if (!prev) return prev;
               return { ...prev, avatarUrl: dataUrl };
             });
-            setSaved(true);
           })
-          .finally(() => setUploading(false));
+          .catch((err) => {
+            // Surface it so the user can retry — otherwise a stale
+            // "Save & continue" button sits there doing nothing.
+            setSaveError(err?.message ?? "Couldn't save your photo. Try again?");
+            throw err;
+          })
+          .finally(() => {
+            setUploading(false);
+          });
       };
-      img.onerror = () => setUploading(false);
+      img.onerror = () => { setUploading(false); setSaveError("Couldn't read that image."); };
       img.src = reader.result as string;
     };
-    reader.onerror = () => setUploading(false);
+    reader.onerror = () => { setUploading(false); setSaveError("Couldn't read that image."); };
     reader.readAsDataURL(file);
+  }
+
+  // Save & advance. Waits for any inflight PATCH to complete so we
+  // never leave onboarding with a preview the server never received.
+  // If the save already failed, don't advance — surface the error and
+  // let the user try again (or skip).
+  async function handleContinue() {
+    if (pendingSaveRef.current) {
+      try {
+        await pendingSaveRef.current;
+      } catch {
+        // Error already surfaced via saveError — don't advance.
+        return;
+      }
+    }
+    onNext();
   }
 
   return (
@@ -543,29 +576,35 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
       />
 
       <AnimatePresence mode="wait">
-        {saved ? (
+        {preview ? (
           <motion.button
-            key="saved"
+            key="save"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            onClick={onNext}
-            className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+            onClick={handleContinue}
+            disabled={uploading}
+            className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            ✓ Looks good — continue
+            {uploading ? "Saving…" : "Save & continue →"}
           </motion.button>
         ) : (
           <motion.button
             key="choose"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60"
+            className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            {uploading ? "Uploading…" : "Upload a photo"}
+            Upload a photo
           </motion.button>
         )}
       </AnimatePresence>
+
+      {saveError && (
+        <p className="text-xs mt-3" style={{ color: "#D98C4A", fontFamily: C.font }}>
+          {saveError}
+        </p>
+      )}
 
       <p className="text-xs mt-3 mb-3" style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}>
         You can change this anytime in Settings.
