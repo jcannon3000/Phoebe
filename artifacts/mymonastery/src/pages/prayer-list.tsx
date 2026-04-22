@@ -180,40 +180,6 @@ function BarCard({
   );
 }
 
-// ─── Pulsing "Begin prayer mode" pill ─────────────────────────────────────
-// Replaces the big green Begin Prayer button. Sits at the top of the page
-// and pulses when there are prayers waiting to be carried today. Taps
-// through to the slideshow at /prayer-mode.
-
-function PrayerModePill({ count, hasUnprayedToday }: { count: number; hasUnprayedToday: boolean }) {
-  const pulse = hasUnprayedToday;
-  return (
-    <Link href="/prayer-mode" className="block mb-3">
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`rounded-full px-5 py-3 flex items-center justify-between gap-3 ${pulse ? "animate-turn-pulse-practices" : ""}`}
-        style={{
-          background: "rgba(46,107,64,0.18)",
-          border: "1.5px solid rgba(46,107,64,0.4)",
-        }}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-xl">🙏🏽</span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Begin prayer mode
-            </p>
-            <p className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.75)" }}>
-              {count > 0 ? `${count} prayer${count === 1 ? "" : "s"} to carry` : "A few quiet minutes"}
-            </p>
-          </div>
-        </div>
-        <span className="text-xs font-semibold shrink-0" style={{ color: "#A8C5A0" }}>→</span>
-      </motion.div>
-    </Link>
-  );
-}
 
 // ─── Card variants ────────────────────────────────────────────────────────
 
@@ -887,13 +853,6 @@ export default function PrayerListPage() {
   const othersRequests = prayerRequests.filter((r) => !r.isAnswered && !r.isOwnRequest);
   const ownRequests = prayerRequests.filter((r) => !r.isAnswered && r.isOwnRequest);
   const allRequests = [...ownRequests, ...othersRequests];
-
-  const hasUnprayedToday = intercessions.some((m) => m.windowOpen && m.todayPostCount === 0);
-
-  const pillCount =
-    intercessions.filter((m) => m.windowOpen && m.todayPostCount === 0).length
-    + othersRequests.length
-    + activePrayersFor.length;
 
   return (
     <Layout>
