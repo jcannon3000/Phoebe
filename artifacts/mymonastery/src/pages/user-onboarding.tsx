@@ -277,13 +277,10 @@ const SLIDES: Slide[] = [
   // 2 — Profile picture (skippable). Asked early so the rest of onboarding
   //     and the dashboard show the user's face right away.
   { kind: "profile-picture" },
-  // 3
-  {
-    kind: "info",
-    title: "Your community is already here.",
-    body: "The people in your parish are on Phoebe. You'll share practices, prayers, and life with them throughout the week.",
-    mock: "community",
-  },
+  // 3 — "Your community is already here" slide removed per user
+  //     request. The generic parish mock felt redundant once signup
+  //     routes users straight into their actual community; keeping
+  //     this deck focused on practices makes the rhythm clearer.
   // 3
   {
     kind: "info",

@@ -44,8 +44,13 @@ app.use(
 );
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 10MB JSON cap: covers base64-encoded profile photos (the avatar
+// endpoint already rejects anything past ~7MB) and the occasional
+// large prayer-feed payload. Express's default 100KB was being
+// silently exceeded by /auth/me/profile uploads, which then surfaced
+// as a generic "Something went wrong" via the error middleware.
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use(
   session({
@@ -217,6 +222,14 @@ if (fs.existsSync(frontendDist)) {
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction): void => {
   logger.error({ err, path: req.path, method: req.method }, "[api] unhandled error");
   if (res.headersSent) return;
+  // body-parser throws PayloadTooLargeError with a .type discriminator;
+  // surface that distinctly so the client can show "image too large"
+  // copy rather than a generic 500.
+  const typed = err as { type?: string; status?: number };
+  if (typed?.type === "entity.too.large") {
+    res.status(413).json({ error: "That file is too big. Try a smaller image." });
+    return;
+  }
   res.status(500).json({ error: "Something went wrong. Please try again." });
 });
 
