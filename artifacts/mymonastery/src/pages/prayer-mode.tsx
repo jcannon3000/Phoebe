@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
@@ -50,7 +51,7 @@ interface PrayerRequest {
 }
 
 interface PrayerSlide {
-  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "ask-request" | "circle-intention";
+  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "ask-request" | "pray-for-suggest" | "circle-intention";
   text: string;
   attribution: string;
   fullText?: string | null;
@@ -95,6 +96,8 @@ function SlideContent({
   onEnd,
   onAskSubmit,
   askSubmitting,
+  suggestedFriends,
+  onPrayForFriend,
 }: {
   slide: PrayerSlide;
   onAdvance: () => void;
@@ -102,9 +105,88 @@ function SlideContent({
   onEnd: (id: number) => void;
   onAskSubmit: (body: string) => void;
   askSubmitting: boolean;
+  // Populated only on the "pray-for-suggest" final slide — a list of
+  // friends the viewer isn't already praying for. Tap → navigate to the
+  // create-a-prayer-for page for that person.
+  suggestedFriends: Array<{ name: string; email: string; avatarUrl?: string | null }>;
+  onPrayForFriend: (email: string) => void;
 }) {
   const [askBody, setAskBody] = useState("");
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
+
+  // ── "Pray for one of your friends?" — final slide when the viewer
+  // already has an active prayer request of their own. We surface
+  // friends they're not currently praying for as pills; tapping one
+  // routes to the create-prayer-for page for that person.
+  if (slide.kind === "pray-for-suggest") {
+    return (
+      <div className="w-full flex flex-col items-center text-center gap-5">
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          Before we close
+        </p>
+        <p
+          className="text-[22px] leading-[1.5] font-medium italic"
+          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+        >
+          Would you like to pray for one of your friends?
+        </p>
+        <p
+          className="text-[12px] italic"
+          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+        >
+          Tap a name to start a prayer for them.
+        </p>
+
+        {/* Pill list — centered, wraps. We cap at 12 so the slide
+            never grows beyond one screen; past that the garden page
+            is the right place to browse the full list. */}
+        <div className="flex flex-wrap gap-2 justify-center max-w-md">
+          {suggestedFriends.slice(0, 12).map((f) => (
+            <button
+              key={f.email}
+              type="button"
+              onClick={() => onPrayForFriend(f.email)}
+              className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-opacity hover:opacity-90"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.3)",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {f.avatarUrl ? (
+                <img
+                  src={f.avatarUrl}
+                  alt=""
+                  className="w-6 h-6 rounded-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                  style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
+                >
+                  {(f.name || f.email || "?").trim().charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="text-sm text-foreground whitespace-nowrap">
+                {f.name || f.email.split("@")[0]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={onAdvance}
+          className="text-sm transition-opacity hover:opacity-80 mt-2"
+          style={{ color: "rgba(143,175,150,0.55)" }}
+        >
+          Skip
+        </button>
+      </div>
+    );
+  }
 
   // ── "How can the community pray for you?" — final slide when the viewer
   // has no active prayer request. A gentle ask, skippable.
@@ -570,6 +652,13 @@ export default function PrayerModePage() {
     enabled: !!user,
   });
 
+  // Friends list — used by the "pray for someone" final slide that
+  // appears after the main list when the viewer already has an active
+  // prayer request of their own. We filter out anyone they're already
+  // praying for so the pill row is an actionable "start a prayer for X"
+  // menu, not a duplicate of their existing prayers-for.
+  const { data: friends = [] } = usePeople(user?.id);
+
   // Every active intention from every prayer circle this user belongs to.
   // Surfaced as its own slide-kind so members carry the circle's shared
   // intentions alongside their own intercessions and others' requests.
@@ -698,13 +787,31 @@ export default function PrayerModePage() {
     })),
   ];
 
-  // Final "ask" slide — if the viewer has no active prayer request of their
-  // own, we gently ask what the community can pray for on the way out.
-  // Skippable.
+  // Final slide logic:
+  //   - No active own request → "How can the community pray for you?"
+  //     (the existing ask-request slide).
+  //   - Has an active own request → offer to start a prayer for a
+  //     friend they're not already praying for. Only shown when we
+  //     actually have suggestions; an empty pill row would be noise.
   const hasActiveOwnRequest = prayerRequests.some(
     (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
   );
-  if (!hasActiveOwnRequest) {
+  const prayingForEmails = new Set(
+    myPrayersFor.filter(p => !p.expired).map(p => p.recipientEmail.toLowerCase())
+  );
+  const viewerEmail = (user?.email ?? "").toLowerCase();
+  const suggestedFriends = friends.filter(f =>
+    f.email.toLowerCase() !== viewerEmail &&
+    !prayingForEmails.has(f.email.toLowerCase())
+  );
+
+  if (hasActiveOwnRequest && suggestedFriends.length > 0) {
+    slides.push({
+      kind: "pray-for-suggest",
+      text: "",
+      attribution: "",
+    });
+  } else if (!hasActiveOwnRequest) {
     slides.push({
       kind: "ask-request",
       text: "",
@@ -892,6 +999,14 @@ export default function PrayerModePage() {
                 createRequestMutation.mutate(body, { onSuccess: () => advance() });
               }}
               askSubmitting={createRequestMutation.isPending}
+              suggestedFriends={suggestedFriends.map(f => ({
+                name: f.name,
+                email: f.email,
+                avatarUrl: f.avatarUrl ?? null,
+              }))}
+              onPrayForFriend={(email) => {
+                setLocation(`/pray-for/new/${encodeURIComponent(email)}`);
+              }}
             />
           </div>
         )}
