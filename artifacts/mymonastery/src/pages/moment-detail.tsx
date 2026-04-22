@@ -915,28 +915,37 @@ export default function MomentDetail() {
             const prayedWeekLogs = (weekLogs ?? []).filter(l => !!l.loggedAt);
             return (
               <div className="mb-6">
-                {/* Two-up streak boxes */}
+                {/* Two-up streak boxes — number + emoji on top row,
+                    label on bottom row. Your streak pairs with 🔥 (the
+                    viewer's own consecutive-days fire), Group streak
+                    with 🙏🏽 (communal prayer). Centered so the number
+                    reads as the headline of the box. */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div
-                    className="rounded-2xl px-4 py-3 flex items-baseline gap-2"
+                    className="rounded-2xl px-4 py-4 text-center"
                     style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
                   >
-                    <p className="text-2xl font-bold text-foreground tabular-nums">{myStreak ?? 0}</p>
-                    <p className="text-sm text-muted-foreground">Your streak</p>
+                    <p className="text-2xl font-bold text-foreground tabular-nums leading-none">
+                      {myStreak ?? 0} <span aria-hidden>🔥</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">Your streak</p>
                   </div>
                   <div
-                    className="rounded-2xl px-4 py-3 flex items-baseline gap-2"
+                    className="rounded-2xl px-4 py-4 text-center"
                     style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
                   >
-                    <p className="text-2xl font-bold text-foreground tabular-nums">{groupStreak}</p>
-                    <p className="text-sm text-muted-foreground">Group streak</p>
+                    <p className="text-2xl font-bold text-foreground tabular-nums leading-none">
+                      {groupStreak} <span aria-hidden>🙏🏽</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">Group streak</p>
                   </div>
                 </div>
 
-                {/* Prayed this week — single horizontal row. Overflow
-                    scrolls sideways so long member lists keep the card
-                    compact. `flex-nowrap` + `overflow-x-auto` is the
-                    combination Safari respects. */}
+                {/* Prayed this week — auto-scrolling ticker. The full
+                    pill row is duplicated inline so the CSS keyframe can
+                    translate from 0 → -50% and seam perfectly. Linear
+                    timing at a calm pace (~36s for a full pass). Pause on
+                    hover so a member trying to read a name can catch it. */}
                 {prayedWeekLogs.length > 0 ? (
                   <div
                     className="rounded-2xl px-4 py-3"
@@ -945,42 +954,54 @@ export default function MomentDetail() {
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-2" style={{ letterSpacing: "0.12em" }}>
                       Prayed this week
                     </p>
+                    <style>{`
+                      @keyframes prayed-ticker-scroll {
+                        from { transform: translateX(0) }
+                        to   { transform: translateX(-50%) }
+                      }
+                      .prayed-ticker:hover > div { animation-play-state: paused; }
+                    `}</style>
                     <div
-                      className="flex items-center gap-2 overflow-x-auto"
+                      className="relative overflow-hidden prayed-ticker"
                       style={{
-                        flexWrap: "nowrap",
-                        WebkitOverflowScrolling: "touch",
-                        // Hide scrollbar — users can swipe on touch, and the
-                        // list's right edge being off-screen is itself the
-                        // cue that there's more.
-                        scrollbarWidth: "none",
+                        maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+                        WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
                       }}
                     >
-                      {prayedWeekLogs.map((p, i) => (
-                        <div
-                          key={`${p.email}-${i}`}
-                          className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 shrink-0"
-                          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
-                        >
-                          {p.avatarUrl ? (
-                            <img
-                              src={p.avatarUrl}
-                              alt=""
-                              className="w-6 h-6 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
-                              style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
-                            >
-                              {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <span className="text-xs text-foreground whitespace-nowrap">
-                            {p.name || p.email.split("@")[0]}
-                          </span>
-                        </div>
-                      ))}
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          width: "max-content",
+                          animation: `prayed-ticker-scroll ${Math.max(18, prayedWeekLogs.length * 6)}s linear infinite`,
+                        }}
+                      >
+                        {[...prayedWeekLogs, ...prayedWeekLogs].map((p, i) => (
+                          <div
+                            key={`${p.email}-${i}`}
+                            className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 shrink-0"
+                            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
+                          >
+                            {p.avatarUrl ? (
+                              <img
+                                src={p.avatarUrl}
+                                alt=""
+                                className="w-6 h-6 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                                style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
+                              >
+                                {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="text-xs text-foreground whitespace-nowrap">
+                              {p.name || p.email.split("@")[0]}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ) : (
