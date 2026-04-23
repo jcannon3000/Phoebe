@@ -78,7 +78,8 @@ router.get("/people", async (req, res): Promise<void> => {
           sql`, `,
         )})
         AND ${groupMembersTable.joinedAt} IS NOT NULL
-        AND ${groupMembersTable.role} <> 'hidden_admin'`,
+        AND (${groupMembersTable.role} IS NULL
+             OR ${groupMembersTable.role} <> 'hidden_admin')`,
       );
     for (const row of peerRows) {
       if (!row.email) continue;

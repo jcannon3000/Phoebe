@@ -61,7 +61,8 @@ async function getGardenUserIds(userId: number): Promise<number[]> {
           sql`, `,
         )})
         AND ${groupMembersTable.joinedAt} IS NOT NULL
-        AND ${groupMembersTable.role} <> 'hidden_admin'`,
+        AND (${groupMembersTable.role} IS NULL
+             OR ${groupMembersTable.role} <> 'hidden_admin')`,
       );
     for (const row of peerRows) {
       const id = row.rowUserId ?? row.emailUserId;
