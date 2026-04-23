@@ -23,6 +23,8 @@ import prayersForRouter from "./prayers-for";
 import waitlistRouter from "./waitlist";
 import prayerFeedsRouter from "./prayer-feeds";
 import prayerStreakRouter from "./prayer-streak";
+import pushRouter from "./push";
+import authAppleRouter from "./auth-apple";
 
 const router: IRouter = Router();
 
@@ -50,5 +52,7 @@ router.use(prayersForRouter);
 router.use(waitlistRouter);
 router.use(prayerFeedsRouter);
 router.use(prayerStreakRouter);
+router.use(pushRouter);
+router.use(authAppleRouter);
 
 export default router;
