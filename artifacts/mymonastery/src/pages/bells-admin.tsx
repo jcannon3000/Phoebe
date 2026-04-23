@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Bell, BellOff, Calendar as CalendarIcon, Search } from "lucide-react";
+import { Bell, BellOff, Calendar as CalendarIcon, Search, Send } from "lucide-react";
 
 // One row per Phoebe account. "Active" means bellEnabled === true AND a
 // daily send time is set AND a timezone is resolved — that's the minimum
@@ -60,13 +60,32 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString();
 }
 
+type InviteResult = {
+  attempted: number;
+  sent: number;
+  failed: number;
+  users: Array<{ id: number; email: string; sent: boolean }>;
+};
+
 export default function BellsAdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { isAdmin, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
+  const qc = useQueryClient();
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const sendInvitesMutation = useMutation<InviteResult>({
+    mutationFn: () => apiRequest("POST", "/api/beta/bells/send-invites"),
+    onSuccess: (data) => {
+      setInviteResult(data);
+      setShowConfirm(false);
+      qc.invalidateQueries({ queryKey: ["/api/beta/bells"] });
+    },
+  });
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -170,6 +189,86 @@ export default function BellsAdminPage() {
           <SummaryTile label="Bells active" value={summary.bellsActive} highlight />
           <SummaryTile label="Sent today" value={summary.sentToday} />
         </div>
+
+        {/* Bulk invite action */}
+        {!inviteResult ? (
+          !showConfirm ? (
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={isLoading || summary.totalUsers - summary.bellsActive === 0}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold mb-5 transition-opacity disabled:opacity-40"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.4)",
+                color: "#8FAF96",
+              }}
+            >
+              <Send size={14} />
+              Send 7 AM bell invite to {summary.totalUsers - summary.bellsActive} users without a bell
+            </button>
+          ) : (
+            <div
+              className="rounded-xl px-4 py-4 mb-5"
+              style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.35)" }}
+            >
+              <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>
+                Send 7 AM bell invite to {summary.totalUsers - summary.bellsActive} users?
+              </p>
+              <p className="text-[12px] mb-3" style={{ color: "rgba(143,175,150,0.8)" }}>
+                Each user will receive a calendar invite (.ics) for a daily 7 AM bell and their bell will be enabled going forward.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => sendInvitesMutation.mutate()}
+                  disabled={sendInvitesMutation.isPending}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                >
+                  {sendInvitesMutation.isPending ? "Sending…" : "Send invites"}
+                </button>
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  disabled={sendInvitesMutation.isPending}
+                  className="px-4 py-2 rounded-lg text-sm transition-opacity disabled:opacity-50"
+                  style={{ color: "rgba(143,175,150,0.7)" }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {sendInvitesMutation.isError && (
+                <p className="text-xs mt-2" style={{ color: "#E5A08F" }}>Something went wrong. Check the server logs.</p>
+              )}
+            </div>
+          )
+        ) : (
+          <div
+            className="rounded-xl px-4 py-4 mb-5"
+            style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.35)" }}
+          >
+            <p className="text-sm font-semibold mb-1" style={{ color: "#8FE5A6" }}>
+              ✓ Invites sent
+            </p>
+            <p className="text-[12px] mb-2" style={{ color: "rgba(143,175,150,0.8)" }}>
+              {inviteResult.sent} of {inviteResult.attempted} invites delivered
+              {inviteResult.failed > 0 && ` · ${inviteResult.failed} failed`}
+            </p>
+            {inviteResult.failed > 0 && (
+              <div className="mb-2">
+                <p className="text-[11px] mb-1" style={{ color: "rgba(143,175,150,0.6)" }}>Failed:</p>
+                {inviteResult.users.filter(u => !u.sent).map(u => (
+                  <p key={u.id} className="text-[11px]" style={{ color: "rgba(229,160,143,0.8)" }}>{u.email}</p>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setInviteResult(null)}
+              className="text-[11px] underline"
+              style={{ color: "rgba(143,175,150,0.55)" }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Search + filter chips */}
         <div className="mb-4">

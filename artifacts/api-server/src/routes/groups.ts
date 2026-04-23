@@ -21,7 +21,7 @@ import {
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
-import { sendEmail } from "../lib/email";
+import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { pool } from "@workspace/db";
 
@@ -2316,6 +2316,88 @@ router.get("/beta/bells", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("GET /api/beta/bells error:", err);
     res.json({ users: [], summary: { totalUsers: 0, bellsActive: 0, sentToday: 0 } });
+  }
+});
+
+// ─── POST /api/beta/bells/send-invites ──────────────────────────────────────
+// Admin action: send a 7 AM ICS calendar invite to every user who does NOT
+// have a bell enabled yet. Sets bell_enabled=true + daily_bell_time='07:00'
+// for each user so the daily sender will also pick them up going forward.
+//
+// Returns { attempted, sent, failed, users: [{ id, email, sent }] }
+router.post("/beta/bells/send-invites", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+
+    // Find all users without a bell
+    const result = await pool.query(`
+      SELECT id, email, name, timezone
+      FROM users
+      WHERE bell_enabled IS NOT TRUE
+      ORDER BY created_at ASC
+    `);
+
+    const targets: Array<{ id: number; email: string; name: string | null; timezone: string | null }> =
+      result.rows.map((r: Record<string, unknown>) => ({
+        id: r["id"] as number,
+        email: r["email"] as string,
+        name: (r["name"] as string | null) ?? null,
+        timezone: (r["timezone"] as string | null) ?? null,
+      }));
+
+    const APP_URL_LOCAL = process.env["APP_URL"] ?? "https://withphoebe.app";
+    const results: Array<{ id: number; email: string; sent: boolean }> = [];
+
+    for (const u of targets) {
+      try {
+        const tz = u.timezone ?? "America/New_York";
+        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+        const startLocalStr = `${todayStr}T07:00:00`;
+        const endLocalStr = `${todayStr}T07:05:00`;
+
+        const sent = await sendDailyBellIcsInvite({
+          to: u.email,
+          userId: u.id,
+          timeZone: tz,
+          startLocalStr,
+          endLocalStr,
+          summary: "🔔 Daily Bell — Phoebe",
+          description: [
+            "A daily time to pause and pray with your community.",
+            "",
+            `Open Phoebe: ${APP_URL_LOCAL}`,
+          ].join("\n"),
+        });
+
+        // Whether or not the ICS send succeeded, mark the bell as enabled at
+        // 7 AM so the daily sender will cover them going forward.
+        await pool.query(
+          `UPDATE users SET bell_enabled = true, daily_bell_time = '07:00', timezone = COALESCE(timezone, $1) WHERE id = $2`,
+          [tz, u.id],
+        );
+
+        results.push({ id: u.id, email: u.email, sent });
+        console.log(`[bell] bulk-invite: user ${u.id} (${u.email}) sent=${sent}`);
+      } catch (err) {
+        console.error(`[bell] bulk-invite: user ${u.id} error:`, err);
+        results.push({ id: u.id, email: u.email, sent: false });
+      }
+    }
+
+    const sent = results.filter(r => r.sent).length;
+    const failed = results.filter(r => !r.sent).length;
+
+    console.log(`[bell] bulk-invite complete: ${sent} sent, ${failed} failed of ${targets.length} total`);
+    res.json({ attempted: targets.length, sent, failed, users: results });
+  } catch (err) {
+    console.error("POST /api/beta/bells/send-invites error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
