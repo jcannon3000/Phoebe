@@ -3187,10 +3187,19 @@ export default function Dashboard() {
                   onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
                 />
 
-                {/* Tomorrow section removed — the persistent daily
-                    prayer card under the feast already communicates
-                    "you're done for today; more queued", and showing
-                    a separate Tomorrow list was redundant and noisy. */}
+                {/* 2. Tomorrow. Practice items actionable tomorrow.
+                    No longer carries a trailing PrayerListCard — the
+                    persistent daily-prayer anchor card at the top of
+                    the page covers that. Other card kinds (fasting,
+                    practices, etc.) still land here. Empty sections
+                    stay hidden. */}
+                <TimeSection
+                  label="Tomorrow"
+                  items={fTomorrow}
+                  userEmail={userEmail}
+                  userName={userName}
+                  onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                />
 
                 {/* 3. This week */}
                 <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
