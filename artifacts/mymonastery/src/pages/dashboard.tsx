@@ -1443,16 +1443,15 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
     );
   }
 
-  // Static mode — fits on one line. `overflow-hidden` is still there as
-  // a safety rail in case measurement is late by a frame on first paint.
+  // Static mode — fits on one line, but still use ScrollStrip so the
+  // row is user-scrollable if we mis-measured (late container width on
+  // first paint, zoom, long timezone labels added later, etc). When the
+  // content fits, ScrollStrip shows no fade on either side.
   return (
-    <div
-      ref={containerRef}
-      className="mt-2 overflow-hidden"
-    >
-      <div ref={innerRef} className="flex flex-nowrap gap-1.5">
+    <div ref={containerRef}>
+      <ScrollStrip className="mt-2" contentStyle={{ gap: 6 }}>
         {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
-      </div>
+      </ScrollStrip>
     </div>
   );
 }

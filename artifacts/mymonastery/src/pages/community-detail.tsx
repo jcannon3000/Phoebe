@@ -422,10 +422,10 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
   }
 
   return (
-    <div ref={containerRef} className="mt-2 overflow-hidden">
-      <div ref={innerRef} className="flex flex-nowrap gap-1.5">
+    <div ref={containerRef}>
+      <ScrollStrip className="mt-2" contentStyle={{ gap: 6 }}>
         {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
-      </div>
+      </ScrollStrip>
     </div>
   );
 }
