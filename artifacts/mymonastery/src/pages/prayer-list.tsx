@@ -961,12 +961,24 @@ export default function PrayerListPage() {
           </SectionShell>
         )}
 
-        {/* Prayers for others — removed per product direction (2026-04):
-            the "Prayers for Others" list is owned by the dedicated
-            prayers-for detail surfaces and the Circle; showing it here
-            duplicated content and crowded the list. Keep
-            `activePrayersFor` in the data layer so the empty-state guard
-            below still works, but don't render a section. */}
+        {/* Prayers I'm praying — "prayers for others" that I committed
+            to. User asked (2026-04) for this section to be restored so
+            the prayer list surfaces all four relationships:
+            intercessions, requests, prayers-I'm-praying, prayers-for-me.
+            Each section still auto-hides when empty. */}
+        {activePrayersFor.length > 0 && (focused === null || focused === "prayers-for") && (
+          <SectionShell
+            id="prayers-for"
+            label="Prayers I'm praying"
+            count={activePrayersFor.length}
+            focused={focused}
+            onFocus={setFocused}
+          >
+            {activePrayersFor.map((p) => (
+              <PrayerForCard key={p.id} p={p} onOpen={() => setDetail({ kind: "prayer-for", id: p.id })} />
+            ))}
+          </SectionShell>
+        )}
 
         {/* Prayers for you */}
         {prayersForMe.length > 0 && (focused === null || focused === "prayers-from") && (
