@@ -2,6 +2,39 @@
 
 A Capacitor-wrapped iOS shell around the `mymonastery` web app. Zero changes to mymonastery source — the web app is the single source of truth for UI. Phoebe Mobile adds native shell features (push notifications, Sign in with Apple, haptics, biometrics, local notifications, safe-area insets, native share, keyboard behavior, deep links, native contacts) on top.
 
+## Status (2026-04)
+
+**Done in this repo:**
+- Capacitor 6 scaffold + all plugin deps installed
+- `ios/` Xcode project generated (`npx cap add ios`)
+- `Info.plist` pre-configured with usage descriptions (Contacts, Face ID, Camera, Photos), `UIBackgroundModes: remote-notification`, portrait-only phone orientation
+- `App.entitlements` pre-configured with Push (development), Sign in with Apple, Associated Domains (`applinks:withphoebe.app`), App Groups (`group.app.withphoebe.mobile`)
+- `PrivacyInfo.xcprivacy` copied into the app bundle
+- Server-side push infra live (`pushSender.ts`, `routes/push.ts`, device_tokens table, bell scheduler dispatch)
+- `apple-app-site-association` served at `/.well-known/` by the api-server
+- Sign-in-with-Apple server endpoint (`/api/auth/apple/native`)
+- Web shell (`src/native-shell.ts`) wires every native bridge the web app dispatches
+
+**Blocks TestFlight — needs you in Xcode on a Mac:**
+1. Install Xcode from the App Store (the Command Line Tools that ship with macOS aren't enough)
+2. `sudo gem install cocoapods` (or brew install cocoapods)
+3. Enroll in Apple Developer Program ($99/yr) → withphoebe.apple.com
+4. Register App ID `app.withphoebe.mobile` with capabilities: Push Notifications, Sign in with Apple, Associated Domains, App Groups (`group.app.withphoebe.mobile`)
+5. Generate APNs Auth Key (.p8) → save the 10-char Key ID and your 10-char Team ID
+6. In Railway, set env vars: `APNS_KEY_P8` (file contents), `APNS_KEY_ID`, `APNS_TEAM_ID`, `APPLE_TEAM_ID`
+7. From repo root: `cd artifacts/phoebe-mobile && pnpm run cap:sync && pnpm run cap:open`
+8. In Xcode: set Team on the App target, verify bundle ID = `app.withphoebe.mobile`, then ⌘R to run on simulator
+9. App icon: drop a 1024×1024 base into `assets/icon.png` then run `npx @capacitor/assets generate --iconBackgroundColor "#091A10"`
+10. Archive → distribute via App Store Connect → submit for review
+
+**Minimum metadata needed in App Store Connect:**
+- Privacy policy URL
+- Support URL
+- Screenshots (6.7" + 6.5" + 5.5" at minimum; Xcode's simulator screenshot tool works)
+- Category: Lifestyle or Social Networking
+- Age rating: 4+ (no questionnaire flags)
+- Primary language: English
+
 ## Why Capacitor, not React Native?
 
 - **Ship the existing web app immediately.** Every existing page, card, query, form works as-is.
