@@ -127,6 +127,27 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 5, day: 25, rank: "lesser_feast", name: "Bede the Venerable, Priest and Historian",              color: "white", life: "735" },
   { month: 5, day: 26, rank: "lesser_feast", name: "Augustine, First Archbishop of Canterbury",             color: "white", life: "605" },
   { month: 5, day: 28, rank: "lesser_feast", name: "Mechthild of Magdeburg, Mystic",                        color: "white", life: "c. 1282" },
+
+  // ── June ──────────────────────────────────────────────────
+  { month: 6, day: 1,  rank: "lesser_feast", name: "Justin, Martyr",                                        color: "red",   life: "c. 167" },
+  { month: 6, day: 2,  rank: "lesser_feast", name: "Blandina and Her Companions, The Martyrs of Lyons",     color: "red",   life: "177" },
+  { month: 6, day: 3,  rank: "lesser_feast", name: "The Martyrs of Uganda",                                 color: "red",   life: "1886" },
+  { month: 6, day: 4,  rank: "lesser_feast", name: "John XXIII (Angelo Giuseppe Roncalli), Bishop",         color: "white", life: "1963" },
+  { month: 6, day: 5,  rank: "lesser_feast", name: "Boniface, Bishop and Missionary",                       color: "white", life: "754" },
+  { month: 6, day: 8,  rank: "lesser_feast", name: "Melania the Elder, Monastic",                           color: "white", life: "410" },
+  { month: 6, day: 9,  rank: "lesser_feast", name: "Columba of Iona, Monastic",                             color: "white", life: "597" },
+  { month: 6, day: 10, rank: "lesser_feast", name: "Ephrem of Nisibis, Deacon and Poet",                    color: "white", life: "373" },
+  { month: 6, day: 12, rank: "lesser_feast", name: "Enmegahbowh, Priest and Missionary",                    color: "white", life: "1902" },
+  { month: 6, day: 13, rank: "lesser_feast", name: "The First Book of Common Prayer",                       color: "white", life: "1549" },
+  { month: 6, day: 14, rank: "lesser_feast", name: "Basil of Caesarea, Bishop and Theologian",              color: "white", life: "379" },
+  { month: 6, day: 15, rank: "lesser_feast", name: "Evelyn Underhill, Mystic and Writer",                   color: "white", life: "1941" },
+  { month: 6, day: 16, rank: "lesser_feast", name: "Joseph Butler, Bishop and Theologian",                  color: "white", life: "1752" },
+  { month: 6, day: 17, rank: "lesser_feast", name: "Marina the Monk, Monastic",                             color: "white", life: "fifth century" },
+  { month: 6, day: 18, rank: "lesser_feast", name: "Bernard Mizeki, Martyr",                                color: "red",   life: "1896" },
+  { month: 6, day: 19, rank: "lesser_feast", name: "Adelaide Teague Case, Educator",                        color: "white", life: "1948" },
+  { month: 6, day: 22, rank: "lesser_feast", name: "Alban, Martyr",                                         color: "red",   life: "c. 304" },
+  { month: 6, day: 26, rank: "lesser_feast", name: "Isabel Florence Hapgood, Ecumenist",                    color: "white", life: "1928" },
+  { month: 6, day: 28, rank: "lesser_feast", name: "Irenaeus of Lyons, Bishop and Theologian",              color: "white", life: "c. 202" },
 ];
 
 registerLesserFeasts(ENTRIES);
