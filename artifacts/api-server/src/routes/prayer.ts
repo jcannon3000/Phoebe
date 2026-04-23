@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, fellowsTable, groupMembersTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, groupMembersTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
+import { getCorrespondentUserIds } from "../lib/correspondents";
 
 const router: IRouter = Router();
 
@@ -63,12 +64,11 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     .where(eq(userMutesTable.muterId, sessionUserId));
   const mutedIds = mutedRows.map(r => r.mutedUserId);
 
-  // Fetch fellow user IDs so we can flag and prioritize their requests
-  const fellowRows = await db
-    .select({ fellowUserId: fellowsTable.fellowUserId })
-    .from(fellowsTable)
-    .where(eq(fellowsTable.userId, sessionUserId));
-  const fellowIds = new Set(fellowRows.map(r => r.fellowUserId));
+  // Fetch current letter correspondent user IDs so we can flag and
+  // prioritize their requests. Replaces the previous fellows-pin signal —
+  // if you're actively writing letters to someone, their prayer requests
+  // surface first in the feed.
+  const correspondentIds = new Set(await getCorrespondentUserIds(sessionUserId));
 
   const now = new Date();
 
@@ -180,7 +180,7 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       ...r,
       ownerName: r.isAnonymous ? null : (owner?.name ?? null),
       isOwnRequest,
-      isFellow: fellowIds.has(r.ownerId),
+      isCorrespondent: correspondentIds.has(r.ownerId),
       words: words.map(w => ({
         authorName: w.authorName,
         content: w.content,
@@ -196,10 +196,10 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     };
   }));
 
-  // Sort: fellows' requests first, then by creation date (already ordered)
+  // Sort: correspondents' requests first, then by creation date (already ordered)
   enriched.sort((a, b) => {
-    if (a.isFellow && !b.isFellow) return -1;
-    if (!a.isFellow && b.isFellow) return 1;
+    if (a.isCorrespondent && !b.isCorrespondent) return -1;
+    if (!a.isCorrespondent && b.isCorrespondent) return 1;
     return 0;
   });
 

@@ -22,7 +22,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, betaViewEnabled, toggleBetaView, rawIsAdmin, rawIsBeta } = useBetaStatus();
   const [communityAdminView, toggleCommunityAdminView] = useCommunityAdminToggle();
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -35,24 +35,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     setLocation(path);
   }
 
-  // Fetch pending fellow invites count for badge — beta only. The /api/fellows
-  // endpoints reject non-beta callers with 403, so we'd just be hammering the
-  // server with rejected requests every 60s otherwise.
-  const { data: inviteCountData } = useQuery<{ count: number }>({
-    queryKey: ["/api/fellows/invites/count"],
-    queryFn: () => apiRequest("GET", "/api/fellows/invites/count"),
-    enabled: !!user && isBeta,
-    refetchInterval: 60_000,
-  });
-  const fellowInviteCount = isBeta ? (inviteCountData?.count ?? 0) : 0;
-
   const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
     // Practices used to have its own top-level entry that deep-linked into
     // the dashboard's filter; removed — the dashboard itself is the home
     // surface, and the Practices pill there is the canonical way to narrow.
-    { emoji: "🙏🏽", label: "Prayer List", path: "/prayer-list" },
+    { emoji: "🙏🏽", label: "Manage Prayer List", path: "/prayer-list" },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
-    { emoji: "👥", label: "People",      path: "/people",     count: fellowInviteCount },
+    { emoji: "👥", label: "People",      path: "/people" },
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { divider: true },
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },

@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
+import { getCorrespondentUserIds } from "../lib/correspondents";
 
 const router: IRouter = Router();
 
@@ -399,16 +400,15 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     }
   }
 
-  // Look up person user + fellow status + shared groups before the existence
-  // check, since a person can be in the viewer's world via garden/groups alone.
+  // Look up person user + correspondent status + shared groups before the
+  // existence check, since a person can be in the viewer's world via
+  // garden/groups/correspondence alone.
   const [personUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
 
-  let isFellow = false;
+  let isCorrespondent = false;
   if (personUser) {
-    const [fellowRow] = await db.select({ id: fellowsTable.id })
-      .from(fellowsTable)
-      .where(and(eq(fellowsTable.userId, ownerId), eq(fellowsTable.fellowUserId, personUser.id)));
-    isFellow = !!fellowRow;
+    const correspondentIds = await getCorrespondentUserIds(ownerId);
+    isCorrespondent = correspondentIds.includes(personUser.id);
   }
 
   // Find groups both users are members of
@@ -436,7 +436,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     sharedPractices.length === 0 &&
     pastSharedPractices.length === 0 &&
     sharedGroups.length === 0 &&
-    !isFellow
+    !isCorrespondent
   ) {
     res.status(404).json({ error: "Person not found in any of your shared practices, gatherings, communities, or garden" });
     return;
@@ -598,7 +598,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     userId: personUser?.id ?? null,
     avatarUrl,
     isMuted,
-    isFellow,
+    isCorrespondent,
     stats: {
       sharedCircleCount: sharedRituals.length,
       sharedPracticesCount: sharedPractices.length,

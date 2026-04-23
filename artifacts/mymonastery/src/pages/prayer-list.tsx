@@ -55,7 +55,7 @@ type PrayerRequest = {
   expiresAt: string | null;
   nearingExpiry: boolean;
   needsRenewal: boolean;
-  isFellow?: boolean;
+  isCorrespondent?: boolean;
   words: Array<{ authorName: string; content: string; createdAt?: string | null }>;
   myWord: string | null;
   createdAt: string;

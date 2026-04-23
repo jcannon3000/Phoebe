@@ -61,7 +61,7 @@ router.put("/users/me", async (req, res): Promise<void> => {
 //      FK at all. Cleanup is explicit so the user truly disappears
 //      from the roster everywhere.
 //   4. Hard-deletes the users row. Remaining user_id-keyed tables
-//      (prayer_requests, prayer_responses, fellows, device_tokens,
+//      (prayer_requests, prayer_responses, device_tokens,
 //      gratitude, etc.) cascade off users.id.
 //   5. Destroys the session so the app falls back to the login screen.
 // External mirrors (Google Calendar events, sent emails) are not reached

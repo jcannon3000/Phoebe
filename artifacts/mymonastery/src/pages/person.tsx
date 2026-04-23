@@ -3,7 +3,6 @@ import { useRoute, Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { usePersonProfile } from "@/hooks/usePeople";
 import { Layout } from "@/components/layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -123,10 +122,6 @@ export default function PersonProfile() {
   const [, params] = useRoute("/people/:email");
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
-  // Fellows is currently a beta-only feature — gate the chip and the
-  // add/remove buttons. The mutations themselves stay defined so the
-  // tree shape doesn't change between beta/non-beta.
-  const { isBeta } = useBetaStatus();
   const email = params?.email ? decodeURIComponent(params.email) : undefined;
   const { data: person, isLoading, isError } = usePersonProfile(email, user?.id);
   const queryClient = useQueryClient();
@@ -167,24 +162,6 @@ export default function PersonProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
-    },
-  });
-
-  const addFellowMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/fellows", { userId: (person as any)?.userId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/fellows"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    },
-  });
-
-  const removeFellowMutation = useMutation({
-    mutationFn: () => apiRequest("DELETE", `/api/fellows/${(person as any)?.userId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/fellows"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
   });
 
@@ -288,12 +265,12 @@ export default function PersonProfile() {
               <h1 className="font-semibold text-2xl leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
                 {person.name}
               </h1>
-              {isBeta && (person as any).isFellow && (
+              {(person as any).isCorrespondent && (
                 <span
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                   style={{ background: "rgba(92,138,95,0.15)", color: "#5C8A5F", border: "1px solid rgba(92,138,95,0.3)" }}
                 >
-                  Fellow
+                  📮 Correspondent
                 </span>
               )}
               {(person as any).isMuted && (
@@ -346,28 +323,6 @@ export default function PersonProfile() {
                     className="absolute right-0 top-10 z-50 rounded-xl py-1 min-w-[170px]"
                     style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
                   >
-                    {/* Fellow toggle — beta only */}
-                    {isBeta && ((person as any).isFellow ? (
-                      <button
-                        onClick={() => { setShowSettingsPopup(false); removeFellowMutation.mutate(); }}
-                        disabled={removeFellowMutation.isPending}
-                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
-                        style={{ color: "#8FAF96" }}
-                      >
-                        {removeFellowMutation.isPending ? "Removing…" : "Remove as fellow"}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => { setShowSettingsPopup(false); addFellowMutation.mutate(); }}
-                        disabled={addFellowMutation.isPending}
-                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
-                        style={{ color: "#A8C5A0" }}
-                      >
-                        {addFellowMutation.isPending ? "Adding…" : "Add as fellow"}
-                      </button>
-                    ))}
-                    {/* Divider — only when fellow toggle was rendered above */}
-                    {isBeta && <div className="mx-3 h-px" style={{ background: "rgba(46,107,64,0.2)" }} />}
                     {/* Mute toggle */}
                     {(person as any).isMuted ? (
                       <button
