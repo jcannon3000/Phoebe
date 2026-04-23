@@ -2999,10 +2999,11 @@ export default function Dashboard() {
       <div className="dash-shell flex flex-col w-full pb-36">
 
         {/* ── Header ── */}
-        <div className="mb-6">
-          <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-            A Place Set Apart for Connection
-          </p>
+        {/* Eyebrow ("A Place Set Apart…") removed per product
+            direction — the liturgical date/feast IS the header now.
+            Extra bottom margin sits between the feast subtitle and
+            the pill strip so the feast has room to breathe. */}
+        <div className="mb-8">
           <LiturgicalDateHeader />
 
           {(() => {
@@ -3026,7 +3027,7 @@ export default function Dashboard() {
               ...communityPills,
             ];
             return (
-              <ScrollStrip className="mt-2" contentStyle={{ gap: 8 }}>
+              <ScrollStrip className="mt-5" contentStyle={{ gap: 8 }}>
                 {PILLS.map((p, i) => (
                   <Link key={i} href={p.href} className={pillClass}
                     style={{ background: p.bg, color: p.fg, border: `1px solid ${p.border}` }}
