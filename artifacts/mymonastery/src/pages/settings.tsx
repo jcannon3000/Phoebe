@@ -513,7 +513,7 @@ function BellPreferences() {
             <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: "#C4A94D" }} />
             <div className="flex-1">
               <p className="text-[11px] leading-snug" style={{ color: "#D8B858" }}>
-                {calendarStatus === "pending" && "Calendar invite sent, but not accepted yet. Check your email and tap Accept so the bell can ring."}
+                {calendarStatus === "pending" && "Calendar invite sent — check your email or calendar and confirm it to be reminded each day."}
                 {calendarStatus === "tentative" && "You replied Maybe on the calendar invite. Switch to Accept so the bell rings reliably."}
                 {calendarStatus === "ics-pending" && "Calendar invite emailed. Open the message and tap the .ics attachment to add the bell to your calendar."}
                 {calendarStatus === "none" && "The bell is on, but we can't find a calendar invite. Resend it below."}
@@ -556,7 +556,7 @@ function BellPreferences() {
             </h2>
             <p className="text-sm leading-relaxed mb-5" style={{ color: "#C8D4C0" }}>
               {issueModalStatus === "pending" &&
-                "We sent a calendar invite but you haven't accepted it. Accept it in your email and the bell will start ringing daily."}
+                "We sent you a calendar invite. Check your email or calendar and confirm it so the bell can remind you each day."}
               {issueModalStatus === "tentative" &&
                 "You replied Maybe on the invite. Switch to Accept so the bell rings on time every day."}
               {issueModalStatus === "none" &&

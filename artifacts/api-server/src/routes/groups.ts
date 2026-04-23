@@ -2632,11 +2632,32 @@ router.post("/beta/bells/send-invite/:userId", async (req, res): Promise<void> =
     if (!Number.isFinite(userId)) { res.status(400).json({ error: "Invalid userId" }); return; }
 
     const result = await pool.query(
-      `SELECT id, email, name, timezone FROM users WHERE id = $1`,
+      `SELECT id, email, name, timezone, bell_calendar_event_id FROM users WHERE id = $1`,
       [userId],
     );
-    const row = result.rows[0] as { id: number; email: string; name: string | null; timezone: string | null } | undefined;
+    const row = result.rows[0] as {
+      id: number; email: string; name: string | null;
+      timezone: string | null; bell_calendar_event_id: string | null;
+    } | undefined;
     if (!row) { res.status(404).json({ error: "User not found" }); return; }
+
+    // ── Nuke any stale calendar event first ──
+    // If there's already an event on file — typically a declined or
+    // long-ignored invite — we delete it before creating a new one.
+    // Otherwise the old event sticks around in the Phoebe scheduler's
+    // calendar and keeps reporting its old RSVP. Same pattern the bulk
+    // reinvite endpoint uses.
+    if (row.bell_calendar_event_id) {
+      try {
+        await deleteCalendarEvent(row.id, row.bell_calendar_event_id);
+      } catch (err) {
+        console.warn(`[bell] single-invite: deleteCalendarEvent failed for user ${row.id} (continuing):`, err);
+      }
+      await pool.query(
+        `UPDATE users SET bell_calendar_event_id = NULL WHERE id = $1`,
+        [row.id],
+      );
+    }
 
     const tz = row.timezone ?? "America/New_York";
     const invite = await sendAdminBellInvite(

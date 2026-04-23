@@ -416,9 +416,25 @@ export default function BellsAdminPage() {
 }
 
 // ── Per-user invite button ──────────────────────────────────────────────────
-// Lets an admin send a 7 AM ICS invite to a single user who hasn't set up
-// a bell yet. Hits POST /api/beta/bells/send-invite/:userId.
-function SendInviteButton({ userId }: { userId: number }) {
+// Fires POST /api/beta/bells/send-invite/:userId. Always visible on every
+// row so an admin can (re)send a fresh 7 AM Google Calendar invite from
+// the Phoebe scheduler account — regardless of whether the bell is off,
+// the invite was declined, or a previously accepted user needs a do-over.
+// The backend deletes any stale calendar event first, then creates a new
+// one, so repeat clicks always produce a clean single invite rather than
+// piling duplicates on the user's calendar.
+//
+// Label shifts with current state to make the action self-explanatory:
+//   - bell off        → "Send invite"
+//   - declined        → "Resend invite"
+//   - any other state → "Resend invite"
+function SendInviteButton({
+  userId,
+  variant,
+}: {
+  userId: number;
+  variant: "primary" | "secondary"; // "primary" for off bells, "secondary" otherwise
+}) {
   const qc = useQueryClient();
   const [sent, setSent] = useState<null | { ok: boolean; community: string | null }>(null);
   const mut = useMutation<{ sent: boolean; community: string | null }>({
@@ -437,15 +453,24 @@ function SendInviteButton({ userId }: { userId: number }) {
     );
   }
 
+  const isPrimary = variant === "primary";
   return (
     <button
       onClick={() => mut.mutate()}
       disabled={mut.isPending}
       className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full whitespace-nowrap transition-opacity disabled:opacity-50"
-      style={{ background: "rgba(46,107,64,0.12)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
+      style={{
+        background: isPrimary ? "rgba(46,107,64,0.12)" : "rgba(143,175,150,0.06)",
+        color: isPrimary ? "#8FAF96" : "rgba(143,175,150,0.7)",
+        border: `1px solid ${isPrimary ? "rgba(46,107,64,0.3)" : "rgba(143,175,150,0.18)"}`,
+      }}
     >
       <Send size={10} />
-      {mut.isPending ? "Sending…" : "Send invite"}
+      {mut.isPending
+        ? "Sending…"
+        : isPrimary
+          ? "Send invite"
+          : "Resend invite"}
     </button>
   );
 }
@@ -702,7 +727,14 @@ function BellRow({ user: u }: { user: BellUser }) {
               {inviteChip.label}
             </span>
           )}
-          {!u.bellEnabled && <SendInviteButton userId={u.id} />}
+          {/* Per-row (re)send action. Primary variant for users with no
+              bell yet (that's the main thing you want to do on their
+              row); secondary / muted variant for everyone else so it
+              doesn't compete with the status chips visually. */}
+          <SendInviteButton
+            userId={u.id}
+            variant={u.bellEnabled ? "secondary" : "primary"}
+          />
         </div>
       </div>
     </div>
