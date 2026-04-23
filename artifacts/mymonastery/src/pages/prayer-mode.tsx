@@ -48,6 +48,10 @@ interface PrayerRequest {
   isAnswered: boolean;
   isOwnRequest?: boolean;
   closedAt?: string | null;
+  // The viewer's own one-line word of comfort on this request, if any.
+  // Used by the slideshow to either show their existing word or offer
+  // a compose field.
+  myWord?: string | null;
 }
 
 interface PrayerSlide {
@@ -59,6 +63,10 @@ interface PrayerSlide {
   // request specific — lets us record an amen against the originating
   // prayer request when the viewer taps "Amen" to advance.
   requestId?: number;
+  // request specific — the viewer's existing one-line word of comfort on
+  // this request, if any. `null` means they haven't commented yet, so
+  // the slide surfaces an inline compose field.
+  myWord?: string | null;
   // intercession specific — needed to fire a moment_posts check-in the
   // instant the viewer taps "Amen", so a community intercession amen
   // lands in both the intercession detail page and the streak count
@@ -93,6 +101,104 @@ interface CircleIntention {
   groupName: string;
   groupSlug: string;
   groupEmoji: string | null;
+}
+
+// Inline compose / echo field for the viewer's "word of comfort" on a
+// prayer request slide. If they already left a word we render it back
+// (read-only, italicized, dimmed); otherwise we show a one-line text
+// input with a send icon. Submitting posts to /word and swaps the
+// field into the read-only state — the viewer can still advance with
+// "Amen →" above as usual.
+function RequestWordField({ requestId, initialWord }: { requestId: number; initialWord: string | null }) {
+  const queryClient = useQueryClient();
+  const [word, setWord] = useState<string | null>(initialWord);
+  const [draft, setDraft] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // If the slide changes (new request) reset local state from the new prop.
+  useEffect(() => {
+    setWord(initialWord);
+    setDraft("");
+  }, [requestId, initialWord]);
+
+  async function submit() {
+    const content = draft.trim();
+    if (!content || submitting) return;
+    setSubmitting(true);
+    try {
+      await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content });
+      setWord(content);
+      setDraft("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    } catch {
+      /* swallow — failure just keeps the compose field visible */
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (word) {
+    return (
+      <div
+        className="w-full rounded-2xl px-5 py-3 text-left mt-2"
+        style={{
+          background: "rgba(46,107,64,0.08)",
+          border: "1px solid rgba(46,107,64,0.18)",
+        }}
+      >
+        <p
+          className="text-[10px] uppercase tracking-[0.14em] mb-1"
+          style={{ color: "rgba(143,175,150,0.5)" }}
+        >
+          Your word
+        </p>
+        <p
+          className="text-[14px] italic"
+          style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
+        >
+          “{word}”
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-full rounded-full px-4 py-1.5 mt-2 flex items-center gap-2"
+      style={{
+        background: "rgba(46,107,64,0.1)",
+        border: "1px solid rgba(46,107,64,0.25)",
+      }}
+    >
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        placeholder="Leave a word of comfort…"
+        maxLength={120}
+        className="flex-1 bg-transparent outline-none text-[14px] py-1.5"
+        style={{
+          color: "#E8E4D8",
+          fontSize: 16, // iOS Safari: ≥16 to block auto-zoom
+        }}
+      />
+      <button
+        onClick={submit}
+        disabled={!draft.trim() || submitting}
+        aria-label="Send word"
+        className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30"
+        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+      >
+        →
+      </button>
+    </div>
+  );
 }
 
 function SlideContent({
@@ -480,6 +586,13 @@ function SlideContent({
         </div>
       )}
 
+      {/* Word-of-comfort field — only on request slides. Shows the viewer's
+          existing word if they've already left one, otherwise a one-line
+          compose field with a send button. */}
+      {slide.kind === "request" && typeof slide.requestId === "number" && (
+        <RequestWordField requestId={slide.requestId} initialWord={slide.myWord ?? null} />
+      )}
+
       {/* Custom intercession — show the user's own prayer text */}
       {!bcpPrayer && slide.fullText && (
         <div
@@ -775,6 +888,7 @@ export default function PrayerModePage() {
         text: r.body,
         attribution: r.ownerName ? `from ${r.ownerName}` : "from someone",
         requestId: r.id,
+        myWord: r.myWord ?? null,
       })),
     ...activePrayersFor.map((p): PrayerSlide => {
       // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
