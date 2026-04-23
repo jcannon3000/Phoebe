@@ -445,7 +445,12 @@ router.post(
   "/phoebe/correspondences/:id/letters",
   requireAuth(async (req, res, auth) => {
     const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
+    console.log(
+      `[POST /phoebe/correspondences/${correspondenceId}/letters] ` +
+      `from=${auth.email} userId=${auth.userId} name=${JSON.stringify(auth.name)}`,
+    );
 
+    try {
     const [correspondence] = await db
       .select()
       .from(correspondencesTable)
@@ -527,13 +532,20 @@ router.post(
     const letterNumber = authorLetters.length + 1;
     const city = postmarkCity?.trim().slice(0, 100) || null;
 
+    // author_name is NOT NULL in the DB — fall back to the email local
+    // part if the user's display name is null/empty so the insert
+    // doesn't 500. User-reported: Anabelle hit a generic error splash
+    // when replying; null name was a plausible cause.
+    const resolvedAuthorName =
+      (auth.name && auth.name.trim()) || auth.email.split("@")[0] || "Anonymous";
+
     const [letter] = await db
       .insert(lettersTable)
       .values({
         correspondenceId,
         authorUserId: auth.userId,
         authorEmail: auth.email,
-        authorName: auth.name,
+        authorName: resolvedAuthorName,
         content: content.trim(),
         letterNumber,
         periodNumber: periodInfo.periodNumber,
@@ -696,6 +708,17 @@ router.post(
     }
 
     res.json({ ...letter, firstExchangeJustCompleted });
+    } catch (err) {
+      // Catch-all so the client gets a specific message instead of the
+      // generic "Something went wrong" splash. Log the full stack to
+      // Railway so we can see what actually blew up.
+      console.error(
+        `[POST /phoebe/correspondences/${correspondenceId}/letters] FAILED:`,
+        err,
+      );
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: "send_failed", message: msg });
+    }
   }),
 );
 

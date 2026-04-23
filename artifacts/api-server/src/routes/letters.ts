@@ -582,6 +582,11 @@ router.post(
 
     const letterNumber = authorLetters.length + 1;
 
+    // author_name is NOT NULL — fall back to email local-part when the
+    // user's display name is null/empty so the insert doesn't 500.
+    const resolvedAuthorName =
+      (auth.name && auth.name.trim()) || auth.email.split("@")[0] || "Anonymous";
+
     // Create letter
     const [letter] = await db
       .insert(lettersTable)
@@ -589,7 +594,7 @@ router.post(
         correspondenceId,
         authorUserId: auth.userId,
         authorEmail: auth.email,
-        authorName: auth.name,
+        authorName: resolvedAuthorName,
         content: content.trim(),
         letterNumber,
         periodNumber,
