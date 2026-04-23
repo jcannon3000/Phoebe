@@ -372,21 +372,18 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 // clipping. Mirrors the dashboard's ServiceTimesPillRow verbatim so the
 // card looks identical to the one on the home screen.
 function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) {
-  // Static "Tap to see service times" teaser — see dashboard's twin.
+  // Static "<Month D> — Tap to See All Service Times" teaser.
   if (schedule.times.length === 0) return null;
+  const now = new Date();
+  const diff = (schedule.dayOfWeek - now.getDay() + 7) % 7;
+  const nextDate = new Date(now);
+  nextDate.setDate(now.getDate() + diff);
+  const dateLabel = nextDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   return (
-    <div className="mt-2">
-      <span
-        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-        style={{
-          background: "rgba(46,107,64,0.2)",
-          border: "1px solid rgba(46,107,64,0.3)",
-          color: "#F0EDE6",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        Tap to see service times
-      </span>
+    <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+      <span style={{ color: "#C8D4C0" }}>{dateLabel}</span>
+      <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
+      <span>Tap to See All Service Times</span>
     </div>
   );
 }

@@ -1386,24 +1386,17 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
 // to the ticker version if the content overflows. The ticker duplicates the
 // pill list so the CSS keyframe can translate from 0 to -50% and seam.
 
-function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
-  // Second line is intentionally a static teaser. Rotating pills and
-  // scrollable strips both fought the clickable card wrapper — a plain
-  // "Tap to see service times" cue is unambiguous and honors the tap target.
+function ServiceTimesPillRow({ schedule, nextDate }: { schedule: ServiceSchedule; nextDate: Date }) {
+  // Static teaser: "<Month D> — Tap to See All Service Times". Rotating
+  // pills and scrollable strips both fought the clickable card wrapper,
+  // and a plain line honors the tap target.
   if (schedule.times.length === 0) return null;
+  const dateLabel = nextDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   return (
-    <div className="mt-2">
-      <span
-        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-        style={{
-          background: "rgba(46,107,64,0.2)",
-          border: "1px solid rgba(46,107,64,0.3)",
-          color: "#F0EDE6",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        Tap to see service times
-      </span>
+    <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+      <span style={{ color: "#C8D4C0" }}>{dateLabel}</span>
+      <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
+      <span>Tap to See All Service Times</span>
     </div>
   );
 }
@@ -1496,7 +1489,7 @@ function ServiceCard({
               overflow, while a 5-service parish on a wide screen still
               renders statically when there's room. */}
           {schedule.times.length > 0 && (
-            <ServiceTimesPillRow schedule={schedule} />
+            <ServiceTimesPillRow schedule={schedule} nextDate={nextDate} />
           )}
 
         </div>
