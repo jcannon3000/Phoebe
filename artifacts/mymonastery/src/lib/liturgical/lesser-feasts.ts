@@ -83,6 +83,29 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 3, day: 29, rank: "lesser_feast", name: "John Keble, Priest and Poet",                           color: "white", life: "1866" },
   { month: 3, day: 30, rank: "lesser_feast", name: "Mary of Egypt, Monastic",                               color: "white", life: "c. 421" },
   { month: 3, day: 31, rank: "lesser_feast", name: "John Donne, Priest and Poet",                           color: "white", life: "1631" },
+
+  // ── April ─────────────────────────────────────────────────
+  { month: 4, day: 1,  rank: "lesser_feast", name: "Frederick Denison Maurice, Priest",                     color: "white", life: "1872" },
+  { month: 4, day: 2,  rank: "lesser_feast", name: "James Lloyd Breck, Priest",                             color: "white", life: "1876" },
+  { month: 4, day: 3,  rank: "lesser_feast", name: "Richard of Chichester, Bishop",                         color: "white", life: "1253" },
+  { month: 4, day: 4,  rank: "lesser_feast", name: "Martin Luther King, Jr., Pastor and Martyr",            color: "red",   life: "1968" },
+  { month: 4, day: 5,  rank: "lesser_feast", name: "Harriet Starr Cannon, Monastic",                        color: "white", life: "1896" },
+  { month: 4, day: 7,  rank: "lesser_feast", name: "Tikhon, Bishop and Ecumenist",                          color: "white", life: "1925" },
+  { month: 4, day: 8,  rank: "lesser_feast", name: "William Augustus Muhlenberg, Priest",                   color: "white", life: "1877" },
+  { month: 4, day: 9,  rank: "lesser_feast", name: "Dietrich Bonhoeffer, Pastor and Theologian",            color: "white", life: "1945" },
+  { month: 4, day: 10, rank: "lesser_feast", name: "William Law, Priest",                                   color: "white", life: "1761" },
+  { month: 4, day: 11, rank: "lesser_feast", name: "George Augustus Selwyn, Bishop",                        color: "white", life: "1878" },
+  { month: 4, day: 14, rank: "lesser_feast", name: "Zenaida, Philonella, and Hermione, Unmercenary Physicians", color: "white", life: "c. 100, c. 117" },
+  { month: 4, day: 15, rank: "lesser_feast", name: "Damien, Priest, and Marianne Cope, Monastic, of Hawai'i", color: "white", life: "1889 and 1918" },
+  { month: 4, day: 16, rank: "lesser_feast", name: "Peter Williams Cassey, Deacon, and Annie Besant Cassey", color: "white", life: "1917 and 1875" },
+  { month: 4, day: 17, rank: "lesser_feast", name: "Kateri Tekakwitha, Lay Contemplative",                  color: "white", life: "1680" },
+  { month: 4, day: 18, rank: "lesser_feast", name: "Juana Inés de la Cruz, Monastic and Theologian",        color: "white", life: "1695" },
+  { month: 4, day: 19, rank: "lesser_feast", name: "Alphege, Archbishop of Canterbury, and Martyr",         color: "red",   life: "1012" },
+  { month: 4, day: 21, rank: "lesser_feast", name: "Anselm, Archbishop of Canterbury",                      color: "white", life: "1109" },
+  { month: 4, day: 22, rank: "lesser_feast", name: "Hadewijch of Brabant, Poet and Mystic",                 color: "white", life: "thirteenth century" },
+  { month: 4, day: 23, rank: "lesser_feast", name: "Toyohiko Kagawa, Social Reformer",                      color: "white", life: "1960" },
+  { month: 4, day: 27, rank: "lesser_feast", name: "Zita of Tuscany, Worker of Charity",                    color: "white", life: "1271" },
+  { month: 4, day: 29, rank: "lesser_feast", name: "Catherine of Siena, Mystic and Prophetic Witness",      color: "white", life: "1380" },
 ];
 
 registerLesserFeasts(ENTRIES);
