@@ -1376,16 +1376,21 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     memberUserIds,
   );
 
-  // Community wall is scoped to this community's own prayers.
+  // Community wall is scoped to this community's members.
   // Two inclusion rules:
   //   1. group_id = this group's id  (posted directly into this
   //      community via the community compose bar).
-  //   2. group_id IS NULL AND owner is a joined member of this
-  //      community (posted to the generic prayer wall by a member
-  //      — we fan it into every community they belong to).
-  // Earlier this endpoint was widened to "all active requests
-  // across the app" — user flagged that the community dashboard
-  // was showing every user's prayer request, not just its own.
+  //   2. owner is a joined member of this community  (any active
+  //      prayer request from a member, regardless of which surface
+  //      they posted it on — personal prayer-list (group_id NULL)
+  //      or another community they're also in). Keeps non-members
+  //      out (the original concern) while making sure every
+  //      member's active prayer surfaces in their community's
+  //      dashboard. Previously rule #2 also required group_id IS
+  //      NULL, which silently dropped member prayers posted into
+  //      other communities — user flagged that members visible on
+  //      the home dashboard's Prayer Requests section were missing
+  //      from their community detail page.
   const rows = memberUserIds.length > 0
     ? await db
         .select({
@@ -1401,7 +1406,7 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
         .where(and(
           sql`${prayerRequestsTable.closedAt} IS NULL`,
-          sql`(${prayerRequestsTable.groupId} = ${group.id} OR (${prayerRequestsTable.groupId} IS NULL AND ${prayerRequestsTable.ownerId} = ANY(${memberUserIds})))`,
+          sql`(${prayerRequestsTable.groupId} = ${group.id} OR ${prayerRequestsTable.ownerId} = ANY(${memberUserIds}))`,
         ))
         .orderBy(desc(prayerRequestsTable.createdAt))
     : await db
