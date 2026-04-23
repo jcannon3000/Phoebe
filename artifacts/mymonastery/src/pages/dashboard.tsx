@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
-import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -3006,38 +3005,28 @@ export default function Dashboard() {
         <div className="mb-8">
           <LiturgicalDateHeader />
 
-          {(() => {
-            // Pill strip under the date: quick nav to prayer list, people,
-            // and each community the viewer is in. Pills are link-only —
-            // no filter toggles live here anymore.
-            type Pill = { label: string; href: string; fg: string; bg: string; border: string };
-            const pillClass = "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80";
-            const communityPills: Pill[] = (dashGroups?.groups ?? [])
-              .slice()
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map(g => ({
-                label: `${g.emoji ?? "🏘️"} ${g.name}`,
-                href: `/communities/${g.slug}`,
-                fg: "#6FAF85",
-                bg: "rgba(111,175,133,0.12)",
-                border: "rgba(111,175,133,0.25)",
-              }));
-            const PILLS: Pill[] = [
-              { label: "👥 People", href: "/people", fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
-              ...communityPills,
-            ];
-            return (
-              <ScrollStrip className="mt-5" contentStyle={{ gap: 8 }}>
-                {PILLS.map((p, i) => (
-                  <Link key={i} href={p.href} className={pillClass}
-                    style={{ background: p.bg, color: p.fg, border: `1px solid ${p.border}` }}
-                  >
-                    {p.label}
-                  </Link>
-                ))}
-              </ScrollStrip>
-            );
-          })()}
+          {/* Pills row (People + communities) removed — those
+              destinations live in the side Menu now. The primary
+              action on the dashboard is "Begin your prayer list",
+              below. */}
+
+          <Link
+            href="/prayer-mode"
+            className="mt-5 block w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              background: "#4A7A5B",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 16,
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
+              padding: "14px 20px",
+              border: "1px solid rgba(111,175,133,0.45)",
+              boxShadow: "0 2px 10px rgba(46,107,64,0.25)",
+            }}
+          >
+            Begin your prayer list
+          </Link>
         </div>
 
         {/* ── Loading skeleton ── */}

@@ -447,27 +447,10 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {user && (
           <div className="flex items-center gap-2">
-            <Link
-              href="/prayer-mode"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                letterSpacing: "-0.01em",
-                background: "rgba(122,158,125,0.14)",
-                color: "#7A9E7D",
-                border: "1px solid rgba(122,158,125,0.28)",
-              }}
-            >
-              <span>Prayer List</span>
-              {prayerStreak > 0 && (
-                <span
-                  style={{ fontSize: "0.95em", lineHeight: 1 }}
-                  aria-label={`${prayerStreak}-day streak`}
-                >
-                  🔥 {prayerStreak}
-                </span>
-              )}
-            </Link>
+            {/* Top-right Prayer List pill removed — the primary
+                "Begin your prayer list" action now lives under the
+                feast on the dashboard. Menu is the only top-right
+                control. */}
             <button
               onClick={() => setDrawerOpen(true)}
               className="flex items-center justify-center transition-colors"
