@@ -52,3 +52,10 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Apple code-signing / APNs keys. These should live outside the repo
+# (e.g. ~/Documents/apple-keys/) and on Railway as env vars.
+*.p8
+*.p12
+*.mobileprovision
+AuthKey_*.p8

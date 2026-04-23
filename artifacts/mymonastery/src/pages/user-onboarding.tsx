@@ -311,9 +311,12 @@ const SLIDES: Slide[] = [
     calm: true,
     footnote: "To mute someone, visit their profile in the People tab and tap Mute.",
   },
-  // 9
-  { kind: "bell" },
-  // 10
+  // Bell setup slide removed from onboarding per user direction —
+  // 'no bell pop ups.' Users can still set up the bell manually
+  // from Settings if they want it; we just don't force the prompt.
+  // Keep the slide definitions in `SlideKind` above so the renderer
+  // compiles, but don't include it in the slide sequence.
+  // { kind: "bell" },
   { kind: "prayer-request" },
 ];
 
