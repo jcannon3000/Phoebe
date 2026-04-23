@@ -680,6 +680,7 @@ function LetterCard({
   userName: string;
   keyPrefix: string;
 }) {
+  const [, setLocation] = useLocation();
   const isOneToOne = c.groupType === "one_to_one";
   const otherMembers = c.members
     .filter(m => m.email !== userEmail)
@@ -741,11 +742,31 @@ function LetterCard({
       <div className="flex items-center justify-between gap-2 mt-1.5">
         <SplitFlapLine lines={flapLines} />
         {needsWrite && (
-          <Link href={`/letters/${c.id}/write`} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-              Write 🖋️
-            </span>
-          </Link>
+          // Use an onClick-driven span instead of a nested wouter <Link>.
+          // BarCard already wraps its contents in a <Link> (<a>), and nested
+          // anchors are invalid HTML — Safari was rendering a phantom second
+          // rounded shape behind this pill. Navigating via setLocation keeps
+          // the click target inside the outer anchor without creating one.
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setLocation(`/letters/${c.id}/write`);
+            }}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                setLocation(`/letters/${c.id}/write`);
+              }
+            }}
+            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
+            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          >
+            Write 🖋️
+          </span>
         )}
       </div>
     </BarCard>
