@@ -177,36 +177,28 @@ function SectionShell({
           </span>
         )}
       </button>
-      <div style={{ position: "relative" }}>
-        <div
-          className="space-y-2"
-          style={
-            collapsed
-              ? {
-                  maxHeight: CLAMP,
-                  overflowY: "auto",
-                  WebkitOverflowScrolling: "touch",
-                  paddingBottom: 8,
-                }
-              : undefined
-          }
-        >
-          {children}
-        </div>
-        {collapsed && count > 3 && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 56,
-              pointerEvents: "none",
-              background:
-                "linear-gradient(to bottom, rgba(9,20,14,0) 0%, rgba(9,20,14,0.85) 60%, rgba(9,20,14,1) 100%)",
-            }}
-          />
-        )}
+      {/* Previously wrapped in position:relative with a 56px dark
+          linear-gradient overlay at the bottom to fade out the last
+          partially-visible card — which on this page rendered as an
+          ugly dark smear across the 3rd/4th card and looked like a
+          shadow bug ("the shadow is acting weird here"). The scroll
+          container already has overflow-y:auto + touch momentum, and
+          the "View all" eyebrow in the section header signals the
+          overflow, so the gradient is redundant. Dropped it. */}
+      <div
+        className="space-y-2"
+        style={
+          collapsed
+            ? {
+                maxHeight: CLAMP,
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                paddingBottom: 8,
+              }
+            : undefined
+        }
+      >
+        {children}
       </div>
     </section>
   );
