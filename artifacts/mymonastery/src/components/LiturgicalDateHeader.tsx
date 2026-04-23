@@ -48,20 +48,21 @@ export function LiturgicalDateHeader({ date }: { date?: Date }) {
   const isFeastHeader =
     day.rank === "principal_feast" || day.rank === "holy_day" || day.rank === "sunday";
 
-  // Lesser Feasts now render as a primary header too, prefixed with
-  // "Feast of " so the commemoration reads as the headline. The date
-  // sinks to the muted subtitle, same slot as the other tiers. Before
-  // this, Lesser Feasts were an italic-serif second line under the
-  // date — user flagged that treatment as too quiet and asked to
-  // promote the commemoration + drop the color accent line.
+  // Lesser Feasts render as a primary header, prefixed with
+  // "Feast of " and followed by the saint's life/death year so the
+  // date-at-the-top-right is the SAINT's year, not the current one.
+  // The date sinks to the subtitle in short form (no current year —
+  // it's today, the current year is implicit).
   let primary: string;
   let secondary: string | null;
   if (isFeastHeader) {
     primary = day.name;
     secondary = dateLong;
   } else if (day.commemoration) {
-    primary = `Feast of ${day.commemoration}`;
-    secondary = dateLong;
+    primary = day.life
+      ? `Feast of ${day.commemoration}, ${day.life}`
+      : `Feast of ${day.commemoration}`;
+    secondary = dateLine;
   } else {
     primary = dateLine;
     secondary = day.name || null;
