@@ -141,7 +141,13 @@ function PersonCard({
     ? `🙏🏽 ${truncate(person.activePrayerRequest.body, 40)}`
     : "";
 
-  const flapLines = [prayerLine, ...allNames].filter(s => s.length > 0);
+  // When the person has an active prayer request, pin it as the second
+  // line with no rotation — their ask is the thing to surface, not a
+  // rotating shared-practice label. Only fall back to the practice
+  // ticker when there's no prayer request to carry.
+  const flapLines = prayerLine
+    ? [prayerLine]
+    : allNames.filter(s => s.length > 0);
 
   // Best streak across shared practices
   const bestStreak = Math.max(person.maxSharedStreak, ...person.sharedPractices.map(p => p.currentStreak), 0);
