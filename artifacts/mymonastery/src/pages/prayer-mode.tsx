@@ -45,6 +45,7 @@ interface PrayerRequest {
   id: number;
   body: string;
   ownerName: string | null;
+  ownerAvatarUrl?: string | null;
   isAnswered: boolean;
   isOwnRequest?: boolean;
   closedAt?: string | null;
@@ -78,6 +79,11 @@ interface PrayerSlide {
   recipientName?: string;
   recipientAvatarUrl?: string | null;
   dayLabel?: string;
+  // request specific — the author's name + avatar, rendered above
+  // the "Prayer Request" eyebrow so the slide feels like it's from a
+  // specific person rather than a disembodied body of text.
+  authorName?: string | null;
+  authorAvatarUrl?: string | null;
   // circle-intention specific — included so the slide can link back to the
   // community, and so we can attribute the shared nature of the prayer in
   // the subtitle.
@@ -501,6 +507,39 @@ function SlideContent({
 
   return (
     <div className="w-full flex flex-col items-center text-center gap-5">
+      {/* Request slides: author avatar + name above the body, mirroring
+          the "Praying for" slide's layout. The avatar anchors the slide
+          to a specific person so the prayer doesn't read as anonymous
+          text. Intercession/circle slides skip this block. */}
+      {slide.kind === "request" && (slide.authorName || slide.authorAvatarUrl) && (
+        <div className="flex flex-col items-center gap-3">
+          {slide.authorAvatarUrl ? (
+            <img
+              src={slide.authorAvatarUrl}
+              alt={slide.authorName ?? "Prayer author"}
+              className="w-16 h-16 rounded-full object-cover"
+              style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold"
+              style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+            >
+              {(slide.authorName ?? "")
+                .split(" ")
+                .slice(0, 2)
+                .map(w => w[0]?.toUpperCase() ?? "")
+                .join("")}
+            </div>
+          )}
+          {slide.authorName && (
+            <p className="text-[14px]" style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}>
+              {slide.authorName}
+            </p>
+          )}
+        </div>
+      )}
+
       <p
         className="text-[10px] uppercase tracking-[0.18em] font-semibold"
         style={{ color: "rgba(143,175,150,0.45)" }}
@@ -893,9 +932,13 @@ export default function PrayerModePage() {
       .map((r): PrayerSlide => ({
         kind: "request",
         text: r.body,
-        attribution: r.ownerName ? `from ${r.ownerName}` : "from someone",
+        // Avatar + name render in-slide now; keep attribution empty so
+        // we don't duplicate "from Name" under the body.
+        attribution: "",
         requestId: r.id,
         myWord: r.myWord ?? null,
+        authorName: r.ownerName ?? null,
+        authorAvatarUrl: r.ownerAvatarUrl ?? null,
       })),
     ...activePrayersFor.map((p): PrayerSlide => {
       // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
