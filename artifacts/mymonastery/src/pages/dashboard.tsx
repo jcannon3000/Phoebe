@@ -1550,6 +1550,12 @@ function PrayerListCard({
           <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
         )}
         <div className="flex-1 px-4 pt-3 pb-3">
+          {/* Line 1: title + "View list" pill (top-right corner).
+              View list takes the user to /prayer-list — the
+              management surface for their prayer items. The tap
+              on the outer card still routes to /prayer-mode via
+              the wrapping Link; View list's stopPropagation
+              diverts the tap to the management page. */}
           <div className="flex items-start justify-between gap-2">
             <span
               className="text-base font-semibold"
@@ -1557,9 +1563,42 @@ function PrayerListCard({
             >
               🕯️ Daily prayer list
             </span>
+            <Link
+              href="/prayer-list"
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase transition-opacity hover:opacity-80"
+              style={{
+                color: "#C8D4C0",
+                background: "rgba(200,212,192,0.08)",
+                border: "1px solid rgba(143,175,150,0.35)",
+                letterSpacing: "0.08em",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              View list
+            </Link>
+          </div>
+
+          {/* Line 2: count / confirmation on the left, streak on
+              the right. Streak moved off Line 1 to make room for
+              the View list pill. */}
+          <div className="mt-1.5 flex items-center justify-between gap-3">
+            <p
+              className="text-sm"
+              style={{
+                color: "#8FAF96",
+                lineHeight: "20px",
+                margin: 0,
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {prayedToday
+                ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
+                : subtitle}
+            </p>
             {streak > 0 && (
               <span
-                className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+                className="text-[10px] font-semibold uppercase shrink-0"
                 style={{ color: "#E8A94C", letterSpacing: "0.08em", fontFamily: "'Space Grotesk', sans-serif" }}
                 aria-label={`${streak}-day prayer streak`}
               >
@@ -1567,20 +1606,6 @@ function PrayerListCard({
               </span>
             )}
           </div>
-          {/* Line 2: count / confirmation */}
-          <p
-            className="mt-1.5 text-sm"
-            style={{
-              color: "#8FAF96",
-              lineHeight: "20px",
-              margin: 0,
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            {prayedToday
-              ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
-              : subtitle}
-          </p>
 
           {/* Line 3: full-width CTA.
                 - Not prayed → "Pray →"
