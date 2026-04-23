@@ -1498,6 +1498,130 @@ function ServiceCard({
   );
 }
 
+// ─── Daily prayer list anchor card ──────────────────────────────────────────
+// Sits directly beneath the feast line on the home screen. Two states:
+//   1. Has NOT yet prayed today → active card inviting the user in, with
+//      a primary CTA button ("Begin your prayer list").
+//   2. Has prayed today → restful card with a quiet serif confirmation and
+//      a small "Pray again" link for users who want a second pass.
+//
+// Streak chip sits in the top-right both states. Renders nothing when the
+// viewer has zero prayers queued AND no streak — no point anchoring the
+// home screen on an empty card for brand-new users.
+function DailyPrayerListCard({
+  streak,
+  pendingCount,
+  prayedToday,
+}: {
+  streak: number;
+  pendingCount: number;
+  prayedToday: boolean;
+}) {
+  const nothingToShow = pendingCount === 0 && streak === 0;
+  if (nothingToShow) return null;
+
+  const countLine = pendingCount === 1
+    ? "1 prayer waiting for you"
+    : `${pendingCount} prayers waiting for you`;
+
+  const cardBody = (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative rounded-2xl overflow-hidden"
+      style={{
+        background: prayedToday ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.16)",
+        border: `1px solid ${prayedToday ? "rgba(111,175,133,0.28)" : "rgba(111,175,133,0.45)"}`,
+        boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
+        padding: "14px 16px 14px",
+      }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className="text-base font-semibold"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          🕯️ Daily prayer list
+        </span>
+        {streak > 0 && (
+          <span
+            className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+            style={{ color: "#E8A94C", letterSpacing: "0.08em" }}
+            aria-label={`${streak}-day prayer streak`}
+          >
+            🔥 {streak}-day streak
+          </span>
+        )}
+      </div>
+
+      {prayedToday ? (
+        <>
+          <p
+            className="mt-2 italic"
+            style={{
+              color: "#C8D4C0",
+              fontFamily: "Playfair Display, Georgia, serif",
+              fontSize: 14,
+              lineHeight: 1.5,
+            }}
+          >
+            You have prayed today. They are held.
+          </p>
+          {pendingCount > 0 && (
+            <div className="mt-3">
+              <Link
+                href="/prayer-mode"
+                className="text-[12px] underline-offset-2 hover:underline"
+                style={{ color: "rgba(168,197,160,0.75)" }}
+              >
+                Pray again
+              </Link>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <p
+            className="mt-1.5 text-sm"
+            style={{ color: "#8FAF96", lineHeight: "20px" }}
+          >
+            {countLine}
+          </p>
+          <Link
+            href="/prayer-mode"
+            className="mt-3 block w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              background: "#4A7A5B",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 15,
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
+              padding: "11px 18px",
+              border: "1px solid rgba(111,175,133,0.45)",
+            }}
+          >
+            Begin your prayer list
+          </Link>
+        </>
+      )}
+    </motion.div>
+  );
+
+  // In State 1 (not yet prayed) the whole card is a tap target so the
+  // user can tap anywhere, not just the button. In State 2 (prayed)
+  // we keep the card non-tappable so it feels restful — only the
+  // small "Pray again" link is interactive.
+  if (!prayedToday) {
+    return (
+      <Link href="/prayer-mode" className="mt-5 block">
+        {cardBody}
+      </Link>
+    );
+  }
+  return <div className="mt-5">{cardBody}</div>;
+}
+
 // ─── Prayer-list fallback card ──────────────────────────────────────────────
 // Shown in the Today section when nothing else is pending there but the user
 // still has prayers queued in their slideshow. Gives them a clear next step
@@ -3005,28 +3129,21 @@ export default function Dashboard() {
         <div className="mb-8">
           <LiturgicalDateHeader />
 
-          {/* Pills row (People + communities) removed — those
-              destinations live in the side Menu now. The primary
-              action on the dashboard is "Begin your prayer list",
-              below. */}
-
-          <Link
-            href="/prayer-mode"
-            className="mt-5 block w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "#4A7A5B",
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 16,
-              fontWeight: 500,
-              letterSpacing: "-0.01em",
-              padding: "14px 20px",
-              border: "1px solid rgba(111,175,133,0.45)",
-              boxShadow: "0 2px 10px rgba(46,107,64,0.25)",
-            }}
-          >
-            Begin your prayer list
-          </Link>
+          {/* Persistent daily prayer list card. Two states:
+                – Not yet prayed today → active card with "N prayers
+                  waiting for you" and a primary CTA button.
+                – Prayed today → restful card with a quiet
+                  italic confirmation and a small "Pray again" link.
+              Always lives here — the anchor of the home screen.
+              Filter-gated (no point showing a non-filter action
+              when the practices filter is on). */}
+          {filter === null && (
+            <DailyPrayerListCard
+              streak={prayerStreak}
+              pendingCount={pendingPrayerCount}
+              prayedToday={prayerListDoneToday}
+            />
+          )}
         </div>
 
         {/* ── Loading skeleton ── */}
@@ -3058,51 +3175,22 @@ export default function Dashboard() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {/* 1. Today. The PrayerListCard trails the day's items
-                    when (a) the user still has prayers queued and (b)
-                    they haven't finished today's list yet. Once done,
-                    the card jumps down to the Tomorrow section (below).
-                    Filtered views skip the trailing card — each filter
-                    has its own empty state. */}
+                {/* 1. Today. The daily-prayer anchor card now lives
+                    under the feast line up top, so the Today section
+                    no longer carries a trailing PrayerListCard — it's
+                    just the day's practice/gathering items. */}
                 <TimeSection
                   label="Today"
                   items={fToday}
                   userEmail={userEmail}
                   userName={userName}
                   onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
-                  trailingCards={
-                    filter === null && pendingPrayerCount > 0 && !prayerListDoneToday ? (
-                      <PrayerListCard
-                        pendingCount={pendingPrayerCount}
-                        streak={prayerStreak}
-                        keyPrefix="today"
-                      />
-                    ) : undefined
-                  }
                 />
 
-                {/* 2. Tomorrow. Practice items actionable tomorrow, plus the
-                    PrayerListCard if the user already finished today (so they
-                    see their next list is queued for tomorrow). Empty
-                    sections stay hidden. */}
-                <TimeSection
-                  label="Tomorrow"
-                  items={fTomorrow}
-                  userEmail={userEmail}
-                  userName={userName}
-                  onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
-                  trailingCards={
-                    filter === null && prayerListDoneToday && pendingPrayerCount > 0 ? (
-                      <PrayerListCard
-                        pendingCount={pendingPrayerCount}
-                        streak={prayerStreak}
-                        keyPrefix="tomorrow"
-                        muted
-                      />
-                    ) : undefined
-                  }
-                />
-
+                {/* Tomorrow section removed — the persistent daily
+                    prayer card under the feast already communicates
+                    "you're done for today; more queued", and showing
+                    a separate Tomorrow list was redundant and noisy. */}
 
                 {/* 3. This week */}
                 <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
