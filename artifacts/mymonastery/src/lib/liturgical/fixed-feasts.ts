@@ -244,14 +244,8 @@ export const HOLY_DAYS: FixedFeastEntry[] = [
     description:
       "A principal feast. Remembers all the saints, known and unknown — the great cloud of witnesses.",
   },
-  {
-    month: 11, day: 2,
-    rank: "lesser_feast",
-    name: "Commemoration of All Faithful Departed",
-    color: white,
-    description:
-      "All Souls' Day. A remembrance of the faithful who have died, distinct from All Saints' Day.",
-  },
+  // All Souls (Nov 2) lives in lesser-feasts.ts so it renders via
+  // the commemoration subtitle path, not the feast-primary path.
   {
     month: 11, day: 30,
     rank: "holy_day",
