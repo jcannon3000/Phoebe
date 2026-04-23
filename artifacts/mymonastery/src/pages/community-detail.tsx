@@ -372,60 +372,51 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 // clipping. Mirrors the dashboard's ServiceTimesPillRow verbatim so the
 // card looks identical to the one on the home screen.
 function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const innerRef = useRef<HTMLDivElement | null>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
+  // Single-pill rotating carousel — see dashboard's twin for rationale.
+  const [index, setIndex] = useState(0);
+  const times = schedule.times;
 
   useEffect(() => {
-    const measure = () => {
-      const container = containerRef.current;
-      const inner = innerRef.current;
-      if (!container || !inner) return;
-      // 2px slack to absorb subpixel rounding — only switch to ticker mode
-      // when it's really necessary, not on a 1px hair.
-      setIsOverflowing(inner.scrollWidth > container.clientWidth + 2);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (containerRef.current) ro.observe(containerRef.current);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [schedule.times.length]);
+    if (times.length <= 1) return;
+    const id = setInterval(() => {
+      setIndex(i => (i + 1) % times.length);
+    }, 3500);
+    return () => clearInterval(id);
+  }, [times.length]);
 
-  const renderPill = (t: ServiceScheduleRecord["times"][number], key: string) => {
-    const label = t.label ? `${formatHM12(t.time)} · ${t.label}` : formatHM12(t.time);
-    return (
-      <span
-        key={key}
-        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
-        style={{
-          background: "rgba(46,107,64,0.2)",
-          border: "1px solid rgba(46,107,64,0.3)",
-          color: "#F0EDE6",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        {label}
-      </span>
-    );
-  };
+  if (times.length === 0) return null;
 
-  if (isOverflowing) {
-    return (
-      <ScrollStrip className="mt-2" contentStyle={{ gap: 6 }}>
-        {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
-      </ScrollStrip>
-    );
-  }
+  const active = times[Math.min(index, times.length - 1)]!;
+  const label = active.label ? `${formatHM12(active.time)} · ${active.label}` : formatHM12(active.time);
 
   return (
-    <div ref={containerRef}>
-      <ScrollStrip className="mt-2" contentStyle={{ gap: 6 }}>
-        {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
-      </ScrollStrip>
+    <div className="mt-2 relative h-6 overflow-hidden">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={`${active.time}-${index}`}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+          style={{
+            background: "rgba(46,107,64,0.2)",
+            border: "1px solid rgba(46,107,64,0.3)",
+            color: "#F0EDE6",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {label}
+        </motion.span>
+      </AnimatePresence>
+      {times.length > 1 && (
+        <span
+          className="absolute right-0 top-1/2 -translate-y-1/2 text-[10px] font-medium"
+          style={{ color: "rgba(143,175,150,0.55)" }}
+        >
+          {index + 1}/{times.length}
+        </span>
+      )}
     </div>
   );
 }

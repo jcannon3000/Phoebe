@@ -1387,71 +1387,56 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
 // pill list so the CSS keyframe can translate from 0 to -50% and seam.
 
 function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const innerRef = useRef<HTMLDivElement | null>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
+  // Cycle through service times one at a time: fade the current pill out,
+  // fade the next one in, hold, repeat. Scrollable strips were unreliable
+  // inside a clickable card wrapper, and a single rotating pill reads as
+  // a deliberate teaser rather than a truncated list.
+  const [index, setIndex] = useState(0);
+  const times = schedule.times;
 
   useEffect(() => {
-    const measure = () => {
-      const container = containerRef.current;
-      const inner = innerRef.current;
-      if (!container || !inner) return;
-      // 2px slack to absorb subpixel rounding — we only want to switch
-      // to ticker mode when it's really necessary, not on a 1px hair.
-      setIsOverflowing(inner.scrollWidth > container.clientWidth + 2);
-    };
-    measure();
-    // Remeasure on window resize (rotating a phone from portrait to
-    // landscape changes the available width) and whenever the number
-    // of pills changes (admin just added or removed a time).
-    const ro = new ResizeObserver(measure);
-    if (containerRef.current) ro.observe(containerRef.current);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [schedule.times.length]);
+    if (times.length <= 1) return;
+    const id = setInterval(() => {
+      setIndex(i => (i + 1) % times.length);
+    }, 3500);
+    return () => clearInterval(id);
+  }, [times.length]);
 
-  const renderPill = (t: typeof schedule.times[number], key: string) => {
-    const label = t.label
-      ? `${formatServiceTime(t.time)} · ${t.label}`
-      : formatServiceTime(t.time);
-    return (
-      <span
-        key={key}
-        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
-        style={{
-          background: "rgba(46,107,64,0.2)",
-          border: "1px solid rgba(46,107,64,0.3)",
-          color: "#F0EDE6",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        {label}
-      </span>
-    );
-  };
+  if (times.length === 0) return null;
 
-  // Ticker mode: duplicated pill list, -50% translateX keyframe. Duration
-  // scales with content so a long row doesn't whip past too fast.
-  if (isOverflowing) {
-    return (
-      <ScrollStrip className="mt-2" contentStyle={{ gap: 6 }}>
-        {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
-      </ScrollStrip>
-    );
-  }
+  const active = times[Math.min(index, times.length - 1)]!;
+  const label = active.label
+    ? `${formatServiceTime(active.time)} · ${active.label}`
+    : formatServiceTime(active.time);
 
-  // Static mode — fits on one line, but still use ScrollStrip so the
-  // row is user-scrollable if we mis-measured (late container width on
-  // first paint, zoom, long timezone labels added later, etc). When the
-  // content fits, ScrollStrip shows no fade on either side.
   return (
-    <div ref={containerRef}>
-      <ScrollStrip className="mt-2" contentStyle={{ gap: 6 }}>
-        {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
-      </ScrollStrip>
+    <div className="mt-2 relative h-6 overflow-hidden">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={`${active.time}-${index}`}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+          style={{
+            background: "rgba(46,107,64,0.2)",
+            border: "1px solid rgba(46,107,64,0.3)",
+            color: "#F0EDE6",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {label}
+        </motion.span>
+      </AnimatePresence>
+      {times.length > 1 && (
+        <span
+          className="absolute right-0 top-1/2 -translate-y-1/2 text-[10px] font-medium"
+          style={{ color: "rgba(143,175,150,0.55)" }}
+        >
+          {index + 1}/{times.length}
+        </span>
+      )}
     </div>
   );
 }
