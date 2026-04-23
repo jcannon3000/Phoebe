@@ -266,7 +266,7 @@ export default function BellsAdminPage() {
                 Send 7 AM bell invite to {summary.totalUsers - summary.bellsActive} users?
               </p>
               <p className="text-[12px] mb-3" style={{ color: "rgba(143,175,150,0.8)" }}>
-                Each user will receive a calendar invite (.ics) for a daily 7 AM bell and their bell will be enabled going forward.
+                Each user gets a Google Calendar invite from the Phoebe scheduler account (with RSVP buttons) for a daily 7 AM bell. Their bell is enabled going forward. Falls back to an ICS email only if Google is unreachable.
               </p>
               <div className="flex gap-2">
                 <button
@@ -297,10 +297,10 @@ export default function BellsAdminPage() {
               style={{ background: "rgba(70,100,140,0.1)", border: "1px solid rgba(70,100,140,0.35)" }}
             >
               <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>
-                Resend ICS invite to {icsPendingCount} {icsPendingCount === 1 ? "user" : "users"}?
+                Send Google Calendar invite to {icsPendingCount} {icsPendingCount === 1 ? "user" : "users"}?
               </p>
               <p className="text-[12px] mb-3" style={{ color: "rgba(181,201,229,0.85)" }}>
-                Target: bells that are on but never landed on a Google Calendar. Each user will receive a fresh .ics invite at their existing bell time. Their saved time and timezone won't change.
+                Target: bells that are on but never landed on a Google Calendar. Each user gets a real invite from the Phoebe scheduler account with RSVP buttons — once they accept, they'll show up as "On calendar" here. Their saved time and timezone won't change. Falls back to an ICS email only if the Google API is unreachable.
               </p>
               <div className="flex gap-2">
                 <button
@@ -309,7 +309,7 @@ export default function BellsAdminPage() {
                   className="px-4 py-2 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
                   style={{ background: "#3B5F8A", color: "#F0EDE6" }}
                 >
-                  {resendIcsMutation.isPending ? "Sending…" : "Resend invites"}
+                  {resendIcsMutation.isPending ? "Sending…" : "Send invites"}
                 </button>
                 <button
                   onClick={() => setConfirmOpen(null)}
