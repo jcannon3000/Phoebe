@@ -295,6 +295,32 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
   res.json(word);
 });
 
+// PATCH /api/prayer-requests/:id — edit the body text (owner only).
+// Pilot feature: the detail modal lets the owner tap "Edit" and revise
+// the prayer. Words already left on the request are preserved. Body
+// must be non-empty and under 1000 chars to match the create cap.
+router.patch("/prayer-requests/:id", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const schema = z.object({ body: z.string().min(1).max(1000) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  if (request.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (request.closedAt) { res.status(400).json({ error: "Closed requests can't be edited" }); return; }
+
+  const [updated] = await db.update(prayerRequestsTable)
+    .set({ body: parsed.data.body.trim() })
+    .where(eq(prayerRequestsTable.id, id))
+    .returning();
+  res.json(updated);
+});
+
 // PATCH /api/prayer-requests/:id/answer — mark as answered (owner only)
 router.patch("/prayer-requests/:id/answer", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;

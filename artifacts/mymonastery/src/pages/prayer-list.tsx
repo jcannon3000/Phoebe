@@ -468,6 +468,11 @@ function DetailModal({
 }) {
   const queryClient = useQueryClient();
   const [wordDraft, setWordDraft] = useState("");
+  // Owner-only edit mode on their own prayer request. editingId tracks
+  // WHICH request we're editing (not a bool) so opening a different
+  // request through the same modal resets the edit state cleanly.
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   // Mutations are declared unconditionally (hooks rule) but only invoked
   // from the variants that need them. Invalidations keep the cards on the
@@ -478,6 +483,15 @@ function DetailModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       setWordDraft("");
+    },
+  });
+  const editBodyMutation = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: string }) =>
+      apiRequest("PATCH", `/api/prayer-requests/${id}`, { body }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      setEditingId(null);
+      setEditDraft("");
     },
   });
   const releaseMutation = useMutation({
@@ -592,12 +606,62 @@ function DetailModal({
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
                 {req.isOwnRequest ? "Your request" : `From ${req.ownerName ?? "someone"}`}
               </p>
-              <p
-                className="text-lg leading-relaxed italic mb-4"
-                style={{ color: "#F0EDE6", fontFamily: "Playfair Display, Georgia, serif" }}
-              >
-                {req.body}
-              </p>
+              {editingId === req.id ? (
+                // Edit mode — owner is revising the body. The textarea
+                // sits in the same visual slot as the rendered body so
+                // the modal doesn't jump; we drop italic/serif here so
+                // the editing surface reads as a normal input, not as
+                // pre-set copy you're overwriting.
+                <div className="mb-4">
+                  <textarea
+                    value={editDraft}
+                    onChange={(e) => setEditDraft(e.target.value)}
+                    rows={4}
+                    maxLength={1000}
+                    autoFocus
+                    className="w-full text-base leading-relaxed px-3 py-2.5 rounded-lg focus:outline-none resize-none"
+                    style={{
+                      background: "#091A10",
+                      border: "1px solid rgba(46,107,64,0.3)",
+                      color: "#F0EDE6",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontSize: 16, // iOS Safari: ≥16 to prevent auto-zoom
+                    }}
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>
+                      {editDraft.trim().length}/1000
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setEditingId(null); setEditDraft(""); }}
+                        disabled={editBodyMutation.isPending}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
+                        style={{ color: "rgba(143,175,150,0.75)", border: "1px solid rgba(143,175,150,0.2)" }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => editBodyMutation.mutate({ id: req.id, body: editDraft.trim() })}
+                        disabled={!editDraft.trim() || editDraft.trim() === req.body || editBodyMutation.isPending}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
+                        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                      >
+                        {editBodyMutation.isPending ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p
+                  className="text-lg leading-relaxed italic mb-4"
+                  style={{ color: "#F0EDE6", fontFamily: "Playfair Display, Georgia, serif" }}
+                >
+                  {req.body}
+                </p>
+              )}
 
               {req.myWord && (
                 <div
@@ -663,9 +727,17 @@ function DetailModal({
                 </div>
               )}
 
-              {req.isOwnRequest && (
+              {req.isOwnRequest && editingId !== req.id && (
                 <div className="flex items-center justify-between mt-4 pt-3 border-t" style={{ borderColor: "rgba(200,212,192,0.12)" }}>
                   <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setEditingId(req.id); setEditDraft(req.body); }}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
+                      style={{ background: "rgba(46,107,64,0.2)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+                    >
+                      ✎ Edit
+                    </button>
                     <button
                       type="button"
                       onClick={() => renewRequestMutation.mutate(req.id)}
