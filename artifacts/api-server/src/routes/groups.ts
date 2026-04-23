@@ -1457,6 +1457,41 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     (requests.length > 0 ? ` — owners: ${rows.map(r => r.ownerId).join(", ")}` : ""),
   );
 
+  // Debug dump: hit /api/groups/<slug>/prayer-requests?debug=1 to see
+  // exactly what the server computed — roster rows, resolved member
+  // user IDs, and every non-closed prayer request in the db that
+  // should-or-shouldn't match. Takes the loop out of "push and hope"
+  // when a community home appears empty.
+  if (req.query["debug"] === "1") {
+    const allOpen = await db
+      .select({
+        id: prayerRequestsTable.id,
+        ownerId: prayerRequestsTable.ownerId,
+        groupId: prayerRequestsTable.groupId,
+        body: prayerRequestsTable.body,
+        createdAt: prayerRequestsTable.createdAt,
+        closedAt: prayerRequestsTable.closedAt,
+        expiresAt: prayerRequestsTable.expiresAt,
+      })
+      .from(prayerRequestsTable)
+      .where(sql`${prayerRequestsTable.closedAt} IS NULL`)
+      .orderBy(desc(prayerRequestsTable.createdAt));
+    res.json({
+      requests,
+      debug: {
+        groupId: group.id,
+        slug: req.params.slug,
+        sessionUserId: user.id,
+        rosterRows: joinedMemberRows,
+        memberUserIds,
+        matchingRequestCount: requests.length,
+        matchingRequestOwnerIds: rows.map(r => r.ownerId),
+        allOpenPrayerRequests: allOpen,
+      },
+    });
+    return;
+  }
+
   res.json({ requests });
 });
 
