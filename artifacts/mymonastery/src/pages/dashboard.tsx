@@ -1498,130 +1498,6 @@ function ServiceCard({
   );
 }
 
-// ─── Daily prayer list anchor card ──────────────────────────────────────────
-// Sits directly beneath the feast line on the home screen. Two states:
-//   1. Has NOT yet prayed today → active card inviting the user in, with
-//      a primary CTA button ("Begin your prayer list").
-//   2. Has prayed today → restful card with a quiet serif confirmation and
-//      a small "Pray again" link for users who want a second pass.
-//
-// Streak chip sits in the top-right both states. Renders nothing when the
-// viewer has zero prayers queued AND no streak — no point anchoring the
-// home screen on an empty card for brand-new users.
-function DailyPrayerListCard({
-  streak,
-  pendingCount,
-  prayedToday,
-}: {
-  streak: number;
-  pendingCount: number;
-  prayedToday: boolean;
-}) {
-  const nothingToShow = pendingCount === 0 && streak === 0;
-  if (nothingToShow) return null;
-
-  const countLine = pendingCount === 1
-    ? "1 prayer waiting for you"
-    : `${pendingCount} prayers waiting for you`;
-
-  const cardBody = (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative rounded-2xl overflow-hidden"
-      style={{
-        background: prayedToday ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.16)",
-        border: `1px solid ${prayedToday ? "rgba(111,175,133,0.28)" : "rgba(111,175,133,0.45)"}`,
-        boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
-        padding: "14px 16px 14px",
-      }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span
-          className="text-base font-semibold"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          🕯️ Daily prayer list
-        </span>
-        {streak > 0 && (
-          <span
-            className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-            style={{ color: "#E8A94C", letterSpacing: "0.08em" }}
-            aria-label={`${streak}-day prayer streak`}
-          >
-            🔥 {streak}-day streak
-          </span>
-        )}
-      </div>
-
-      {prayedToday ? (
-        <>
-          <p
-            className="mt-2 italic"
-            style={{
-              color: "#C8D4C0",
-              fontFamily: "Playfair Display, Georgia, serif",
-              fontSize: 14,
-              lineHeight: 1.5,
-            }}
-          >
-            You have prayed today. They are held.
-          </p>
-          {pendingCount > 0 && (
-            <div className="mt-3">
-              <Link
-                href="/prayer-mode"
-                className="text-[12px] underline-offset-2 hover:underline"
-                style={{ color: "rgba(168,197,160,0.75)" }}
-              >
-                Pray again
-              </Link>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <p
-            className="mt-1.5 text-sm"
-            style={{ color: "#8FAF96", lineHeight: "20px" }}
-          >
-            {countLine}
-          </p>
-          <Link
-            href="/prayer-mode"
-            className="mt-3 block w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "#4A7A5B",
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 15,
-              fontWeight: 500,
-              letterSpacing: "-0.01em",
-              padding: "11px 18px",
-              border: "1px solid rgba(111,175,133,0.45)",
-            }}
-          >
-            Begin your prayer list
-          </Link>
-        </>
-      )}
-    </motion.div>
-  );
-
-  // In State 1 (not yet prayed) the whole card is a tap target so the
-  // user can tap anywhere, not just the button. In State 2 (prayed)
-  // we keep the card non-tappable so it feels restful — only the
-  // small "Pray again" link is interactive.
-  if (!prayedToday) {
-    return (
-      <Link href="/prayer-mode" className="mt-5 block">
-        {cardBody}
-      </Link>
-    );
-  }
-  return <div className="mt-5">{cardBody}</div>;
-}
-
 // ─── Prayer-list fallback card ──────────────────────────────────────────────
 // Shown in the Today section when nothing else is pending there but the user
 // still has prayers queued in their slideshow. Gives them a clear next step
@@ -1633,14 +1509,19 @@ function PrayerListCard({
   streak,
   keyPrefix,
   muted = false,
+  prayedToday = false,
 }: {
   pendingCount: number;
   streak: number;
   keyPrefix: string;
-  // When true (Tomorrow section), the card renders without pulse —
-  // the user has already finished today and we're just previewing
-  // what's queued. Still clickable in case they want to pray ahead.
+  // When true, the card renders without pulse. Used when the user
+  // has already finished today.
   muted?: boolean;
+  // When true, swap to the restful state: italic serif confirmation
+  // in the subtitle slot and "Pray again" in the bottom-right CTA
+  // slot instead of "Pray". Card keeps the same dimensions + accent
+  // bar + streak chip so the home-screen anchor stays put.
+  prayedToday?: boolean;
 }) {
   const colors = CATEGORY_COLORS.practices;
   const subtitle = pendingCount === 1
@@ -1652,7 +1533,7 @@ function PrayerListCard({
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${muted ? "" : colors.pulseClass}`}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${muted || prayedToday ? "" : colors.pulseClass}`}
         style={{
           background: colors.bg,
           // Explicit practices-green border — the shared CATEGORY_COLORS
@@ -1663,7 +1544,7 @@ function PrayerListCard({
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >
-        {muted ? (
+        {muted || prayedToday ? (
           <div className="w-1 flex-shrink-0" style={{ background: colors.bar }} />
         ) : (
           <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
@@ -1684,24 +1565,42 @@ function PrayerListCard({
             )}
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-3">
-            <p className="text-sm" style={{ color: "#8FAF96", lineHeight: "20px", margin: 0 }}>
-              {subtitle}
-            </p>
-            {/* Begin CTA — renders only on today's card (muted=false).
-                The outer Link already makes the whole card tappable; the
-                pill is a visible affordance that tells the user "this is
-                the action", matching the pulse animation. */}
+            {prayedToday ? (
+              <p
+                className="italic"
+                style={{
+                  color: "#C8D4C0",
+                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontSize: 14,
+                  lineHeight: "20px",
+                  margin: 0,
+                }}
+              >
+                You have prayed today. They are held.
+              </p>
+            ) : (
+              <p className="text-sm" style={{ color: "#8FAF96", lineHeight: "20px", margin: 0 }}>
+                {subtitle}
+              </p>
+            )}
+            {/* Bottom-right CTA pill:
+                  - Not prayed → "Pray"
+                  - Prayed    → "Pray again" (same tap target, so a
+                    second pass through the list is one tap away).
+                The outer Link already makes the whole card tappable;
+                the pill is a visible affordance. */}
             {!muted && (
               <span
                 className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold shrink-0"
                 style={{
-                  background: "#2D5E3F",
+                  background: prayedToday ? "rgba(46,107,64,0.28)" : "#2D5E3F",
                   color: "#F0EDE6",
                   letterSpacing: "-0.01em",
                   fontFamily: "'Space Grotesk', sans-serif",
+                  border: prayedToday ? "1px solid rgba(111,175,133,0.35)" : undefined,
                 }}
               >
-                Begin
+                {prayedToday ? "Pray again" : "Pray"}
                 <span aria-hidden>→</span>
               </span>
             )}
@@ -3129,20 +3028,19 @@ export default function Dashboard() {
         <div className="mb-8">
           <LiturgicalDateHeader />
 
-          {/* Persistent daily prayer list card. Two states:
-                – Not yet prayed today → active card with "N prayers
-                  waiting for you" and a primary CTA button.
-                – Prayed today → restful card with a quiet
-                  italic confirmation and a small "Pray again" link.
-              Always lives here — the anchor of the home screen.
-              Filter-gated (no point showing a non-filter action
-              when the practices filter is on). */}
-          {filter === null && (
-            <DailyPrayerListCard
-              streak={prayerStreak}
-              pendingCount={pendingPrayerCount}
-              prayedToday={prayerListDoneToday}
-            />
+          {/* Persistent daily prayer list card — same PrayerListCard
+              used elsewhere, just routed through its `prayedToday`
+              variant so the subtitle/CTA adapt. Lives here as the
+              home-screen anchor and is filter-gated. */}
+          {filter === null && (pendingPrayerCount > 0 || prayerStreak > 0) && (
+            <div className="mt-5">
+              <PrayerListCard
+                pendingCount={pendingPrayerCount}
+                streak={prayerStreak}
+                prayedToday={prayerListDoneToday}
+                keyPrefix="anchor"
+              />
+            </div>
           )}
         </div>
 
