@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { NetworkBanner } from "@/components/NetworkBanner";
 import { Component, type ReactNode, type ErrorInfo } from "react";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -97,11 +98,37 @@ import PrayerFeedManagePage from "./pages/prayer-feed-manage";
 import PrayerFeedsBrowsePage from "./pages/prayer-feeds-browse";
 import PrayerFeedDetailPage from "./pages/prayer-feed-detail";
 
+// Retry policy tuned for flaky / captive-portal Wi-Fi (libraries, hotels,
+// coffee shops): a single TLS reset or TCP RST on the first fetch after
+// waking shouldn't dump the user onto a blank screen. We retry network
+// errors with jittered exponential backoff but stay hands-off on 4xx
+// responses — those are real answers from the server, not transport
+// hiccups, so retrying just wastes time and risks double-submits.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: (failureCount, error) => {
+        const msg = String((error as { message?: unknown } | null)?.message ?? "");
+        // 4xx → definitive failure, don't loop. Also bail on auth
+        // redirects where the browser already handled the session.
+        if (/\b4\d\d\b/.test(msg)) return false;
+        if (/Unauthorized|Forbidden|Not authenticated/i.test(msg)) return false;
+        return failureCount < 3;
+      },
+      retryDelay: (attempt) =>
+        Math.min(1000 * 2 ** attempt + Math.floor(Math.random() * 400), 10_000),
       refetchOnWindowFocus: false,
+      // Don't give up just because navigator.onLine lies — captive
+      // portals often keep `onLine=true` while silently dropping TLS.
+      networkMode: "always",
+    },
+    mutations: {
+      // Don't auto-retry mutations — they can be non-idempotent. The
+      // user can re-tap Save. We still benefit from the network-mode
+      // change above so a queued mutation fires as soon as the user
+      // reconnects instead of being rejected outright.
+      retry: false,
+      networkMode: "always",
     },
   },
 });
@@ -185,6 +212,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ErrorBoundary>
+          <NetworkBanner />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
