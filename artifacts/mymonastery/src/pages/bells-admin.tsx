@@ -396,6 +396,30 @@ function BellRow({ user: u }: { user: BellUser }) {
         firedToday = u.lastSentDate === today;
       } catch { /* leave false */ }
     }
+    // Has the user's scheduled bell time already passed today in their
+    // local TZ? If no, "never sent" is the expected state — don't flag
+    // it as a warning. If yes and still no send, then surface it as
+    // amber because the cron should have fired.
+    let scheduledTimePassed = false;
+    if (u.dailyBellTime && u.timezone) {
+      try {
+        const m = /^(\d{1,2}):(\d{2})/.exec(u.dailyBellTime);
+        if (m) {
+          const bellMinutes = parseInt(m[1]!, 10) * 60 + parseInt(m[2]!, 10);
+          const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: u.timezone,
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).formatToParts(new Date());
+          const hh = parseInt(parts.find(p => p.type === "hour")?.value ?? "0", 10);
+          const mm = parseInt(parts.find(p => p.type === "minute")?.value ?? "0", 10);
+          const nowMinutes = hh * 60 + mm;
+          scheduledTimePassed = nowMinutes >= bellMinutes;
+        }
+      } catch { /* leave false */ }
+    }
+
     if (firedToday) {
       status = {
         label: "Fired today",
@@ -410,12 +434,23 @@ function BellRow({ user: u }: { user: BellUser }) {
         bg: "rgba(70,100,140,0.15)",
         border: "rgba(70,100,140,0.35)",
       };
-    } else {
+    } else if (scheduledTimePassed) {
+      // Enabled, never sent, and the bell time already came and went
+      // today in their TZ — that's the actual problem case.
       status = {
-        label: "Active · never sent",
+        label: "Missed today",
         color: "#E5C98F",
         bg: "rgba(140,110,50,0.15)",
         border: "rgba(140,110,50,0.35)",
+      };
+    } else {
+      // Enabled, never sent, but the bell time is still ahead — that's
+      // just "waiting for the first ring," not a warning.
+      status = {
+        label: "Active",
+        color: "#A8C5A0",
+        bg: "rgba(46,107,64,0.18)",
+        border: "rgba(46,107,64,0.4)",
       };
     }
   }
