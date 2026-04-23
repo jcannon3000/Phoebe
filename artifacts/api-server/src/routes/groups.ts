@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, asc, desc, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, or, asc, desc, inArray, isNull, sql } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -1420,6 +1420,13 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
   //      other communities — user flagged that members visible on
   //      the home dashboard's Prayer Requests section were missing
   //      from their community detail page.
+  // Postgres note: `sql\`... = ANY(${jsArray})\`` doesn't render a
+  // proper array param — Drizzle expands the JS array into a
+  // row-constructor `($2, $3, ...)` and Postgres rejects it at
+  // runtime ("operator does not exist: integer = record"). That's
+  // been silently 500-ing this endpoint since the member-scoped
+  // query was added. Using `inArray()` produces the canonical
+  // `owner_id IN ($2, $3, ...)` which is what we actually want.
   const rows = memberUserIds.length > 0
     ? await db
         .select({
@@ -1435,7 +1442,10 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
         .where(and(
           sql`${prayerRequestsTable.closedAt} IS NULL`,
-          sql`(${prayerRequestsTable.groupId} = ${group.id} OR ${prayerRequestsTable.ownerId} = ANY(${memberUserIds}))`,
+          or(
+            eq(prayerRequestsTable.groupId, group.id),
+            inArray(prayerRequestsTable.ownerId, memberUserIds),
+          ),
         ))
         .orderBy(desc(prayerRequestsTable.createdAt))
     : await db
@@ -2400,6 +2410,90 @@ router.get("/beta/bells", async (req, res): Promise<void> => {
   }
 });
 
+// Best-effort lookup of the community name to reference in a bell invite.
+// Picks the earliest group the user joined — that's "their" community
+// in the common case (single community per user). Returns null if they
+// aren't in any community, in which case the caller should fall back
+// to generic copy.
+async function getUserPrimaryCommunityName(userId: number): Promise<string | null> {
+  try {
+    const result = await pool.query(
+      `SELECT g.name
+         FROM group_members gm
+         JOIN groups g ON g.id = gm.group_id
+        WHERE gm.user_id = $1
+        ORDER BY gm.joined_at ASC NULLS LAST, g.id ASC
+        LIMIT 1`,
+      [userId],
+    );
+    const row = result.rows[0] as { name?: string } | undefined;
+    return row?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── POST /api/beta/bells/send-invite/:userId ───────────────────────────────
+// Admin action: send a 7 AM ICS calendar invite to a single user. Same
+// flow as the bulk endpoint but scoped to one account — used by the
+// "Send invite" button on each inactive row of the bells-admin page.
+router.post("/beta/bells/send-invite/:userId", async (req, res): Promise<void> => {
+  try {
+    const actor = getUser(req);
+    if (!actor) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (!(await isBetaAdmin(actor.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+
+    const userId = Number(req.params["userId"]);
+    if (!Number.isFinite(userId)) { res.status(400).json({ error: "Invalid userId" }); return; }
+
+    const result = await pool.query(
+      `SELECT id, email, name, timezone FROM users WHERE id = $1`,
+      [userId],
+    );
+    const row = result.rows[0] as { id: number; email: string; name: string | null; timezone: string | null } | undefined;
+    if (!row) { res.status(404).json({ error: "User not found" }); return; }
+
+    const tz = row.timezone ?? "America/New_York";
+    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    const startLocalStr = `${todayStr}T07:00:00`;
+    const endLocalStr = `${todayStr}T07:05:00`;
+
+    const APP_URL_LOCAL = process.env["APP_URL"] ?? "https://withphoebe.app";
+    const communityName = await getUserPrimaryCommunityName(row.id);
+    const withLine = communityName
+      ? `Set up your daily bell to pray with ${communityName}.`
+      : "A daily time to pause and pray with your community.";
+
+    const sent = await sendDailyBellIcsInvite({
+      to: row.email,
+      userId: row.id,
+      timeZone: tz,
+      startLocalStr,
+      endLocalStr,
+      summary: "🔔 Daily Bell — Phoebe",
+      description: [
+        withLine,
+        "",
+        `Open Phoebe: ${APP_URL_LOCAL}`,
+      ].join("\n"),
+    });
+
+    await pool.query(
+      `UPDATE users SET bell_enabled = true, daily_bell_time = '07:00', timezone = COALESCE(timezone, $1) WHERE id = $2`,
+      [tz, row.id],
+    );
+
+    console.log(`[bell] single-invite: user ${row.id} (${row.email}) sent=${sent} community=${communityName ?? "—"}`);
+    res.json({ userId: row.id, email: row.email, sent, community: communityName });
+  } catch (err) {
+    console.error("POST /api/beta/bells/send-invite/:userId error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── POST /api/beta/bells/send-invites ──────────────────────────────────────
 // Admin action: send a 7 AM ICS calendar invite to every user who does NOT
 // have a bell enabled yet. Sets bell_enabled=true + daily_bell_time='07:00'
@@ -2442,6 +2536,14 @@ router.post("/beta/bells/send-invites", async (req, res): Promise<void> => {
         const startLocalStr = `${todayStr}T07:00:00`;
         const endLocalStr = `${todayStr}T07:05:00`;
 
+        // Look up the user's community (first group they joined) so the
+        // invite description names it — "pray with St. John's" reads
+        // more grounded than "with your community".
+        const communityName = await getUserPrimaryCommunityName(u.id);
+        const withLine = communityName
+          ? `Set up your daily bell to pray with ${communityName}.`
+          : "A daily time to pause and pray with your community.";
+
         const sent = await sendDailyBellIcsInvite({
           to: u.email,
           userId: u.id,
@@ -2450,7 +2552,7 @@ router.post("/beta/bells/send-invites", async (req, res): Promise<void> => {
           endLocalStr,
           summary: "🔔 Daily Bell — Phoebe",
           description: [
-            "A daily time to pause and pray with your community.",
+            withLine,
             "",
             `Open Phoebe: ${APP_URL_LOCAL}`,
           ].join("\n"),
