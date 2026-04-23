@@ -112,7 +112,7 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 5, day: 3,  rank: "lesser_feast", name: "Elisabeth Cruciger, Poet and Hymnographer",             color: "white", life: "1535" },
   { month: 5, day: 4,  rank: "lesser_feast", name: "Monica, Mother of Augustine of Hippo",                  color: "white", life: "387" },
   { month: 5, day: 5,  rank: "lesser_feast", name: "Martyrs of the Reformation Era",                        color: "red" },
-  { month: 5, day: 6,  rank: "lesser_feast", name: "George of Lydda, Martyr",                               color: "red" },
+  { month: 5, day: 6,  rank: "lesser_feast", name: "George of Lydda, Martyr",                               color: "red",   life: "c. 304" },
   { month: 5, day: 8,  rank: "lesser_feast", name: "Julian of Norwich, Mystic and Theologian",              color: "white", life: "c. 1417" },
   { month: 5, day: 9,  rank: "lesser_feast", name: "Gregory of Nazianzus, Bishop and Theologian",           color: "white", life: "389" },
   { month: 5, day: 11, rank: "lesser_feast", name: "Johann Arndt and Jacob Boehme, Mystics",                color: "white", life: "1621 and 1624" },
