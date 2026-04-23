@@ -1551,13 +1551,16 @@ function PrayerListCard({
         )}
         <div className="flex-1 px-4 pt-3 pb-3">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+            <span
+              className="text-base font-semibold"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
               🕯️ Daily prayer list
             </span>
             {streak > 0 && (
               <span
                 className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-                style={{ color: "#E8A94C", letterSpacing: "0.08em" }}
+                style={{ color: "#E8A94C", letterSpacing: "0.08em", fontFamily: "'Space Grotesk', sans-serif" }}
                 aria-label={`${streak}-day prayer streak`}
               >
                 🔥 {streak}-day streak
@@ -1565,24 +1568,19 @@ function PrayerListCard({
             )}
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-3">
-            {prayedToday ? (
-              <p
-                className="italic"
-                style={{
-                  color: "#C8D4C0",
-                  fontFamily: "Playfair Display, Georgia, serif",
-                  fontSize: 14,
-                  lineHeight: "20px",
-                  margin: 0,
-                }}
-              >
-                You have prayed today. They are held.
-              </p>
-            ) : (
-              <p className="text-sm" style={{ color: "#8FAF96", lineHeight: "20px", margin: 0 }}>
-                {subtitle}
-              </p>
-            )}
+            <p
+              className="text-sm"
+              style={{
+                color: "#8FAF96",
+                lineHeight: "20px",
+                margin: 0,
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {prayedToday
+                ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
+                : subtitle}
+            </p>
             {/* Bottom-right CTA pill:
                   - Not prayed → "Pray"
                   - Prayed    → "Pray again" (same tap target, so a
