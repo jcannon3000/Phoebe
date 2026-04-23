@@ -1321,12 +1321,29 @@ router.post("/groups/:slug/admin-notifications/acknowledge", async (req, res): P
 // request lands (via /admin-notifications).
 
 router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
+  try {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const result = await requireMember(req.params.slug, user.id);
-  if (!result) { res.status(403).json({ error: "Not a member of this group" }); return; }
-  const { group } = result;
+  // requireMember returns null if joined_at is NULL on the viewer's
+  // membership row — that's a known source of "not a member" false
+  // negatives when admins add people to the roster but the row never
+  // gets a joined_at stamp. For this read-only endpoint we relax that:
+  // any row in group_members for this group + this user counts as
+  // "member enough to read the feed". Write endpoints still use the
+  // stricter requireMember.
+  const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, req.params.slug));
+  if (!group) { res.status(404).json({ error: "Group not found" }); return; }
+  const [membership] = await db.select().from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, group.id), eq(groupMembersTable.userId, user.id)));
+  if (!membership) {
+    // Email-based fallback: the viewer's users.email matches a
+    // group_members.email row (common when they were invited before
+    // their account existed and the row was never back-linked).
+    const [emailRow] = await db.select().from(groupMembersTable)
+      .where(and(eq(groupMembersTable.groupId, group.id), sql`LOWER(${groupMembersTable.email}) = LOWER(${user.email})`));
+    if (!emailRow) { res.status(403).json({ error: "Not a member of this group" }); return; }
+  }
 
   // Two kinds of requests land in a community's feed:
   //   1. Requests directly scoped to this community
@@ -1493,6 +1510,18 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
   }
 
   res.json({ requests });
+  } catch (err) {
+    // Surface the real error on this endpoint — the generic
+    // app-level 500 handler obscures what's failing, and this
+    // endpoint has been the subject of repeated "why is it empty /
+    // why does it 500" debugging. The response body exposes the
+    // message so it shows up in the browser directly; the full
+    // stack still goes to the Railway log line.
+    console.error("[groups/:slug/prayer-requests] endpoint threw:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    res.status(500).json({ error: `prayer-requests endpoint failed: ${message}`, stack });
+  }
 });
 
 router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
