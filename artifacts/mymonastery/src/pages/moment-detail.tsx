@@ -277,13 +277,7 @@ function PrayedThisWeekRow({
     const inner = innerRef.current;
     if (!outer || !inner) return;
     const measure = () => {
-      // scrollWidth of the inner list vs clientWidth of the container.
-      // When the measured run is the duplicated version, we divide by
-      // 2 so the comparison is against a single copy. Detect that
-      // case via the current `overflows` state — if we're already
-      // showing the doubled list, inner.scrollWidth is ~2× the real.
-      const innerWidth = overflows ? inner.scrollWidth / 2 : inner.scrollWidth;
-      setOverflows(innerWidth > outer.clientWidth + 4);
+      setOverflows(inner.scrollWidth > outer.clientWidth + 4);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -294,7 +288,7 @@ function PrayedThisWeekRow({
 
   // Render the real list, and only when it overflows render a second
   // copy for the seamless marquee loop.
-  const rendered = overflows ? [...logs, ...logs] : logs;
+  const rendered = logs;
 
   return (
     <div
@@ -304,23 +298,14 @@ function PrayedThisWeekRow({
       <p className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-2" style={{ letterSpacing: "0.12em" }}>
         Prayed this week
       </p>
-      {overflows && (
-        <style>{`
-          @keyframes prayed-ticker-scroll {
-            from { transform: translateX(0) }
-            to   { transform: translateX(-50%) }
-          }
-          .prayed-ticker:hover > div { animation-play-state: paused; }
-        `}</style>
-      )}
       <div
         ref={outerRef}
-        className="relative overflow-hidden prayed-ticker"
+        className={`relative prayed-ticker ${overflows ? "overflow-x-auto no-scrollbar" : "overflow-hidden"}`}
         style={
           overflows
             ? {
-                maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-                WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+                maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
+                WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
               }
             : undefined
         }
@@ -332,9 +317,6 @@ function PrayedThisWeekRow({
             gap: 8,
             flexWrap: "nowrap",
             width: overflows ? "max-content" : undefined,
-            animation: overflows
-              ? `prayed-ticker-scroll ${Math.max(18, logs.length * 6)}s linear infinite`
-              : undefined,
           }}
         >
           {rendered.map((p, i) => (

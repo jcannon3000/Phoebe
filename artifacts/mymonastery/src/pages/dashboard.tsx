@@ -1435,28 +1435,22 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
   // Ticker mode: duplicated pill list, -50% translateX keyframe. Duration
   // scales with content so a long row doesn't whip past too fast.
   if (isOverflowing) {
-    const durationSec = Math.max(16, schedule.times.length * 5);
     return (
       <div
-        className="mt-2 relative overflow-hidden"
+        className="mt-2 relative overflow-x-auto no-scrollbar"
         style={{
-          maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-          WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+          maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
+          WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
         }}
       >
-        <style>{`@keyframes service-times-scroll-${schedule.id} {
-          from { transform: translateX(0) }
-          to { transform: translateX(-50%) }
-        }`}</style>
         <div
           style={{
             display: "flex",
             gap: 6,
             width: "max-content",
-            animation: `service-times-scroll-${schedule.id} ${durationSec}s linear infinite`,
           }}
         >
-          {[...schedule.times, ...schedule.times].map((t, i) =>
+          {schedule.times.map((t, i) =>
             renderPill(t, `${t.time}-${i}`),
           )}
         </div>
@@ -3151,10 +3145,9 @@ export default function Dashboard() {
             }
 
             return (
-              <div className="mt-2 overflow-hidden relative" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
-                <style>{`@keyframes dash-pills { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
-                <div style={{ display: "flex", gap: 8, width: "max-content", animation: "dash-pills 20s linear infinite" }}>
-                  {[...PILLS, ...PILLS].map((p, i) => renderPill(p, i))}
+              <div className="mt-2 overflow-x-auto no-scrollbar relative" style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" }}>
+                <div style={{ display: "flex", gap: 8, width: "max-content" }}>
+                  {PILLS.map((p, i) => renderPill(p, i))}
                 </div>
               </div>
             );

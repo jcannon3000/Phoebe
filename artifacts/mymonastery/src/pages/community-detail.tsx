@@ -413,28 +413,22 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
   };
 
   if (isOverflowing) {
-    const durationSec = Math.max(16, schedule.times.length * 5);
     return (
       <div
-        className="mt-2 relative overflow-hidden"
+        className="mt-2 relative overflow-x-auto no-scrollbar"
         style={{
-          maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-          WebkitMaskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+          maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
+          WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
         }}
       >
-        <style>{`@keyframes community-service-times-scroll-${schedule.id} {
-          from { transform: translateX(0) }
-          to { transform: translateX(-50%) }
-        }`}</style>
         <div
           style={{
             display: "flex",
             gap: 6,
             width: "max-content",
-            animation: `community-service-times-scroll-${schedule.id} ${durationSec}s linear infinite`,
           }}
         >
-          {[...schedule.times, ...schedule.times].map((t, i) =>
+          {schedule.times.map((t, i) =>
             renderPill(t, `${t.time}-${i}`),
           )}
         </div>
@@ -619,17 +613,14 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
         Prayed This Week
       </p>
-      <style>{`@keyframes prayed-this-week-scroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
       <div
         ref={containerRef}
-        className="overflow-hidden relative rounded-xl"
+        className={`relative rounded-xl ${ticker ? "overflow-x-auto no-scrollbar" : "overflow-hidden"}`}
         style={{
           background: "rgba(46,107,64,0.08)",
           border: "1px solid rgba(46,107,64,0.2)",
-          // Only apply the edge mask when the row is actually ticking —
-          // otherwise the mask fades pills that happen to sit near the
-          // rounded ends of a non-scrolling row.
-          maskImage: ticker ? "linear-gradient(to right, transparent, black 6%, black 94%, transparent)" : undefined,
+          maskImage: ticker ? "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" : undefined,
+          WebkitMaskImage: ticker ? "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" : undefined,
         }}
       >
         <div
@@ -641,16 +632,10 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
                   display: "flex",
                   gap: 10,
                   width: "max-content",
-                  animation: `prayed-this-week-scroll ${Math.max(20, users.length * 4)}s linear infinite`,
                   paddingLeft: 12,
                   paddingRight: 12,
                 }
               : {
-                  // Stationary mode: spread the pills across the row so
-                  // a small community doesn't look like it lost half
-                  // its width. Pills start from the left edge with the
-                  // usual padding so one or two pills don't feel like
-                  // they're floating.
                   display: "flex",
                   gap: 10,
                   paddingLeft: 12,
@@ -659,9 +644,7 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
                 }
           }
         >
-          {ticker
-            ? [...users, ...users].map((u, i) => renderPill(u, `${u.userId}-${i}`))
-            : users.map((u) => renderPill(u, String(u.userId)))}
+          {users.map((u) => renderPill(u, String(u.userId)))}
         </div>
       </div>
     </div>
@@ -1397,11 +1380,10 @@ export default function CommunityDetailPage() {
           );
         })()}
 
-        {/* Tabs — auto-scrolling ticker (pauses when one is active) */}
-        <style>{`@keyframes community-tabs-scroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }`}</style>
-        <div className="overflow-hidden relative mb-5" style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}>
-          <div style={{ display: "flex", gap: 8, width: "max-content", animation: `community-tabs-scroll 28s linear infinite` }}>
-            {[...tabs, ...tabs].map((t, i) => (
+        {/* Tabs — user-scrollable horizontal strip */}
+        <div className="overflow-x-auto no-scrollbar relative mb-5" style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" }}>
+          <div style={{ display: "flex", gap: 8, width: "max-content" }}>
+            {tabs.map((t, i) => (
               <button
                 key={i}
                 onClick={() => setActiveTab(t.key)}

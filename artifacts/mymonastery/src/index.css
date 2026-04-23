@@ -364,3 +364,12 @@ textarea:focus {
 .animate-postmark-pulse {
   animation: postmark-pulse 3.5s ease-in-out infinite;
 }
+
+/* ── Hide scrollbars on horizontal scroll strips ─────────────────── */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

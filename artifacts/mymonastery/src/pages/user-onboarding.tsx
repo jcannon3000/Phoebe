@@ -710,29 +710,14 @@ function BellSlide({ onNext }: { onNext: () => void }) {
       </div>
 
       {/* Set button */}
-      <AnimatePresence mode="wait">
-        {saved ? (
-          <motion.div
-            key="saved"
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold"
-            style={{ background: "#2D5E3F", color: C.text }}
-          >
-            ✓ Bell set
-          </motion.div>
-        ) : (
-          <motion.button
-            key="set"
-            onClick={handleSet}
-            disabled={saving}
-            className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60"
-            style={{ background: "#2D5E3F", color: C.text }}
-          >
-            {saving ? "Setting…" : "Set my bell"}
-          </motion.button>
-        )}
-      </AnimatePresence>
+      <motion.button
+        onClick={handleSet}
+        disabled={saving}
+        className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60"
+        style={{ background: "#2D5E3F", color: C.text }}
+      >
+        {saving ? "Setting…" : "Set my bell"}
+      </motion.button>
 
       <p className="text-xs mt-2 mb-4" style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}>
         One notification a day. No more.
