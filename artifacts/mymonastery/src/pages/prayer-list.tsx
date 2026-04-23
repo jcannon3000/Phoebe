@@ -969,7 +969,7 @@ export default function PrayerListPage() {
         {activePrayersFor.length > 0 && (focused === null || focused === "prayers-for") && (
           <SectionShell
             id="prayers-for"
-            label="Prayers I'm praying"
+            label="My Prayers for Others"
             count={activePrayersFor.length}
             focused={focused}
             onFocus={setFocused}
