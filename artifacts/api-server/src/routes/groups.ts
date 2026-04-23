@@ -1434,7 +1434,11 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
       .map(r => r.rowUserId ?? r.emailUserId)
       .filter((id): id is number => typeof id === "number"),
   );
-  hiddenAdminUserIds.delete(user.id); // viewer sees their own prayers
+  // NOTE: no viewer exemption here. On a *community* feed, a hidden
+  // admin's own prayer must not appear — not even to themselves — or
+  // the "hidden" label is a lie. If viewer is a hidden admin they can
+  // still see their own prayer on their personal Prayer List
+  // (/api/prayer-requests handles that exemption separately).
 
   // Community wall is scoped to this community's members.
   // Two inclusion rules:
