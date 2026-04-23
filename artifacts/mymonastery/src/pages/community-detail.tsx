@@ -690,7 +690,12 @@ function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupNam
       setSaved(true);
       // Auto-fade the confirmation so the bar returns to its idle state.
       setTimeout(() => setSaved(false), 2400);
+      // Invalidate BOTH feeds:
+      //   • the community's wall (still used by the Prayer Wall tab)
+      //   • the global garden (now what the Home tab reads) so the new
+      //     post appears on the home feed without a page refresh.
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
   });
 
@@ -835,10 +840,24 @@ export default function CommunityDetailPage() {
     queryFn: () => apiRequest("GET", "/api/moments"),
     enabled: !!user && activeTab === "home",
   });
-  const { data: homePrayerData } = useQuery<{ requests: PrayerRequest[] }>({
-    queryKey: ["/api/groups", slug, "prayer-requests"],
-    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-requests`),
-    enabled: !!user && !!slug && activeTab === "home",
+  // Community home uses the SAME prayer feed as the home dashboard so every
+  // active prayer request in the user's garden surfaces here — not just the
+  // ones scoped to this community's members. User asked: "All these prayer
+  // requests need to show up on the communities home screen." The compose
+  // bar still POSTs to /api/groups/:slug/prayer-requests (scoping new posts
+  // to this community); read just pulls the broader garden.
+  type HomePrayerRequest = {
+    id: number;
+    body: string;
+    ownerName: string | null;
+    isOwnRequest: boolean;
+    isAnonymous: boolean;
+    createdAt: string;
+  };
+  const { data: homePrayerList } = useQuery<HomePrayerRequest[]>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    enabled: !!user && activeTab === "home",
   });
 
   // Today's prayer focus — only fetched once we know this is a circle group.
@@ -1427,7 +1446,7 @@ export default function CommunityDetailPage() {
           // Previously clamped to 3 with a "See all →" to the Prayer Wall
           // tab, but users kept missing requests because the list was
           // buried between announcements and the nothingYet empty-state.
-          const recentPrayers = homePrayerData?.requests ?? [];
+          const recentPrayers = homePrayerList ?? [];
           const recentAnnouncements = (announcementsData?.announcements ?? []).slice(0, 2);
 
           const stripEmoji = (s: string) =>

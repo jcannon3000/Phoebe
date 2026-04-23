@@ -898,6 +898,7 @@ function stripTrailingEmoji(s: string): string {
 }
 
 function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
+  const [, setLocation] = useLocation();
   const emoji = (m as any).customEmoji || PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
   // Lectio uses its per-user stage-done flag instead of todayPostCount since
   // reflections don't write to moment_posts. When the user is "caught up"
@@ -1207,44 +1208,68 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
               {isLectioCaughtUp ? "Responses" : "Reflect 📜"}
             </motion.span>
           ) : shouldPulse ? (
-            <Link
-              href={prayHref ?? openHref}
-              onClick={(e) => e.stopPropagation()}
+            // Nested <Link> would double-wrap <a>; use setLocation instead so
+            // the outer BarCard anchor stays clean (prevents Safari phantom
+            // pill artifacts).
+            <motion.span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setLocation(prayHref ?? openHref);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setLocation(prayHref ?? openHref);
+                }
+              }}
+              className="text-xs font-semibold rounded-full inline-block cursor-pointer"
+              style={{
+                background: "#2D5E3F",
+                color: "#F0EDE6",
+                padding: "4px 14px",
+                letterSpacing: "0.01em",
+                whiteSpace: "nowrap",
+                lineHeight: "20px",
+              }}
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
             >
-              <motion.span
-                className="text-xs font-semibold rounded-full inline-block"
-                style={{
-                  background: "#2D5E3F",
-                  color: "#F0EDE6",
-                  padding: "4px 14px",
-                  letterSpacing: "0.01em",
-                  whiteSpace: "nowrap",
-                  lineHeight: "20px",
-                }}
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-              >
-                {isFasting ? "Log 🌿" : isIntercession ? "Pray 🙏🏽" : isMorningPrayer ? "Open 📖" : "Log 🌿"}
-              </motion.span>
-            </Link>
+              {isFasting ? "Log 🌿" : isIntercession ? "Pray 🙏🏽" : isMorningPrayer ? "Open 📖" : "Log 🌿"}
+            </motion.span>
           ) : isIntercession && m.todayPostCount > 0 && m.windowOpen ? (
             // Already prayed today — show View pill so they can revisit the circle
-            <Link href={openHref} onClick={(e) => e.stopPropagation()}>
-              <span
-                className="text-xs font-semibold rounded-full inline-block"
-                style={{
-                  background: "rgba(46,107,64,0.18)",
-                  color: "#C8D4C0",
-                  border: "1px solid rgba(46,107,64,0.35)",
-                  padding: "4px 14px",
-                  letterSpacing: "0.01em",
-                  whiteSpace: "nowrap",
-                  lineHeight: "20px",
-                }}
-              >
-                View
-              </span>
-            </Link>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setLocation(openHref);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setLocation(openHref);
+                }
+              }}
+              className="text-xs font-semibold rounded-full inline-block cursor-pointer"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                color: "#C8D4C0",
+                border: "1px solid rgba(46,107,64,0.35)",
+                padding: "4px 14px",
+                letterSpacing: "0.01em",
+                whiteSpace: "nowrap",
+                lineHeight: "20px",
+              }}
+            >
+              View
+            </span>
           ) : (
             isDesktop && !isMeatFast && desktopStatusText && (
               <span className="text-xs" style={{ color: "#8FAF96" }}>{desktopStatusText}</span>
