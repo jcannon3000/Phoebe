@@ -365,7 +365,15 @@ async function evaluateWindow(momentId: number, windowDate: string) {
   const allMembersForMoment = await db.select().from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.momentId, momentId));
   const groupSize = allMembersForMoment.length;
-  const bloomThreshold = Math.max(2, Math.ceil(groupSize / 2));
+  // Threshold: intercessions bloom on a single prayer (community prayer
+  // is "we lifted it" not "a majority participated"). Other practice
+  // templates require a majority.
+  const [evalMoment] = await db.select({ templateType: sharedMomentsTable.templateType })
+    .from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+  const isIntercessionEval = evalMoment?.templateType === "intercession";
+  const bloomThreshold = isIntercessionEval
+    ? 1
+    : Math.max(2, Math.ceil(groupSize / 2));
   const status = postCount >= bloomThreshold ? "bloom" : postCount === 1 ? "solo" : "wither";
 
   // Upsert window record
@@ -1585,8 +1593,20 @@ router.get("/moments", async (req, res): Promise<void> => {
         // Compute group streak from actual window bloom data — not the
         // currentStreak field which can be corrupted by double-bloom bugs
         // or reset by goal hits. Walk backwards through bloom windows.
-        const bloomThreshold = Math.max(2, Math.ceil(allMembers.length / 2));
-        const todayBloom = todayPosts.length >= bloomThreshold && allMembers.length >= 2;
+        //
+        // Threshold semantics:
+        // - Intercessions: any single prayer by any member blooms the day.
+        //   A community intercession isn't a group-commitment practice —
+        //   if even one person lifted it, the community prayed today.
+        // - Everything else (practices): majority threshold
+        //   ceil(members/2), min 2, requires ≥2 members.
+        const isIntercessionMoment = m.templateType === "intercession";
+        const bloomThreshold = isIntercessionMoment
+          ? 1
+          : Math.max(2, Math.ceil(allMembers.length / 2));
+        const todayBloom = isIntercessionMoment
+          ? todayPosts.length >= 1
+          : (todayPosts.length >= bloomThreshold && allMembers.length >= 2);
         let groupStreak = todayBloom ? 1 : 0;
         for (const w of sortedWindows) {
           if (w.windowDate === todayDate) continue;
@@ -2014,8 +2034,15 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
   // Compute group streak from actual window bloom data — not the
   // currentStreak field which can be corrupted by double-bloom bugs
   // or reset by goal hits. Walk backwards through bloom windows.
-  const bloomThreshold = Math.max(2, Math.ceil(allMembers.length / 2));
-  const todayBloom = todayPosts.length >= bloomThreshold && allMembers.length >= 2;
+  // Intercessions bloom on a single prayer (see /moments list for the
+  // companion version of this rule).
+  const isIntercessionMoment = moment.templateType === "intercession";
+  const bloomThreshold = isIntercessionMoment
+    ? 1
+    : Math.max(2, Math.ceil(allMembers.length / 2));
+  const todayBloom = isIntercessionMoment
+    ? todayPosts.length >= 1
+    : (todayPosts.length >= bloomThreshold && allMembers.length >= 2);
   let groupStreak = todayBloom ? 1 : 0;
   for (const w of sortedWindows) {
     if (w.windowDate === windowDate) continue;
