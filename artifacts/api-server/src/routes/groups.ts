@@ -23,7 +23,7 @@ import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
-import { getCalendarEventAttendees } from "../lib/calendar";
+import { createCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
 import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -2507,6 +2507,91 @@ router.get("/beta/bells", async (req, res): Promise<void> => {
   }
 });
 
+// ── Shared admin-invite helper ─────────────────────────────────────────────
+// All three admin bell-invite flows (single user, bulk new, bulk resend)
+// should deliver the same thing: a real Google Calendar event created from
+// the Phoebe scheduler account with the user listed as an attendee. That's
+// what makes the invite show up as a proper "Phoebe invited you" email with
+// RSVP buttons, and what gives us a bell_calendar_event_id to poll for
+// acceptance later (which is what the "On calendar" chip on the admin page
+// actually depends on).
+//
+// If Google Calendar creation fails for any reason (scheduler auth, quota,
+// the user's mailbox rejecting the invite), we fall back to mailing a raw
+// ICS so the user still has *some* way to add the bell to their calendar —
+// that's the same degraded path the PUT /api/bell/preferences endpoint uses
+// when a user turns their own bell on. Returns what we actually managed to
+// deliver so the caller can store the event ID and log a sensible summary.
+async function sendAdminBellInvite(
+  u: { id: number; email: string; timezone: string | null },
+  dailyBellTime: string, // "HH:MM" in u.timezone
+): Promise<{ calendarEventId: string | null; icsSent: boolean; invited: boolean }> {
+  const tz = u.timezone ?? "America/New_York";
+  const match = /^(\d{2}):(\d{2})$/.exec(dailyBellTime);
+  const hh = match ? parseInt(match[1]!, 10) : 7;
+  const mm = match ? parseInt(match[2]!, 10) : 0;
+
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+  const startLocalStr = `${todayStr}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`;
+  // 5-minute window — mirrors the user-initiated bell flow in bell.ts.
+  const endMm = mm + 5;
+  const endHh = hh + Math.floor(endMm / 60);
+  const endLocalStr = `${todayStr}T${String(endHh % 24).padStart(2, "0")}:${String(endMm % 60).padStart(2, "0")}:00`;
+
+  const APP_URL_LOCAL = process.env["APP_URL"] ?? "https://withphoebe.app";
+  const communityName = await getUserPrimaryCommunityName(u.id);
+  const withLine = communityName
+    ? `Set up your daily bell to pray with ${communityName}.`
+    : "A daily time to pause and pray with your community.";
+  const description = [withLine, "", `Open Phoebe: ${APP_URL_LOCAL}`].join("\n");
+
+  // Preferred path: real Google Calendar event with RSVP tracking.
+  let calendarEventId: string | null = null;
+  try {
+    calendarEventId = await createCalendarEvent(u.id, {
+      summary: "🔔 Daily Bell — Phoebe",
+      description,
+      startDate: new Date(),
+      startLocalStr,
+      endLocalStr,
+      attendees: [u.email],
+      timeZone: tz,
+      recurrence: ["RRULE:FREQ=DAILY"],
+      colorId: "2",
+      transparency: "transparent",
+      reminders: [{ method: "popup", minutes: 0 }],
+    });
+  } catch (err) {
+    console.error(`[bell] admin-invite: createCalendarEvent failed for user ${u.id}:`, err);
+  }
+
+  // Fallback: raw ICS email so the user at least has a way to add the
+  // bell to their calendar manually. We only reach this path if Google
+  // returned null — if it succeeded we don't want to spam a second invite.
+  let icsSent = false;
+  if (!calendarEventId) {
+    try {
+      icsSent = await sendDailyBellIcsInvite({
+        to: u.email,
+        userId: u.id,
+        timeZone: tz,
+        startLocalStr,
+        endLocalStr,
+        summary: "🔔 Daily Bell — Phoebe",
+        description,
+      });
+    } catch (err) {
+      console.error(`[bell] admin-invite: ICS fallback failed for user ${u.id}:`, err);
+    }
+  }
+
+  return {
+    calendarEventId,
+    icsSent,
+    invited: !!calendarEventId || icsSent,
+  };
+}
+
 // Best-effort lookup of the community name to reference in a bell invite.
 // Picks the earliest group the user joined — that's "their" community
 // in the common case (single community per user). Returns null if they
@@ -2554,37 +2639,36 @@ router.post("/beta/bells/send-invite/:userId", async (req, res): Promise<void> =
     if (!row) { res.status(404).json({ error: "User not found" }); return; }
 
     const tz = row.timezone ?? "America/New_York";
-    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-    const startLocalStr = `${todayStr}T07:00:00`;
-    const endLocalStr = `${todayStr}T07:05:00`;
-
-    const APP_URL_LOCAL = process.env["APP_URL"] ?? "https://withphoebe.app";
-    const communityName = await getUserPrimaryCommunityName(row.id);
-    const withLine = communityName
-      ? `Set up your daily bell to pray with ${communityName}.`
-      : "A daily time to pause and pray with your community.";
-
-    const sent = await sendDailyBellIcsInvite({
-      to: row.email,
-      userId: row.id,
-      timeZone: tz,
-      startLocalStr,
-      endLocalStr,
-      summary: "🔔 Daily Bell — Phoebe",
-      description: [
-        withLine,
-        "",
-        `Open Phoebe: ${APP_URL_LOCAL}`,
-      ].join("\n"),
-    });
-
-    await pool.query(
-      `UPDATE users SET bell_enabled = true, daily_bell_time = '07:00', timezone = COALESCE(timezone, $1) WHERE id = $2`,
-      [tz, row.id],
+    const invite = await sendAdminBellInvite(
+      { id: row.id, email: row.email, timezone: row.timezone },
+      "07:00",
     );
 
-    console.log(`[bell] single-invite: user ${row.id} (${row.email}) sent=${sent} community=${communityName ?? "—"}`);
-    res.json({ userId: row.id, email: row.email, sent, community: communityName });
+    // Persist: enable the bell, default to 7 AM, and if the Google path
+    // succeeded store the event ID so the admin UI's invite chip can
+    // promote to "On calendar" once they accept.
+    await pool.query(
+      `UPDATE users
+          SET bell_enabled = true,
+              daily_bell_time = '07:00',
+              timezone = COALESCE(timezone, $1),
+              bell_calendar_event_id = COALESCE($2, bell_calendar_event_id)
+        WHERE id = $3`,
+      [tz, invite.calendarEventId, row.id],
+    );
+
+    const communityName = await getUserPrimaryCommunityName(row.id);
+    console.log(
+      `[bell] single-invite: user ${row.id} (${row.email}) ` +
+      `google=${invite.calendarEventId ? "ok" : "—"} ics=${invite.icsSent} community=${communityName ?? "—"}`,
+    );
+    res.json({
+      userId: row.id,
+      email: row.email,
+      sent: invite.invited,
+      method: invite.calendarEventId ? "google" : invite.icsSent ? "ics" : "none",
+      community: communityName,
+    });
   } catch (err) {
     console.error("POST /api/beta/bells/send-invite/:userId error:", err);
     res.status(500).json({ error: "Server error" });
@@ -2623,57 +2707,51 @@ router.post("/beta/bells/send-invites", async (req, res): Promise<void> => {
         timezone: (r["timezone"] as string | null) ?? null,
       }));
 
-    const APP_URL_LOCAL = process.env["APP_URL"] ?? "https://withphoebe.app";
-    const results: Array<{ id: number; email: string; sent: boolean }> = [];
+    const results: Array<{ id: number; email: string; sent: boolean; method: "google" | "ics" | "none" }> = [];
 
     for (const u of targets) {
       try {
         const tz = u.timezone ?? "America/New_York";
-        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-        const startLocalStr = `${todayStr}T07:00:00`;
-        const endLocalStr = `${todayStr}T07:05:00`;
-
-        // Look up the user's community (first group they joined) so the
-        // invite description names it — "pray with St. John's" reads
-        // more grounded than "with your community".
-        const communityName = await getUserPrimaryCommunityName(u.id);
-        const withLine = communityName
-          ? `Set up your daily bell to pray with ${communityName}.`
-          : "A daily time to pause and pray with your community.";
-
-        const sent = await sendDailyBellIcsInvite({
-          to: u.email,
-          userId: u.id,
-          timeZone: tz,
-          startLocalStr,
-          endLocalStr,
-          summary: "🔔 Daily Bell — Phoebe",
-          description: [
-            withLine,
-            "",
-            `Open Phoebe: ${APP_URL_LOCAL}`,
-          ].join("\n"),
-        });
-
-        // Whether or not the ICS send succeeded, mark the bell as enabled at
-        // 7 AM so the daily sender will cover them going forward.
-        await pool.query(
-          `UPDATE users SET bell_enabled = true, daily_bell_time = '07:00', timezone = COALESCE(timezone, $1) WHERE id = $2`,
-          [tz, u.id],
+        const invite = await sendAdminBellInvite(
+          { id: u.id, email: u.email, timezone: u.timezone },
+          "07:00",
         );
 
-        results.push({ id: u.id, email: u.email, sent });
-        console.log(`[bell] bulk-invite: user ${u.id} (${u.email}) sent=${sent}`);
+        // Enable bell + persist Google event ID if the API path succeeded.
+        // This is what lets the admin UI later promote the invite chip to
+        // "On calendar" once the user accepts.
+        await pool.query(
+          `UPDATE users
+              SET bell_enabled = true,
+                  daily_bell_time = '07:00',
+                  timezone = COALESCE(timezone, $1),
+                  bell_calendar_event_id = COALESCE($2, bell_calendar_event_id)
+            WHERE id = $3`,
+          [tz, invite.calendarEventId, u.id],
+        );
+
+        const method: "google" | "ics" | "none" =
+          invite.calendarEventId ? "google" : invite.icsSent ? "ics" : "none";
+        results.push({ id: u.id, email: u.email, sent: invite.invited, method });
+        console.log(
+          `[bell] bulk-invite: user ${u.id} (${u.email}) ` +
+          `google=${invite.calendarEventId ? "ok" : "—"} ics=${invite.icsSent}`,
+        );
       } catch (err) {
         console.error(`[bell] bulk-invite: user ${u.id} error:`, err);
-        results.push({ id: u.id, email: u.email, sent: false });
+        results.push({ id: u.id, email: u.email, sent: false, method: "none" });
       }
     }
 
     const sent = results.filter(r => r.sent).length;
     const failed = results.filter(r => !r.sent).length;
+    const googleCount = results.filter(r => r.method === "google").length;
+    const icsCount = results.filter(r => r.method === "ics").length;
 
-    console.log(`[bell] bulk-invite complete: ${sent} sent, ${failed} failed of ${targets.length} total`);
+    console.log(
+      `[bell] bulk-invite complete: ${sent} sent (${googleCount} google, ${icsCount} ics), ` +
+      `${failed} failed of ${targets.length} total`,
+    );
     res.json({ attempted: targets.length, sent, failed, users: results });
   } catch (err) {
     console.error("POST /api/beta/bells/send-invites error:", err);

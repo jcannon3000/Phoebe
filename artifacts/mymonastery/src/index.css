@@ -373,3 +373,25 @@ textarea:focus {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ── "Leave a word of comfort" input: suppress WebKit autofill tint ──
+   WebKit paints a yellow/white background on autofilled inputs that
+   can't be overridden by a normal `background: transparent`. The long
+   inset shadow trick forces the visual fill back to our pill tone so
+   the wrapper reads identically before and after focus/autofill. */
+.word-of-comfort-input:focus,
+.word-of-comfort-input:active {
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.word-of-comfort-input:-webkit-autofill,
+.word-of-comfort-input:-webkit-autofill:hover,
+.word-of-comfort-input:-webkit-autofill:focus,
+.word-of-comfort-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #E8E4D8 !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  transition: background-color 9999s ease-in-out 0s;
+  caret-color: #E8E4D8;
+}

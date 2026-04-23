@@ -182,10 +182,17 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
         }}
         placeholder="Leave a word of comfort…"
         maxLength={120}
-        className="flex-1 bg-transparent outline-none text-[14px] py-1.5"
+        // `word-of-comfort-input` is matched by global CSS to neutralize
+        // WebKit autofill + focus background tints so the wrapper's pill
+        // tone never changes when the field is tapped or autofilled.
+        className="word-of-comfort-input flex-1 bg-transparent outline-none text-[14px] py-1.5"
         style={{
           color: "#E8E4D8",
           fontSize: 16, // iOS Safari: ≥16 to block auto-zoom
+          background: "transparent",
+          boxShadow: "none",
+          WebkitAppearance: "none",
+          WebkitTapHighlightColor: "transparent",
         }}
       />
       <button
