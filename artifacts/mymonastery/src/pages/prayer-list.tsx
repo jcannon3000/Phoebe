@@ -193,23 +193,13 @@ function SectionShell({
         >
           {children}
         </div>
-        {/* Subtle bottom fade to soften the scroll edge without
-            painting a dark bar across a partially-visible card
-            (earlier version used 56px and 0.85 alpha — that read as a
-            shadow bug). Now 24px and a gentler 0.45 ramp; the scroll
-            affordance is still there without obscuring content. */}
+        {/* Bottom fade — matches the dashboard's home-section pattern:
+            64px tall, transparent→page background. The prior 24px @ 0.45
+            was too subtle to read as "more below" on a long list. */}
         {collapsed && count > 3 && (
           <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 24,
-              pointerEvents: "none",
-              background:
-                "linear-gradient(to bottom, rgba(9,20,14,0) 0%, rgba(9,20,14,0.45) 100%)",
-            }}
+            className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
           />
         )}
       </div>

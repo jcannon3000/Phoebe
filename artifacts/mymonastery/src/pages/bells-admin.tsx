@@ -254,7 +254,7 @@ export default function BellsAdminPage() {
                 }}
               >
                 <Send size={14} />
-                Resend ICS invite to {icsPendingCount} {icsPendingCount === 1 ? "user" : "users"} stuck on "ICS sent"
+                Send Google Calendar invite to {icsPendingCount} {icsPendingCount === 1 ? "user" : "users"} stuck on "ICS sent"
               </button>
             </div>
           ) : confirmOpen === "new" ? (

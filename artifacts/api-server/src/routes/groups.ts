@@ -2760,14 +2760,18 @@ router.post("/beta/bells/send-invites", async (req, res): Promise<void> => {
 });
 
 // ─── POST /api/beta/bells/resend-ics-invites ────────────────────────────────
-// Admin action: re-send the ICS calendar invite to every user whose bell is
-// enabled but has no linked Google Calendar event yet — i.e. the rows that
-// show up as "ICS sent" on the admin page. This is the nudge button for
-// users who got the first ICS email, never added it to a calendar, and are
-// now silently not ringing. We leave their saved time/timezone alone and
-// just re-send the invite at their existing bell time.
+// Admin action: re-invite every user whose bell is on but never landed on a
+// Google Calendar (the rows labelled "ICS sent" on the admin page). This
+// tries the proper Google Calendar path first — creating a real event from
+// the Phoebe scheduler account with the user as attendee — so the user
+// gets a clean "Phoebe invited you to Daily Bell" email with RSVP buttons
+// and we get an event ID to track acceptance. If the Google API path fails
+// we fall back to an ICS email, same as the user-initiated bell flow.
 //
-// Returns { attempted, sent, failed, users: [{ id, email, sent }] }
+// Keeps each user's existing daily_bell_time / timezone — this is a resend,
+// not a reset, so whatever time they originally chose is respected.
+//
+// Returns { attempted, sent, failed, users: [{ id, email, sent, method }] }
 router.post("/beta/bells/resend-ics-invites", async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
@@ -2804,57 +2808,52 @@ router.post("/beta/bells/resend-ics-invites", async (req, res): Promise<void> =>
       dailyBellTime: (r["daily_bell_time"] as string | null) ?? null,
     }));
 
-    const APP_URL_LOCAL = process.env["APP_URL"] ?? "https://withphoebe.app";
-    const results: Array<{ id: number; email: string; sent: boolean }> = [];
+    const results: Array<{ id: number; email: string; sent: boolean; method: "google" | "ics" | "none" }> = [];
 
     for (const u of targets) {
       try {
-        const tz = u.timezone ?? "America/New_York";
-        // Keep whatever time the user originally chose — this is a resend,
-        // not a reset. Fall back to 07:00 only if the DB truly has nothing.
-        const hhmm = /^\d{2}:\d{2}$/.test(u.dailyBellTime ?? "") ? u.dailyBellTime! : "07:00";
-        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-        // Compute end = start + 5 minutes without pulling in a date lib.
-        const [hStr, mStr] = hhmm.split(":");
-        const startMin = parseInt(hStr!, 10) * 60 + parseInt(mStr!, 10);
-        const endMin = startMin + 5;
-        const endH = Math.floor(endMin / 60) % 24;
-        const endM = endMin % 60;
-        const endHhmm = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-        const startLocalStr = `${todayStr}T${hhmm}:00`;
-        const endLocalStr = `${todayStr}T${endHhmm}:00`;
+        // Respect whatever time the user originally picked. Default only
+        // if the DB truly has nothing, which shouldn't happen for a row
+        // with bell_enabled=true but we're belt-and-suspenders here.
+        const dailyBellTime = /^\d{2}:\d{2}$/.test(u.dailyBellTime ?? "") ? u.dailyBellTime! : "07:00";
+        const invite = await sendAdminBellInvite(
+          { id: u.id, email: u.email, timezone: u.timezone },
+          dailyBellTime,
+        );
 
-        const communityName = await getUserPrimaryCommunityName(u.id);
-        const withLine = communityName
-          ? `Set up your daily bell to pray with ${communityName}.`
-          : "A daily time to pause and pray with your community.";
+        // If Google created a real event this time, persist the event ID
+        // so the admin UI's invite chip can promote past "ICS sent" on the
+        // next refresh. Don't clobber on failure — if Google failed again,
+        // leave the null there so this row stays in the "ICS sent" set.
+        if (invite.calendarEventId) {
+          await pool.query(
+            `UPDATE users SET bell_calendar_event_id = $1 WHERE id = $2`,
+            [invite.calendarEventId, u.id],
+          );
+        }
 
-        const sent = await sendDailyBellIcsInvite({
-          to: u.email,
-          userId: u.id,
-          timeZone: tz,
-          startLocalStr,
-          endLocalStr,
-          summary: "🔔 Daily Bell — Phoebe",
-          description: [
-            withLine,
-            "",
-            `Open Phoebe: ${APP_URL_LOCAL}`,
-          ].join("\n"),
-        });
-
-        results.push({ id: u.id, email: u.email, sent });
-        console.log(`[bell] ics-resend: user ${u.id} (${u.email}) sent=${sent} time=${hhmm} ${tz}`);
+        const method: "google" | "ics" | "none" =
+          invite.calendarEventId ? "google" : invite.icsSent ? "ics" : "none";
+        results.push({ id: u.id, email: u.email, sent: invite.invited, method });
+        console.log(
+          `[bell] ics-resend: user ${u.id} (${u.email}) ` +
+          `google=${invite.calendarEventId ? "ok" : "—"} ics=${invite.icsSent} time=${dailyBellTime}`,
+        );
       } catch (err) {
         console.error(`[bell] ics-resend: user ${u.id} error:`, err);
-        results.push({ id: u.id, email: u.email, sent: false });
+        results.push({ id: u.id, email: u.email, sent: false, method: "none" });
       }
     }
 
     const sent = results.filter(r => r.sent).length;
     const failed = results.filter(r => !r.sent).length;
+    const googleCount = results.filter(r => r.method === "google").length;
+    const icsCount = results.filter(r => r.method === "ics").length;
 
-    console.log(`[bell] ics-resend complete: ${sent} sent, ${failed} failed of ${targets.length} total`);
+    console.log(
+      `[bell] ics-resend complete: ${sent} sent (${googleCount} google, ${icsCount} ics), ` +
+      `${failed} failed of ${targets.length} total`,
+    );
     res.json({ attempted: targets.length, sent, failed, users: results });
   } catch (err) {
     console.error("POST /api/beta/bells/resend-ics-invites error:", err);
