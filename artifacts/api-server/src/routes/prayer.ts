@@ -25,12 +25,15 @@ async function getGardenUserIds(userId: number): Promise<number[]> {
 
   // Step 1 — groups the viewer belongs to. Match by userId primarily,
   // fall back to email for legacy rows where user_id was never linked.
+  // Relaxed: we don't require joinedAt IS NOT NULL on the owner's own
+  // row — if their membership predates joinedAt stamping, we'd
+  // otherwise lock them out of every community-scoped feed.
   const myMemberships = await db
     .select({ groupId: groupMembersTable.groupId })
     .from(groupMembersTable)
     .where(
-      sql`(${groupMembersTable.userId} = ${userId} OR LOWER(${groupMembersTable.email}) = ${viewerEmail})
-          AND ${groupMembersTable.joinedAt} IS NOT NULL`,
+      sql`${groupMembersTable.userId} = ${userId}
+          OR LOWER(${groupMembersTable.email}) = ${viewerEmail}`,
     );
   const myGroupIds = Array.from(new Set(myMemberships.map(r => r.groupId)));
 
@@ -55,15 +58,11 @@ async function getGardenUserIds(userId: number): Promise<number[]> {
         usersTable,
         sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
       )
-      .where(
-        sql`${groupMembersTable.groupId} IN (${sql.join(
-          myGroupIds.map(id => sql`${id}`),
-          sql`, `,
-        )})
-        AND ${groupMembersTable.joinedAt} IS NOT NULL
-        AND (${groupMembersTable.role} IS NULL
+      .where(and(
+        inArray(groupMembersTable.groupId, myGroupIds),
+        sql`(${groupMembersTable.role} IS NULL
              OR ${groupMembersTable.role} <> 'hidden_admin')`,
-      );
+      ));
     for (const row of peerRows) {
       const id = row.rowUserId ?? row.emailUserId;
       if (typeof id === "number" && id !== userId) groupPeerIds.add(id);
@@ -96,13 +95,10 @@ async function getGardenUserIds(userId: number): Promise<number[]> {
         usersTable,
         sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
       )
-      .where(
-        sql`${groupMembersTable.groupId} IN (${sql.join(
-          myGroupIds.map(id => sql`${id}`),
-          sql`, `,
-        )})
-        AND ${groupMembersTable.role} = 'hidden_admin'`,
-      );
+      .where(and(
+        inArray(groupMembersTable.groupId, myGroupIds),
+        eq(groupMembersTable.role, "hidden_admin"),
+      ));
     for (const row of vetoRows) {
       const id = row.rowUserId ?? row.emailUserId;
       if (typeof id === "number") groupPeerIds.delete(id);

@@ -52,13 +52,18 @@ router.get("/people", async (req, res): Promise<void> => {
     sharedRitualIds: number[];
   }>();
 
-  // Step 1 — everyone else who shares a group with the owner.
+  // Step 1 — every group the owner has a membership row in.
+  // Relaxed to NOT require joinedAt IS NOT NULL — if a user's own
+  // membership row was never stamped with joinedAt (hidden_admin
+  // toggle, legacy invite, backfill), they'd otherwise see an
+  // empty garden. Match by userId primarily, email fallback for
+  // email-only invite rows.
   const myGroupIdRows = await db
     .select({ groupId: groupMembersTable.groupId })
     .from(groupMembersTable)
     .where(
-      sql`(${groupMembersTable.userId} = ${ownerId} OR LOWER(${groupMembersTable.email}) = ${ownerEmailLower})
-          AND ${groupMembersTable.joinedAt} IS NOT NULL`,
+      sql`${groupMembersTable.userId} = ${ownerId}
+          OR LOWER(${groupMembersTable.email}) = ${ownerEmailLower}`,
     );
   const myGroupIds = Array.from(new Set(myGroupIdRows.map(r => r.groupId)));
   console.log(
@@ -66,9 +71,15 @@ router.get("/people", async (req, res): Promise<void> => {
     `myGroupIds=[${myGroupIds.join(",")}]`,
   );
   if (myGroupIds.length > 0) {
-    // Garden excludes anyone whose role in the shared group is
-    // hidden_admin. If they're a regular admin or member in ANY
-    // shared group, they still make it in via that group.
+    // Garden = every member of the viewer's groups, excluding
+    // hidden admins of those groups. Using inArray here (instead
+    // of the hand-rolled sql.join) because the Drizzle
+    // expansion on inArray is the canonical IN clause. We also
+    // relaxed joinedAt IS NOT NULL — an invited but not-yet-
+    // accepted member is still part of the community roster and
+    // should contribute to the garden. If a user with legacy
+    // data never had joinedAt stamped, filtering them out left
+    // whole gardens empty.
     const peerRows = await db
       .select({
         email: groupMembersTable.email,
@@ -78,18 +89,14 @@ router.get("/people", async (req, res): Promise<void> => {
         groupId: groupMembersTable.groupId,
       })
       .from(groupMembersTable)
-      .where(
-        sql`${groupMembersTable.groupId} IN (${sql.join(
-          myGroupIds.map(id => sql`${id}`),
-          sql`, `,
-        )})
-        AND ${groupMembersTable.joinedAt} IS NOT NULL
-        AND (${groupMembersTable.role} IS NULL
+      .where(and(
+        inArray(groupMembersTable.groupId, myGroupIds),
+        sql`(${groupMembersTable.role} IS NULL
              OR ${groupMembersTable.role} <> 'hidden_admin')`,
-      );
+      ));
     console.log(
       `[GET /people] peerRows=${peerRows.length} ` +
-      `sample=${JSON.stringify(peerRows.slice(0, 3).map(r => ({ e: r.email, r: r.role, g: r.groupId })))}`,
+      `sample=${JSON.stringify(peerRows.slice(0, 3).map(r => ({ e: r.email, r: r.role, g: r.groupId, j: !!r.joinedAt })))}`,
     );
     for (const row of peerRows) {
       if (!row.email) continue;
@@ -140,13 +147,10 @@ router.get("/people", async (req, res): Promise<void> => {
         email: groupMembersTable.email,
       })
       .from(groupMembersTable)
-      .where(
-        sql`${groupMembersTable.groupId} IN (${sql.join(
-          myGroupIds.map(id => sql`${id}`),
-          sql`, `,
-        )})
-        AND ${groupMembersTable.role} = 'hidden_admin'`,
-      );
+      .where(and(
+        inArray(groupMembersTable.groupId, myGroupIds),
+        eq(groupMembersTable.role, "hidden_admin"),
+      ));
     for (const row of vetoRows) {
       if (!row.email) continue;
       map.delete(row.email.toLowerCase());
