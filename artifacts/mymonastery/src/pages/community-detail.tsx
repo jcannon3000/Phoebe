@@ -463,7 +463,13 @@ function CommunityServiceHomeCard({
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
         Gatherings
       </p>
-      <button type="button" onClick={onOpen} className="block w-full text-left">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+        className="block w-full text-left cursor-pointer"
+      >
         <div
           className="relative flex rounded-xl overflow-hidden"
           style={{
@@ -495,7 +501,7 @@ function CommunityServiceHomeCard({
             <ServiceTimesPillRow schedule={schedule} />
           </div>
         </div>
-      </button>
+      </div>
     </div>
   );
 }

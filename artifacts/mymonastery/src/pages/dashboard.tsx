@@ -1493,10 +1493,12 @@ function ServiceCard({
   // flap rotation needed anymore.
 
   return (
-    <button
+    <div
       key={`${keyPrefix}-service-${schedule.id}`}
-      type="button"
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       className="block w-full text-left"
     >
       <motion.div
@@ -1547,7 +1549,7 @@ function ServiceCard({
 
         </div>
       </motion.div>
-    </button>
+    </div>
   );
 }
 
