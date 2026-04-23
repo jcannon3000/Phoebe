@@ -48,21 +48,24 @@ export function LiturgicalDateHeader({ date }: { date?: Date }) {
   const isFeastHeader =
     day.rank === "principal_feast" || day.rank === "holy_day" || day.rank === "sunday";
 
-  // Lesser Feasts render as a primary header, prefixed with
-  // "Feast of " and followed by the saint's life/death year so the
-  // date-at-the-top-right is the SAINT's year, not the current one.
-  // The date sinks to the subtitle in short form (no current year —
-  // it's today, the current year is implicit).
+  // Header layout by rank:
+  //  - Principal / Holy / Sunday: feast name primary, date subtitle
+  //    (the feast IS the day — surface it at the top).
+  //  - Lesser Feast: calendar date primary, "Feast of <name>, <year>"
+  //    as the muted subtitle. These are optional commemorations, so
+  //    the date stays the headline and the saint sits beneath it.
+  //  - Ferial: calendar date primary, seasonal label ("The Third
+  //    Week of Easter") as subtitle.
   let primary: string;
   let secondary: string | null;
   if (isFeastHeader) {
     primary = day.name;
     secondary = dateLong;
   } else if (day.commemoration) {
-    primary = day.life
+    primary = dateLine;
+    secondary = day.life
       ? `Feast of ${day.commemoration}, ${day.life}`
       : `Feast of ${day.commemoration}`;
-    secondary = dateLine;
   } else {
     primary = dateLine;
     secondary = day.name || null;
