@@ -681,7 +681,14 @@ export async function migrate() {
     // ── User onboarding flag ──────────────────────────────────────────────
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT false`);
 
-    // ── Fellows ────────────────────────────────────────────────────────────
+    // ── Fellows (HISTORICAL — feature removed) ─────────────────────────────
+    // The fellows/fellow-invites feature was removed in favor of letter
+    // correspondents as the prayer-feed prioritization signal (see
+    // api-server/src/lib/correspondents.ts and GET /api/prayer-requests).
+    // These CREATE TABLE IF NOT EXISTS calls stay so fresh installs don't
+    // fail partway through historical migrations that reference the tables.
+    // No runtime code reads or writes them. Safe to leave; safe to drop
+    // in a future cleanup migration.
     await run(client, `
       CREATE TABLE IF NOT EXISTS fellows (
         id SERIAL PRIMARY KEY,
@@ -693,7 +700,7 @@ export async function migrate() {
       )
     `);
 
-    // ── Fellow invites ────────────────────────────────────────────────────
+    // ── Fellow invites (HISTORICAL — feature removed; see note above) ─────
     await run(client, `
       CREATE TABLE IF NOT EXISTS fellow_invites (
         id SERIAL PRIMARY KEY,
