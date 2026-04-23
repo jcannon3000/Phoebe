@@ -210,7 +210,11 @@ export default function WriteLetter() {
         } else if (parsed.error === "not_your_turn") {
           setErrorState({ message: parsed.message || "It's not your turn yet.", nextPeriodStart: parsed.nextPeriodStart });
         } else {
-          setErrorState({ message: parsed.error || "Something went wrong." });
+          // Prefer the human-readable `message` over the machine code in
+          // `error` — the server sends both now (e.g. send_failed + a
+          // detailed error message). Falling back to error code and
+          // finally a generic string keeps the old behavior intact.
+          setErrorState({ message: parsed.message || parsed.error || "Something went wrong." });
         }
       } catch {
         setErrorState({ message: "Something went wrong. Try again." });

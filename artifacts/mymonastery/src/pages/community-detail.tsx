@@ -982,8 +982,8 @@ export default function CommunityDetailPage() {
   const tabs = [
     { key: "home" as const, label: "Home", emoji: "🏡" },
     { key: "gatherings" as const, label: "Gatherings", emoji: "🤝🏽" },
-    { key: "announcements" as const, label: "Announcements", emoji: "📮" },
     { key: "members" as const, label: "Members", emoji: "👥" },
+    { key: "announcements" as const, label: "Announcements", emoji: "📮" },
   ];
 
   return (

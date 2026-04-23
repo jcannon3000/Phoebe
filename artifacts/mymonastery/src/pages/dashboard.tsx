@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
-import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
 
 import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
@@ -3005,80 +3004,10 @@ export default function Dashboard() {
           <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             {format(new Date(), "EEEE, d MMMM")}
           </p>
-          {(() => {
-            type Pill = {
-              label: string;
-              href?: string;
-              filterKey?: "letters" | "practices" | "gatherings";
-              fg: string;
-              bg: string;
-              border: string;
-            };
-            const pillStyle = (p: Pill) => ({
-              background: p.bg, color: p.fg, border: `1px solid ${p.border}`,
-            });
-            const pillClass = "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80";
-            const renderPill = (p: Pill, key: string | number) => {
-              if (p.filterKey) {
-                const fk = p.filterKey;
-                return (
-                  <button key={key} type="button"
-                    onClick={() => setFilter(prev => prev === fk ? null : fk)}
-                    className={pillClass}
-                    style={pillStyle(p)}
-                  >
-                    {p.label}
-                    {filter === fk && <span style={{ opacity: 0.7, fontSize: "0.85em", lineHeight: 1 }}>×</span>}
-                  </button>
-                );
-              }
-              return (
-                <Link key={key} href={p.href!} className={pillClass} style={pillStyle(p)}>
-                  {p.label}
-                </Link>
-              );
-            };
-
-            // One pill per community the viewer is in — replaces the old
-            // generic "Communities" pill that linked to the list page. Each
-            // pill leads with the community emoji (or a fallback 🏘️) and
-            // routes straight to that community's detail page. Sorted by
-            // name for stable order across renders.
-            const communityPills: Pill[] = (dashGroups?.groups ?? [])
-              .slice()
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map(g => ({
-                label: `${g.emoji ?? "🏘️"} ${g.name}`,
-                href: `/communities/${g.slug}`,
-                fg: "#6FAF85",
-                bg: "rgba(111,175,133,0.12)",
-                border: "rgba(111,175,133,0.25)",
-              }));
-
-            const PILLS: Pill[] = [
-              { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
-              { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
-              ...communityPills,
-            ];
-
-            // When a filter is active, collapse to just the active pill with ×
-            if (filter !== null) {
-              const activePill = PILLS.find(p => p.filterKey === filter);
-              if (activePill) {
-                return (
-                  <div className="flex items-center gap-2 mt-2">
-                    {renderPill(activePill, "active")}
-                  </div>
-                );
-              }
-            }
-
-            return (
-              <ScrollStrip className="mt-2" contentStyle={{ gap: 8 }}>
-                {PILLS.map((p, i) => renderPill(p, i))}
-              </ScrollStrip>
-            );
-          })()}
+          {/* Pill row removed — Prayer List / People / community shortcuts
+              all live in the sidebar menu now, and the dashboard reads
+              cleaner without a row of nav chips competing with the real
+              content below the date. */}
         </div>
 
         {/* ── Loading skeleton ── */}
