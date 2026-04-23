@@ -1511,6 +1511,7 @@ function PrayerListCard({
   keyPrefix,
   muted = false,
   prayedToday = false,
+  faces,
 }: {
   pendingCount: number;
   streak: number;
@@ -1523,6 +1524,10 @@ function PrayerListCard({
   // slot instead of "Pray". Card keeps the same dimensions + accent
   // bar + streak chip so the home-screen anchor stays put.
   prayedToday?: boolean;
+  // Up to 3 avatars of people whose prayers appear in today's
+  // slideshow. Rendered on line 2 before the count text. Empty
+  // array = no avatars shown.
+  faces?: Array<{ key: string; name: string; avatarUrl: string | null }>;
 }) {
   const colors = CATEGORY_COLORS.practices;
   const subtitle = pendingCount === 1
@@ -1580,23 +1585,63 @@ function PrayerListCard({
             </Link>
           </div>
 
-          {/* Line 2: count / confirmation on the left, streak on
-              the right. Streak moved off Line 1 to make room for
-              the View list pill. */}
+          {/* Line 2: avatar stack + count on the left, streak on
+              the right. Avatars are a small face row (up to 3,
+              overlapping) of people whose prayers are queued in
+              today's slideshow — anchors the count to real people.
+              Streak moved off Line 1 to sit aligned with the View
+              list pill above it and the CTA below it. */}
           <div className="mt-1.5 flex items-center justify-between gap-3">
-            <p
-              className="text-sm"
-              style={{
-                color: "#8FAF96",
-                lineHeight: "20px",
-                margin: 0,
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              {prayedToday
-                ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
-                : subtitle}
-            </p>
+            <div className="flex items-center gap-2 min-w-0">
+              {faces && faces.length > 0 && (
+                <div className="flex items-center -space-x-2 shrink-0">
+                  {faces.slice(0, 3).map((f) => (
+                    <div
+                      key={f.key}
+                      title={f.name}
+                      className="rounded-full overflow-hidden shrink-0"
+                      style={{
+                        width: 22, height: 22,
+                        border: "1.5px solid #0F2818",
+                        background: "#1A4A2E",
+                      }}
+                    >
+                      {f.avatarUrl ? (
+                        <img
+                          src={f.avatarUrl}
+                          alt={f.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="w-full h-full flex items-center justify-center text-[9px] font-semibold"
+                          style={{ color: "#A8C5A0" }}
+                        >
+                          {f.name
+                            .split(" ")
+                            .slice(0, 2)
+                            .map((w) => w[0]?.toUpperCase() ?? "")
+                            .join("")}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p
+                className="text-sm truncate"
+                style={{
+                  color: "#8FAF96",
+                  lineHeight: "20px",
+                  margin: 0,
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {prayedToday
+                  ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
+                  : subtitle}
+              </p>
+            </div>
             {streak > 0 && (
               <span
                 className="text-[11px] font-semibold shrink-0 tabular-nums"
@@ -2337,8 +2382,14 @@ export default function Dashboard() {
   // Declared here, AFTER momentsData, because the effect's dep array reads
   // momentsData and would otherwise blow up on first render with a
   // "Cannot access uninitialized variable" (TDZ).
-  type DashPrayerRequest = { id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null };
-  type DashPrayerFor = { id: number; expired: boolean; expiresAt: string };
+  type DashPrayerRequest = {
+    id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null;
+    ownerId?: number; ownerName?: string | null; ownerAvatarUrl?: string | null; isAnonymous?: boolean;
+  };
+  type DashPrayerFor = {
+    id: number; expired: boolean; expiresAt: string;
+    recipientEmail?: string; recipientName?: string; recipientAvatarUrl?: string | null;
+  };
   type DashCircleIntention = { id: number; groupId: number };
 
   const { data: dashPrayerRequests, isLoading: dashPrayerRequestsLoading } = useQuery<DashPrayerRequest[]>({
@@ -3041,53 +3092,47 @@ export default function Dashboard() {
         <div className="mb-8">
           <LiturgicalDateHeader />
 
-          {/* Menu pill strip under the feast — People + one pill per
-              community the viewer belongs to. Link-only nav. Sits
-              between the feast and the daily prayer card. */}
-          {filter === null && (() => {
-            type Pill = { label: string; href: string; fg: string; bg: string; border: string };
-            const pillClass = "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80";
-            const communityPills: Pill[] = (dashGroups?.groups ?? [])
-              .slice()
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map(g => ({
-                label: `${g.emoji ?? "🏘️"} ${g.name}`,
-                href: `/communities/${g.slug}`,
-                fg: "#6FAF85",
-                bg: "rgba(111,175,133,0.12)",
-                border: "rgba(111,175,133,0.25)",
-              }));
-            const PILLS: Pill[] = [
-              { label: "👥 People", href: "/people", fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
-              ...communityPills,
-            ];
-            return (
-              <ScrollStrip className="mt-4" contentStyle={{ gap: 8 }}>
-                {PILLS.map((p, i) => (
-                  <Link key={i} href={p.href} className={pillClass}
-                    style={{ background: p.bg, color: p.fg, border: `1px solid ${p.border}` }}
-                  >
-                    {p.label}
-                  </Link>
-                ))}
-              </ScrollStrip>
-            );
-          })()}
+          {/* Menu pill strip removed — nav lives in the side Menu. */}
 
           {/* Persistent daily prayer list card — same PrayerListCard
               used elsewhere, just routed through its `prayedToday`
               variant so the subtitle/CTA adapt. Lives here as the
               home-screen anchor and is filter-gated. */}
-          {filter === null && (pendingPrayerCount > 0 || prayerStreak > 0) && (
-            <div className="mt-5">
-              <PrayerListCard
-                pendingCount={pendingPrayerCount}
-                streak={prayerStreak}
-                prayedToday={prayerListDoneToday}
-                keyPrefix="anchor"
-              />
-            </div>
-          )}
+          {filter === null && (pendingPrayerCount > 0 || prayerStreak > 0) && (() => {
+            // Up to 3 avatars of people whose prayers are in the
+            // viewer's slideshow today. Source: non-own open prayer
+            // request authors + active prayers-for recipients.
+            // Deduped, cap 3.
+            type Face = { key: string; name: string; avatarUrl: string | null };
+            const faces: Face[] = [];
+            const seen = new Set<string>();
+            const addFace = (key: string, name: string, avatarUrl: string | null) => {
+              if (!key || seen.has(key) || faces.length >= 3) return;
+              seen.add(key);
+              faces.push({ key, name, avatarUrl });
+            };
+            for (const r of dashPrayerRequests ?? []) {
+              if (r.isAnswered || r.isOwnRequest || r.closedAt || r.isAnonymous) continue;
+              const key = `req-${r.ownerId ?? r.id}`;
+              addFace(key, r.ownerName ?? "Someone", r.ownerAvatarUrl ?? null);
+            }
+            for (const p of dashPrayersFor ?? []) {
+              if (p.expired) continue;
+              const key = `pfor-${p.recipientEmail ?? p.id}`;
+              addFace(key, p.recipientName ?? "Someone", p.recipientAvatarUrl ?? null);
+            }
+            return (
+              <div className="mt-5">
+                <PrayerListCard
+                  pendingCount={pendingPrayerCount}
+                  streak={prayerStreak}
+                  prayedToday={prayerListDoneToday}
+                  faces={faces}
+                  keyPrefix="anchor"
+                />
+              </div>
+            );
+          })()}
         </div>
 
         {/* ── Loading skeleton ── */}
