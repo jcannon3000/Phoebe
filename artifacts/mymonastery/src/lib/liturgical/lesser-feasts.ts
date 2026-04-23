@@ -168,6 +168,25 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 7, day: 29, rank: "lesser_feast", name: "Mary and Martha of Bethany, or The Philadelphia Eleven", color: "white" },
   { month: 7, day: 30, rank: "lesser_feast", name: "William Wilberforce, Social Reformer",                  color: "white", life: "1833" },
   { month: 7, day: 31, rank: "lesser_feast", name: "Ignatius of Loyola, Priest and Spiritual Writer",       color: "white", life: "1556" },
+
+  // ── August ────────────────────────────────────────────────
+  { month: 8, day: 1,  rank: "lesser_feast", name: "Joseph of Arimathaea",                                  color: "white" },
+  { month: 8, day: 3,  rank: "lesser_feast", name: "Joanna, Mary, and Salome, Myrrh-Bearing Women",         color: "white" },
+  { month: 8, day: 7,  rank: "lesser_feast", name: "John Mason Neale, Priest and Hymnographer",             color: "white", life: "1866" },
+  { month: 8, day: 8,  rank: "lesser_feast", name: "Dominic, Priest and Friar",                             color: "white", life: "1221" },
+  { month: 8, day: 9,  rank: "lesser_feast", name: "Edith Stein (Teresa Benedicta of the Cross), Philosopher, Monastic, and Martyr", color: "red", life: "1942" },
+  { month: 8, day: 10, rank: "lesser_feast", name: "Laurence of Rome, Deacon and Martyr",                   color: "red",   life: "258" },
+  { month: 8, day: 11, rank: "lesser_feast", name: "Clare of Assisi, Monastic",                             color: "white", life: "1253" },
+  { month: 8, day: 12, rank: "lesser_feast", name: "Florence Nightingale, Nurse",                           color: "white", life: "1910" },
+  { month: 8, day: 13, rank: "lesser_feast", name: "Jeremy Taylor, Bishop and Theologian",                  color: "white", life: "1667" },
+  { month: 8, day: 14, rank: "lesser_feast", name: "Jonathan Myrick Daniels, Martyr",                       color: "red",   life: "1965" },
+  { month: 8, day: 20, rank: "lesser_feast", name: "Bernard of Clairvaux, Monastic and Theologian",         color: "white", life: "1153" },
+  { month: 8, day: 25, rank: "lesser_feast", name: "Louis, King",                                           color: "white", life: "1270" },
+  { month: 8, day: 27, rank: "lesser_feast", name: "Thomas Gallaudet and Henry Winter Syle, Priests",       color: "white", life: "1902 and 1890" },
+  { month: 8, day: 28, rank: "lesser_feast", name: "Augustine of Hippo, Bishop and Theologian",             color: "white", life: "430" },
+  { month: 8, day: 29, rank: "lesser_feast", name: "The Beheading of Saint John the Baptist",               color: "red" },
+  { month: 8, day: 30, rank: "lesser_feast", name: "Margaret Ward, Margaret Clitherow, and Anne Line, Martyrs", color: "red", life: "1588, 1586, and 1601" },
+  { month: 8, day: 31, rank: "lesser_feast", name: "Aidan of Lindisfarne, Bishop",                          color: "white", life: "651" },
 ];
 
 registerLesserFeasts(ENTRIES);
