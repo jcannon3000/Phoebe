@@ -148,6 +148,26 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 6, day: 22, rank: "lesser_feast", name: "Alban, Martyr",                                         color: "red",   life: "c. 304" },
   { month: 6, day: 26, rank: "lesser_feast", name: "Isabel Florence Hapgood, Ecumenist",                    color: "white", life: "1928" },
   { month: 6, day: 28, rank: "lesser_feast", name: "Irenaeus of Lyons, Bishop and Theologian",              color: "white", life: "c. 202" },
+
+  // ── July ──────────────────────────────────────────────────
+  { month: 7, day: 1,  rank: "lesser_feast", name: "Pauli Murray, Priest",                                  color: "white", life: "1985" },
+  { month: 7, day: 2,  rank: "lesser_feast", name: "Moses the Black, Monastic and Martyr",                  color: "red",   life: "c. 400" },
+  { month: 7, day: 6,  rank: "lesser_feast", name: "Eva Lee Matthews, Monastic",                            color: "white", life: "1928" },
+  { month: 7, day: 8,  rank: "lesser_feast", name: "Priscilla and Aquila, Coworkers of the Apostle Paul",   color: "white" },
+  { month: 7, day: 11, rank: "lesser_feast", name: "Benedict of Nursia, Monastic",                          color: "white", life: "c. 543" },
+  { month: 7, day: 14, rank: "lesser_feast", name: "Argula von Grumbach, Scholar and Church Reformer",      color: "white", life: "c. 1554" },
+  { month: 7, day: 17, rank: "lesser_feast", name: "William White, Bishop",                                 color: "white", life: "1836" },
+  { month: 7, day: 19, rank: "lesser_feast", name: "Macrina of Caesarea, Monastic and Teacher",             color: "white", life: "379" },
+  { month: 7, day: 20, rank: "lesser_feast", name: "Elizabeth Cady Stanton, Amelia Bloomer, and Sojourner Truth, Social Reformers", color: "white" },
+  { month: 7, day: 21, rank: "lesser_feast", name: "Maria Skobtsova, Monastic and Martyr",                  color: "red",   life: "1945" },
+  { month: 7, day: 23, rank: "lesser_feast", name: "John Cassian, Monastic and Theologian",                 color: "white", life: "435" },
+  { month: 7, day: 24, rank: "lesser_feast", name: "Thomas à Kempis, Priest and Mystic",                    color: "white", life: "1471" },
+  { month: 7, day: 26, rank: "lesser_feast", name: "The Parents of the Blessed Virgin Mary",                color: "white" },
+  { month: 7, day: 27, rank: "lesser_feast", name: "William Reed Huntington, Priest",                       color: "white", life: "1909" },
+  { month: 7, day: 28, rank: "lesser_feast", name: "Johann Sebastian Bach, Composer",                       color: "white", life: "1750" },
+  { month: 7, day: 29, rank: "lesser_feast", name: "Mary and Martha of Bethany, or The Philadelphia Eleven", color: "white" },
+  { month: 7, day: 30, rank: "lesser_feast", name: "William Wilberforce, Social Reformer",                  color: "white", life: "1833" },
+  { month: 7, day: 31, rank: "lesser_feast", name: "Ignatius of Loyola, Priest and Spiritual Writer",       color: "white", life: "1556" },
 ];
 
 registerLesserFeasts(ENTRIES);
