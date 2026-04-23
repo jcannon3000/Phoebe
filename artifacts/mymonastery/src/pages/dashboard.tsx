@@ -2377,14 +2377,13 @@ export default function Dashboard() {
     const today = todayLocalKey();
 
     // Gate #1 — they've already prayed today. Don't pester. We also accept
-    // a fallback signal: every intercession in their moments list has a
-    // `todayPostCount > 0`, meaning the per-prayer check-ins landed even
-    // if POST /prayer-streak/log didn't.
-    const moments = momentsData?.moments ?? [];
-    const intercessions = moments.filter(m => m.templateType === "intercession");
-    const allIntercessionsPrayedToday =
-      intercessions.length > 0 && intercessions.every(m => (m.todayPostCount ?? 0) > 0);
-    if (popupLoggedToday || allIntercessionsPrayedToday) {
+    // Authoritative signal is the server's per-viewer loggedToday
+    // flag. Previous fallback checked todayPostCount on every
+    // intercession, but that's a GLOBAL count — it marked brand-new
+    // users as "already prayed" if they'd just joined a community
+    // whose intercessions had already been prayed by existing
+    // members. Dropped.
+    if (popupLoggedToday) {
       prayerInviteHandledThisSessionRef.current = true;
       return;
     }
@@ -2510,31 +2509,15 @@ export default function Dashboard() {
     staleTime: 60_000,
   });
   const prayerStreak = prayerStreakData?.streak ?? 0;
-  // Once the user has finished today's list, the PrayerListCard moves
-  // from the Today section down into Tomorrow — signalling "you're done
-  // for today; here's what's queued for next time" without nagging.
-  //
-  // We trust the server's `loggedToday` flag when it's true, but also fall
-  // back to a client-side signal: if every intercession the user sees has
-  // been prayed today (`todayPostCount > 0`), treat the list as done.
-  // That covers three real-world cases where `loggedToday` lags:
-  //   1. User advanced through all prayers but closed before the closing
-  //      slide fired POST /prayer-streak/log.
-  //   2. User's stored timezone is UTC but they live elsewhere — the
-  //      server-side "today" drifts half a day from their wall clock, so
-  //      the streak row shows yesterday's date.
-  //   3. The POST simply failed (network blip) — the per-prayer check-ins
-  //      still landed via handleDone's Promise.allSettled, so we can
-  //      infer completion from the moments list.
-  const allIntercessionsPrayedToday = useMemo(() => {
-    const intercessions = (momentsData?.moments ?? []).filter(
-      m => m.templateType === "intercession",
-    );
-    if (intercessions.length === 0) return false;
-    return intercessions.every(m => (m.todayPostCount ?? 0) > 0);
-  }, [momentsData]);
-  const prayerListDoneToday =
-    (prayerStreakData?.loggedToday ?? false) || allIntercessionsPrayedToday;
+  // "Have they prayed today?" is now strictly the server's per-viewer
+  // loggedToday flag. We used to fall back to "every intercession has
+  // todayPostCount > 0", but todayPostCount is the GLOBAL count of
+  // posts on that intercession — so a brand-new user who joined a
+  // community whose intercessions had already been prayed by other
+  // members landed on the dashboard with "Pray again" before they'd
+  // prayed a single time. Dropping the fallback. Edge case where the
+  // server flag lags is acceptable — one refresh cycle at worst.
+  const prayerListDoneToday = prayerStreakData?.loggedToday ?? false;
 
   // Pending-prayer count — how many prayers are in the user's slideshow
   // right now. Same computation the invite-popup uses, but memoized so the
