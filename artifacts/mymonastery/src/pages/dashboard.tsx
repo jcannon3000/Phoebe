@@ -8,6 +8,7 @@ import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
 import { ScrollStrip } from "@/components/ScrollStrip";
+import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 
 import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
@@ -3002,9 +3003,8 @@ export default function Dashboard() {
           <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
             A Place Set Apart for Connection
           </p>
-          <p style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
-            {format(new Date(), "EEEE, d MMMM")}
-          </p>
+          <LiturgicalDateHeader />
+
           {(() => {
             // Pill strip under the date: quick nav to prayer list, people,
             // and each community the viewer is in. Pills are link-only —
