@@ -95,6 +95,10 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       .map(r => r.rowUserId ?? r.emailUserId)
       .filter((id): id is number => typeof id === "number" && id !== sessionUserId),
   ));
+  console.log(
+    `[GET /prayer-requests] viewer=${sessionUserId} gardenIds=[${gardenIds.join(",")}] ` +
+    `hiddenAdminRows=${hiddenAdminRows.length} hiddenAdminIds=[${hiddenAdminIds.join(",")}]`,
+  );
 
   // Prayer requests stay visible until the owner explicitly releases,
   // answers, or deletes them. For other viewers, once `expiresAt` has
@@ -115,6 +119,10 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   const requests = await db.select().from(prayerRequestsTable)
     .where(and(...baseFilters))
     .orderBy(desc(prayerRequestsTable.createdAt));
+  console.log(
+    `[GET /prayer-requests] returning ${requests.length} requests ` +
+    `owners=[${requests.map(r => r.ownerId).join(",")}]`,
+  );
 
   // Viewer's timezone — used to scope "today" for their own amen counts so
   // the number in the UI matches the user's local day, not UTC.
