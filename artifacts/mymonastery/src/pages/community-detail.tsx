@@ -904,8 +904,19 @@ export default function CommunityDetailPage() {
     mutationFn: ({ memberId, role }: { memberId: number; role: "member" | "admin" | "hidden_admin" }) =>
       apiRequest("PATCH", `/api/groups/${slug}/members/${memberId}/role`, { role }),
     onSuccess: () => {
+      // Role changes (especially to/from hidden_admin) affect what
+      // shows up on community feeds: prayer requests, garden feed,
+      // member count. Nuke every cache that keys on group membership
+      // so the UI catches up immediately instead of waiting for a
+      // refresh. User flagged: "hidden admin prayer requests are
+      // still coming up" — root cause was the prayer-request query
+      // staying stale after a role flip.
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "prayer-activity"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
     },
     onError: (err: any) => {
       // apiRequest hands us the raw response text; when the server replies
