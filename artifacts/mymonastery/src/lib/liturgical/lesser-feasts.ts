@@ -59,6 +59,30 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 2, day: 26, rank: "lesser_feast", name: "Photini, The Samaritan Woman",                          color: "white", life: "c. 67" },
   { month: 2, day: 27, rank: "lesser_feast", name: "George Herbert, Priest and Poet",                       color: "white", life: "1633" },
   { month: 2, day: 28, rank: "lesser_feast", name: "Anna Julia Haywood Cooper, Educator",                   color: "white", life: "1964" },
+
+  // ── March ─────────────────────────────────────────────────
+  { month: 3, day: 1,  rank: "lesser_feast", name: "David of Wales, Bishop",                                color: "white", life: "c. 544" },
+  { month: 3, day: 2,  rank: "lesser_feast", name: "Chad of Lichfield, Bishop",                             color: "white", life: "672" },
+  { month: 3, day: 3,  rank: "lesser_feast", name: "John and Charles Wesley, Priests",                      color: "white", life: "1791, 1788" },
+  { month: 3, day: 7,  rank: "lesser_feast", name: "Perpetua and Felicity, Martyrs",                        color: "red",   life: "202" },
+  { month: 3, day: 9,  rank: "lesser_feast", name: "Gregory of Nyssa, Bishop and Theologian",               color: "white", life: "c. 394" },
+  { month: 3, day: 10, rank: "lesser_feast", name: "Harriet Ross Tubman, Social Reformer",                  color: "white", life: "1923" },
+  { month: 3, day: 12, rank: "lesser_feast", name: "Gregory the Great, Bishop and Theologian",              color: "white", life: "604" },
+  { month: 3, day: 13, rank: "lesser_feast", name: "James Theodore Holly, Bishop",                          color: "white", life: "1911" },
+  { month: 3, day: 15, rank: "lesser_feast", name: "Vincent de Paul, Priest, and Louise de Marillac, Vowed Religious, Workers of Charity", color: "white", life: "1660" },
+  { month: 3, day: 17, rank: "lesser_feast", name: "Patrick of Ireland, Bishop and Missionary",             color: "white", life: "461" },
+  { month: 3, day: 18, rank: "lesser_feast", name: "Cyril of Jerusalem, Bishop and Theologian",             color: "white", life: "386" },
+  { month: 3, day: 20, rank: "lesser_feast", name: "Cuthbert, Bishop",                                      color: "white", life: "687" },
+  { month: 3, day: 21, rank: "lesser_feast", name: "Thomas Ken, Bishop of Bath and Wells",                  color: "white", life: "1711" },
+  { month: 3, day: 22, rank: "lesser_feast", name: "James De Koven, Priest",                                color: "white", life: "1879" },
+  { month: 3, day: 23, rank: "lesser_feast", name: "Gregory the Illuminator, Bishop and Missionary",        color: "white", life: "c. 332" },
+  { month: 3, day: 24, rank: "lesser_feast", name: "Óscar Romero, Archbishop and Martyr, and the Martyrs of El Salvador", color: "red", life: "1980" },
+  { month: 3, day: 26, rank: "lesser_feast", name: "Harriet Monsell, Monastic",                             color: "white", life: "1883" },
+  { month: 3, day: 27, rank: "lesser_feast", name: "Charles Henry Brent, Bishop",                           color: "white", life: "1929" },
+  { month: 3, day: 28, rank: "lesser_feast", name: "James Solomon Russell, Priest",                         color: "white", life: "1935" },
+  { month: 3, day: 29, rank: "lesser_feast", name: "John Keble, Priest and Poet",                           color: "white", life: "1866" },
+  { month: 3, day: 30, rank: "lesser_feast", name: "Mary of Egypt, Monastic",                               color: "white", life: "c. 421" },
+  { month: 3, day: 31, rank: "lesser_feast", name: "John Donne, Priest and Poet",                           color: "white", life: "1631" },
 ];
 
 registerLesserFeasts(ENTRIES);
