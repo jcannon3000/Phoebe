@@ -1567,42 +1567,48 @@ function PrayerListCard({
               </span>
             )}
           </div>
-          <div className="mt-1.5 flex items-center justify-between gap-3">
-            <p
-              className="text-sm"
+          {/* Line 2: count / confirmation */}
+          <p
+            className="mt-1.5 text-sm"
+            style={{
+              color: "#8FAF96",
+              lineHeight: "20px",
+              margin: 0,
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            {prayedToday
+              ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
+              : subtitle}
+          </p>
+
+          {/* Line 3: full-width CTA.
+                - Not prayed → "Pray →"
+                - Prayed    → "Pray again →" (lighter tone so the
+                  card still reads 'done' but the option is there)
+              The outer Link already wraps the whole card so the
+              button itself isn't an extra tap target — it's a
+              visible affordance that mirrors the slideshow entry. */}
+          {!muted && (
+            <div
+              className="mt-3 w-full rounded-full text-center"
               style={{
-                color: "#8FAF96",
-                lineHeight: "20px",
-                margin: 0,
+                background: prayedToday ? "rgba(111,175,133,0.22)" : "#4A7A5B",
+                color: "#F0EDE6",
                 fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                letterSpacing: "-0.01em",
+                padding: "9px 16px",
+                border: prayedToday
+                  ? "1px solid rgba(111,175,133,0.35)"
+                  : "1px solid rgba(111,175,133,0.45)",
               }}
             >
-              {prayedToday
-                ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
-                : subtitle}
-            </p>
-            {/* Bottom-right CTA pill:
-                  - Not prayed → "Pray"
-                  - Prayed    → "Pray again" (same tap target, so a
-                    second pass through the list is one tap away).
-                The outer Link already makes the whole card tappable;
-                the pill is a visible affordance. */}
-            {!muted && (
-              <span
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold shrink-0"
-                style={{
-                  background: prayedToday ? "rgba(46,107,64,0.28)" : "#2D5E3F",
-                  color: "#F0EDE6",
-                  letterSpacing: "-0.01em",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  border: prayedToday ? "1px solid rgba(111,175,133,0.35)" : undefined,
-                }}
-              >
-                {prayedToday ? "Pray again" : "Pray"}
-                <span aria-hidden>→</span>
-              </span>
-            )}
-          </div>
+              {prayedToday ? "Pray again" : "Pray"}
+              <span aria-hidden> →</span>
+            </div>
+          )}
         </div>
       </motion.div>
     </Link>
