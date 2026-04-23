@@ -71,46 +71,41 @@ export function LiturgicalDateHeader({ date }: { date?: Date }) {
     secondary = day.name || null;
   }
 
-  // The detail modal makes sense whenever there's a feast or a
-  // commemoration to expand into — collect, description, life dates.
-  const hasDetail = isFeastHeader || !!day.commemoration;
-  void COLOR_HEX; // kept for the modal's color indicator
+  // Tap-to-open-detail is paused per user request — the header is
+  // display-only for now. The FeastDetailSheet + detailOpen state
+  // remain in the file so we can re-enable the tap later by flipping
+  // hasDetail back to `isFeastHeader || !!day.commemoration`.
+  const hasDetail = false;
+  void setDetailOpen;
+  void COLOR_HEX;
 
   return (
     <>
       <div className="min-w-0">
-        <button
-          type="button"
-          onClick={() => { if (hasDetail) setDetailOpen(true); }}
-          disabled={!hasDetail}
-          className="block text-left w-full"
-          style={{ cursor: hasDetail ? "pointer" : "default" }}
+        <p
+          style={{
+            color: "#F0EDE6",
+            fontSize: 22,
+            fontWeight: 600,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.2,
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
         >
+          {primary}
+        </p>
+        {secondary && (
           <p
+            className="mt-1"
             style={{
-              color: "#F0EDE6",
-              fontSize: 22,
-              fontWeight: 600,
-              letterSpacing: "-0.02em",
-              lineHeight: 1.2,
+              color: "rgba(200,212,192,0.6)",
+              fontSize: 13,
               fontFamily: "'Space Grotesk', sans-serif",
             }}
           >
-            {primary}
+            {secondary}
           </p>
-          {secondary && (
-            <p
-              className="mt-1"
-              style={{
-                color: "rgba(200,212,192,0.6)",
-                fontSize: 13,
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              {secondary}
-            </p>
-          )}
-        </button>
+        )}
       </div>
 
       {detailOpen && hasDetail && (
