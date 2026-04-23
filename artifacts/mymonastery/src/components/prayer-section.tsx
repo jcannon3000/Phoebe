@@ -9,6 +9,7 @@ interface PrayerRequest {
   body: string;
   ownerId: number;
   ownerName: string | null;
+  ownerAvatarUrl?: string | null;
   isOwnRequest: boolean;
   isAnswered: boolean;
   isAnonymous: boolean;
@@ -30,7 +31,7 @@ interface PrayerRequest {
 export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
   // maxVisible: 0 = show all, N = show N then "See all" button
   const queryClient = useQueryClient();
-  useAuth();
+  const { user } = useAuth();
   // Correspondent tag on prayer requests surfaces when the viewer shares
   // an active letter correspondence with the author.
 
@@ -232,19 +233,57 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
 
                       <div className="flex-1 p-4 pl-3 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            {/* Attribution */}
-                            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-1">
-                              From {request.ownerName ?? "someone"}
-                              {request.isCorrespondent && (
-                                <span className="ml-1.5 normal-case tracking-normal" style={{ color: "rgba(92,138,95,0.7)" }}>· 📮 Correspondent</span>
-                              )}
-                            </p>
-                            {/* Body */}
-                            <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6" }}>
-                              {request.body}
-                            </p>
-                          </div>
+                          {/* Left side: avatar + eyebrow + body, matching
+                              the Prayer List page's RequestCard layout so
+                              both surfaces read with the same visual
+                              rhythm. Own requests use the viewer's
+                              avatar; others use the request owner's.
+                              Anonymous requests fall back to an initials
+                              bubble with no avatar. */}
+                          {(() => {
+                            const isSelf = request.isOwnRequest;
+                            const displayName = request.isAnonymous
+                              ? "Anonymous"
+                              : isSelf ? (user?.name ?? "You") : (request.ownerName ?? "Someone");
+                            const displayAvatar = request.isAnonymous
+                              ? null
+                              : isSelf ? (user?.avatarUrl ?? null) : (request.ownerAvatarUrl ?? null);
+                            const initials = displayName
+                              .split(" ")
+                              .slice(0, 2)
+                              .map((w) => w[0]?.toUpperCase() ?? "")
+                              .join("");
+                            return (
+                              <div className="flex items-start gap-3 flex-1 min-w-0">
+                                {displayAvatar ? (
+                                  <img
+                                    src={displayAvatar}
+                                    alt={displayName}
+                                    className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
+                                    style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                                  />
+                                ) : (
+                                  <div
+                                    className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
+                                    style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                                  >
+                                    {initials}
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-1">
+                                    {isSelf ? "Your request" : `From ${displayName}`}
+                                    {request.isCorrespondent && (
+                                      <span className="ml-1.5 normal-case tracking-normal" style={{ color: "rgba(92,138,95,0.7)" }}>· 📮 Correspondent</span>
+                                    )}
+                                  </p>
+                                  <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6" }}>
+                                    {request.body}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           <div className="flex items-center gap-1.5 shrink-0 ml-2">
                             {/* Comment hint — shows word count for all requests */}
