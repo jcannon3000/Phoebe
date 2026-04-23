@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 // Communities are now available to all users
 import { Layout } from "@/components/layout";
+import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
@@ -414,26 +415,9 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
 
   if (isOverflowing) {
     return (
-      <div
-        className="mt-2 relative overflow-x-auto no-scrollbar"
-        style={{
-          maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            width: "max-content",
-            paddingRight: 40,
-          }}
-        >
-          {schedule.times.map((t, i) =>
-            renderPill(t, `${t.time}-${i}`),
-          )}
-        </div>
-      </div>
+      <ScrollStrip className="mt-2" contentStyle={{ gap: 6 }}>
+        {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
+      </ScrollStrip>
     );
   }
 
@@ -1382,8 +1366,7 @@ export default function CommunityDetailPage() {
         })()}
 
         {/* Tabs — user-scrollable horizontal strip */}
-        <div className="overflow-x-auto no-scrollbar relative mb-5" style={{ maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)" }}>
-          <div style={{ display: "flex", gap: 8, width: "max-content", paddingRight: 40 }}>
+        <ScrollStrip className="mb-5" contentStyle={{ gap: 8 }}>
             {tabs.map((t, i) => (
               <button
                 key={i}
@@ -1398,8 +1381,7 @@ export default function CommunityDetailPage() {
                 <span>{t.emoji}</span> {t.label}
               </button>
             ))}
-          </div>
-        </div>
+        </ScrollStrip>
 
         {/* ─── Home ─── Dashboard-style feed filtered to this community.
              A moment counts as "this community's" if either:

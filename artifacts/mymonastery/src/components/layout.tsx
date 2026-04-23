@@ -51,6 +51,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // the dashboard's filter; removed — the dashboard itself is the home
     // surface, and the Practices pill there is the canonical way to narrow.
     { emoji: "🙏🏽", label: "Prayer List", path: "/prayer-list" },
+    { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "👥", label: "People",      path: "/people",     count: fellowInviteCount },
     { divider: true },

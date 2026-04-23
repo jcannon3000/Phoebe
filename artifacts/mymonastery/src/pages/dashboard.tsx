@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
+import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
 
 import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
@@ -1436,26 +1437,9 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
   // scales with content so a long row doesn't whip past too fast.
   if (isOverflowing) {
     return (
-      <div
-        className="mt-2 relative overflow-x-auto no-scrollbar"
-        style={{
-          maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            width: "max-content",
-            paddingRight: 40,
-          }}
-        >
-          {schedule.times.map((t, i) =>
-            renderPill(t, `${t.time}-${i}`),
-          )}
-        </div>
-      </div>
+      <ScrollStrip className="mt-2" contentStyle={{ gap: 6 }}>
+        {schedule.times.map((t, i) => renderPill(t, `${t.time}-${i}`))}
+      </ScrollStrip>
     );
   }
 
@@ -3126,9 +3110,7 @@ export default function Dashboard() {
               }));
 
             const PILLS: Pill[] = [
-              { label: "🙏🏽 Practices",    filterKey: "practices", fg: "#6B9E6E", bg: "rgba(107,158,110,0.14)", border: "rgba(107,158,110,0.28)" },
               { label: "🕯️ Prayer List",  href: "/prayer-list",  fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
-              { label: "📖 BCP Prayers",  href: "/bcp/intercessions", fg: "#89A88C", bg: "rgba(137,168,140,0.14)", border: "rgba(137,168,140,0.28)" },
               { label: "👥 People",       href: "/people",       fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               ...communityPills,
             ];
@@ -3146,11 +3128,9 @@ export default function Dashboard() {
             }
 
             return (
-              <div className="mt-2 overflow-x-auto no-scrollbar relative" style={{ maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)" }}>
-                <div style={{ display: "flex", gap: 8, width: "max-content", paddingRight: 40 }}>
-                  {PILLS.map((p, i) => renderPill(p, i))}
-                </div>
-              </div>
+              <ScrollStrip className="mt-2" contentStyle={{ gap: 8 }}>
+                {PILLS.map((p, i) => renderPill(p, i))}
+              </ScrollStrip>
             );
           })()}
         </div>
