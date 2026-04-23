@@ -132,7 +132,10 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
 
   // Enrich with owner name, words, and per-user flags
   const enriched = await Promise.all(requests.map(async (r) => {
-    const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, r.ownerId));
+    const [owner] = await db
+      .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+      .from(usersTable)
+      .where(eq(usersTable.id, r.ownerId));
     const words = await db.select({
       authorName: prayerWordsTable.authorName,
       content: prayerWordsTable.content,
@@ -179,6 +182,9 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     return {
       ...r,
       ownerName: r.isAnonymous ? null : (owner?.name ?? null),
+      // Anonymous requests suppress the avatar too — the feed UI
+      // renders an initials bubble when avatarUrl is null.
+      ownerAvatarUrl: r.isAnonymous ? null : (owner?.avatarUrl ?? null),
       isOwnRequest,
       isCorrespondent: correspondentIds.has(r.ownerId),
       words: words.map(w => ({

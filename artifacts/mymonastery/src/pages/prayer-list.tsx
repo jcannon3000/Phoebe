@@ -48,6 +48,7 @@ type PrayerRequest = {
   body: string;
   ownerId: number;
   ownerName: string | null;
+  ownerAvatarUrl: string | null;
   isOwnRequest: boolean;
   isAnswered: boolean;
   isAnonymous: boolean;
@@ -313,16 +314,47 @@ function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail
   );
 }
 
-function RequestCard({ req, onOpen }: { req: PrayerRequest; onOpen: () => void }) {
+function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName }: {
+  req: PrayerRequest;
+  onOpen: () => void;
+  viewerAvatarUrl?: string | null;
+  viewerName?: string | null;
+}) {
   const daysLeft = req.expiresAt
     ? Math.max(0, Math.ceil((new Date(req.expiresAt).getTime() - Date.now()) / 86400000))
     : null;
+  // Authorship display: own requests use the viewer's avatar/name;
+  // others use the request's owner fields. Anonymous requests fall
+  // back to an anonymous bubble with no avatar and no name.
+  const displayName = req.isAnonymous
+    ? "Anonymous"
+    : (req.isOwnRequest ? (viewerName ?? "You") : (req.ownerName ?? "Someone"));
+  const displayAvatar = req.isAnonymous
+    ? null
+    : (req.isOwnRequest ? (viewerAvatarUrl ?? null) : req.ownerAvatarUrl);
   return (
     <BarCard onClick={onOpen} accent="#8FAF96">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center gap-3">
+        {/* Author avatar — mirrors PrayerForCard's recipient avatar
+            so both sections read with the same visual rhythm. */}
+        {displayAvatar ? (
+          <img
+            src={displayAvatar}
+            alt={displayName}
+            className="w-9 h-9 rounded-full object-cover shrink-0"
+            style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+          />
+        ) : (
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+            style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+          >
+            {initials(displayName)}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-            {req.isOwnRequest ? "Your request" : `From ${req.ownerName ?? "someone"}`}
+            {req.isOwnRequest ? "Your request" : `From ${displayName}`}
           </p>
           <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
             {req.body}
@@ -1028,7 +1060,13 @@ export default function PrayerListPage() {
             onFocus={setFocused}
           >
             {allRequests.map((r) => (
-              <RequestCard key={r.id} req={r} onOpen={() => setDetail({ kind: "request", id: r.id })} />
+              <RequestCard
+                key={r.id}
+                req={r}
+                viewerAvatarUrl={user.avatarUrl ?? null}
+                viewerName={user.name ?? null}
+                onOpen={() => setDetail({ kind: "request", id: r.id })}
+              />
             ))}
           </SectionShell>
         )}
