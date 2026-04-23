@@ -1376,29 +1376,51 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     memberUserIds,
   );
 
-  // Every active prayer request in the app surfaces on every
-  // community wall the viewer is a member of. Per user direction:
-  // "UNDER THE PRAYER LIST SECTION ANYONE'S PRAYER REQUEST SHOULD
-  // SHOW." We already gate access to this endpoint on community
-  // membership via requireMember above, so the only filter here is
-  // closedAt (answered / released). This makes the community wall
-  // the "all active prayers" surface regardless of who posted them
-  // or which community they picked.
-  void memberUserIds; // kept for the diagnostic log above
-  const rows = await db
-    .select({
-      id: prayerRequestsTable.id,
-      body: prayerRequestsTable.body,
-      ownerId: prayerRequestsTable.ownerId,
-      createdByName: prayerRequestsTable.createdByName,
-      isAnonymous: prayerRequestsTable.isAnonymous,
-      createdAt: prayerRequestsTable.createdAt,
-      ownerDisplayName: usersTable.name,
-    })
-    .from(prayerRequestsTable)
-    .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
-    .where(sql`${prayerRequestsTable.closedAt} IS NULL`)
-    .orderBy(desc(prayerRequestsTable.createdAt));
+  // Community wall is scoped to this community's own prayers.
+  // Two inclusion rules:
+  //   1. group_id = this group's id  (posted directly into this
+  //      community via the community compose bar).
+  //   2. group_id IS NULL AND owner is a joined member of this
+  //      community (posted to the generic prayer wall by a member
+  //      — we fan it into every community they belong to).
+  // Earlier this endpoint was widened to "all active requests
+  // across the app" — user flagged that the community dashboard
+  // was showing every user's prayer request, not just its own.
+  const rows = memberUserIds.length > 0
+    ? await db
+        .select({
+          id: prayerRequestsTable.id,
+          body: prayerRequestsTable.body,
+          ownerId: prayerRequestsTable.ownerId,
+          createdByName: prayerRequestsTable.createdByName,
+          isAnonymous: prayerRequestsTable.isAnonymous,
+          createdAt: prayerRequestsTable.createdAt,
+          ownerDisplayName: usersTable.name,
+        })
+        .from(prayerRequestsTable)
+        .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
+        .where(and(
+          sql`${prayerRequestsTable.closedAt} IS NULL`,
+          sql`(${prayerRequestsTable.groupId} = ${group.id} OR (${prayerRequestsTable.groupId} IS NULL AND ${prayerRequestsTable.ownerId} = ANY(${memberUserIds})))`,
+        ))
+        .orderBy(desc(prayerRequestsTable.createdAt))
+    : await db
+        .select({
+          id: prayerRequestsTable.id,
+          body: prayerRequestsTable.body,
+          ownerId: prayerRequestsTable.ownerId,
+          createdByName: prayerRequestsTable.createdByName,
+          isAnonymous: prayerRequestsTable.isAnonymous,
+          createdAt: prayerRequestsTable.createdAt,
+          ownerDisplayName: usersTable.name,
+        })
+        .from(prayerRequestsTable)
+        .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
+        .where(and(
+          sql`${prayerRequestsTable.closedAt} IS NULL`,
+          eq(prayerRequestsTable.groupId, group.id),
+        ))
+        .orderBy(desc(prayerRequestsTable.createdAt));
 
   // Word count is decorative on the community feed — reusable hook for
   // "how much prayer has this received?" once we implement it. For now,
