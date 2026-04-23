@@ -11,6 +11,20 @@ import { Bell, BellOff, Calendar as CalendarIcon, Search, Send } from "lucide-re
 // daily send time is set AND a timezone is resolved — that's the minimum
 // for bellSender.ts to actually fire. We surface each piece separately so
 // the admin can see why a bell isn't firing (e.g. enabled but no timezone).
+// Resolved from Google Calendar on the backend. "accepted" is the only
+// state that means the invite is actually live on their calendar — every
+// other non-"none" value means we need to follow up somehow (send an ICS,
+// nudge them to respond, etc).
+type InviteStatus =
+  | "none"           // no event on file, bell is off
+  | "ics-pending"    // bell is on but only an ICS was ever emailed
+  | "needsAction"    // event exists, user hasn't RSVPed
+  | "accepted"       // live on their calendar ✨
+  | "tentative"      // RSVPed "maybe"
+  | "declined"       // they said no
+  | "stale"          // event still attached but bell disabled
+  | "unknown";       // Google API hiccup — retryable
+
 type BellUser = {
   id: number;
   email: string;
@@ -19,6 +33,7 @@ type BellUser = {
   dailyBellTime: string | null;      // "HH:MM" in the user's TZ
   timezone: string | null;            // IANA, e.g. "America/New_York"
   hasCalendarEvent: boolean;          // Google Calendar event attached
+  inviteStatus: InviteStatus;         // resolved RSVP state from Google
   lastSentAt: string | null;          // ISO timestamp of the most recent send
   lastSentDate: string | null;        // YYYY-MM-DD in the user's TZ
   createdAt: string;
@@ -371,8 +386,85 @@ function SummaryTile({ label, value, highlight }: { label: string; value: number
   );
 }
 
+// ── Invite chip ────────────────────────────────────────────────────────────
+// The bell-status chip tells you whether the notification fired. This one
+// tells you whether the invite is actually on their Google calendar — the
+// state that controls whether they'll ever see the bell ring in the first
+// place. Kept deliberately compact so it sits next to the status chip
+// without cluttering the row.
+function inviteChipStyle(status: InviteStatus): {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+  title: string;
+} | null {
+  switch (status) {
+    case "accepted":
+      return {
+        label: "On calendar",
+        color: "#8FE5A6",
+        bg: "rgba(46,107,64,0.22)",
+        border: "rgba(46,107,64,0.5)",
+        title: "Invite accepted — event is live on their Google Calendar.",
+      };
+    case "tentative":
+      return {
+        label: "Tentative",
+        color: "#E5C98F",
+        bg: "rgba(140,110,50,0.15)",
+        border: "rgba(140,110,50,0.35)",
+        title: "Responded Maybe to the calendar invite.",
+      };
+    case "needsAction":
+      return {
+        label: "Invited",
+        color: "#E5C98F",
+        bg: "rgba(140,110,50,0.15)",
+        border: "rgba(140,110,50,0.35)",
+        title: "Invite delivered to their Google Calendar — awaiting RSVP.",
+      };
+    case "ics-pending":
+      return {
+        label: "ICS sent",
+        color: "#B5C9E5",
+        bg: "rgba(70,100,140,0.15)",
+        border: "rgba(70,100,140,0.35)",
+        title: "ICS invite emailed; no Google Calendar event attached yet.",
+      };
+    case "declined":
+      return {
+        label: "Declined",
+        color: "#E59393",
+        bg: "rgba(140,60,60,0.15)",
+        border: "rgba(140,60,60,0.35)",
+        title: "User declined the calendar invite.",
+      };
+    case "stale":
+      return {
+        label: "Stale event",
+        color: "rgba(200,160,120,0.7)",
+        bg: "rgba(120,80,40,0.12)",
+        border: "rgba(120,80,40,0.3)",
+        title: "Bell is off but a Google Calendar event is still attached.",
+      };
+    case "unknown":
+      return {
+        label: "Unknown",
+        color: "rgba(200,212,192,0.55)",
+        bg: "rgba(143,175,150,0.08)",
+        border: "rgba(143,175,150,0.22)",
+        title: "Couldn't reach Google Calendar to check invite status.",
+      };
+    case "none":
+    default:
+      return null;
+  }
+}
+
 function BellRow({ user: u }: { user: BellUser }) {
   const displayName = u.name || u.email.split("@")[0];
+  const inviteChip = inviteChipStyle(u.inviteStatus);
 
   // Derive a single status tag that captures the whole pipeline:
   //   active + fired today  → green pulse
@@ -472,8 +564,22 @@ function BellRow({ user: u }: { user: BellUser }) {
               {displayName}
             </p>
             {u.hasCalendarEvent && (
-              <span title="Google Calendar event attached">
-                <CalendarIcon size={12} style={{ color: "rgba(143,175,150,0.55)" }} />
+              <span
+                title={
+                  u.inviteStatus === "accepted"
+                    ? "Invite accepted — event live on their calendar"
+                    : "Google Calendar event attached"
+                }
+              >
+                <CalendarIcon
+                  size={12}
+                  style={{
+                    color:
+                      u.inviteStatus === "accepted"
+                        ? "#8FE5A6"
+                        : "rgba(143,175,150,0.55)",
+                  }}
+                />
               </span>
             )}
           </div>
@@ -500,6 +606,19 @@ function BellRow({ user: u }: { user: BellUser }) {
           >
             {status.label}
           </span>
+          {inviteChip && (
+            <span
+              title={inviteChip.title}
+              className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full whitespace-nowrap"
+              style={{
+                background: inviteChip.bg,
+                color: inviteChip.color,
+                border: `1px solid ${inviteChip.border}`,
+              }}
+            >
+              {inviteChip.label}
+            </span>
+          )}
           {!u.bellEnabled && <SendInviteButton userId={u.id} />}
         </div>
       </div>

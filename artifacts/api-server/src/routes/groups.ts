@@ -23,6 +23,7 @@ import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
+import { getCalendarEventAttendees } from "../lib/calendar";
 import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -2411,7 +2412,7 @@ router.get("/beta/bells", async (req, res): Promise<void> => {
         u.created_at DESC
     `);
 
-    const users = result.rows.map((r: Record<string, unknown>) => ({
+    const baseUsers = result.rows.map((r: Record<string, unknown>) => ({
       id: r["id"] as number,
       email: r["email"] as string,
       name: (r["name"] as string | null) ?? null,
@@ -2419,10 +2420,70 @@ router.get("/beta/bells", async (req, res): Promise<void> => {
       dailyBellTime: (r["daily_bell_time"] as string | null) ?? null,
       timezone: (r["timezone"] as string | null) ?? null,
       hasCalendarEvent: r["bell_calendar_event_id"] != null,
+      bellCalendarEventId: (r["bell_calendar_event_id"] as string | null) ?? null,
       lastSentAt: r["last_sent_at"] as string | null,
       lastSentDate: (r["last_sent_date"] as string | null) ?? null,
       createdAt: r["created_at"] as string,
     }));
+
+    // ── Resolve invite status per user by polling the scheduler calendar.
+    //
+    // We only query Google for users that actually have a stored event ID —
+    // there's no point asking about users who were never invited. Everyone
+    // else gets a synthesized status based on what we know locally:
+    //   - bellEnabled + no event ID          → "ics-pending" (ICS invite
+    //                                           emailed, user hasn't added
+    //                                           it to a calendar we can see)
+    //   - bellEnabled + event ID + RSVP      → accepted / tentative /
+    //                                           declined / needsAction
+    //   - bellEnabled + event ID + lookup    → "unknown" (Google 5xx / 404;
+    //     fails                                  don't misreport as declined)
+    //   - !bellEnabled + event ID            → "stale" (shouldn't really
+    //                                           happen, but surface it)
+    //   - !bellEnabled + no event ID         → "none"
+    //
+    // Parallelised across users. Each inner lookup is try/catch-wrapped so
+    // a single hung/misbehaving event can't tank the whole admin page —
+    // individual failures bubble up as "unknown" rather than rejecting.
+    type InviteStatus =
+      | "none"
+      | "ics-pending"
+      | "needsAction"
+      | "accepted"
+      | "tentative"
+      | "declined"
+      | "stale"
+      | "unknown";
+
+    const inviteStatuses = await Promise.all(
+      baseUsers.map(async (u): Promise<InviteStatus> => {
+        if (!u.bellCalendarEventId) {
+          return u.bellEnabled ? "ics-pending" : "none";
+        }
+        try {
+          const attendees = await getCalendarEventAttendees(u.id, u.bellCalendarEventId);
+          if (!attendees) return "unknown";
+          const me = attendees.find(a => a.email.toLowerCase() === u.email.toLowerCase());
+          const rsvp = me?.responseStatus;
+          if (rsvp === "accepted") return "accepted";
+          if (rsvp === "tentative") return "tentative";
+          if (rsvp === "declined") return "declined";
+          // No matching attendee row, or responseStatus missing —
+          // treat as an invite that hasn't been acted on.
+          return "needsAction";
+        } catch {
+          return "unknown";
+        }
+      }),
+    );
+
+    const users = baseUsers.map((u, i) => {
+      const inviteStatus = inviteStatuses[i] ?? "unknown";
+      // Strip the internal-only bellCalendarEventId so we don't leak raw
+      // Google event IDs to the admin client.
+      const { bellCalendarEventId: _drop, ...publicRow } = u;
+      return { ...publicRow, inviteStatus };
+    });
 
     // Summary counts for the header strip — computed server-side so the
     // frontend never has to iterate the full list just to render a chip.
