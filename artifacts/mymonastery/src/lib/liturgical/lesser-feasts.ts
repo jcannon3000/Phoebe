@@ -187,6 +187,28 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 8, day: 29, rank: "lesser_feast", name: "The Beheading of Saint John the Baptist",               color: "red" },
   { month: 8, day: 30, rank: "lesser_feast", name: "Margaret Ward, Margaret Clitherow, and Anne Line, Martyrs", color: "red", life: "1588, 1586, and 1601" },
   { month: 8, day: 31, rank: "lesser_feast", name: "Aidan of Lindisfarne, Bishop",                          color: "white", life: "651" },
+
+  // ── October ───────────────────────────────────────────────
+  { month: 10, day: 1,  rank: "lesser_feast", name: "Thérèse of Lisieux, Monastic",                         color: "white", life: "1897" },
+  { month: 10, day: 2,  rank: "lesser_feast", name: "Remigius of Rheims, Bishop",                           color: "white", life: "c. 530" },
+  { month: 10, day: 3,  rank: "lesser_feast", name: "John Raleigh Mott, Ecumenist and Missionary",          color: "white", life: "1955" },
+  { month: 10, day: 4,  rank: "lesser_feast", name: "Francis of Assisi, Friar",                             color: "white", life: "1226" },
+  { month: 10, day: 6,  rank: "lesser_feast", name: "William Tyndale, Priest",                              color: "white", life: "1536" },
+  { month: 10, day: 7,  rank: "lesser_feast", name: "Birgitta of Sweden, Mystic",                           color: "white", life: "1373" },
+  { month: 10, day: 9,  rank: "lesser_feast", name: "Robert Grosseteste, Bishop",                           color: "white", life: "1253" },
+  { month: 10, day: 10, rank: "lesser_feast", name: "Vida Dutton Scudder, Educator",                        color: "white", life: "1954" },
+  { month: 10, day: 11, rank: "lesser_feast", name: "Philip, Deacon and Evangelist",                        color: "white" },
+  { month: 10, day: 12, rank: "lesser_feast", name: "Edith Cavell, Nurse",                                  color: "white", life: "1915" },
+  { month: 10, day: 14, rank: "lesser_feast", name: "Samuel Isaac Joseph Schereschewsky, Bishop and Missionary", color: "white", life: "1906" },
+  { month: 10, day: 15, rank: "lesser_feast", name: "Teresa of Avila, Mystic and Monastic Reformer",        color: "white", life: "1582" },
+  { month: 10, day: 16, rank: "lesser_feast", name: "Hugh Latimer, Nicholas Ridley, and Thomas Cranmer",    color: "red",   life: "1555, 1556" },
+  { month: 10, day: 17, rank: "lesser_feast", name: "Ignatius of Antioch, Bishop and Martyr",               color: "red",   life: "c. 115" },
+  { month: 10, day: 19, rank: "lesser_feast", name: "Henry Martyn, Priest and Missionary",                  color: "white", life: "1812" },
+  { month: 10, day: 20, rank: "lesser_feast", name: "Cornelius the Centurion",                              color: "white" },
+  { month: 10, day: 25, rank: "lesser_feast", name: "Tabitha (Dorcas) of Joppa",                            color: "white" },
+  { month: 10, day: 26, rank: "lesser_feast", name: "Alfred, King",                                         color: "white", life: "899" },
+  { month: 10, day: 29, rank: "lesser_feast", name: "James Hannington, Bishop, and his Companions, Martyrs", color: "red",  life: "1885" },
+  { month: 10, day: 30, rank: "lesser_feast", name: "Maryam of Qidun, Monastic",                            color: "white", life: "fourth century" },
 ];
 
 registerLesserFeasts(ENTRIES);
