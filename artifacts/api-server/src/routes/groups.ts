@@ -1349,6 +1349,16 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
   // silently missed their own community — the user flagged
   // "Anabelle's prayer request should be showing up here" because
   // Anabelle's membership row didn't have a user_id set.
+  //
+  // We previously also required `joined_at IS NOT NULL`, which
+  // silently dropped anyone who was on the roster via invite but
+  // hadn't explicitly clicked through. That caused the community
+  // home to go completely empty even though several roster members
+  // had active prayer requests ("NOW IT IS NOT SHOWING ANY REQUEST").
+  // Being on the roster (having a row in group_members) is enough —
+  // if they were invited by an admin their prayers belong on the
+  // community feed. The session user themselves is guaranteed to
+  // count because requireMember() above already passed.
   const joinedMemberRows = await db
     .select({
       rowUserId: groupMembersTable.userId,
@@ -1359,20 +1369,22 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
       usersTable,
       sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
     )
-    .where(and(
-      eq(groupMembersTable.groupId, group.id),
-      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
-    ));
+    .where(eq(groupMembersTable.groupId, group.id));
   const memberUserIds = Array.from(
     new Set(
-      joinedMemberRows
-        .map(r => r.rowUserId ?? r.emailUserId)
-        .filter((id): id is number => typeof id === "number"),
+      [
+        // The viewer is always a member (requireMember passed) — include
+        // them explicitly so their own prayer requests always surface on
+        // any community home they visit, even if their group_members row
+        // happens to have a null user_id / unmatched email.
+        user.id,
+        ...joinedMemberRows.map(r => r.rowUserId ?? r.emailUserId),
+      ].filter((id): id is number => typeof id === "number"),
     ),
   );
   console.log(
     `[groups/${req.params.slug}/prayer-requests] resolved ${memberUserIds.length} member user IDs ` +
-    `from ${joinedMemberRows.length} joined_at-set rows:`,
+    `from ${joinedMemberRows.length} roster rows:`,
     memberUserIds,
   );
 
