@@ -317,6 +317,41 @@ export default function BellsAdminPage() {
   );
 }
 
+// ── Per-user invite button ──────────────────────────────────────────────────
+// Lets an admin send a 7 AM ICS invite to a single user who hasn't set up
+// a bell yet. Hits POST /api/beta/bells/send-invite/:userId.
+function SendInviteButton({ userId }: { userId: number }) {
+  const qc = useQueryClient();
+  const [sent, setSent] = useState<null | { ok: boolean; community: string | null }>(null);
+  const mut = useMutation<{ sent: boolean; community: string | null }>({
+    mutationFn: () => apiRequest("POST", `/api/beta/bells/send-invite/${userId}`),
+    onSuccess: (data) => {
+      setSent({ ok: !!data.sent, community: data.community ?? null });
+      qc.invalidateQueries({ queryKey: ["/api/beta/bells"] });
+    },
+  });
+
+  if (sent) {
+    return (
+      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full whitespace-nowrap" style={{ background: "rgba(46,107,64,0.2)", color: "#8FE5A6", border: "1px solid rgba(46,107,64,0.4)" }}>
+        ✓ Invite sent
+      </span>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => mut.mutate()}
+      disabled={mut.isPending}
+      className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full whitespace-nowrap transition-opacity disabled:opacity-50"
+      style={{ background: "rgba(46,107,64,0.12)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
+    >
+      <Send size={10} />
+      {mut.isPending ? "Sending…" : "Send invite"}
+    </button>
+  );
+}
+
 function SummaryTile({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
   return (
     <div
@@ -419,16 +454,19 @@ function BellRow({ user: u }: { user: BellUser }) {
             </span>
           </div>
         </div>
-        <span
-          className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full whitespace-nowrap shrink-0"
-          style={{
-            background: status.bg,
-            color: status.color,
-            border: `1px solid ${status.border}`,
-          }}
-        >
-          {status.label}
-        </span>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full whitespace-nowrap"
+            style={{
+              background: status.bg,
+              color: status.color,
+              border: `1px solid ${status.border}`,
+            }}
+          >
+            {status.label}
+          </span>
+          {!u.bellEnabled && <SendInviteButton userId={u.id} />}
+        </div>
       </div>
     </div>
   );
