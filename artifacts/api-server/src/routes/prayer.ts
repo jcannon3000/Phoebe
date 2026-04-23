@@ -1,52 +1,74 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, groupMembersTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, usersTable, userMutesTable, groupMembersTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 
 const router: IRouter = Router();
 
-// Get garden connection user IDs for a user (people who share a tradition or practice)
+// Garden = the set of people whose prayer requests the viewer can see
+// in their feed. Union of:
+//   1. Members of every group the viewer is also a member of.
+//   2. Active letter correspondents (mutual exchange — both sides
+//      have sent at least one letter).
+//
+// This intentionally does NOT include people who only share a
+// practice or an intercession with the viewer. User flagged: "if
+// two groups share a practice, we don't want members of the
+// opposite group to see the other's prayer requests." Practice-
+// based visibility created exactly that leak, so we dropped it.
 async function getGardenUserIds(userId: number): Promise<number[]> {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!user) return [];
+  const viewerEmail = user.email.toLowerCase();
 
-  // People from traditions
-  const rituals = await db.select().from(ritualsTable).where(
-    or(
-      eq(ritualsTable.ownerId, userId),
-      sql`${ritualsTable.participants} @> ${JSON.stringify([{ email: user.email }])}::jsonb`
-    )
-  );
-  const participantEmails = new Set<string>();
-  for (const r of rituals) {
-    const parts = (r.participants as { email: string }[]) ?? [];
-    for (const p of parts) {
-      if (p.email && p.email !== user.email) participantEmails.add(p.email);
+  // Step 1 — groups the viewer belongs to. Match by userId primarily,
+  // fall back to email for legacy rows where user_id was never linked.
+  const myMemberships = await db
+    .select({ groupId: groupMembersTable.groupId })
+    .from(groupMembersTable)
+    .where(
+      sql`(${groupMembersTable.userId} = ${userId} OR LOWER(${groupMembersTable.email}) = ${viewerEmail})
+          AND ${groupMembersTable.joinedAt} IS NOT NULL`,
+    );
+  const myGroupIds = Array.from(new Set(myMemberships.map(r => r.groupId)));
+
+  const groupPeerIds = new Set<number>();
+  if (myGroupIds.length > 0) {
+    // Every other joined member of every group the viewer is in.
+    const peerRows = await db
+      .select({
+        rowUserId: groupMembersTable.userId,
+        emailUserId: usersTable.id,
+      })
+      .from(groupMembersTable)
+      .leftJoin(
+        usersTable,
+        sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
+      )
+      .where(
+        sql`${groupMembersTable.groupId} IN (${sql.join(
+          myGroupIds.map(id => sql`${id}`),
+          sql`, `,
+        )})
+        AND ${groupMembersTable.joinedAt} IS NOT NULL`,
+      );
+    for (const row of peerRows) {
+      const id = row.rowUserId ?? row.emailUserId;
+      if (typeof id === "number" && id !== userId) groupPeerIds.add(id);
     }
-    // Also add owner's email if not self
-    const ownerRow = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, r.ownerId)).limit(1);
-    if (ownerRow[0]?.email && ownerRow[0].email !== user.email) participantEmails.add(ownerRow[0].email);
   }
 
-  // People from practices
-  const myTokens = await db.select({ momentId: momentUserTokensTable.momentId })
-    .from(momentUserTokensTable).where(eq(momentUserTokensTable.email, user.email));
-  if (myTokens.length > 0) {
-    const momentIds = myTokens.map(t => t.momentId);
-    const otherTokens = await db.select({ email: momentUserTokensTable.email })
-      .from(momentUserTokensTable).where(inArray(momentUserTokensTable.momentId, momentIds));
-    for (const t of otherTokens) {
-      if (t.email && t.email !== user.email) participantEmails.add(t.email);
-    }
+  // Step 2 — letter correspondents (mutual exchange). Same rule used
+  // for the prayer-feed "correspondent" priority flag. Already scoped
+  // to active correspondences with ≥1 letter from each side.
+  const correspondentIds = await getCorrespondentUserIds(userId);
+  for (const id of correspondentIds) {
+    if (id !== userId) groupPeerIds.add(id);
   }
 
-  if (participantEmails.size === 0) return [];
-  const gardenUsers = await db.select({ id: usersTable.id })
-    .from(usersTable)
-    .where(inArray(usersTable.email, Array.from(participantEmails)));
-  return gardenUsers.map(u => u.id);
+  return Array.from(groupPeerIds);
 }
 
 // GET /api/prayer-requests — list active prayer requests visible to me (mine + garden)

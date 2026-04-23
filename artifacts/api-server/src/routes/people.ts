@@ -32,8 +32,18 @@ router.get("/people", async (req, res): Promise<void> => {
 
   const { user: owner, rituals } = await getUserRituals(ownerId);
   const ownerEmail = owner?.email ?? "";
+  const ownerEmailLower = ownerEmail.toLowerCase();
 
-  // Map email -> ritual info
+  // Garden = groups + correspondents. Practices and traditions no
+  // longer pull people into the garden on their own — a shared
+  // multi-group intercession shouldn't make Group B's members
+  // visible to Group A. Per user direction: "who shows up in your
+  // garden is just groups and letters."
+  //
+  // We still derive sharedPractices / sharedTraditions later for
+  // the people who DID make the cut via groups or letters, so their
+  // cards show context. But the set of people here is strictly
+  // groups ∪ correspondents.
   const map = new Map<string, {
     name: string;
     email: string;
@@ -42,51 +52,84 @@ router.get("/people", async (req, res): Promise<void> => {
     sharedRitualIds: number[];
   }>();
 
+  // Step 1 — everyone else who shares a group with the owner.
+  const myGroupIdRows = await db
+    .select({ groupId: groupMembersTable.groupId })
+    .from(groupMembersTable)
+    .where(
+      sql`(${groupMembersTable.userId} = ${ownerId} OR LOWER(${groupMembersTable.email}) = ${ownerEmailLower})
+          AND ${groupMembersTable.joinedAt} IS NOT NULL`,
+    );
+  const myGroupIds = Array.from(new Set(myGroupIdRows.map(r => r.groupId)));
+  if (myGroupIds.length > 0) {
+    const peerRows = await db
+      .select({
+        email: groupMembersTable.email,
+        name: groupMembersTable.name,
+        joinedAt: groupMembersTable.joinedAt,
+      })
+      .from(groupMembersTable)
+      .where(
+        sql`${groupMembersTable.groupId} IN (${sql.join(
+          myGroupIds.map(id => sql`${id}`),
+          sql`, `,
+        )})
+        AND ${groupMembersTable.joinedAt} IS NOT NULL`,
+      );
+    for (const row of peerRows) {
+      if (!row.email) continue;
+      const emailLower = row.email.toLowerCase();
+      if (emailLower === ownerEmailLower) continue;
+      if (map.has(emailLower)) continue;
+      map.set(emailLower, {
+        name: row.name || row.email,
+        email: row.email,
+        sharedCircleCount: 0,
+        firstCircleDate: row.joinedAt ?? new Date(),
+        sharedRitualIds: [],
+      });
+    }
+  }
+
+  // Step 2 — active letter correspondents (mutual exchange). Include
+  // them even if they're not in any shared group, because an ongoing
+  // letter correspondence is an explicit relationship.
+  const correspondentUserIds = await getCorrespondentUserIds(ownerId);
+  if (correspondentUserIds.length > 0) {
+    const correspondentRows = await db
+      .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
+      .from(usersTable)
+      .where(inArray(usersTable.id, correspondentUserIds));
+    for (const row of correspondentRows) {
+      const emailLower = row.email.toLowerCase();
+      if (emailLower === ownerEmailLower) continue;
+      if (map.has(emailLower)) continue;
+      map.set(emailLower, {
+        name: row.name || row.email,
+        email: row.email,
+        sharedCircleCount: 0,
+        firstCircleDate: new Date(),
+        sharedRitualIds: [],
+      });
+    }
+  }
+
+  // Traditions (ritual circles) CONTRIBUTE CONTEXT ONLY — we no
+  // longer add people to the garden via traditions, but if a person
+  // is already in the garden (via groups or letters) we still want
+  // their sharedRitualIds populated so the card can show
+  // "🤝🏽 <tradition name>" as context.
   for (const ritual of rituals) {
     const participants = (ritual.participants as Participant[]) ?? [];
     for (const p of participants) {
       if (!p.email || p.email === ownerEmail) continue;
-      if (map.has(p.email)) {
-        const existing = map.get(p.email)!;
-        existing.sharedCircleCount++;
-        existing.sharedRitualIds.push(ritual.id);
-        if (ritual.createdAt < existing.firstCircleDate) {
-          existing.firstCircleDate = ritual.createdAt;
-        }
-      } else {
-        map.set(p.email, {
-          name: p.name,
-          email: p.email,
-          sharedCircleCount: 1,
-          firstCircleDate: ritual.createdAt,
-          sharedRitualIds: [ritual.id],
-        });
-      }
-    }
-  }
-
-  // Owner's shared moment IDs
-  const ownerTokenRows = await db.select({ momentId: momentUserTokensTable.momentId })
-    .from(momentUserTokensTable)
-    .where(eq(momentUserTokensTable.email, ownerEmail));
-  const ownerMomentIds = ownerTokenRows.map(t => t.momentId);
-
-  // Add practice-only people (not already in the map from rituals)
-  if (ownerMomentIds.length > 0) {
-    const practiceTokenRows = await db
-      .select({ email: momentUserTokensTable.email, name: momentUserTokensTable.name })
-      .from(momentUserTokensTable)
-      .where(inArray(momentUserTokensTable.momentId, ownerMomentIds));
-    for (const row of practiceTokenRows) {
-      if (!row.email || row.email === ownerEmail) continue;
-      if (!map.has(row.email)) {
-        map.set(row.email, {
-          name: row.name || row.email,
-          email: row.email,
-          sharedCircleCount: 0,
-          firstCircleDate: new Date(),
-          sharedRitualIds: [],
-        });
+      const emailLower = p.email.toLowerCase();
+      const entry = map.get(emailLower);
+      if (!entry) continue;
+      entry.sharedCircleCount++;
+      entry.sharedRitualIds.push(ritual.id);
+      if (ritual.createdAt < entry.firstCircleDate) {
+        entry.firstCircleDate = ritual.createdAt;
       }
     }
   }
