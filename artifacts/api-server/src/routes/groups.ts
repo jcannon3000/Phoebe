@@ -1467,18 +1467,19 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     memberUserIds,
   );
 
-  // Hidden admins are invisible observers — their prayer requests
-  // must never surface to other members. User flagged:
-  // "If I am a hidden admin it should not be showing up there. Make
-  // sure the hidden admins prayers do not show up on people in the
-  // groups prayer slide shows or elsewhere."
+  // Hidden-admin filter — SCOPED TO THIS COMMUNITY.
   //
-  // Collect user IDs of anyone who holds role=hidden_admin in ANY
-  // group (not just this one). Simpler rule: once you're a hidden
-  // admin somewhere, your prayers are invisible to everyone but
-  // yourself across every community-scoped surface. The viewer
-  // themselves is always exempt so they still see their own prayer
-  // on their own home dashboard / personal prayer list.
+  // Earlier rule was global: once hidden_admin in ANY group, your
+  // prayers were hidden from EVERY community feed. That's wrong —
+  // a user who is a hidden_admin in Group A but a regular admin
+  // (or regular member) in Group B should still have their prayer
+  // requests visible in Group B. User flagged: "If someone is just
+  // an admin, we want their prayer request to show. Just not if
+  // they are a hidden admin."
+  //
+  // New rule: only hide prayers from owners whose role IN THIS
+  // specific community is hidden_admin. Cross-community hidden
+  // status doesn't leak.
   const hiddenAdminRows = await db
     .select({
       rowUserId: groupMembersTable.userId,
@@ -1489,17 +1490,20 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
       usersTable,
       sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
     )
-    .where(eq(groupMembersTable.role, "hidden_admin"));
+    .where(and(
+      eq(groupMembersTable.groupId, group.id),
+      eq(groupMembersTable.role, "hidden_admin"),
+    ));
   const hiddenAdminUserIds = new Set(
     hiddenAdminRows
       .map(r => r.rowUserId ?? r.emailUserId)
       .filter((id): id is number => typeof id === "number"),
   );
-  // NOTE: no viewer exemption here. On a *community* feed, a hidden
-  // admin's own prayer must not appear — not even to themselves — or
-  // the "hidden" label is a lie. If viewer is a hidden admin they can
-  // still see their own prayer on their personal Prayer List
-  // (/api/prayer-requests handles that exemption separately).
+  // NOTE: no viewer exemption here. On THIS community's feed, a
+  // hidden admin's own prayer must not appear — not even to
+  // themselves — or the "hidden" label is a lie. If the viewer is
+  // a hidden admin they still see their own prayer on their
+  // personal /api/prayer-requests feed (handled separately there).
 
   // Community wall is scoped to this community's members.
   // Two inclusion rules:
