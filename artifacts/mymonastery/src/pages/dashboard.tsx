@@ -1669,7 +1669,7 @@ function PrayerListCard({
               visible affordance that mirrors the slideshow entry. */}
           {!muted && (
             <div
-              className="mt-3 w-full rounded-full text-center"
+              className="mt-3 w-full rounded-xl text-center"
               style={{
                 background: prayedToday ? "rgba(111,175,133,0.22)" : "#4A7A5B",
                 color: "#F0EDE6",
