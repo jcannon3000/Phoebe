@@ -1643,9 +1643,20 @@ function PrayerListCard({
               </p>
             </div>
             {streak > 0 && (
+              // Pill style mirrors the View list chip above so the
+              // right column looks consistent across lines 1–3.
+              // Nudged ~12px left of the right edge so the streak
+              // reads as part of the card's rhythm rather than
+              // fighting the CTA pill's rounded corner below.
               <span
-                className="text-[11px] font-semibold shrink-0 tabular-nums"
-                style={{ color: "#E8A94C", fontFamily: "'Space Grotesk', sans-serif" }}
+                className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tabular-nums"
+                style={{
+                  color: "#E8A94C",
+                  background: "rgba(232,169,76,0.10)",
+                  border: "1px solid rgba(232,169,76,0.30)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  marginRight: 12,
+                }}
                 aria-label={`${streak}-day prayer streak`}
               >
                 🔥 {streak}

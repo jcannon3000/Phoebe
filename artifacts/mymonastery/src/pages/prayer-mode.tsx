@@ -29,7 +29,7 @@ type Moment = {
   intercessionTopic?: string | null;
   intercessionFullText?: string | null;
   intercessionSource?: string | null;
-  members: Array<{ name: string; email: string }>;
+  members: Array<{ name: string; email: string; avatarUrl?: string | null }>;
   todayPostCount: number;
   // Rolling 7-day distinct-prayers count (inclusive of today). Surfaced
   // under each intercession slide so the viewer sees that others have
@@ -94,6 +94,11 @@ interface PrayerSlide {
   // under the prayer text ("3 people have prayed this this week") so the
   // viewer feels part of a rhythm even on low-activity days.
   weekPrayCount?: number;
+  // Up to 7 faces of people in this intercession's community,
+  // stacked above the "have prayed" line. Selection prefers
+  // members with avatars when the candidate pool is larger than
+  // the visible slot count.
+  communityFaces?: Array<{ name: string; email: string; avatarUrl: string | null }>;
 }
 
 // One row from GET /api/groups/me/circle-intentions. Flattened across every
@@ -574,16 +579,57 @@ function SlideContent({
       )}
 
       {slide.kind === "intercession" && (
-        <p
-          className="text-[12px] italic"
-          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
-        >
-          {slide.weekPrayCount && slide.weekPrayCount > 0
-            ? slide.weekPrayCount === 1
-              ? "1 person has prayed this this week."
-              : `${slide.weekPrayCount} people have prayed this this week.`
-            : "Your community is holding this."}
-        </p>
+        <>
+          {slide.communityFaces && slide.communityFaces.length > 0 && (
+            <div
+              className="flex items-center -space-x-2"
+              style={{ marginTop: "-2px" }}
+            >
+              {slide.communityFaces.map((f) => (
+                <div
+                  key={f.email}
+                  title={f.name}
+                  className="rounded-full overflow-hidden shrink-0"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    border: "2px solid #091A10",
+                    background: "#1A4A2E",
+                  }}
+                >
+                  {f.avatarUrl ? (
+                    <img
+                      src={f.avatarUrl}
+                      alt={f.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center text-[10px] font-semibold"
+                      style={{ color: "#A8C5A0" }}
+                    >
+                      {f.name
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((w) => w[0]?.toUpperCase() ?? "")
+                        .join("")}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <p
+            className="text-[12px] italic"
+            style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+          >
+            {slide.weekPrayCount && slide.weekPrayCount > 0
+              ? slide.weekPrayCount === 1
+                ? "1 person has prayed this this week."
+                : `${slide.weekPrayCount} people have prayed this this week.`
+              : "Your community is holding this."}
+          </p>
+        </>
       )}
 
       {/* Circle intention — attribute to the circle by name. Different voice
@@ -898,6 +944,38 @@ export default function PrayerModePage() {
             .map((p) => p.name || p.email.split("@")[0])
             .slice(0, 3)
             .join(", ");
+      // Face stack: up to 7 members of this intercession's
+      // community. Selection rule:
+      //   - If candidates ≤ 7: include everyone (avatars or not).
+      //   - If candidates > 7: prefer members with avatars, drop
+      //     initials-only first. If there aren't enough with
+      //     avatars to fill 7, backfill with initials-only.
+      // Viewer is excluded because the slide is about community —
+      // the viewer's presence is implied by their being here.
+      const otherMembers = m.members.filter(p => p.email !== user?.email);
+      const MAX_FACES = 7;
+      let communityFaces: Array<{ name: string; email: string; avatarUrl: string | null }> = [];
+      if (otherMembers.length > 0) {
+        if (otherMembers.length <= MAX_FACES) {
+          communityFaces = otherMembers.map(p => ({
+            name: p.name || p.email.split("@")[0],
+            email: p.email,
+            avatarUrl: p.avatarUrl ?? null,
+          }));
+        } else {
+          const withAvatar = otherMembers.filter(p => !!p.avatarUrl);
+          const withoutAvatar = otherMembers.filter(p => !p.avatarUrl);
+          const picked = [
+            ...withAvatar.slice(0, MAX_FACES),
+            ...withoutAvatar.slice(0, Math.max(0, MAX_FACES - withAvatar.length)),
+          ];
+          communityFaces = picked.map(p => ({
+            name: p.name || p.email.split("@")[0],
+            email: p.email,
+            avatarUrl: p.avatarUrl ?? null,
+          }));
+        }
+      }
       return {
         kind: "intercession" as const,
         text: title,
@@ -907,6 +985,7 @@ export default function PrayerModePage() {
         weekPrayCount: m.weekPostCount ?? 0,
         momentToken: m.momentToken,
         myUserToken: m.myUserToken,
+        communityFaces,
       };
     }),
     // Circle intentions — one slide per active intention in every prayer
