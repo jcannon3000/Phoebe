@@ -48,75 +48,65 @@ export function LiturgicalDateHeader({ date }: { date?: Date }) {
   const isFeastHeader =
     day.rank === "principal_feast" || day.rank === "holy_day" || day.rank === "sunday";
 
-  const primary = isFeastHeader ? day.name : dateLine;
-  const secondary = isFeastHeader ? dateLong : day.commemoration ? null : day.name;
-  const commemorationLine = !isFeastHeader && day.commemoration ? day.commemoration : null;
+  // Lesser Feasts now render as a primary header too, prefixed with
+  // "Feast of " so the commemoration reads as the headline. The date
+  // sinks to the muted subtitle, same slot as the other tiers. Before
+  // this, Lesser Feasts were an italic-serif second line under the
+  // date — user flagged that treatment as too quiet and asked to
+  // promote the commemoration + drop the color accent line.
+  let primary: string;
+  let secondary: string | null;
+  if (isFeastHeader) {
+    primary = day.name;
+    secondary = dateLong;
+  } else if (day.commemoration) {
+    primary = `Feast of ${day.commemoration}`;
+    secondary = dateLong;
+  } else {
+    primary = dateLine;
+    secondary = day.name || null;
+  }
 
   // The detail modal makes sense whenever there's a feast or a
   // commemoration to expand into — collect, description, life dates.
-  const hasDetail =
-    isFeastHeader || !!day.commemoration;
-
-  const dotColor = COLOR_HEX[day.color];
+  const hasDetail = isFeastHeader || !!day.commemoration;
+  void COLOR_HEX; // kept for the modal's color indicator
 
   return (
     <>
-      <div className="flex items-start gap-3">
-        {/* Liturgical color accent — a 3px vertical line to the left of
-            the header text. Subtle, not a banner. */}
-        <div
-          aria-hidden
-          style={{
-            width: 3,
-            alignSelf: "stretch",
-            marginTop: 6,
-            marginBottom: 6,
-            borderRadius: 2,
-            background: dotColor,
-            opacity: 0.85,
-          }}
-        />
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => { if (hasDetail) setDetailOpen(true); }}
-            disabled={!hasDetail}
-            className="block text-left w-full"
-            style={{ cursor: hasDetail ? "pointer" : "default" }}
+      <div className="min-w-0">
+        <button
+          type="button"
+          onClick={() => { if (hasDetail) setDetailOpen(true); }}
+          disabled={!hasDetail}
+          className="block text-left w-full"
+          style={{ cursor: hasDetail ? "pointer" : "default" }}
+        >
+          <p
+            style={{
+              color: "#F0EDE6",
+              fontSize: 22,
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.2,
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
           >
+            {primary}
+          </p>
+          {secondary && (
             <p
+              className="mt-1"
               style={{
-                color: "#F0EDE6",
-                fontSize: 22,
-                fontWeight: 600,
-                letterSpacing: "-0.02em",
-                lineHeight: 1.2,
+                color: "rgba(200,212,192,0.6)",
+                fontSize: 13,
+                fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
-              {primary}
+              {secondary}
             </p>
-            {secondary && (
-              <p
-                className="mt-1"
-                style={{ color: "rgba(200,212,192,0.6)", fontSize: 13 }}
-              >
-                {secondary}
-              </p>
-            )}
-            {commemorationLine && (
-              <p
-                className="mt-1 italic"
-                style={{
-                  color: "rgba(200,212,192,0.75)",
-                  fontFamily: "Playfair Display, Georgia, serif",
-                  fontSize: 13,
-                }}
-              >
-                {commemorationLine}
-              </p>
-            )}
-          </button>
-        </div>
+          )}
+        </button>
       </div>
 
       {detailOpen && hasDetail && (
