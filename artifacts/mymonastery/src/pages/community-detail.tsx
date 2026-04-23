@@ -417,8 +417,8 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
       <div
         className="mt-2 relative overflow-x-auto no-scrollbar"
         style={{
-          maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
-          WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
+          maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
         }}
       >
         <div
@@ -426,6 +426,7 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
             display: "flex",
             gap: 6,
             width: "max-content",
+            paddingRight: 40,
           }}
         >
           {schedule.times.map((t, i) =>
@@ -619,8 +620,8 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
         style={{
           background: "rgba(46,107,64,0.08)",
           border: "1px solid rgba(46,107,64,0.2)",
-          maskImage: ticker ? "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" : undefined,
-          WebkitMaskImage: ticker ? "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" : undefined,
+          maskImage: ticker ? "linear-gradient(to right, black 0%, black 88%, transparent 100%)" : undefined,
+          WebkitMaskImage: ticker ? "linear-gradient(to right, black 0%, black 88%, transparent 100%)" : undefined,
         }}
       >
         <div
@@ -633,7 +634,7 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
                   gap: 10,
                   width: "max-content",
                   paddingLeft: 12,
-                  paddingRight: 12,
+                  paddingRight: 40,
                 }
               : {
                   display: "flex",
@@ -1381,8 +1382,8 @@ export default function CommunityDetailPage() {
         })()}
 
         {/* Tabs — user-scrollable horizontal strip */}
-        <div className="overflow-x-auto no-scrollbar relative mb-5" style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" }}>
-          <div style={{ display: "flex", gap: 8, width: "max-content" }}>
+        <div className="overflow-x-auto no-scrollbar relative mb-5" style={{ maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)" }}>
+          <div style={{ display: "flex", gap: 8, width: "max-content", paddingRight: 40 }}>
             {tabs.map((t, i) => (
               <button
                 key={i}

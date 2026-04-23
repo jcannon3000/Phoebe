@@ -1439,8 +1439,8 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
       <div
         className="mt-2 relative overflow-x-auto no-scrollbar"
         style={{
-          maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
-          WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
+          maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
         }}
       >
         <div
@@ -1448,6 +1448,7 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
             display: "flex",
             gap: 6,
             width: "max-content",
+            paddingRight: 40,
           }}
         >
           {schedule.times.map((t, i) =>
@@ -3145,8 +3146,8 @@ export default function Dashboard() {
             }
 
             return (
-              <div className="mt-2 overflow-x-auto no-scrollbar relative" style={{ maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)" }}>
-                <div style={{ display: "flex", gap: 8, width: "max-content" }}>
+              <div className="mt-2 overflow-x-auto no-scrollbar relative" style={{ maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)" }}>
+                <div style={{ display: "flex", gap: 8, width: "max-content", paddingRight: 40 }}>
                   {PILLS.map((p, i) => renderPill(p, i))}
                 </div>
               </div>

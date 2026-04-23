@@ -304,8 +304,8 @@ function PrayedThisWeekRow({
         style={
           overflows
             ? {
-                maskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
-                WebkitMaskImage: "linear-gradient(to right, transparent, black 4%, black 96%, transparent)",
+                maskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
+                WebkitMaskImage: "linear-gradient(to right, black 0%, black 88%, transparent 100%)",
               }
             : undefined
         }
@@ -317,6 +317,7 @@ function PrayedThisWeekRow({
             gap: 8,
             flexWrap: "nowrap",
             width: overflows ? "max-content" : undefined,
+            paddingRight: overflows ? 40 : undefined,
           }}
         >
           {rendered.map((p, i) => (
