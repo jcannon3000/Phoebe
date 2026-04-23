@@ -36,7 +36,15 @@ async function getGardenUserIds(userId: number): Promise<number[]> {
 
   const groupPeerIds = new Set<number>();
   if (myGroupIds.length > 0) {
-    // Every other joined member of every group the viewer is in.
+    // Every other joined member of every group the viewer is in,
+    // EXCLUDING hidden admins OF THAT SPECIFIC GROUP. A user who's
+    // a hidden admin in Group A but a regular admin or member in
+    // Group B is still visible via Group B. The old rule
+    // "hidden_admin in any group → hidden everywhere" meant that a
+    // regular admin on one community was silently filtered out of
+    // their community's feed just because they were observing
+    // another community privately. User asked: "If someone is just
+    // an admin, we want their prayer request to show."
     const peerRows = await db
       .select({
         rowUserId: groupMembersTable.userId,
@@ -52,7 +60,8 @@ async function getGardenUserIds(userId: number): Promise<number[]> {
           myGroupIds.map(id => sql`${id}`),
           sql`, `,
         )})
-        AND ${groupMembersTable.joinedAt} IS NOT NULL`,
+        AND ${groupMembersTable.joinedAt} IS NOT NULL
+        AND ${groupMembersTable.role} <> 'hidden_admin'`,
       );
     for (const row of peerRows) {
       const id = row.rowUserId ?? row.emailUserId;
@@ -66,6 +75,37 @@ async function getGardenUserIds(userId: number): Promise<number[]> {
   const correspondentIds = await getCorrespondentUserIds(userId);
   for (const id of correspondentIds) {
     if (id !== userId) groupPeerIds.add(id);
+  }
+
+  // Step 3 — veto: if the viewer is a member of ANY group where
+  // candidate X is hidden_admin, drop X from the garden entirely.
+  // Rule: "for members of the group he is a hidden admin of, we
+  // don't want his requests shown anywhere" — applies even when
+  // the relationship is via correspondence, because the hidden
+  // status is the authoritative signal and a shared community is
+  // a strong trust context.
+  if (myGroupIds.length > 0 && groupPeerIds.size > 0) {
+    const vetoRows = await db
+      .select({
+        rowUserId: groupMembersTable.userId,
+        emailUserId: usersTable.id,
+      })
+      .from(groupMembersTable)
+      .leftJoin(
+        usersTable,
+        sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
+      )
+      .where(
+        sql`${groupMembersTable.groupId} IN (${sql.join(
+          myGroupIds.map(id => sql`${id}`),
+          sql`, `,
+        )})
+        AND ${groupMembersTable.role} = 'hidden_admin'`,
+      );
+    for (const row of vetoRows) {
+      const id = row.rowUserId ?? row.emailUserId;
+      if (typeof id === "number") groupPeerIds.delete(id);
+    }
   }
 
   return Array.from(groupPeerIds);
@@ -94,32 +134,16 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
 
   const now = new Date();
 
-  // Hidden admins are invisible community observers. Their prayer
-  // requests must not leak to other users through the garden feed
-  // (which powers the /prayer-mode slideshow on the home dashboard).
-  // User explicitly asked: "do not show up on people in the groups
-  // prayer slide shows or elsewhere". Rule: if the owner holds
-  // role=hidden_admin in any group, drop their request unless the
-  // viewer is the owner themself.
-  const hiddenAdminRows = await db
-    .select({
-      rowUserId: groupMembersTable.userId,
-      emailUserId: usersTable.id,
-    })
-    .from(groupMembersTable)
-    .leftJoin(
-      usersTable,
-      sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
-    )
-    .where(eq(groupMembersTable.role, "hidden_admin"));
-  const hiddenAdminIds = Array.from(new Set(
-    hiddenAdminRows
-      .map(r => r.rowUserId ?? r.emailUserId)
-      .filter((id): id is number => typeof id === "number" && id !== sessionUserId),
-  ));
+  // The previous global hidden_admin filter is gone — it was
+  // over-filtering users who were hidden_admin in ONE community
+  // but regular admins/members in OTHERS. Per-group scoping now
+  // lives inside getGardenUserIds (above): the garden only
+  // includes peers from groups where they're NOT hidden_admin.
+  // If the only community we share is one where they're hidden,
+  // they don't enter the garden and their prayers don't surface.
+  // If we share any community where they're visible, they do.
   console.log(
-    `[GET /prayer-requests] viewer=${sessionUserId} gardenIds=[${gardenIds.join(",")}] ` +
-    `hiddenAdminRows=${hiddenAdminRows.length} hiddenAdminIds=[${hiddenAdminIds.join(",")}]`,
+    `[GET /prayer-requests] viewer=${sessionUserId} gardenIds=[${gardenIds.join(",")}]`,
   );
 
   // Prayer requests stay visible until the owner explicitly releases,
@@ -137,7 +161,6 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     freshOrMine,
   ];
   if (mutedIds.length > 0) baseFilters.push(notInArray(prayerRequestsTable.ownerId, mutedIds));
-  if (hiddenAdminIds.length > 0) baseFilters.push(notInArray(prayerRequestsTable.ownerId, hiddenAdminIds));
   const requests = await db.select().from(prayerRequestsTable)
     .where(and(...baseFilters))
     .orderBy(desc(prayerRequestsTable.createdAt));

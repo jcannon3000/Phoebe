@@ -62,6 +62,9 @@ router.get("/people", async (req, res): Promise<void> => {
     );
   const myGroupIds = Array.from(new Set(myGroupIdRows.map(r => r.groupId)));
   if (myGroupIds.length > 0) {
+    // Garden excludes anyone whose role in the shared group is
+    // hidden_admin. If they're a regular admin or member in ANY
+    // shared group, they still make it in via that group.
     const peerRows = await db
       .select({
         email: groupMembersTable.email,
@@ -74,7 +77,8 @@ router.get("/people", async (req, res): Promise<void> => {
           myGroupIds.map(id => sql`${id}`),
           sql`, `,
         )})
-        AND ${groupMembersTable.joinedAt} IS NOT NULL`,
+        AND ${groupMembersTable.joinedAt} IS NOT NULL
+        AND ${groupMembersTable.role} <> 'hidden_admin'`,
       );
     for (const row of peerRows) {
       if (!row.email) continue;
@@ -111,6 +115,29 @@ router.get("/people", async (req, res): Promise<void> => {
         firstCircleDate: new Date(),
         sharedRitualIds: [],
       });
+    }
+  }
+
+  // Veto: drop anyone from the garden who is a hidden_admin in ANY
+  // group the owner is in. Same rule as prayer.ts — "for members of
+  // the group he is a hidden admin of, we don't want his requests
+  // shown anywhere." Correspondence doesn't override this.
+  if (myGroupIds.length > 0 && map.size > 0) {
+    const vetoRows = await db
+      .select({
+        email: groupMembersTable.email,
+      })
+      .from(groupMembersTable)
+      .where(
+        sql`${groupMembersTable.groupId} IN (${sql.join(
+          myGroupIds.map(id => sql`${id}`),
+          sql`, `,
+        )})
+        AND ${groupMembersTable.role} = 'hidden_admin'`,
+      );
+    for (const row of vetoRows) {
+      if (!row.email) continue;
+      map.delete(row.email.toLowerCase());
     }
   }
 
