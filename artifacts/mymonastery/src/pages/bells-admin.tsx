@@ -91,13 +91,27 @@ export default function BellsAdminPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
-  const [showConfirm, setShowConfirm] = useState(false);
+  // Which confirm card is open (or none). One piece of state instead of two
+  // booleans so only one dialog is ever visible at a time.
+  const [confirmOpen, setConfirmOpen] = useState<null | "new" | "resend">(null);
 
   const sendInvitesMutation = useMutation<InviteResult>({
     mutationFn: () => apiRequest("POST", "/api/beta/bells/send-invites"),
     onSuccess: (data) => {
       setInviteResult(data);
-      setShowConfirm(false);
+      setConfirmOpen(null);
+      qc.invalidateQueries({ queryKey: ["/api/beta/bells"] });
+    },
+  });
+
+  // Resend the ICS invite to every user whose bell is on but never landed
+  // on their Google Calendar (inviteStatus === "ics-pending"). Same response
+  // shape as sendInvitesMutation so we can reuse the result card below.
+  const resendIcsMutation = useMutation<InviteResult>({
+    mutationFn: () => apiRequest("POST", "/api/beta/bells/resend-ics-invites"),
+    onSuccess: (data) => {
+      setInviteResult(data);
+      setConfirmOpen(null);
       qc.invalidateQueries({ queryKey: ["/api/beta/bells"] });
     },
   });
@@ -124,6 +138,9 @@ export default function BellsAdminPage() {
 
   const users = data?.users ?? [];
   const summary = data?.summary ?? { totalUsers: 0, bellsActive: 0, sentToday: 0 };
+  // Users whose bell is on but who never accepted a Google Calendar invite —
+  // the target set of the "Resend ICS invites" bulk action.
+  const icsPendingCount = users.filter(u => u.inviteStatus === "ics-pending").length;
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -205,23 +222,42 @@ export default function BellsAdminPage() {
           <SummaryTile label="Sent today" value={summary.sentToday} />
         </div>
 
-        {/* Bulk invite action */}
+        {/* Bulk invite actions — two buttons:
+              "new"    → send fresh ICS to users who never had a bell
+              "resend" → re-send ICS to users stuck on "ICS sent" status
+            Exactly one confirm card shows at a time, and both share the same
+            result card below. */}
         {!inviteResult ? (
-          !showConfirm ? (
-            <button
-              onClick={() => setShowConfirm(true)}
-              disabled={isLoading || summary.totalUsers - summary.bellsActive === 0}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold mb-5 transition-opacity disabled:opacity-40"
-              style={{
-                background: "rgba(46,107,64,0.18)",
-                border: "1px solid rgba(46,107,64,0.4)",
-                color: "#8FAF96",
-              }}
-            >
-              <Send size={14} />
-              Send 7 AM bell invite to {summary.totalUsers - summary.bellsActive} users without a bell
-            </button>
-          ) : (
+          confirmOpen === null ? (
+            <div className="space-y-2 mb-5">
+              <button
+                onClick={() => setConfirmOpen("new")}
+                disabled={isLoading || summary.totalUsers - summary.bellsActive === 0}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-40"
+                style={{
+                  background: "rgba(46,107,64,0.18)",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  color: "#8FAF96",
+                }}
+              >
+                <Send size={14} />
+                Send 7 AM bell invite to {summary.totalUsers - summary.bellsActive} users without a bell
+              </button>
+              <button
+                onClick={() => setConfirmOpen("resend")}
+                disabled={isLoading || icsPendingCount === 0}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-40"
+                style={{
+                  background: "rgba(70,100,140,0.12)",
+                  border: "1px solid rgba(70,100,140,0.35)",
+                  color: "#B5C9E5",
+                }}
+              >
+                <Send size={14} />
+                Resend ICS invite to {icsPendingCount} {icsPendingCount === 1 ? "user" : "users"} stuck on "ICS sent"
+              </button>
+            </div>
+          ) : confirmOpen === "new" ? (
             <div
               className="rounded-xl px-4 py-4 mb-5"
               style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.35)" }}
@@ -242,7 +278,7 @@ export default function BellsAdminPage() {
                   {sendInvitesMutation.isPending ? "Sending…" : "Send invites"}
                 </button>
                 <button
-                  onClick={() => setShowConfirm(false)}
+                  onClick={() => setConfirmOpen(null)}
                   disabled={sendInvitesMutation.isPending}
                   className="px-4 py-2 rounded-lg text-sm transition-opacity disabled:opacity-50"
                   style={{ color: "rgba(143,175,150,0.7)" }}
@@ -251,6 +287,40 @@ export default function BellsAdminPage() {
                 </button>
               </div>
               {sendInvitesMutation.isError && (
+                <p className="text-xs mt-2" style={{ color: "#E5A08F" }}>Something went wrong. Check the server logs.</p>
+              )}
+            </div>
+          ) : (
+            // confirmOpen === "resend"
+            <div
+              className="rounded-xl px-4 py-4 mb-5"
+              style={{ background: "rgba(70,100,140,0.1)", border: "1px solid rgba(70,100,140,0.35)" }}
+            >
+              <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>
+                Resend ICS invite to {icsPendingCount} {icsPendingCount === 1 ? "user" : "users"}?
+              </p>
+              <p className="text-[12px] mb-3" style={{ color: "rgba(181,201,229,0.85)" }}>
+                Target: bells that are on but never landed on a Google Calendar. Each user will receive a fresh .ics invite at their existing bell time. Their saved time and timezone won't change.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => resendIcsMutation.mutate()}
+                  disabled={resendIcsMutation.isPending}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
+                  style={{ background: "#3B5F8A", color: "#F0EDE6" }}
+                >
+                  {resendIcsMutation.isPending ? "Sending…" : "Resend invites"}
+                </button>
+                <button
+                  onClick={() => setConfirmOpen(null)}
+                  disabled={resendIcsMutation.isPending}
+                  className="px-4 py-2 rounded-lg text-sm transition-opacity disabled:opacity-50"
+                  style={{ color: "rgba(143,175,150,0.7)" }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {resendIcsMutation.isError && (
                 <p className="text-xs mt-2" style={{ color: "#E5A08F" }}>Something went wrong. Check the server logs.</p>
               )}
             </div>

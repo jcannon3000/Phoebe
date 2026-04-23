@@ -2681,6 +2681,109 @@ router.post("/beta/bells/send-invites", async (req, res): Promise<void> => {
   }
 });
 
+// ─── POST /api/beta/bells/resend-ics-invites ────────────────────────────────
+// Admin action: re-send the ICS calendar invite to every user whose bell is
+// enabled but has no linked Google Calendar event yet — i.e. the rows that
+// show up as "ICS sent" on the admin page. This is the nudge button for
+// users who got the first ICS email, never added it to a calendar, and are
+// now silently not ringing. We leave their saved time/timezone alone and
+// just re-send the invite at their existing bell time.
+//
+// Returns { attempted, sent, failed, users: [{ id, email, sent }] }
+router.post("/beta/bells/resend-ics-invites", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+
+    // Everyone with a bell turned on but no Google event on file. This is
+    // exactly the set the frontend labels "ICS sent" (and it's what the
+    // /api/beta/bells endpoint synthesizes as inviteStatus === "ics-pending").
+    const result = await pool.query(`
+      SELECT id, email, name, timezone, daily_bell_time
+      FROM users
+      WHERE bell_enabled = true
+        AND bell_calendar_event_id IS NULL
+      ORDER BY created_at ASC
+    `);
+
+    type Target = {
+      id: number;
+      email: string;
+      name: string | null;
+      timezone: string | null;
+      dailyBellTime: string | null;
+    };
+    const targets: Target[] = result.rows.map((r: Record<string, unknown>) => ({
+      id: r["id"] as number,
+      email: r["email"] as string,
+      name: (r["name"] as string | null) ?? null,
+      timezone: (r["timezone"] as string | null) ?? null,
+      dailyBellTime: (r["daily_bell_time"] as string | null) ?? null,
+    }));
+
+    const APP_URL_LOCAL = process.env["APP_URL"] ?? "https://withphoebe.app";
+    const results: Array<{ id: number; email: string; sent: boolean }> = [];
+
+    for (const u of targets) {
+      try {
+        const tz = u.timezone ?? "America/New_York";
+        // Keep whatever time the user originally chose — this is a resend,
+        // not a reset. Fall back to 07:00 only if the DB truly has nothing.
+        const hhmm = /^\d{2}:\d{2}$/.test(u.dailyBellTime ?? "") ? u.dailyBellTime! : "07:00";
+        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+        // Compute end = start + 5 minutes without pulling in a date lib.
+        const [hStr, mStr] = hhmm.split(":");
+        const startMin = parseInt(hStr!, 10) * 60 + parseInt(mStr!, 10);
+        const endMin = startMin + 5;
+        const endH = Math.floor(endMin / 60) % 24;
+        const endM = endMin % 60;
+        const endHhmm = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+        const startLocalStr = `${todayStr}T${hhmm}:00`;
+        const endLocalStr = `${todayStr}T${endHhmm}:00`;
+
+        const communityName = await getUserPrimaryCommunityName(u.id);
+        const withLine = communityName
+          ? `Set up your daily bell to pray with ${communityName}.`
+          : "A daily time to pause and pray with your community.";
+
+        const sent = await sendDailyBellIcsInvite({
+          to: u.email,
+          userId: u.id,
+          timeZone: tz,
+          startLocalStr,
+          endLocalStr,
+          summary: "🔔 Daily Bell — Phoebe",
+          description: [
+            withLine,
+            "",
+            `Open Phoebe: ${APP_URL_LOCAL}`,
+          ].join("\n"),
+        });
+
+        results.push({ id: u.id, email: u.email, sent });
+        console.log(`[bell] ics-resend: user ${u.id} (${u.email}) sent=${sent} time=${hhmm} ${tz}`);
+      } catch (err) {
+        console.error(`[bell] ics-resend: user ${u.id} error:`, err);
+        results.push({ id: u.id, email: u.email, sent: false });
+      }
+    }
+
+    const sent = results.filter(r => r.sent).length;
+    const failed = results.filter(r => !r.sent).length;
+
+    console.log(`[bell] ics-resend complete: ${sent} sent, ${failed} failed of ${targets.length} total`);
+    res.json({ attempted: targets.length, sent, failed, users: results });
+  } catch (err) {
+    console.error("POST /api/beta/bells/resend-ics-invites error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── Service schedules (e.g. Sunday Services) ────────────────────────────────
 //
 // A community can have one recurring service schedule with multiple service
