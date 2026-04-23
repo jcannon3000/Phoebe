@@ -106,6 +106,27 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 4, day: 23, rank: "lesser_feast", name: "Toyohiko Kagawa, Social Reformer",                      color: "white", life: "1960" },
   { month: 4, day: 27, rank: "lesser_feast", name: "Zita of Tuscany, Worker of Charity",                    color: "white", life: "1271" },
   { month: 4, day: 29, rank: "lesser_feast", name: "Catherine of Siena, Mystic and Prophetic Witness",      color: "white", life: "1380" },
+
+  // ── May ───────────────────────────────────────────────────
+  { month: 5, day: 2,  rank: "lesser_feast", name: "Athanasius of Alexandria, Bishop and Theologian",       color: "white", life: "373" },
+  { month: 5, day: 3,  rank: "lesser_feast", name: "Elisabeth Cruciger, Poet and Hymnographer",             color: "white", life: "1535" },
+  { month: 5, day: 4,  rank: "lesser_feast", name: "Monica, Mother of Augustine of Hippo",                  color: "white", life: "387" },
+  { month: 5, day: 5,  rank: "lesser_feast", name: "Martyrs of the Reformation Era",                        color: "red" },
+  { month: 5, day: 6,  rank: "lesser_feast", name: "George of Lydda, Martyr",                               color: "red" },
+  { month: 5, day: 8,  rank: "lesser_feast", name: "Julian of Norwich, Mystic and Theologian",              color: "white", life: "c. 1417" },
+  { month: 5, day: 9,  rank: "lesser_feast", name: "Gregory of Nazianzus, Bishop and Theologian",           color: "white", life: "389" },
+  { month: 5, day: 11, rank: "lesser_feast", name: "Johann Arndt and Jacob Boehme, Mystics",                color: "white", life: "1621 and 1624" },
+  { month: 5, day: 13, rank: "lesser_feast", name: "Frances Perkins, Social Reformer",                      color: "white", life: "1965" },
+  { month: 5, day: 15, rank: "lesser_feast", name: "Pachomius of Tabennisi, Monastic",                      color: "white", life: "348" },
+  { month: 5, day: 17, rank: "lesser_feast", name: "Thurgood Marshall, Public Servant",                     color: "white", life: "1993" },
+  { month: 5, day: 19, rank: "lesser_feast", name: "Dunstan, Archbishop of Canterbury",                     color: "white", life: "988" },
+  { month: 5, day: 20, rank: "lesser_feast", name: "Alcuin, Deacon, and Abbot of Tours",                    color: "white", life: "804" },
+  { month: 5, day: 21, rank: "lesser_feast", name: "Lydia of Thyatira, Coworker of the Apostle Paul",       color: "white" },
+  { month: 5, day: 22, rank: "lesser_feast", name: "Helena of Constantinople, Protector of the Holy Places", color: "white", life: "330" },
+  { month: 5, day: 24, rank: "lesser_feast", name: "Jackson Kemper, Bishop and Missionary",                 color: "white", life: "1870" },
+  { month: 5, day: 25, rank: "lesser_feast", name: "Bede the Venerable, Priest and Historian",              color: "white", life: "735" },
+  { month: 5, day: 26, rank: "lesser_feast", name: "Augustine, First Archbishop of Canterbury",             color: "white", life: "605" },
+  { month: 5, day: 28, rank: "lesser_feast", name: "Mechthild of Magdeburg, Mystic",                        color: "white", life: "c. 1282" },
 ];
 
 registerLesserFeasts(ENTRIES);
