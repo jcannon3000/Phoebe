@@ -3022,8 +3022,7 @@ export default function Dashboard() {
                 border: "rgba(111,175,133,0.25)",
               }));
             const PILLS: Pill[] = [
-              { label: "🕯️ Prayer List", href: "/prayer-list", fg: "#7A9E7D", bg: "rgba(122,158,125,0.14)", border: "rgba(122,158,125,0.28)" },
-              { label: "👥 People",      href: "/people",      fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
+              { label: "👥 People", href: "/people", fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
               ...communityPills,
             ];
             return (
