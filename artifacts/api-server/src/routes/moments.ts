@@ -1326,13 +1326,29 @@ router.get("/moments", async (req, res): Promise<void> => {
         .where(eq(groupMembersTable.userId, sessionUserId));
       const myGroupIds = [...new Set(myGroupRows.map(r => r.groupId))];
       if (myGroupIds.length > 0) {
-        const groupPractices = await db.select({ id: sharedMomentsTable.id })
+        // Practices where one of the viewer's groups is PRIMARY.
+        const primaryPractices = await db.select({ id: sharedMomentsTable.id })
           .from(sharedMomentsTable)
           .where(and(
             inArray(sharedMomentsTable.groupId, myGroupIds),
             sql`${sharedMomentsTable.state} != 'archived'`,
           ));
-        await Promise.all(groupPractices.map(p => reconcileGroupPracticeMembers(p.id)));
+        // Practices where one of the viewer's groups is a SECONDARY link
+        // (moment_groups junction). Multi-group intercessions must
+        // reconcile here too or secondary-group members never get tokens
+        // and the practice silently skips their dashboard + slideshow.
+        const secondaryPractices = await db.select({ id: sharedMomentsTable.id })
+          .from(sharedMomentsTable)
+          .innerJoin(momentGroupsTable, eq(momentGroupsTable.momentId, sharedMomentsTable.id))
+          .where(and(
+            inArray(momentGroupsTable.groupId, myGroupIds),
+            sql`${sharedMomentsTable.state} != 'archived'`,
+          ));
+        const allPracticeIds = Array.from(new Set([
+          ...primaryPractices.map(p => p.id),
+          ...secondaryPractices.map(p => p.id),
+        ]));
+        await Promise.all(allPracticeIds.map(id => reconcileGroupPracticeMembers(id)));
       }
     } catch (err) {
       console.error("[GET /api/moments] pre-reconcile failed:", err);

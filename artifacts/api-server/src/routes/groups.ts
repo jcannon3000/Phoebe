@@ -66,14 +66,38 @@ function generateToken(): string {
 export async function reconcileGroupPracticeMembers(momentId: number): Promise<void> {
   try {
     const [m] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
-    if (!m || !m.groupId) return;
+    if (!m) return;
 
-    // Current group roster (joined only — exclude pending invites)
+    // Collect every group this practice is attached to:
+    //   - primary: sharedMoments.groupId
+    //   - secondary: any row in moment_groups junction (multi-group
+    //     intercessions). Before this, only the primary group's roster
+    //     got tokens, so an intercession shared with Group B never
+    //     showed up in Group B members' /api/moments response —
+    //     dashboards + slideshow silently missed it. Unioning both
+    //     sources here is the single fix that makes multi-group
+    //     intercessions actually propagate.
+    const attachedGroupIds = new Set<number>();
+    if (m.groupId) attachedGroupIds.add(m.groupId);
+    const extraLinks = await db.select({ groupId: momentGroupsTable.groupId })
+      .from(momentGroupsTable)
+      .where(eq(momentGroupsTable.momentId, momentId));
+    for (const link of extraLinks) attachedGroupIds.add(link.groupId);
+    if (attachedGroupIds.size === 0) return;
+
+    // Current roster across every attached group (joined only).
     const groupRows = await db.select().from(groupMembersTable)
-      .where(eq(groupMembersTable.groupId, m.groupId));
+      .where(inArray(groupMembersTable.groupId, Array.from(attachedGroupIds)));
     const joined = groupRows.filter(gm => gm.joinedAt !== null);
     const groupEmailToName = new Map<string, string | null>();
-    for (const gm of joined) groupEmailToName.set(gm.email.toLowerCase(), gm.name);
+    for (const gm of joined) {
+      const key = gm.email.toLowerCase();
+      // Prefer the first non-null name we see so a member who joined
+      // one group without a name but another with one shows up named.
+      if (!groupEmailToName.has(key) || (groupEmailToName.get(key) == null && gm.name != null)) {
+        groupEmailToName.set(key, gm.name);
+      }
+    }
 
     // Existing tokens for the practice
     const tokens = await db.select().from(momentUserTokensTable)
@@ -121,10 +145,25 @@ export async function reconcileGroupPracticeMembers(momentId: number): Promise<v
 
 export async function reconcileAllPracticesForGroup(groupId: number): Promise<void> {
   try {
-    const practices = await db.select({ id: sharedMomentsTable.id })
+    // Practices where this group is PRIMARY.
+    const primary = await db.select({ id: sharedMomentsTable.id })
       .from(sharedMomentsTable)
       .where(and(eq(sharedMomentsTable.groupId, groupId), sql`${sharedMomentsTable.state} != 'archived'`));
-    await Promise.all(practices.map(p => reconcileGroupPracticeMembers(p.id)));
+    // Practices where this group is a SECONDARY link (moment_groups junction).
+    // Must be included so new members of a group picked up as a shared-with
+    // group still get tokens for that intercession.
+    const secondary = await db.select({ id: sharedMomentsTable.id })
+      .from(sharedMomentsTable)
+      .innerJoin(momentGroupsTable, eq(momentGroupsTable.momentId, sharedMomentsTable.id))
+      .where(and(
+        eq(momentGroupsTable.groupId, groupId),
+        sql`${sharedMomentsTable.state} != 'archived'`,
+      ));
+    const allIds = Array.from(new Set([
+      ...primary.map(p => p.id),
+      ...secondary.map(p => p.id),
+    ]));
+    await Promise.all(allIds.map(id => reconcileGroupPracticeMembers(id)));
   } catch (err) {
     console.error("[groups] reconcileAllPracticesForGroup failed for group", groupId, err);
   }
