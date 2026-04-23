@@ -1,6 +1,7 @@
 import { db, usersTable, betaUsersTable, bellNotificationsTable, sharedMomentsTable, momentUserTokensTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { sendEmail } from "./email";
+import { sendBellPush } from "./pushSender";
 import { logger } from "./logger";
 
 const APP_URL = process.env["APP_URL"] ?? "https://withphoebe.app";
@@ -222,6 +223,17 @@ export async function runBellSender(): Promise<void> {
       const { subject, html, text } = buildBellEmail(user.name ?? "friend", count, names);
       const sent = await sendEmail({ to: user.email, subject, html, text });
 
+      // Push notification — fires for any user who has a device token
+      // registered. Users without a token (e.g. web-only) still get
+      // the email above. sendBellPush is a no-op if there are no
+      // active tokens for this user; errors are swallowed so a bad
+      // APNs response doesn't break the bell loop.
+      try {
+        await sendBellPush(user.id, { actionableCount: count, practices: names });
+      } catch (err) {
+        logger.warn({ err, userId: user.id }, "[bell] push dispatch failed");
+      }
+
       // Record the notification
       await db.insert(bellNotificationsTable).values({
         userId: user.id,
@@ -246,6 +258,7 @@ let bellInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startBellScheduler(): void {
   if (bellInterval) return;
+  logger.info("[bell-scheduler] started — first run in 45s, then every 15 min");
 
   // Run once 45s after boot
   setTimeout(() => {

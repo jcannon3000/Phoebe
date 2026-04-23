@@ -1,0 +1,90 @@
+/*
+ * Phoebe Mobile — iOS-specific CSS overlay.
+ *
+ * Loaded into www/index.html by scripts/compose-www.mjs, AFTER
+ * mymonastery's stylesheet so it can override layout details specific
+ * to Capacitor/WKWebView. We scope every rule either to a root class
+ * (`.platform-ios`) that native-shell.ts adds to <html>, or to the
+ * keyboard-inset CSS custom property, so web visitors never see these
+ * tweaks.
+ */
+
+:root {
+  /* Keyboard inset is updated live by native-shell.ts from Capacitor's
+     Keyboard plugin. Defaults to 0 so web builds don't misbehave. */
+  --kb-inset: 0px;
+}
+
+/* Give <html> a native class so we can scope platform-specific rules. */
+html.platform-ios,
+html.platform-ios body {
+  /* Prevent the page from rubber-band bouncing beyond its content —
+     WKWebView's default is on, and it reveals the underlying black view
+     in a way that feels buggy for a prayer app. */
+  overscroll-behavior-y: none;
+  /* Safari-style tap highlight is distracting on buttons styled with
+     :active states. Disable globally; components that want their own
+     feedback use haptics or transitions instead. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area padding for the root container. mymonastery already uses
+   fixed padding in a few places; these rules only take effect on the
+   native platform class and layer on top. */
+html.platform-ios body {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* The bottom inset handles the home-indicator line; keyboard inset is
+     applied per-input instead so only the focused field is padded. */
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: border-box;
+}
+
+/* Bottom-anchored UI (floating nav bars, sticky footers) should clear
+   the keyboard when it's up. Components can opt in by adding the class
+   `native-keyboard-aware`. */
+html.platform-ios .native-keyboard-aware {
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--kb-inset));
+  transition: padding-bottom 180ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* Inputs near the bottom of the viewport need to scroll above the
+   keyboard. Chrome handles this automatically; WKWebView does when the
+   input is focused but NOT when we use resize:"none" (our choice). This
+   custom scrolling kicks in via native-shell.ts's keyboardDidShow
+   listener by focusing scrollIntoView on the active element. No CSS
+   needed here, just documenting the split of responsibilities. */
+
+/* Links and buttons: give them a subtle active-state press instead of
+   the default tap highlight. Looks closer to a native button press. */
+html.platform-ios a:active,
+html.platform-ios button:active {
+  transform: scale(0.985);
+  transition: transform 80ms ease-out;
+}
+
+/* Inputs: prevent zoom-on-focus (happens when font-size < 16px on iOS).
+   mymonastery mostly uses ≥ 14px; this is insurance. */
+html.platform-ios input,
+html.platform-ios textarea,
+html.platform-ios select {
+  font-size: max(16px, 1em);
+}
+
+/* Smooth native-feeling momentum scroll on every scrollable region.
+   The `-webkit-overflow-scrolling` property is deprecated but still the
+   way to guarantee smooth WKWebView scrolling. Keep both properties. */
+html.platform-ios .scroll,
+html.platform-ios [data-scroll],
+html.platform-ios main {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Pull-to-refresh affordance: opt in by adding `data-ptr` to a
+   scrollable region. We don't ship a real PTR implementation yet —
+   just reserve the top-inset spacing so adding one later is CSS-only. */
+html.platform-ios [data-ptr] {
+  padding-top: 8px;
+}

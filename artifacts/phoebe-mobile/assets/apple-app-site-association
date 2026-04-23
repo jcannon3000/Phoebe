@@ -1,0 +1,38 @@
+{
+  "_comment": "Phoebe — Universal Links association file. Serve this at https://withphoebe.app/.well-known/apple-app-site-association with Content-Type: application/json, HTTP 200, NO redirects, NO auth. Replace TEAM_ID below with your Apple Developer Team ID (10 chars, visible at developer.apple.com → Membership).",
+
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAM_ID.app.withphoebe.mobile"],
+        "components": [
+          {
+            "/": "/communities/join/*",
+            "comment": "Community invite links — open the native app and route via the deep-link handler in native-shell.ts"
+          },
+          {
+            "/": "/m/*",
+            "comment": "Short-form moment invite links"
+          },
+          {
+            "/": "/lectio/*",
+            "comment": "Direct deep-link to a lectio practice"
+          },
+          {
+            "/": "/moments/*",
+            "comment": "Direct deep-link to a practice detail page"
+          },
+          {
+            "/": "/dashboard",
+            "comment": "Post-login landing page — useful for auth callback redirects"
+          }
+        ]
+      }
+    ]
+  },
+
+  "webcredentials": {
+    "apps": ["TEAM_ID.app.withphoebe.mobile"]
+  }
+}

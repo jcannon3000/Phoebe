@@ -24,6 +24,7 @@ import crypto from "crypto";
 import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
+import { sendNewMemberPush, sendNewPrayerRequestPush, sendPushToUsers } from "../lib/pushSender";
 import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -979,7 +980,7 @@ router.post(
     notifyAdminsOfNewMember(group.id, group.name, {
       name: user.name ?? user.email ?? "A new member",
       email: user.email ?? "",
-    }).catch(err => console.error("[groups/join] notify admins failed:", err));
+    }, group.slug).catch(err => console.error("[groups/join] notify admins failed:", err));
 
     res.json({ ok: true, group });
     return;
@@ -1009,7 +1010,7 @@ router.post(
   notifyAdminsOfNewMember(group.id, group.name, {
     name: updates.name ?? member.name ?? member.email,
     email: member.email,
-  }).catch(err => console.error("[groups/join] notify admins failed:", err));
+  }, group.slug).catch(err => console.error("[groups/join] notify admins failed:", err));
 
   res.json({ ok: true, group });
   } catch (err) {
@@ -1028,6 +1029,7 @@ export async function notifyAdminsOfNewMember(
   groupId: number,
   groupName: string,
   joiner: { name: string; email: string },
+  groupSlug?: string,
 ): Promise<void> {
   // Resolve admin emails for the group via the user records linked to
   // joined admin members. Pending invites are skipped (they haven't joined
@@ -1042,6 +1044,20 @@ export async function notifyAdminsOfNewMember(
     ));
   const userIds = adminMembers.map(a => a.userId).filter((id): id is number => id != null);
   if (userIds.length === 0) return;
+
+  // Push to each admin. Fire-and-forget. Slug is required for the deep
+  // link; if the caller didn't pass it, look it up once.
+  if (!groupSlug) {
+    const [g] = await db.select({ slug: groupsTable.slug }).from(groupsTable).where(eq(groupsTable.id, groupId));
+    groupSlug = g?.slug;
+  }
+  if (groupSlug) {
+    for (const adminUserId of userIds) {
+      sendNewMemberPush(adminUserId, groupSlug, joiner.name).catch((err) =>
+        console.warn("[groups/notify-admins] push dispatch failed:", err)
+      );
+    }
+  }
 
   const adminUsers = await db.select({
     email: usersTable.email,
@@ -1652,6 +1668,32 @@ router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => 
   // admin; the user described the noise explicitly. The helper
   // stays defined so we can re-enable it with narrower logic (e.g.
   // daily digest, or only for prayer circles the admin leads).
+
+  // Push to every joined member except the author. Admins are already
+  // covered by the email+push notifyAdminsOfNewPrayerRequest path; this
+  // layer broadens the audience for push (email stays admin-only to
+  // avoid inbox noise). Anonymous posts still notify — we just hide the
+  // author name in the push body.
+  (async () => {
+    try {
+      const members = await db.select({ userId: groupMembersTable.userId, joinedAt: groupMembersTable.joinedAt })
+        .from(groupMembersTable)
+        .where(eq(groupMembersTable.groupId, group.id));
+      const recipientIds = members
+        .filter(m => m.joinedAt != null)
+        .map(m => m.userId)
+        .filter((id): id is number => id != null && id !== user.id);
+      if (recipientIds.length === 0) return;
+      const authorDisplay = parsed.data.isAnonymous ? null : (member.name ?? user.name);
+      for (const rid of recipientIds) {
+        sendNewPrayerRequestPush(rid, group.slug, authorDisplay).catch((err) =>
+          console.warn("[groups] prayer-request push failed:", err)
+        );
+      }
+    } catch (err) {
+      console.warn("[groups] broad prayer-request push failed:", err);
+    }
+  })();
 
   res.json({ ok: true, id: inserted.id });
 });

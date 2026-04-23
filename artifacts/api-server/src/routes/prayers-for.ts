@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, desc, isNull, gt, notInArray } from "drizzle-orm";
 import { db, prayersForTable, usersTable, userMutesTable } from "@workspace/db";
 import { z } from "zod/v4";
+import { sendPrayerForYouPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -117,6 +118,13 @@ router.post("/prayers-for", async (req, res): Promise<void> => {
       expiresAt,
     })
     .returning();
+
+  // Push to the recipient. Sender-anonymous per Phoebe convention.
+  // Fire-and-forget — an APNs hiccup shouldn't break the create response.
+  sendPrayerForYouPush(parsed.data.recipientUserId).catch((err) => {
+    console.warn("[prayers-for] push dispatch failed:", err);
+  });
+
   res.status(201).json(created);
 });
 

@@ -23,6 +23,7 @@ import {
   sendNewLetterEmail,
   sendReminderEmail,
 } from "../lib/letterEmails";
+import { sendPushToUsers } from "../lib/pushSender";
 import {
   sendLetterCalendarEvent,
   sendLetterWindowOpenCalendarEvent,
@@ -553,6 +554,28 @@ router.post(
         postmarkCity: city,
       })
       .returning();
+
+    // Push to every joined correspondence member except the author. We
+    // filter on `userId != null` so invited-but-not-signed-up members
+    // (whose device_tokens row wouldn't exist anyway) are naturally
+    // skipped. Fire-and-forget so a slow APNs call doesn't hold up the
+    // letter write's response.
+    {
+      const recipientUserIds = members
+        .filter((m) => m.userId != null && m.userId !== auth.userId && m.joinedAt)
+        .map((m) => m.userId as number);
+      if (recipientUserIds.length > 0) {
+        sendPushToUsers(recipientUserIds, {
+          title: correspondence.name,
+          body: `${auth.name} wrote.`,
+          path: `/mail/correspondences/${correspondenceId}`,
+          threadId: `letter-${correspondenceId}`,
+          sound: "default",
+        }).catch((err) => {
+          console.warn("[phoebe] letter push dispatch failed:", err);
+        });
+      }
+    }
 
     await db
       .update(correspondenceMembersTable)

@@ -73,6 +73,18 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Start the daily bell scheduler unless explicitly disabled (dev flag).
+// The scheduler runs inside the same process as the web server — Railway
+// deploys are single-instance today so there's no worry about multiple
+// workers double-firing. DISABLE_BELL_SCHEDULER=true turns it off for
+// local dev when you don't want the 45s post-boot bell tick.
+if (process.env["DISABLE_BELL_SCHEDULER"] !== "true") {
+  // Lazy import so importing app.ts in tests doesn't start the scheduler.
+  import("./lib/bellSender").then(({ startBellScheduler }) => startBellScheduler()).catch((err) => {
+    logger.error({ err }, "[bell-scheduler] failed to boot");
+  });
+}
+
 app.use("/api", router);
 
 // ─── Universal Link association file ───────────────────────────────────────

@@ -31,3 +31,4 @@ export * from "./prayer_feeds";
 export * from "./prayer_feed_entries";
 export * from "./prayer_feed_subscriptions";
 export * from "./prayer_feed_prayers";
+export * from "./device_tokens";

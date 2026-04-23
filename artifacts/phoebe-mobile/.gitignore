@@ -1,0 +1,27 @@
+# Dependencies — pnpm installs into node_modules/
+node_modules/
+
+# Shell build output — compiled native-shell.js + sourcemaps. Reproduced
+# by `pnpm run build:shell`, not worth committing.
+dist/
+
+# Composed web bundle — built fresh from mymonastery's dist each time.
+# Committing it would duplicate the web app into mobile and cause merge
+# conflicts on every web change.
+www/
+
+# Xcode + CocoaPods generated output. The `ios/App/App.xcodeproj` and
+# `ios/App/App/` source are committed, but these folders are per-dev.
+ios/Pods/
+ios/DerivedData/
+ios/build/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+
+# Credentials — never commit. Apple Developer distribution keys + push
+# auth keys + provisioning profiles all live outside the repo.
+*.p8
+*.p12
+*.mobileprovision

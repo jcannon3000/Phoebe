@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import {
   db, sharedMomentsTable, momentUserTokensTable,
   groupsTable, groupMembersTable, circleDailyFocusTable, circleIntentionsTable, usersTable,
+  deviceTokensTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
@@ -274,15 +275,28 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
     //      workspace mailbox (preferred — gives us RSVP tracking via
     //      getCalendarEventAttendees in the GET handler).
     //   2. Fallback: send a real calendar invite as a MIME email with
-    //      a text/calendar;method=REQUEST part + .ics attachment. No
-    //      Google Calendar API dependency — Apple Mail, Gmail, and
-    //      Outlook all render it as a tappable "Add to calendar"
-    //      invitation. We lose per-attendee RSVP tracking but the
-    //      user gets a working reminder on their phone/laptop
-    //      calendar, which was the whole point of the bell.
+    //      a text/calendar;method=REQUEST part + .ics attachment.
+    //
+    // EXCEPTION: users with an active APNs device token (Phoebe Mobile
+    // installed) skip the calendar invite entirely — the bell scheduler
+    // will deliver the reminder as a push instead. The calendar event
+    // stays the fallback for everyone without the mobile app.
     let bellCalendarEventId: string | null = null;
     let icsInviteSent = false;
-    if (parsed.bellEnabled) {
+    const hasActiveToken = parsed.bellEnabled
+      ? (await db
+          .select({ id: deviceTokensTable.id })
+          .from(deviceTokensTable)
+          .where(and(
+            eq(deviceTokensTable.userId, user.id),
+            isNull(deviceTokensTable.invalidatedAt),
+          ))
+          .limit(1)).length > 0
+      : false;
+    if (hasActiveToken) {
+      console.log(`[bell] Skipping calendar event for user ${user.id} — push-enabled`);
+    }
+    if (parsed.bellEnabled && !hasActiveToken) {
       const [hh, mm] = parsed.dailyBellTime.split(":").map(Number);
       const tz = parsed.timezone;
 

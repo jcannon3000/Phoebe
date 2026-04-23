@@ -485,12 +485,13 @@ router.post(
       await db.update(groupMembersTable)
         .set({ userId: user.id, joinedAt: new Date(), name: user.name })
         .where(eq(groupMembersTable.id, inviteMember.id));
-      const [group] = await db.select({ name: groupsTable.name })
+      const [group] = await db.select({ name: groupsTable.name, slug: groupsTable.slug })
         .from(groupsTable).where(eq(groupsTable.id, inviteMember.groupId));
       notifyAdminsOfNewMember(
         inviteMember.groupId,
         group?.name ?? inviteGroupSlug ?? "your community",
         { name: user.name, email: user.email },
+        group?.slug ?? inviteGroupSlug ?? undefined,
       ).catch(err => console.error("[auth/register] notify admins failed:", err));
     } catch (err) {
       console.error("[auth/register] failed to link group member:", err);
@@ -508,12 +509,13 @@ router.post(
         inviteToken: randomBytes(16).toString("hex"),
         joinedAt: new Date(),
       });
-      const [group] = await db.select({ name: groupsTable.name })
+      const [group] = await db.select({ name: groupsTable.name, slug: groupsTable.slug })
         .from(groupsTable).where(eq(groupsTable.id, communityWideGroupId));
       notifyAdminsOfNewMember(
         communityWideGroupId,
         group?.name ?? inviteGroupSlug ?? "your community",
         { name: user.name, email: user.email },
+        group?.slug ?? inviteGroupSlug ?? undefined,
       ).catch(err => console.error("[auth/register] notify admins failed:", err));
     } catch (err) {
       console.error("[auth/register] failed to insert community-wide member:", err);

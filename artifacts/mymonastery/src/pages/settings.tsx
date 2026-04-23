@@ -920,6 +920,11 @@ export default function SettingsPage() {
         <BellPreferences />
         <div className="mb-8" />
 
+        {/* ── Device (Phoebe Mobile only) ──
+            Only rendered when running inside the Capacitor shell. Web users
+            don't have Face ID, so showing the toggle would confuse them. */}
+        <MobileDeviceSection />
+
         {/* ── Muted People ── */}
         <MutedPeople />
         <div className="mb-8" />
@@ -944,6 +949,61 @@ export default function SettingsPage() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+// ─── Mobile-only device section ────────────────────────────────────────────
+// Renders only inside Phoebe Mobile (Capacitor shell). The "Lock with Face
+// ID" toggle flips a localStorage flag that native-shell.ts reads on app
+// resume to decide whether to demand a biometric check. The web build
+// has no Face ID, so the section is hidden there.
+function MobileDeviceSection() {
+  const [isNative, setIsNative] = useState(false);
+  const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    try {
+      const phoebeNative = (window as { PhoebeNative?: { isNative: () => boolean } }).PhoebeNative;
+      if (phoebeNative?.isNative?.()) {
+        setIsNative(true);
+        setLocked(window.localStorage.getItem("phoebe:persist:biometricLock") === "on");
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  if (!isNative) return null;
+
+  const toggle = () => {
+    const next = !locked;
+    setLocked(next);
+    const phoebeNative = (window as { PhoebeNative?: { setBiometricLock?: (on: boolean) => void } }).PhoebeNative;
+    phoebeNative?.setBiometricLock?.(next);
+  };
+
+  return (
+    <>
+      <SectionHeader label="Device" />
+      <div className="mb-8">
+        <SettingsCard>
+          <button
+            onClick={toggle}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="text-left">
+              <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Lock with Face ID 🔒</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                Unlock Phoebe with Face ID after 5 minutes away.
+              </p>
+            </div>
+            <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${locked ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
+              <div className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${locked ? "left-[21px]" : "left-[3px]"}`} style={{ background: "#F0EDE6" }} />
+            </div>
+          </button>
+        </SettingsCard>
+      </div>
+    </>
   );
 }
 

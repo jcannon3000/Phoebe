@@ -1,0 +1,39 @@
+{
+  "name": "@workspace/phoebe-mobile",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Phoebe Mobile — Capacitor-wrapped native iOS shell around the mymonastery web app. Zero changes to mymonastery source; the mobile build composes mymonastery's production bundle into www/ and layers native features (push, haptics, biometrics, safe-area, keyboard, Sign in with Apple) on top.",
+  "scripts": {
+    "build:web": "pnpm --filter @workspace/mymonastery build",
+    "build:shell": "vite build --config vite.config.ts",
+    "build:compose": "node scripts/compose-www.mjs",
+    "build": "pnpm run build:web && pnpm run build:shell && pnpm run build:compose",
+    "cap:sync": "cap sync ios",
+    "cap:open": "cap open ios",
+    "ios": "pnpm run build && pnpm run cap:sync && pnpm run cap:open",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "@types/node": "catalog:",
+    "typescript": "^5.6.3",
+    "vite": "catalog:"
+  },
+  "dependencies": {
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/ios": "^6.2.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/local-notifications": "^6.0.0",
+    "@capacitor/preferences": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/share": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@capgo/capacitor-native-biometric": "^6.0.0",
+    "@capacitor-community/apple-sign-in": "^6.0.0",
+    "@capacitor-community/contacts": "^6.0.0"
+  }
+}
