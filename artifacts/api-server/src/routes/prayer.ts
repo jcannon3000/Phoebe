@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, fellowsTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, usersTable, ritualsTable, momentUserTokensTable, userMutesTable, fellowsTable, groupMembersTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 
@@ -72,6 +72,30 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
 
   const now = new Date();
 
+  // Hidden admins are invisible community observers. Their prayer
+  // requests must not leak to other users through the garden feed
+  // (which powers the /prayer-mode slideshow on the home dashboard).
+  // User explicitly asked: "do not show up on people in the groups
+  // prayer slide shows or elsewhere". Rule: if the owner holds
+  // role=hidden_admin in any group, drop their request unless the
+  // viewer is the owner themself.
+  const hiddenAdminRows = await db
+    .select({
+      rowUserId: groupMembersTable.userId,
+      emailUserId: usersTable.id,
+    })
+    .from(groupMembersTable)
+    .leftJoin(
+      usersTable,
+      sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
+    )
+    .where(eq(groupMembersTable.role, "hidden_admin"));
+  const hiddenAdminIds = Array.from(new Set(
+    hiddenAdminRows
+      .map(r => r.rowUserId ?? r.emailUserId)
+      .filter((id): id is number => typeof id === "number" && id !== sessionUserId),
+  ));
+
   // Prayer requests stay visible until the owner explicitly releases,
   // answers, or deletes them. For other viewers, once `expiresAt` has
   // passed and the owner hasn't renewed, the request drops off. The
@@ -81,21 +105,15 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     isNull(prayerRequestsTable.expiresAt),
     gt(prayerRequestsTable.expiresAt, new Date()),
   );
+  const baseFilters = [
+    inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
+    isNull(prayerRequestsTable.closedAt),
+    freshOrMine,
+  ];
+  if (mutedIds.length > 0) baseFilters.push(notInArray(prayerRequestsTable.ownerId, mutedIds));
+  if (hiddenAdminIds.length > 0) baseFilters.push(notInArray(prayerRequestsTable.ownerId, hiddenAdminIds));
   const requests = await db.select().from(prayerRequestsTable)
-    .where(
-      mutedIds.length > 0
-        ? and(
-            inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
-            isNull(prayerRequestsTable.closedAt),
-            notInArray(prayerRequestsTable.ownerId, mutedIds),
-            freshOrMine,
-          )
-        : and(
-            inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
-            isNull(prayerRequestsTable.closedAt),
-            freshOrMine,
-          )
-    )
+    .where(and(...baseFilters))
     .orderBy(desc(prayerRequestsTable.createdAt));
 
   // Viewer's timezone — used to scope "today" for their own amen counts so

@@ -1405,6 +1405,36 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     memberUserIds,
   );
 
+  // Hidden admins are invisible observers — their prayer requests
+  // must never surface to other members. User flagged:
+  // "If I am a hidden admin it should not be showing up there. Make
+  // sure the hidden admins prayers do not show up on people in the
+  // groups prayer slide shows or elsewhere."
+  //
+  // Collect user IDs of anyone who holds role=hidden_admin in ANY
+  // group (not just this one). Simpler rule: once you're a hidden
+  // admin somewhere, your prayers are invisible to everyone but
+  // yourself across every community-scoped surface. The viewer
+  // themselves is always exempt so they still see their own prayer
+  // on their own home dashboard / personal prayer list.
+  const hiddenAdminRows = await db
+    .select({
+      rowUserId: groupMembersTable.userId,
+      emailUserId: usersTable.id,
+    })
+    .from(groupMembersTable)
+    .leftJoin(
+      usersTable,
+      sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
+    )
+    .where(eq(groupMembersTable.role, "hidden_admin"));
+  const hiddenAdminUserIds = new Set(
+    hiddenAdminRows
+      .map(r => r.rowUserId ?? r.emailUserId)
+      .filter((id): id is number => typeof id === "number"),
+  );
+  hiddenAdminUserIds.delete(user.id); // viewer sees their own prayers
+
   // Community wall is scoped to this community's members.
   // Two inclusion rules:
   //   1. group_id = this group's id  (posted directly into this
@@ -1466,10 +1496,15 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         ))
         .orderBy(desc(prayerRequestsTable.createdAt));
 
+  // Drop any prayer owned by a hidden admin (computed above).
+  // hiddenAdminUserIds already excludes the viewer, so they always
+  // see their own prayers even if they hold hidden_admin themselves.
+  const visibleRows = rows.filter(r => !hiddenAdminUserIds.has(r.ownerId));
+
   // Word count is decorative on the community feed — reusable hook for
   // "how much prayer has this received?" once we implement it. For now,
   // return 0 so the UI renders consistently.
-  const requests = rows.map(r => ({
+  const requests = visibleRows.map(r => ({
     id: r.id,
     body: r.body,
     ownerName: r.isAnonymous ? null : (r.createdByName ?? r.ownerDisplayName),
@@ -1512,7 +1547,8 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         rosterRows: joinedMemberRows,
         memberUserIds,
         matchingRequestCount: requests.length,
-        matchingRequestOwnerIds: rows.map(r => r.ownerId),
+        matchingRequestOwnerIds: visibleRows.map(r => r.ownerId),
+        hiddenAdminUserIdsFilteredOut: Array.from(hiddenAdminUserIds),
         allOpenPrayerRequests: allOpen,
       },
     });
