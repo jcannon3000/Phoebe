@@ -1537,6 +1537,7 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
           isAnonymous: prayerRequestsTable.isAnonymous,
           createdAt: prayerRequestsTable.createdAt,
           ownerDisplayName: usersTable.name,
+          ownerAvatarUrl: usersTable.avatarUrl,
         })
         .from(prayerRequestsTable)
         .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
@@ -1557,6 +1558,7 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
           isAnonymous: prayerRequestsTable.isAnonymous,
           createdAt: prayerRequestsTable.createdAt,
           ownerDisplayName: usersTable.name,
+          ownerAvatarUrl: usersTable.avatarUrl,
         })
         .from(prayerRequestsTable)
         .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
@@ -1578,6 +1580,9 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     id: r.id,
     body: r.body,
     ownerName: r.isAnonymous ? null : (r.createdByName ?? r.ownerDisplayName),
+    // Anonymous requests suppress the avatar too — the UI renders
+    // an initials bubble when ownerAvatarUrl is null.
+    ownerAvatarUrl: r.isAnonymous ? null : (r.ownerAvatarUrl ?? null),
     wordCount: 0,
     isOwnRequest: r.ownerId === user.id,
     isAnonymous: r.isAnonymous,

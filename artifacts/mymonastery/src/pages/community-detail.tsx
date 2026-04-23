@@ -44,7 +44,7 @@ type Member = {
   id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean; avatarUrl?: string | null;
 };
 type PrayerRequest = {
-  id: number; body: string; ownerName: string | null; wordCount: number;
+  id: number; body: string; ownerName: string | null; ownerAvatarUrl: string | null; wordCount: number;
   isOwnRequest: boolean; isAnonymous: boolean; createdAt: string;
 };
 type Practice = {
@@ -1715,19 +1715,52 @@ export default function CommunityDetailPage() {
                 <CommunityPrayerComposeBar slug={slug!} groupName={group.name} />
                 {recentPrayers.length > 0 && (
                   <div className="space-y-2 mt-4">
-                    {recentPrayers.map((r) => (
-                      <div key={r.id} className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                        <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
-                        <div className="flex-1 px-4 py-3">
-                          <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                            {r.isOwnRequest ? "Your request" : `From ${r.isAnonymous ? "Someone" : r.ownerName}`}
-                          </p>
-                          <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                            {r.body}
-                          </p>
+                    {recentPrayers.map((r) => {
+                      // Author display — own request shows viewer's avatar,
+                      // others show the owner's avatar, anonymous shows an
+                      // initials bubble with "Anonymous".
+                      const displayName = r.isAnonymous
+                        ? "Anonymous"
+                        : (r.isOwnRequest ? (user.name ?? "You") : (r.ownerName ?? "Someone"));
+                      const displayAvatar = r.isAnonymous
+                        ? null
+                        : (r.isOwnRequest ? (user.avatarUrl ?? null) : r.ownerAvatarUrl);
+                      const initials = displayName
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((w) => w[0]?.toUpperCase() ?? "")
+                        .join("");
+                      return (
+                        <div key={r.id} className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
+                          <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
+                          <div className="flex-1 px-4 py-3 flex items-start gap-3">
+                            {displayAvatar ? (
+                              <img
+                                src={displayAvatar}
+                                alt={displayName}
+                                className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
+                                style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                              />
+                            ) : (
+                              <div
+                                className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
+                                style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                              >
+                                {initials}
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
+                                {r.isOwnRequest ? "Your request" : `From ${displayName}`}
+                              </p>
+                              <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                                {r.body}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1806,29 +1839,57 @@ export default function CommunityDetailPage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {prayerData!.requests.map(r => (
-                  <div key={r.id} className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                    <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
-                    <div className="flex-1 px-4 py-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                            From {r.isAnonymous ? "Someone" : r.ownerName}
-                          </p>
-                          <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                            {r.body}
-                          </p>
-                        </div>
-                        {r.wordCount > 0 && (
-                          <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
-                            <span className="text-[10px] tabular-nums">{r.wordCount}</span>
-                            <MessageCircle size={12} />
+                {prayerData!.requests.map(r => {
+                  const displayName = r.isAnonymous
+                    ? "Anonymous"
+                    : (r.isOwnRequest ? (user.name ?? "You") : (r.ownerName ?? "Someone"));
+                  const displayAvatar = r.isAnonymous
+                    ? null
+                    : (r.isOwnRequest ? (user.avatarUrl ?? null) : r.ownerAvatarUrl);
+                  const initials = displayName
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((w) => w[0]?.toUpperCase() ?? "")
+                    .join("");
+                  return (
+                    <div key={r.id} className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
+                      <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
+                      <div className="flex-1 px-4 py-3 flex items-start gap-3">
+                        {displayAvatar ? (
+                          <img
+                            src={displayAvatar}
+                            alt={displayName}
+                            className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
+                            style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                          />
+                        ) : (
+                          <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
+                            style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                          >
+                            {initials}
                           </div>
                         )}
+                        <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
+                              {r.isOwnRequest ? "Your request" : `From ${displayName}`}
+                            </p>
+                            <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                              {r.body}
+                            </p>
+                          </div>
+                          {r.wordCount > 0 && (
+                            <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
+                              <span className="text-[10px] tabular-nums">{r.wordCount}</span>
+                              <MessageCircle size={12} />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

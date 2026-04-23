@@ -1598,11 +1598,11 @@ function PrayerListCard({
             </p>
             {streak > 0 && (
               <span
-                className="text-[10px] font-semibold uppercase shrink-0"
-                style={{ color: "#E8A94C", letterSpacing: "0.08em", fontFamily: "'Space Grotesk', sans-serif" }}
+                className="text-[11px] font-semibold shrink-0 tabular-nums"
+                style={{ color: "#E8A94C", fontFamily: "'Space Grotesk', sans-serif" }}
                 aria-label={`${streak}-day prayer streak`}
               >
-                🔥 {streak}-day streak
+                🔥 {streak}
               </span>
             )}
           </div>
