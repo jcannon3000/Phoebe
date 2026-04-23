@@ -1387,56 +1387,23 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
 // pill list so the CSS keyframe can translate from 0 to -50% and seam.
 
 function ServiceTimesPillRow({ schedule }: { schedule: ServiceSchedule }) {
-  // Cycle through service times one at a time: fade the current pill out,
-  // fade the next one in, hold, repeat. Scrollable strips were unreliable
-  // inside a clickable card wrapper, and a single rotating pill reads as
-  // a deliberate teaser rather than a truncated list.
-  const [index, setIndex] = useState(0);
-  const times = schedule.times;
-
-  useEffect(() => {
-    if (times.length <= 1) return;
-    const id = setInterval(() => {
-      setIndex(i => (i + 1) % times.length);
-    }, 3500);
-    return () => clearInterval(id);
-  }, [times.length]);
-
-  if (times.length === 0) return null;
-
-  const active = times[Math.min(index, times.length - 1)]!;
-  const label = active.label
-    ? `${formatServiceTime(active.time)} · ${active.label}`
-    : formatServiceTime(active.time);
-
+  // Second line is intentionally a static teaser. Rotating pills and
+  // scrollable strips both fought the clickable card wrapper — a plain
+  // "Tap to see service times" cue is unambiguous and honors the tap target.
+  if (schedule.times.length === 0) return null;
   return (
-    <div className="mt-2 relative h-6 overflow-hidden">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={`${active.time}-${index}`}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
-          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-          style={{
-            background: "rgba(46,107,64,0.2)",
-            border: "1px solid rgba(46,107,64,0.3)",
-            color: "#F0EDE6",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {label}
-        </motion.span>
-      </AnimatePresence>
-      {times.length > 1 && (
-        <span
-          className="absolute right-0 top-1/2 -translate-y-1/2 text-[10px] font-medium"
-          style={{ color: "rgba(143,175,150,0.55)" }}
-        >
-          {index + 1}/{times.length}
-        </span>
-      )}
+    <div className="mt-2">
+      <span
+        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+        style={{
+          background: "rgba(46,107,64,0.2)",
+          border: "1px solid rgba(46,107,64,0.3)",
+          color: "#F0EDE6",
+          letterSpacing: "-0.01em",
+        }}
+      >
+        Tap to see service times
+      </span>
     </div>
   );
 }

@@ -372,51 +372,21 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 // clipping. Mirrors the dashboard's ServiceTimesPillRow verbatim so the
 // card looks identical to the one on the home screen.
 function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) {
-  // Single-pill rotating carousel — see dashboard's twin for rationale.
-  const [index, setIndex] = useState(0);
-  const times = schedule.times;
-
-  useEffect(() => {
-    if (times.length <= 1) return;
-    const id = setInterval(() => {
-      setIndex(i => (i + 1) % times.length);
-    }, 3500);
-    return () => clearInterval(id);
-  }, [times.length]);
-
-  if (times.length === 0) return null;
-
-  const active = times[Math.min(index, times.length - 1)]!;
-  const label = active.label ? `${formatHM12(active.time)} · ${active.label}` : formatHM12(active.time);
-
+  // Static "Tap to see service times" teaser — see dashboard's twin.
+  if (schedule.times.length === 0) return null;
   return (
-    <div className="mt-2 relative h-6 overflow-hidden">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={`${active.time}-${index}`}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
-          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-          style={{
-            background: "rgba(46,107,64,0.2)",
-            border: "1px solid rgba(46,107,64,0.3)",
-            color: "#F0EDE6",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {label}
-        </motion.span>
-      </AnimatePresence>
-      {times.length > 1 && (
-        <span
-          className="absolute right-0 top-1/2 -translate-y-1/2 text-[10px] font-medium"
-          style={{ color: "rgba(143,175,150,0.55)" }}
-        >
-          {index + 1}/{times.length}
-        </span>
-      )}
+    <div className="mt-2">
+      <span
+        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+        style={{
+          background: "rgba(46,107,64,0.2)",
+          border: "1px solid rgba(46,107,64,0.3)",
+          color: "#F0EDE6",
+          letterSpacing: "-0.01em",
+        }}
+      >
+        Tap to see service times
+      </span>
     </div>
   );
 }
@@ -1003,8 +973,6 @@ export default function CommunityDetailPage() {
 
   const tabs = [
     { key: "home" as const, label: "Home", emoji: "🏡" },
-    { key: "prayer" as const, label: "Prayer Wall", emoji: "🙏🏽" },
-    { key: "practices" as const, label: "Practices", emoji: "🌿" },
     { key: "gatherings" as const, label: "Gatherings", emoji: "🤝🏽" },
     { key: "announcements" as const, label: "Announcements", emoji: "📮" },
     { key: "members" as const, label: "Members", emoji: "👥" },
