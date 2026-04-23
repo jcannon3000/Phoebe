@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
+import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -3039,6 +3040,39 @@ export default function Dashboard() {
             the pill strip so the feast has room to breathe. */}
         <div className="mb-8">
           <LiturgicalDateHeader />
+
+          {/* Menu pill strip under the feast — People + one pill per
+              community the viewer belongs to. Link-only nav. Sits
+              between the feast and the daily prayer card. */}
+          {filter === null && (() => {
+            type Pill = { label: string; href: string; fg: string; bg: string; border: string };
+            const pillClass = "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80";
+            const communityPills: Pill[] = (dashGroups?.groups ?? [])
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map(g => ({
+                label: `${g.emoji ?? "🏘️"} ${g.name}`,
+                href: `/communities/${g.slug}`,
+                fg: "#6FAF85",
+                bg: "rgba(111,175,133,0.12)",
+                border: "rgba(111,175,133,0.25)",
+              }));
+            const PILLS: Pill[] = [
+              { label: "👥 People", href: "/people", fg: "#8FAF96", bg: "rgba(143,175,150,0.14)", border: "rgba(143,175,150,0.28)" },
+              ...communityPills,
+            ];
+            return (
+              <ScrollStrip className="mt-4" contentStyle={{ gap: 8 }}>
+                {PILLS.map((p, i) => (
+                  <Link key={i} href={p.href} className={pillClass}
+                    style={{ background: p.bg, color: p.fg, border: `1px solid ${p.border}` }}
+                  >
+                    {p.label}
+                  </Link>
+                ))}
+              </ScrollStrip>
+            );
+          })()}
 
           {/* Persistent daily prayer list card — same PrayerListCard
               used elsewhere, just routed through its `prayedToday`
