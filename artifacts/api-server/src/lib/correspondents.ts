@@ -3,14 +3,15 @@ import {
   db,
   correspondencesTable,
   correspondenceMembersTable,
+  lettersTable,
   usersTable,
 } from "@workspace/db";
 
-// Returns the set of user ids the viewer shares an active letter
-// correspondence with. "Active" = correspondences.is_active = true and the
-// viewer is a member of the correspondence (by userId OR by a
-// case-insensitive email match against users.email, since invited members
-// can exist before they've linked a user account).
+// Returns the set of user ids the viewer has an ACTIVELY EXCHANGED letter
+// correspondence with. "Exchanged" = both sides have sent ≥1 letter in the
+// same active correspondence. An invitee who received a first letter but
+// hasn't replied yet does NOT count — the relationship isn't mutual yet,
+// so it wouldn't be fair to pin their prayers ahead of closer ties.
 //
 // This replaced the fellows-pin relationship as the prayer-feed
 // prioritization signal: correspondents surface first in the prayer list.
@@ -43,44 +44,61 @@ export async function getCorrespondentUserIds(userId: number): Promise<number[]>
   );
   if (correspondenceIds.length === 0) return [];
 
-  // Step 2: gather all OTHER members of those correspondences. Prefer
-  // member.userId; fall back to resolving by LOWER(email) against users.email.
-  const otherMembers = await db
+  // Step 2: filter to correspondences where *the viewer has actually sent
+  // a letter*. If the viewer never wrote, no one in that correspondence
+  // has exchanged with them yet.
+  const viewerSends = await db
+    .select({ correspondenceId: lettersTable.correspondenceId })
+    .from(lettersTable)
+    .where(
+      and(
+        inArray(lettersTable.correspondenceId, correspondenceIds),
+        sql`LOWER(${lettersTable.authorEmail}) = ${viewerEmail}`,
+      ),
+    );
+  const viewerSentCorrIds = new Set(viewerSends.map(r => r.correspondenceId));
+  const exchangedCorrIds = correspondenceIds.filter(id => viewerSentCorrIds.has(id));
+  if (exchangedCorrIds.length === 0) return [];
+
+  // Step 3: for each exchanged correspondence, collect counterparty emails
+  // that have ALSO sent ≥1 letter in the same correspondence. Group by
+  // (correspondence_id, author_email) — other authors in those ids who
+  // aren't the viewer are the mutual exchangers.
+  const counterpartyLetters = await db
     .select({
-      memberUserId: correspondenceMembersTable.userId,
-      memberEmail: correspondenceMembersTable.email,
+      correspondenceId: lettersTable.correspondenceId,
+      authorEmail: lettersTable.authorEmail,
     })
-    .from(correspondenceMembersTable)
-    .where(inArray(correspondenceMembersTable.correspondenceId, correspondenceIds));
+    .from(lettersTable)
+    .where(
+      and(
+        inArray(lettersTable.correspondenceId, exchangedCorrIds),
+        sql`LOWER(${lettersTable.authorEmail}) <> ${viewerEmail}`,
+      ),
+    );
 
-  const directIds = new Set<number>();
-  const emailsToResolve = new Set<string>();
-
-  for (const m of otherMembers) {
-    if (m.memberUserId && m.memberUserId !== userId) {
-      directIds.add(m.memberUserId);
-      continue;
-    }
-    if (!m.memberUserId && m.memberEmail) {
-      const email = m.memberEmail.toLowerCase();
-      if (email !== viewerEmail) emailsToResolve.add(email);
-    }
+  const exchangedEmails = new Set<string>();
+  for (const row of counterpartyLetters) {
+    if (row.authorEmail) exchangedEmails.add(row.authorEmail.toLowerCase());
   }
+  if (exchangedEmails.size === 0) return [];
 
-  if (emailsToResolve.size > 0) {
-    const resolved = await db
-      .select({ id: usersTable.id, email: usersTable.email })
-      .from(usersTable)
-      .where(
-        sql`LOWER(${usersTable.email}) IN (${sql.join(
-          Array.from(emailsToResolve).map(e => sql`${e}`),
-          sql`, `,
-        )})`,
-      );
-    for (const u of resolved) {
-      if (u.id !== userId) directIds.add(u.id);
-    }
+  // Step 4: resolve those emails to user ids. Email is authoritative on
+  // letters.author_email (it's set when the letter is sent), so we don't
+  // need a separate member-table pass.
+  const resolved = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(
+      sql`LOWER(${usersTable.email}) IN (${sql.join(
+        Array.from(exchangedEmails).map(e => sql`${e}`),
+        sql`, `,
+      )})`,
+    );
+
+  const ids = new Set<number>();
+  for (const u of resolved) {
+    if (u.id !== userId) ids.add(u.id);
   }
-
-  return Array.from(directIds);
+  return Array.from(ids);
 }
