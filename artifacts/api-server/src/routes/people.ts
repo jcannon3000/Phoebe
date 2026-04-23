@@ -61,6 +61,10 @@ router.get("/people", async (req, res): Promise<void> => {
           AND ${groupMembersTable.joinedAt} IS NOT NULL`,
     );
   const myGroupIds = Array.from(new Set(myGroupIdRows.map(r => r.groupId)));
+  console.log(
+    `[GET /people] ownerId=${ownerId} email=${ownerEmailLower} ` +
+    `myGroupIds=[${myGroupIds.join(",")}]`,
+  );
   if (myGroupIds.length > 0) {
     // Garden excludes anyone whose role in the shared group is
     // hidden_admin. If they're a regular admin or member in ANY
@@ -70,6 +74,8 @@ router.get("/people", async (req, res): Promise<void> => {
         email: groupMembersTable.email,
         name: groupMembersTable.name,
         joinedAt: groupMembersTable.joinedAt,
+        role: groupMembersTable.role,
+        groupId: groupMembersTable.groupId,
       })
       .from(groupMembersTable)
       .where(
@@ -81,6 +87,10 @@ router.get("/people", async (req, res): Promise<void> => {
         AND (${groupMembersTable.role} IS NULL
              OR ${groupMembersTable.role} <> 'hidden_admin')`,
       );
+    console.log(
+      `[GET /people] peerRows=${peerRows.length} ` +
+      `sample=${JSON.stringify(peerRows.slice(0, 3).map(r => ({ e: r.email, r: r.role, g: r.groupId })))}`,
+    );
     for (const row of peerRows) {
       if (!row.email) continue;
       const emailLower = row.email.toLowerCase();
@@ -123,6 +133,7 @@ router.get("/people", async (req, res): Promise<void> => {
   // group the owner is in. Same rule as prayer.ts — "for members of
   // the group he is a hidden admin of, we don't want his requests
   // shown anywhere." Correspondence doesn't override this.
+  const beforeVeto = map.size;
   if (myGroupIds.length > 0 && map.size > 0) {
     const vetoRows = await db
       .select({
@@ -141,6 +152,10 @@ router.get("/people", async (req, res): Promise<void> => {
       map.delete(row.email.toLowerCase());
     }
   }
+  console.log(
+    `[GET /people] garden size: before-veto=${beforeVeto} ` +
+    `after-veto=${map.size} correspondentIds=${correspondentUserIds.length}`,
+  );
 
   // Traditions (ritual circles) CONTRIBUTE CONTEXT ONLY — we no
   // longer add people to the garden via traditions, but if a person
