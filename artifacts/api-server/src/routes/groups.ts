@@ -445,11 +445,17 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
           (date_trunc('day', now()) - interval '6 days') AS week_start
       ),
       members AS (
+        -- Hidden admins are observers, not members. They don't count
+        -- toward member totals, don't contribute to "people praying"
+        -- buckets, and their prayer requests are not community feed
+        -- items. Excluded here so every downstream metric naturally
+        -- treats them as invisible.
         SELECT u.id AS user_id, LOWER(u.email) AS email_lower
         FROM users u
         JOIN group_members gm ON gm.user_id = u.id
         WHERE gm.group_id = $1
           AND gm.joined_at IS NOT NULL
+          AND gm.role <> 'hidden_admin'
       ),
       -- Every userToken (across every moment) belonging to a member of
       -- this community. moment_posts is keyed by userToken, so we need
@@ -3133,12 +3139,33 @@ router.get("/groups/:slug/prayer-activity", async (req, res): Promise<void> => {
         sql`${prayerRequestAmensTable.prayedAt} > NOW() - INTERVAL '7 days'`,
       ));
 
+    // Hidden admins don't count as group participants — their prayer
+    // activity is hidden from the "Prayed this week" ticker just like
+    // their prayer requests are hidden from the community wall.
+    const hiddenAdminActivityRows = await db
+      .select({
+        rowUserId: groupMembersTable.userId,
+        emailUserId: usersTable.id,
+      })
+      .from(groupMembersTable)
+      .leftJoin(
+        usersTable,
+        sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
+      )
+      .where(eq(groupMembersTable.role, "hidden_admin"));
+    const hiddenAdminActivityIds = new Set(
+      hiddenAdminActivityRows
+        .map(r => r.rowUserId ?? r.emailUserId)
+        .filter((id): id is number => typeof id === "number"),
+    );
+
     // Fold both sources into a map keyed on userId, tracking the latest
     // prayedAt. Drop the current viewer — the ticker reads better as
     // "others in the community" and the viewer knows what they did.
     const byUser = new Map<number, { userId: number; name: string; avatarUrl: string | null; lastPrayedAt: Date }>();
     for (const row of [...momentRows, ...amenRows]) {
       if (row.userId === user.id) continue;
+      if (hiddenAdminActivityIds.has(row.userId)) continue;
       const existing = byUser.get(row.userId);
       const prayedAt = row.prayedAt instanceof Date ? row.prayedAt : new Date(row.prayedAt as any);
       if (!existing || prayedAt > existing.lastPrayedAt) {
