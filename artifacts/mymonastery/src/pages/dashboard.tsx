@@ -2413,6 +2413,12 @@ export default function Dashboard() {
     if (!user) return;
     if (prayerInviteHandledThisSessionRef.current) return;
 
+    // Wait for the beta-welcome popup to be dismissed first so we never
+    // stack two modals on top of each other on a new user's very first
+    // visit. The ref is NOT set here, so once betaWelcomeVisible flips to
+    // false this effect re-runs naturally.
+    if (betaWelcomeVisible) return;
+
     // CRITICAL: wait until every query has finished loading. Previously the
     // effect fired as each query resolved independently — if /prayers-for/mine
     // arrived first with 1 item and /moments was still pending, the count
@@ -2511,7 +2517,7 @@ export default function Dashboard() {
     }
     // If total === 0 we DON'T stamp — a later visit in the same day with
     // a queued prayer should still get a chance to see the popup.
-  }, [user, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, dashCircleIntentions, dashCircleIntentionsLoading, queryClient, popupLoggedToday, popupStreakData]);
+  }, [user, betaWelcomeVisible, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, dashCircleIntentions, dashCircleIntentionsLoading, queryClient, popupLoggedToday, popupStreakData]);
 
   // Correspondences — drives both the "you have a new letter" popup and
   // the letter cards mixed into the Today / This week / This month buckets.
@@ -2924,7 +2930,9 @@ export default function Dashboard() {
                 className="text-xl font-bold mb-6"
                 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
               >
-                {prayerInviteCount} {prayerInviteCount === 1 ? "prayer" : "prayers"} waiting for you
+                {prayerInviteCount > 0
+                  ? `${prayerInviteCount} ${prayerInviteCount === 1 ? "prayer" : "prayers"} waiting for you`
+                  : "Time for your daily prayer"}
               </h2>
               <div className="flex flex-col gap-2.5">
                 <button

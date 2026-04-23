@@ -610,20 +610,6 @@ function BellSlide({ onNext }: { onNext: () => void }) {
   const [hour, setHour] = useState(7);
   const [ampm, setAmpm] = useState<"AM" | "PM">("AM");
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  // Invite-sent state surfaced from the PUT response. `null` means we
-  // haven't heard back yet; `true` means Google Calendar accepted the
-  // event creation and is delivering an email invite; `false` means
-  // the event couldn't be created (Google unreachable, missing
-  // refresh token, etc.) and we shouldn't pretend an invite went out.
-  const [inviteSent, setInviteSent] = useState<boolean | null>(null);
-  // Which channel delivered the invite — "calendar" (Google Calendar
-  // API event, normal path) or "email" (ICS attachment fallback). The
-  // copy on the confirmation card changes slightly so the user knows
-  // where to look for the invite.
-  const [inviteChannel, setInviteChannel] = useState<"calendar" | "email">("calendar");
-  const [savedTime, setSavedTime] = useState<string | null>(null);
-  const [savedAmpm, setSavedAmpm] = useState<"AM" | "PM" | null>(null);
 
   const to24h = (h: number, ap: "AM" | "PM") => {
     if (ap === "AM") return h === 12 ? "00" : String(h).padStart(2, "0");
@@ -635,146 +621,15 @@ function BellSlide({ onNext }: { onNext: () => void }) {
     try {
       const time = `${to24h(hour, ampm)}:00`;
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const resp = await apiRequest<{ inviteSent?: boolean; calendarStatus?: string }>(
+      await apiRequest(
         "PUT",
         "/api/bell/preferences",
         { bellEnabled: true, dailyBellTime: time, timezone },
       );
-      setSaved(true);
-      setInviteSent(resp?.inviteSent ?? null);
-      setInviteChannel(resp?.calendarStatus === "ics-pending" ? "email" : "calendar");
-      setSavedTime(`${hour}:00`);
-      setSavedAmpm(ampm);
+      onNext();
     } catch {
       setSaving(false);
-    } finally {
-      setSaving(false);
     }
-  }
-
-  // Retry pathway for the "invite didn't send" failure state. Re-runs
-  // the same PUT with the already-saved time so the server tries
-  // createCalendarEvent again without the user having to re-pick the
-  // hour. Swaps the status dot to amber and the copy to "Invite sent"
-  // if the retry succeeds; stays red on continued failure.
-  async function handleRetry() {
-    if (!savedTime || !savedAmpm) return;
-    setSaving(true);
-    try {
-      const [hStr] = savedTime.split(":");
-      const h = parseInt(hStr ?? "7", 10);
-      const time = `${to24h(h, savedAmpm)}:00`;
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const resp = await apiRequest<{ inviteSent?: boolean }>(
-        "PUT",
-        "/api/bell/preferences",
-        { bellEnabled: true, dailyBellTime: time, timezone },
-      );
-      setInviteSent(resp?.inviteSent ?? null);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // ── Confirmation view — shown once the bell has been saved.
-  // Takes the whole slide; replaces the "Set my bell" call-to-action.
-  // Leans into the monastery-bell metaphor: the bell is now "hung",
-  // and the way the user's actual phone/laptop will "ring" it is by
-  // delivering the Google Calendar event's 10-minute-before reminder.
-  // So the job isn't done until the user accepts the invite in their
-  // email — otherwise no reminder will fire. The copy + a status dot
-  // communicate both the happy path (invite sent, waiting to accept)
-  // and the failure path (invite didn't go out, offer to retry).
-  if (saved) {
-    const displayTime = savedTime ? `${parseInt(savedTime.split(":")[0]!, 10)}:00 ${savedAmpm}` : "";
-    return (
-      <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto w-full px-2">
-        {/* Bell — gently pulsing, like a bell still swaying after being rung. */}
-        <motion.div
-          className="text-6xl mb-6"
-          initial={{ rotate: -15, scale: 0.9, opacity: 0 }}
-          animate={{
-            rotate: [-15, 12, -8, 5, -3, 0],
-            scale: [0.9, 1, 1, 1, 1, 1],
-            opacity: 1,
-          }}
-          transition={{ duration: 1.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1], ease: "easeOut" }}
-        >
-          🔔
-        </motion.div>
-        <h2
-          className="text-2xl md:text-4xl font-semibold mb-3 leading-tight"
-          style={{ color: C.text, fontFamily: C.font }}
-        >
-          Your bell is hung.
-        </h2>
-        <p
-          className="text-sm md:text-base leading-relaxed font-light mb-6 max-w-md"
-          style={{ color: C.sage, fontFamily: C.font }}
-        >
-          Like a bell in a monastery tower, it'll sound once each day at {displayTime} to call you to prayer.
-        </p>
-
-        {/* Status row — coloured dot + plain-language label. Matches the
-            same status surface shown in Settings so the first impression
-            and the ongoing experience speak the same words. */}
-        <div
-          className="rounded-2xl px-5 py-4 mb-5 w-full max-w-sm text-left"
-          style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}
-        >
-          <div className="flex items-center gap-2.5 mb-2">
-            <div
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{
-                background:
-                  inviteSent === false ? "#C17F7F"
-                  : inviteSent === true ? "#C4A94D"
-                  : "#8FAF96",
-              }}
-            />
-            <p className="text-sm font-semibold" style={{ color: C.text, fontFamily: C.font }}>
-              {inviteSent === false
-                ? "Calendar invite didn't send"
-                : "Invite sent — not yet accepted"}
-            </p>
-          </div>
-          <p className="text-[12px] leading-relaxed" style={{ color: C.sage, fontFamily: C.font }}>
-            {inviteSent === false ? (
-              <>
-                We couldn't reach your calendar. Tap Retry below to try
-                again — the invite comes from <span style={{ color: C.text }}>invites@withphoebe.app</span>.
-              </>
-            ) : (
-              <>
-                Check your email for a calendar invite from <span style={{ color: C.text }}>invites@withphoebe.app</span>.
-                <br />
-                Accept it so your calendar can remind you when the bell rings.
-              </>
-            )}
-          </p>
-
-          {inviteSent === false && (
-            <button
-              type="button"
-              onClick={handleRetry}
-              disabled={saving}
-              className="mt-3 px-4 py-2 rounded-full text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: "rgba(193,127,127,0.2)", color: "#F0EDE6", border: "1px solid rgba(193,127,127,0.4)" }}
-            >
-              {saving ? "Retrying…" : "Retry invite"}
-            </button>
-          )}
-        </div>
-
-        <button
-          onClick={onNext}
-          className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: "#2D5E3F", color: C.text }}
-        >
-          Continue
-        </button>
-      </div>
-    );
   }
 
   return (
