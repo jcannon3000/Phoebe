@@ -23,7 +23,7 @@ import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
-import { createCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
+import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
 import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -2857,6 +2857,152 @@ router.post("/beta/bells/resend-ics-invites", async (req, res): Promise<void> =>
     res.json({ attempted: targets.length, sent, failed, users: results });
   } catch (err) {
     console.error("POST /api/beta/bells/resend-ics-invites error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ─── POST /api/beta/bells/reinvite-pending ──────────────────────────────────
+// Admin action: nuke-and-replace the calendar invite for every user whose
+// bell is on but whose invite isn't live on their Google Calendar. "Live"
+// means they have an accepted attendee response on the stored Phoebe
+// scheduler event — anything else (needsAction, tentative, declined, no
+// event at all, Google API unreachable) counts as "not on their calendar"
+// and gets a fresh invite.
+//
+// Per-user flow:
+//   1. Poll Google for the current RSVP. If "accepted" — skip (already live).
+//   2. Otherwise: delete the old scheduler event if we have one on file,
+//      clear bell_calendar_event_id, then call sendAdminBellInvite at the
+//      user's existing daily_bell_time/timezone (preserves their chosen
+//      schedule), and persist the new event ID when Google succeeds.
+//
+// Returns { attempted, skippedAccepted, sent, failed, users: [...] }.
+// "attempted" counts only users we actually tried to reinvite; users who
+// were already accepted are counted separately under skippedAccepted.
+router.post("/beta/bells/reinvite-pending", async (req, res): Promise<void> => {
+  try {
+    const user = getUser(req);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Beta admin access required" });
+      return;
+    }
+
+    const result = await pool.query(`
+      SELECT id, email, name, timezone, daily_bell_time, bell_calendar_event_id
+      FROM users
+      WHERE bell_enabled = true
+      ORDER BY created_at ASC
+    `);
+
+    type Candidate = {
+      id: number;
+      email: string;
+      name: string | null;
+      timezone: string | null;
+      dailyBellTime: string | null;
+      bellCalendarEventId: string | null;
+    };
+    const candidates: Candidate[] = result.rows.map((r: Record<string, unknown>) => ({
+      id: r["id"] as number,
+      email: r["email"] as string,
+      name: (r["name"] as string | null) ?? null,
+      timezone: (r["timezone"] as string | null) ?? null,
+      dailyBellTime: (r["daily_bell_time"] as string | null) ?? null,
+      bellCalendarEventId: (r["bell_calendar_event_id"] as string | null) ?? null,
+    }));
+
+    const results: Array<{ id: number; email: string; sent: boolean; method: "google" | "ics" | "none" }> = [];
+    let skippedAccepted = 0;
+
+    for (const u of candidates) {
+      try {
+        // Live poll: is the current invite already accepted on their
+        // calendar? If yes, this user is already "on calendar" — leave them
+        // alone. We deliberately re-check here rather than trusting client
+        // state so a button press is always against fresh reality.
+        let isAccepted = false;
+        if (u.bellCalendarEventId) {
+          try {
+            const attendees = await getCalendarEventAttendees(u.id, u.bellCalendarEventId);
+            if (attendees) {
+              const me = attendees.find(a => a.email.toLowerCase() === u.email.toLowerCase());
+              if (me?.responseStatus === "accepted") isAccepted = true;
+            }
+          } catch {
+            // Lookup failed — treat as "not accepted" so we reinvite.
+            // Better to send a duplicate invite than to silently skip a
+            // user whose bell might actually be broken.
+          }
+        }
+
+        if (isAccepted) {
+          skippedAccepted++;
+          continue;
+        }
+
+        // Delete the stale event (best-effort — if Google returns 404
+        // because it was already deleted, that's fine). We always clear
+        // bell_calendar_event_id afterwards so sendAdminBellInvite starts
+        // from a clean slate; otherwise the old ID would linger if the
+        // new create fails and would still show the old decline/needsAction.
+        if (u.bellCalendarEventId) {
+          try {
+            await deleteCalendarEvent(u.id, u.bellCalendarEventId);
+          } catch (err) {
+            console.warn(`[bell] reinvite: deleteCalendarEvent failed for user ${u.id} (continuing):`, err);
+          }
+          await pool.query(
+            `UPDATE users SET bell_calendar_event_id = NULL WHERE id = $1`,
+            [u.id],
+          );
+        }
+
+        const dailyBellTime = /^\d{2}:\d{2}$/.test(u.dailyBellTime ?? "") ? u.dailyBellTime! : "07:00";
+        const invite = await sendAdminBellInvite(
+          { id: u.id, email: u.email, timezone: u.timezone },
+          dailyBellTime,
+        );
+
+        if (invite.calendarEventId) {
+          await pool.query(
+            `UPDATE users SET bell_calendar_event_id = $1 WHERE id = $2`,
+            [invite.calendarEventId, u.id],
+          );
+        }
+
+        const method: "google" | "ics" | "none" =
+          invite.calendarEventId ? "google" : invite.icsSent ? "ics" : "none";
+        results.push({ id: u.id, email: u.email, sent: invite.invited, method });
+        console.log(
+          `[bell] reinvite: user ${u.id} (${u.email}) ` +
+          `google=${invite.calendarEventId ? "ok" : "—"} ics=${invite.icsSent} time=${dailyBellTime}`,
+        );
+      } catch (err) {
+        console.error(`[bell] reinvite: user ${u.id} error:`, err);
+        results.push({ id: u.id, email: u.email, sent: false, method: "none" });
+      }
+    }
+
+    const sent = results.filter(r => r.sent).length;
+    const failed = results.filter(r => !r.sent).length;
+    const googleCount = results.filter(r => r.method === "google").length;
+    const icsCount = results.filter(r => r.method === "ics").length;
+
+    console.log(
+      `[bell] reinvite complete: ${sent} sent (${googleCount} google, ${icsCount} ics), ` +
+      `${failed} failed, ${skippedAccepted} already accepted, of ${candidates.length} candidates`,
+    );
+    res.json({
+      attempted: results.length,
+      skippedAccepted,
+      sent,
+      failed,
+      users: results,
+    });
+  } catch (err) {
+    console.error("POST /api/beta/bells/reinvite-pending error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

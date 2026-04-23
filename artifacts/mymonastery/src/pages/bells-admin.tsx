@@ -79,7 +79,10 @@ type InviteResult = {
   attempted: number;
   sent: number;
   failed: number;
-  users: Array<{ id: number; email: string; sent: boolean }>;
+  // Only populated by the "reinvite pending" action — counts users whose
+  // calendar already showed the invite as accepted, so we left them alone.
+  skippedAccepted?: number;
+  users: Array<{ id: number; email: string; sent: boolean; method?: "google" | "ics" | "none" }>;
 };
 
 export default function BellsAdminPage() {
@@ -104,11 +107,13 @@ export default function BellsAdminPage() {
     },
   });
 
-  // Resend the ICS invite to every user whose bell is on but never landed
-  // on their Google Calendar (inviteStatus === "ics-pending"). Same response
-  // shape as sendInvitesMutation so we can reuse the result card below.
-  const resendIcsMutation = useMutation<InviteResult>({
-    mutationFn: () => apiRequest("POST", "/api/beta/bells/resend-ics-invites"),
+  // Reinvite every user whose bell is on but whose invite isn't live on
+  // their Google Calendar — i.e. anything except "accepted". The backend
+  // deletes the stale scheduler event (if any) and sends a fresh Google
+  // Calendar invite. Same response shape as sendInvitesMutation so we can
+  // reuse the result card below.
+  const reinvitePendingMutation = useMutation<InviteResult>({
+    mutationFn: () => apiRequest("POST", "/api/beta/bells/reinvite-pending"),
     onSuccess: (data) => {
       setInviteResult(data);
       setConfirmOpen(null);
@@ -138,9 +143,14 @@ export default function BellsAdminPage() {
 
   const users = data?.users ?? [];
   const summary = data?.summary ?? { totalUsers: 0, bellsActive: 0, sentToday: 0 };
-  // Users whose bell is on but who never accepted a Google Calendar invite —
-  // the target set of the "Resend ICS invites" bulk action.
-  const icsPendingCount = users.filter(u => u.inviteStatus === "ics-pending").length;
+  // Users whose bell is on but whose invite isn't live on their calendar.
+  // This is the superset of "ICS sent" — it also covers needsAction,
+  // tentative, declined, stale, and the "unknown" state from Google API
+  // hiccups. The bulk reinvite action deletes whatever's there (if
+  // anything) and sends a fresh Google Calendar invite to this whole set.
+  const pendingReinviteCount = users.filter(
+    u => u.bellEnabled && u.inviteStatus !== "accepted",
+  ).length;
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -245,7 +255,7 @@ export default function BellsAdminPage() {
               </button>
               <button
                 onClick={() => setConfirmOpen("resend")}
-                disabled={isLoading || icsPendingCount === 0}
+                disabled={isLoading || pendingReinviteCount === 0}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-40"
                 style={{
                   background: "rgba(70,100,140,0.12)",
@@ -254,7 +264,7 @@ export default function BellsAdminPage() {
                 }}
               >
                 <Send size={14} />
-                Send Google Calendar invite to {icsPendingCount} {icsPendingCount === 1 ? "user" : "users"} stuck on "ICS sent"
+                Reinvite {pendingReinviteCount} {pendingReinviteCount === 1 ? "user" : "users"} whose bell isn't on their calendar
               </button>
             </div>
           ) : confirmOpen === "new" ? (
@@ -297,30 +307,30 @@ export default function BellsAdminPage() {
               style={{ background: "rgba(70,100,140,0.1)", border: "1px solid rgba(70,100,140,0.35)" }}
             >
               <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>
-                Send Google Calendar invite to {icsPendingCount} {icsPendingCount === 1 ? "user" : "users"}?
+                Reinvite {pendingReinviteCount} {pendingReinviteCount === 1 ? "user" : "users"}?
               </p>
               <p className="text-[12px] mb-3" style={{ color: "rgba(181,201,229,0.85)" }}>
-                Target: bells that are on but never landed on a Google Calendar. Each user gets a real invite from the Phoebe scheduler account with RSVP buttons — once they accept, they'll show up as "On calendar" here. Their saved time and timezone won't change. Falls back to an ICS email only if the Google API is unreachable.
+                Target: bells that are on but whose invite isn't accepted on a Google Calendar — "ICS sent", "Invited", "Tentative", "Declined", or "Unknown". The server deletes whatever's on file and sends a fresh Google Calendar invite from the Phoebe scheduler account at each user's existing bell time. Users already accepted are skipped. Falls back to an ICS email only if Google is unreachable.
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => resendIcsMutation.mutate()}
-                  disabled={resendIcsMutation.isPending}
+                  onClick={() => reinvitePendingMutation.mutate()}
+                  disabled={reinvitePendingMutation.isPending}
                   className="px-4 py-2 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
                   style={{ background: "#3B5F8A", color: "#F0EDE6" }}
                 >
-                  {resendIcsMutation.isPending ? "Sending…" : "Send invites"}
+                  {reinvitePendingMutation.isPending ? "Sending…" : "Send invites"}
                 </button>
                 <button
                   onClick={() => setConfirmOpen(null)}
-                  disabled={resendIcsMutation.isPending}
+                  disabled={reinvitePendingMutation.isPending}
                   className="px-4 py-2 rounded-lg text-sm transition-opacity disabled:opacity-50"
                   style={{ color: "rgba(143,175,150,0.7)" }}
                 >
                   Cancel
                 </button>
               </div>
-              {resendIcsMutation.isError && (
+              {reinvitePendingMutation.isError && (
                 <p className="text-xs mt-2" style={{ color: "#E5A08F" }}>Something went wrong. Check the server logs.</p>
               )}
             </div>
@@ -336,6 +346,9 @@ export default function BellsAdminPage() {
             <p className="text-[12px] mb-2" style={{ color: "rgba(143,175,150,0.8)" }}>
               {inviteResult.sent} of {inviteResult.attempted} invites delivered
               {inviteResult.failed > 0 && ` · ${inviteResult.failed} failed`}
+              {inviteResult.skippedAccepted !== undefined && inviteResult.skippedAccepted > 0 && (
+                ` · ${inviteResult.skippedAccepted} already accepted (skipped)`
+              )}
             </p>
             {inviteResult.failed > 0 && (
               <div className="mb-2">
