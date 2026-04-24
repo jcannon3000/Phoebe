@@ -50,32 +50,18 @@ function playChurchBell() {
       { ratio: 4.18, gain: 0.03, decay: 0.6 },
     ];
 
-    // Master gain with a very slight low-pass character by keeping partials
-    // as sines — clean, not harsh. A tiny dry "click" at onset simulates
-    // the clapper hitting metal.
+    // Master bus — a gentle low-pass shapes the tone into something
+    // softer and more pad-like, so the bell "glows" rather than rings.
     const master = ctx.createGain();
-    master.gain.value = 0.55;
-    master.connect(ctx.destination);
+    master.gain.value = 0.45;
+    const tone = ctx.createBiquadFilter();
+    tone.type = "lowpass";
+    tone.frequency.value = 2200;
+    tone.Q.value = 0.4;
+    tone.connect(master).connect(ctx.destination);
 
-    // Clapper click — a very short filtered noise burst.
-    const clickBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.03), ctx.sampleRate);
-    const cd = clickBuf.getChannelData(0);
-    for (let i = 0; i < cd.length; i++) {
-      cd[i] = (Math.random() * 2 - 1) * (1 - i / cd.length);
-    }
-    const clickSrc = ctx.createBufferSource();
-    clickSrc.buffer = clickBuf;
-    const clickFilt = ctx.createBiquadFilter();
-    clickFilt.type = "bandpass";
-    clickFilt.frequency.value = 2400;
-    clickFilt.Q.value = 1.2;
-    const clickGain = ctx.createGain();
-    clickGain.gain.value = 0.08;
-    clickSrc.connect(clickFilt).connect(clickGain).connect(master);
-    clickSrc.start(now);
-    clickSrc.stop(now + 0.04);
-
-    // Each partial as a sine with its own envelope.
+    // Each partial as a sine with a slow swell and long decay — no clapper
+    // click, no second toll. One ambient bell that fades into silence.
     for (const p of partials) {
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
@@ -84,29 +70,14 @@ function playChurchBell() {
 
       const t0 = now + (p.attack ?? 0);
       g.gain.setValueAtTime(0, t0);
-      g.gain.linearRampToValueAtTime(p.gain, t0 + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + p.decay);
+      // Slow 80ms attack — removes the percussive edge.
+      g.gain.linearRampToValueAtTime(p.gain, t0 + 0.08);
+      // Extra-long decay for an ambient tail.
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + p.decay * 1.4);
 
-      osc.connect(g).connect(master);
+      osc.connect(g).connect(tone);
       osc.start(t0);
-      osc.stop(t0 + p.decay + 0.05);
-    }
-
-    // Second, softer strike ~1.1s later — a faint second toll, like the bell
-    // still hanging in the stone of the chapel. Only the main partials.
-    const t2 = now + 1.1;
-    const reverbPartials = partials.slice(0, 5);
-    for (const p of reverbPartials) {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = STRIKE * p.ratio;
-      g.gain.setValueAtTime(0, t2);
-      g.gain.linearRampToValueAtTime(p.gain * 0.35, t2 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t2 + p.decay * 0.7);
-      osc.connect(g).connect(master);
-      osc.start(t2);
-      osc.stop(t2 + p.decay * 0.7 + 0.05);
+      osc.stop(t0 + p.decay * 1.4 + 0.05);
     }
   } catch {
     // Audio blocked / unsupported — silent fallback.
@@ -114,21 +85,12 @@ function playChurchBell() {
 }
 
 export function triggerAmenFeedback() {
-  // More pronounced haptic: a "heavy" impact, then a short second tap
-  // ~110ms later so the gesture feels like a bell being struck.
+  // Single soft haptic — a "medium" impact reads as smooth and present
+  // without the double-tap feeling percussive.
   try {
     window.dispatchEvent(
-      new CustomEvent("phoebe:haptic", { detail: { style: "heavy" } }),
+      new CustomEvent("phoebe:haptic", { detail: { style: "medium" } }),
     );
-    setTimeout(() => {
-      try {
-        window.dispatchEvent(
-          new CustomEvent("phoebe:haptic", { detail: { style: "medium" } }),
-        );
-      } catch {
-        /* non-fatal */
-      }
-    }, 110);
   } catch {
     /* non-fatal */
   }
