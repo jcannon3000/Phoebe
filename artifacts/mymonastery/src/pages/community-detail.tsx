@@ -755,7 +755,9 @@ export default function CommunityDetailPage() {
   const { data: gatheringsData } = useQuery<{ gatherings: Gathering[] }>({
     queryKey: ["/api/groups", slug, "gatherings"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/gatherings`),
-    enabled: !!user && !!slug && activeTab === "gatherings",
+    // Home tab surfaces a gatherings preview, so keep the fetch enabled
+    // for both tabs so switching tabs stays instant.
+    enabled: !!user && !!slug && (activeTab === "gatherings" || activeTab === "home"),
   });
 
   const { data: announcementsData } = useQuery<{ announcements: Announcement[] }>({
@@ -1674,6 +1676,73 @@ export default function CommunityDetailPage() {
                 groupEmoji={group.emoji}
                 onOpen={() => setActiveTab("gatherings")}
               />
+
+              {/* Community gatherings (rituals scoped to this community) —
+                  Sunday Service-style cards, max 3 on home. Tap "See all"
+                  to jump to the full Gatherings tab. Quiet when there are
+                  none. */}
+              {(gatheringsData?.gatherings ?? []).length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
+                      Gatherings
+                    </p>
+                    {(gatheringsData?.gatherings ?? []).length > 3 && (
+                      <button
+                        onClick={() => setActiveTab("gatherings")}
+                        className="text-[11px] font-semibold transition-opacity hover:opacity-70"
+                        style={{ color: "#8FAF96" }}
+                      >
+                        See all →
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {(gatheringsData!.gatherings).slice(0, 3).map(g => {
+                      const templateEmoji: Record<string, string> = {
+                        coffee: "☕",
+                        meal: "🍽️",
+                        walk: "🚶🏽",
+                        book_club: "📚",
+                        custom: "🌿",
+                      };
+                      const emoji = (g.template && templateEmoji[g.template]) ?? "🤝🏽";
+                      return (
+                        <Link key={g.id} href={`/ritual/${g.id}`} className="block w-full text-left">
+                          <div
+                            className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
+                            style={{
+                              background: "rgba(111,175,133,0.15)",
+                              border: "1px solid rgba(111,175,133,0.35)",
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+                            }}
+                          >
+                            <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
+                            <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                                  {emoji} {g.name}
+                                </span>
+                                <span
+                                  className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+                                  style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+                                >
+                                  Gathering
+                                </span>
+                              </div>
+                              {g.description && (
+                                <p className="text-xs mt-1.5 truncate" style={{ color: "#8FAF96", margin: 0 }}>
+                                  {g.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Intercessions — the most prayed-through surface, shown first */}
               {intercessions.length > 0 && (

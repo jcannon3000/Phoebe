@@ -1962,6 +1962,7 @@ function TimeSection({
     (showPassiveAsSummary ? 1 : passiveLetters.length) +
     serviceItems.length +
     feedItems.length +
+    gatheringItems.length +
     (trailingCards ? 1 : 0);
   const scrollable = visibleCardCount > 3;
 
@@ -1984,6 +1985,14 @@ function TimeSection({
           isOnDate={item.isOnDate}
           onOpen={() => onOpenService(item.data, item.nextDate)}
           keyPrefix={label}
+        />
+      ))}
+      {gatheringItems.map((item) => (
+        <GatheringCard
+          key={`${label}-g-${item.data.id}`}
+          r={item.data}
+          keyPrefix={label}
+          badge={item.badge}
         />
       ))}
       {feedItems.map((item) => (
@@ -2631,6 +2640,16 @@ export default function Dashboard() {
   });
   const subscribedFeeds = subscribedFeedsData?.subscriptions ?? [];
 
+  // Gatherings / traditions the user owns or participates in. Enriched
+  // rows already carry `nextMeetupDate`, so bucketing into Today /
+  // Tomorrow / This week is the same pattern as service schedules.
+  const { data: ritualsData } = useQuery<any[]>({
+    queryKey: ["/api/rituals", user?.id],
+    queryFn: () => apiRequest("GET", `/api/rituals?ownerId=${user!.id}`),
+    enabled: !!user,
+  });
+  const rituals = ritualsData ?? [];
+
   // Prayer-list streak (consecutive days finishing a full slideshow) — used
   // by the Today-empty fallback card to reward the habit.
   const { data: prayerStreakData } = useQuery<{ streak: number; lastPrayedDate: string | null; loggedToday?: boolean }>({
@@ -2937,8 +2956,28 @@ export default function Dashboard() {
       // for the rest of the day (drop entirely).
     }
 
+    // ── Gatherings / traditions placement
+    // Bucket by nextMeetupDate: today → Today, tomorrow → Tomorrow,
+    // within 7 days → This week, else → This month. Rituals without a
+    // next meetup (unscheduled) still render, parked in This month so
+    // the creator can finish setup from the card.
+    for (const r of rituals) {
+      const nextStr = r?.nextMeetupDate as string | null | undefined;
+      const next = nextStr ? parseISO(nextStr) : null;
+      const item: DashboardItem = { kind: "gathering", data: r };
+      if (!next) {
+        monthItems.push(item);
+        continue;
+      }
+      const nextMs = startOfDay(next).getTime();
+      if (nextMs === todayStart) todayItems.push(item);
+      else if (nextMs === tomorrowStart) tomorrowItems.push(item);
+      else if (nextMs < sevenDaysOutMs) weekItems.push(item);
+      else monthItems.push(item);
+    }
+
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, isBeta]);
+  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, isBeta]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
