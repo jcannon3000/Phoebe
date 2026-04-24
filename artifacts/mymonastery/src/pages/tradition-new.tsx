@@ -78,6 +78,21 @@ export default function TraditionNew() {
   const adminGroups = communityAdminView ? (groupsData?.groups ?? []).filter(g => g.myRole === "admin" || g.myRole === "hidden_admin") : [];
   const canInviteNewPeople = adminGroups.length > 0;
 
+  // Resolved community slug — used to fetch that community's full member
+  // roster so we can auto-populate participants and skip the "Who" step.
+  // A gathering created inside a community should go out to EVERYONE in
+  // the community; no invite step needed.
+  const selectedGroup = adminGroups.find(g => g.id === selectedGroupId);
+  const selectedSlug = selectedGroup?.slug ?? null;
+  const { data: communityMembersData } = useQuery<{ members: Array<{ name: string | null; email: string; joinedAt: string | null; role: string }> }>({
+    queryKey: ["/api/groups", selectedSlug, "members-for-gathering"],
+    queryFn: () => apiRequest("GET", `/api/groups/${selectedSlug}`),
+    enabled: !!selectedSlug,
+  });
+  const communityMembers = (communityMembersData?.members ?? [])
+    .filter(m => m.joinedAt !== null && m.role !== "hidden_admin")
+    .map(m => ({ name: m.name ?? m.email.split("@")[0], email: m.email }));
+
   // Auto-select and skip community step:
   //   1. If the URL carries ?community=<slug> (e.g. the "Create a
   //      gathering" button inside a community page), pre-select that
@@ -125,7 +140,13 @@ export default function TraditionNew() {
   function handleTypeSelect(t: string) {
     setTemplate(t);
     setName("");
-    setStep(2);
+    // Community gathering: skip the "Who's coming?" step. Participants
+    // are the whole community, auto-populated at create time.
+    if (selectedGroupId !== null) {
+      setStep(3);
+    } else {
+      setStep(2);
+    }
   }
 
   function handleWhoNext() {
@@ -158,7 +179,19 @@ export default function TraditionNew() {
     setSubmitting(true);
     setError("");
     try {
-      const participants = allPeople.filter((p) => p.email.trim());
+      // Community gathering → participants = full community roster
+      // (joined, non-hidden members). Anything added to selectedPeople
+      // was a user-typed override; merge both with dedupe by email.
+      let participants = allPeople.filter((p) => p.email.trim());
+      if (selectedGroupId !== null) {
+        const byEmail = new Map<string, { name: string; email: string }>();
+        for (const p of participants) byEmail.set(p.email.toLowerCase(), p);
+        for (const m of communityMembers) {
+          const key = m.email.toLowerCase();
+          if (!byEmail.has(key)) byEmail.set(key, m);
+        }
+        participants = Array.from(byEmail.values());
+      }
       // Fixed-time gatherings don't offer alternates — the user already
       // committed to a single time. Flexible mode keeps the coordination
       // flow (first pick + up to two alternates).
@@ -225,7 +258,13 @@ export default function TraditionNew() {
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
-          onClick={() => step === 0 ? setLocation("/dashboard") : setStep((s) => (s - 1) as Step)}
+          onClick={() => {
+            if (step === 0) { setLocation("/dashboard"); return; }
+            // Community flow skips step 2 (Who) on the way forward, so
+            // skip it on the way back too.
+            if (step === 3 && selectedGroupId !== null) { setStep(1); return; }
+            setStep((s) => (s - 1) as Step);
+          }}
           className="text-sm"
           style={{ color: "#8FAF96" }}
         >

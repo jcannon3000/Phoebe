@@ -37,6 +37,17 @@ const config: CapacitorConfig = {
     // (Wired up in Swift via WKUIDelegate; kept here as a documented intent.)
   },
   plugins: {
+    // Route window.fetch through the native HTTP stack so cross-origin
+    // requests to withphoebe.app use NSHTTPCookieStorage instead of
+    // WKWebView's third-party-cookie-blocked jar. Without this, the login
+    // cookie set by /api/auth/login on `withphoebe.app` is never sent back
+    // on /api/auth/me from `capacitor://localhost`, and auth fails silently.
+    CapacitorHttp: {
+      enabled: true,
+    },
+    CapacitorCookies: {
+      enabled: true,
+    },
     SplashScreen: {
       // We want a short splash so the app feels snappy. Our native shell
       // hides the splash as soon as the React app has mounted and signaled
