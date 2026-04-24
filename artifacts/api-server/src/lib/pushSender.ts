@@ -17,6 +17,7 @@
 // BadDeviceToken responses mark the row invalid so the next pass
 // skips it.
 
+import http2 from "node:http2";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { SignJWT, importPKCS8, type KeyLike } from "jose";
 import { db, deviceTokensTable } from "@workspace/db";
@@ -174,53 +175,95 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
     headers["apns-collapse-id"] = payload.collapseId.slice(0, 64);
   }
 
-  let res: Response;
+  // APNs requires HTTP/2 — Node's native fetch (undici) only speaks
+  // HTTP/1.1, so the previous version failed every send with
+  // "fetch failed: Response does not match the HTTP/..." We use the
+  // built-in node:http2 module instead. apnsRequest opens a session
+  // per call (cheap; no pooling complexity for our low push volume)
+  // and returns parsed { status, reason }.
+  let result: { status: number; reason: string };
   try {
-    res = await fetch(`${APNS_HOST}/3/device/${deviceToken}`, {
-      method: "POST",
-      headers,
-      body,
-    });
+    result = await apnsRequest(deviceToken, headers, body);
   } catch (err) {
     logger.warn({ err }, "[push] APNs network error");
     return "error";
   }
 
-  if (res.status === 200) return "ok";
+  if (result.status === 200) return "ok";
   // 410 Gone = Unregistered; 400 + "BadDeviceToken" reason = device
   // token doesn't match environment (sandbox/prod mixup or app
   // uninstall). Both mean we should stop sending to this token.
-  if (res.status === 410) return "invalid";
-
-  let reasonText = "";
-  try {
-    reasonText = await res.text();
-  } catch {
-    /* body drained */
-  }
-  const reason = (() => {
-    try {
-      const body = JSON.parse(reasonText) as { reason?: string };
-      return body.reason ?? "";
-    } catch {
-      return reasonText;
-    }
-  })();
+  if (result.status === 410) return "invalid";
 
   logger.warn(
-    { status: res.status, reason, deviceToken: deviceToken.slice(0, 8) + "…" },
+    { status: result.status, reason: result.reason, deviceToken: deviceToken.slice(0, 8) + "…" },
     "[push] APNs send failed"
   );
 
   if (
-    res.status === 400 &&
-    (reason === "BadDeviceToken" || reason === "DeviceTokenNotForTopic")
+    result.status === 400 &&
+    (result.reason === "BadDeviceToken" || result.reason === "DeviceTokenNotForTopic")
   ) {
     return "invalid";
   }
   // 4xx generally = something about the request is wrong permanently;
   // invalidate so we don't keep retrying. 5xx = transient, retry later.
-  return res.status >= 400 && res.status < 500 ? "invalid" : "error";
+  return result.status >= 400 && result.status < 500 ? "invalid" : "error";
+}
+
+// Open an HTTP/2 session to APNs, send one request, return the response.
+// We don't pool sessions — Phoebe's push volume is tiny and the
+// per-request session cost (a TLS handshake) is dwarfed by the JWT cache
+// hit and the actual notification round-trip. Pooling would force us to
+// handle session lifecycle, GOAWAY frames, idle timeouts, etc., for
+// negligible benefit. If we ever push thousands per minute, revisit.
+async function apnsRequest(
+  deviceToken: string,
+  headers: Record<string, string>,
+  body: string,
+): Promise<{ status: number; reason: string }> {
+  return new Promise((resolve, reject) => {
+    const session = http2.connect(APNS_HOST);
+    let settled = false;
+    const finish = (resOrErr: { status: number; reason: string } | Error) => {
+      if (settled) return;
+      settled = true;
+      try { session.close(); } catch { /* already closed */ }
+      if (resOrErr instanceof Error) reject(resOrErr); else resolve(resOrErr);
+    };
+
+    session.on("error", err => finish(err));
+
+    const req = session.request({
+      ":method": "POST",
+      ":path": `/3/device/${deviceToken}`,
+      ...headers,
+    });
+
+    let status = 0;
+    let bodyChunks = "";
+    req.on("response", h => {
+      status = Number(h[":status"] ?? 0);
+    });
+    req.on("error", err => finish(err));
+    req.setEncoding("utf8");
+    req.on("data", chunk => { bodyChunks += chunk; });
+    req.on("end", () => {
+      let reason = "";
+      if (bodyChunks) {
+        try {
+          const parsed = JSON.parse(bodyChunks) as { reason?: string };
+          reason = parsed.reason ?? bodyChunks;
+        } catch {
+          reason = bodyChunks;
+        }
+      }
+      finish({ status, reason });
+    });
+
+    req.write(body);
+    req.end();
+  });
 }
 
 // ─── APNs JWT caching ──────────────────────────────────────────────────────
