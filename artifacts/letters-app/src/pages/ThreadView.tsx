@@ -20,7 +20,6 @@ interface Letter {
   content: string;
   letterNumber: number;
   periodNumber: number;
-  postmarkCity: string | null;
   sentAt: string;
   readBy: Array<string | number>;
 }
@@ -31,7 +30,7 @@ interface Correspondence {
   id: number;
   name: string;
   groupType: string;
-  members: Array<{ name: string | null; email: string; homeCity: string | null }>;
+  members: Array<{ name: string | null; email: string }>;
   letters: Letter[];
   myTurn: boolean;
   turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
@@ -44,11 +43,6 @@ interface Correspondence {
   };
 }
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-function shortDate(d: string) {
-  const dt = new Date(d);
-  return `${MONTHS[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;
-}
 function longDate(d: string) {
   const dt = new Date(d);
   const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -141,7 +135,7 @@ export default function ThreadView() {
                     boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
                   }}
                 >
-                  {/* Postmark header */}
+                  {/* Letter header */}
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
                       <p className="text-[13px] font-semibold" style={{ color: WARM }}>
@@ -149,7 +143,6 @@ export default function ThreadView() {
                       </p>
                       <p className="text-[11px] mt-0.5" style={{ color: FAINT }}>
                         {longDate(letter.sentAt)}
-                        {letter.postmarkCity && ` · ${letter.postmarkCity.split(",")[0]}`}
                       </p>
                     </div>
                     <span

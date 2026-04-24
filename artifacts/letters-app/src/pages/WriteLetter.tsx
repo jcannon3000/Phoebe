@@ -27,9 +27,6 @@ export default function WriteLetter() {
   const tp = token ? `?token=${token}` : "";
 
   const [content, setContent] = useState("");
-  const [postmarkCity, setPostmarkCity] = useState("");
-  const [locating, setLocating] = useState(false);
-  const [locationDenied, setLocationDenied] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
 
@@ -109,39 +106,13 @@ export default function WriteLetter() {
 
   useEffect(() => () => { saveDraft(); }, [saveDraft]);
 
-  const detectLocation = useCallback(() => {
-    if (!isOTO || postmarkCity || locating || locationDenied) return;
-    if (!navigator.geolocation) { setLocationDenied(true); return; }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude: lat, longitude: lon } = pos.coords;
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
-            headers: { "Accept-Language": "en" },
-          });
-          const d = await res.json();
-          const city = d.address?.city || d.address?.town || d.address?.village || "";
-          const state = d.address?.state || "";
-          const zip = d.address?.postcode || "";
-          setPostmarkCity([city, state && zip ? `${state} ${zip}` : state || zip].filter(Boolean).join(", "));
-        } catch { setLocationDenied(true); }
-        finally { setLocating(false); }
-      },
-      () => { setLocating(false); setLocationDenied(true); },
-      { timeout: 8000 }
-    );
-  }, [isOTO, postmarkCity, locating, locationDenied]);
-
   const sendMutation = useMutation({
     mutationFn: () =>
       api("POST", `/api/phoebe/correspondences/${id}/letters${tp}`, {
         content: content.trim(),
-        postmarkCity: isOTO ? postmarkCity.trim() || undefined : undefined,
       }).catch(() =>
         api("POST", `/api/letters/correspondences/${id}/letters${tp}`, {
           content: content.trim(),
-          postmarkCity: isOTO ? postmarkCity.trim() || undefined : undefined,
         })
       ),
     onSuccess: () => setLocation(`/letters/${id}`),
@@ -149,7 +120,6 @@ export default function WriteLetter() {
 
   function handleSend() {
     setConfirmSend(true);
-    if (isOTO) detectLocation();
   }
 
   return (
@@ -218,30 +188,13 @@ export default function WriteLetter() {
           </>
         ) : (
           <div className="w-full">
-            {isOTO && (
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-base">📮</span>
-                {locating ? (
-                  <span className="text-[13px] italic" style={{ color: MUTED }}>Finding your location…</span>
-                ) : (
-                  <input
-                    type="text"
-                    value={postmarkCity}
-                    onChange={e => setPostmarkCity(e.target.value)}
-                    placeholder="City, State  (postmark)"
-                    className="text-[13px] font-medium border-b focus:outline-none bg-transparent"
-                    style={{ color: DARK, borderColor: "#A8A09A", minWidth: 200 }}
-                  />
-                )}
-              </div>
-            )}
             <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
               Send your {isOTO ? "letter" : "update"}? Can't be edited after.
             </p>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => sendMutation.mutate()}
-                disabled={sendMutation.isPending || (isOTO && locating)}
+                disabled={sendMutation.isPending}
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
                 style={{ background: GREEN, color: "#fff" }}
               >

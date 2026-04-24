@@ -17,7 +17,6 @@ interface Letter {
   content: string;
   letterNumber: number;
   periodNumber: number;
-  postmarkCity: string | null;
   sentAt: string;
 }
 
@@ -97,26 +96,14 @@ export default function ReadLetter() {
         transition={{ duration: 0.4 }}
         className="px-6 pt-8 pb-24 max-w-2xl mx-auto"
       >
-        {/* Postmark */}
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <p className="text-base font-semibold" style={{ color: DARK }}>
-              {isMine ? "You" : letter.authorName}
-            </p>
-            <p className="text-[13px] mt-0.5" style={{ color: MUTED }}>
-              {formatDate(letter.sentAt)}
-            </p>
-          </div>
-          {letter.postmarkCity && (
-            <div
-              className="text-right px-3 py-2 rounded-xl"
-              style={{ background: "rgba(92,122,95,0.08)", border: "1px solid rgba(92,122,95,0.15)" }}
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
-                📮 {letter.postmarkCity.split(",")[0]}
-              </p>
-            </div>
-          )}
+        {/* Heading */}
+        <div className="mb-8">
+          <p className="text-base font-semibold" style={{ color: DARK }}>
+            {isMine ? "You" : letter.authorName}
+          </p>
+          <p className="text-[13px] mt-0.5" style={{ color: MUTED }}>
+            {formatDate(letter.sentAt)}
+          </p>
         </div>
 
         {/* Divider */}

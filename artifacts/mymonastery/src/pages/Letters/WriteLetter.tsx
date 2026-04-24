@@ -8,7 +8,6 @@ interface MemberData {
   id: number;
   name: string | null;
   email: string;
-  homeCity: string | null;
 }
 
 interface LetterRef {
@@ -51,9 +50,6 @@ export default function WriteLetter() {
   const queryClient = useQueryClient();
 
   const [content, setContent] = useState("");
-  const [postmarkCity, setPostmarkCity] = useState("");
-  const [locating, setLocating] = useState(false);
-  const [locationDenied, setLocationDenied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
 
@@ -106,41 +102,6 @@ export default function WriteLetter() {
   const minWords = isOneToOne ? 100 : 50;
   const maxWords = 1000;
 
-  // Detect location for postmark — called when user hits Send
-  const detectLocation = useCallback(() => {
-    if (!isOneToOne || postmarkCity || locating || locationDenied) return;
-    if (!navigator.geolocation) { setLocationDenied(true); return; }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude, longitude } = pos.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          const data = await res.json();
-          const city =
-            data.address?.city ||
-            data.address?.town ||
-            data.address?.village ||
-            data.address?.county ||
-            "";
-          const state = data.address?.state || "";
-          const postcode = data.address?.postcode || "";
-          const parts = [city, state && postcode ? `${state} ${postcode}` : state || postcode].filter(Boolean);
-          setPostmarkCity(parts.join(", "));
-        } catch {
-          setLocationDenied(true);
-        } finally {
-          setLocating(false);
-        }
-      },
-      () => { setLocating(false); setLocationDenied(true); },
-      { timeout: 8000 }
-    );
-  }, [isOneToOne, postmarkCity, locating, locationDenied]);
-
   // Load draft
   useEffect(() => {
     if (draft?.content && !content) {
@@ -182,11 +143,9 @@ export default function WriteLetter() {
     mutationFn: () =>
       apiRequest("POST", `/api/phoebe/correspondences/${correspondenceId}/letters${tokenParam}`, {
         content: content.trim(),
-        postmarkCity: isOneToOne ? postmarkCity.trim() : undefined,
       }).catch(() =>
         apiRequest("POST", `/api/letters/correspondences/${correspondenceId}/letters${tokenParam}`, {
           content: content.trim(),
-          postmarkCity: isOneToOne ? postmarkCity.trim() : undefined,
         })
       ),
     onSuccess: () => {
@@ -248,7 +207,6 @@ export default function WriteLetter() {
 
   function handleSendClick() {
     setConfirmSend(true);
-    if (isOneToOne) detectLocation();
   }
 
   function handleBack() {
@@ -358,30 +316,13 @@ export default function WriteLetter() {
           </div>
         ) : (
           <div>
-            {isOneToOne && (
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-base">📮</span>
-                {locating ? (
-                  <span className="text-[13px] italic" style={{ color: "#9a9390" }}>Finding your location…</span>
-                ) : (
-                  <input
-                    type="text"
-                    value={postmarkCity}
-                    onChange={e => setPostmarkCity(e.target.value)}
-                    placeholder="City, State ZIP"
-                    className="text-[13px] font-medium border-b focus:outline-none"
-                    style={{ color: "#2C1810", backgroundColor: "#F8F3EC", borderColor: "#A8A09A", minWidth: 180 }}
-                  />
-                )}
-              </div>
-            )}
             <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
               Send your {isOneToOne ? "letter" : "update"}? Can't be edited after.
             </p>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => sendMutation.mutate()}
-                disabled={sendMutation.isPending || (isOneToOne && locating)}
+                disabled={sendMutation.isPending}
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >

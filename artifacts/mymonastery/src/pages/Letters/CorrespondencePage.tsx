@@ -21,7 +21,6 @@ interface LetterData {
   letterNumber: number;
   periodNumber: number;
   periodStartDate: string;
-  postmarkCity: string | null;
   sentAt: string;
   readBy: Array<string | number>;
 }
@@ -33,7 +32,7 @@ interface CorrespondenceDetail {
   name: string;
   groupType: string;
   startedAt: string;
-  members: Array<{ id: number; name: string | null; email: string; joinedAt: string | null; lastLetterAt: string | null; homeCity: string | null }>;
+  members: Array<{ id: number; name: string | null; email: string; joinedAt: string | null; lastLetterAt: string | null }>;
   letters: LetterData[];
   myTurn: boolean;
   turnState?: TurnState;
@@ -60,47 +59,12 @@ function formatLetterDate(dateStr: string): string {
   return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
 }
 
-function formatShortDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${months[d.getMonth()]} ${d.getDate()}`;
-}
-
 function daysSince(dateStr: string): number {
   const then = new Date(dateStr);
   then.setHours(0, 0, 0, 0);
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   return Math.max(0, Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24)));
-}
-
-const STATE_ABBR: Record<string, string> = { "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA","Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT","Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","District of Columbia":"DC" };
-
-function parsePostmark(raw: string) {
-  const parts = raw.split(", ");
-  if (parts.length >= 2) {
-    const city = parts[0];
-    const stateZip = parts.slice(1).join(", ");
-    const tokens = stateZip.split(" ");
-    const last = tokens[tokens.length - 1];
-    if (/^\d{5}(-\d{4})?$/.test(last)) {
-      const fullState = tokens.slice(0, -1).join(" ");
-      return { city, state: STATE_ABBR[fullState] || fullState, zip: last };
-    }
-    return { city, state: STATE_ABBR[stateZip] || stateZip, zip: "" };
-  }
-  return { city: raw, state: "", zip: "" };
-}
-
-function PostmarkStamp({ city, date }: { city: string; date: string }) {
-  const { city: c, state, zip } = parsePostmark(city);
-  return (
-    <div className="inline-flex flex-col items-end flex-shrink-0 " style={{ gap: "1px" }}>
-      <span style={{ color: "#5C7A5F", fontSize: "13px", fontWeight: 700, lineHeight: 1.2 }}>{formatShortDate(date)}</span>
-      <span className="uppercase" style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.08em", lineHeight: 1.3 }}>{c}{state ? `, ${state}` : ""}</span>
-      {zip && <span style={{ color: "#5C7A5F", fontSize: "9px", letterSpacing: "0.05em", lineHeight: 1.3 }}>{zip}</span>}
-    </div>
-  );
 }
 
 export default function CorrespondencePage() {
@@ -190,11 +154,6 @@ export default function CorrespondencePage() {
     .filter(Boolean)
     .join(", ");
 
-  const memberCities = members
-    .filter((m) => (m.email || "").toLowerCase() !== me)
-    .filter((m) => m.homeCity)
-    .map((m) => `${m.name || m.email.split("@")[0]} · ${m.homeCity}`);
-
   const periodLabel = isOneToOne
     ? `Letter ${currentPeriod.periodNumber}`
     : `Round ${currentPeriod.periodNumber}`;
@@ -244,10 +203,7 @@ export default function CorrespondencePage() {
         {isOneToOne && otherMembers && (
           <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
         )}
-        {memberCities.length > 0 && (
-          <p className="text-xs mb-5" style={{ color: "#8FAF96" }}>📮 {memberCities.join(" · ")}</p>
-        )}
-        {memberCities.length === 0 && <div className="mb-5" />}
+        <div className="mb-5" />
 
         {/* Period bar */}
         <div
@@ -387,10 +343,7 @@ export default function CorrespondencePage() {
                     >
                       <p className="text-[11px] font-semibold uppercase mb-3" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
                         {letter.authorName} · {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
-                        {letter.postmarkCity && isOneToOne && (() => {
-                          const { city, state } = parsePostmark(letter.postmarkCity!);
-                          return ` · ${city}, ${state} · ${formatLetterDate(letter.sentAt)}`;
-                        })()}
+                        {isOneToOne && ` · ${formatLetterDate(letter.sentAt)}`}
                       </p>
 
                       <p className="text-[17px] leading-[1.9] whitespace-pre-wrap line-clamp-6" style={{ color: "#F0EDE6", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>

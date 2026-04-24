@@ -202,11 +202,9 @@ export async function sendNewLetterEmail(opts: {
   authorName: string;
   correspondenceName: string;
   correspondenceUrl: string;
-  postmarkCity?: string;
-  letterDate?: Date;
   type?: "one_to_one" | "group";
 }): Promise<boolean> {
-  const { to, authorName, correspondenceName, correspondenceUrl, postmarkCity, letterDate, type = "one_to_one" } = opts;
+  const { to, authorName, correspondenceName, correspondenceUrl, type = "one_to_one" } = opts;
 
   if (type === "group") {
     const subject = `${authorName} shared an update 🌿`;
@@ -235,17 +233,11 @@ export async function sendNewLetterEmail(opts: {
     return sendEmail(to, subject, html, text);
   }
 
-  const dateStr = letterDate
-    ? letterDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-    : "";
-  const postmarkLine = postmarkCity ? `Postmarked: ${postmarkCity}${dateStr ? ` · ${dateStr}` : ""}` : "";
-
   const subject = `${authorName} wrote you a letter 🌿`;
   const html = wrapHtml(`
     <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2C1810;line-height:1.3;">
       ${authorName} wrote you a letter
     </h1>
-    ${postmarkLine ? `<p style="margin:0 0 8px;font-size:14px;color:#9a9390;line-height:1.6;">${postmarkLine}</p>` : ""}
     <p style="margin:0 0 28px;font-size:15px;color:#6b6460;line-height:1.7;">
       Read it, then write back when it's your turn. 🌿
     </p>
@@ -258,15 +250,13 @@ export async function sendNewLetterEmail(opts: {
   const text = [
     `${authorName} wrote you a letter 🌿`,
     "",
-    postmarkLine,
-    "",
     "Read it here:",
     correspondenceUrl,
     "",
     "Then write back when it's your turn. 🌿",
     "",
     "Be together with Phoebe.",
-  ].filter(l => l !== undefined).join("\n");
+  ].join("\n");
 
   return sendEmail(to, subject, html, text);
 }

@@ -14,17 +14,17 @@ const CARD_BG = "#0F2818";
 const BORDER = "rgba(142,158,66,0.22)";
 const ACCENT = "#8E9E42";
 
-interface PostmarkData { authorName: string; city: string; sentAt: string }
-interface UnreadPreview { authorName: string; content: string; postmarkCity: string | null }
+interface RecentLetter { authorName: string; sentAt: string }
+interface UnreadPreview { authorName: string; content: string }
 
 interface CorrespondenceItem {
   id: number;
   name: string;
   groupType: string;
-  members: Array<{ name: string | null; email: string; homeCity: string | null }>;
+  members: Array<{ name: string | null; email: string }>;
   letterCount: number;
   unreadCount: number;
-  recentPostmarks: PostmarkData[];
+  recentLetters: RecentLetter[];
   unreadPreview: UnreadPreview | null;
   myTurn: boolean;
   turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
@@ -51,7 +51,7 @@ function CorrespondenceCard({ item, me }: { item: CorrespondenceItem; me: string
     .join(", ");
 
   const title = isOTO ? `${others}` : (item.name || `Circle with ${others}`);
-  const lastPM = item.recentPostmarks[0] ?? null;
+  const lastLetter = item.recentLetters[0] ?? null;
   const hasUnread = item.unreadCount > 0;
 
   const barColor = isOverdue
@@ -85,10 +85,9 @@ function CorrespondenceCard({ item, me }: { item: CorrespondenceItem; me: string
                 {item.letterCount} {item.letterCount === 1 ? "letter" : "letters"}
               </p>
             </div>
-            {lastPM?.city && (
+            {lastLetter && (
               <div className="text-right shrink-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "rgba(200,212,192,0.7)" }}>{lastPM.city.split(",")[0]}</p>
-                <p className="text-[10px]" style={{ color: FAINT }}>{shortDate(lastPM.sentAt)}</p>
+                <p className="text-[10px]" style={{ color: FAINT }}>{shortDate(lastLetter.sentAt)}</p>
               </div>
             )}
           </div>
@@ -106,8 +105,8 @@ function CorrespondenceCard({ item, me }: { item: CorrespondenceItem; me: string
               </span>
             ) : hasUnread ? (
               <span className="text-xs font-semibold" style={{ color: ACCENT }}>New letter 📮</span>
-            ) : lastPM ? (
-              <span className="text-xs" style={{ color: FAINT }}>Last: {shortDate(lastPM.sentAt)}</span>
+            ) : lastLetter ? (
+              <span className="text-xs" style={{ color: FAINT }}>Last: {shortDate(lastLetter.sentAt)}</span>
             ) : (
               <span className="text-xs" style={{ color: FAINT }}>No letters yet</span>
             )}

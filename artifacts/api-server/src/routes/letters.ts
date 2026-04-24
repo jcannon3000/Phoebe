@@ -21,7 +21,6 @@ import {
   getOneToOneTurnState,
 } from "../lib/letterPeriods";
 import { sendInvitationEmail, sendNewLetterEmail, sendReminderEmail } from "../lib/letterEmails";
-import { sendLetterCalendarEvent } from "../lib/letterCalendar";
 import { getInviteBaseUrl } from "../lib/urls";
 
 const router: IRouter = Router();
@@ -290,7 +289,9 @@ router.get(
         ),
       }));
 
-      // Recent letters for preview + postmarks
+      // Recent letters for preview / latest-sent bookkeeping. The older
+      // "postmark" surface (location attached to each letter) has been
+      // removed — consumers now only care about sentAt.
       const recentLetters = [...letters]
         .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())
         .slice(0, 3);
@@ -308,22 +309,17 @@ router.get(
           email: m.email,
           joinedAt: m.joinedAt,
           lastLetterAt: m.lastLetterAt,
-          homeCity: m.homeCity,
         })),
         letterCount: letters.length,
         unreadCount,
-        recentPostmarks: recentLetters
-          .filter((l) => l.postmarkCity)
-          .map((l) => ({
-            authorName: l.authorName,
-            city: l.postmarkCity,
-            sentAt: l.sentAt,
-          })),
+        recentLetters: recentLetters.map((l) => ({
+          authorName: l.authorName,
+          sentAt: l.sentAt,
+        })),
         unreadPreview: firstUnread
           ? {
               authorName: firstUnread.authorName,
               content: firstUnread.content.slice(0, 120),
-              postmarkCity: firstUnread.postmarkCity,
             }
           : null,
         currentPeriod: {
@@ -394,11 +390,22 @@ router.get(
       return;
     }
 
-    const letters = await db
+    // The select returns raw columns including the now-deprecated
+    // `postmarkCity` / `postmarkCountry` columns — strip those from
+    // the outgoing response so clients never see them again.
+    const rawLetters = await db
       .select()
       .from(lettersTable)
       .where(eq(lettersTable.correspondenceId, correspondenceId))
       .orderBy(desc(lettersTable.sentAt));
+    const letters = rawLetters.map((l) => {
+      const { postmarkCity: _pc, postmarkCountry: _po, ...rest } = l as typeof l & {
+        postmarkCity?: string | null;
+        postmarkCountry?: string | null;
+      };
+      void _pc; void _po;
+      return rest;
+    });
 
     const now = new Date();
     const periodDays = correspondence.groupType === "small_group" ? 14 : 7;
@@ -427,7 +434,6 @@ router.get(
         email: m.email,
         joinedAt: m.joinedAt,
         lastLetterAt: m.lastLetterAt,
-        homeCity: m.homeCity,
       })),
       letters,
       currentPeriod: {
@@ -455,7 +461,7 @@ router.get(
       return;
     }
 
-    const letters = await db
+    const rawLetters = await db
       .select()
       .from(lettersTable)
       .where(eq(lettersTable.correspondenceId, correspondenceId))
@@ -463,7 +469,7 @@ router.get(
 
     // Mark unread letters as read
     const identifier = auth.userId ? auth.userId : auth.email;
-    for (const letter of letters) {
+    for (const letter of rawLetters) {
       const readers = (letter.readBy as Array<string | number>) || [];
       if (!readers.includes(identifier) && letter.authorEmail !== auth.email) {
         await db
@@ -472,6 +478,16 @@ router.get(
           .where(eq(lettersTable.id, letter.id));
       }
     }
+
+    // Strip deprecated postmark columns from the response.
+    const letters = rawLetters.map((l) => {
+      const { postmarkCity: _pc, postmarkCountry: _po, ...rest } = l as typeof l & {
+        postmarkCity?: string | null;
+        postmarkCountry?: string | null;
+      };
+      void _pc; void _po;
+      return rest;
+    });
 
     res.json(letters);
   }),
@@ -498,16 +514,11 @@ router.post(
       return;
     }
 
-    const { content, postmarkCity } = req.body as { content: string; postmarkCity?: string };
+    const { content } = req.body as { content: string };
     if (!content || !content.trim()) {
       res.status(400).json({ error: "Letter content is required" });
       return;
     }
-    if (!postmarkCity || !postmarkCity.trim()) {
-      res.status(400).json({ error: "Postmark city is required — where are you writing from?" });
-      return;
-    }
-    const city = postmarkCity.trim().slice(0, 100);
     const wordCount = content.trim().split(/\s+/).length;
     if (wordCount < 100) {
       res.status(400).json({ error: "Letter must be at least 100 words", wordCount });
@@ -599,14 +610,13 @@ router.post(
         letterNumber,
         periodNumber,
         periodStartDate: periodStartStr,
-        postmarkCity: city,
       })
       .returning();
 
-    // Update member's lastLetterAt and homeCity
+    // Update member's lastLetterAt.
     await db
       .update(correspondenceMembersTable)
-      .set({ lastLetterAt: now, homeCity: city })
+      .set({ lastLetterAt: now })
       .where(eq(correspondenceMembersTable.id, member.id));
 
     // Flip firstExchangeComplete for one_to_one when two distinct authors exist.
@@ -645,19 +655,11 @@ router.post(
         ? `${frontendUrl}/letters/${correspondenceId}`
         : `${frontendUrl}/letters/${correspondenceId}?token=${m.inviteToken}`;
 
-      // Calendar event (primary notification)
-      sendLetterCalendarEvent({
-        recipientEmail: m.email,
-        recipientName: m.name || m.email.split("@")[0],
-        authorName: auth.name,
-        correspondenceName: correspondence.name,
-        postmarkCity: city,
-        letterDate: now,
-        letterUrl: correspondenceUrl,
-        correspondenceId,
-      }).catch((err) => console.error("Failed to send letter calendar event:", err));
+      // Calendar event (primary notification). The old "postmark
+      // calendar event" surface has been removed alongside all other
+      // location functionality, so we no longer call sendLetterCalendarEvent.
 
-      // Email notification (fallback / supplement)
+      // Email notification (primary + only channel after postmark removal).
       sendNewLetterEmail({
         to: m.email,
         authorName: auth.name,

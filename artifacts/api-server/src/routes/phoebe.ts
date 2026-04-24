@@ -25,7 +25,6 @@ import {
 } from "../lib/letterEmails";
 import { sendPushToUsers } from "../lib/pushSender";
 import {
-  sendLetterCalendarEvent,
   sendLetterWindowOpenCalendarEvent,
   sendLetterOverdueCalendarEvent,
   sendLetterInvitationCalendarEvent,
@@ -293,7 +292,6 @@ router.get(
           email: m.email,
           joinedAt: m.joinedAt,
           lastLetterAt: m.lastLetterAt,
-          homeCity: m.homeCity,
         })),
         letterCount: letters.length,
         unreadCount,
@@ -303,9 +301,10 @@ router.get(
         overdueDate: turnInfo?.overdueDate?.toISOString() ?? null,
         firstExchangeComplete: correspondence.firstExchangeComplete,
         myCalendarPromptState: mRow.calendarPromptState ?? null,
-        recentPostmarks: recentLetters
-          .filter((l) => l.postmarkCity)
-          .map((l) => ({ authorName: l.authorName, city: l.postmarkCity, sentAt: l.sentAt })),
+        recentLetters: recentLetters.map((l) => ({
+          authorName: l.authorName,
+          sentAt: l.sentAt,
+        })),
         currentPeriod: {
           ...periodInfo,
           periodStart: periodInfo.periodStart.toISOString(),
@@ -345,11 +344,21 @@ router.get(
     const { member, members } = await getMembership(correspondenceId, auth);
     if (!member) { res.status(403).json({ error: "Not a member" }); return; }
 
-    const letters = await db
+    // Raw DB rows include the deprecated `postmarkCity` / `postmarkCountry`
+    // columns; strip them before sending to the client.
+    const rawLetters = await db
       .select()
       .from(lettersTable)
       .where(eq(lettersTable.correspondenceId, correspondenceId))
       .orderBy(desc(lettersTable.sentAt));
+    const letters = rawLetters.map((l) => {
+      const { postmarkCity: _pc, postmarkCountry: _po, ...rest } = l as typeof l & {
+        postmarkCity?: string | null;
+        postmarkCountry?: string | null;
+      };
+      void _pc; void _po;
+      return rest;
+    });
 
     // Non-creators can't see an empty correspondence (no letter written yet).
     if (letters.length === 0 && correspondence.createdByUserId !== auth.userId) {
@@ -390,7 +399,6 @@ router.get(
         email: m.email,
         joinedAt: m.joinedAt,
         lastLetterAt: m.lastLetterAt,
-        homeCity: m.homeCity,
       })),
       letters,
       myTurn,
@@ -419,14 +427,14 @@ router.get(
     const { member } = await getMembership(correspondenceId, auth);
     if (!member) { res.status(403).json({ error: "Not a member" }); return; }
 
-    const letters = await db
+    const rawLetters = await db
       .select()
       .from(lettersTable)
       .where(eq(lettersTable.correspondenceId, correspondenceId))
       .orderBy(desc(lettersTable.sentAt));
 
     const identifier = auth.userId ?? auth.email;
-    for (const letter of letters) {
+    for (const letter of rawLetters) {
       const readers = (letter.readBy as Array<string | number>) || [];
       if (!readers.includes(identifier as string | number) && letter.authorEmail !== auth.email) {
         await db
@@ -435,6 +443,16 @@ router.get(
           .where(eq(lettersTable.id, letter.id));
       }
     }
+
+    // Strip deprecated postmark columns before responding.
+    const letters = rawLetters.map((l) => {
+      const { postmarkCity: _pc, postmarkCountry: _po, ...rest } = l as typeof l & {
+        postmarkCity?: string | null;
+        postmarkCountry?: string | null;
+      };
+      void _pc; void _po;
+      return rest;
+    });
 
     res.json(letters);
   }),
@@ -461,7 +479,7 @@ router.post(
     const { member, members } = await getMembership(correspondenceId, auth);
     if (!member || !member.joinedAt) { res.status(403).json({ error: "Not a joined member" }); return; }
 
-    const { content, postmarkCity } = req.body as { content: string; postmarkCity?: string };
+    const { content } = req.body as { content: string };
     const type = (correspondence.groupType === "one_to_one" ? "one_to_one" : "group") as "one_to_one" | "group";
     const wordCount = content?.trim().split(/\s+/).length ?? 0;
     const minWords = type === "one_to_one" ? 100 : 50;
@@ -475,9 +493,6 @@ router.post(
     }
     if (wordCount > maxWords) {
       res.status(400).json({ error: `Maximum ${maxWords} words`, wordCount }); return;
-    }
-    if (type === "one_to_one" && (!postmarkCity || !postmarkCity.trim())) {
-      res.status(400).json({ error: "Postmark city is required — where are you writing from?" }); return;
     }
 
     const now = new Date();
@@ -531,7 +546,6 @@ router.post(
       .where(and(eq(lettersTable.correspondenceId, correspondenceId), eq(lettersTable.authorEmail, auth.email)));
 
     const letterNumber = authorLetters.length + 1;
-    const city = postmarkCity?.trim().slice(0, 100) || null;
 
     // author_name is NOT NULL in the DB — fall back to the email local
     // part if the user's display name is null/empty so the insert
@@ -551,7 +565,6 @@ router.post(
         letterNumber,
         periodNumber: periodInfo.periodNumber,
         periodStartDate: periodInfo.periodStartStr,
-        postmarkCity: city,
       })
       .returning();
 
@@ -581,7 +594,6 @@ router.post(
       .update(correspondenceMembersTable)
       .set({
         lastLetterAt: now,
-        ...(city ? { homeCity: city } : {}),
         // The author just wrote — cancel any pending calendar reminders for them.
         lastCalendarEventId: null,
         overdueCalendarEventId: null,
@@ -670,19 +682,10 @@ router.post(
         ? `${frontendUrl}/letter/${correspondenceId}`
         : `${frontendUrl}/letter/${correspondenceId}?token=${m.inviteToken}`;
 
-      // "A letter arrived" postmark calendar event — existing behavior.
-      if (type === "one_to_one" && city) {
-        sendLetterCalendarEvent({
-          recipientEmail: m.email,
-          recipientName: m.name || m.email.split("@")[0],
-          authorName: auth.name,
-          correspondenceName: correspondence.name,
-          postmarkCity: city,
-          letterDate: now,
-          letterUrl: letterSplashUrl,
-          correspondenceId,
-        }).catch((err) => console.error("Letter calendar event failed:", err));
-      }
+      // The old "letter arrived" postmark calendar event has been
+      // removed alongside the rest of the location / postmark surface.
+      // (letterSplashUrl stays in scope — the window-open reminder
+      // calendar event below still uses it.)
 
       // New: window-open reminder for the next writer, if the first exchange
       // is complete (i.e., strict alternation is now in force) AND they've
@@ -724,8 +727,6 @@ router.post(
         authorName: auth.name,
         correspondenceName: correspondence.name,
         correspondenceUrl: letterSplashUrl,
-        postmarkCity: city || undefined,
-        letterDate: now,
         type,
       }).catch((err) => console.error("Letter email failed:", err));
     }

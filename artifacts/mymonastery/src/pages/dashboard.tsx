@@ -22,8 +22,8 @@ type Correspondence = {
   unreadCount: number;
   myTurn: boolean;
   turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
-  members: Array<{ name: string | null; email: string; homeCity: string | null }>;
-  recentPostmarks: Array<{ authorName: string; city: string; sentAt: string }>;
+  members: Array<{ name: string | null; email: string }>;
+  recentLetters: Array<{ authorName: string; sentAt: string }>;
   currentPeriod: {
     periodNumber: number;
     periodLabel: string;
@@ -779,9 +779,9 @@ function LetterCard({
     statusText = "All written 🌿";
   }
 
-  const lastPostmark = c.recentPostmarks?.[0] ?? null;
-  const sentDateLine = lastPostmark?.sentAt
-    ? `Sent ${format(parseISO(lastPostmark.sentAt), "MMM d")}`
+  const lastLetter = c.recentLetters?.[0] ?? null;
+  const sentDateLine = lastLetter?.sentAt
+    ? `Sent ${format(parseISO(lastLetter.sentAt), "MMM d")}`
     : null;
   const flapLines = [statusText, ...(sentDateLine ? [sentDateLine] : [])].filter(Boolean);
 
@@ -2516,7 +2516,6 @@ export default function Dashboard() {
     correspondenceId: number;
     correspondenceName: string;
     fromAuthor: string | null;
-    fromCity: string | null;
     sentAt: string | null;
     totalUnread: number;
   } | null>(null);
@@ -2846,22 +2845,22 @@ export default function Dashboard() {
     }
 
     // Pick the most recent unread correspondence that hasn't been seen yet.
-    // Sort by most recent postmark so the popup highlights the newest arrival.
+    // Sort by most recent letter so the popup highlights the newest arrival.
     const unseen = withUnread.filter(c => !seenIds.has(c.id));
     if (unseen.length === 0) {
       newLetterHandledThisSessionRef.current = true;
       return;
     }
 
-    const pickLatestPostmark = (c: Correspondence): number => {
-      const stamps = (c.recentPostmarks ?? [])
+    const pickLatestLetter = (c: Correspondence): number => {
+      const stamps = (c.recentLetters ?? [])
         .map(p => Date.parse(p.sentAt))
         .filter(ms => Number.isFinite(ms));
       return stamps.length ? Math.max(...stamps) : 0;
     };
-    unseen.sort((a, b) => pickLatestPostmark(b) - pickLatestPostmark(a));
+    unseen.sort((a, b) => pickLatestLetter(b) - pickLatestLetter(a));
     const primary = unseen[0];
-    const latestPostmark = (primary.recentPostmarks ?? [])
+    const latestLetter = (primary.recentLetters ?? [])
       .slice()
       .sort((a, b) => Date.parse(b.sentAt) - Date.parse(a.sentAt))[0] ?? null;
 
@@ -2869,9 +2868,8 @@ export default function Dashboard() {
     setNewLetterPopup({
       correspondenceId: primary.id,
       correspondenceName: primary.name,
-      fromAuthor: latestPostmark?.authorName ?? null,
-      fromCity: latestPostmark?.city ?? null,
-      sentAt: latestPostmark?.sentAt ?? null,
+      fromAuthor: latestLetter?.authorName ?? null,
+      sentAt: latestLetter?.sentAt ?? null,
       totalUnread: withUnread.reduce((acc, c) => acc + c.unreadCount, 0),
     });
   }, [user, dashCorrespondences, dashCorrespondencesLoading]);
@@ -3219,11 +3217,9 @@ export default function Dashboard() {
                   : newLetterPopup.correspondenceName}
               </h2>
 
-              {(newLetterPopup.fromCity || newLetterPopup.sentAt) && (
+              {newLetterPopup.sentAt && (
                 <p className="text-[12px] mb-5" style={{ color: "rgba(143,175,150,0.65)" }}>
-                  {newLetterPopup.fromCity ? newLetterPopup.fromCity : ""}
-                  {newLetterPopup.fromCity && newLetterPopup.sentAt ? " · " : ""}
-                  {newLetterPopup.sentAt ? format(new Date(newLetterPopup.sentAt), "MMM d") : ""}
+                  {format(new Date(newLetterPopup.sentAt), "MMM d")}
                 </p>
               )}
 

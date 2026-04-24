@@ -62,12 +62,15 @@ export async function sendLetterInvitationCalendarEvent(params: {
   }
 }
 
+// Deprecated: the postmark / location surface has been removed, so this
+// function is no longer invoked by the letter-send routes. The signature
+// is preserved (sans postmarkCity) in case anything else wires it up —
+// but nothing inside the app calls it today.
 export async function sendLetterCalendarEvent(params: {
   recipientEmail: string;
   recipientName: string;
   authorName: string;
   correspondenceName: string;
-  postmarkCity: string;
   letterDate: Date;
   letterUrl: string;
   correspondenceId: number;
@@ -76,13 +79,12 @@ export async function sendLetterCalendarEvent(params: {
     recipientEmail,
     authorName,
     correspondenceName,
-    postmarkCity,
     letterDate,
     letterUrl,
   } = params;
 
   const humanDate = formatHumanDate(letterDate);
-  const postmarkLine = postmarkCity ? `Postmarked: ${postmarkCity} · ${humanDate}` : `Sent: ${humanDate}`;
+  const sentLine = `Sent: ${humanDate}`;
 
   // All-day event on the date the letter was sent
   const dateStr = letterDate.toISOString().split("T")[0];
@@ -90,7 +92,7 @@ export async function sendLetterCalendarEvent(params: {
   const description = [
     `${authorName} has written their letter in ${correspondenceName}.`,
     "",
-    postmarkLine,
+    sentLine,
     "",
     `Read it here →`,
     letterUrl,

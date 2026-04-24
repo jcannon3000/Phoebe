@@ -13,16 +13,14 @@ interface CorrespondenceMemberStatus {
   hasWritten: boolean;
 }
 
-interface PostmarkData {
+interface RecentLetter {
   authorName: string;
-  city: string;
   sentAt: string;
 }
 
 interface UnreadPreview {
   authorName: string;
   content: string;
-  postmarkCity: string | null;
 }
 
 interface CorrespondenceItem {
@@ -34,11 +32,10 @@ interface CorrespondenceItem {
     email: string;
     joinedAt: string | null;
     lastLetterAt: string | null;
-    homeCity: string | null;
   }>;
   letterCount: number;
   unreadCount: number;
-  recentPostmarks: PostmarkData[];
+  recentLetters: RecentLetter[];
   unreadPreview: UnreadPreview | null;
   myTurn: boolean;
   turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
@@ -62,29 +59,6 @@ function formatShortDate(dateStr: string): string {
   return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 
-const STATE_ABBR: Record<string, string> = {
-  Alabama:"AL",Alaska:"AK",Arizona:"AZ",Arkansas:"AR",California:"CA",Colorado:"CO",
-  Connecticut:"CT",Delaware:"DE",Florida:"FL",Georgia:"GA",Hawaii:"HI",Idaho:"ID",
-  Illinois:"IL",Indiana:"IN",Iowa:"IA",Kansas:"KS",Kentucky:"KY",Louisiana:"LA",
-  Maine:"ME",Maryland:"MD",Massachusetts:"MA",Michigan:"MI",Minnesota:"MN",
-  Mississippi:"MS",Missouri:"MO",Montana:"MT",Nebraska:"NE",Nevada:"NV",
-  "New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY",
-  "North Carolina":"NC","North Dakota":"ND",Ohio:"OH",Oklahoma:"OK",Oregon:"OR",
-  Pennsylvania:"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD",
-  Tennessee:"TN",Texas:"TX",Utah:"UT",Vermont:"VT",Virginia:"VA",Washington:"WA",
-  "West Virginia":"WV",Wisconsin:"WI",Wyoming:"WY","District of Columbia":"DC",
-};
-
-function parsePostmark(raw: string): { city: string; state: string } {
-  // Expected format: "City, State ZIP" or "City, ST ZIP"
-  const match = raw.match(/^(.+?),\s*([^,\d]+?)\s*(\d{5}(-\d{4})?)?$/);
-  if (!match) return { city: raw, state: "" };
-  const city = match[1].trim();
-  const stateRaw = match[2].trim();
-  const state = STATE_ABBR[stateRaw] ?? stateRaw.slice(0, 2).toUpperCase();
-  return { city, state };
-}
-
 function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; userEmail: string }) {
   const { currentPeriod } = item;
   const isOneToOne = item.groupType === "one_to_one";
@@ -101,12 +75,8 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
     .filter(Boolean)
     .join(", ");
 
-  const lastPostmark = item.recentPostmarks?.[0] ?? null;
-  const lastLetterDate = lastPostmark ? formatShortDate(lastPostmark.sentAt) : null;
-  const lastPostmarkCity = lastPostmark?.city ? (() => {
-    const { city, state } = parsePostmark(lastPostmark.city);
-    return state ? `${city}, ${state}` : city;
-  })() : null;
+  const lastLetter = item.recentLetters?.[0] ?? null;
+  const lastLetterDate = lastLetter ? formatShortDate(lastLetter.sentAt) : null;
 
   const unread = item.unreadCount > 0;
   const accentColor = isOverdue
@@ -140,10 +110,9 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
             <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
               📮 {title}
             </p>
-            {lastPostmarkCity && (
+            {lastLetterDate && (
               <div className="flex-shrink-0 text-right">
-                <p className="text-[11px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.06em" }}>{lastPostmarkCity}</p>
-                {lastLetterDate && <p className="text-[10px]" style={{ color: "#8FAF96" }}>{lastLetterDate}</p>}
+                <p className="text-[10px]" style={{ color: "#8FAF96" }}>{lastLetterDate}</p>
               </div>
             )}
           </div>

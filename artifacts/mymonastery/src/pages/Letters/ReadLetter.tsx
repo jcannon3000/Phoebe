@@ -1,22 +1,4 @@
 import { useEffect } from "react";
-
-const STATE_ABBR: Record<string, string> = { "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA","Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT","Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","District of Columbia":"DC" };
-
-function parsePostmark(raw: string) {
-  const parts = raw.split(", ");
-  if (parts.length >= 2) {
-    const city = parts[0];
-    const stateZip = parts.slice(1).join(", ");
-    const tokens = stateZip.split(" ");
-    const last = tokens[tokens.length - 1];
-    if (/^\d{5}(-\d{4})?$/.test(last)) {
-      const fullState = tokens.slice(0, -1).join(" ");
-      return { city, state: STATE_ABBR[fullState] || fullState, zip: last };
-    }
-    return { city, state: STATE_ABBR[stateZip] || stateZip, zip: "" };
-  }
-  return { city: raw, state: "", zip: "" };
-}
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,8 +14,6 @@ interface LetterData {
   letterNumber: number;
   periodNumber: number;
   periodStartDate: string;
-  postmarkCity: string | null;
-  postmarkCountry: string | null;
   sentAt: string;
   readBy: Array<string | number>;
 }
@@ -168,10 +148,7 @@ export default function ReadLetter() {
           {letter.authorName}
           {" · "}
           {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
-          {letter.postmarkCity && isOneToOne && (() => {
-            const { city, state } = parsePostmark(letter.postmarkCity!);
-            return ` · ${city}, ${state} · ${formatLetterDate(letter.sentAt)}`;
-          })()}
+          {isOneToOne && ` · ${formatLetterDate(letter.sentAt)}`}
         </p>
 
 
@@ -194,7 +171,6 @@ export default function ReadLetter() {
       <div className="max-w-[560px] mx-auto px-6 pt-8 pb-16 text-center">
         <p className="text-[13px]" style={{ color: "#9a9390" }}>
           {formatLetterDate(letter.sentAt)}
-          {letter.postmarkCity ? ` · ${letter.postmarkCity}` : ""}
         </p>
 
         {/* Write back prompt */}
