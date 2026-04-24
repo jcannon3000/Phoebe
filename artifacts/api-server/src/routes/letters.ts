@@ -20,7 +20,7 @@ import {
   isInLastThreeDays,
   getOneToOneTurnState,
 } from "../lib/letterPeriods";
-import { sendInvitationEmail, sendNewLetterEmail, sendReminderEmail } from "../lib/letterEmails";
+import { sendInvitationEmail, sendReminderEmail } from "../lib/letterEmails";
 import { getInviteBaseUrl } from "../lib/urls";
 import { sendNewLetterPush } from "../lib/pushSender";
 
@@ -656,24 +656,13 @@ router.post(
         ? `${frontendUrl}/letters/${correspondenceId}`
         : `${frontendUrl}/letters/${correspondenceId}?token=${m.inviteToken}`;
 
-      // Calendar event (primary notification). The old "postmark
-      // calendar event" surface has been removed alongside all other
-      // location functionality, so we no longer call sendLetterCalendarEvent.
-
-      // Email notification (primary + only channel after postmark removal).
-      sendNewLetterEmail({
-        to: m.email,
-        authorName: auth.name,
-        correspondenceName: correspondence.name,
-        correspondenceUrl,
-      }).catch((err) => console.error("Failed to send new letter email:", err));
-
-      // Push notification — fires only for members who have a linked
-      // user account (invited-but-not-joined members don't have a
-      // userId and can't receive APNs). No-op for users without an
-      // active device token. The letter.id becomes the APNs
-      // collapse-id so iOS deduplicates if we ever send the same
-      // letter twice (retries, races, re-deploys).
+      // Letter delivery used to fan out to email + (later) push. The
+      // email path was removed because (a) it duplicated the push that
+      // already lands on a user's lock screen and (b) the Gmail API
+      // call kept failing for projects without it enabled, dirtying
+      // logs with PERMISSION_DENIED stack traces. Push is now the only
+      // notification channel for "you have a new letter."
+      void correspondenceUrl;
       if (m.userId) {
         sendNewLetterPush(m.userId, {
           letterId: letter.id,
