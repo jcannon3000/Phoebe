@@ -572,6 +572,29 @@ export async function migrate() {
     // account for the rest of the local day.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_invite_last_shown_date TEXT`);
 
+    // ── Phone-number contact discovery ─────────────────────────────────────
+    // Three columns:
+    //   phone_number             — display form, what the user typed
+    //   phone_number_normalized  — E.164 (e.g. "+15555550123"); UNIQUE so
+    //                              one number → one account
+    //   phone_hash               — SHA-256 of phone_number_normalized,
+    //                              indexed for the contact-match lookup.
+    //                              We only store + index the hash so a
+    //                              dump of the device-uploaded contact
+    //                              hashes can be matched without ever
+    //                              keeping the raw uploaded numbers.
+    // Verification (SMS) is intentionally deferred — for now any user
+    // can self-attest. The trust model: matched contacts are surfaced
+    // by the OWNER's address book, and we always show the matched
+    // user's real Phoebe display name + avatar (not the uploader's
+    // contact-book label) so an impersonator can't "become" someone
+    // else's contact entry.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number_normalized TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_hash TEXT`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS users_phone_normalized_uk ON users (phone_number_normalized) WHERE phone_number_normalized IS NOT NULL`);
+    await run(client, `CREATE INDEX IF NOT EXISTS users_phone_hash_idx ON users (phone_hash) WHERE phone_hash IS NOT NULL`);
+
     // ── Waitlist ─────────────────────────────────────────────────────────────
     // Public-facing signup queue: people who want in before invite-based
     // signup or pilot access opens to them.

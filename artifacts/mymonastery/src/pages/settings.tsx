@@ -658,6 +658,135 @@ function MutedPeople() {
 
 // ─── Account Section (photo + name editing) ────────────────────────────────
 
+// ─── Phone number section ──────────────────────────────────────────────────
+// One-line form: input + Save (or Remove if already set). On submit,
+// POSTs the raw display string to /api/users/me/phone — server
+// normalizes + hashes. We surface friendly server errors (invalid
+// format, number already taken) inline.
+function PhoneSection() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const saveMutation = useMutation({
+    mutationFn: (phone: string) =>
+      apiRequest("POST", "/api/users/me/phone", { phone }),
+    onSuccess: (data: unknown) => {
+      const body = data as { phoneNumber: string };
+      queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
+        prev ? { ...prev, phoneNumber: body.phoneNumber } : prev);
+      setEditing(false);
+      setError(null);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      const friendly = /phone_taken|409/i.test(msg)
+        ? "Another account is using this number. Contact support if that's you."
+        : /invalid_phone|400/i.test(msg)
+          ? "That doesn't look like a valid phone number. Try +1 555 123 4567."
+          : "Couldn't save. Tap Save to try again.";
+      setError(friendly);
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/users/me/phone"),
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
+        prev ? { ...prev, phoneNumber: null } : prev);
+      setEditing(false);
+      setDraft("");
+      setError(null);
+    },
+  });
+
+  const current = user?.phoneNumber ?? null;
+
+  return (
+    <SettingsCard>
+      <p className="text-sm font-medium mb-1" style={{ color: "#F0EDE6" }}>
+        Phone number
+      </p>
+      <p className="text-xs mb-3" style={{ color: "#8FAF96" }}>
+        People who have you in their contacts will be able to find you on
+        Phoebe. Use your own real number — we don't verify yet.
+      </p>
+
+      {!editing && current && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm flex-1" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {current}
+          </span>
+          <button
+            onClick={() => { setDraft(current); setEditing(true); }}
+            className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80"
+            style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0" }}
+          >
+            Change
+          </button>
+          <button
+            onClick={() => removeMutation.mutate()}
+            disabled={removeMutation.isPending}
+            className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80 disabled:opacity-40"
+            style={{ color: "#8FAF96" }}
+          >
+            Remove
+          </button>
+        </div>
+      )}
+
+      {(editing || !current) && (
+        <div className="space-y-2">
+          <input
+            type="tel"
+            value={editing ? draft : ""}
+            onChange={(e) => { setDraft(e.target.value); setError(null); }}
+            onFocus={() => { if (!editing) setEditing(true); }}
+            placeholder="+1 555 123 4567"
+            inputMode="tel"
+            autoComplete="tel"
+            className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
+            style={{
+              color: "#F0EDE6",
+              background: "rgba(200,212,192,0.05)",
+              border: `1px solid ${error ? "rgba(196,122,101,0.6)" : "rgba(46,107,64,0.3)"}`,
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 16,  // ≥16px to block iOS auto-zoom
+            }}
+          />
+          {error && (
+            <p className="text-xs" style={{ color: "#C47A65" }}>{error}</p>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (!draft.trim()) { setError("Enter a phone number first."); return; }
+                saveMutation.mutate(draft);
+              }}
+              disabled={!draft.trim() || saveMutation.isPending}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{ background: "rgba(46,107,64,0.2)", color: "#A8C5A0" }}
+            >
+              {saveMutation.isPending ? "Saving…" : "Save"}
+            </button>
+            {editing && current && (
+              <button
+                onClick={() => { setEditing(false); setDraft(""); setError(null); }}
+                className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80"
+                style={{ color: "#8FAF96" }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </SettingsCard>
+  );
+}
+
 function AccountSection() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -894,6 +1023,14 @@ export default function SettingsPage() {
         {/* ── Account ── */}
         <SectionHeader label="Account" />
         <AccountSection />
+
+        {/* ── Phone number — used for contact discovery so people who
+              already have you in their address book can find you on
+              Phoebe. Verification (SMS) isn't live yet, so the form
+              warns the user to enter their own real number only. */}
+        <div className="mb-8">
+          <PhoneSection />
+        </div>
 
         {/* ── Presence ── */}
         <div className="mb-8">

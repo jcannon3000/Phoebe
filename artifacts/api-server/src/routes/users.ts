@@ -10,6 +10,7 @@ import {
 import { UpsertUserBody, GetUserResponse, UpsertUserResponse } from "@workspace/api-zod";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { exportUserData } from "../lib/userDataExport";
+import { normalizePhone, hashPhone } from "../lib/phone";
 
 const router: IRouter = Router();
 
@@ -179,6 +180,80 @@ router.delete("/users/me", async (req, res): Promise<void> => {
       res.json({ ok: true });
     });
   });
+});
+
+// ─── Phone-number set / clear ──────────────────────────────────────────────
+//
+// POST   /users/me/phone   { phone: string }
+// DELETE /users/me/phone
+//
+// Stores the caller's phone number in three forms (raw display,
+// normalized E.164, and SHA-256 hash) so the contact-match endpoint
+// can resolve uploaded device-contact hashes back to a user. The
+// unique index on phone_number_normalized means a given number can
+// only be associated with one account at a time — re-claiming an
+// existing number would 409.
+//
+// Verification (SMS) is intentionally not part of this v1. Callers
+// should warn users at entry that contacts will be able to find them
+// by this number, and that they should use their own real phone.
+router.post("/users/me/phone", async (req, res): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const raw = String((req.body as { phone?: unknown } | null)?.phone ?? "");
+  const normalized = normalizePhone(raw);
+  if (!normalized) {
+    res.status(400).json({
+      error: "invalid_phone",
+      message: "That doesn't look like a valid phone number. Try including the country code, e.g. +1 555 123 4567.",
+    });
+    return;
+  }
+
+  const hash = hashPhone(normalized);
+
+  // Check for collision with another user (the unique index would
+  // throw, but a friendly 409 is nicer than a 500 from a constraint
+  // violation). A collision means someone else already claimed this
+  // number — which in v1 (no SMS verification) might just mean a
+  // typo or a recycled number; we tell the user to contact support.
+  const [existing] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.phoneNumberNormalized, normalized));
+  if (existing && existing.id !== sessionUser.id) {
+    res.status(409).json({
+      error: "phone_taken",
+      message: "Another account is using this number. If that's you, please contact support.",
+    });
+    return;
+  }
+
+  await db.update(usersTable)
+    .set({
+      phoneNumber: raw.trim(),
+      phoneNumberNormalized: normalized,
+      phoneHash: hash,
+    })
+    .where(eq(usersTable.id, sessionUser.id));
+
+  res.json({ ok: true, phoneNumber: raw.trim(), phoneNumberNormalized: normalized });
+});
+
+router.delete("/users/me/phone", async (req, res): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  await db.update(usersTable)
+    .set({
+      phoneNumber: null,
+      phoneNumberNormalized: null,
+      phoneHash: null,
+    })
+    .where(eq(usersTable.id, sessionUser.id));
+
+  res.json({ ok: true });
 });
 
 export default router;

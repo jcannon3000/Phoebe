@@ -13,6 +13,11 @@ export interface AuthUser {
   dailyBellTime: string | null;
   prayerInviteLastShownDate: string | null;
   prayerInviteLastShownAt: string | null;
+  // Display form of the phone number the user entered. The server
+  // also stores a normalized E.164 + a SHA-256 hash for the
+  // contact-discovery match endpoint, but we only surface the raw
+  // form to the UI for editing.
+  phoneNumber: string | null;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

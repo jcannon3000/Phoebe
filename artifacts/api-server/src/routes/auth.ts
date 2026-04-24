@@ -189,6 +189,7 @@ router.get("/auth/me", (req, res) => {
     onboardingCompleted: boolean; dailyBellTime: string | null;
     prayerInviteLastShownDate: string | null;
     prayerInviteLastShownAt: Date | string | null;
+    phoneNumber: string | null;
   };
   res.json({
     id: u.id,
@@ -209,6 +210,7 @@ router.get("/auth/me", (req, res) => {
           ? u.prayerInviteLastShownAt.toISOString()
           : String(u.prayerInviteLastShownAt))
       : null,
+    phoneNumber: u.phoneNumber ?? null,
   });
 });
 

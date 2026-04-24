@@ -41,6 +41,19 @@ export const usersTable = pgTable("users", {
   // prayerStreakLastDate is YYYY-MM-DD in the user's timezone.
   prayerStreakCount: integer("prayer_streak_count").notNull().default(0),
   prayerStreakLastDate: text("prayer_streak_last_date"),
+  // ── Phone-number contact discovery ───────────────────────────────────────
+  // phoneNumber is the display form (what the user typed); normalized is
+  // the canonical E.164 ("+15555550123") used for the unique-per-account
+  // index; phoneHash is SHA-256(normalized), the only column we read from
+  // when matching uploaded device-contact hashes. Verification (SMS) is
+  // deferred — for the v1 trust model we always render the matched user's
+  // own Phoebe display name + avatar, never the uploader's contact-book
+  // label, so an impersonator can't masquerade as someone else's contact
+  // entry. See routes/users.ts (POST /me/phone) and routes/contacts.ts
+  // (POST /match) for the matching pipeline.
+  phoneNumber: text("phone_number"),
+  phoneNumberNormalized: text("phone_number_normalized"),
+  phoneHash: text("phone_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

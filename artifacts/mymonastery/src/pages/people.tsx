@@ -430,6 +430,30 @@ export default function People() {
           </h1>
         </div>
 
+        {/* Find friends entry — opens the contact-discovery flow. Tap
+            triggers the iOS contacts permission dialog (only inside the
+            Phoebe app); web users get a "open Phoebe on iOS" message. */}
+        <Link href="/people/find">
+          <a
+            className="block w-full mb-6 px-5 py-4 rounded-2xl flex items-center gap-3 transition-opacity hover:opacity-90"
+            style={{
+              background: "rgba(46,107,64,0.18)",
+              border: "1px solid rgba(46,107,64,0.4)",
+            }}
+          >
+            <span style={{ fontSize: 22 }}>📱</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                Find friends on Phoebe
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                See who in your contacts is already here
+              </p>
+            </div>
+            <span className="text-base" style={{ color: "rgba(168,197,160,0.6)" }}>→</span>
+          </a>
+        </Link>
+
         {/* Section divider */}
         <div className="flex items-center gap-2 mb-3">
           <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>Your garden</p>

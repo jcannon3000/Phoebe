@@ -70,6 +70,7 @@ import GuestSchedule from "./pages/guest-schedule";
 import InvitePage from "./pages/invite";
 import People from "./pages/people";
 import PersonProfile from "./pages/person";
+import FindFriendsPage from "./pages/find-friends";
 import TraditionNew from "./pages/tradition-new";
 import LettersPage from "./pages/Letters/LettersPage";
 import CorrespondencePage from "./pages/Letters/CorrespondencePage";
@@ -185,6 +186,7 @@ function Router() {
       <Route path="/letters/:id/read/:letterId" component={ReadLetter} />
       <Route path="/letters/:id" component={CorrespondencePage} />
       <Route path="/people" component={People} />
+      <Route path="/people/find" component={FindFriendsPage} />
       <Route path="/prayer-list" component={PrayerListPage} />
       <Route path="/prayer-mode" component={PrayerModePage} />
       {/* /pray-for/new (no email) must sit above the two /pray-for/:email
