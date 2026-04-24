@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
-import { triggerAmenFeedback } from "@/lib/amenFeedback";
+import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
 
 // Scale the big prayer-text block by character length so long prayers
@@ -139,6 +139,7 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
     setSubmitting(true);
     try {
       await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content });
+      triggerSubmitFeedback();
       setWord(content);
       setDraft("");
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
@@ -1155,6 +1156,8 @@ export default function PrayerModePage() {
     const meta = document.querySelector('meta[name="theme-color"]');
     const prevMeta = meta?.getAttribute("content") ?? "#091A10";
     meta?.setAttribute("content", SLIDE_BG);
+    // Rising ambient swell — the chapel exhaling as the slideshow opens.
+    playOpeningSwell();
     const t = setTimeout(() => setVisible(true), 30);
     return () => {
       body.style.overflow = prevBodyOverflow;

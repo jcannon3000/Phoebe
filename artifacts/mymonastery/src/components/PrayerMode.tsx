@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
-import { triggerAmenFeedback } from "@/lib/amenFeedback";
+import { triggerAmenFeedback, playOpeningSwell } from "@/lib/amenFeedback";
 
 const CLOSING_COLLECT =
   "Keep watch, dear Lord, with those who work, or watch, or weep this night, and give thine angels charge over those who sleep. Tend the sick, Lord Christ; give rest to the weary, bless the dying, soothe the suffering, pity the afflicted, shield the joyous; and all for thy love's sake.";
@@ -114,6 +114,8 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
   // Fade the whole overlay in on mount; lock scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
+    // Rising ambient swell — opens the prayer mode like a chapel exhale.
+    playOpeningSwell();
     const t = setTimeout(() => setVisible(true), 30);
     return () => {
       document.body.style.overflow = "";

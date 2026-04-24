@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 
 // Full-screen, step-by-step authoring flow for sharing your own prayer
 // request with the community. Mirrors the "gathering" and "pray-for-new"
@@ -53,6 +54,7 @@ export default function PrayerRequestNew() {
         durationDays: days,
       }),
     onSuccess: () => {
+      triggerSubmitFeedback();
       qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       setLocation("/prayer-list");
     },

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { MessageCircle } from "lucide-react";
 
 interface PrayerRequest {
@@ -67,6 +68,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
     mutationFn: ({ body, durationDays: days }: { body: string; durationDays: number }) =>
       apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays: days }),
     onSuccess: () => {
+      triggerSubmitFeedback();
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       setInputValue("");
       setPendingBody("");
@@ -79,6 +81,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
     mutationFn: ({ id, content }: { id: number; content: string }) =>
       apiRequest("POST", `/api/prayer-requests/${id}/word`, { content }),
     onSuccess: (_data, { id }) => {
+      triggerSubmitFeedback();
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       setWordInputs(prev => ({ ...prev, [id]: "" }));
     },
