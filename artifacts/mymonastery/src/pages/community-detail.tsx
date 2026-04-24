@@ -425,13 +425,18 @@ function computeNextGatheringDate(g: Gathering): Date | null {
 // same accent bar, same time pill as ServiceCard on the home dashboard.
 // The eyebrow slot is used for the rhythm label ("Weekly tradition" etc.)
 // so the card stays legible even when the title is long.
-function CommunityGatheringCard({ g }: { g: Gathering }) {
+function CommunityGatheringCard({
+  g,
+  onOpen,
+}: {
+  g: Gathering;
+  onOpen: () => void;
+}) {
   // Inside a community page every gathering already belongs to the
   // community whose name is in the header — a top-right eyebrow with
-  // the same community name would render the community's emoji twice
-  // (once in the header, once on every card). So we skip the eyebrow
-  // here. The home dashboard's GatheringCard still uses it, because
-  // there the community context isn't implicit.
+  // the same community name would render the community's emoji twice.
+  // Home dashboard's GatheringCard still uses it, because there the
+  // community context isn't implicit.
   //
   // No title emoji prefix either — tradition-new bakes the template
   // emoji into the name when the creator doesn't type a custom one
@@ -442,7 +447,13 @@ function CommunityGatheringCard({ g }: { g: Gathering }) {
   const locationLabel = g.location ?? null;
 
   return (
-    <Link href={`/ritual/${g.id}`} className="block w-full text-left">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      className="block w-full text-left"
+    >
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -470,7 +481,100 @@ function CommunityGatheringCard({ g }: { g: Gathering }) {
           )}
         </div>
       </motion.div>
-    </Link>
+    </div>
+  );
+}
+
+// ─── Community gathering detail modal ──────────────────────────────────────
+// Mirrors ServiceDetailModal / GatheringDetailModal on the home dashboard:
+// tapping a gathering card pops this up with name, next time, location,
+// and description. No navigation, no edit controls — just the facts.
+function CommunityGatheringDetailModal({
+  g,
+  groupName,
+  groupEmoji,
+  onClose,
+}: {
+  g: Gathering;
+  groupName: string;
+  groupEmoji: string | null;
+  onClose: () => void;
+}) {
+  const next = computeNextGatheringDate(g);
+  const dateLabel = next
+    ? (isToday(next) ? "Today" : format(next, "EEEE, MMM d"))
+    : null;
+  const timeLabel = next ? format(next, "h:mm a") : null;
+  const locationLabel = g.location ?? null;
+  const description = (g.description ?? "") as string;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-6 pt-16"
+        style={{ background: "rgba(8,16,10,0.8)" }}
+      >
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 20, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto"
+          style={{ background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)" }}
+        >
+          <div className="sticky top-0 flex items-start justify-between gap-3 px-5 pt-5 pb-3" style={{ background: "#0F2618" }}>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.55)" }}>
+                {groupEmoji ?? "⛪"} {groupName}
+              </p>
+              <h2 className="text-xl font-bold mt-1 break-words" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+                {g.name}
+              </h2>
+              {dateLabel && (
+                <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{dateLabel}</p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="shrink-0 rounded-full p-1.5 transition-opacity hover:opacity-80"
+              style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="px-5 pb-5 pt-1 flex flex-col gap-2">
+            {timeLabel && (
+              <div
+                className="rounded-xl px-4 py-3"
+                style={{ background: "rgba(111,175,133,0.10)", border: "1px solid rgba(111,175,133,0.2)" }}
+              >
+                <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{timeLabel}</p>
+                {locationLabel && (
+                  <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📍 {locationLabel}</p>
+                )}
+              </div>
+            )}
+            {!timeLabel && locationLabel && (
+              <p className="text-sm" style={{ color: "#C8D4C0" }}>📍 {locationLabel}</p>
+            )}
+            {description.trim() && (
+              <p
+                className="text-sm leading-relaxed mt-1"
+                style={{ color: "#C8D4C0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+              >
+                {description}
+              </p>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -830,6 +934,11 @@ export default function CommunityDetailPage() {
   // Role the admin wants to assign when adding a new member. Toggle in the
   // add-member panel; "hidden_admin" only shows for pilot (beta) users.
   const [pendingRole, setPendingRole] = useState<"member" | "admin" | "hidden_admin">("member");
+  // ── Gathering details modal ────────────────────────────────────────────
+  // Tapping a gathering card opens a lightweight pop-up with time / location /
+  // description — same UX pattern as the Sunday Service modal. We do NOT
+  // navigate to a dedicated /ritual/:id page.
+  const [openGatheringModal, setOpenGatheringModal] = useState<Gathering | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -1799,7 +1908,7 @@ export default function CommunityDetailPage() {
                       onOpen={() => setActiveTab("gatherings")}
                     />
                     {(gatheringsData?.gatherings ?? []).slice(0, 3).map(g => (
-                      <CommunityGatheringCard key={g.id} g={g} />
+                      <CommunityGatheringCard key={g.id} g={g} onOpen={() => setOpenGatheringModal(g)} />
                     ))}
                   </div>
                 </div>
@@ -2075,7 +2184,7 @@ export default function CommunityDetailPage() {
             ) : (
               <div className="space-y-2">
                 {gatheringsData!.gatherings.map(g => (
-                  <CommunityGatheringCard key={g.id} g={g} />
+                  <CommunityGatheringCard key={g.id} g={g} onOpen={() => setOpenGatheringModal(g)} />
                 ))}
               </div>
             )}
@@ -2426,6 +2535,15 @@ export default function CommunityDetailPage() {
         })()}
       </div>
 
+      {/* Gathering details pop-up — opens when a card is tapped. */}
+      {openGatheringModal && (
+        <CommunityGatheringDetailModal
+          g={openGatheringModal}
+          groupName={group.name}
+          groupEmoji={group.emoji}
+          onClose={() => setOpenGatheringModal(null)}
+        />
+      )}
     </Layout>
   );
 }

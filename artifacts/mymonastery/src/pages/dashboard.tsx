@@ -1335,18 +1335,20 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 
 // ─── Gathering card ─────────────────────────────────────────────────────────
 
-function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; badge?: string }) {
+function GatheringCard({
+  r,
+  keyPrefix,
+  badge,
+  onOpen,
+}: {
+  r: any;
+  keyPrefix: string;
+  badge?: string;
+  onOpen: () => void;
+}) {
   void badge;
-  // Server-preferred next date, with a dayPreference+rhythm fallback for
-  // gatherings that haven't generated a meetup row yet (fresh traditions
-  // created before the first cycle).
   const next = computeNextGatheringDate(r);
   const isToday_ = next ? isToday(next) : false;
-
-  // No emoji prefix — tradition-new already bakes the template emoji into
-  // the gathering's name when the creator doesn't type a custom one
-  // (e.g. "🍽️ Meal"). Prefixing one here would render it twice. Plain
-  // custom names keep their chosen look.
 
   // Look up the host community so the top-right eyebrow matches
   // ServiceCard ("⛪ Community Name"). Reads from the cached /api/groups
@@ -1361,14 +1363,21 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
 
   const colors = CATEGORY_COLORS.gatherings;
 
-  // Sunday Service-style card: plain-text subtitle line with day / time
-  // and location, mirroring ServiceTimesPillRow (which renders a single
-  // text line, not a pill). No rhythm label, no participant names.
+  // Plain-text subtitle, mirroring ServiceTimesPillRow. Tap opens a
+  // modal with the full details (same pattern as ServiceCard); no
+  // navigation — feels like a Sunday Services card.
   const timeLabel = next ? `${nextDayLabel(next)} · ${format(next, "h:mm a")}` : null;
   const locationLabel = r.nextMeetupLocation ?? r.location ?? null;
 
   return (
-    <Link key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} className="block w-full text-left">
+    <div
+      key={`${keyPrefix}-${r.id}`}
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      className="block w-full text-left"
+    >
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1409,7 +1418,107 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
           )}
         </div>
       </motion.div>
-    </Link>
+    </div>
+  );
+}
+
+// ─── Gathering detail modal ─────────────────────────────────────────────────
+// Mirrors ServiceDetailModal: tapping a gathering card pops this up with
+// title, host community, next meetup day/time, location, and description.
+// No calendar-style busywork, no route change — just the facts someone
+// would want when they glance at the card.
+
+function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
+  const next = computeNextGatheringDate(r);
+  const dateLabel = next
+    ? (isToday(next) ? "Today" : format(next, "EEEE, MMM d"))
+    : null;
+  const timeLabel = next ? format(next, "h:mm a") : null;
+  const locationLabel = r.nextMeetupLocation ?? r.location ?? null;
+  const description = (r.description ?? r.intention ?? "") as string;
+
+  const { data: groupsCache } = useQuery<{ groups: Array<{ id: number; name: string; emoji: string | null; slug: string }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+  });
+  const hostGroup = r.groupId
+    ? (groupsCache?.groups ?? []).find((g) => g.id === r.groupId) ?? null
+    : null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-6 pt-16"
+        style={{ background: "rgba(8,16,10,0.8)" }}
+      >
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 20, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto"
+          style={{ background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)" }}
+        >
+          <div className="sticky top-0 flex items-start justify-between gap-3 px-5 pt-5 pb-3" style={{ background: "#0F2618" }}>
+            <div className="min-w-0">
+              {hostGroup && (
+                <Link href={`/communities/${hostGroup.slug}`} onClick={onClose}>
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-widest transition-opacity hover:opacity-80 cursor-pointer"
+                    style={{ color: "rgba(200,212,192,0.55)" }}
+                  >
+                    {hostGroup.emoji ?? "⛪"} {hostGroup.name}
+                  </p>
+                </Link>
+              )}
+              <h2 className="text-xl font-bold mt-1 break-words" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+                {r.name}
+              </h2>
+              {dateLabel && (
+                <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{dateLabel}</p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="shrink-0 rounded-full p-1.5 transition-opacity hover:opacity-80"
+              style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="px-5 pb-5 pt-1 flex flex-col gap-2">
+            {timeLabel && (
+              <div
+                className="rounded-xl px-4 py-3"
+                style={{ background: "rgba(111,175,133,0.10)", border: "1px solid rgba(111,175,133,0.2)" }}
+              >
+                <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{timeLabel}</p>
+                {locationLabel && (
+                  <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📍 {locationLabel}</p>
+                )}
+              </div>
+            )}
+            {!timeLabel && locationLabel && (
+              <p className="text-sm" style={{ color: "#C8D4C0" }}>📍 {locationLabel}</p>
+            )}
+            {description.trim() && (
+              <p
+                className="text-sm leading-relaxed mt-1"
+                style={{ color: "#C8D4C0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+              >
+                {description}
+              </p>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -1927,6 +2036,7 @@ function TimeSection({
   userEmail,
   userName,
   onOpenService,
+  onOpenGathering,
   trailingCards,
 }: {
   label: string;
@@ -1934,6 +2044,7 @@ function TimeSection({
   userEmail: string;
   userName: string;
   onOpenService: (schedule: ServiceSchedule, nextDate: Date) => void;
+  onOpenGathering: (r: any) => void;
   // Extra cards to render after the typed items (e.g. the PrayerListCard
   // when the user already finished today's list and we want to preview
   // tomorrow's). If there are no items and no trailingCards, the section
@@ -1996,6 +2107,7 @@ function TimeSection({
           r={item.data}
           keyPrefix={label}
           badge={item.badge}
+          onOpen={() => onOpenGathering(item.data)}
         />
       ))}
       {feedItems.map((item) => (
@@ -2285,6 +2397,9 @@ export default function Dashboard() {
   // Service-schedule modal: which schedule (and computed next occurrence) is
   // currently showing its full list of service times.
   const [openService, setOpenService] = useState<{ schedule: ServiceSchedule; nextDate: Date } | null>(null);
+  // Gathering-detail modal: tapping a GatheringCard pops this up instead
+  // of navigating to the full ritual page. Same pattern as openService.
+  const [openGathering, setOpenGathering] = useState<any | null>(null);
   // Goal popup: creator-only, persisted in localStorage, once per day, max 2 days.
   const [goalDismissed, setGoalDismissed] = useState<Set<number>>(() => {
     try {
@@ -3267,6 +3382,7 @@ export default function Dashboard() {
                   userEmail={userEmail}
                   userName={userName}
                   onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                  onOpenGathering={(r) => setOpenGathering(r)}
                 />
 
                 {/* 2. Tomorrow. Practice items actionable tomorrow.
@@ -3281,13 +3397,14 @@ export default function Dashboard() {
                   userEmail={userEmail}
                   userName={userName}
                   onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                  onOpenGathering={(r) => setOpenGathering(r)}
                 />
 
-                {/* 3. This week */}
-                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
+                {/* 3. Upcoming (was "This week") */}
+                <TimeSection label="Upcoming" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
 
                 {/* 4. This month */}
-                <TimeSection label="This month" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} />
+                <TimeSection label="This month" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
 
                 {/* Filtered empty state */}
                 {filteredEmpty && (() => {
@@ -3366,6 +3483,13 @@ export default function Dashboard() {
           schedule={openService.schedule}
           nextDate={openService.nextDate}
           onClose={() => setOpenService(null)}
+        />
+      )}
+
+      {openGathering && (
+        <GatheringDetailModal
+          r={openGathering}
+          onClose={() => setOpenGathering(null)}
         />
       )}
     </Layout>
