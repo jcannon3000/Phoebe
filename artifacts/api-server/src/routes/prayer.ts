@@ -276,6 +276,26 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
   res.json(word);
 });
 
+// DELETE /api/prayer-requests/:id/word — remove the caller's word on a
+// request. Used by the "x" affordance on the "Your word" card; lets a
+// user retract a word of comfort they're no longer comfortable with
+// (typo, second thoughts, accidentally tapped send, etc.). Scoped to
+// the caller's own row so one user can't delete another's word.
+router.delete("/prayer-requests/:id/word", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  await db.delete(prayerWordsTable).where(and(
+    eq(prayerWordsTable.requestId, id),
+    eq(prayerWordsTable.authorUserId, sessionUserId),
+  ));
+
+  // Idempotent — deleting a word that doesn't exist is a no-op success.
+  res.json({ ok: true });
+});
+
 // PATCH /api/prayer-requests/:id — edit the body text (owner only).
 // Pilot feature: the detail modal lets the owner tap "Edit" and revise
 // the prayer. Words already left on the request are preserved. Body

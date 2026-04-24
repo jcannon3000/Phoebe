@@ -87,6 +87,19 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
     },
   });
 
+  // Lets a viewer retract a word of comfort they've already left.
+  // Backed by DELETE /api/prayer-requests/:id/word — idempotent and
+  // self-scoped on the server, so it can never delete someone else's
+  // word. Optimistically invalidates the cache to flip the card back
+  // to the empty input state.
+  const deleteWordMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", `/api/prayer-requests/${id}/word`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
   const releaseMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/release`),
     onSuccess: () => {
@@ -430,13 +443,27 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
                             <>
                               {/* Show the user's own word first */}
                               {request.myWord && (
-                                <div className="mb-3 mt-1 px-3 py-2 rounded-lg" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.2)" }}>
-                                  <p className="text-[10px] font-medium uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+                                <div className="mb-3 mt-1 px-3 py-2 rounded-lg relative" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.2)" }}>
+                                  <p className="text-[10px] font-medium uppercase tracking-widest mb-1 pr-7" style={{ color: "rgba(143,175,150,0.5)" }}>
                                     Your word
                                   </p>
-                                  <p className="text-sm" style={{ color: "#A8C5A0" }}>
+                                  <p className="text-sm pr-7" style={{ color: "#A8C5A0" }}>
                                     {request.myWord}
                                   </p>
+                                  <button
+                                    onClick={() => deleteWordMutation.mutate(request.id)}
+                                    disabled={deleteWordMutation.isPending}
+                                    aria-label="Remove your word"
+                                    className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30 hover:opacity-80"
+                                    style={{
+                                      background: "rgba(46,107,64,0.18)",
+                                      color: "rgba(200,212,192,0.7)",
+                                      fontSize: 14,
+                                      lineHeight: 1,
+                                    }}
+                                  >
+                                    ×
+                                  </button>
                                 </div>
                               )}
 

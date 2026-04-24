@@ -505,6 +505,17 @@ function DetailModal({
       setWordDraft("");
     },
   });
+  // Used by the "×" affordance on the "Your word" card so a viewer can
+  // retract a word of comfort they've already left (typo, regret,
+  // accidental tap). Backed by DELETE /api/prayer-requests/:id/word
+  // which is idempotent and self-scoped.
+  const deleteWordMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", `/api/prayer-requests/${id}/word`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
   const editBodyMutation = useMutation({
     mutationFn: ({ id, body }: { id: number; body: string }) =>
       apiRequest("PATCH", `/api/prayer-requests/${id}`, { body }),
@@ -685,13 +696,27 @@ function DetailModal({
 
               {req.myWord && (
                 <div
-                  className="mb-3 px-3 py-2 rounded-lg"
+                  className="mb-3 px-3 py-2 rounded-lg relative"
                   style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.2)" }}
                 >
-                  <p className="text-[10px] font-medium uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+                  <p className="text-[10px] font-medium uppercase tracking-widest mb-1 pr-7" style={{ color: "rgba(143,175,150,0.5)" }}>
                     Your word
                   </p>
-                  <p className="text-sm" style={{ color: "#A8C5A0" }}>{req.myWord}</p>
+                  <p className="text-sm pr-7" style={{ color: "#A8C5A0" }}>{req.myWord}</p>
+                  <button
+                    onClick={() => deleteWordMutation.mutate(req.id)}
+                    disabled={deleteWordMutation.isPending}
+                    aria-label="Remove your word"
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30 hover:opacity-80"
+                    style={{
+                      background: "rgba(46,107,64,0.18)",
+                      color: "rgba(200,212,192,0.7)",
+                      fontSize: 14,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
               )}
 

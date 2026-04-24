@@ -170,27 +170,68 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
     }
   }
 
+  async function deleteWord() {
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await apiRequest("DELETE", `/api/prayer-requests/${requestId}/word`);
+      setWord(null);
+      setDraft("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : String(err);
+      setError("Couldn't remove your word. Tap × to try again.");
+      console.warn("[RequestWordField] delete failed:", raw);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   if (word) {
     return (
       <div
-        className="w-full rounded-2xl px-5 py-3 text-left mt-2"
+        className="w-full rounded-2xl px-5 py-3 text-left mt-2 relative"
         style={{
           background: "rgba(46,107,64,0.08)",
           border: "1px solid rgba(46,107,64,0.18)",
         }}
       >
         <p
-          className="text-[10px] uppercase tracking-[0.14em] mb-1"
+          className="text-[10px] uppercase tracking-[0.14em] mb-1 pr-7"
           style={{ color: "rgba(143,175,150,0.5)" }}
         >
           Your word
         </p>
         <p
-          className="text-[14px] italic"
+          className="text-[14px] italic pr-7"
           style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
         >
           “{word}”
         </p>
+        <button
+          onClick={deleteWord}
+          disabled={submitting}
+          aria-label="Remove your word"
+          className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30 hover:opacity-80"
+          style={{
+            background: "rgba(46,107,64,0.18)",
+            color: "rgba(200,212,192,0.7)",
+            fontSize: 14,
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+        {error && (
+          <p
+            className="text-[11px] mt-1"
+            style={{ color: "#C47A65" }}
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
       </div>
     );
   }
