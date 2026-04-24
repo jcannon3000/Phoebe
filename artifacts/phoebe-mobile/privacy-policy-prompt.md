@@ -105,14 +105,20 @@ We do **not** use: analytics SDKs, crash reporting SDKs, advertising networks, M
 ## Data retention
 
 - Session cookies: 30 days
-- User content (practices, rituals, letters, prayer requests, completion logs, streaks): retained indefinitely until the user manually deletes the content or requests account deletion
-- Google/Apple OAuth tokens: retained as long as the user's account is active or until revoked
+- User content (practices, rituals, letters, prayer requests, completion logs, streaks): retained until the user deletes the content or their account
+- Google OAuth tokens: retained while the account is active; revoked automatically on logout and on account deletion
+- Account deletion cascades across all user-keyed tables; there is no soft-delete retention window
 
 ## User rights
 
 Include standard GDPR/CCPA rights language: access, correction, deletion, portability, objection, restriction, and (for California) opt-out of sale/sharing — noting that we do not sell or share data for advertising.
 
-**Honest disclosure to include verbatim:** "Self-service account deletion and data export are not yet available in the app. During this early-access period, you can request deletion or a copy of your data by emailing privacy@withphoebe.app, and we will complete the request within 30 days."
+**Self-service tools available in-app (Settings):**
+- **Export my data** — downloads a JSON file of all user-owned rows across ~35 tables (profile, prayer requests, practices, rituals, letters, correspondences, group memberships, intentions, announcements, prayer feeds, reflections, device tokens, feedback, etc.). Sensitive credential fields (password hash, reset tokens, Google OAuth tokens) are redacted from the export.
+- **Delete account** — email-confirmation-gated. Cascades across all user-keyed tables (both userId-FK and email-keyed), revokes any stored Google OAuth grant, and removes the users row.
+- **Correction** — name and profile photo editable via Settings → Profile.
+
+For anything the user cannot complete in-app, email `privacy@withphoebe.app`; we respond within 30 days.
 
 ## Children's data
 
@@ -130,7 +136,7 @@ The app does **not** track users across other companies' apps or websites.
 
 ## Security
 
-Passwords are hashed server-side. OAuth tokens are stored server-side and transmitted only over HTTPS. Apple Sign In flows use nonce-based CSRF protection. Face ID authentication happens on-device; biometric data never leaves the device.
+Passwords are hashed with scrypt and a random per-user salt before storage (we never see or store the plaintext password). Google OAuth access and refresh tokens are stored server-side, transmitted only over HTTPS, and **revoked automatically on logout and on account deletion** by calling Google's revocation endpoint. Apple Sign In flows use nonce-based CSRF protection. Face ID authentication happens on-device; biometric data never leaves the device.
 
 ## Changes to this policy
 
