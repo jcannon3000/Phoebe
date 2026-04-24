@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
+import { triggerAmenFeedback } from "@/lib/amenFeedback";
 
 const CLOSING_COLLECT =
   "Keep watch, dear Lord, with those who work, or watch, or weep this night, and give thine angels charge over those who sleep. Tend the sick, Lord Christ; give rest to the weary, bless the dying, soothe the suffering, pity the afflicted, shield the joyous; and all for thy love's sake.";
@@ -126,6 +127,7 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
   };
 
   const advance = () => {
+    triggerAmenFeedback();
     setSlideVisible(false);
     setTimeout(() => {
       if (index < slides.length - 1) {

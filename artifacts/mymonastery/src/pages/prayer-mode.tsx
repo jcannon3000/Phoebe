@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
+import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
 
 // Scale the big prayer-text block by character length so long prayers
@@ -1165,6 +1166,9 @@ export default function PrayerModePage() {
   }, []);
 
   const advance = () => {
+    // Feedback (haptic + chime) fires immediately on tap so the response
+    // feels coupled to the gesture, not to the fade.
+    triggerAmenFeedback();
     // Record the "Amen" side effect as the viewer leaves the slide.
     // Fire-and-forget — we don't want a slow network call to gate the fade.
     // - request slide → POST /amen (the existing behaviour)

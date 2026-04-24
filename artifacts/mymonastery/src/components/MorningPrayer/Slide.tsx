@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import type { Slide as SlideData, MemberPresence } from "./types";
 import { CallAndResponse } from "./CallAndResponse";
+import { triggerAmenFeedback } from "@/lib/amenFeedback";
 
 interface SlideProps {
   slide: SlideData;
@@ -292,7 +293,10 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 </p>
               ) : (
                 <button
-                  onClick={onLog}
+                  onClick={() => {
+                    triggerAmenFeedback();
+                    onLog?.();
+                  }}
                   style={{
                     width: "100%",
                     height: 56,
