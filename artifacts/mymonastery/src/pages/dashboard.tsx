@@ -1342,16 +1342,10 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   // created before the first cycle).
   const next = computeNextGatheringDate(r);
   const isToday_ = next ? isToday(next) : false;
-  const rhythm = r.rhythm as string | undefined;
-  const rhythmLabel = rhythm === "weekly" ? "Weekly tradition"
-    : rhythm === "biweekly" || rhythm === "fortnightly" ? "Biweekly tradition"
-    : rhythm === "monthly" ? "Monthly tradition"
-    : rhythm === "one-time" ? "One-time gathering"
-    : r.frequency ? `${r.frequency} tradition` : "Recurring tradition";
-  const participants: Array<any> = r.participants ?? [];
-  // Pick an emoji that matches how the gathering was created. Template wins
-  // over practice flags when set; intercession/fasting still override the
-  // generic handshake for legacy gatherings without a stored template.
+
+  // Template emoji only — no handshake fallback. If the creator didn't pick
+  // a template, the card leads with the gathering's name by itself, the
+  // same way a Sunday Services card stays minimal.
   const templateEmoji: Record<string, string> = {
     coffee: "☕",
     meal: "🍽️",
@@ -1361,35 +1355,27 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   };
   const gatheringEmoji = (r.template && templateEmoji[r.template])
     ? templateEmoji[r.template]
-    : r.intercessionIntention ? "🙏🏽"
-    : r.fastingDescription ? "✦"
-    : "🤝🏽";
+    : null;
 
-  // Check confirmation status — if 2+ participants haven't confirmed
-  const unconfirmed = participants.filter((p: any) => p.status === "pending" || p.status === "invited");
-  const waitingForConfirmation = unconfirmed.length >= 2;
+  // Look up the host community so we can render a top-right eyebrow that
+  // matches ServiceCard ("⛪ Community Name"). We read from the cached
+  // /api/groups query — React Query dedupes, so this doesn't add a fetch.
+  const { data: groupsCache } = useQuery<{ groups: Array<{ id: number; name: string; emoji: string | null }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+  });
+  const hostGroup = r.groupId
+    ? (groupsCache?.groups ?? []).find((g) => g.id === r.groupId) ?? null
+    : null;
 
   const colors = CATEGORY_COLORS.gatherings;
 
-  // Sunday Service-style card: accent bar on the left, title + rhythm
-  // eyebrow on top, then a pill row for the next meetup time and a
-  // subdued line with participants / location underneath.
+  // Sunday Service-style card: accent bar, title with template emoji on
+  // the left, host-community eyebrow on the right, and a pill row with
+  // the next meetup time + location. No participant names, no rhythm
+  // label — keeps the card scannable and matches ServiceCard exactly.
   const timePill = next ? `${nextDayLabel(next)} · ${format(next, "h:mm a")}` : null;
   const locationPill = r.nextMeetupLocation ?? r.location ?? null;
-
-  const participantSummary = (() => {
-    if (participants.length === 0) return null;
-    const fullNames = participants
-      .slice(0, 3)
-      .map((p: any) => (p.name || p.email || "").trim())
-      .filter(Boolean)
-      .join(", ");
-    const extra = participants.length > 3 ? ` +${participants.length - 3}` : "";
-    return fullNames ? `with ${fullNames}${extra}` : null;
-  })();
-
-  const subtitle = participantSummary
-    ?? (waitingForConfirmation ? "Waiting for confirmation" : null);
 
   return (
     <Link key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} className="block w-full text-left">
@@ -1410,14 +1396,16 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
         <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
-              {gatheringEmoji} {r.name}
+              {gatheringEmoji ? `${gatheringEmoji} ` : ""}{r.name}
             </span>
-            <span
-              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-            >
-              {rhythmLabel}
-            </span>
+            {hostGroup && (
+              <span
+                className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+                style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+              >
+                {hostGroup.emoji ?? "⛪"} {hostGroup.name}
+              </span>
+            )}
           </div>
 
           {(timePill || locationPill) && (
@@ -1451,12 +1439,6 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
                 </span>
               )}
             </div>
-          )}
-
-          {subtitle && (
-            <p className="mt-1.5 text-xs truncate" style={{ color: "#8FAF96", margin: 0 }}>
-              {subtitle}
-            </p>
           )}
         </div>
       </motion.div>
