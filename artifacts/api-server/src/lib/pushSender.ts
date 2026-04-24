@@ -380,31 +380,6 @@ export function sendPrayerWordPush(
   });
 }
 
-// Fires when someone taps "Amen" on another user's prayer request — a
-// lightweight signal of "I'm praying with you" that doesn't carry text.
-// Quieter copy than sendPrayerWordPush since it's not a written response.
-//
-// Collapse-id is per-(request, author) so repeated amens from the same
-// person on the same request don't stack into a noisy pile of banners
-// — iOS replaces rather than appends. Cross-request amens from the same
-// person still surface separately because the request id is in the key.
-export function sendAmenPush(
-  recipientUserId: number,
-  opts: { authorUserId?: number; authorName: string; prayerRequestId?: number }
-) {
-  const collapseId = opts.prayerRequestId && opts.authorUserId
-    ? `prayer-amen-${opts.prayerRequestId}-${opts.authorUserId}`
-    : undefined;
-  return sendPushToUser(recipientUserId, {
-    title: `🙏 ${opts.authorName} is praying with you`,
-    body: "They tapped Amen on your prayer request.",
-    path: "/prayer-list",
-    threadId: opts.prayerRequestId ? `prayer-request-${opts.prayerRequestId}` : "prayer-amen",
-    collapseId,
-    sound: "default",
-  });
-}
-
 // Fires for all group members except the creator. Copy branches by
 // templateType so a new intercession reads differently from a new
 // lectio-divina practice.

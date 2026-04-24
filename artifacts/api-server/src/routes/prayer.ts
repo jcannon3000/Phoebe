@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
-import { sendPrayerWordPush, sendAmenPush } from "../lib/pushSender";
+import { sendPrayerWordPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -511,48 +511,17 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   // was the only person touching the community, every amen was dropped
   // and the tiles stayed at zero. Every tap now records; the UI still
   // gets to decide whether to surface the author's own amen count.
-
-  // Look up whether this user has already amened this request before we
-  // insert — used to gate the push notification to first-amens-only.
-  // We don't dedupe the row itself (the metrics dashboard counts every
-  // tap), only the notification, so the request author isn't pinged
-  // every time a friend taps Amen on the same row.
-  const [priorAmen] = await db
-    .select({ id: prayerRequestAmensTable.id })
-    .from(prayerRequestAmensTable)
-    .where(and(
-      eq(prayerRequestAmensTable.requestId, id),
-      eq(prayerRequestAmensTable.userId, sessionUserId),
-    ))
-    .limit(1);
-  const isFirstAmen = !priorAmen;
+  //
+  // Note: Amens deliberately do NOT push the request author. Amens are
+  // a lightweight "I'm with you" signal — a tap, not a message — and
+  // notifying on every one would turn a 12-person circle into a
+  // notification storm during morning prayer. Written prayer-words
+  // (handled by POST /word) are the comment surface that does push.
 
   await db.insert(prayerRequestAmensTable).values({
     requestId: id,
     userId: sessionUserId,
   });
-
-  // Push the request owner — "{authorName} is praying with you."
-  // Same gating rules as prayer-word pushes: first-amen-only (so a
-  // user re-tapping doesn't re-notify), and never on self-amens. The
-  // collapse-id in sendAmenPush is belt-and-suspenders against any
-  // race that slips past the isFirstAmen check.
-  if (isFirstAmen && request.ownerId !== sessionUserId) {
-    const [author] = await db
-      .select({ name: usersTable.name })
-      .from(usersTable)
-      .where(eq(usersTable.id, sessionUserId));
-    if (author?.name) {
-      sendAmenPush(request.ownerId, {
-        authorUserId: sessionUserId,
-        authorName: author.name,
-        prayerRequestId: id,
-      }).catch((err) => {
-        console.warn("[prayer/amen] push dispatch failed:", err);
-      });
-    }
-  }
-
   res.json({ ok: true });
 });
 

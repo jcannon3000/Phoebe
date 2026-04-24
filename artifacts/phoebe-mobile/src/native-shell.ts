@@ -156,6 +156,42 @@ function wireDeepLinks() {
 // `phoebe:request-push-permission` and we'll handle the permission dance,
 // POST the device token to /api/push/device-token, and fire
 // `phoebe:push-ready` on success.
+// POST a device token to the backend with retries. The previous version
+// fired-and-forgot the request inside an empty catch block, which meant
+// every transient failure (401 because the session cookie wasn't ready
+// yet, brief network blip, backend redeploy in progress, etc.) silently
+// dropped the token forever — and there was no way to ever recover
+// because the listener that owned it was single-shot.
+async function postDeviceToken(token: string): Promise<boolean> {
+  const ATTEMPTS = 4;
+  for (let i = 0; i < ATTEMPTS; i++) {
+    try {
+      const res = await fetch(API_BASE + "/api/push/device-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ token, platform: "ios" }),
+      });
+      if (res.ok) {
+        // Stamp success so we don't keep re-POSTing the same token on every
+        // app resume. The /api/push/device-token endpoint is idempotent,
+        // but skipping the network round-trip when we know it landed is
+        // free politeness.
+        try { localStorage.setItem("phoebe:push-token-registered", token); } catch { /* private mode */ }
+        return true;
+      }
+      // 4xx (except 401) are permanent — don't retry.
+      if (res.status >= 400 && res.status < 500 && res.status !== 401) return false;
+      // Otherwise (401, 5xx, network) backoff and try again.
+    } catch {
+      // network error — fall through to backoff
+    }
+    await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+  }
+  return false;
+}
+
+let pushListenersWired = false;
 async function registerForPushIfRequested() {
   const handler = async () => {
     try {
@@ -169,54 +205,75 @@ async function registerForPushIfRequested() {
         window.dispatchEvent(new CustomEvent("phoebe:push-denied"));
         return;
       }
-      // Listen for the APNs token that will arrive via the "registration"
-      // event after register() fires. Only one-shot; we tear down after
-      // the first token lands to avoid duplicate POSTs on app resume.
-      const tokenListener = await PushNotifications.addListener("registration", async (token: Token) => {
-        try {
-          await fetch(API_BASE + "/api/push/device-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ token: token.value, platform: "ios" }),
-          });
-          window.dispatchEvent(new CustomEvent("phoebe:push-ready", { detail: { token: token.value } }));
-        } catch {
-          // Network error sending the token — we'll retry next app launch
-          // via the `appStateChange` → active handler below.
-        }
-        tokenListener.remove();
-      });
-      await PushNotifications.addListener("registrationError", err => {
-        window.dispatchEvent(new CustomEvent("phoebe:push-error", { detail: err }));
-      });
-      // Tapping a notification in Notification Center deep-links into the
-      // app. The payload carries a `path` for us to route to.
-      await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
-        const path = (notification.data as Record<string, string> | undefined)?.["path"];
-        if (typeof path === "string" && path.startsWith("/")) {
-          window.history.pushState({}, "", path);
-          window.dispatchEvent(new PopStateEvent("popstate"));
-        }
-      });
-      // Foreground delivery: iOS suppresses the OS banner while the app is
-      // open, so without this listener a push arriving during active use
-      // is silently dropped from the user's view. Forward the payload to
-      // the web layer as `phoebe:push-received` so we can render an
-      // in-app toast (see App.tsx). Background and locked-screen pushes
-      // are unaffected — those go straight through APNs.
-      await PushNotifications.addListener("pushNotificationReceived", notification => {
-        const data = (notification.data ?? {}) as Record<string, string>;
-        window.dispatchEvent(
-          new CustomEvent("phoebe:push-received", {
-            detail: {
-              title: notification.title ?? "",
-              body: notification.body ?? "",
-              path: data["path"] ?? "",
-            },
-          }),
-        );
-      });
+
+      // Listeners are wired ONCE per app session. Previously the
+      // "registration" listener was added inside this handler AND
+      // self-removed after firing — meaning the silent re-register
+      // call inside `wireLifecycle` (on app resume) had no listener
+      // attached to receive its token. Result: a token rotation or
+      // a recovered-from-failure first registration was invisible to
+      // us. Now we add the listeners exactly once and leave them up
+      // for the lifetime of the app process.
+      if (!pushListenersWired) {
+        pushListenersWired = true;
+
+        await PushNotifications.addListener("registration", async (token: Token) => {
+          // De-dup against localStorage so we don't POST the same
+          // token on every resume. If the token rotates (rare — iOS
+          // reissue, iCloud restore, app reinstall), the value won't
+          // match and we'll POST the new one.
+          let lastRegistered: string | null = null;
+          try { lastRegistered = localStorage.getItem("phoebe:push-token-registered"); } catch { /* ignore */ }
+          if (token.value === lastRegistered) {
+            window.dispatchEvent(new CustomEvent("phoebe:push-ready", { detail: { token: token.value } }));
+            return;
+          }
+          const ok = await postDeviceToken(token.value);
+          if (ok) {
+            window.dispatchEvent(new CustomEvent("phoebe:push-ready", { detail: { token: token.value } }));
+          } else {
+            // Surface the failure so we can debug with `phoebe:push-error`
+            // listeners (and so the localStorage flag in
+            // PushPermissionPrompt doesn't trick us into thinking we're
+            // done — we'll retry on next app foreground via wireLifecycle).
+            window.dispatchEvent(new CustomEvent("phoebe:push-error", { detail: { stage: "post-token" } }));
+          }
+        });
+
+        await PushNotifications.addListener("registrationError", err => {
+          window.dispatchEvent(new CustomEvent("phoebe:push-error", { detail: err }));
+        });
+
+        // Tapping a notification in Notification Center deep-links into the
+        // app. The payload carries a `path` for us to route to.
+        await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
+          const path = (notification.data as Record<string, string> | undefined)?.["path"];
+          if (typeof path === "string" && path.startsWith("/")) {
+            window.history.pushState({}, "", path);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          }
+        });
+
+        // Foreground delivery: iOS suppresses the OS banner while the app is
+        // open, so without this listener a push arriving during active use
+        // is silently dropped from the user's view. Forward the payload to
+        // the web layer as `phoebe:push-received` so we can render an
+        // in-app toast (see App.tsx). Background and locked-screen pushes
+        // are unaffected — those go straight through APNs.
+        await PushNotifications.addListener("pushNotificationReceived", notification => {
+          const data = (notification.data ?? {}) as Record<string, string>;
+          window.dispatchEvent(
+            new CustomEvent("phoebe:push-received", {
+              detail: {
+                title: notification.title ?? "",
+                body: notification.body ?? "",
+                path: data["path"] ?? "",
+              },
+            }),
+          );
+        });
+      }
+
       await PushNotifications.register();
     } catch (err) {
       window.dispatchEvent(new CustomEvent("phoebe:push-error", { detail: err }));
@@ -708,16 +765,35 @@ function wireLifecycle() {
   App.addListener("appStateChange", ({ isActive }) => {
     if (isActive) {
       window.dispatchEvent(new Event("phoebe:appactive"));
-      // Silent token refresh — rotates if APNs has issued a new token.
+      // Silent token refresh — rotates if APNs has issued a new token,
+      // and recovers any first-time registration whose POST initially
+      // failed (401, network blip, etc.). We dispatch the same event the
+      // PushPermissionPrompt does so the registration handler runs its
+      // full path: listeners get attached (idempotent guard), register()
+      // fires, the token POSTs with retries. Without this, a single
+      // failed device-token POST left the user permanently un-pushable
+      // until they reinstalled the app.
       PushNotifications.checkPermissions().then(perm => {
         if (perm.receive === "granted") {
-          PushNotifications.register().catch(() => {});
+          window.dispatchEvent(new Event("phoebe:request-push-permission"));
         }
       }).catch(() => {});
     } else {
       window.dispatchEvent(new Event("phoebe:appinactive"));
     }
   });
+
+  // Run the same recovery once at boot for users whose permission was
+  // granted on a previous launch (PushPermissionPrompt won't re-fire
+  // because of the localStorage gate). Delay slightly so the session
+  // cookie has a chance to land first.
+  setTimeout(() => {
+    PushNotifications.checkPermissions().then(perm => {
+      if (perm.receive === "granted") {
+        window.dispatchEvent(new Event("phoebe:request-push-permission"));
+      }
+    }).catch(() => {});
+  }, 4000);
 }
 
 // ─── Public API on window.PhoebeNative ─────────────────────────────────────

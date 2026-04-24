@@ -2,11 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Push Notifications: required for APNs device tokens. Set
-	     development for local sim + TestFlight; App Store builds use
-	     production automatically via release signing. -->
+	<!-- Push Notifications: required for APNs device tokens.
+	     Must be "production" for TestFlight + App Store. The previous
+	     comment here ("App Store builds use production automatically")
+	     was incorrect — Apple does NOT switch this at archive/upload
+	     time; whatever's in the entitlement is what ships. With
+	     "development" set, TestFlight builds got sandbox tokens while
+	     the server (which defaults APNS_ENVIRONMENT=production) posted
+	     to api.push.apple.com → 400 BadDeviceToken → row invalidated
+	     → every subsequent push silently skipped.
+	     For local Xcode debug-on-device, temporarily flip this to
+	     "development" AND set APNS_ENVIRONMENT=sandbox in api-server
+	     env, or just test pushes on a TestFlight build. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>production</string>
 
 	<!-- Sign in with Apple: mandatory under Apple Guideline 4.8 since
 	     Phoebe offers Google SSO. Enable this capability in Xcode on
