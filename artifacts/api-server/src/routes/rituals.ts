@@ -128,6 +128,12 @@ router.post("/rituals", async (req, res): Promise<void> => {
     const rawTemplate = req.body?.template;
     const template = typeof rawTemplate === "string" && rawTemplate.trim() ? rawTemplate.trim() : null;
 
+    // `groupId` is set by the community gathering flow (ritual is
+    // scoped to a community). Pulled off the raw body — not in the
+    // generated zod schema yet. Null for personal gatherings.
+    const rawGroupId = req.body?.groupId;
+    const groupId = typeof rawGroupId === "number" && Number.isFinite(rawGroupId) ? rawGroupId : null;
+
     const [ritual] = await db
       .insert(ritualsTable)
       .values({
@@ -146,6 +152,7 @@ router.post("/rituals", async (req, res): Promise<void> => {
         intercessionIntention: body.intercessionIntention ?? null,
         fastingDescription: body.fastingDescription ?? null,
         template,
+        groupId,
       })
       .returning();
 

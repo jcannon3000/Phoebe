@@ -218,6 +218,9 @@ export default function TraditionNew() {
         intercessionIntention: null,
         fastingDescription: null,
         template: template || null,
+        // Scope the gathering to the chosen community so it shows up
+        // on /groups/:slug/gatherings for every member.
+        groupId: selectedGroupId ?? undefined,
       });
 
       // Save proposed times + location → creates meetup + Google Calendar invite with alternates.

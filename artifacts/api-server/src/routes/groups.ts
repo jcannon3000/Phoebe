@@ -18,6 +18,7 @@ import {
   prayerRequestAmensTable,
   circleDailyFocusTable,
   circleIntentionsTable,
+  ritualsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -1750,8 +1751,34 @@ router.get("/groups/:slug/practices", async (req, res): Promise<void> => {
   res.json({ practices: enriched });
 });
 
-router.get("/groups/:slug/gatherings", async (_req, res): Promise<void> => {
-  res.json({ gatherings: [] });
+// Gatherings scoped to a community: rituals whose group_id matches
+// the community. Member-gated (same as /practices). Returned in
+// reverse chronological order so newly-created gatherings land at
+// the top of the Gatherings tab.
+router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireMember(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Not a member of this group" }); return; }
+
+  const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, req.params.slug));
+  if (!group) { res.status(404).json({ error: "Group not found" }); return; }
+
+  const rows = await db
+    .select({
+      id: ritualsTable.id,
+      name: ritualsTable.name,
+      description: ritualsTable.description,
+      template: ritualsTable.template,
+      rhythm: ritualsTable.rhythm,
+      createdAt: ritualsTable.createdAt,
+    })
+    .from(ritualsTable)
+    .where(eq(ritualsTable.groupId, group.id))
+    .orderBy(desc(ritualsTable.createdAt));
+
+  res.json({ gatherings: rows });
 });
 
 // ─── Announcements ──────────────────────────────────────────────────────────

@@ -291,6 +291,11 @@ export async function migrate() {
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS template TEXT`);
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS allow_member_invites BOOLEAN NOT NULL DEFAULT true`);
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS allow_member_invites BOOLEAN NOT NULL DEFAULT true`);
+    // Optional community link for gatherings. When set, the gathering
+    // shows on /groups/:slug/gatherings. Nullable — personal gatherings
+    // (unattached) have group_id IS NULL.
+    await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_rituals_group_id ON rituals(group_id)`);
 
     // Per-meetup location (each scheduled gathering can be in a different place).
     // Added to the schema after the table was first created, so existing

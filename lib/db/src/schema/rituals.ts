@@ -29,6 +29,11 @@ export const ritualsTable = pgTable("rituals", {
   // Toggle: when true, any member of the gathering can invite new people.
   // When false, only the owner can. Default is open.
   allowMemberInvites: boolean("allow_member_invites").notNull().default(true),
+  // Optional link to a community. When set, this gathering shows up on
+  // the community's Gatherings tab and every joined member of the
+  // community is auto-added as a participant at create time. Null for
+  // "personal" gatherings that aren't scoped to a community.
+  groupId: integer("group_id"),
 });
 
 export const insertRitualSchema = createInsertSchema(ritualsTable).omit({ id: true, createdAt: true });
