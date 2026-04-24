@@ -50,6 +50,10 @@ interface TimelineEvent {
   colorHex?: string | null;
   participants?: string;
   allDay?: boolean;
+  // Emoji prefix shown on the card title — template emoji for Phoebe
+  // gatherings (☕ 🍽️ 🚶🏽 📚 🌿), worship hands for community services,
+  // omitted for external iCal events.
+  emoji?: string;
 }
 
 // Mirror of the dashboard's ServiceSchedule type — kept narrow to just
@@ -281,11 +285,23 @@ export default function GatheringsPage() {
   // ── Build unified timeline ─────────────────────────────────────────────────
   const events: TimelineEvent[] = [];
 
+  const templateEmoji: Record<string, string> = {
+    coffee: "☕",
+    meal: "🍽️",
+    walk: "🚶🏽",
+    book_club: "📚",
+    custom: "🌿",
+  };
   for (const r of rituals ?? []) {
     const next = (r as any).nextMeetupDate ? parseISO((r as any).nextMeetupDate) : null;
     const parts = ((r.participants ?? []) as any[])
       .slice(0, 3).map((p: any) => (p.name || p.email || "").split(" ")[0]);
     const extra = Math.max(0, ((r.participants ?? []) as any[]).length - 3);
+    const template = (r as any).template as string | null | undefined;
+    const emoji = (template && templateEmoji[template])
+      ?? ((r as any).intercessionIntention ? "🙏🏽"
+      : (r as any).fastingDescription ? "✦"
+      : "🤝🏽");
     events.push({
       key: `phoebe-${r.id}`,
       kind: "phoebe",
@@ -293,8 +309,9 @@ export default function GatheringsPage() {
       startStr: next ? timeStr((r as any).nextMeetupDate, false) : rhythmLabel(r),
       title: r.name,
       subtitle: rhythmLabel(r),
-      location: r.location,
+      location: (r as any).location,
       href: `/ritual/${r.id}`,
+      emoji,
       participants: parts.length > 0
         ? parts.join(", ") + (extra > 0 ? ` +${extra}` : "")
         : undefined,
@@ -348,6 +365,7 @@ export default function GatheringsPage() {
         subtitle: `${s.groupEmoji ?? "⛪"} ${s.groupName}`,
         location: t.location || s.location,
         href: `/communities/${s.groupSlug}`,
+        emoji: "🙌🏽",
       });
     }
   }
@@ -543,16 +561,83 @@ export default function GatheringsPage() {
 // ─── Event Card ───────────────────────────────────────────────────────────────
 
 function EventCard({ event }: { event: TimelineEvent }) {
-  const accent = event.kind === "ical"
-    ? (event.colorHex ?? "#4A9E84")
-    : "#5C8A5F";
+  const isPhoebe = event.kind === "phoebe" || event.kind === "service";
 
+  // Phoebe gatherings + community services render like the dashboard's
+  // Sunday Service card: soft gatherings-green bg, pill for time,
+  // eyebrow for the rhythm/community label. iCal keeps the compact
+  // external-calendar look so the user can tell at a glance which are
+  // Phoebe-native and which come from a subscribed calendar.
+  if (isPhoebe) {
+    const accent = "#6FAF85";
+    const eyebrow = event.subtitle ?? (event.kind === "service" ? "Service" : "Gathering");
+    const inner = (
+      <div
+        className="relative flex rounded-xl overflow-hidden transition-all hover:brightness-110 cursor-pointer"
+        style={{
+          background: "rgba(111,175,133,0.15)",
+          border: "1px solid rgba(111,175,133,0.35)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div className="w-1 shrink-0" style={{ background: accent }} />
+        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+              {event.emoji ? `${event.emoji} ` : ""}{event.title}
+            </span>
+            <span
+              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+            >
+              {eyebrow}
+            </span>
+          </div>
+
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span
+              className="inline-flex items-center rounded-full text-xs font-semibold tabular-nums"
+              style={{
+                background: "rgba(111,175,133,0.18)",
+                color: "#F0EDE6",
+                border: "1px solid rgba(111,175,133,0.35)",
+                padding: "3px 10px",
+                letterSpacing: "-0.01em",
+                lineHeight: "18px",
+              }}
+            >
+              {event.startStr}{event.endStr ? ` – ${event.endStr}` : ""}
+            </span>
+            {event.location && (
+              <span
+                className="inline-flex items-center gap-1 text-xs"
+                style={{ color: "#C8D4C0", padding: "3px 2px", letterSpacing: "-0.01em", lineHeight: "18px" }}
+              >
+                <MapPin size={11} /> <span className="truncate">{event.location}</span>
+              </span>
+            )}
+          </div>
+
+          {event.participants && (
+            <p className="text-xs mt-1.5 truncate" style={{ color: "#8FAF96", margin: 0 }}>
+              with {event.participants}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+    if (event.href) return <Link href={event.href}>{inner}</Link>;
+    return inner;
+  }
+
+  // ── External iCal event (legacy compact look) ──
+  const accent = event.colorHex ?? "#4A9E84";
   const inner = (
     <div
       className="relative flex rounded-xl overflow-hidden transition-all hover:brightness-110"
       style={{
-        background: event.kind === "ical" ? "rgba(10,28,18,0.7)" : "#0F2818",
-        border: `1px solid ${event.kind === "ical" ? "rgba(74,158,132,0.2)" : "rgba(92,138,95,0.28)"}`,
+        background: "rgba(10,28,18,0.7)",
+        border: "1px solid rgba(74,158,132,0.2)",
         boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
       }}
     >
@@ -564,34 +649,23 @@ function EventCard({ event }: { event: TimelineEvent }) {
               <span className="text-[11px] font-semibold tabular-nums" style={{ color: "rgba(143,175,150,0.7)" }}>
                 {event.startStr}{event.endStr && ` – ${event.endStr}`}
               </span>
-              {event.kind === "ical" && (
-                <span
-                  className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                  style={{ background: "rgba(74,158,132,0.1)", color: "rgba(111,175,133,0.65)", border: "1px solid rgba(74,158,132,0.15)" }}
-                >
-                  {event.subtitle ?? "Calendar"}
-                </span>
-              )}
+              <span
+                className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                style={{ background: "rgba(74,158,132,0.1)", color: "rgba(111,175,133,0.65)", border: "1px solid rgba(74,158,132,0.15)" }}
+              >
+                {event.subtitle ?? "Calendar"}
+              </span>
             </div>
             <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>{event.title}</p>
-            {event.kind === "phoebe" && event.subtitle && (
-              <p className="text-xs mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>{event.subtitle}</p>
-            )}
             {event.location && (
               <div className="flex items-center gap-1 mt-1.5">
                 <MapPin size={10} style={{ color: "rgba(143,175,150,0.5)" }} />
                 <span className="text-[11px] truncate" style={{ color: "rgba(143,175,150,0.6)" }}>{event.location}</span>
               </div>
             )}
-            {event.participants && (
-              <div className="flex items-center gap-1 mt-1.5">
-                <Users size={10} style={{ color: "rgba(143,175,150,0.5)" }} />
-                <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>{event.participants}</span>
-              </div>
-            )}
           </div>
           <div className="shrink-0 mt-1">
-            {event.kind === "ical" && event.url
+            {event.url
               ? <ExternalLink size={13} style={{ color: "rgba(143,175,150,0.3)" }} />
               : <ChevronRight size={14} style={{ color: "rgba(143,175,150,0.3)" }} />
             }

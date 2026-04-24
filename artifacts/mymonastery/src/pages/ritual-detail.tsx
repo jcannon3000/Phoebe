@@ -394,7 +394,15 @@ export default function RitualDetail() {
                 )}
               </div>
 
-              <h1 className="font-bold leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "26px", color: "#F0EDE6" }}>{ritual.name}</h1>
+              <h1 className="font-bold leading-tight break-words" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "26px", color: "#F0EDE6" }}>{ritual.name}</h1>
+              {(ritual.intention || (ritual as any).description) && (
+                <p
+                  className="mt-2 text-sm leading-relaxed"
+                  style={{ color: "#C8D4C0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                >
+                  {ritual.intention || (ritual as any).description}
+                </p>
+              )}
               {(() => {
                 const freqWord =
                   ritual.frequency === "biweekly" ? "biweekly" :
@@ -407,7 +415,7 @@ export default function RitualDetail() {
                   timesMet === 1 ? "met 1 time" :
                   `met ${timesMet} times`;
                 return (
-                  <p className="mt-1.5 text-sm" style={{ color: "#8FAF96" }}>
+                  <p className="mt-1.5 text-xs" style={{ color: "rgba(143,175,150,0.65)" }}>
                     A {freqWord} tradition · {metLabel}
                   </p>
                 );

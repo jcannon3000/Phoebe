@@ -83,7 +83,7 @@ export async function createCalendarEvent(
   try {
     const event = await calendar.events.insert({
       calendarId: "primary",
-      sendUpdates: attendeeList.length > 0 ? "all" : "none",
+      sendUpdates: "none",
       requestBody: {
         summary: opts.summary,
         description: opts.description,
@@ -165,7 +165,7 @@ export async function createAllDayCalendarEvent(
   try {
     const event = await calendar.events.insert({
       calendarId: "primary",
-      sendUpdates: attendeeList.length > 0 ? "all" : "none",
+      sendUpdates: "none",
       requestBody: {
         summary: opts.summary,
         description: opts.description,
@@ -193,7 +193,7 @@ export async function deleteCalendarEvent(_userId: number, eventId: string): Pro
 
   const calendar = google.calendar({ version: "v3", auth });
   try {
-    await calendar.events.delete({ calendarId: "primary", eventId, sendUpdates: "all" });
+    await calendar.events.delete({ calendarId: "primary", eventId, sendUpdates: "none" });
   } catch (err) {
     console.error("Calendar event delete failed:", err);
   }
@@ -242,7 +242,7 @@ export async function updateCalendarEvent(
     await calendar.events.patch({
       calendarId: "primary",
       eventId,
-      sendUpdates: "all",
+      sendUpdates: "none",
       requestBody: {
         summary: opts.summary,
         description: opts.description,
@@ -389,7 +389,7 @@ export async function addAttendeesToCalendarEvent(
     await calendar.events.patch({
       calendarId: "primary",
       eventId,
-      sendUpdates: "all",
+      sendUpdates: "none",
       requestBody: { attendees: merged },
     });
     return true;
@@ -415,7 +415,7 @@ export async function removeAttendeesFromCalendarEvent(
     await calendar.events.patch({
       calendarId: "primary",
       eventId,
-      sendUpdates: "all",
+      sendUpdates: "none",
       requestBody: { attendees: filtered },
     });
     return true;

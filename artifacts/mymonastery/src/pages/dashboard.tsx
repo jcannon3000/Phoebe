@@ -1315,62 +1315,98 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   const unconfirmed = participants.filter((p: any) => p.status === "pending" || p.status === "invited");
   const waitingForConfirmation = unconfirmed.length >= 2;
 
-  // Build the 2nd-line flap: cycle between Participants, Next Date, Location.
-  // Each line is optional — skip entries that aren't known yet.
-  const flapLines: string[] = [];
+  const colors = CATEGORY_COLORS.gatherings;
 
-  if (participants.length > 0) {
+  // Sunday Service-style card: accent bar on the left, title + rhythm
+  // eyebrow on top, then a pill row for the next meetup time and a
+  // subdued line with participants / location underneath.
+  const timePill = next ? `${nextDayLabel(next)} · ${format(next, "h:mm a")}` : null;
+  const locationPill = r.nextMeetupLocation ?? r.location ?? null;
+
+  const participantSummary = (() => {
+    if (participants.length === 0) return null;
     const fullNames = participants
       .slice(0, 3)
       .map((p: any) => (p.name || p.email || "").trim())
       .filter(Boolean)
       .join(", ");
     const extra = participants.length > 3 ? ` +${participants.length - 3}` : "";
-    if (fullNames) flapLines.push(`with ${fullNames}${extra}`);
-  }
+    return fullNames ? `with ${fullNames}${extra}` : null;
+  })();
 
-  if (next) {
-    flapLines.push(`${nextDayLabel(next)} · ${format(next, "h:mm a")}`);
-  } else if (waitingForConfirmation) {
-    flapLines.push("Waiting for confirmation");
-  }
-
-  // Prefer the upcoming meetup's location; fall back to the tradition-level
-  // location (legacy data) so old rituals still show something.
-  const meetupLocation = r.nextMeetupLocation ?? r.location;
-  if (meetupLocation) {
-    flapLines.push(`📍 ${meetupLocation}`);
-  }
+  const subtitle = participantSummary
+    ?? (waitingForConfirmation ? "Waiting for confirmation" : null);
 
   return (
-    <BarCard key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} pulse={isToday_} category="gatherings">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>{gatheringEmoji} {r.name}</span>
-        <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-          {rhythmLabel}
-        </span>
-      </div>
-      <div className="flex items-center justify-between gap-4 mt-px -mr-2">
-        <div className="min-w-0 flex-1">
-          <SplitFlapLine lines={flapLines} />
+    <Link key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} className="block w-full text-left">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
+        style={{
+          background: colors.bg,
+          border: "1px solid rgba(111,175,133,0.35)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div
+          className={`w-1 flex-shrink-0 ${isToday_ ? colors.barPulseClass : ""}`}
+          style={{ background: isToday_ ? undefined : colors.bar }}
+        />
+        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+              {gatheringEmoji} {r.name}
+            </span>
+            <span
+              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+            >
+              {rhythmLabel}
+            </span>
+          </div>
+
+          {(timePill || locationPill) && (
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {timePill && (
+                <span
+                  className="inline-flex items-center rounded-full text-xs font-semibold"
+                  style={{
+                    background: "rgba(111,175,133,0.18)",
+                    color: "#F0EDE6",
+                    border: "1px solid rgba(111,175,133,0.35)",
+                    padding: "3px 10px",
+                    letterSpacing: "-0.01em",
+                    lineHeight: "18px",
+                  }}
+                >
+                  {timePill}
+                </span>
+              )}
+              {locationPill && (
+                <span
+                  className="inline-flex items-center rounded-full text-xs"
+                  style={{
+                    color: "#C8D4C0",
+                    padding: "3px 2px",
+                    letterSpacing: "-0.01em",
+                    lineHeight: "18px",
+                  }}
+                >
+                  📍 {locationPill}
+                </span>
+              )}
+            </div>
+          )}
+
+          {subtitle && (
+            <p className="mt-1.5 text-xs truncate" style={{ color: "#8FAF96", margin: 0 }}>
+              {subtitle}
+            </p>
+          )}
         </div>
-        <div className="shrink-0 flex items-center self-center">
-          <span
-            className="text-xs font-semibold rounded-full inline-block"
-            style={{
-              background: "#2D5E3F",
-              color: "#F0EDE6",
-              padding: "4px 14px",
-              letterSpacing: "0.01em",
-              whiteSpace: "nowrap",
-              lineHeight: "20px",
-            }}
-          >
-            View
-          </span>
-        </div>
-      </div>
-    </BarCard>
+      </motion.div>
+    </Link>
   );
 }
 

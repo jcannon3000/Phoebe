@@ -1944,17 +1944,48 @@ export default function CommunityDetailPage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {gatheringsData!.gatherings.map(g => (
-                  <Link key={g.id} href={`/ritual/${g.id}`} className="block">
-                    <div className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                      <div className="w-1 shrink-0" style={{ background: "#6FAF85" }} />
-                      <div className="flex-1 px-4 py-3">
-                        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{g.name}</p>
-                        {g.description && <p className="text-xs mt-0.5 truncate" style={{ color: "#8FAF96" }}>{g.description}</p>}
+                {gatheringsData!.gatherings.map(g => {
+                  const templateEmoji: Record<string, string> = {
+                    coffee: "☕",
+                    meal: "🍽️",
+                    walk: "🚶🏽",
+                    book_club: "📚",
+                    custom: "🌿",
+                  };
+                  const emoji = (g.template && templateEmoji[g.template]) ?? "🤝🏽";
+                  return (
+                    <Link key={g.id} href={`/ritual/${g.id}`} className="block w-full text-left">
+                      <div
+                        className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
+                        style={{
+                          background: "rgba(111,175,133,0.15)",
+                          border: "1px solid rgba(111,175,133,0.35)",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+                        }}
+                      >
+                        <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
+                        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                              {emoji} {g.name}
+                            </span>
+                            <span
+                              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+                              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+                            >
+                              Gathering
+                            </span>
+                          </div>
+                          {g.description && (
+                            <p className="text-xs mt-1.5 truncate" style={{ color: "#8FAF96", margin: 0 }}>
+                              {g.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
