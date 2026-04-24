@@ -321,8 +321,8 @@ export function sendPrayerWordPush(
   opts: { authorName: string; prayerRequestId?: number }
 ) {
   return sendPushToUser(recipientUserId, {
-    title: "💬 You were raised in prayer",
-    body: `${opts.authorName} raised you in prayer.`,
+    title: `💬 ${opts.authorName} raised you in prayer`,
+    body: "Open Phoebe to read what they wrote.",
     path: "/prayer-list",
     threadId: opts.prayerRequestId ? `prayer-request-${opts.prayerRequestId}` : "prayer-word",
     sound: "default",
