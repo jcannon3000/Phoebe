@@ -84,8 +84,9 @@ function playChurchBell() {
 }
 
 export function triggerAmenFeedback() {
-  // Single soft haptic — a "medium" impact reads as smooth and present
-  // without the double-tap feeling percussive.
+  // Single soft haptic — a "medium" impact reads as smooth and present.
+  // The bell chime is disabled for now; we keep the haptic so the Amen
+  // tap still has tactile confirmation.
   try {
     window.dispatchEvent(
       new CustomEvent("phoebe:haptic", { detail: { style: "medium" } }),
@@ -93,7 +94,7 @@ export function triggerAmenFeedback() {
   } catch {
     /* non-fatal */
   }
-  playChurchBell();
+  // playChurchBell(); // disabled — sound effect removed per request
 }
 
 /**
