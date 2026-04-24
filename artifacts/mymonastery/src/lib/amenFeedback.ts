@@ -25,29 +25,25 @@ function playChurchBell() {
 
     const now = ctx.currentTime;
 
-    // Church-bell partial structure. A real bell has (roughly):
-    //   hum  = 0.5 × strike (sub-octave)
-    //   prime/strike = 1.0
-    //   tierce (minor third) = 1.2
-    //   quint  = 1.5
-    //   nominal = 2.0
-    //   upper harmonics = 2.5, 3.0, 4.2
-    // Strike fundamental tuned to A3 (220 Hz) for a deep monastery-bell feel.
-    const STRIKE = 220;
+    // Pure harmonic bell — integer ratios only (no inharmonic tierce /
+    // quint / upper partials that give cast bronze bells their "metallic"
+    // color). The result is closer to a tuning fork, a celesta, or a
+    // tibetan singing bowl: consonant overtones that stack like a major
+    // chord. Fundamental raised to C5 (523 Hz) so the tone sits higher
+    // and brighter — less monastery, more vespers bell.
+    const STRIKE = 523.25; // C5
     const partials: Array<{
       ratio: number;
       gain: number;
       decay: number;   // seconds to near-silence
       attack?: number; // optional attack delay
     }> = [
-      { ratio: 0.5,  gain: 0.22, decay: 5.5 }, // hum tone — carries the weight
-      { ratio: 1.0,  gain: 0.30, decay: 3.5 }, // strike — the immediate impact
-      { ratio: 1.2,  gain: 0.16, decay: 3.0 }, // tierce — the "minor" bell color
-      { ratio: 1.5,  gain: 0.12, decay: 2.6 }, // quint
-      { ratio: 2.0,  gain: 0.10, decay: 2.0 }, // nominal
-      { ratio: 2.51, gain: 0.05, decay: 1.2 }, // upper — inharmonic shimmer
-      { ratio: 3.02, gain: 0.04, decay: 0.9 },
-      { ratio: 4.18, gain: 0.03, decay: 0.6 },
+      { ratio: 0.5, gain: 0.14, decay: 4.0 }, // sub-octave (C4) — soft warmth under the root
+      { ratio: 1.0, gain: 0.34, decay: 3.8 }, // root — C5
+      { ratio: 1.5, gain: 0.18, decay: 3.2 }, // perfect fifth — G5
+      { ratio: 2.0, gain: 0.15, decay: 2.8 }, // octave — C6
+      { ratio: 3.0, gain: 0.08, decay: 2.0 }, // octave + fifth — G6
+      { ratio: 4.0, gain: 0.05, decay: 1.4 }, // double octave — C7 (airy shimmer)
     ];
 
     // Master bus — a gentle low-pass shapes the tone into something
@@ -56,8 +52,8 @@ function playChurchBell() {
     master.gain.value = 0.45;
     const tone = ctx.createBiquadFilter();
     tone.type = "lowpass";
-    tone.frequency.value = 2200;
-    tone.Q.value = 0.4;
+    tone.frequency.value = 3600;
+    tone.Q.value = 0.3;
     tone.connect(master).connect(ctx.destination);
 
     // Each partial as a sine with a slow swell and long decay — no clapper

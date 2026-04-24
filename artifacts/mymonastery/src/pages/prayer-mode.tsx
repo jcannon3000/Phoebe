@@ -1281,10 +1281,19 @@ export default function PrayerModePage() {
         ×
       </button>
 
-      {/* Content — flex column centered vertically */}
+      {/* Content — anchored toward the top third of the viewport so short
+          slides (prayer requests, intercessions with no BCP block) don't
+          float down near the bottom of tall phone screens. */}
       <div
-        className="flex flex-col items-center text-center px-6 py-10 w-full"
-        style={{ maxWidth: 560, margin: "0 auto", minHeight: "100dvh", justifyContent: "center" }}
+        className="flex flex-col items-center text-center px-6 w-full"
+        style={{
+          maxWidth: 560,
+          margin: "0 auto",
+          minHeight: "100dvh",
+          justifyContent: "flex-start",
+          paddingTop: "clamp(64px, 16dvh, 180px)",
+          paddingBottom: 40,
+        }}
       >
         {phase === "prayer" && slide && (
           <div
