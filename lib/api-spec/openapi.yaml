@@ -333,6 +333,9 @@ components:
           type: ["string", "null"]
         nextMeetupLocation:
           type: ["string", "null"]
+        groupId:
+          description: ID of the community this gathering belongs to; null for personal gatherings.
+          type: ["integer", "null"]
         status:
           type: string
           enum: [on_track, overdue, needs_scheduling]

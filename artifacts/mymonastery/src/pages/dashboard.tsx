@@ -11,7 +11,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 
-import { format, isToday, parseISO, addDays, isBefore, startOfDay } from "date-fns";
+import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -163,8 +163,18 @@ function countActivePrayersFor(prayersFor: Array<{ id: number; expired: boolean;
 
 function nextDayLabel(date: Date): string {
   if (isToday(date)) return "Today";
-  const tomorrow = addDays(startOfDay(new Date()), 1);
+  const now = new Date();
+  const tomorrow = addDays(startOfDay(now), 1);
   if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
+  // Weeks are Sun→Sat (date-fns default with no `weekStartsOn`). If the
+  // date falls in the *next* calendar week, prefix with "next" so a
+  // Wednesday five days out from Friday reads "next Wednesday" instead
+  // of an ambiguous "Wednesday".
+  const nextWeekStart = startOfWeek(addWeeks(now, 1));
+  const nextWeekEnd = endOfWeek(addWeeks(now, 1));
+  if (date >= nextWeekStart && date <= nextWeekEnd) {
+    return `next ${format(date, "EEEE")}`;
+  }
   return format(date, "EEEE");
 }
 
@@ -1366,8 +1376,11 @@ function GatheringCard({
   // Plain-text subtitle, mirroring ServiceTimesPillRow. Tap opens a
   // modal with the full details (same pattern as ServiceCard); no
   // navigation — feels like a Sunday Services card.
+  //
+  // We deliberately DON'T show the location on the card — it duplicates
+  // the community-name eyebrow in the corner (same physical address) and
+  // clutters the row. Location lives in the modal pop-up instead.
   const timeLabel = next ? `${nextDayLabel(next)} · ${format(next, "h:mm a")}` : null;
-  const locationLabel = r.nextMeetupLocation ?? r.location ?? null;
 
   return (
     <div
@@ -1407,13 +1420,9 @@ function GatheringCard({
             )}
           </div>
 
-          {(timeLabel || locationLabel) && (
-            <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
-              {timeLabel && <span style={{ color: "#C8D4C0" }}>{timeLabel}</span>}
-              {timeLabel && locationLabel && (
-                <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
-              )}
-              {locationLabel && <span>📍 {locationLabel}</span>}
+          {timeLabel && (
+            <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
+              {timeLabel}
             </div>
           )}
         </div>

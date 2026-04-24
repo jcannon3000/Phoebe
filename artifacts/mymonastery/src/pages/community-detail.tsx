@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useLocation, useSearch, Link } from "wouter";
-import { parseISO, format, isToday, addDays, startOfDay } from "date-fns";
+import { parseISO, format, isToday, addDays, startOfDay, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -382,8 +382,17 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 // same way. Returns "Today" / "Tomorrow" / "Wednesday" etc.
 function gatheringDayLabel(date: Date): string {
   if (isToday(date)) return "Today";
-  const tomorrow = addDays(startOfDay(new Date()), 1);
+  const now = new Date();
+  const tomorrow = addDays(startOfDay(now), 1);
   if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
+  // Weeks are Sun→Sat. If the date falls in the *next* calendar week,
+  // prefix with "next" so a Wednesday five days out from Friday reads
+  // "next Wednesday" rather than an ambiguous "Wednesday".
+  const nextWeekStart = startOfWeek(addWeeks(now, 1));
+  const nextWeekEnd = endOfWeek(addWeeks(now, 1));
+  if (date >= nextWeekStart && date <= nextWeekEnd) {
+    return `next ${format(date, "EEEE")}`;
+  }
   return format(date, "EEEE");
 }
 
@@ -442,9 +451,12 @@ function CommunityGatheringCard({
   // emoji into the name when the creator doesn't type a custom one
   // ("🍽️ Meal"). A prefix would double it.
 
+  // Location is intentionally omitted from the card — same reasoning as
+  // the home dashboard's GatheringCard: the community eyebrow (or here,
+  // the community header) already gives the venue context, and the
+  // detail modal carries the full address.
   const next = computeNextGatheringDate(g);
   const timeLabel = next ? `${gatheringDayLabel(next)} · ${format(next, "h:mm a")}` : null;
-  const locationLabel = g.location ?? null;
 
   return (
     <div
@@ -470,13 +482,9 @@ function CommunityGatheringCard({
             {g.name}
           </span>
 
-          {(timeLabel || locationLabel) && (
-            <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
-              {timeLabel && <span style={{ color: "#C8D4C0" }}>{timeLabel}</span>}
-              {timeLabel && locationLabel && (
-                <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
-              )}
-              {locationLabel && <span>📍 {locationLabel}</span>}
+          {timeLabel && (
+            <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
+              {timeLabel}
             </div>
           )}
         </div>
