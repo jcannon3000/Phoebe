@@ -4,6 +4,7 @@ import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, use
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
+import { getGardenUserIds } from "../lib/garden";
 import { sendPrayerWordPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
@@ -19,95 +20,10 @@ const router: IRouter = Router();
 // two groups share a practice, we don't want members of the
 // opposite group to see the other's prayer requests." Practice-
 // based visibility created exactly that leak, so we dropped it.
-async function getGardenUserIds(userId: number): Promise<number[]> {
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) return [];
-  const viewerEmail = user.email.toLowerCase();
-
-  // Step 1 — groups the viewer belongs to. Match by userId primarily,
-  // fall back to email for legacy rows where user_id was never linked.
-  // Relaxed: we don't require joinedAt IS NOT NULL on the owner's own
-  // row — if their membership predates joinedAt stamping, we'd
-  // otherwise lock them out of every community-scoped feed.
-  const myMemberships = await db
-    .select({ groupId: groupMembersTable.groupId })
-    .from(groupMembersTable)
-    .where(
-      sql`${groupMembersTable.userId} = ${userId}
-          OR LOWER(${groupMembersTable.email}) = ${viewerEmail}`,
-    );
-  const myGroupIds = Array.from(new Set(myMemberships.map(r => r.groupId)));
-
-  const groupPeerIds = new Set<number>();
-  if (myGroupIds.length > 0) {
-    // Every other joined member of every group the viewer is in,
-    // EXCLUDING hidden admins OF THAT SPECIFIC GROUP. A user who's
-    // a hidden admin in Group A but a regular admin or member in
-    // Group B is still visible via Group B. The old rule
-    // "hidden_admin in any group → hidden everywhere" meant that a
-    // regular admin on one community was silently filtered out of
-    // their community's feed just because they were observing
-    // another community privately. User asked: "If someone is just
-    // an admin, we want their prayer request to show."
-    const peerRows = await db
-      .select({
-        rowUserId: groupMembersTable.userId,
-        emailUserId: usersTable.id,
-      })
-      .from(groupMembersTable)
-      .leftJoin(
-        usersTable,
-        sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
-      )
-      .where(and(
-        inArray(groupMembersTable.groupId, myGroupIds),
-        sql`(${groupMembersTable.role} IS NULL
-             OR ${groupMembersTable.role} <> 'hidden_admin')`,
-      ));
-    for (const row of peerRows) {
-      const id = row.rowUserId ?? row.emailUserId;
-      if (typeof id === "number" && id !== userId) groupPeerIds.add(id);
-    }
-  }
-
-  // Step 2 — letter correspondents (mutual exchange). Same rule used
-  // for the prayer-feed "correspondent" priority flag. Already scoped
-  // to active correspondences with ≥1 letter from each side.
-  const correspondentIds = await getCorrespondentUserIds(userId);
-  for (const id of correspondentIds) {
-    if (id !== userId) groupPeerIds.add(id);
-  }
-
-  // Step 3 — veto: if the viewer is a member of ANY group where
-  // candidate X is hidden_admin, drop X from the garden entirely.
-  // Rule: "for members of the group he is a hidden admin of, we
-  // don't want his requests shown anywhere" — applies even when
-  // the relationship is via correspondence, because the hidden
-  // status is the authoritative signal and a shared community is
-  // a strong trust context.
-  if (myGroupIds.length > 0 && groupPeerIds.size > 0) {
-    const vetoRows = await db
-      .select({
-        rowUserId: groupMembersTable.userId,
-        emailUserId: usersTable.id,
-      })
-      .from(groupMembersTable)
-      .leftJoin(
-        usersTable,
-        sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
-      )
-      .where(and(
-        inArray(groupMembersTable.groupId, myGroupIds),
-        eq(groupMembersTable.role, "hidden_admin"),
-      ));
-    for (const row of vetoRows) {
-      const id = row.rowUserId ?? row.emailUserId;
-      if (typeof id === "number") groupPeerIds.delete(id);
-    }
-  }
-
-  return Array.from(groupPeerIds);
-}
+// getGardenUserIds lives in ../lib/garden.ts now so bellSender + other
+// subsystems can reuse the same visibility rules. See that file for
+// the garden membership logic (group peers + correspondents, minus
+// hidden-admin vetoes).
 
 // GET /api/prayer-requests — list active prayer requests visible to me (mine + garden)
 router.get("/prayer-requests", async (req, res): Promise<void> => {

@@ -227,9 +227,11 @@ export async function runBellSender(): Promise<void> {
       // registered. Users without a token (e.g. web-only) still get
       // the email above. sendBellPush is a no-op if there are no
       // active tokens for this user; errors are swallowed so a bad
-      // APNs response doesn't break the bell loop.
+      // APNs response doesn't break the bell loop. The count mirrors
+      // the dashboard's "X prayers waiting for you" subtitle so the
+      // push preview matches what they'll see when they tap through.
       try {
-        await sendBellPush(user.id, { actionableCount: count, practices: names });
+        await sendBellPush(user.id);
       } catch (err) {
         logger.warn({ err, userId: user.id }, "[bell] push dispatch failed");
       }

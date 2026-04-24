@@ -228,12 +228,14 @@ async function getApnsJwt(): Promise<string> {
 
 // Morning monastery bell (7 AM local). The copy is deliberately
 // relational — "your friends" — because the whole app frames prayer as
-// carrying other people, not as a solo practice. Tap opens the prayer
-// list slideshow so they walk straight into it.
-export function sendBellPush(userId: number, _opts: { actionableCount: number; practices: string[] }) {
+// carrying other people, not as a solo practice. Body is a gentle
+// invitation rather than a metric; we deliberately avoid a per-user
+// "N prayers waiting" count so the push says the same thing to
+// everyone and stays readable when the count would be 0.
+export function sendBellPush(userId: number) {
   return sendPushToUser(userId, {
     title: "🔔 Time to pray for your friends",
-    body: "Your community is waiting to be remembered.",
+    body: "Open to begin praying for them and the world.",
     path: "/prayer-list",
     threadId: "bell",
     sound: "default",
@@ -241,7 +243,7 @@ export function sendBellPush(userId: number, _opts: { actionableCount: number; p
 }
 
 // Evening nudge (7 PM local). Only fires if the user hasn't logged a
-// prayer that day — see eveningNudgeSender for the gating.
+// prayer that day — see runEveningNudgeSender for the gating.
 export function sendEveningNudgePush(userId: number) {
   return sendPushToUser(userId, {
     title: "🌙 Don't forget to pray for your friends",
