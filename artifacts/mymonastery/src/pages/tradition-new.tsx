@@ -27,7 +27,7 @@ const stepVariants = {
   exit: { opacity: 0, x: -20 },
 };
 
-type Step = 0 | 1 | 2 | 3 | 4;
+type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 export default function TraditionNew() {
   const [, setLocation] = useLocation();
@@ -38,6 +38,7 @@ export default function TraditionNew() {
   const [step, setStep] = useState<Step>(0);
   const [template, setTemplate] = useState("");
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedPeople, setSelectedPeople] = useState<{ name: string; email: string }[]>([]);
   const [newPeople, setNewPeople] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
@@ -60,7 +61,7 @@ export default function TraditionNew() {
   const { data: connectionsData } = useQuery({
     queryKey: ["/api/connections"],
     queryFn: () => apiRequest<{ connections: { name: string; email: string }[] }>("GET", "/api/connections"),
-    enabled: step === 2,
+    enabled: step === 3,
   });
   const connections = connectionsData?.connections ?? [];
 
@@ -139,24 +140,29 @@ export default function TraditionNew() {
 
   function handleTypeSelect(t: string) {
     setTemplate(t);
-    setName("");
+    const opt = TEMPLATE_OPTIONS.find((o) => o.value === t);
+    if (opt && t !== "custom") {
+      setName(`${opt.emoji} ${opt.label}`);
+      setDescription(opt.tagline);
+    } else {
+      setName("");
+      setDescription("");
+    }
+    setStep(2);
+  }
+
+  function handleNameNext() {
+    if (!name.trim()) { setError("Give your gathering a name."); return; }
+    setError("");
     // Community gathering: skip the "Who's coming?" step. Participants
     // are the whole community, auto-populated at create time.
-    if (selectedGroupId !== null) {
-      setStep(3);
-    } else {
-      setStep(2);
-    }
+    setStep(selectedGroupId !== null ? 4 : 3);
   }
 
   function handleWhoNext() {
-    const templateOption = TEMPLATE_OPTIONS.find((o) => o.value === template);
-    const effectiveName = name.trim() || (templateOption && template !== "custom" ? `${templateOption.emoji} ${templateOption.label}` : "");
-    if (!effectiveName) { setError("Give your gathering a name."); return; }
-    if (!name.trim()) setName(effectiveName);
     if (!hasAtLeastOnePerson) { setError("Add at least one person."); return; }
     setError("");
-    setStep(3);
+    setStep(4);
   }
 
   function handleRhythmNext() {
@@ -169,7 +175,7 @@ export default function TraditionNew() {
       const dd = String(today.getDate()).padStart(2, "0");
       setFirstPick(`${yyyy}-${mm}-${dd}T12:00`);
     }
-    setStep(4);
+    setStep(5);
   }
 
   async function handleCreate() {
@@ -209,7 +215,7 @@ export default function TraditionNew() {
         name: finalName,
         frequency: rhythm,
         participants,
-        intention: TEMPLATE_OPTIONS.find((o) => o.value === template)?.tagline || `A ${finalName} gathering.`,
+        intention: description.trim() || TEMPLATE_OPTIONS.find((o) => o.value === template)?.tagline || `A ${finalName} gathering.`,
         ownerId: user.id,
         dayPreference: firstPick,
         rhythm,
@@ -263,9 +269,9 @@ export default function TraditionNew() {
         <button
           onClick={() => {
             if (step === 0) { setLocation("/dashboard"); return; }
-            // Community flow skips step 2 (Who) on the way forward, so
-            // skip it on the way back too.
-            if (step === 3 && selectedGroupId !== null) { setStep(1); return; }
+            // Community flow skips the "Who" step (step 3) on the way
+            // forward, so skip it on the way back too.
+            if (step === 4 && selectedGroupId !== null) { setStep(2); return; }
             setStep((s) => (s - 1) as Step);
           }}
           className="text-sm"
@@ -274,7 +280,7 @@ export default function TraditionNew() {
           ← {step === 0 ? "Dashboard" : "Back"}
         </button>
         <div className="flex-1 flex gap-1.5">
-          {[0, 1, 2, 3, 4].map((s) => (
+          {[0, 1, 2, 3, 4, 5].map((s) => (
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
@@ -342,17 +348,17 @@ export default function TraditionNew() {
             </motion.div>
           )}
 
-          {/* Step 2 — Name + Who */}
+          {/* Step 2 — Name + Description */}
           {step === 2 && (
             <motion.div key="s2" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-6" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Who are you gathering with? 🌿
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                Name your gathering 🌿
               </h1>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>A title and a few words to set the tone.</p>
 
-              {/* Name */}
               <div className="mb-6">
                 <label className="text-xs font-semibold uppercase tracking-widest mb-2 block" style={{ color: "#8FAF96" }}>
-                  Name this gathering
+                  Title
                 </label>
                 <input
                   ref={nameRef}
@@ -367,6 +373,39 @@ export default function TraditionNew() {
                   style={{ background: "#091A10", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
                 />
               </div>
+
+              <div className="mb-8">
+                <label className="text-xs font-semibold uppercase tracking-widest mb-2 block" style={{ color: "#8FAF96" }}>
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What is this gathering about?"
+                  rows={4}
+                  className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none resize-none"
+                  style={{ background: "#091A10", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
+                />
+              </div>
+
+              {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
+
+              <button
+                onClick={handleNameNext}
+                className="w-full py-4 rounded-2xl text-base font-semibold"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                Continue →
+              </button>
+            </motion.div>
+          )}
+
+          {/* Step 3 — Who */}
+          {step === 3 && (
+            <motion.div key="s3_who" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
+              <h1 className="text-2xl font-bold mb-6" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                Who are you gathering with? 🌿
+              </h1>
 
               {/* Non-admin with no fellows yet — nothing to invite, no new
                   emails allowed. Explain rather than showing a blank step. */}
@@ -483,9 +522,9 @@ export default function TraditionNew() {
             </motion.div>
           )}
 
-          {/* Step 3 — Rhythm */}
-          {step === 3 && (
-            <motion.div key="s3" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
+          {/* Step 4 — Rhythm */}
+          {step === 4 && (
+            <motion.div key="s4" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 How often will you gather? 🌿
               </h1>
@@ -529,9 +568,9 @@ export default function TraditionNew() {
             </motion.div>
           )}
 
-          {/* Step 4 — When */}
-          {step === 4 && (
-            <motion.div key="s4" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
+          {/* Step 5 — When */}
+          {step === 5 && (
+            <motion.div key="s5" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                 When will you first gather? 🌿
               </h1>
