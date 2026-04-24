@@ -126,25 +126,45 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
   const [word, setWord] = useState<string | null>(initialWord);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Failure surface — previously we silently swallowed every error here,
+  // so a closed request or a transient 5xx looked identical to success
+  // with no feedback. A tester reported "I tried to comment and it didn't
+  // go through" for exactly this reason. We now show the error inline
+  // under the field so the user knows to retry.
+  const [error, setError] = useState<string | null>(null);
 
   // If the slide changes (new request) reset local state from the new prop.
   useEffect(() => {
     setWord(initialWord);
     setDraft("");
+    setError(null);
   }, [requestId, initialWord]);
 
   async function submit() {
     const content = draft.trim();
     if (!content || submitting) return;
     setSubmitting(true);
+    setError(null);
     try {
       await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content });
       triggerSubmitFeedback();
       setWord(content);
       setDraft("");
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    } catch {
-      /* swallow — failure just keeps the compose field visible */
+    } catch (err: unknown) {
+      // Map common server codes to friendlier copy. apiRequest throws
+      // Error with `.message` set to the server's JSON `error` field.
+      const raw = err instanceof Error ? err.message : String(err);
+      const friendly = /closed|expired|answered/i.test(raw)
+        ? "This prayer is closed — can't leave a word."
+        : /unauthorized|401/i.test(raw)
+          ? "Please sign in and try again."
+          : /network|failed to fetch|offline/i.test(raw)
+            ? "No connection — try again in a moment."
+            : "Couldn't send your word. Tap again?";
+      setError(friendly);
+      // Log the raw cause so we can diagnose if it happens again.
+      console.warn("[RequestWordField] submit failed:", raw);
     } finally {
       setSubmitting(false);
     }
@@ -176,47 +196,63 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
   }
 
   return (
-    <div
-      className="w-full rounded-full px-4 py-1.5 mt-2 flex items-center gap-2"
-      style={{
-        background: "rgba(46,107,64,0.1)",
-        border: "1px solid rgba(46,107,64,0.25)",
-      }}
-    >
-      <input
-        type="text"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            submit();
-          }
-        }}
-        placeholder="Leave a word of comfort…"
-        maxLength={120}
-        // `word-of-comfort-input` is matched by global CSS to neutralize
-        // WebKit autofill + focus background tints so the wrapper's pill
-        // tone never changes when the field is tapped or autofilled.
-        className="word-of-comfort-input flex-1 bg-transparent outline-none text-[14px] py-1.5"
+    <div className="w-full mt-2">
+      <div
+        className="w-full rounded-full px-4 py-1.5 flex items-center gap-2"
         style={{
-          color: "#E8E4D8",
-          fontSize: 16, // iOS Safari: ≥16 to block auto-zoom
-          background: "transparent",
-          boxShadow: "none",
-          WebkitAppearance: "none",
-          WebkitTapHighlightColor: "transparent",
+          background: "rgba(46,107,64,0.1)",
+          border: error
+            ? "1px solid rgba(196,122,101,0.6)"
+            : "1px solid rgba(46,107,64,0.25)",
         }}
-      />
-      <button
-        onClick={submit}
-        disabled={!draft.trim() || submitting}
-        aria-label="Send word"
-        className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30"
-        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
       >
-        →
-      </button>
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (error) setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Leave a word of comfort…"
+          maxLength={120}
+          // `word-of-comfort-input` is matched by global CSS to neutralize
+          // WebKit autofill + focus background tints so the wrapper's pill
+          // tone never changes when the field is tapped or autofilled.
+          className="word-of-comfort-input flex-1 bg-transparent outline-none text-[14px] py-1.5"
+          style={{
+            color: "#E8E4D8",
+            fontSize: 16, // iOS Safari: ≥16 to block auto-zoom
+            background: "transparent",
+            boxShadow: "none",
+            WebkitAppearance: "none",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        />
+        <button
+          onClick={submit}
+          disabled={!draft.trim() || submitting}
+          aria-label="Send word"
+          className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          {submitting ? "…" : "→"}
+        </button>
+      </div>
+      {error && (
+        <p
+          className="text-[12px] mt-1.5 px-2"
+          style={{ color: "#C47A65" }}
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }
