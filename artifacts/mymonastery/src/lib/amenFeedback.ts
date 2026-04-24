@@ -98,10 +98,13 @@ export function triggerAmenFeedback() {
 }
 
 /**
- * Submit feedback — a brief rising swell (~1.1s) + smooth "medium"
- * haptic. Fires on successful submission of a prayer request, a comment,
- * or a word written for someone else's intercession. Shorter and softer
- * than the slideshow-opening swell so it doesn't overstay its welcome.
+ * Submit feedback — a brief organ-pad swell + smooth "medium" haptic.
+ * Fires on successful submission of a prayer request, a comment, or a
+ * word written for someone else's intercession. Same shape as the
+ * slideshow-opening swell (open-fifth pad on sine + triangle with a
+ * low-pass that opens as it rises), but shorter (~1.5s total) and
+ * pitched an octave higher so it reads as a confirmation rather than
+ * a scene change.
  */
 export function triggerSubmitFeedback() {
   try {
@@ -122,37 +125,47 @@ export function triggerSubmitFeedback() {
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
-    const IN = 0.55;
-    const HOLD = 0.25;
-    const OUT = 0.9;
-    const TOTAL = IN + HOLD + OUT;
+    // Compressed version of the opening-swell envelope — same crescendo
+    // → hold → fade shape, but under two seconds so it feels like an
+    // affirmation, not a preamble.
+    const SWELL_IN = 0.7;
+    const HOLD     = 0.25;
+    const FADE_OUT = 0.6;
+    const TOTAL    = SWELL_IN + HOLD + FADE_OUT;
 
     const master = ctx.createGain();
     master.gain.setValueAtTime(0, now);
-    master.gain.linearRampToValueAtTime(0.18, now + IN);
-    master.gain.setValueAtTime(0.18, now + IN + HOLD);
+    master.gain.linearRampToValueAtTime(0.2, now + SWELL_IN);
+    master.gain.setValueAtTime(0.2, now + SWELL_IN + HOLD);
     master.gain.exponentialRampToValueAtTime(0.0001, now + TOTAL);
 
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.Q.value = 0.5;
-    lp.frequency.setValueAtTime(500, now);
-    lp.frequency.linearRampToValueAtTime(1800, now + IN);
-    lp.frequency.linearRampToValueAtTime(1100, now + TOTAL);
+    lp.Q.value = 0.6;
+    lp.frequency.setValueAtTime(600, now);
+    lp.frequency.linearRampToValueAtTime(2600, now + SWELL_IN);
+    lp.frequency.linearRampToValueAtTime(1500, now + TOTAL);
     lp.connect(master).connect(ctx.destination);
 
-    // Soft triad rising a perfect fifth: D4 → A4, with E4 filling in.
-    const notes: Array<{ freq: number; to: number; gain: number; type: OscillatorType }> = [
-      { freq: 293.66, to: 440.00, gain: 0.45, type: "sine" },     // D4 → A4
-      { freq: 369.99, to: 523.25, gain: 0.25, type: "triangle" }, // F#4 → C5 (gentle upper)
+    // Open fifth, pitched an octave above the opening swell (was
+    // A2/E3/A3 → now A3/E4/A4). Same sine + triangle voicing, same
+    // tiny upward glide for "breath."
+    const voices: Array<{ freq: number; type: OscillatorType; gain: number }> = [
+      { freq: 220, type: "sine",     gain: 0.55 },
+      { freq: 330, type: "triangle", gain: 0.28 },
+      { freq: 440, type: "sine",     gain: 0.22 },
     ];
-    for (const n of notes) {
+
+    for (const v of voices) {
       const osc = ctx.createOscillator();
-      osc.type = n.type;
-      osc.frequency.setValueAtTime(n.freq, now);
-      osc.frequency.linearRampToValueAtTime(n.to, now + IN + HOLD);
+      osc.type = v.type;
+      osc.frequency.setValueAtTime(v.freq, now);
+      osc.frequency.linearRampToValueAtTime(v.freq * 1.003, now + SWELL_IN);
+      osc.frequency.linearRampToValueAtTime(v.freq, now + TOTAL);
+
       const vg = ctx.createGain();
-      vg.gain.value = n.gain;
+      vg.gain.value = v.gain;
+
       osc.connect(vg).connect(lp);
       osc.start(now);
       osc.stop(now + TOTAL + 0.1);
