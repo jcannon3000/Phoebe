@@ -79,7 +79,21 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
       isNull(deviceTokensTable.invalidatedAt),
     ));
 
-  if (tokens.length === 0) return { attempted: 0, succeeded: 0, invalidated: 0 };
+  if (tokens.length === 0) {
+    // Visible log so we can tell from Railway whether a push was
+    // intended but had no target. "Tried to send to user X but they
+    // have no active device tokens" almost always means the client
+    // POST to /api/push/device-token failed silently on first launch.
+    logger.info(
+      { userId, title: payload.title },
+      "[push] no active device tokens — skipping send"
+    );
+    return { attempted: 0, succeeded: 0, invalidated: 0 };
+  }
+  logger.info(
+    { userId, tokenCount: tokens.length, title: payload.title },
+    "[push] sending"
+  );
 
   const result: SendResult = { attempted: tokens.length, succeeded: 0, invalidated: 0 };
   const invalidTokenIds: number[] = [];

@@ -51,6 +51,13 @@ router.post("/push/device-token", async (req, res): Promise<void> => {
           invalidatedAt: null,
         },
       });
+    // Visible log so we can confirm from Railway whether a given
+    // user actually registered a token. Log only the prefix of the
+    // token (tokens are not secret, but 72-char log lines are noise).
+    console.log(
+      `[push] device-token registered: userId=${user.id} platform=${parsed.data.platform} ` +
+      `token=${parsed.data.token.slice(0, 12)}…`
+    );
 
     // Once a user has a push channel, the bell calendar invite becomes
     // redundant (and would double-notify). Remove any stale event we

@@ -273,43 +273,31 @@ function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail
       : allGroups.length === 1
         ? `${allGroups[0].emoji ?? "🏘️"} ${allGroups[0].name}`
         : `${allGroups[0].emoji ?? "🏘️"} ${allGroups[0].name} +${allGroups.length - 1}`;
-  const goal =
-    moment.commitmentSessionsGoal
-    ?? (moment.goalDays && moment.goalDays > 0 && moment.goalDays < 365 ? moment.goalDays : null);
-  const logged = moment.computedSessionsLogged ?? (moment.commitmentSessionsLogged ?? 0);
-  const progressLabel = goal ? `${logged}/${goal} days` : null;
-  const prayedToday = moment.todayPostCount > 0;
   const cardTitle = stripEmoji(moment.intercessionTopic || moment.intention || moment.name);
-  const accent = moment.windowOpen ? "#2E6B40" : "rgba(46,107,64,0.35)";
 
+  // Intercession cards no longer carry a "Pray now" / "Prayed today" /
+  // "Not today" state pill. Community intercessions are a different
+  // semantic from personal requests — you open the moment page, not
+  // a slideshow — so the CTA is always "View," rendered in the
+  // bottom-right corner. Keeps the list visually calm and removes
+  // the need for the user to mentally parse what state each moment
+  // is in before tapping.
   return (
-    <BarCard href={`/moments/${moment.id}`} accent={accent}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
+    <BarCard href={`/moments/${moment.id}`} accent="#2E6B40">
+      <div className="relative pr-16">
+        <span className="text-sm font-semibold truncate block" style={{ color: "#F0EDE6" }}>
           🙏🏽 {cardTitle}
         </span>
-        <div className="flex items-center gap-2 shrink-0">
-          {progressLabel && (
-            <span className="text-[10px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-              {progressLabel}
-            </span>
-          )}
-          {moment.windowOpen && !prayedToday && (
-            <span className="text-[10px] font-semibold rounded-full px-2 py-0.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-              Pray now
-            </span>
-          )}
-          {prayedToday && (
-            <span className="text-[10px]" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
-          )}
-          {!moment.windowOpen && !prayedToday && (
-            <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>Not today</span>
-          )}
-        </div>
+        {groupLabel && (
+          <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>{groupLabel}</p>
+        )}
+        <span
+          className="absolute bottom-0 right-0 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
+          style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", letterSpacing: "0.06em" }}
+        >
+          View
+        </span>
       </div>
-      {groupLabel && (
-        <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>{groupLabel}</p>
-      )}
     </BarCard>
   );
 }
