@@ -955,6 +955,14 @@ export default function SettingsPage() {
         <div className="mt-4">
           <DeleteAccountSection email={user.email} />
         </div>
+
+        <div className="mt-6 pb-4 text-center">
+          <Link href="/privacy">
+            <span className="text-xs" style={{ color: "#8FAF96", textDecoration: "underline", cursor: "pointer" }}>
+              Privacy Policy
+            </span>
+          </Link>
+        </div>
       </div>
     </Layout>
   );
