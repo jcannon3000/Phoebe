@@ -1723,7 +1723,7 @@ function PrayerListCard({
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              🕯️ Daily prayer list
+              🕯️ Daily Prayer List
             </span>
             <Link
               href="/prayer-list"
@@ -3154,7 +3154,7 @@ export default function Dashboard() {
             >
               <p className="text-4xl mb-4">🙏</p>
               <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Daily prayer list
+                Daily Prayer List
               </p>
               <h2
                 className="text-xl font-bold mb-6"
