@@ -265,6 +265,7 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
   // in the rare case the owner writes on their own request.
   if (isNewWord && request.ownerId !== sessionUserId) {
     sendPrayerWordPush(request.ownerId, {
+      authorUserId: sessionUserId,
       authorName,
       prayerRequestId: id,
     }).catch((err) => {

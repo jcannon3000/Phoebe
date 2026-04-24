@@ -671,9 +671,12 @@ router.post(
       // Push notification — fires only for members who have a linked
       // user account (invited-but-not-joined members don't have a
       // userId and can't receive APNs). No-op for users without an
-      // active device token.
+      // active device token. The letter.id becomes the APNs
+      // collapse-id so iOS deduplicates if we ever send the same
+      // letter twice (retries, races, re-deploys).
       if (m.userId) {
         sendNewLetterPush(m.userId, {
+          letterId: letter.id,
           correspondenceId,
           correspondenceName: correspondence.name,
           authorName: auth.name,

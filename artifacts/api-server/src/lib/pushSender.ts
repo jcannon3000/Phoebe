@@ -45,6 +45,13 @@ export interface PushPayload {
   // APNs thread-id for notification grouping. Phoebe uses one thread per
   // "kind" (e.g. "bell", "prayer-request-new", "member-joined").
   threadId?: string;
+  // APNs collapse-id — if set, iOS replaces any pending notification
+  // with the same ID instead of stacking. Use for events that are
+  // idempotent and shouldn't show more than once (e.g. "letter #42
+  // arrived" — if the backend somehow sends twice, the second replaces
+  // the first rather than showing a duplicate on the lock screen).
+  // Max 64 bytes per APNs spec.
+  collapseId?: string;
   // Sound name from the app bundle, or "default".
   sound?: string;
 }
@@ -141,17 +148,23 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
     ...(payload.path ? { path: payload.path } : {}),
   });
 
+  const headers: Record<string, string> = {
+    authorization: `bearer ${jwt}`,
+    "apns-topic": CREDS.bundleId as string,
+    "apns-push-type": "alert",
+    "apns-priority": "10",
+    "content-type": "application/json",
+  };
+  if (payload.collapseId) {
+    // APNs limits collapse-id to 64 bytes; truncate defensively.
+    headers["apns-collapse-id"] = payload.collapseId.slice(0, 64);
+  }
+
   let res: Response;
   try {
     res = await fetch(`${APNS_HOST}/3/device/${deviceToken}`, {
       method: "POST",
-      headers: {
-        authorization: `bearer ${jwt}`,
-        "apns-topic": CREDS.bundleId as string,
-        "apns-push-type": "alert",
-        "apns-priority": "10",
-        "content-type": "application/json",
-      },
+      headers,
       body,
     });
   } catch (err) {
@@ -301,15 +314,28 @@ export function sendPrayerForYouPush(recipientUserId: number) {
 // Fires per-recipient (not per-correspondence). The author is NOT in the
 // list — the caller filters them out. Tap deep-links into the letters
 // app's conversation view.
+//
+// The caller passes the letterId so we can set an APNs collapse-id.
+// With the collapse-id set, if we somehow send twice for the same
+// letter (a retry, a race, a second deploy firing the same hook),
+// iOS will REPLACE the earlier notification rather than stacking a
+// duplicate on the lock screen. One letter → one notification,
+// idempotently.
 export function sendNewLetterPush(
   userId: number,
-  opts: { correspondenceId: number; correspondenceName: string; authorName: string }
+  opts: {
+    letterId: number;
+    correspondenceId: number;
+    correspondenceName: string;
+    authorName: string;
+  }
 ) {
   return sendPushToUser(userId, {
     title: "✉️ You have a new letter",
     body: `${opts.authorName} wrote in “${opts.correspondenceName}.”`,
     path: `/mail/correspondences/${opts.correspondenceId}`,
     threadId: `letter-${opts.correspondenceId}`,
+    collapseId: `letter-${opts.letterId}`,
     sound: "default",
   });
 }
@@ -318,15 +344,24 @@ export function sendNewLetterPush(
 // another user's prayer request. Sender-revealing (recipients want to
 // know who cared enough to reach out). Tap lands on the recipient's
 // prayer list so they can read it.
+//
+// We already gate at the route layer (only on FIRST insert per
+// author+request, not on edits), but the collapse-id is belt-and-
+// suspenders: if the route ever fires twice for the same pair,
+// iOS replaces rather than stacks.
 export function sendPrayerWordPush(
   recipientUserId: number,
-  opts: { authorName: string; prayerRequestId?: number }
+  opts: { authorUserId?: number; authorName: string; prayerRequestId?: number }
 ) {
+  const collapseId = opts.prayerRequestId && opts.authorUserId
+    ? `prayer-word-${opts.prayerRequestId}-${opts.authorUserId}`
+    : undefined;
   return sendPushToUser(recipientUserId, {
     title: `💬 ${opts.authorName} raised you in prayer`,
     body: "Open Phoebe to read what they wrote.",
     path: "/prayer-list",
     threadId: opts.prayerRequestId ? `prayer-request-${opts.prayerRequestId}` : "prayer-word",
+    collapseId,
     sound: "default",
   });
 }
