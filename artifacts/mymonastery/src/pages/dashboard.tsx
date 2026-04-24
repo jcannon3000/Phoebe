@@ -2440,9 +2440,13 @@ export default function Dashboard() {
   const betaWelcomeShownRef = useRef(false);
 
   useEffect(() => {
+    // Intentionally disabled — the one-time pilot welcome was too noisy on
+    // first launch. The only auto-popups we keep on the home screen now
+    // are (a) the daily "N prayers waiting for you" slideshow invite and
+    // (b) engagement-driven popups like the new-letter notice.
     if (isBeta && !betaWelcomeShownRef.current && !localStorage.getItem("phoebe:beta-welcome-seen")) {
       betaWelcomeShownRef.current = true;
-      setBetaWelcomeVisible(true);
+      // setBetaWelcomeVisible(true); // disabled
     }
   }, [isBeta]);
 
@@ -2460,17 +2464,17 @@ export default function Dashboard() {
   const [profilePicPromptVisible, setProfilePicPromptVisible] = useState(false);
   const profilePicPromptShownRef = useRef(false);
   useEffect(() => {
+    // Intentionally disabled — the profile-picture upload prompt was
+    // shifted to onboarding only. On the home screen we keep only the
+    // prayer-slideshow and engagement popups (new letter, etc).
     if (!user) return;
     if (profilePicPromptShownRef.current) return;
     if (user.avatarUrl) return;
     if (localStorage.getItem("phoebe:profile-pic-prompted") === "1") return;
-    // Wait until the user has also finished onboarding, otherwise the
-    // onboarding slide is the right surface for this prompt.
     if (!user.onboardingCompleted) return;
-    // Don't stack on top of other first-run modals.
     if (betaWelcomeVisible) return;
     profilePicPromptShownRef.current = true;
-    setProfilePicPromptVisible(true);
+    // setProfilePicPromptVisible(true); // disabled
   }, [user, betaWelcomeVisible]);
 
   const dismissProfilePicPrompt = useCallback(() => {

@@ -25,12 +25,14 @@ function playChurchBell() {
 
     const now = ctx.currentTime;
 
-    // Pure harmonic bell — integer ratios only (no inharmonic tierce /
-    // quint / upper partials that give cast bronze bells their "metallic"
-    // color). The result is closer to a tuning fork, a celesta, or a
-    // tibetan singing bowl: consonant overtones that stack like a major
-    // chord. Fundamental raised to C5 (523 Hz) so the tone sits higher
-    // and brighter — less monastery, more vespers bell.
+    // Angelic major-triad bell — a true major chord (root + major third
+    // + fifth) in just intonation, with octave doublings for shimmer. The
+    // earlier stack was root + fifth + octaves only, which reads as
+    // "hollow" or organum-like (medieval open fifth). Adding the
+    // just-intonation major third (5:4 = 1.25) warms the tone into
+    // something that sounds like a choir sustaining a chord — a vespers
+    // bell the way a Renaissance painter would draw one. Sub-octave
+    // removed because it growled against the third.
     const STRIKE = 523.25; // C5
     const partials: Array<{
       ratio: number;
@@ -38,12 +40,13 @@ function playChurchBell() {
       decay: number;   // seconds to near-silence
       attack?: number; // optional attack delay
     }> = [
-      { ratio: 0.5, gain: 0.14, decay: 4.0 }, // sub-octave (C4) — soft warmth under the root
-      { ratio: 1.0, gain: 0.34, decay: 3.8 }, // root — C5
-      { ratio: 1.5, gain: 0.18, decay: 3.2 }, // perfect fifth — G5
-      { ratio: 2.0, gain: 0.15, decay: 2.8 }, // octave — C6
-      { ratio: 3.0, gain: 0.08, decay: 2.0 }, // octave + fifth — G6
-      { ratio: 4.0, gain: 0.05, decay: 1.4 }, // double octave — C7 (airy shimmer)
+      { ratio: 1.0,  gain: 0.34, decay: 3.8 }, // root — C5
+      { ratio: 1.25, gain: 0.22, decay: 3.5 }, // major third (5:4) — E5 (just)
+      { ratio: 1.5,  gain: 0.18, decay: 3.2 }, // perfect fifth (3:2) — G5
+      { ratio: 2.0,  gain: 0.14, decay: 2.8 }, // octave — C6
+      { ratio: 2.5,  gain: 0.08, decay: 2.2 }, // octave + major third — E6
+      { ratio: 3.0,  gain: 0.06, decay: 1.8 }, // octave + fifth — G6
+      { ratio: 4.0,  gain: 0.04, decay: 1.3 }, // double octave — C7 (airy shimmer)
     ];
 
     // Master bus — a gentle low-pass shapes the tone into something
