@@ -299,26 +299,37 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
 }
 
 // 3-second pause-before-Amen. When a slide first appears the button
-// is muted (low-opacity green, "Praying…") with a progress bar
-// filling under the label. After 3 seconds it brightens, the bar
-// disappears, and the label flips to "Amen →" — the user can now
-// advance.
+// shows a dim green pill with a left-to-right progress wash and no
+// label. After 3 seconds the wash hits 100%, the button brightens,
+// "Amen →" fades up, and a soft "light" haptic fires — distinct from
+// the medium-impact haptic that triggers on the tap itself, so the
+// reveal and the press feel like two different events.
 //
 // Why: tappers were ripping through the slideshow in a few seconds
 // without actually pausing on each prayer. The forced wait turns
 // each slide into a real moment of attention.
 //
 // Accepts a `slideKey` prop so the parent can force a remount-style
-// reset when the slide changes (we use the slide index). The
-// component reads its initial state from the keyed mount, so this
-// is reliable across rapid taps.
+// reset when the slide changes (we use the slide index).
 function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdvance: () => void }) {
   const HOLD_MS = 3000;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setReady(false);
-    const t = window.setTimeout(() => setReady(true), HOLD_MS);
+    const t = window.setTimeout(() => {
+      setReady(true);
+      // "Light" haptic on reveal — a soft tick that says "you can act
+      // now." The Amen tap itself fires a medium impact via
+      // triggerAmenFeedback, so the user feels two distinct beats:
+      // a small one when the button arrives, a fuller one when they
+      // press it. On non-native (web) the event is a silent no-op.
+      try {
+        window.dispatchEvent(
+          new CustomEvent("phoebe:haptic", { detail: { style: "light" } }),
+        );
+      } catch { /* non-fatal */ }
+    }, HOLD_MS);
     return () => window.clearTimeout(t);
   }, [slideKey]);
 
@@ -327,11 +338,12 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
       onClick={() => { if (ready) onAdvance(); }}
       disabled={!ready}
       aria-disabled={!ready}
+      aria-label={ready ? "Amen" : "Hold a moment"}
       className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-all active:scale-[0.98] relative overflow-hidden"
       style={{
         background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
         border: `1px solid ${ready ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
-        color: ready ? "#F0EDE6" : "rgba(200,212,192,0.55)",
+        color: "#F0EDE6",
         cursor: ready ? "pointer" : "default",
         minWidth: 140,
       }}
@@ -348,7 +360,22 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
           }}
         />
       )}
-      <span style={{ position: "relative" }}>{ready ? "Amen →" : "Praying…"}</span>
+      {/* Label — empty during the hold, fades up to "Amen →" the moment
+          the timer completes. The opacity transition is what gives the
+          reveal its rise; the keyed remount on slide change makes sure
+          the next slide starts blank again instead of inheriting the
+          previous slide's bright state. */}
+      <span
+        style={{
+          position: "relative",
+          opacity: ready ? 1 : 0,
+          transform: ready ? "translateY(0)" : "translateY(2px)",
+          transition: "opacity 280ms ease-out, transform 280ms ease-out",
+          display: "inline-block",
+        }}
+      >
+        Amen →
+      </span>
     </button>
   );
 }
