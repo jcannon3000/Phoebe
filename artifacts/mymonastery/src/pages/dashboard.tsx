@@ -1343,23 +1343,14 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
   const next = computeNextGatheringDate(r);
   const isToday_ = next ? isToday(next) : false;
 
-  // Template emoji only — no handshake fallback. If the creator didn't pick
-  // a template, the card leads with the gathering's name by itself, the
-  // same way a Sunday Services card stays minimal.
-  const templateEmoji: Record<string, string> = {
-    coffee: "☕",
-    meal: "🍽️",
-    walk: "🚶🏽",
-    book_club: "📚",
-    custom: "🌿",
-  };
-  const gatheringEmoji = (r.template && templateEmoji[r.template])
-    ? templateEmoji[r.template]
-    : null;
+  // No emoji prefix — tradition-new already bakes the template emoji into
+  // the gathering's name when the creator doesn't type a custom one
+  // (e.g. "🍽️ Meal"). Prefixing one here would render it twice. Plain
+  // custom names keep their chosen look.
 
-  // Look up the host community so we can render a top-right eyebrow that
-  // matches ServiceCard ("⛪ Community Name"). We read from the cached
-  // /api/groups query — React Query dedupes, so this doesn't add a fetch.
+  // Look up the host community so the top-right eyebrow matches
+  // ServiceCard ("⛪ Community Name"). Reads from the cached /api/groups
+  // query — React Query dedupes, so this doesn't add a fetch.
   const { data: groupsCache } = useQuery<{ groups: Array<{ id: number; name: string; emoji: string | null }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
@@ -1370,12 +1361,11 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
 
   const colors = CATEGORY_COLORS.gatherings;
 
-  // Sunday Service-style card: accent bar, title with template emoji on
-  // the left, host-community eyebrow on the right, and a pill row with
-  // the next meetup time + location. No participant names, no rhythm
-  // label — keeps the card scannable and matches ServiceCard exactly.
-  const timePill = next ? `${nextDayLabel(next)} · ${format(next, "h:mm a")}` : null;
-  const locationPill = r.nextMeetupLocation ?? r.location ?? null;
+  // Sunday Service-style card: plain-text subtitle line with day / time
+  // and location, mirroring ServiceTimesPillRow (which renders a single
+  // text line, not a pill). No rhythm label, no participant names.
+  const timeLabel = next ? `${nextDayLabel(next)} · ${format(next, "h:mm a")}` : null;
+  const locationLabel = r.nextMeetupLocation ?? r.location ?? null;
 
   return (
     <Link key={`${keyPrefix}-${r.id}`} href={`/ritual/${r.id}`} className="block w-full text-left">
@@ -1396,7 +1386,7 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
         <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
-              {gatheringEmoji ? `${gatheringEmoji} ` : ""}{r.name}
+              {r.name}
             </span>
             {hostGroup && (
               <span
@@ -1408,36 +1398,13 @@ function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; bad
             )}
           </div>
 
-          {(timePill || locationPill) && (
-            <div className="mt-2 flex items-center gap-2 flex-wrap">
-              {timePill && (
-                <span
-                  className="inline-flex items-center rounded-full text-xs font-semibold"
-                  style={{
-                    background: "rgba(111,175,133,0.18)",
-                    color: "#F0EDE6",
-                    border: "1px solid rgba(111,175,133,0.35)",
-                    padding: "3px 10px",
-                    letterSpacing: "-0.01em",
-                    lineHeight: "18px",
-                  }}
-                >
-                  {timePill}
-                </span>
+          {(timeLabel || locationLabel) && (
+            <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+              {timeLabel && <span style={{ color: "#C8D4C0" }}>{timeLabel}</span>}
+              {timeLabel && locationLabel && (
+                <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
               )}
-              {locationPill && (
-                <span
-                  className="inline-flex items-center rounded-full text-xs"
-                  style={{
-                    color: "#C8D4C0",
-                    padding: "3px 2px",
-                    letterSpacing: "-0.01em",
-                    lineHeight: "18px",
-                  }}
-                >
-                  📍 {locationPill}
-                </span>
-              )}
+              {locationLabel && <span>📍 {locationLabel}</span>}
             </div>
           )}
         </div>

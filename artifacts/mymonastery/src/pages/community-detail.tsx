@@ -425,26 +425,21 @@ function computeNextGatheringDate(g: Gathering): Date | null {
 // same accent bar, same time pill as ServiceCard on the home dashboard.
 // The eyebrow slot is used for the rhythm label ("Weekly tradition" etc.)
 // so the card stays legible even when the title is long.
-function CommunityGatheringCard({
-  g,
-  groupName,
-  groupEmoji,
-}: {
-  g: Gathering;
-  groupName: string;
-  groupEmoji: string | null;
-}) {
-  // Template emoji only — no handshake fallback. Cards without a picked
-  // template lead with the gathering's name, same way Sunday Services
-  // renders plainly.
-  const templateEmoji: Record<string, string> = {
-    coffee: "☕", meal: "🍽️", walk: "🚶🏽", book_club: "📚", custom: "🌿",
-  };
-  const emoji = (g.template && templateEmoji[g.template]) ?? null;
+function CommunityGatheringCard({ g }: { g: Gathering }) {
+  // Inside a community page every gathering already belongs to the
+  // community whose name is in the header — a top-right eyebrow with
+  // the same community name would render the community's emoji twice
+  // (once in the header, once on every card). So we skip the eyebrow
+  // here. The home dashboard's GatheringCard still uses it, because
+  // there the community context isn't implicit.
+  //
+  // No title emoji prefix either — tradition-new bakes the template
+  // emoji into the name when the creator doesn't type a custom one
+  // ("🍽️ Meal"). A prefix would double it.
 
   const next = computeNextGatheringDate(g);
-  const timePill = next ? `${gatheringDayLabel(next)} · ${format(next, "h:mm a")}` : null;
-  const locationPill = g.location ?? null;
+  const timeLabel = next ? `${gatheringDayLabel(next)} · ${format(next, "h:mm a")}` : null;
+  const locationLabel = g.location ?? null;
 
   return (
     <Link href={`/ritual/${g.id}`} className="block w-full text-left">
@@ -460,50 +455,17 @@ function CommunityGatheringCard({
       >
         <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
         <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
-              {emoji ? `${emoji} ` : ""}{g.name}
-            </span>
-            {/* Top-right eyebrow = host community, matching ServiceCard
-                on the home dashboard. Replaces the old rhythm label. */}
-            <span
-              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-            >
-              {groupEmoji ?? "⛪"} {groupName}
-            </span>
-          </div>
+          <span className="text-base font-semibold truncate block" style={{ color: "#F0EDE6" }}>
+            {g.name}
+          </span>
 
-          {(timePill || locationPill) && (
-            <div className="mt-2 flex items-center gap-2 flex-wrap">
-              {timePill && (
-                <span
-                  className="inline-flex items-center rounded-full text-xs font-semibold"
-                  style={{
-                    background: "rgba(111,175,133,0.18)",
-                    color: "#F0EDE6",
-                    border: "1px solid rgba(111,175,133,0.35)",
-                    padding: "3px 10px",
-                    letterSpacing: "-0.01em",
-                    lineHeight: "18px",
-                  }}
-                >
-                  {timePill}
-                </span>
+          {(timeLabel || locationLabel) && (
+            <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+              {timeLabel && <span style={{ color: "#C8D4C0" }}>{timeLabel}</span>}
+              {timeLabel && locationLabel && (
+                <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
               )}
-              {locationPill && (
-                <span
-                  className="inline-flex items-center rounded-full text-xs"
-                  style={{
-                    color: "#C8D4C0",
-                    padding: "3px 2px",
-                    letterSpacing: "-0.01em",
-                    lineHeight: "18px",
-                  }}
-                >
-                  📍 {locationPill}
-                </span>
-              )}
+              {locationLabel && <span>📍 {locationLabel}</span>}
             </div>
           )}
         </div>
@@ -1837,12 +1799,7 @@ export default function CommunityDetailPage() {
                       onOpen={() => setActiveTab("gatherings")}
                     />
                     {(gatheringsData?.gatherings ?? []).slice(0, 3).map(g => (
-                      <CommunityGatheringCard
-                        key={g.id}
-                        g={g}
-                        groupName={group.name}
-                        groupEmoji={group.emoji}
-                      />
+                      <CommunityGatheringCard key={g.id} g={g} />
                     ))}
                   </div>
                 </div>
@@ -2118,12 +2075,7 @@ export default function CommunityDetailPage() {
             ) : (
               <div className="space-y-2">
                 {gatheringsData!.gatherings.map(g => (
-                  <CommunityGatheringCard
-                    key={g.id}
-                    g={g}
-                    groupName={group.name}
-                    groupEmoji={group.emoji}
-                  />
+                  <CommunityGatheringCard key={g.id} g={g} />
                 ))}
               </div>
             )}
