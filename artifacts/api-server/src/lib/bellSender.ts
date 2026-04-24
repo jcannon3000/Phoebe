@@ -1,7 +1,7 @@
-import { db, usersTable, betaUsersTable, bellNotificationsTable, sharedMomentsTable, momentUserTokensTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, usersTable, betaUsersTable, bellNotificationsTable, sharedMomentsTable, momentUserTokensTable, prayerRequestAmensTable } from "@workspace/db";
+import { eq, and, gte, sql } from "drizzle-orm";
 import { sendEmail } from "./email";
-import { sendBellPush } from "./pushSender";
+import { sendBellPush, sendEveningNudgePush } from "./pushSender";
 import { logger } from "./logger";
 
 const APP_URL = process.env["APP_URL"] ?? "https://withphoebe.app";
@@ -252,6 +252,108 @@ export async function runBellSender(): Promise<void> {
   }
 }
 
+// ─── Evening nudge (7 PM local, push-only, skip if prayed today) ────────────
+//
+// The morning bell (above) is a reminder at the start of the day. The
+// evening nudge catches the users who nodded along in the morning but
+// never actually opened the app. We gate on three things:
+//
+//   1. It's 19:00–19:14 in the user's local timezone.
+//   2. We haven't already sent an evening nudge to them today.
+//   3. They have NOT logged any prayer ("amen") today — if they did,
+//      they already tended to their practice and the nudge would be
+//      noise.
+//
+// We reuse `bell_notifications` with a `"${date}-evening"` row so we
+// don't need another table. The row is scoped to the push channel;
+// there's no email for the evening nudge.
+export async function runEveningNudgeSender(): Promise<void> {
+  const bellUsers = await db
+    .select({
+      id: usersTable.id,
+      email: usersTable.email,
+      timezone: usersTable.timezone,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.bellEnabled, true));
+
+  if (bellUsers.length === 0) return;
+
+  for (const user of bellUsers) {
+    try {
+      const tz = user.timezone ?? "America/New_York";
+
+      // Only inside the 19:00 – 19:14 window in the user's tz.
+      const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
+      if (nowH !== 19 || nowM >= 15) continue;
+
+      const todayStr = todayDateInTz(tz);
+      const eveningKey = `${todayStr}-evening`;
+
+      // De-dup — already nudged today?
+      const [existing] = await db
+        .select()
+        .from(bellNotificationsTable)
+        .where(
+          and(
+            eq(bellNotificationsTable.userId, user.id),
+            eq(bellNotificationsTable.bellDate, eveningKey),
+          ),
+        );
+      if (existing) continue;
+
+      // Beta gate — same rule as the morning bell.
+      const [beta] = await db.select().from(betaUsersTable)
+        .where(eq(betaUsersTable.email, user.email.toLowerCase()));
+      if (!beta) continue;
+
+      // Did they pray today? We compute the local-date boundary in UTC
+      // (earliest possible "today" starts at UTC midnight of todayStr
+      // minus 14h to cover Pacific/Kiritimati). Good enough as a
+      // broad floor — we then filter in JS by formatted local date to
+      // be exact.
+      const sinceUtc = new Date(`${todayStr}T00:00:00Z`);
+      sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
+      const recent = await db
+        .select({ prayedAt: prayerRequestAmensTable.prayedAt })
+        .from(prayerRequestAmensTable)
+        .where(
+          and(
+            eq(prayerRequestAmensTable.userId, user.id),
+            gte(prayerRequestAmensTable.prayedAt, sinceUtc),
+          ),
+        );
+      const prayedToday = recent.some((r) => {
+        if (!r.prayedAt) return false;
+        const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(r.prayedAt);
+        return ymd === todayStr;
+      });
+      if (prayedToday) continue;
+
+      // Send the push. No email — evening nudges are push-only by
+      // design; email would be too heavy for a secondary reminder.
+      try {
+        await sendEveningNudgePush(user.id);
+      } catch (err) {
+        logger.warn({ err, userId: user.id }, "[bell-evening] push dispatch failed");
+      }
+
+      await db.insert(bellNotificationsTable).values({
+        userId: user.id,
+        bellDate: eveningKey,
+        sentAt: new Date(),
+      });
+
+      logger.info({ userId: user.id, eveningKey }, "[bell-evening] sent evening nudge");
+    } catch (err) {
+      logger.error({ err, userId: user.id }, "[bell-evening] user processing failed");
+    }
+  }
+}
+
+// Silence unused-import warnings if sql helper is tree-shaken away.
+void sql;
+
 // ─── Scheduler ──────────────────────────────────────────────────────────────
 
 let bellInterval: ReturnType<typeof setInterval> | null = null;
@@ -265,13 +367,20 @@ export function startBellScheduler(): void {
     runBellSender().catch((err) =>
       logger.error({ err }, "[bell] initial run failed"),
     );
+    runEveningNudgeSender().catch((err) =>
+      logger.error({ err }, "[bell-evening] initial run failed"),
+    );
   }, 45_000);
 
-  // Then every 15 minutes
+  // Then every 15 minutes — morning + evening share the same tick;
+  // each function no-ops outside its own time window.
   bellInterval = setInterval(
     () => {
       runBellSender().catch((err) =>
         logger.error({ err }, "[bell] scheduled run failed"),
+      );
+      runEveningNudgeSender().catch((err) =>
+        logger.error({ err }, "[bell-evening] scheduled run failed"),
       );
     },
     15 * 60 * 1000,

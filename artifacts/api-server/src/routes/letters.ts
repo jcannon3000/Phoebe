@@ -22,6 +22,7 @@ import {
 } from "../lib/letterPeriods";
 import { sendInvitationEmail, sendNewLetterEmail, sendReminderEmail } from "../lib/letterEmails";
 import { getInviteBaseUrl } from "../lib/urls";
+import { sendNewLetterPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -666,6 +667,18 @@ router.post(
         correspondenceName: correspondence.name,
         correspondenceUrl,
       }).catch((err) => console.error("Failed to send new letter email:", err));
+
+      // Push notification — fires only for members who have a linked
+      // user account (invited-but-not-joined members don't have a
+      // userId and can't receive APNs). No-op for users without an
+      // active device token.
+      if (m.userId) {
+        sendNewLetterPush(m.userId, {
+          correspondenceId,
+          correspondenceName: correspondence.name,
+          authorName: auth.name,
+        }).catch((err) => console.error("Failed to send new letter push:", err));
+      }
     }
 
     res.json(letter);

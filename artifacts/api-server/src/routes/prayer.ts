@@ -4,6 +4,7 @@ import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, use
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
+import { sendPrayerWordPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -324,6 +325,7 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
     .where(and(eq(prayerWordsTable.requestId, id), eq(prayerWordsTable.authorUserId, sessionUserId)));
 
   let word;
+  const isNewWord = !existing;
   if (existing) {
     [word] = await db.update(prayerWordsTable)
       .set({ content: parsed.data.content })
@@ -338,6 +340,20 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
         content: parsed.data.content,
       })
       .returning();
+  }
+
+  // Push the request owner — "{authorName} raised you in prayer."
+  // Only on the first time this user leaves a word on this request
+  // (edits don't re-notify; we don't want a spammy "X said something"
+  // every time they polish their phrasing). Also suppress self-words
+  // in the rare case the owner writes on their own request.
+  if (isNewWord && request.ownerId !== sessionUserId) {
+    sendPrayerWordPush(request.ownerId, {
+      authorName,
+      prayerRequestId: id,
+    }).catch((err) => {
+      console.warn("[prayer/word] push dispatch failed:", err);
+    });
   }
 
   res.json(word);

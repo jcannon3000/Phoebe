@@ -1,27 +1,21 @@
-// APNs push sender — scaffolded for Phoebe Mobile.
+// APNs push sender for Phoebe Mobile.
 //
-// This module is intentionally a stub-with-shape: the function signatures,
-// table reads, and error-handling flow are real, but the actual APNs
-// signing + POST is gated on `APNS_KEY_P8` / `APNS_KEY_ID` / `APNS_TEAM_ID`
-// / `APNS_BUNDLE_ID` env vars. Until those land in Railway, `sendPush`
-// logs the payload it WOULD send and returns cleanly — so callers
-// (bellSender, notifyAdminsOfNewMember, etc.) can integrate now without
-// waiting on Apple Developer account setup.
+// Reads the following env vars (set in Railway → api-server → Variables):
+//   APNS_KEY_P8       — full .p8 contents (BEGIN/END lines incl.)
+//   APNS_KEY_ID       — 10-char string from developer.apple.com → Keys
+//   APNS_TEAM_ID      — 10-char string from developer.apple.com → Membership
+//   APNS_BUNDLE_ID    — defaults to "app.withphoebe.mobile"
+//   APNS_ENVIRONMENT  — "production" (default) | "sandbox"
 //
-// When you're ready to enable real delivery:
-//   1. Create an APNs Auth Key (.p8) in developer.apple.com → Keys.
-//   2. Railway env:
-//        APNS_KEY_P8       — paste the full .p8 contents (BEGIN/END lines incl.)
-//        APNS_KEY_ID       — 10-char string from the key page
-//        APNS_TEAM_ID      — 10-char string from developer.apple.com → Membership
-//        APNS_BUNDLE_ID    — app.withphoebe.mobile
-//        APNS_ENVIRONMENT  — "production" | "sandbox" (default: production)
-//   3. `pnpm --filter @workspace/api-server add jose` (we use jose to sign
-//      the APNs JWT; no native deps).
-//   4. Replace `sendOneApns` below with the real jose-based implementation
-//      (sketch left in the comment inside that function).
+// If APNS_KEY_P8 / APNS_KEY_ID / APNS_TEAM_ID are unset, the sender
+// degrades to a log-only stub (`sendOneApns` returns "stub") so local
+// dev and preview deploys don't 500 on every trigger.
 //
-// Everything above `sendOneApns` can ship as-is today.
+// Flow: sendPushToUser() reads active device tokens for the user,
+// signs a single ES256 JWT (cached for ~55 min via getApnsJwt), and
+// POSTs a standard `aps` payload to api.push.apple.com. 410s and
+// BadDeviceToken responses mark the row invalid so the next pass
+// skips it.
 
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { SignJWT, importPKCS8, type KeyLike } from "jose";
@@ -232,19 +226,27 @@ async function getApnsJwt(): Promise<string> {
 // Thin helpers for common notification kinds. Callers don't need to
 // know payload conventions; they just call by name.
 
-export function sendBellPush(userId: number, opts: { actionableCount: number; practices: string[] }) {
-  const body = opts.actionableCount === 0
-    ? "A quiet day — nothing scheduled."
-    : opts.practices.length <= 2
-      ? opts.practices.join(" and ")
-      : `${opts.practices.slice(0, 2).join(", ")} and ${opts.practices.length - 2} more`;
+// Morning monastery bell (7 AM local). The copy is deliberately
+// relational — "your friends" — because the whole app frames prayer as
+// carrying other people, not as a solo practice. Tap opens the prayer
+// list slideshow so they walk straight into it.
+export function sendBellPush(userId: number, _opts: { actionableCount: number; practices: string[] }) {
   return sendPushToUser(userId, {
-    title: "Daily bell",
-    body,
-    // Tap lands on the prayer list so the user walks straight into the
-    // practice flow. If the list is empty the page itself shows an
-    // appropriate "all quiet" state, which matches the push copy.
-    path: opts.actionableCount > 0 ? "/prayer-list" : "/dashboard",
+    title: "🔔 Time to pray for your friends",
+    body: "Your community is waiting to be remembered.",
+    path: "/prayer-list",
+    threadId: "bell",
+    sound: "default",
+  });
+}
+
+// Evening nudge (7 PM local). Only fires if the user hasn't logged a
+// prayer that day — see eveningNudgeSender for the gating.
+export function sendEveningNudgePush(userId: number) {
+  return sendPushToUser(userId, {
+    title: "🌙 Don't forget to pray for your friends",
+    body: "A few minutes before the day closes.",
+    path: "/prayer-list",
     threadId: "bell",
     sound: "default",
   });
@@ -296,16 +298,33 @@ export function sendPrayerForYouPush(recipientUserId: number) {
 
 // Fires per-recipient (not per-correspondence). The author is NOT in the
 // list — the caller filters them out. Tap deep-links into the letters
-// app's conversation view (`/mail/correspondences/:id`).
+// app's conversation view.
 export function sendNewLetterPush(
   userId: number,
   opts: { correspondenceId: number; correspondenceName: string; authorName: string }
 ) {
   return sendPushToUser(userId, {
-    title: opts.correspondenceName,
-    body: `${opts.authorName} wrote.`,
+    title: "✉️ You have a new letter",
+    body: `${opts.authorName} wrote in “${opts.correspondenceName}.”`,
     path: `/mail/correspondences/${opts.correspondenceId}`,
     threadId: `letter-${opts.correspondenceId}`,
+    sound: "default",
+  });
+}
+
+// Fires when someone writes a "word of comfort" / prayer response on
+// another user's prayer request. Sender-revealing (recipients want to
+// know who cared enough to reach out). Tap lands on the recipient's
+// prayer list so they can read it.
+export function sendPrayerWordPush(
+  recipientUserId: number,
+  opts: { authorName: string; prayerRequestId?: number }
+) {
+  return sendPushToUser(recipientUserId, {
+    title: "💬 You were raised in prayer",
+    body: `${opts.authorName} raised you in prayer.`,
+    path: "/prayer-list",
+    threadId: opts.prayerRequestId ? `prayer-request-${opts.prayerRequestId}` : "prayer-word",
     sound: "default",
   });
 }
