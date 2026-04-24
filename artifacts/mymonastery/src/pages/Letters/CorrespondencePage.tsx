@@ -229,24 +229,69 @@ export default function CorrespondencePage() {
                       {otherMembers} has been waiting {daysSince(lastLetterByOther.sentAt)} days. No rush — write when you're ready. 🌿
                     </p>
                   )}
-                  {isOpen ? (
-                    <Link href={writeUrl}>
-                      <button
-                        className="w-full py-3 rounded-xl text-base font-semibold"
-                        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                      >
-                        Write your letter 🖋️
-                      </button>
-                    </Link>
-                  ) : letters.length > 0 && letters[0].authorEmail === userEmail ? (
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>
-                      Your letter is sent. 🌿 Waiting for {otherMembers} to write back.
-                    </p>
-                  ) : (
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>
-                      Waiting for {otherMembers} to write... 🌿
-                    </p>
-                  )}
+                  {(() => {
+                    // Figure out whose turn is "next" so we can offer a
+                    // draft-ahead button when the window hasn't opened yet.
+                    const lastLetter = [...letters].sort(
+                      (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+                    )[0];
+                    const nextIsMine = !!lastLetter && lastLetter.authorEmail !== userEmail;
+                    const windowOpenAt = data.windowOpenDate ? new Date(data.windowOpenDate) : null;
+                    const isWaitingForWindow =
+                      turnState === "WAITING" &&
+                      nextIsMine &&
+                      !!windowOpenAt &&
+                      windowOpenAt.getTime() > Date.now();
+                    const daysUntilOpen = isWaitingForWindow && windowOpenAt
+                      ? Math.max(1, Math.ceil((windowOpenAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                      : 0;
+
+                    if (isOpen) {
+                      return (
+                        <Link href={writeUrl}>
+                          <button
+                            className="w-full py-3 rounded-xl text-base font-semibold"
+                            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                          >
+                            Write your letter 🖋️
+                          </button>
+                        </Link>
+                      );
+                    }
+                    if (isWaitingForWindow) {
+                      return (
+                        <>
+                          <Link href={writeUrl}>
+                            <button
+                              className="w-full py-3 rounded-xl text-base font-semibold"
+                              style={{
+                                background: "transparent",
+                                color: "#C8D4C0",
+                                border: "1px solid rgba(142,158,66,0.4)",
+                              }}
+                            >
+                              Start drafting 🖋️
+                            </button>
+                          </Link>
+                          <p className="text-xs mt-2" style={{ color: "#8FAF96" }}>
+                            Window opens in {daysUntilOpen} {daysUntilOpen === 1 ? "day" : "days"} · your draft will wait.
+                          </p>
+                        </>
+                      );
+                    }
+                    if (letters.length > 0 && !nextIsMine) {
+                      return (
+                        <p className="text-sm" style={{ color: "#8FAF96" }}>
+                          Your letter is sent. 🌿 Waiting for {otherMembers} to write back.
+                        </p>
+                      );
+                    }
+                    return (
+                      <p className="text-sm" style={{ color: "#8FAF96" }}>
+                        Waiting for {otherMembers} to write... 🌿
+                      </p>
+                    );
+                  })()}
                 </>
               ) : data.myTurn && !currentPeriod.hasWrittenThisPeriod ? (
                 <Link href={writeUrl}>

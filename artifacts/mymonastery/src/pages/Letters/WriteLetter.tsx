@@ -183,7 +183,6 @@ export default function WriteLetter() {
   });
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-  const canSend = wordCount >= minWords && wordCount <= maxWords && !sendMutation.isPending;
   const wordCountMet = wordCount >= minWords;
 
   const otherMembers = correspondence?.members
@@ -192,6 +191,24 @@ export default function WriteLetter() {
     .join(", ") ?? "";
 
   const isOverdue = isOneToOne && correspondence?.turnState === "OVERDUE";
+
+  // Draft-ahead: if it's not yet our turn (WAITING with a future window
+  // open date), the user can write but can't send. The button below
+  // turns into "Send in Xd" and is disabled until the window opens.
+  const windowOpenAt = correspondence?.windowOpenDate ? new Date(correspondence.windowOpenDate) : null;
+  const isWaitingForWindow =
+    isOneToOne &&
+    correspondence?.turnState === "WAITING" &&
+    !!windowOpenAt &&
+    windowOpenAt.getTime() > Date.now();
+  const daysUntilOpen = isWaitingForWindow && windowOpenAt
+    ? Math.max(1, Math.ceil((windowOpenAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const canSend =
+    wordCount >= minWords &&
+    wordCount <= maxWords &&
+    !sendMutation.isPending &&
+    !isWaitingForWindow;
   const waitingDays = (() => {
     if (!isOverdue || !correspondence?.letters?.length) return 0;
     const otherLast = [...correspondence.letters]
@@ -244,6 +261,11 @@ export default function WriteLetter() {
           {isOverdue && waitingDays > 0 && (
             <p className="text-[12px] mt-0.5" style={{ color: "#C17F24" }}>
               {otherMembers} has been waiting {waitingDays} days 🌿
+            </p>
+          )}
+          {isWaitingForWindow && windowOpenAt && (
+            <p className="text-[12px] mt-0.5" style={{ color: "#9a9390" }}>
+              Draft ahead — window opens {windowOpenAt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
             </p>
           )}
         </div>
@@ -310,7 +332,9 @@ export default function WriteLetter() {
                 className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 transition-opacity"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                Send ✉️
+                {isWaitingForWindow
+                  ? `Send in ${daysUntilOpen}d`
+                  : "Send ✉️"}
               </button>
             </div>
           </div>
