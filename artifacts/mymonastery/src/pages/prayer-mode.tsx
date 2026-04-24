@@ -339,32 +339,39 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
       disabled={!ready}
       aria-disabled={!ready}
       aria-label={ready ? "Amen" : "Hold a moment"}
-      className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-all active:scale-[0.98] relative overflow-hidden"
+      className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
       style={{
         background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
         border: `1px solid ${ready ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
         color: "#F0EDE6",
         cursor: ready ? "pointer" : "default",
         minWidth: 140,
+        // Slow, matched fade between the dim and bright states so the
+        // button cross-dissolves into ready instead of snapping to it
+        // when the progress fill unmounts. ~360ms feels like the same
+        // beat as the label fade-in below.
+        transition: "background-color 360ms ease-out, border-color 360ms ease-out",
       }}
     >
-      {/* Progress fill — animates 0% → 100% over HOLD_MS, sits under the
-          label as a gentle wash that brightens with the button itself. */}
-      {!ready && (
-        <span
-          aria-hidden
-          className="absolute left-0 top-0 bottom-0 amen-progress-fill"
-          style={{
-            background: "rgba(46,107,64,0.45)",
-            pointerEvents: "none",
-          }}
-        />
-      )}
+      {/* Progress fill — always mounted, even after `ready` flips. We
+          fade it out via opacity so the bright background underneath
+          can take over without the abrupt "pop" you get when an
+          element is hard-unmounted. */}
+      <span
+        aria-hidden
+        key={slideKey}
+        className="absolute left-0 top-0 bottom-0 amen-progress-fill"
+        style={{
+          background: "rgba(46,107,64,0.45)",
+          pointerEvents: "none",
+          opacity: ready ? 0 : 1,
+          transition: "opacity 360ms ease-out",
+        }}
+      />
       {/* Label — empty during the hold, fades up to "Amen →" the moment
           the timer completes. The opacity transition is what gives the
-          reveal its rise; the keyed remount on slide change makes sure
-          the next slide starts blank again instead of inheriting the
-          previous slide's bright state. */}
+          reveal its rise; the keyed remount of the fill on slide change
+          makes sure the next slide's progress starts at 0% again. */}
       <span
         style={{
           position: "relative",
@@ -988,6 +995,167 @@ function StreakCelebration({ streak }: { streak: number }) {
   );
 }
 
+// ─── Closing slide ─────────────────────────────────────────────────────────
+// Shown after the user finishes the prayer-list. Three layers, top to
+// bottom:
+//   1. Streak — always visible. If `celebration.firstToday`, the
+//      bursting Duolingo-style entrance fires; otherwise we render a
+//      static, calmer streak number that still reads as a daily badge.
+//   2. Avatar rail — up to 5 people the viewer has prayed for in the
+//      last 7 days, with a "+N" tail if there are more. A direct,
+//      face-level reminder that prayer is relational.
+//   3. Habit invite — copy that frames daily prayer as a practice and
+//      a "Done" button that closes the slideshow.
+//
+// The container shares the same `paddingTop: clamp(64px, 16dvh, 180px)`
+// as the prayer slides, but unlike the previous version it has more
+// vertical content so it doesn't read as floating high on tall screens.
+function ClosingSlide({
+  celebration,
+  streak,
+  coPrayers,
+  onDone,
+  visible,
+}: {
+  celebration: { streak: number } | null;
+  streak: number;
+  coPrayers: Array<{ id: number; name: string | null; avatarUrl: string | null }>;
+  onDone: () => void;
+  visible: boolean;
+}) {
+  const visibleAvatars = coPrayers.slice(0, 5);
+  const overflow = Math.max(0, coPrayers.length - visibleAvatars.length);
+
+  return (
+    <div
+      className="w-full flex flex-col items-center text-center"
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.4s ease",
+        gap: 28,
+      }}
+    >
+      {/* Streak — celebration animation on firstToday, static badge
+          otherwise. Both render from the same number so the visual
+          stays consistent. */}
+      {celebration ? (
+        <StreakCelebration streak={celebration.streak} />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col items-center"
+        >
+          <p
+            className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+            style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            Prayer streak
+          </p>
+          <p
+            className="font-bold leading-none"
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              color: "#C8D4C0",
+              fontSize: 88,
+              letterSpacing: "-0.04em",
+              marginTop: 6,
+            }}
+          >
+            {streak}
+          </p>
+          <p
+            className="text-sm mt-1"
+            style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            {streak === 1 ? "day" : "days"}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Avatar rail — up to 5 + tail. Hidden if no co-prayers (e.g.
+          first-ever session, or a quiet week with only the user's own
+          intercessions). */}
+      {visibleAvatars.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="flex flex-col items-center"
+        >
+          <p
+            className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3"
+            style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            You prayed with
+          </p>
+          <div className="flex items-center justify-center -space-x-2">
+            {visibleAvatars.map((p) => (
+              p.avatarUrl ? (
+                <img
+                  key={p.id}
+                  src={p.avatarUrl}
+                  alt={p.name ?? ""}
+                  className="w-11 h-11 rounded-full object-cover"
+                  style={{ border: "2px solid #0C1F12" }}
+                />
+              ) : (
+                <div
+                  key={p.id}
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-semibold"
+                  style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}
+                >
+                  {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map(s => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
+                </div>
+              )
+            ))}
+            {overflow > 0 && (
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-[11px] font-semibold"
+                style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}
+              >
+                +{overflow}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Habit invite — relational framing, no streak language so it
+          doesn't compete with the number above. */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.25 }}
+        className="flex flex-col items-center"
+        style={{ maxWidth: 380 }}
+      >
+        <p
+          className="text-base leading-relaxed"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Make praying for your friends a daily habit.
+        </p>
+        <p
+          className="text-[13px] leading-relaxed mt-2"
+          style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Come back tomorrow — your friends will be carrying things, and so will you.
+        </p>
+      </motion.div>
+
+      <button
+        onClick={onDone}
+        className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+      >
+        Done
+      </button>
+    </div>
+  );
+}
+
 export default function PrayerModePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -1025,6 +1193,27 @@ export default function PrayerModePage() {
     queryKey: ["/api/groups/me/circle-intentions"],
     queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"),
     enabled: !!user,
+  });
+
+  // Streak number for the closing slide (always shown — user explicitly
+  // asked for it regardless of whether today is a "first today" event).
+  // Lives on the same query key as the dashboard so they share cache.
+  const { data: streakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
+    queryKey: ["/api/prayer-streak"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
+  // People whose prayer requests this user prayed for in the last 7
+  // days — surfaced as an avatar rail on the closing slide so the user
+  // sees who their prayers landed on this week. Excludes anonymous
+  // requests. Capped at 12 server-side; we render 5 + tail.
+  const { data: coPrayersData } = useQuery<{ people: Array<{ id: number; name: string | null; avatarUrl: string | null }> }>({
+    queryKey: ["/api/prayer-streak/co-prayers-week"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/co-prayers-week"),
+    enabled: !!user,
+    staleTime: 60_000,
   });
 
   const renewMutation = useMutation({
@@ -1475,28 +1664,13 @@ export default function PrayerModePage() {
         )}
 
         {phase === "closing" && (
-          <div
-            className="w-full flex flex-col items-center text-center gap-8"
-            style={{ opacity: slideVisible ? 1 : 0, transition: "opacity 0.4s ease" }}
-          >
-            {celebration ? (
-              <StreakCelebration streak={celebration.streak} />
-            ) : (
-              <p
-                className="text-base leading-relaxed"
-                style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                You have carried what your community is carrying. 🌿
-              </p>
-            )}
-            <button
-              onClick={handleDone}
-              className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-            >
-              Done
-            </button>
-          </div>
+          <ClosingSlide
+            celebration={celebration}
+            streak={celebration?.streak ?? streakData?.streak ?? 0}
+            coPrayers={coPrayersData?.people ?? []}
+            onDone={handleDone}
+            visible={slideVisible}
+          />
         )}
       </div>
 

@@ -23,8 +23,8 @@
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, and, inArray } from "drizzle-orm";
-import { db, usersTable, momentUserTokensTable, momentPostsTable } from "@workspace/db";
+import { eq, and, inArray, gte } from "drizzle-orm";
+import { db, usersTable, momentUserTokensTable, momentPostsTable, prayerRequestAmensTable, prayerRequestsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -106,6 +106,91 @@ router.post("/prayer-streak/log", async (req: Request, res: Response): Promise<v
     res.json({ streak, firstToday: !alreadyToday });
   } catch (err) {
     console.error("[prayer-streak:log] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /prayer-streak/co-prayers-week — returns the distinct people the
+// caller has prayed for in the last 7 days, derived from
+// prayer_request_amens joined back to prayer_requests for the owner.
+// Used by the closing slide of the prayer slideshow to render a
+// "you prayed with these friends this week" rail of avatars.
+//
+// Filters out:
+//   - the caller themselves (ownerId = userId)
+//   - anonymous requests (isAnonymous = true) — sender chose not to
+//     reveal themselves, surfacing their avatar would break trust
+//
+// Caps at 12 distinct people; the client typically renders 5 with a
+// "+N" tail. Sorted by most-recent prayedAt first so the rail leads
+// with the freshest connections.
+router.get("/prayer-streak/co-prayers-week", async (req: Request, res: Response): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Pull every amen the viewer made this week, joined to the request
+    // so we have the ownerId + isAnonymous flag in one round trip.
+    const rows = await db
+      .select({
+        ownerId: prayerRequestsTable.ownerId,
+        isAnonymous: prayerRequestsTable.isAnonymous,
+        prayedAt: prayerRequestAmensTable.prayedAt,
+      })
+      .from(prayerRequestAmensTable)
+      .innerJoin(
+        prayerRequestsTable,
+        eq(prayerRequestsTable.id, prayerRequestAmensTable.requestId),
+      )
+      .where(and(
+        eq(prayerRequestAmensTable.userId, sessionUser.id),
+        gte(prayerRequestAmensTable.prayedAt, sevenDaysAgo),
+      ));
+
+    // Dedupe by ownerId; keep the most-recent prayedAt per owner so we
+    // can sort by recency.
+    const byOwner = new Map<number, Date>();
+    for (const r of rows) {
+      if (r.isAnonymous) continue;
+      if (r.ownerId === sessionUser.id) continue;
+      const prev = byOwner.get(r.ownerId);
+      const stamp = r.prayedAt ?? new Date(0);
+      if (!prev || stamp > prev) byOwner.set(r.ownerId, stamp);
+    }
+
+    const ids = Array.from(byOwner.keys());
+    if (ids.length === 0) {
+      res.json({ people: [] });
+      return;
+    }
+
+    const people = await db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        avatarUrl: usersTable.avatarUrl,
+      })
+      .from(usersTable)
+      .where(inArray(usersTable.id, ids));
+
+    const sorted = people
+      .map(p => ({
+        ...p,
+        lastPrayedAt: byOwner.get(p.id) ?? new Date(0),
+      }))
+      .sort((a, b) => b.lastPrayedAt.getTime() - a.lastPrayedAt.getTime())
+      .slice(0, 12)
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        avatarUrl: p.avatarUrl,
+      }));
+
+    res.json({ people: sorted });
+  } catch (err) {
+    console.error("[prayer-streak:co-prayers-week] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });
