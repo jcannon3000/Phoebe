@@ -74,7 +74,12 @@ export async function createCalendarEvent(
   const useLocalTime = !!(opts.startLocalStr && opts.timeZone);
   const tz = opts.timeZone ?? "UTC";
 
-  const attendeeList = opts.attendees?.map(email => ({ email })) ?? [];
+  // Calendar invites are explicitly disabled product-wide: no attendees
+  // are added to Phoebe-created events, so no one else's calendar is
+  // touched and Google cannot send notifications. The event lives only
+  // on the Phoebe scheduler's own calendar as an internal reminder.
+  // opts.attendees is intentionally ignored here. See README + the
+  // kill-switch commit for rationale.
 
   const defaultReminders = [
     { method: "popup", minutes: 10 },
@@ -94,7 +99,7 @@ export async function createCalendarEvent(
         end: useLocalTime
           ? { dateTime: opts.endLocalStr ?? opts.startLocalStr, timeZone: tz }
           : { dateTime: end.toISOString(), timeZone: "UTC" },
-        attendees: attendeeList.length > 0 ? attendeeList : undefined,
+        // attendees: intentionally omitted — calendar invites are off.
         recurrence: opts.recurrence,
         colorId: opts.colorId,
         status: opts.status,
@@ -112,10 +117,7 @@ export async function createCalendarEvent(
       );
       return null;
     }
-    console.log(
-      `[calendar] Created event ${event.data.id}` +
-      (attendeeList.length > 0 ? ` (invited ${attendeeList.map(a => a.email).join(", ")})` : ""),
-    );
+    console.log(`[calendar] Created event ${event.data.id} (no invites sent)`);
     return event.data.id;
   } catch (err) {
     // Dump as much as Google hands us — code, status, message, reason —
@@ -133,7 +135,6 @@ export async function createCalendarEvent(
       message: e?.message,
       reason: e?.errors?.[0]?.reason,
       data: e?.response?.data,
-      attendees: attendeeList.map(a => a.email),
       summary: opts.summary,
     });
     return null;
@@ -156,7 +157,8 @@ export async function createAllDayCalendarEvent(
   if (!auth) return null;
 
   const calendar = google.calendar({ version: "v3", auth });
-  const attendeeList = opts.attendees?.map(email => ({ email })) ?? [];
+  // Attendees intentionally omitted — calendar invites are disabled
+  // product-wide. Event lives on the Phoebe scheduler calendar only.
 
   const nextDay = new Date(opts.dateStr + "T00:00:00Z");
   nextDay.setUTCDate(nextDay.getUTCDate() + 1);
@@ -171,7 +173,7 @@ export async function createAllDayCalendarEvent(
         description: opts.description,
         start: { date: opts.dateStr },
         end: { date: endDateStr },
-        attendees: attendeeList.length > 0 ? attendeeList : undefined,
+        // attendees: intentionally omitted — calendar invites are off.
         recurrence: opts.recurrence,
         transparency: opts.transparency,
         reminders: {
@@ -218,7 +220,9 @@ export async function updateCalendarEvent(
   if (!auth) return false;
 
   const calendar = google.calendar({ version: "v3", auth });
-  const attendeeList = opts.attendees?.map((email) => ({ email })) ?? [];
+  // Attendees intentionally omitted from patches — calendar invites are
+  // disabled product-wide. We still accept the opts.attendees parameter
+  // so call sites compile, but we never forward it to Google.
   const useLocalTime = !!(opts.startLocalStr && opts.timeZone);
   const tz = opts.timeZone ?? "UTC";
 
@@ -248,7 +252,7 @@ export async function updateCalendarEvent(
         description: opts.description,
         ...(startField ? { start: startField } : {}),
         ...(endField ? { end: endField } : {}),
-        attendees: attendeeList.length > 0 ? attendeeList : undefined,
+        // attendees: intentionally omitted — calendar invites are off.
       },
     });
     return true;
@@ -370,57 +374,24 @@ export async function getCalendarEventAttendees(
   }
 }
 
+// addAttendeesToCalendarEvent / removeAttendeesFromCalendarEvent are
+// intentionally no-ops. Calendar invites are disabled product-wide, so
+// we never mutate attendee lists on the scheduler calendar — event
+// membership is tracked in the Phoebe DB (participants column) and the
+// Google event stays a Phoebe-only reminder.
 export async function addAttendeesToCalendarEvent(
   _userId: number,
-  eventId: string,
-  newEmails: string[]
+  _eventId: string,
+  _newEmails: string[]
 ): Promise<boolean> {
-  const auth = await getSchedulerClient();
-  if (!auth) return false;
-
-  const calendar = google.calendar({ version: "v3", auth });
-  try {
-    const existing = await calendar.events.get({ calendarId: "primary", eventId });
-    const currentAttendees = existing.data.attendees ?? [];
-    const currentEmails = new Set(currentAttendees.map(a => a.email));
-    const toAdd = newEmails.filter(e => !currentEmails.has(e));
-    if (toAdd.length === 0) return true;
-    const merged = [...currentAttendees, ...toAdd.map(email => ({ email }))];
-    await calendar.events.patch({
-      calendarId: "primary",
-      eventId,
-      sendUpdates: "none",
-      requestBody: { attendees: merged },
-    });
-    return true;
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 export async function removeAttendeesFromCalendarEvent(
   _userId: number,
-  eventId: string,
-  emailsToRemove: string[]
+  _eventId: string,
+  _emailsToRemove: string[]
 ): Promise<boolean> {
-  const auth = await getSchedulerClient();
-  if (!auth) return false;
-
-  const calendar = google.calendar({ version: "v3", auth });
-  try {
-    const existing = await calendar.events.get({ calendarId: "primary", eventId });
-    const currentAttendees = existing.data.attendees ?? [];
-    const removeSet = new Set(emailsToRemove.map(e => e.toLowerCase()));
-    const filtered = currentAttendees.filter(a => !removeSet.has((a.email ?? "").toLowerCase()));
-    await calendar.events.patch({
-      calendarId: "primary",
-      eventId,
-      sendUpdates: "none",
-      requestBody: { attendees: filtered },
-    });
-    return true;
-  } catch {
-    return false;
-  }
+  return true;
 }
 
