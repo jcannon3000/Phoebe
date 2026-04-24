@@ -316,7 +316,6 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setReady(false);
     const t = window.setTimeout(() => {
       setReady(true);
       // "Light" haptic on reveal — a soft tick that says "you can act
@@ -346,11 +345,15 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
         color: "#F0EDE6",
         cursor: ready ? "pointer" : "default",
         minWidth: 140,
-        // Slow, matched fade between the dim and bright states so the
-        // button cross-dissolves into ready instead of snapping to it
-        // when the progress fill unmounts. ~360ms feels like the same
-        // beat as the label fade-in below.
-        transition: "background-color 360ms ease-out, border-color 360ms ease-out",
+        // Only animate when ready flips on. While the button is still
+        // dim there's no transition active, so the initial paint can't
+        // smear from a default browser style into the dim color — the
+        // dim color is the very first thing rendered. Without this guard
+        // the button briefly flashed bright on mount before settling
+        // dark.
+        transition: ready
+          ? "background-color 360ms ease-out, border-color 360ms ease-out"
+          : "none",
       }}
     >
       {/* Progress fill — always mounted, even after `ready` flips. We
@@ -668,7 +671,7 @@ function SlideContent({
           </p>
         )}
 
-        <AmenButton slideKey={slideKey} onAdvance={onAdvance} />
+        <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} />
       </div>
     );
   }
@@ -877,7 +880,7 @@ function SlideContent({
       )}
 
       <div className="mt-4">
-        <AmenButton slideKey={slideKey} onAdvance={onAdvance} />
+        <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} />
       </div>
     </div>
   );
@@ -1581,14 +1584,15 @@ export default function PrayerModePage() {
     }
 
     // Fade out then navigate. The CTA flow now reads: dashboard card →
-    // slideshow (/prayer-mode) → prayer-list overview (/prayer-list). The
-    // overview page is the natural landing after the session — it shows
-    // the completed state, the streak, and anything else the user might
-    // want to peek at before returning home.
+    // slideshow (/prayer-mode) → home (/dashboard). The closing slide
+    // already shows the streak, the people prayed-with, and the habit
+    // invite, so dropping the user back to the prayer-list overview
+    // afterwards felt redundant and made the session end on a "manage"
+    // surface instead of the home screen they started from.
     setSlideVisible(false);
     setTimeout(() => {
       setVisible(false);
-      setTimeout(() => setLocation("/prayer-list"), 500);
+      setTimeout(() => setLocation("/dashboard"), 500);
     }, 300);
   };
 
