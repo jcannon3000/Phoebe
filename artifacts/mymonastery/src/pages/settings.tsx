@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, Camera, Pencil, Check, X, Trash2 } from "lucide-react";
+import { LogOut, Camera, Pencil, Check, X, Trash2, Download } from "lucide-react";
 
 
 function SectionHeader({ label }: { label: string }) {
@@ -939,12 +939,20 @@ export default function SettingsPage() {
           Sign out
         </button>
 
+        {/* ── Export my data ──
+            GDPR right-to-portability. Downloads a JSON blob of every row
+            the database holds tied to this user. Auth material (password
+            hash, OAuth tokens) is redacted server-side. */}
+        <div className="mt-8">
+          <ExportDataSection />
+        </div>
+
         {/* ── Delete account ──
             Required by Apple Guideline 5.1.1(v) for App Store distribution:
             any app that creates accounts must offer in-app deletion. Also
             a legitimate privacy affordance for web users. Gated behind a
             confirm step (type your email) to prevent accidents. */}
-        <div className="mt-8">
+        <div className="mt-4">
           <DeleteAccountSection email={user.email} />
         </div>
       </div>
@@ -1003,6 +1011,64 @@ function MobileDeviceSection() {
           </button>
         </SettingsCard>
       </div>
+    </>
+  );
+}
+
+// ─── Export data section ───────────────────────────────────────────────────
+// Downloads a JSON file of everything we hold for this user. The server
+// streams the payload with a Content-Disposition attachment header; we
+// create a blob URL on the client and click an <a download> so the
+// browser/iOS Files app saves it. iOS Safari on Capacitor handles
+// application/json attachments by showing the native share sheet, which
+// lets the user save to Files, mail it, etc.
+function ExportDataSection() {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleExport() {
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/users/me/export", { credentials: "include" });
+      if (!res.ok) throw new Error(`Export failed (HTTP ${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `phoebe-export-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2_000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={handleExport}
+        disabled={pending}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+        style={{
+          background: "transparent",
+          color: "rgba(143,175,150,0.85)",
+          border: "1px solid rgba(143,175,150,0.25)",
+        }}
+      >
+        <Download size={13} />
+        {pending ? "Preparing your data…" : "Export my data"}
+      </button>
+      {error && (
+        <p className="text-xs mt-2 text-center" style={{ color: "#D97A7A" }}>
+          {error}
+        </p>
+      )}
     </>
   );
 }

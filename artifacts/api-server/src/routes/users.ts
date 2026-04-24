@@ -8,6 +8,8 @@ import {
   momentPostsTable,
 } from "@workspace/db";
 import { UpsertUserBody, GetUserResponse, UpsertUserResponse } from "@workspace/api-zod";
+import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
+import { exportUserData } from "../lib/userDataExport";
 
 const router: IRouter = Router();
 
@@ -45,6 +47,31 @@ router.put("/users/me", async (req, res): Promise<void> => {
 
   const [created] = await db.insert(usersTable).values(parsed.data).returning();
   res.json(UpsertUserResponse.parse(created));
+});
+
+// ─── GET /api/users/me/export — data portability ──────────────────────────
+// Returns a JSON blob of everything we have that's tied to this user. The
+// client downloads it as a timestamped file so the user can keep a copy
+// before deleting their account, or just for their own records.
+// Sensitive auth material (password hash, OAuth tokens, reset tokens) is
+// redacted in the exporter — we return everything the *user* owns, not
+// the credentials *we* use to authenticate them.
+router.get("/users/me/export", async (req, res): Promise<void> => {
+  const user = req.user as { id: number; email: string } | undefined;
+  if (!user) {
+    res.status(401).json({ error: "not_authenticated" });
+    return;
+  }
+  try {
+    const data = await exportUserData(user.id, user.email);
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="phoebe-export-${stamp}.json"`);
+    res.send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error("[users:export-me] export failed:", err);
+    res.status(500).json({ error: "export_failed" });
+  }
 });
 
 // ─── DELETE /api/users/me — in-app account deletion ────────────────────────
@@ -86,6 +113,27 @@ router.delete("/users/me", async (req, res): Promise<void> => {
   }
 
   const emailLower = user.email.toLowerCase();
+
+  // 0) Revoke any Google OAuth grant we still hold for this user before
+  //    we drop the row. Best-effort — failures here shouldn't block the
+  //    account deletion the user asked for.
+  try {
+    const [full] = await db
+      .select({
+        accessToken: usersTable.googleAccessToken,
+        refreshToken: usersTable.googleRefreshToken,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id));
+    if (full && (full.accessToken || full.refreshToken)) {
+      await revokeGoogleTokensFor({
+        accessToken: full.accessToken,
+        refreshToken: full.refreshToken,
+      });
+    }
+  } catch (err) {
+    console.warn("[users:delete-me] google token revoke warned:", err);
+  }
 
   try {
     // 1) Remove every group_members row for this user — BOTH rows with

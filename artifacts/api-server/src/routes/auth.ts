@@ -8,6 +8,7 @@ import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable } from "
 import { eq, and } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
+import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 
@@ -332,7 +333,35 @@ router.patch("/auth/me/profile", async (req, res): Promise<void> => {
   res.json({ ok: true, ...updates });
 });
 
-router.post("/auth/logout", (req, res, next) => {
+router.post("/auth/logout", async (req, res, next) => {
+  // Best-effort Google token revocation before destroying the session.
+  // Most users no longer have per-user Google tokens (scheduler account
+  // handles calendar writes), but legacy rows may still hold them —
+  // revoke them so the grant isn't left dangling.
+  const u = req.user as {
+    id?: number;
+    googleAccessToken?: string | null;
+    googleRefreshToken?: string | null;
+  } | undefined;
+  if (u?.id && (u.googleAccessToken || u.googleRefreshToken)) {
+    await revokeGoogleTokensFor({
+      accessToken: u.googleAccessToken,
+      refreshToken: u.googleRefreshToken,
+    });
+    try {
+      await db
+        .update(usersTable)
+        .set({
+          googleAccessToken: null,
+          googleRefreshToken: null,
+          googleTokenExpiry: null,
+        } as Record<string, unknown>)
+        .where(eq(usersTable.id, u.id));
+    } catch (err) {
+      console.warn("[auth/logout] failed to clear google tokens on user row:", err);
+    }
+  }
+
   req.logout((err) => {
     if (err) return next(err);
     req.session.destroy(() => {
