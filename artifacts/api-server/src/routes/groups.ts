@@ -1751,10 +1751,16 @@ router.get("/groups/:slug/practices", async (req, res): Promise<void> => {
   res.json({ practices: enriched });
 });
 
-// Gatherings scoped to a community: rituals whose group_id matches
-// the community. Member-gated (same as /practices). Returned in
-// reverse chronological order so newly-created gatherings land at
-// the top of the Gatherings tab.
+// Gatherings scoped to a community. Two inclusion paths:
+//   1. `rituals.group_id` = this community's id (the new way — set
+//      by the community-gathering flow).
+//   2. Legacy: pre-group_id gatherings where the ritual's participant
+//      list sits entirely inside this community's member roster
+//      (i.e., every attendee is a joined community member and the
+//      owner is too). These were created before group_id existed,
+//      so they stay "unattached" in the DB — we surface them by
+//      matching their participants against the current roster.
+// Member-gated, reverse chronological.
 router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -1765,7 +1771,21 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
   const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, req.params.slug));
   if (!group) { res.status(404).json({ error: "Group not found" }); return; }
 
-  const rows = await db
+  // Current joined roster (lowercased emails).
+  const rosterRows = await db
+    .select({ email: groupMembersTable.email, userId: groupMembersTable.userId })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, group.id),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+    ));
+  const rosterEmails = new Set(rosterRows.map(r => r.email.toLowerCase()));
+  const rosterUserIds = new Set(
+    rosterRows.map(r => r.userId).filter((id): id is number => typeof id === "number"),
+  );
+
+  // Path 1: explicit group_id match.
+  const explicit = await db
     .select({
       id: ritualsTable.id,
       name: ritualsTable.name,
@@ -1778,7 +1798,49 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
     .where(eq(ritualsTable.groupId, group.id))
     .orderBy(desc(ritualsTable.createdAt));
 
-  res.json({ gatherings: rows });
+  // Path 2: legacy heuristic — rituals with null group_id whose
+  // owner is a current community member AND every participant
+  // (emails) is in the community roster. Non-empty participants
+  // only — we don't want to pull in every tangential personal
+  // ritual a member happens to own.
+  const legacyCandidates = rosterUserIds.size > 0
+    ? await db
+        .select({
+          id: ritualsTable.id,
+          name: ritualsTable.name,
+          description: ritualsTable.description,
+          template: ritualsTable.template,
+          rhythm: ritualsTable.rhythm,
+          createdAt: ritualsTable.createdAt,
+          ownerId: ritualsTable.ownerId,
+          participants: ritualsTable.participants,
+        })
+        .from(ritualsTable)
+        .where(and(
+          isNull(ritualsTable.groupId),
+          inArray(ritualsTable.ownerId, Array.from(rosterUserIds)),
+        ))
+    : [];
+
+  const legacy = legacyCandidates.filter((r) => {
+    const parts = (r.participants as Array<{ email?: string }> | null) ?? [];
+    if (parts.length === 0) return false;
+    // Every listed participant must be in this community's roster.
+    return parts.every((p) => {
+      if (!p || typeof p.email !== "string") return false;
+      return rosterEmails.has(p.email.toLowerCase());
+    });
+  }).map(({ ownerId, participants, ...rest }) => { void ownerId; void participants; return rest; });
+
+  // Merge + dedupe by id, sort desc by createdAt.
+  const seen = new Set<number>();
+  const merged = [...explicit, ...legacy].filter((r) => {
+    if (seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  res.json({ gatherings: merged });
 });
 
 // ─── Announcements ──────────────────────────────────────────────────────────
