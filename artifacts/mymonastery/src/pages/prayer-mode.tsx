@@ -298,8 +298,64 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
   );
 }
 
+// 3-second pause-before-Amen. When a slide first appears the button
+// is muted (low-opacity green, "Praying…") with a progress bar
+// filling under the label. After 3 seconds it brightens, the bar
+// disappears, and the label flips to "Amen →" — the user can now
+// advance.
+//
+// Why: tappers were ripping through the slideshow in a few seconds
+// without actually pausing on each prayer. The forced wait turns
+// each slide into a real moment of attention.
+//
+// Accepts a `slideKey` prop so the parent can force a remount-style
+// reset when the slide changes (we use the slide index). The
+// component reads its initial state from the keyed mount, so this
+// is reliable across rapid taps.
+function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdvance: () => void }) {
+  const HOLD_MS = 3000;
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(false);
+    const t = window.setTimeout(() => setReady(true), HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [slideKey]);
+
+  return (
+    <button
+      onClick={() => { if (ready) onAdvance(); }}
+      disabled={!ready}
+      aria-disabled={!ready}
+      className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-all active:scale-[0.98] relative overflow-hidden"
+      style={{
+        background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
+        border: `1px solid ${ready ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
+        color: ready ? "#F0EDE6" : "rgba(200,212,192,0.55)",
+        cursor: ready ? "pointer" : "default",
+        minWidth: 140,
+      }}
+    >
+      {/* Progress fill — animates 0% → 100% over HOLD_MS, sits under the
+          label as a gentle wash that brightens with the button itself. */}
+      {!ready && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 bottom-0 amen-progress-fill"
+          style={{
+            background: "rgba(46,107,64,0.45)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      <span style={{ position: "relative" }}>{ready ? "Amen →" : "Praying…"}</span>
+    </button>
+  );
+}
+
 function SlideContent({
   slide,
+  slideKey,
   onAdvance,
   onRenew,
   onEnd,
@@ -309,6 +365,10 @@ function SlideContent({
   onPrayForFriend,
 }: {
   slide: PrayerSlide;
+  // Stable key per slide — drives the 3-second Amen pause-reset. The
+  // parent passes the slide index so the timer cleanly resets each
+  // time we move to a new slide.
+  slideKey: string | number;
   onAdvance: () => void;
   onRenew: (id: number, days: 3 | 7) => void;
   onEnd: (id: number) => void;
@@ -574,17 +634,7 @@ function SlideContent({
           </p>
         )}
 
-        <button
-          onClick={onAdvance}
-          className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-80 active:scale-[0.98]"
-          style={{
-            background: "rgba(46,107,64,0.28)",
-            border: "1px solid rgba(46,107,64,0.5)",
-            color: "#C8D4C0",
-          }}
-        >
-          Amen →
-        </button>
+        <AmenButton slideKey={slideKey} onAdvance={onAdvance} />
       </div>
     );
   }
@@ -792,17 +842,9 @@ function SlideContent({
         </div>
       )}
 
-      <button
-        onClick={onAdvance}
-        className="mt-4 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-80 active:scale-[0.98]"
-        style={{
-          background: "rgba(46,107,64,0.28)",
-          border: "1px solid rgba(46,107,64,0.5)",
-          color: "#C8D4C0",
-        }}
-      >
-        Amen →
-      </button>
+      <div className="mt-4">
+        <AmenButton slideKey={slideKey} onAdvance={onAdvance} />
+      </div>
     </div>
   );
 }
@@ -1379,6 +1421,7 @@ export default function PrayerModePage() {
           >
             <SlideContent
               slide={slide}
+              slideKey={index}
               onAdvance={advance}
               onRenew={(id, days) => {
                 renewMutation.mutate({ id, days });

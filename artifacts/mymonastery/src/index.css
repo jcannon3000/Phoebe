@@ -416,3 +416,16 @@ textarea:focus {
   transition: background-color 9999s ease-in-out 0s;
   caret-color: #E8E4D8;
 }
+
+/* AmenButton progress fill — left-to-right wash that grows from 0%
+ * to 100% width over 3 seconds, then the button itself flips bright.
+ * The element is mounted only while !ready and unmounted at completion,
+ * so a single non-iterating animation is fine. */
+@keyframes amen-progress-grow {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.amen-progress-fill {
+  width: 0%;
+  animation: amen-progress-grow 3s linear forwards;
+}

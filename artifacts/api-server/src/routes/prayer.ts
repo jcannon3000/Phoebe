@@ -105,23 +105,34 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     const myWordRow = words.find(w => w.authorUserId === sessionUserId);
     const isOwnRequest = r.ownerId === sessionUserId;
 
-    // Amen counts — only surfaced to the owner of the request. We bucket
-    // "today" in the viewer's timezone so the number lines up with their
-    // lived day. For non-owners we return null to keep the wire small and
-    // avoid leaking a signal we don't want to expose.
+    // Amen counts — only surfaced to the owner of the request. We
+    // dedupe per-user per-day: if the same person taps Amen three
+    // times in one day that's "1," but the same person praying on
+    // two different days is "2." This stops the count from inflating
+    // every time someone re-opens the slideshow during the same day.
+    // "Day" is bucketed in the viewer (owner)'s timezone so the
+    // number lines up with their lived day, even if the prayer-er
+    // is in a different tz.
     let amenCountToday: number | null = null;
     let amenCountTotal: number | null = null;
     if (isOwnRequest) {
       const amens = await db
-        .select({ prayedAt: prayerRequestAmensTable.prayedAt })
+        .select({
+          prayedAt: prayerRequestAmensTable.prayedAt,
+          userId: prayerRequestAmensTable.userId,
+        })
         .from(prayerRequestAmensTable)
         .where(eq(prayerRequestAmensTable.requestId, r.id));
-      amenCountTotal = amens.length;
-      amenCountToday = amens.reduce((acc, row) => {
-        if (!row.prayedAt) return acc;
+      const distinctUserDays = new Set<string>();
+      const distinctUsersToday = new Set<number>();
+      for (const row of amens) {
+        if (!row.prayedAt) continue;
         const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
-        return ymd === viewerTodayYmd ? acc + 1 : acc;
-      }, 0);
+        distinctUserDays.add(`${row.userId}:${ymd}`);
+        if (ymd === viewerTodayYmd) distinctUsersToday.add(row.userId);
+      }
+      amenCountTotal = distinctUserDays.size;
+      amenCountToday = distinctUsersToday.size;
     }
 
     // Freshness flags based on expiresAt (which we no longer hard-filter on)
@@ -384,16 +395,31 @@ router.get("/prayer-requests/released-unread", async (req, res): Promise<void> =
       sql`${prayerRequestsTable.expiresAt} IS NOT NULL AND ${prayerRequestsTable.expiresAt} < now()`,
     ));
 
-  // Amen count per request in a single pass.
+  // Amen count per request — same dedupe rule as the GET /prayer-requests
+  // path: distinct (userId, local-day) pairs. Released-popup count
+  // bucketed in the owner's timezone since they're the only ones who
+  // see this number.
+  const [viewerForReleased] = await db.select({ timezone: usersTable.timezone })
+    .from(usersTable).where(eq(usersTable.id, sessionUserId));
+  const releasedTz = viewerForReleased?.timezone || "UTC";
   const ids = rows.map(r => r.id);
-  const amensByRequest = new Map<number, number>();
+  const amensByRequest = new Map<number, Set<string>>();
   if (ids.length > 0) {
     const amens = await db
-      .select({ requestId: prayerRequestAmensTable.requestId })
+      .select({
+        requestId: prayerRequestAmensTable.requestId,
+        userId: prayerRequestAmensTable.userId,
+        prayedAt: prayerRequestAmensTable.prayedAt,
+      })
       .from(prayerRequestAmensTable)
       .where(inArray(prayerRequestAmensTable.requestId, ids));
     for (const a of amens) {
-      amensByRequest.set(a.requestId, (amensByRequest.get(a.requestId) ?? 0) + 1);
+      if (!a.prayedAt) continue;
+      const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: releasedTz }).format(a.prayedAt);
+      const key = `${a.userId}:${ymd}`;
+      let set = amensByRequest.get(a.requestId);
+      if (!set) { set = new Set(); amensByRequest.set(a.requestId, set); }
+      set.add(key);
     }
   }
 
@@ -403,7 +429,7 @@ router.get("/prayer-requests/released-unread", async (req, res): Promise<void> =
       body: r.body,
       createdAt: r.createdAt.toISOString(),
       expiresAt: r.expiresAt?.toISOString() ?? null,
-      amenCount: amensByRequest.get(r.id) ?? 0,
+      amenCount: amensByRequest.get(r.id)?.size ?? 0,
     })),
   });
 });
@@ -513,18 +539,26 @@ router.get("/prayer-requests/:id/amens", async (req, res): Promise<void> => {
   const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
 
   const amens = await db
-    .select({ prayedAt: prayerRequestAmensTable.prayedAt })
+    .select({
+      prayedAt: prayerRequestAmensTable.prayedAt,
+      userId: prayerRequestAmensTable.userId,
+    })
     .from(prayerRequestAmensTable)
     .where(eq(prayerRequestAmensTable.requestId, id));
 
-  const allTime = amens.length;
-  const today = amens.reduce((acc, row) => {
-    if (!row.prayedAt) return acc;
+  // Same dedupe as GET /prayer-requests: distinct (userId, local-day)
+  // pairs, owner's tz. Re-tapping during the same day no longer
+  // inflates the count.
+  const distinctUserDays = new Set<string>();
+  const distinctUsersToday = new Set<number>();
+  for (const row of amens) {
+    if (!row.prayedAt) continue;
     const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(row.prayedAt);
-    return ymd === todayYmd ? acc + 1 : acc;
-  }, 0);
+    distinctUserDays.add(`${row.userId}:${ymd}`);
+    if (ymd === todayYmd) distinctUsersToday.add(row.userId);
+  }
 
-  res.json({ today, allTime });
+  res.json({ today: distinctUsersToday.size, allTime: distinctUserDays.size });
 });
 
 export default router;
