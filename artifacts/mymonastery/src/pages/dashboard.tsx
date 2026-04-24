@@ -2500,6 +2500,11 @@ export default function Dashboard() {
       intentionCountByGroup.set(i.groupId, (intentionCountByGroup.get(i.groupId) ?? 0) + 1);
     }
     let activeIntercessions = 0;
+    // `moments` was previously destructured in an earlier refactor step
+    // then dropped when the block was trimmed — left this loop referencing
+    // an undeclared identifier. A user reported a 'Can't find variable:
+    // moments' crash in production. Re-declare from momentsData.
+    const moments = momentsData?.moments ?? [];
     for (const m of moments) {
       if (m.templateType !== "intercession") continue;
       const gid = m.group?.id;
