@@ -1610,9 +1610,11 @@ export default function PrayerModePage() {
         position: "relative",
       }}
     >
-      {/* Exit button */}
+      {/* Exit button — lands on the dashboard so leaving prayer is a clean
+          return to the home view rather than dropping the user back into
+          the prayer-list they were just trying to step away from. */}
       <button
-        onClick={() => setLocation("/prayer-list")}
+        onClick={() => setLocation("/dashboard")}
         aria-label="Exit prayer mode"
         className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
         style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}

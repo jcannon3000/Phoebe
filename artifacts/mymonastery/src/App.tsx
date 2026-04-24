@@ -6,7 +6,26 @@ import { NetworkBanner } from "@/components/NetworkBanner";
 import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
-import { Component, type ReactNode, type ErrorInfo } from "react";
+import { Component, useEffect, type ReactNode, type ErrorInfo } from "react";
+
+// Scroll the window to (0, 0) on every route change. Without this,
+// navigating from a form-heavy page (login, prayer-request edit, letter
+// composer) on iOS leaves the WebView scrolled up to where it had
+// pushed the focused input above the keyboard — so the destination
+// page renders with its top bar clipped above the visible area until
+// the user scrolls. The Capacitor Keyboard plugin runs in
+// `resize: None` mode (capacitor.config.ts), which keeps the WebView
+// height fixed but does not snap the scroll back when focus moves.
+function ScrollToTopOnNavigate() {
+  const [location] = useLocation();
+  useEffect(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    window.scrollTo(0, 0);
+  }, [location]);
+  return null;
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -222,6 +241,7 @@ function App() {
           <ForegroundPushToast />
           <NetworkBanner />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <ScrollToTopOnNavigate />
             <Router />
           </WouterRouter>
           <Toaster />

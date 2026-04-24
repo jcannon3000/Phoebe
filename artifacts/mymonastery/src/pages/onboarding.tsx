@@ -58,6 +58,18 @@ export default function Onboarding() {
       });
       const data = await res.json();
       if (data.ok) {
+        // Dismiss the iOS keyboard and reset scroll before navigating.
+        // Without this, the WebView stays scrolled up to where it had
+        // pushed the focused input above the keyboard, leaving the
+        // dashboard's top bar clipped off-screen on Capacitor builds
+        // (the keyboard plugin's `resize: None` mode keeps the WebView
+        // size fixed but doesn't snap the scroll back). Blurring the
+        // active input first triggers iOS to retract the keyboard;
+        // scrolling the window to (0, 0) realigns the page.
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        window.scrollTo(0, 0);
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
         setLocation(redirectTo);
       } else {
