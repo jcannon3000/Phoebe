@@ -6,14 +6,14 @@ Copy everything below the line into your LLM of choice (or hand to a privacy law
 
 Write a privacy policy for an iOS app called **Phoebe** (App Store listing name: "Phoebe: Prayer Together"), published by **Jeremy Cannon** (sole developer, US-based). The policy will be hosted at `https://withphoebe.app/privacy` and linked from the App Store listing and TestFlight.
 
-Tone: plain-English, warm but precise. Roughly 1,500–2,500 words. Use clear section headings. No legal jargon where plain words work. Include a "Last updated" line with today's date. End with a contact email placeholder: `privacy@withphoebe.app`.
+Tone: plain-English, warm but precise. Roughly 1,500–2,500 words. Use clear section headings. No legal jargon where plain words work. Include a "Last updated" line with today's date. End with a contact email placeholder: `invites@withphoebe.app`.
 
 Jurisdictions to cover: US (general), California (CCPA/CPRA), EU/UK (GDPR). Include a standard children's data section stating the app is not directed to children under 13.
 
 ## About the app
 
 Phoebe is a spiritual-practice app for small faith communities. Users create and share two core types of content:
-- **Practices** (daily/recurring spiritual activities — prayer, listening, fasting, lectio divina, etc.)
+- **Practices** (daily/recurring spiritual activities — prayer, fasting, lectio divina, etc.)
 - **Traditions / Rituals** (scheduled gatherings — times, locations, intentions, RSVP tracking)
 
 Users belong to small private circles (invite-only). There are no public profiles, no public feeds, no advertising, no tracking across other apps or sites.
@@ -46,9 +46,6 @@ The iOS app is a thin Capacitor wrapper around the web app at `withphoebe.app`; 
 - Notes and reflections
 - Calendar event associations (Google Calendar event IDs tied to practices/rituals)
 
-**Optional connected-service data:**
-- Apple Music user token (only if user opts in to Apple Music integration for "listening" practices)
-
 ## Data collected automatically
 
 - **Session cookies** — httpOnly, Secure, SameSite=None, 30-day expiry; backed by Postgres session store
@@ -79,9 +76,9 @@ We do **not** collect: device location, microphone, device calendar, health data
 - **Apple Inc.**
   - Sign in with Apple — for native iOS authentication (identity token, optional first-time name/email)
   - Apple Push Notification service (APNs) — for push notifications (no third-party push vendor)
-  - Apple Music API — optional; only if user connects Apple Music for listening practices
-- **Google Fonts CDN** — for typography (fonts.googleapis.com, fonts.gstatic.com); a request to these domains exposes IP address and user-agent to Google per their standard policy
-- **Backend hosting and database** — Postgres database and API server (hosting provider: [FILL IN — e.g., Railway, Fly.io, AWS])
+- **Backend hosting and database** — Postgres database and API server are hosted on **Railway** (Railway Corp.). All web traffic terminates at Railway's edge; the Postgres instance is a managed Railway Postgres service. Data at rest is encrypted via Railway's default disk encryption.
+
+Typography is self-hosted — Phoebe bundles its fonts as part of the web build and does not load fonts from Google Fonts or any other third-party CDN.
 
 We do **not** use: analytics SDKs, crash reporting SDKs, advertising networks, Mixpanel, PostHog, Google Analytics, Sentry, Firebase, or Stripe. The app is free; there is no payment processing.
 
@@ -118,11 +115,11 @@ Include standard GDPR/CCPA rights language: access, correction, deletion, portab
 - **Delete account** — email-confirmation-gated. Cascades across all user-keyed tables (both userId-FK and email-keyed), revokes any stored Google OAuth grant, and removes the users row.
 - **Correction** — name and profile photo editable via Settings → Profile.
 
-For anything the user cannot complete in-app, email `privacy@withphoebe.app`; we respond within 30 days.
+For anything the user cannot complete in-app, email `invites@withphoebe.app`; we respond within 30 days.
 
 ## Children's data
 
-The app is not directed to children under 13. We do not knowingly collect personal data from children under 13. If you believe a child has provided data, contact privacy@withphoebe.app and we will delete it.
+The app is not directed to children under 13. We do not knowingly collect personal data from children under 13. If you believe a child has provided data, contact `invites@withphoebe.app` and we will delete it.
 
 ## Apple privacy manifest alignment
 
@@ -144,7 +141,12 @@ Standard "we may update this policy" clause with notification via in-app notice 
 
 ## Contact
 
-`privacy@withphoebe.app` — and the developer's mailing address (to be added by developer).
+`invites@withphoebe.app`
+
+Jeremy Cannon
+6427 Langston Blvd
+Arlington, VA 22207
+United States
 
 ---
 
@@ -152,5 +154,4 @@ Standard "we may update this policy" clause with notification via in-app notice 
 1. Do not invent any data types, SDKs, or practices not listed above
 2. Where a fact is marked `[FILL IN ...]`, leave a clearly visible placeholder — do not guess
 3. Do not claim compliance certifications we do not have (SOC 2, ISO 27001, HIPAA, etc.)
-4. Use the exact honest-disclosure sentence in the "User rights" section verbatim
-5. Make clear that integration with Google/Apple/Apple Music only applies to users who opt in to those specific flows
+4. Make clear that integration with Google (OAuth, Calendar, Gmail) and Sign in with Apple only applies to users who opt in to those specific flows

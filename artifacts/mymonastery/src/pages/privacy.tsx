@@ -10,7 +10,7 @@
 //   - Any third-party subprocessor changes in api-server
 
 const LAST_UPDATED = "April 24, 2026";
-const CONTACT_EMAIL = "privacy@withphoebe.app";
+const CONTACT_EMAIL = "invites@withphoebe.app";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -96,8 +96,8 @@ export default function PrivacyPage() {
               and phone numbers to send invites. We do not upload your contact list.
             </li>
             <li>
-              <strong>Face ID</strong> — optional app re-lock after idle. Face ID authentication happens entirely
-              on your device; we never receive biometric data.
+              <strong>Face ID</strong> — optional app re-lock after a period of idle. Face ID authentication
+              happens entirely on your device; we never receive biometric data.
             </li>
             <li>
               <strong>Camera</strong> and <strong>Photos</strong> — only when you choose to take or pick a
@@ -120,16 +120,11 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Apple</strong> — Sign in with Apple and Apple Push Notification service, both governed by
-              Apple's privacy terms. If you connect Apple Music for listening practices, a token you provide is
-              stored so we can check "now playing" status.
+              Apple's privacy terms.
             </li>
             <li>
-              <strong>Google Fonts</strong> — our web pages load fonts from Google's CDN, which exposes your IP
-              address to Google per their standard terms.
-            </li>
-            <li>
-              <strong>Our hosting provider</strong> — the Phoebe API and database run on a managed cloud host.
-              Traffic is encrypted in transit; data at rest is encrypted by the host's default disk encryption.
+              <strong>Railway</strong> — our API server and Postgres database run on Railway (Railway Corp.).
+              Traffic is encrypted in transit; data at rest is encrypted by Railway's default disk encryption.
             </li>
           </ul>
           <p>
@@ -225,6 +220,12 @@ export default function PrivacyPage() {
             <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: "#8FAF96", textDecoration: "underline" }}>
               {CONTACT_EMAIL}
             </a>
+          </p>
+          <p>
+            Jeremy Cannon<br />
+            6427 Langston Blvd<br />
+            Arlington, VA 22207<br />
+            United States
           </p>
         </Section>
       </div>
