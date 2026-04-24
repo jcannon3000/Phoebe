@@ -199,6 +199,24 @@ async function registerForPushIfRequested() {
           window.dispatchEvent(new PopStateEvent("popstate"));
         }
       });
+      // Foreground delivery: iOS suppresses the OS banner while the app is
+      // open, so without this listener a push arriving during active use
+      // is silently dropped from the user's view. Forward the payload to
+      // the web layer as `phoebe:push-received` so we can render an
+      // in-app toast (see App.tsx). Background and locked-screen pushes
+      // are unaffected — those go straight through APNs.
+      await PushNotifications.addListener("pushNotificationReceived", notification => {
+        const data = (notification.data ?? {}) as Record<string, string>;
+        window.dispatchEvent(
+          new CustomEvent("phoebe:push-received", {
+            detail: {
+              title: notification.title ?? "",
+              body: notification.body ?? "",
+              path: data["path"] ?? "",
+            },
+          }),
+        );
+      });
       await PushNotifications.register();
     } catch (err) {
       window.dispatchEvent(new CustomEvent("phoebe:push-error", { detail: err }));

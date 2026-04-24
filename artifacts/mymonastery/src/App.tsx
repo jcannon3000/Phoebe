@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
 import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
+import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { Component, type ReactNode, type ErrorInfo } from "react";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -218,6 +219,7 @@ function App() {
         <ErrorBoundary>
           <GlobalButtonHaptics />
           <PushPermissionPrompt />
+          <ForegroundPushToast />
           <NetworkBanner />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
