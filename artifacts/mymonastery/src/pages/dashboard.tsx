@@ -173,7 +173,7 @@ function nextDayLabel(date: Date): string {
   const nextWeekStart = startOfWeek(addWeeks(now, 1));
   const nextWeekEnd = endOfWeek(addWeeks(now, 1));
   if (date >= nextWeekStart && date <= nextWeekEnd) {
-    return `next ${format(date, "EEEE")}`;
+    return `Next ${format(date, "EEEE")}`;
   }
   return format(date, "EEEE");
 }
