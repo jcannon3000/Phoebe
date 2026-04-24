@@ -1774,6 +1774,11 @@ router.get("/moments", async (req, res): Promise<void> => {
             email: t.email,
             joined: registeredEmails.has(t.email.toLowerCase()),
             avatarUrl: avatarByEmailList.get(t.email.toLowerCase()) ?? null,
+            // Did this member actually post within the rolling 7-day
+            // window? The slideshow face stack uses this so only
+            // people who have prayed recently appear — matches the
+            // "N have prayed this week" line beneath the faces.
+            prayedThisWeek: weekUserTokens.has(t.userToken),
           })),
           todayPostCount: todayPosts.length,
           weekPostCount,

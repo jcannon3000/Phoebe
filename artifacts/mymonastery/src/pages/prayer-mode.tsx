@@ -29,7 +29,7 @@ type Moment = {
   intercessionTopic?: string | null;
   intercessionFullText?: string | null;
   intercessionSource?: string | null;
-  members: Array<{ name: string; email: string; avatarUrl?: string | null }>;
+  members: Array<{ name: string; email: string; avatarUrl?: string | null; prayedThisWeek?: boolean }>;
   todayPostCount: number;
   // Rolling 7-day distinct-prayers count (inclusive of today). Surfaced
   // under each intercession slide so the viewer sees that others have
@@ -952,7 +952,17 @@ export default function PrayerModePage() {
       //     avatars to fill 7, backfill with initials-only.
       // Viewer is excluded because the slide is about community —
       // the viewer's presence is implied by their being here.
-      const otherMembers = m.members.filter(p => p.email !== user?.email);
+      // Only show faces of people who have actually PRAYED this
+      // week (the line below the stack reads "N have prayed this
+      // week"). Falls back to all other members if the backend
+      // hasn't attached prayedThisWeek yet (older deploys, edge
+      // caching) so the stack doesn't silently empty.
+      const hasPrayedFlag = m.members.some(p => typeof p.prayedThisWeek === "boolean");
+      const otherMembers = m.members.filter(p => {
+        if (p.email === user?.email) return false;
+        if (!hasPrayedFlag) return true;
+        return p.prayedThisWeek === true;
+      });
       const MAX_FACES = 7;
       let communityFaces: Array<{ name: string; email: string; avatarUrl: string | null }> = [];
       if (otherMembers.length > 0) {
