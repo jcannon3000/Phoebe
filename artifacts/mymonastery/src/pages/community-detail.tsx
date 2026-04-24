@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useLocation, useSearch, Link } from "wouter";
+import { parseISO, format, isToday, addDays, startOfDay } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +53,11 @@ type Practice = {
 };
 type Gathering = {
   id: number; name: string; description: string | null; template: string | null;
+  rhythm?: string | null;
+  frequency?: string | null;
+  dayPreference?: string | null;
+  nextMeetupDate?: string | null;
+  location?: string | null;
 };
 type Announcement = {
   id: number; title: string | null; content: string; authorName: string; createdAt: string;
@@ -371,6 +377,140 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 // an auto-scroll ticker so the pills stay legible instead of wrapping or
 // clipping. Mirrors the dashboard's ServiceTimesPillRow verbatim so the
 // card looks identical to the one on the home screen.
+// Day-of-week short label for a gathering's upcoming slot, matching the
+// dashboard's `nextDayLabel` so the home tab and community tab read the
+// same way. Returns "Today" / "Tomorrow" / "Wednesday" etc.
+function gatheringDayLabel(date: Date): string {
+  if (isToday(date)) return "Today";
+  const tomorrow = addDays(startOfDay(new Date()), 1);
+  if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
+  return format(date, "EEEE");
+}
+
+// Mirror of dashboard.tsx#computeNextGatheringDate — keeps the community
+// home in lockstep with the user home so the same Wednesday Meal renders
+// the same pill in both places.
+function computeNextGatheringDate(g: Gathering): Date | null {
+  if (g.nextMeetupDate) {
+    try { return parseISO(g.nextMeetupDate); } catch { /* fall through */ }
+  }
+  if (!g.dayPreference) return null;
+  let anchor: Date;
+  try { anchor = parseISO(g.dayPreference); } catch { return null; }
+  if (!Number.isFinite(anchor.getTime())) return null;
+
+  const now = new Date();
+  if (anchor.getTime() > now.getTime()) return anchor;
+
+  const cadence = (g.rhythm || g.frequency || "weekly").toLowerCase();
+  const stepDays = cadence === "monthly" ? null
+    : cadence === "biweekly" || cadence === "fortnightly" ? 14
+    : cadence === "one-time" || cadence === "once" ? 0
+    : 7;
+  if (stepDays === 0) return anchor;
+
+  const out = new Date(anchor);
+  if (stepDays === null) {
+    while (out.getTime() <= now.getTime()) out.setMonth(out.getMonth() + 1);
+  } else {
+    const diffMs = now.getTime() - out.getTime();
+    const periods = Math.ceil(diffMs / (stepDays * 24 * 60 * 60 * 1000));
+    out.setDate(out.getDate() + periods * stepDays);
+    if (out.getTime() <= now.getTime()) out.setDate(out.getDate() + stepDays);
+  }
+  return out;
+}
+
+// Sunday Service-style card for a single community gathering. Same palette,
+// same accent bar, same time pill as ServiceCard on the home dashboard.
+// The eyebrow slot is used for the rhythm label ("Weekly tradition" etc.)
+// so the card stays legible even when the title is long.
+function CommunityGatheringCard({ g }: { g: Gathering }) {
+  const templateEmoji: Record<string, string> = {
+    coffee: "☕", meal: "🍽️", walk: "🚶🏽", book_club: "📚", custom: "🌿",
+  };
+  const emoji = (g.template && templateEmoji[g.template]) ?? "🤝🏽";
+  const rhythm = (g.rhythm ?? g.frequency ?? "").toLowerCase();
+  const rhythmLabel = rhythm === "weekly" ? "Weekly tradition"
+    : rhythm === "biweekly" || rhythm === "fortnightly" ? "Biweekly tradition"
+    : rhythm === "monthly" ? "Monthly tradition"
+    : rhythm === "one-time" || rhythm === "once" ? "One-time gathering"
+    : "Gathering";
+
+  const next = computeNextGatheringDate(g);
+  const timePill = next ? `${gatheringDayLabel(next)} · ${format(next, "h:mm a")}` : null;
+  const locationPill = g.location ?? null;
+
+  return (
+    <Link href={`/ritual/${g.id}`} className="block w-full text-left">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
+        style={{
+          background: "rgba(111,175,133,0.15)",
+          border: "1px solid rgba(111,175,133,0.35)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
+        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+              {emoji} {g.name}
+            </span>
+            <span
+              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+            >
+              {rhythmLabel}
+            </span>
+          </div>
+
+          {(timePill || locationPill) && (
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {timePill && (
+                <span
+                  className="inline-flex items-center rounded-full text-xs font-semibold"
+                  style={{
+                    background: "rgba(111,175,133,0.18)",
+                    color: "#F0EDE6",
+                    border: "1px solid rgba(111,175,133,0.35)",
+                    padding: "3px 10px",
+                    letterSpacing: "-0.01em",
+                    lineHeight: "18px",
+                  }}
+                >
+                  {timePill}
+                </span>
+              )}
+              {locationPill && (
+                <span
+                  className="inline-flex items-center rounded-full text-xs"
+                  style={{
+                    color: "#C8D4C0",
+                    padding: "3px 2px",
+                    letterSpacing: "-0.01em",
+                    lineHeight: "18px",
+                  }}
+                >
+                  📍 {locationPill}
+                </span>
+              )}
+            </div>
+          )}
+
+          {g.description && !locationPill && (
+            <p className="mt-1.5 text-xs truncate" style={{ color: "#8FAF96", margin: 0 }}>
+              {g.description}
+            </p>
+          )}
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
 function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) {
   // Static "<Month D> — Tap to See All Service Times" teaser.
   if (schedule.times.length === 0) return null;
@@ -416,48 +556,46 @@ function CommunityServiceHomeCard({
   const dayLabel = DOW_NAMES.find(d => d.value === schedule.dayOfWeek)?.label ?? "Sunday";
   const title = schedule.name || `${dayLabel} Services`;
 
+  // Eyebrow-less card so the community home tab can stack it under a single
+  // shared "Gatherings" label alongside the ritual cards. The outer
+  // `CommunityGatheringsHomeBlock` owns the section header now.
   return (
-    <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-        Gatherings
-      </p>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      className="block w-full text-left cursor-pointer"
+    >
       <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
-        className="block w-full text-left cursor-pointer"
+        className="relative flex rounded-xl overflow-hidden"
+        style={{
+          // `gatherings` category palette: bar #6FAF85, bg rgba(111,175,133,0.15)
+          background: "rgba(111,175,133,0.15)",
+          border: "1px solid rgba(111,175,133,0.35)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
       >
-        <div
-          className="relative flex rounded-xl overflow-hidden"
-          style={{
-            // `gatherings` category palette: bar #6FAF85, bg rgba(111,175,133,0.15)
-            background: "rgba(111,175,133,0.15)",
-            border: "1px solid rgba(111,175,133,0.35)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-          }}
-        >
-          <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
-          <div className="flex-1 px-4 pt-3 pb-3">
-            <div className="flex items-start justify-between gap-2">
-              <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-                🙌🏽 {title}
-              </span>
-              {/* Top-right eyebrow — matches the dashboard card, which puts
-                  the community's emoji + name here. Same slot, same look,
-                  even though the user is already inside that community. */}
-              <span
-                className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-                style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-              >
-                {groupEmoji ?? "⛪"} {groupName}
-              </span>
-            </div>
-
-            {/* Pills — single-line with runtime overflow detection, same as
-                the dashboard. Long rows auto-scroll instead of wrapping. */}
-            <ServiceTimesPillRow schedule={schedule} />
+        <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
+        <div className="flex-1 px-4 pt-3 pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+              🙌🏽 {title}
+            </span>
+            {/* Top-right eyebrow — matches the dashboard card, which puts
+                the community's emoji + name here. Same slot, same look,
+                even though the user is already inside that community. */}
+            <span
+              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+            >
+              {groupEmoji ?? "⛪"} {groupName}
+            </span>
           </div>
+
+          {/* Pills — single-line with runtime overflow detection, same as
+              the dashboard. Long rows auto-scroll instead of wrapping. */}
+          <ServiceTimesPillRow schedule={schedule} />
         </div>
       </div>
     </div>
@@ -1665,23 +1803,16 @@ export default function CommunityDetailPage() {
                   one-line change. */}
               {null}
 
-              {/* Gatherings — Sunday Service card. Uses the same pill-
-                  based visual as the home dashboard's ServiceCard so the
-                  community page reads as a scoped sibling of the main
-                  home screen. Quiet (nothing rendered) when the community
-                  hasn't set up a schedule yet. */}
-              <CommunityServiceHomeCard
-                slug={slug!}
-                groupName={group.name}
-                groupEmoji={group.emoji}
-                onOpen={() => setActiveTab("gatherings")}
-              />
-
-              {/* Community gatherings (rituals scoped to this community) —
-                  Sunday Service-style cards, max 3 on home. Tap "See all"
-                  to jump to the full Gatherings tab. Quiet when there are
-                  none. */}
-              {(gatheringsData?.gatherings ?? []).length > 0 && (
+              {/* Gatherings — one unified block under a single eyebrow.
+                  Stacks the community's weekly service card (if any) with
+                  the first few scoped rituals, all rendered in the same
+                  Sunday Service visual. Tap a card to open it; tap "See
+                  all" to jump to the full Gatherings tab. The whole block
+                  stays silent if the community has neither a service
+                  schedule nor any scoped gatherings yet, so new
+                  communities don't see empty chrome. */}
+              {((serviceScheduleData?.schedule?.times.length ?? 0) > 0 ||
+                (gatheringsData?.gatherings ?? []).length > 0) && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
@@ -1698,48 +1829,15 @@ export default function CommunityDetailPage() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    {(gatheringsData!.gatherings).slice(0, 3).map(g => {
-                      const templateEmoji: Record<string, string> = {
-                        coffee: "☕",
-                        meal: "🍽️",
-                        walk: "🚶🏽",
-                        book_club: "📚",
-                        custom: "🌿",
-                      };
-                      const emoji = (g.template && templateEmoji[g.template]) ?? "🤝🏽";
-                      return (
-                        <Link key={g.id} href={`/ritual/${g.id}`} className="block w-full text-left">
-                          <div
-                            className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
-                            style={{
-                              background: "rgba(111,175,133,0.15)",
-                              border: "1px solid rgba(111,175,133,0.35)",
-                              boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-                            }}
-                          >
-                            <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
-                            <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                                  {emoji} {g.name}
-                                </span>
-                                <span
-                                  className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-                                  style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-                                >
-                                  Gathering
-                                </span>
-                              </div>
-                              {g.description && (
-                                <p className="text-xs mt-1.5 truncate" style={{ color: "#8FAF96", margin: 0 }}>
-                                  {g.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      );
-                    })}
+                    <CommunityServiceHomeCard
+                      slug={slug!}
+                      groupName={group.name}
+                      groupEmoji={group.emoji}
+                      onOpen={() => setActiveTab("gatherings")}
+                    />
+                    {(gatheringsData?.gatherings ?? []).slice(0, 3).map(g => (
+                      <CommunityGatheringCard key={g.id} g={g} />
+                    ))}
                   </div>
                 </div>
               )}
@@ -2013,48 +2111,9 @@ export default function CommunityDetailPage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {gatheringsData!.gatherings.map(g => {
-                  const templateEmoji: Record<string, string> = {
-                    coffee: "☕",
-                    meal: "🍽️",
-                    walk: "🚶🏽",
-                    book_club: "📚",
-                    custom: "🌿",
-                  };
-                  const emoji = (g.template && templateEmoji[g.template]) ?? "🤝🏽";
-                  return (
-                    <Link key={g.id} href={`/ritual/${g.id}`} className="block w-full text-left">
-                      <div
-                        className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
-                        style={{
-                          background: "rgba(111,175,133,0.15)",
-                          border: "1px solid rgba(111,175,133,0.35)",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-                        }}
-                      >
-                        <div className="w-1 flex-shrink-0" style={{ background: "#6FAF85" }} />
-                        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                              {emoji} {g.name}
-                            </span>
-                            <span
-                              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-                              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-                            >
-                              Gathering
-                            </span>
-                          </div>
-                          {g.description && (
-                            <p className="text-xs mt-1.5 truncate" style={{ color: "#8FAF96", margin: 0 }}>
-                              {g.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+                {gatheringsData!.gatherings.map(g => (
+                  <CommunityGatheringCard key={g.id} g={g} />
+                ))}
               </div>
             )}
           </div>

@@ -19,6 +19,7 @@ import {
   circleDailyFocusTable,
   circleIntentionsTable,
   ritualsTable,
+  meetupsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -27,6 +28,7 @@ import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
 import { sendNewMemberPush, sendNewPrayerRequestPush, sendPushToUsers } from "../lib/pushSender";
 import { pool } from "@workspace/db";
+import { computeStreak } from "../lib/streak";
 
 const router: IRouter = Router();
 
@@ -1792,6 +1794,9 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
       description: ritualsTable.description,
       template: ritualsTable.template,
       rhythm: ritualsTable.rhythm,
+      frequency: ritualsTable.frequency,
+      dayPreference: ritualsTable.dayPreference,
+      location: ritualsTable.location,
       createdAt: ritualsTable.createdAt,
     })
     .from(ritualsTable)
@@ -1811,6 +1816,9 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
           description: ritualsTable.description,
           template: ritualsTable.template,
           rhythm: ritualsTable.rhythm,
+          frequency: ritualsTable.frequency,
+          dayPreference: ritualsTable.dayPreference,
+          location: ritualsTable.location,
           createdAt: ritualsTable.createdAt,
           ownerId: ritualsTable.ownerId,
           participants: ritualsTable.participants,
@@ -1840,7 +1848,37 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
     return true;
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  res.json({ gatherings: merged });
+  // Enrich each gathering with nextMeetupDate so the client can render a
+  // day/time pill exactly like Sunday Services. We compute it the same way
+  // /api/rituals does: streak-based next, else earliest planned future meetup.
+  const ids = merged.map((g) => g.id);
+  const allMeetups = ids.length > 0
+    ? await db.select().from(meetupsTable).where(inArray(meetupsTable.ritualId, ids))
+    : [];
+  const meetupsByRitual = new Map<number, typeof meetupsTable.$inferSelect[]>();
+  for (const m of allMeetups) {
+    const list = meetupsByRitual.get(m.ritualId) ?? [];
+    list.push(m);
+    meetupsByRitual.set(m.ritualId, list);
+  }
+
+  const enriched = merged.map((g) => {
+    const meetups = meetupsByRitual.get(g.id) ?? [];
+    const { nextMeetupDate: computedNext } = computeStreak(meetups, g.frequency);
+    let nextMeetupDate = computedNext;
+    if (!nextMeetupDate) {
+      const now = new Date();
+      const planned = meetups
+        .filter((m) => m.status === "planned" && new Date(m.scheduledDate) > now)
+        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+      if (planned.length > 0) {
+        nextMeetupDate = new Date(planned[0].scheduledDate).toISOString();
+      }
+    }
+    return { ...g, nextMeetupDate };
+  });
+
+  res.json({ gatherings: enriched });
 });
 
 // ─── Announcements ──────────────────────────────────────────────────────────

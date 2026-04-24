@@ -251,6 +251,56 @@ function nextOccurrenceDate(dayOfWeek: number, today: Date = new Date()): Date {
   return addDays(out, diff);
 }
 
+// Compute the next upcoming date/time for a ritual gathering. Prefers the
+// server-computed `nextMeetupDate` (from the first planned meetup or the
+// streak engine). Falls back to rolling `dayPreference` forward by the
+// ritual's rhythm so a freshly created gathering — where the first meetup
+// has already passed or hasn't been created yet — still anchors to a
+// sensible upcoming slot, the same way ServiceCard renders one.
+function computeNextGatheringDate(r: {
+  nextMeetupDate?: string | null;
+  dayPreference?: string | null;
+  rhythm?: string | null;
+  frequency?: string | null;
+}): Date | null {
+  if (r.nextMeetupDate) {
+    try { return parseISO(r.nextMeetupDate); } catch { /* fall through */ }
+  }
+  if (!r.dayPreference) return null;
+  // dayPreference is stored as an ISO datetime (first pick from tradition-new).
+  let anchor: Date;
+  try { anchor = parseISO(r.dayPreference); } catch { return null; }
+  if (!Number.isFinite(anchor.getTime())) return null;
+
+  const now = new Date();
+  if (anchor.getTime() > now.getTime()) return anchor;
+
+  // Anchor already passed — roll forward by the cadence until it's in the future.
+  const cadence = (r.rhythm || r.frequency || "weekly").toLowerCase();
+  const stepDays = cadence === "monthly" ? null // handled separately
+    : cadence === "biweekly" || cadence === "fortnightly" ? 14
+    : cadence === "one-time" || cadence === "once" ? 0
+    : 7; // weekly is the default
+
+  if (stepDays === 0) return anchor; // one-time gatherings just stay pinned to their moment
+
+  const out = new Date(anchor);
+  if (stepDays === null) {
+    // Monthly — bump month by month until we're in the future.
+    while (out.getTime() <= now.getTime()) {
+      out.setMonth(out.getMonth() + 1);
+    }
+  } else {
+    const diffMs = now.getTime() - out.getTime();
+    const periods = Math.ceil(diffMs / (stepDays * 24 * 60 * 60 * 1000));
+    out.setDate(out.getDate() + periods * stepDays);
+    if (out.getTime() <= now.getTime()) {
+      out.setDate(out.getDate() + stepDays);
+    }
+  }
+  return out;
+}
+
 function formatServiceTime(hhmm: string): string {
   const [hStr, mStr] = hhmm.split(":");
   let h = parseInt(hStr, 10);
@@ -1286,7 +1336,11 @@ function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEm
 // ─── Gathering card ─────────────────────────────────────────────────────────
 
 function GatheringCard({ r, keyPrefix, badge }: { r: any; keyPrefix: string; badge?: string }) {
-  const next = r.nextMeetupDate ? parseISO(r.nextMeetupDate) : null;
+  void badge;
+  // Server-preferred next date, with a dayPreference+rhythm fallback for
+  // gatherings that haven't generated a meetup row yet (fresh traditions
+  // created before the first cycle).
+  const next = computeNextGatheringDate(r);
   const isToday_ = next ? isToday(next) : false;
   const rhythm = r.rhythm as string | undefined;
   const rhythmLabel = rhythm === "weekly" ? "Weekly tradition"
@@ -2962,8 +3016,11 @@ export default function Dashboard() {
     // next meetup (unscheduled) still render, parked in This month so
     // the creator can finish setup from the card.
     for (const r of rituals) {
-      const nextStr = r?.nextMeetupDate as string | null | undefined;
-      const next = nextStr ? parseISO(nextStr) : null;
+      // Same helper the card uses — server nextMeetupDate first, then
+      // dayPreference rolled forward by rhythm. This keeps a freshly
+      // created Wednesday Meal out of the This month bucket and into
+      // Today / Tomorrow / This week, matching how ServiceCard lands.
+      const next = computeNextGatheringDate(r);
       const item: DashboardItem = { kind: "gathering", data: r };
       if (!next) {
         monthItems.push(item);
