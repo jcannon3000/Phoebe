@@ -175,13 +175,19 @@ export function getWhoseTurn(
  *   Letter 2   → immediate response allowed — author of Letter 1 must WAIT;
  *                the other participant has an OPEN window with no time gate.
  *                This is the ONLY exception to strict alternation.
- *   Letter 3+  → strict alternation with a 14-day window anchored to the
- *                most-recent letter's sentAt. Window opens at sentAt + 14 days.
- *                If the next writer doesn't write within 14 days, the window
- *                does NOT close — it transitions to OVERDUE and remains open
- *                until they write. Alternation is preserved: the other
- *                participant stays WAITING and can never "jump the turn".
+ *   Letter 3+  → strict alternation with a 7-day wait anchored to the
+ *                most-recent letter's sentAt. Window opens at sentAt + 7 days.
+ *                If the next writer doesn't write within 7 more days, the
+ *                window does NOT close — it transitions to OVERDUE and
+ *                remains open until they write. Alternation is preserved:
+ *                the other participant stays WAITING and can never
+ *                "jump the turn".
  */
+
+/** Days to wait after a letter is sent before the next writer's window opens. */
+const WAIT_DAYS = 7;
+/** Days after window opens before state transitions to OVERDUE. */
+const OVERDUE_AFTER_OPEN_DAYS = 7;
 
 export type OneToOneTurnState = "WAITING" | "OPEN" | "OVERDUE" | "SENT";
 
@@ -189,7 +195,7 @@ export interface OneToOneTurnInfo {
   state: OneToOneTurnState;
   /** Date at which the OPEN window begins (null for WAITING/SENT with no scheduled window). */
   windowOpenDate: Date | null;
-  /** Date at which OVERDUE begins (window open + 14 days). */
+  /** Date at which OVERDUE begins (window open + 7 days). */
   overdueDate: Date | null;
   /** Email of the participant whose turn it is to write, if any. */
   nextWriterEmail: string | null;
@@ -250,15 +256,15 @@ export function getOneToOneTurnState(
     return { state: "OPEN", windowOpenDate: null, overdueDate: null, nextWriterEmail: me };
   }
 
-  // Letter 3+ — strict alternation with 14-day windows.
+  // Letter 3+ — strict alternation with a 7-day wait.
   const last = chrono[chrono.length - 1];
   const lastAuthor = lower(last.authorEmail);
   const nextWriter = lastAuthor === me ? other : me;
 
   const windowOpen = new Date(last.sentAt);
-  windowOpen.setDate(windowOpen.getDate() + 14);
+  windowOpen.setDate(windowOpen.getDate() + WAIT_DAYS);
   const overdue = new Date(windowOpen);
-  overdue.setDate(overdue.getDate() + 14);
+  overdue.setDate(overdue.getDate() + OVERDUE_AFTER_OPEN_DAYS);
 
   // If requester is NOT the next writer, they're waiting.
   if (me !== nextWriter) {

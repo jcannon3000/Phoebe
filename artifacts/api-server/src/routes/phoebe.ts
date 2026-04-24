@@ -95,7 +95,8 @@ async function getMembership(correspondenceId: number, auth: LetterAuth) {
 /**
  * Resolve the current one_to_one turn state for a given participant.
  * Letter 1 → anytime. Letter 2 → immediate response. Letter 3+ →
- * 14-day alternating windows, missed windows stay OPEN as OVERDUE.
+ * 7-day wait before the next writer's window opens; if they don't
+ * write within 7 more days it transitions to OVERDUE (but stays open).
  */
 function resolveOneToOneTurn(
   correspondence: { firstExchangeComplete: boolean; createdByUserId: number | null },
@@ -690,14 +691,14 @@ router.post(
       // New: window-open reminder for the next writer, if the first exchange
       // is complete (i.e., strict alternation is now in force) AND they've
       // enabled calendar prompts. Scheduled for the first Friday on or after
-      // (now + 14 days).
+      // (now + 7 days), matching the 7-day wait in the turn-state machine.
       if (
         type === "one_to_one" &&
         correspondence.firstExchangeComplete &&
         m.calendarPromptState === "enabled"
       ) {
         const windowOpen = new Date(now);
-        windowOpen.setDate(windowOpen.getDate() + 14);
+        windowOpen.setDate(windowOpen.getDate() + 7);
         const scheduledDate = getNextFridayOnOrAfter(windowOpen);
 
         const writeSplashUrl = m.userId
