@@ -11,7 +11,7 @@ import clsx from "clsx";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type LoggingType = "photo" | "reflection" | "both" | "checkin";
 
-const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "listening", "custom"]);
+const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "custom"]);
 const BCP_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer"]);
 const RRULE_DAY_MAP: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
 
@@ -80,12 +80,6 @@ type MomentData = {
     fastingDate?: string | null;
     fastingDay?: string | null;
     fastingDayOfMonth?: number | null;
-    listeningType?: string | null;
-    listeningTitle?: string | null;
-    listeningArtist?: string | null;
-    listeningSpotifyUri?: string | null;
-    listeningAppleMusicUrl?: string | null;
-    listeningArtworkUrl?: string | null;
   };
   ritualName: string;
   windowDate: string;
@@ -874,7 +868,6 @@ export default function MomentPostPage() {
       "intercession": "🙏🏽 Intercession Prayer",
       "contemplative": "🕯️ Contemplative Sitting",
       "fasting": "🌿 Fasting Practice",
-      "listening": "🎵 Listening Together",
     };
     const badgeLabel = BADGE[m.templateType ?? ""] ?? "🌿 Practice";
     const isFastingWelcome = m.templateType === "fasting";
@@ -1104,70 +1097,6 @@ export default function MomentPostPage() {
           />
         )}
       </AnimatePresence>
-      </div>
-    );
-  }
-
-  // ── Listening — auto-detected, no manual log ─────────────────────────────────
-  if (moment.templateType === "listening") {
-    const listenDetected = posted || alreadyPosted;
-    const hasArtwork = !!moment.listeningArtworkUrl;
-    const typeLabel = moment.listeningType === "album" ? "album" : moment.listeningType === "artist" ? "artist" : "song";
-
-    return (
-      <div className="min-h-screen bg-[#F2F7F2] flex flex-col">
-        <div className="flex-1 flex flex-col px-6 pt-10 pb-12 max-w-md mx-auto w-full">
-          {/* Back */}
-          <Link href={`/moments/${moment.id}`} className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-8 text-sm transition-colors">
-            ← Back
-          </Link>
-
-          {/* Header */}
-          <div className="mb-7 text-center">
-            <div className="text-4xl mb-3">🎵</div>
-            <h1 className="text-2xl font-semibold text-[#2a402c] mb-1">Listening together</h1>
-            <p className="text-sm text-muted-foreground italic">Same {typeLabel}, same day</p>
-          </div>
-
-          {/* Artwork + info card */}
-          <div className="bg-white/60 border border-[#5C7A5F]/20 rounded-2xl px-5 py-5 mb-6 text-center">
-            {hasArtwork && (
-              <img
-                src={moment.listeningArtworkUrl!}
-                alt="Artwork"
-                className="w-40 h-40 rounded-xl mx-auto mb-4 object-cover shadow-md"
-              />
-            )}
-            <h2 className="text-lg font-semibold text-[#2a402c]">{moment.listeningTitle ?? moment.name}</h2>
-            {moment.listeningArtist && (
-              <p className="text-sm text-[#4a6b50] mt-1">{moment.listeningArtist}</p>
-            )}
-          </div>
-
-          {listenDetected ? (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col items-center justify-center text-center">
-              <div className="text-5xl mb-4">🎵</div>
-              <h2 className="text-xl font-semibold text-[#2a402c] mb-2">Listened together</h2>
-              {myPost?.reflectionText && (
-                <p className="text-sm text-[#4a6b50] font-medium mb-1">🎵 {myPost.reflectionText}</p>
-              )}
-              <p className="text-sm text-muted-foreground">Eleanor detected your listen and logged it for you.</p>
-            </motion.div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <div className="bg-white/60 border border-[#5C7A5F]/20 rounded-2xl px-5 py-6 w-full">
-                <p className="text-sm font-semibold text-[#2a402c] mb-2">Waiting for your listen</p>
-                <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                  Play this {typeLabel} on Apple Music. Eleanor checks every few hours and will auto-log when it detects you've listened.
-                </p>
-                <div className="flex items-center justify-center gap-2 text-xs text-[#5C7A5F]">
-                  <span className="inline-block w-2 h-2 rounded-full bg-[#5C7A5F] animate-pulse" />
-                  Listening for activity
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     );
   }

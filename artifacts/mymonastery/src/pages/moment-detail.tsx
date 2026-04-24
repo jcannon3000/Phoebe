@@ -76,12 +76,6 @@ interface MomentDetail {
     commitmentGoalTier?: number | null;
     commitmentTendFreely?: boolean | null;
     frequencyDaysPerWeek?: number | null;
-    listeningType?: string | null;
-    listeningTitle?: string | null;
-    listeningArtist?: string | null;
-    listeningArtworkUrl?: string | null;
-    listeningSpotifyUri?: string | null;
-    listeningAppleMusicUrl?: string | null;
   };
   members: { name: string | null; email: string; joined?: boolean; avatarUrl?: string | null }[];
   memberCount: number;
@@ -636,7 +630,6 @@ export default function MomentDetail() {
   const isIntercession = moment.templateType === "intercession";
   const isContemplative = moment.templateType === "contemplative";
   const isFasting = moment.templateType === "fasting";
-  const isListening = moment.templateType === "listening";
   const isMorningPrayer =
     moment.templateType === "morning_prayer" ||
     moment.templateType === "morning-prayer";
@@ -656,11 +649,9 @@ export default function MomentDetail() {
   // Label for action button — context-sensitive
   const actionLabel = isIntercession
     ? "Pray 🙏🏽"
-    : isListening
-      ? "Listen 🎵"
-      : isMorningPrayer
-        ? "Open Office 📖"
-        : "Log 🌿";
+    : isMorningPrayer
+      ? "Open Office 📖"
+      : "Log 🌿";
 
   // For custom intercessions, use the intention as the display title.
   // For BCP intercessions, show the topic/name as before.
@@ -948,9 +939,7 @@ export default function MomentDetail() {
               ? (viewerPrayedToday
                   ? (prayedTodayCount === 1 ? "1 has prayed" : `${prayedTodayCount} have prayed`)
                   : "🙏🏽 Open today · Pray together")
-              : isListening
-                ? "🎵 Listening today"
-                : "🌿 Open today";
+              : "🌿 Open today";
           const subline = isMorningPrayer
             ? `${todayPostCount} of ${memberCount} have prayed`
             : isIntercession
@@ -959,7 +948,7 @@ export default function MomentDetail() {
                   // so the subline can be gentler / encouraging.
                   ? "You've prayed today 🌿"
                   : (prayedTodayCount === 1 ? "1 has prayed" : `${prayedTodayCount} have prayed`))
-              : `${todayPostCount} of ${memberCount} ${isListening ? "listened" : "logged"}`;
+              : `${todayPostCount} of ${memberCount} logged`;
           return (isOpenNow || isMorningPrayer) ? (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
@@ -971,7 +960,7 @@ export default function MomentDetail() {
               <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>{headline}</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{subline}</p>
             </div>
-            {postUrl && !isListening && (
+            {postUrl && (
               <Link href={postUrl}>
                 <span className="text-sm font-semibold rounded-full px-4 py-2 whitespace-nowrap transition-colors"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
@@ -1425,7 +1414,7 @@ export default function MomentDetail() {
                           <p className="text-sm font-medium text-foreground/90">{firstName}</p>
                           {log.reflectionText && (
                             <p className="text-xs text-muted-foreground italic truncate">
-                              {isListening ? `🎵 ${log.reflectionText}` : `"${log.reflectionText}"`}
+                              {`"${log.reflectionText}"`}
                             </p>
                           )}
                         </div>
@@ -1433,8 +1422,6 @@ export default function MomentDetail() {
                           <p className="text-xs text-[#5C7A5F] font-medium">
                             {isFasting
                               ? "Fasting · all day"
-                              : isListening
-                              ? `Listened · ${loggedTime}`
                               : ["intercession", "morning-prayer", "evening-prayer"].includes(moment.templateType ?? "")
                               ? `Prayed · ${loggedTime}`
                               : isContemplative
@@ -1493,7 +1480,7 @@ export default function MomentDetail() {
                                 <div className="flex-1 min-w-0">
                                   {post.reflectionText ? (
                                     <p className="text-xs text-muted-foreground italic line-clamp-2">
-                                      {isListening ? `🎵 ${post.reflectionText}` : `"${post.reflectionText}"`}
+                                      {`"${post.reflectionText}"`}
                                     </p>
                                   ) : post.isCheckin ? (
                                     <p className="text-xs text-muted-foreground">

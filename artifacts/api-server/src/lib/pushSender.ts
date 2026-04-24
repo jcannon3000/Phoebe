@@ -322,7 +322,6 @@ export function sendNewGroupMomentPush(
       case "intercession": return "started an intercession";
       case "lectio-divina": return "started a Lectio Divina practice";
       case "fasting":      return "started a fast";
-      case "listening":    return "started a listening practice";
       case "morning-prayer":
       case "evening-prayer":
                            return "started a prayer practice";

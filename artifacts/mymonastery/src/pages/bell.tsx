@@ -22,7 +22,6 @@ const TEMPLATE_EMOJI: Record<string, string> = {
   breath: "\u{1F32C}\uFE0F",
   contemplative: "\u{1F33F}",
   walk: "\u{1F6B6}\u{1F3FD}",
-  listening: "\u{1F3B5}",
   fasting: "\u{1F343}",
   "lectio-divina": "\u{1F4D6}",
 };

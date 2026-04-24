@@ -29,7 +29,6 @@ const PRACTICE_EMOJI: Record<string, string> = {
   "intercession": "🙏🏽",
   "contemplative": "🕯️",
   "fasting": "🌿",
-  "listening": "🎵",
   "lectio-divina": "📜",
   "custom": "🌱",
 };

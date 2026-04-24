@@ -53,14 +53,6 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   // Used by the goal-cleanup job to remove recurring calendar events for
   // members who never renew within 2 days of reaching the goal.
   commitmentGoalReachedAt: timestamp("commitment_goal_reached_at", { withTimezone: true }),
-  // Listening practice fields
-  listeningType: text("listening_type"),             // song | album | artist
-  listeningTitle: text("listening_title"),
-  listeningArtist: text("listening_artist"),
-  listeningSpotifyUri: text("listening_spotify_uri"),
-  listeningAppleMusicUrl: text("listening_apple_music_url"),
-  listeningArtworkUrl: text("listening_artwork_url"),
-  listeningManual: boolean("listening_manual"),
   // Toggle: when true, any member of the practice can invite new people.
   // When false, only the creator can. Default is open.
   allowMemberInvites: boolean("allow_member_invites").notNull().default(true),

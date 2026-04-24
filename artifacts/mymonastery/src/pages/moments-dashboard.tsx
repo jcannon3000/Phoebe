@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -66,7 +66,6 @@ const TEMPLATE_EMOJI: Record<string, string> = {
   breath: "🌬️",
   contemplative: "🌿",
   walk: "🚶🏽",
-  listening: "🎵",
 };
 
 interface MomentData {
@@ -97,11 +96,9 @@ interface MomentData {
   frequencyType?: string | null;
   frequencyDaysPerWeek?: number | null;
   practiceDays?: string | null;
-  listeningTitle?: string | null;
-  listeningArtist?: string | null;
 }
 
-const SPIRITUAL_TEMPLATE_IDS_DASH = new Set(["morning-prayer", "evening-prayer", "intercession", "breath", "contemplative", "walk", "listening", "custom"]);
+const SPIRITUAL_TEMPLATE_IDS_DASH = new Set(["morning-prayer", "evening-prayer", "intercession", "breath", "contemplative", "walk", "custom"]);
 const BCP_TEMPLATE_IDS_DASH = new Set(["morning-prayer", "evening-prayer"]);
 
 // ─── BCP week tracking helper ─────────────────────────────────────────────────
@@ -225,26 +222,6 @@ export default function MomentsDashboard() {
   });
   const [communityAdminView] = useCommunityAdminToggle();
   const isAdminOfAnyGroup = communityAdminView && (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin");
-
-  // On-demand Apple Music check for listening practices where someone hasn't logged
-  const amCheckedRef = useRef(false);
-  useEffect(() => {
-    if (!data || amCheckedRef.current) return;
-    amCheckedRef.current = true;
-    const listening = (data.moments ?? []).filter(
-      m => m.templateType === "listening" && m.todayPostCount < m.memberCount
-    );
-    if (listening.length === 0) return;
-    Promise.all(
-      listening.map(m =>
-        apiRequest<{ newLogs: number }>("POST", `/api/apple-music/check-now/${m.id}`, {}).catch(() => ({ newLogs: 0 }))
-      )
-    ).then(results => {
-      if (results.some(r => r.newLogs > 0)) {
-        qc.invalidateQueries({ queryKey: ["/api/moments"] });
-      }
-    });
-  }, [data, qc]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");

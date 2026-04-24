@@ -321,7 +321,7 @@ function minutesRemaining(moment: { scheduledTime: string; windowMinutes: number
 
 // ─── Event duration by practice template ─────────────────────────────────────
 function practiceEventDurationMins(templateType: string | null | undefined): number {
-  if (templateType === "intercession" || templateType === "listening") return 5;
+  if (templateType === "intercession") return 5;
   if (templateType === "morning-prayer" || templateType === "evening-prayer" || templateType === "contemplative") return 20;
   return 60;
 }
@@ -607,7 +607,7 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
 });
 
 // ─── POST /api/moments — plant a standalone shared moment ───────────────────
-const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "listening", "lectio-divina", "custom"]);
+const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "lectio-divina", "custom"]);
 const BCP_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer"]);
 
 const StandalonePlantSchema = z.object({
@@ -646,14 +646,6 @@ const StandalonePlantSchema = z.object({
   commitmentDuration: z.number().int().min(0).max(365).optional(),
   // Progressive goal fields
   commitmentSessionsGoal: z.number().int().min(0).max(365).nullable().optional(),
-  // Listening fields
-  listeningType: z.enum(["song", "album", "artist"]).optional(),
-  listeningTitle: z.string().max(200).optional(),
-  listeningArtist: z.string().max(200).optional(),
-  listeningSpotifyUri: z.string().max(500).optional(),
-  listeningAppleMusicUrl: z.string().max(500).optional(),
-  listeningArtworkUrl: z.string().max(500).optional(),
-  listeningManual: z.boolean().optional(),
   // Group practice — only group admins can create
   groupId: z.number().int().positive().optional(),
   // Additional groups an intercession is shared with. Each must be a
@@ -673,7 +665,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return;
   }
 
-  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, listeningType, listeningTitle, listeningArtist, listeningSpotifyUri, listeningAppleMusicUrl, listeningArtworkUrl, listeningManual, groupId, additionalGroupIds } = parsed.data;
+  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, groupId, additionalGroupIds } = parsed.data;
 
   // ── Group practice validation — only admins can create ──
   let groupMembers: Array<{ email: string; name: string }> | null = null;
@@ -824,13 +816,6 @@ router.post("/moments", async (req, res): Promise<void> => {
     ...(commitmentDuration !== undefined ? { commitmentDuration } : {}),
     ...(commitmentEndDate ? { commitmentEndDate } : {}),
     ...(commitmentSessionsGoal !== undefined ? { commitmentSessionsGoal } : {}),
-    ...(listeningType !== undefined ? { listeningType } : {}),
-    ...(listeningTitle !== undefined ? { listeningTitle } : {}),
-    ...(listeningArtist !== undefined ? { listeningArtist } : {}),
-    ...(listeningSpotifyUri !== undefined ? { listeningSpotifyUri } : {}),
-    ...(listeningAppleMusicUrl !== undefined ? { listeningAppleMusicUrl } : {}),
-    ...(listeningArtworkUrl !== undefined ? { listeningArtworkUrl } : {}),
-    ...(listeningManual !== undefined ? { listeningManual } : {}),
   }).returning();
 
   // Link any additional groups via the junction table. Primary group
@@ -946,7 +931,6 @@ router.post("/moments", async (req, res): Promise<void> => {
       const invFirst = (organizer.name ?? "Someone").split(" ")[0];
       return `${invFirst} invited you to conserve water together`;
     }
-    if (templateType === "listening") return `🎵 Listening to ${listeningArtist ?? listeningTitle ?? name} together`;
     return `🌱 ${name} with ${creatorFirstName}`;
   }
 
@@ -1006,22 +990,6 @@ router.post("/moments", async (req, res): Promise<void> => {
         shortLink,
         "",
         `${durStr}. Wherever you are, at the same time of day — knowing the other is present too.`,
-        "",
-        `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
-      ].join("\n");
-    }
-
-    if (templateType === "listening") {
-      const what = listeningType === "artist"
-        ? `${listeningArtist ?? listeningTitle ?? "an artist"}`
-        : listeningType === "album"
-          ? `${listeningTitle ?? "an album"} by ${listeningArtist ?? "an artist"}`
-          : `${listeningTitle ?? "a song"} by ${listeningArtist ?? "an artist"}`;
-      return [
-        `🎵 ${invFirst} invited you to listen to ${what} together.`,
-        shortLink,
-        "",
-        "Though you'll be in different places, you'll each listen — knowing the other is too. That's the whole thing.",
         "",
         `When: ${freqLabel} at ${calTimeLabel} · Starting ${humanStartDate()}`,
       ].join("\n");
@@ -2720,12 +2688,6 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
       fastingDate: moment.fastingDate ?? null,
       fastingDay: moment.fastingDay ?? null,
       fastingDayOfMonth: moment.fastingDayOfMonth ?? null,
-      listeningType: (moment as Record<string, unknown>).listeningType ?? null,
-      listeningTitle: (moment as Record<string, unknown>).listeningTitle ?? null,
-      listeningArtist: (moment as Record<string, unknown>).listeningArtist ?? null,
-      listeningSpotifyUri: (moment as Record<string, unknown>).listeningSpotifyUri ?? null,
-      listeningAppleMusicUrl: (moment as Record<string, unknown>).listeningAppleMusicUrl ?? null,
-      listeningArtworkUrl: (moment as Record<string, unknown>).listeningArtworkUrl ?? null,
     },
     ritualName: ritual?.name ?? "",
     inviterName,
@@ -3882,45 +3844,16 @@ router.post("/moments/:id/refresh-calendar", async (req, res): Promise<void> => 
   const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
   const calTimeLabel = `${hour12}${m > 0 ? `:${String(m).padStart(2, "0")}` : ""} ${period}`;
   const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-  const goalSessions = moment.commitmentSessionsGoal ?? null;
   const invFirst = user.name?.split(" ")[0] ?? "Someone";
 
-  let newSummary: string;
-  let newDescription: string;
-
-  if (moment.templateType === "listening") {
-    const listeningArtist = moment.listeningArtist ?? null;
-    const listeningTitle = moment.listeningTitle ?? null;
-    const listeningType = moment.listeningType ?? null;
-    const what = listeningType === "artist"
-      ? `${listeningArtist ?? listeningTitle ?? moment.name}`
-      : listeningType === "album"
-        ? `${listeningTitle ?? "an album"} by ${listeningArtist ?? "an artist"}`
-        : `${listeningTitle ?? "a song"} by ${listeningArtist ?? "an artist"}`;
-    const headline = goalSessions
-      ? `We're listening to ${what} together — ${goalSessions} days, building a streak.`
-      : `We're listening to ${what} together.`;
-
-    newSummary = `🎵 Listening to ${listeningArtist ?? listeningTitle ?? moment.name} together`;
-    newDescription = [
-      headline,
-      `Open in Phoebe → ${shortLink}`,
-      "",
-      "Though you'll be in different places, you'll each listen — knowing the other is too. That's the whole thing.",
-      "",
-      `When: ${freqLabel} at ${calTimeLabel} · Starting ${todayStr}`,
-    ].join("\n");
-  } else {
-    // For non-listening practices, rebuild with current format (no member names)
-    newSummary = `🌱 ${moment.name}`;
-    newDescription = [
-      `${invFirst} invited you to practice together.`,
-      `Open in Phoebe → ${shortLink}`,
-      "",
-      ...(moment.intention ? [`"${moment.intention}"`, ""] : []),
-      `When: ${freqLabel} at ${calTimeLabel} · Starting ${todayStr}`,
-    ].join("\n");
-  }
+  const newSummary = `🌱 ${moment.name}`;
+  const newDescription = [
+    `${invFirst} invited you to practice together.`,
+    `Open in Phoebe → ${shortLink}`,
+    "",
+    ...(moment.intention ? [`"${moment.intention}"`, ""] : []),
+    `When: ${freqLabel} at ${calTimeLabel} · Starting ${todayStr}`,
+  ].join("\n");
 
   const ok = await updateCalendarEvent(sessionUserId, myTokenRow.googleCalendarEventId, {
     summary: newSummary,

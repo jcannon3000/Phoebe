@@ -11,8 +11,7 @@ import { useCommunityAdminToggle } from "@/hooks/useDemo";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type StepId = "template" | "daily-office-choice" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "duration" | "invite"
   | "bcp-commitment" | "bcp-frequency" | "bcp-days" | "bcp-time" | "bcp-invite" | "intercession-frequency"
-  | "contemplative-duration" | "fasting-type" | "fasting-what" | "fasting-why" | "fasting-when"
-  | "listening-what";
+  | "contemplative-duration" | "fasting-type" | "fasting-what" | "fasting-why" | "fasting-when";
 type FastingTypeChoice = "meat" | "custom" | null;
 type LoggingType = "photo" | "reflection" | "both" | "checkin";
 type Frequency = "daily" | "weekly";
@@ -621,55 +620,6 @@ export default function MomentNew() {
   const [customFastName, setCustomFastName] = useState("");
   const [customFastDescription, setCustomFastDescription] = useState("");
 
-  // ─── Listening-specific state ──────────────────────────────────────────────
-  const [listeningType, setListeningType] = useState<"song" | "album" | "artist">("song");
-  const [listeningTitle, setListeningTitle] = useState("");
-  const [listeningArtist, setListeningArtist] = useState("");
-  const [listeningArtworkUrl, setListeningArtworkUrl] = useState("");
-  const [listeningSearchQuery, setListeningSearchQuery] = useState("");
-  const [listeningSearchResults, setListeningSearchResults] = useState<Array<{ id: string; name: string; artistName: string; artworkUrl: string }>>([]);
-  const [listeningSearching, setListeningSearching] = useState(false);
-  const listeningSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Apple Music catalog search (debounced)
-  function searchAppleMusic(query: string) {
-    setListeningSearchQuery(query);
-    if (listeningSearchTimer.current) clearTimeout(listeningSearchTimer.current);
-    if (!query.trim()) { setListeningSearchResults([]); return; }
-    listeningSearchTimer.current = setTimeout(async () => {
-      setListeningSearching(true);
-      try {
-        const typeParam = listeningType === "artist" ? "artists" : listeningType === "album" ? "albums" : "songs";
-        type AMItem = { id: string; attributes: { name: string; artistName?: string; artwork?: { url: string } } };
-        type AMResponse = { results?: Record<string, { data?: AMItem[] }> };
-        const data = await apiRequest<AMResponse>(
-          "GET", `/api/apple-music/search?term=${encodeURIComponent(query.trim())}&types=${typeParam}`
-        );
-        const items = data?.results?.[typeParam]?.data ?? [];
-        setListeningSearchResults(items.map(item => ({
-          id: item.id,
-          name: item.attributes.name,
-          artistName: item.attributes.artistName ?? item.attributes.name,
-          artworkUrl: item.attributes.artwork?.url?.replace("{w}x{h}", "300x300") ?? "",
-        })));
-      } catch {
-        setListeningSearchResults([]);
-      } finally {
-        setListeningSearching(false);
-      }
-    }, 400);
-  }
-
-  function selectListeningResult(result: { name: string; artistName: string; artworkUrl: string }) {
-    setListeningTitle(result.name);
-    setListeningArtist(listeningType === "artist" ? result.name : result.artistName);
-    setListeningArtworkUrl(result.artworkUrl);
-    setListeningSearchQuery("");
-    setListeningSearchResults([]);
-    // Auto-set the practice name
-    setName(`Listening to ${result.name} together`);
-  }
-
   // Rotating fasting examples
   const [fastingFromIdx, setFastingFromIdx] = useState(0);
   const [fastingIntentionIdx, setFastingIntentionIdx] = useState(0);
@@ -763,23 +713,6 @@ export default function MomentNew() {
         setFrequency(t.prefill.frequency);
       }
       setStep("contemplative-duration");
-      return;
-    }
-    // Listening: dedicated flow
-    if (t.id === "listening") {
-      setListeningType("song");
-      setListeningTitle("");
-      setListeningArtist("");
-      setListeningArtworkUrl("");
-      setListeningSearchQuery("");
-      setListeningSearchResults([]);
-      if (t.prefill) {
-        setName(t.prefill.name);
-        setIntention(t.prefill.intention);
-        setLoggingType(t.prefill.loggingType);
-        setFrequency(t.prefill.frequency);
-      }
-      setStep("listening-what");
       return;
     }
     // Lectio Divina: minimal flow — we just need invitees. Schedule is fixed
@@ -891,8 +824,6 @@ export default function MomentNew() {
       ? (fastingTypeChoice === "meat"
         ? ["template", "fasting-type", "fasting-when", "invite"]
         : ["template", "fasting-type", "fasting-when", "duration", "invite"])
-    : templateId === "listening"
-      ? ["template", "listening-what", "schedule", "invite"]
     : templateId === "lectio-divina"
       ? ["template", "invite"]
       : ["template", "name", "intention", "logging", "schedule", "invite"];
@@ -935,7 +866,6 @@ export default function MomentNew() {
     if (step === "template") return false;
     if (step === "intercession") return false;
     if (step === "contemplative-duration") return contemplativeDuration !== null;
-    if (step === "listening-what") return listeningTitle.trim().length >= 1 && (listeningType === "artist" || listeningArtist.trim().length >= 1);
     if (step === "fasting-type") return false; // navigation handled by type selection buttons
     if (step === "fasting-what") return fastingFrom.trim().length >= 2;
     if (step === "fasting-why") return fastingIntention.trim().length >= 4;
@@ -1077,14 +1007,11 @@ export default function MomentNew() {
   function handleSubmit() {
     const validParticipants = invitedPeople;
     const isFasting = templateId === "fasting";
-    const isListening = templateId === "listening";
     const isLectio = templateId === "lectio-divina";
 
     // Fasting: derive name/intention/scheduling from fasting-specific fields
     const isCustomIntercession = templateId === "intercession" && intercessionSource === "custom";
-    const finalName = isListening
-      ? (name.trim() || `Listening to ${listeningTitle.trim()} together`)
-      : isFasting && fastingTypeChoice === "meat"
+    const finalName = isFasting && fastingTypeChoice === "meat"
       ? "Fast from meat"
       : isFasting && fastingTypeChoice === "custom"
       ? customFastName.trim() || `Fasting from ${fastingFrom.trim()}`
@@ -1148,11 +1075,6 @@ export default function MomentNew() {
       fastingDate: isFasting && fastingFrequency === "specific" ? fastingDate || undefined : undefined,
       fastingDay: isFasting && fastingFrequency === "weekly" ? fastingDay || undefined : undefined,
       fastingDayOfMonth: isFasting && fastingFrequency === "monthly" ? fastingDayOfMonth ?? undefined : undefined,
-      // Listening
-      listeningType: isListening ? listeningType : undefined,
-      listeningTitle: isListening ? listeningTitle.trim() || undefined : undefined,
-      listeningArtist: isListening ? (listeningType === "artist" ? listeningTitle.trim() : listeningArtist.trim()) || undefined : undefined,
-      listeningArtworkUrl: isListening && listeningArtworkUrl ? listeningArtworkUrl : undefined,
       // Group practice
       groupId: selectedGroupId ?? undefined,
       // Intercessions can be attached to multiple communities at once.
@@ -1346,7 +1268,7 @@ export default function MomentNew() {
         {step !== "template" && (
           <div className="mb-6 flex items-center gap-4">
             <button onClick={goBack} className="text-sm transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
-              ← {(step === "name" || step === "contemplative-duration" || step === "fasting-what" || step === "listening-what" || step === "daily-office-choice") ? "Templates" : "Back"}
+              ← {(step === "name" || step === "contemplative-duration" || step === "fasting-what" || step === "daily-office-choice") ? "Templates" : "Back"}
             </button>
             <div className="flex-1 flex gap-1.5">
               {Array.from({ length: Math.max(totalSteps, 1) }, (_, i) => (
@@ -2143,104 +2065,6 @@ export default function MomentNew() {
               )}
 
               {/* ── Fasting — what are you fasting from ─────────── */}
-              {/* ── Listening — what are you listening to ────────── */}
-              {step === "listening-what" && (
-                <div className="flex-1 flex flex-col">
-                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What will you listen to together? 🎵</h2>
-                  <p className="text-sm text-muted-foreground italic mb-6">Search Apple Music. Eleanor will auto-detect when everyone has listened.</p>
-
-                  {/* Type tabs */}
-                  <div className="flex gap-1 mb-5 bg-secondary/60 rounded-xl p-1">
-                    {(["song", "album", "artist"] as const).map(type => (
-                      <button key={type}
-                        onClick={() => { setListeningType(type); setListeningTitle(""); setListeningArtist(""); setListeningArtworkUrl(""); setListeningSearchQuery(""); setListeningSearchResults([]); }}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
-                          listeningType === type
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {type === "song" ? "🎵 Song" : type === "album" ? "💿 Album" : "🎤 Artist"}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Selected item — show when chosen, tap to clear */}
-                  {listeningTitle.trim() ? (
-                    <div className="mb-4">
-                      <div className="p-4 rounded-2xl bg-[#F0F8F0] border border-[#5C7A5F]/30 flex items-center gap-4">
-                        {listeningArtworkUrl ? (
-                          <img src={listeningArtworkUrl} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm" />
-                        ) : (
-                          <div className="w-14 h-14 rounded-xl bg-[#5C7A5F]/10 flex items-center justify-center flex-shrink-0 text-2xl">🎵</div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-[15px] text-[#2a402c] truncate">{listeningTitle.trim()}</p>
-                          {listeningType !== "artist" && (
-                            <p className="text-sm text-[#4a6b50] truncate mt-0.5">{listeningArtist.trim()}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => { setListeningTitle(""); setListeningArtist(""); setListeningArtworkUrl(""); }}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Search input */}
-                      <div className="relative mb-2">
-                        <input
-                          type="text"
-                          value={listeningSearchQuery}
-                          onChange={e => searchAppleMusic(e.target.value)}
-                          placeholder={`Search for a ${listeningType}…`}
-                          autoFocus
-                          className="w-full px-4 py-3.5 rounded-2xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-background text-base pl-10"
-                        />
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40">🔍</span>
-                        {listeningSearching && (
-                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground animate-pulse">Searching…</span>
-                        )}
-                      </div>
-
-                      {/* Search results */}
-                      {listeningSearchResults.length > 0 && (
-                        <div className="border border-border/60 rounded-2xl overflow-hidden bg-background mb-4">
-                          {listeningSearchResults.map((result, i) => (
-                            <button
-                              key={result.id}
-                              onClick={() => selectListeningResult(result)}
-                              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/40 transition-colors ${
-                                i < listeningSearchResults.length - 1 ? "border-b border-border/30" : ""
-                              }`}
-                            >
-                              {result.artworkUrl ? (
-                                <img src={result.artworkUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                              ) : (
-                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-lg">🎵</div>
-                              )}
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">{result.name}</p>
-                                {listeningType !== "artist" && (
-                                  <p className="text-xs text-muted-foreground truncate">{result.artistName}</p>
-                                )}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Empty state */}
-                      {listeningSearchQuery.trim() && !listeningSearching && listeningSearchResults.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4 italic">No results found</p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
 
               {/* ── Fasting — type selection (meat vs custom) ────── */}
               {step === "fasting-type" && (

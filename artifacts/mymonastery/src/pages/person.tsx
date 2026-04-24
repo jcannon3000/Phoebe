@@ -41,7 +41,6 @@ function practiceEmoji(templateType: string | null): string {
     case "evening-prayer":  return "🌙";
     case "contemplative":   return "🕯️";
     case "fasting":         return "✦";
-    case "listening":       return "🎵";
     default:                return "🌱";
   }
 }
