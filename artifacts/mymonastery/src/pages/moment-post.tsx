@@ -1293,7 +1293,7 @@ export default function MomentPostPage() {
         bgColor={bgColor}
         accentColor={accentColor}
         momentId={moment.id}
-        memberToken={memberToken}
+        memberToken={userToken}
         intention={moment.intention}
         alreadyPosted={alreadyPosted}
         posted={posted}
