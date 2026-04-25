@@ -25,6 +25,57 @@ const router: IRouter = Router();
 // the garden membership logic (group peers + correspondents, minus
 // hidden-admin vetoes).
 
+// GET /api/prayer-requests/:id — single request + words, owner-only.
+// Powers the dedicated comment-notification landing page so a push
+// tap on "X commented on your request" lands on a slide-styled view
+// of the request and the most recent word of comfort. Owner-only
+// because that's who the comment notification is delivered to; the
+// in-feed view continues to live behind /api/prayer-requests.
+router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [r] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!r) { res.status(404).json({ error: "Not found" }); return; }
+  if (r.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const [owner] = await db
+    .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+    .from(usersTable)
+    .where(eq(usersTable.id, r.ownerId));
+
+  const wordRows = await db
+    .select({
+      id: prayerWordsTable.id,
+      authorName: prayerWordsTable.authorName,
+      authorUserId: prayerWordsTable.authorUserId,
+      content: prayerWordsTable.content,
+      createdAt: prayerWordsTable.createdAt,
+      authorAvatarUrl: usersTable.avatarUrl,
+    })
+    .from(prayerWordsTable)
+    .leftJoin(usersTable, eq(usersTable.id, prayerWordsTable.authorUserId))
+    .where(eq(prayerWordsTable.requestId, id));
+
+  res.json({
+    id: r.id,
+    body: r.body,
+    ownerName: owner?.name ?? null,
+    ownerAvatarUrl: owner?.avatarUrl ?? null,
+    words: wordRows
+      .map(w => ({
+        id: w.id,
+        authorName: w.authorName,
+        authorAvatarUrl: w.authorAvatarUrl ?? null,
+        content: w.content,
+        createdAt: w.createdAt ? w.createdAt.toISOString() : null,
+      }))
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
+  });
+});
+
 // GET /api/prayer-requests — list active prayer requests visible to me (mine + garden)
 router.get("/prayer-requests", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;

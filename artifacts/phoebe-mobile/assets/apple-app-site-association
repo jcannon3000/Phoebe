@@ -24,6 +24,10 @@
             "comment": "Direct deep-link to a practice detail page"
           },
           {
+            "/": "/prayer-requests/*",
+            "comment": "Comment-on-prayer-request notification landing page"
+          },
+          {
             "/": "/dashboard",
             "comment": "Post-login landing page — useful for auth callback redirects"
           }

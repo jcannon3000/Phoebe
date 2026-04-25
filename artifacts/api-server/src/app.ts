@@ -119,6 +119,7 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
               { "/": "/m/*" },
               { "/": "/lectio/*" },
               { "/": "/moments/*" },
+              { "/": "/prayer-requests/*" },
               { "/": "/dashboard" },
             ],
           },

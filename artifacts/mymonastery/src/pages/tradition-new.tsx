@@ -16,7 +16,7 @@ const TEMPLATE_OPTIONS = [
 ];
 
 const RHYTHM_OPTIONS = [
-  { value: "once", emoji: "📅", label: "Just once", tagline: "A single gathering, no rhythm" },
+  { value: "once", emoji: "📅", label: "Just once", tagline: "A single gathering" },
   { value: "weekly", emoji: "📅", label: "Every week", tagline: "A weekly commitment" },
   { value: "biweekly", emoji: "📅", label: "Every two weeks", tagline: "A fortnightly rhythm" },
   { value: "monthly", emoji: "📅", label: "Once a month", tagline: "A monthly anchor" },

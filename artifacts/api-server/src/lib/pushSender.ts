@@ -485,14 +485,11 @@ export function sendPrayerWordPush(
   const collapseId = opts.prayerRequestId && opts.authorUserId
     ? `prayer-word-${opts.prayerRequestId}-${opts.authorUserId}`
     : undefined;
-  // Deep-link straight into the request's detail modal. The
-  // prayer-list page reads `?detail=req:<id>` on mount and opens
-  // the same DetailModal the user sees when tapping their own
-  // request from the list — that's where the "word of comfort"
-  // someone just wrote actually lives. Falls back to the bare
-  // /prayer-list if the prayerRequestId is missing (defensive).
+  // Deep-link to the dedicated comment landing page — a slide-styled
+  // view of the request and the latest word of comfort. Falls back to
+  // the bare /prayer-list if the prayerRequestId is missing (defensive).
   const path = opts.prayerRequestId
-    ? `/prayer-list?detail=req:${opts.prayerRequestId}`
+    ? `/prayer-requests/${opts.prayerRequestId}`
     : "/prayer-list";
   return sendPushToUser(recipientUserId, {
     title: `💬 ${opts.authorName} raised you in prayer`,
