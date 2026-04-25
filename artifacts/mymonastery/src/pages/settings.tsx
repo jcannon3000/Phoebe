@@ -399,15 +399,16 @@ function BellPreferences() {
   const [issueModalStatus, setIssueModalStatus] = useState<string | null>(null);
   const issueShownRef = useRef(false);
 
+  // Bell issue auto-popup disabled — testers found it intrusive to be
+  // greeted by a modal every time they opened Settings, especially
+  // when the underlying calendar-status issue was something they
+  // already knew about and were planning to address from the bell
+  // card itself. The visual indicator on the bell card is enough; if
+  // we want this back later it should at minimum be opt-in or
+  // cooldown-gated. Leaving the state + dismiss-key wiring in place
+  // so flipping it back on is a one-line revert.
   useEffect(() => {
-    if (!data || !data.bellEnabled) return;
-    const status = data.calendarStatus ?? "none";
-    if (status === "active") return; // all good, no nudge
-    if (issueShownRef.current) return;
-    const dismissKey = `phoebe:bell-issue-dismissed:${status}`;
-    if (localStorage.getItem(dismissKey) === "1") return;
-    issueShownRef.current = true;
-    setIssueModalStatus(status);
+    // intentionally empty
   }, [data]);
 
   const dismissIssue = () => {
@@ -729,19 +730,50 @@ function PhoneSection() {
         | undefined;
       const contacts = detail?.contacts ?? [];
 
-      // Find the contact(s) whose emails include this user's email.
-      // Their iOS contact card is the implicit "this is me" record.
-      // Fold the phones across any matching cards (a few users have
-      // duplicate cards for work + personal).
+      const userNameLower = (user?.name ?? "").trim().toLowerCase();
+      const contactsWithEmail = contacts.filter((c) =>
+        (c.emails ?? []).some((em) => em.trim().toLowerCase() === userEmail),
+      );
+      const contactsWithName = userNameLower
+        ? contacts.filter((c) => (c.name ?? "").trim().toLowerCase() === userNameLower)
+        : [];
+
+      // Diagnostic — visible in Safari Web Inspector when tethered.
+      // Helps debug "I have my email in my contact card but the matcher
+      // says no" reports: usually the plugin returns a smaller address
+      // book than the user expects (iCloud sync incomplete, suggested
+      // contacts excluded by the plugin, etc.) or the contact has the
+      // email but no phone numbers attached to that card.
+      console.log("[PhoneSection] iOS contacts read:", {
+        total: contacts.length,
+        userEmail,
+        userName: userNameLower,
+        matchedByEmail: contactsWithEmail.length,
+        matchedByName: contactsWithName.length,
+        sampleEmails: contacts.slice(0, 3).map((c) => ({
+          name: c.name,
+          emails: c.emails,
+          phoneCount: c.phones?.length ?? 0,
+        })),
+      });
+
+      // Fold phones across any matching cards.
       const phones = new Set<string>();
-      for (const c of contacts) {
-        const emails = (c.emails ?? []).map((e) => e.trim().toLowerCase());
-        if (emails.includes(userEmail)) {
-          for (const p of c.phones ?? []) {
-            const trimmed = p.trim();
-            if (trimmed) phones.add(trimmed);
-          }
+      const tryAdd = (c: { phones: string[] }) => {
+        for (const p of c.phones ?? []) {
+          const trimmed = p.trim();
+          if (trimmed) phones.add(trimmed);
         }
+      };
+      for (const c of contactsWithEmail) tryAdd(c);
+
+      // Name-based fallback — if email match found nothing, try the
+      // contact whose display name matches the signed-in user. Less
+      // precise (multiple "John Smith" entries possible) but catches
+      // the common case where the contact card has the user's
+      // personal email but not the work email they signed up with.
+      if (phones.size === 0) {
+        for (const c of contactsWithName) tryAdd(c);
       }
 
       if (phones.size === 0) {
@@ -861,11 +893,18 @@ function PhoneSection() {
           )}
 
           {iosStage === "no-match" && (
-            <p className="text-[11px]" style={{ color: "#8FAF96" }}>
-              We couldn't find a contact with your email ({user?.email}) in
-              your address book. Type your number below instead, or add
-              your own contact card in iOS Contacts and try again.
-            </p>
+            <div className="text-[11px] space-y-1.5" style={{ color: "#8FAF96" }}>
+              <p>
+                We didn't find a contact with your email ({user?.email}) or
+                your name in your iOS Contacts.
+              </p>
+              <p>
+                If you have your own card saved in the Contacts app, make
+                sure it includes either {user?.email} or "{user?.name}"
+                exactly, plus a phone number — then tap the button again.
+                Otherwise just type it below.
+              </p>
+            </div>
           )}
           {iosStage === "denied" && (
             <p className="text-[11px]" style={{ color: "#C47A65" }}>
@@ -1178,16 +1217,13 @@ export default function SettingsPage() {
         <SectionHeader label="Account" />
         <AccountSection />
 
-        {/* Phone number section temporarily hidden — SMS verification
-            isn't live yet, so collecting numbers does nothing useful and
-            seeing a "Save phone number" form on first launch confused
-            testers about whether they were required to provide one.
-            Re-enable once contact-discovery actually does something. */}
-        {false && (
-          <div className="mb-8">
-            <PhoneSection />
-          </div>
-        )}
+        {/* ── Phone number — used for contact discovery so people who
+              already have you in their address book can find you on
+              Phoebe. Verification (SMS) isn't live yet, so the form
+              warns the user to enter their own real number only. */}
+        <div className="mb-8">
+          <PhoneSection />
+        </div>
 
         {/* ── Presence ── */}
         <div className="mb-8">
