@@ -1038,12 +1038,7 @@ export default function PrayerListPage() {
     ...intercessions.filter((m) => !m.windowOpen),
   ];
 
-  const othersRequests = prayerRequests.filter((r) => !r.isAnswered && !r.isOwnRequest);
-  const ownRequests = prayerRequests.filter((r) => !r.isAnswered && r.isOwnRequest);
-  // Others first, your own request last — the feed is for carrying
-  // other people's prayers; your own belongs at the bottom as the tail
-  // reminder rather than at the top.
-  const allRequests = [...othersRequests, ...ownRequests];
+  const allRequests = prayerRequests.filter((r) => !r.isAnswered);
 
   return (
     <Layout>

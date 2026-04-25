@@ -21,8 +21,10 @@ type PrayerWord = {
 type PrayerRequestDetail = {
   id: number;
   body: string;
+  ownerId: number;
   ownerName: string | null;
   ownerAvatarUrl: string | null;
+  viewerIsOwner: boolean;
   words: PrayerWord[];
 };
 
@@ -108,11 +110,40 @@ export default function PrayerRequestDetailPage() {
 
         {data && (
           <div className="w-full flex flex-col items-center text-center gap-5">
+            {!data.viewerIsOwner && (
+              <div className="flex flex-col items-center gap-3">
+                {data.ownerAvatarUrl ? (
+                  <img
+                    src={data.ownerAvatarUrl}
+                    alt={data.ownerName ?? "Prayer author"}
+                    className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
+                  />
+                ) : (
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
+                    style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                  >
+                    {initials(data.ownerName ?? "")}
+                  </div>
+                )}
+                {data.ownerName && (
+                  <p
+                    className="text-[14px]"
+                    style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    {data.ownerName}
+                  </p>
+                )}
+              </div>
+            )}
+
             <p
               className="text-[10px] uppercase tracking-[0.18em] font-semibold"
               style={{ color: "rgba(143,175,150,0.45)" }}
             >
-              Your prayer request
+              {data.viewerIsOwner
+                ? "Your prayer request"
+                : `${data.ownerName ?? "Someone"} is asking for your prayers`}
             </p>
 
             <p
@@ -125,7 +156,7 @@ export default function PrayerRequestDetailPage() {
               {data.body}
             </p>
 
-            {latestWord && (
+            {data.viewerIsOwner && latestWord && (
               <div
                 className="w-full rounded-2xl px-6 py-5 mt-4 flex flex-col items-center text-center gap-3"
                 style={{

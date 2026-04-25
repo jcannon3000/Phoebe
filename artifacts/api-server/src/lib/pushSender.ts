@@ -549,6 +549,28 @@ export function sendFirstAmenPush(
   });
 }
 
+// Fires for every garden member when a user shares a new prayer
+// request via POST /api/prayer-requests. Distinct from the group-
+// scoped `sendNewPrayerRequestPush` above (that one targets a specific
+// community feed). Tap lands on the dedicated request page (same
+// shape as the "word of comfort" landing page, just with no comment
+// yet) so the recipient sees the asker's name and an explicit
+// invitation to pray. Collapse-id is per-request so a re-broadcast
+// (shouldn't happen, but defensive) replaces rather than stacks.
+export function sendGardenPrayerRequestPush(
+  recipientUserId: number,
+  opts: { prayerRequestId: number; ownerName: string },
+) {
+  return sendPushToUser(recipientUserId, {
+    title: `🙏🏽 ${opts.ownerName} is asking for your prayers`,
+    body: "Tap to pray for them.",
+    path: `/prayer-requests/${opts.prayerRequestId}`,
+    threadId: `prayer-request-${opts.prayerRequestId}`,
+    collapseId: `new-prayer-request-${opts.prayerRequestId}`,
+    sound: PHOEBE_SOUND,
+  });
+}
+
 // "3 people are praying for you today." Fires the moment the third
 // distinct (user, today-in-owner-tz) amen lands. Today is bucketed in
 // the owner's timezone so the count matches what they see in the UI.

@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
-import { sendPrayerWordPush, sendFirstAmenPush, sendThirdAmenTodayPush } from "../lib/pushSender";
+import { sendPrayerWordPush, sendFirstAmenPush, sendThirdAmenTodayPush, sendGardenPrayerRequestPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -25,12 +25,12 @@ const router: IRouter = Router();
 // the garden membership logic (group peers + correspondents, minus
 // hidden-admin vetoes).
 
-// GET /api/prayer-requests/:id — single request + words, owner-only.
-// Powers the dedicated comment-notification landing page so a push
-// tap on "X commented on your request" lands on a slide-styled view
-// of the request and the most recent word of comfort. Owner-only
-// because that's who the comment notification is delivered to; the
-// in-feed view continues to live behind /api/prayer-requests.
+// GET /api/prayer-requests/:id — single request + words.
+// Powers two notification landing pages:
+//   1. "X left you a word of comfort" — viewer is the owner.
+//   2. "Y is asking for your prayers" — viewer is in Y's garden.
+// We allow either case here. Words are only included for the owner —
+// other viewers see the request body but not who has commented on it.
 router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -39,31 +39,43 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
 
   const [r] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
   if (!r) { res.status(404).json({ error: "Not found" }); return; }
-  if (r.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const viewerIsOwner = r.ownerId === sessionUserId;
+  if (!viewerIsOwner) {
+    const garden = await getGardenUserIds(sessionUserId);
+    if (!garden.includes(r.ownerId)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  }
 
   const [owner] = await db
     .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
     .from(usersTable)
     .where(eq(usersTable.id, r.ownerId));
 
-  const wordRows = await db
-    .select({
-      id: prayerWordsTable.id,
-      authorName: prayerWordsTable.authorName,
-      authorUserId: prayerWordsTable.authorUserId,
-      content: prayerWordsTable.content,
-      createdAt: prayerWordsTable.createdAt,
-      authorAvatarUrl: usersTable.avatarUrl,
-    })
-    .from(prayerWordsTable)
-    .leftJoin(usersTable, eq(usersTable.id, prayerWordsTable.authorUserId))
-    .where(eq(prayerWordsTable.requestId, id));
+  const wordRows = viewerIsOwner
+    ? await db
+        .select({
+          id: prayerWordsTable.id,
+          authorName: prayerWordsTable.authorName,
+          authorUserId: prayerWordsTable.authorUserId,
+          content: prayerWordsTable.content,
+          createdAt: prayerWordsTable.createdAt,
+          authorAvatarUrl: usersTable.avatarUrl,
+        })
+        .from(prayerWordsTable)
+        .leftJoin(usersTable, eq(usersTable.id, prayerWordsTable.authorUserId))
+        .where(eq(prayerWordsTable.requestId, id))
+    : [];
 
   res.json({
     id: r.id,
     body: r.body,
+    ownerId: r.ownerId,
     ownerName: owner?.name ?? null,
     ownerAvatarUrl: owner?.avatarUrl ?? null,
+    viewerIsOwner,
     words: wordRows
       .map(w => ({
         id: w.id,
@@ -297,6 +309,31 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
       expiresAt,
     })
     .returning();
+
+  // Notify everyone who would see this request — the owner's garden
+  // (group peers + correspondents). Anonymous requests skip the push:
+  // surfacing the owner's name in the title would defeat the toggle.
+  // Symmetric in the common case; the hidden_admin veto can give a few
+  // false positives (we'd push someone who can't actually see the
+  // request) but the by-id endpoint will 403 them, so the worst case
+  // is an empty page on tap, not a leak.
+  if (!parsed.data.isAnonymous && owner?.name) {
+    getGardenUserIds(sessionUserId)
+      .then((audience) => {
+        for (const recipientId of audience) {
+          sendGardenPrayerRequestPush(recipientId, {
+            prayerRequestId: created.id,
+            ownerName: owner.name as string,
+          }).catch((err) => {
+            console.error(`[prayer-requests] new-request push failed for user=${recipientId}`, err);
+          });
+        }
+      })
+      .catch((err) => {
+        console.error(`[prayer-requests] failed to compute audience for new request ${created.id}`, err);
+      });
+  }
+
   res.status(201).json(created);
 });
 
