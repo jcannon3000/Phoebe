@@ -633,7 +633,7 @@ export default function CommunityJoinPage() {
             regardless of how tall the slide content is. */}
         <footer
           className="px-6 pt-4 flex flex-col items-center gap-5 shrink-0"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 48px)" }}
         >
           <div className="flex items-center gap-1.5">
             {slides.map((_, i) => (
