@@ -100,10 +100,12 @@ function formatHHMM(hhmm: string): string {
 
 function rhythmLabel(r: any): string {
   const rhythm = r.rhythm as string | undefined;
+  const frequency = r.frequency as string | undefined;
+  if (rhythm === "once" || frequency === "once") return "Just once";
   if (rhythm === "weekly") return "Weekly";
   if (rhythm === "fortnightly") return "Every 2 weeks";
   if (rhythm === "monthly") return "Monthly";
-  return r.frequency ?? "Recurring";
+  return frequency ?? "Recurring";
 }
 
 // ─── Add Calendar Sheet ───────────────────────────────────────────────────────

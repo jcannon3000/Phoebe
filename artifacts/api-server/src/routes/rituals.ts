@@ -546,13 +546,18 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
       const appBase = getInviteBaseUrl();
       const organizerFirstName = (organizer.name ?? organizer.email ?? "Someone").split(" ")[0];
 
+      const isOnce = ritual.frequency === "once";
+
       // Warm one-liner — use the stored intention (tagline) if available
       const warmLine = (ritual.intention && ritual.intention.trim())
         ? ritual.intention.trim()
-        : "A recurring tradition worth tending.";
+        : isOnce
+          ? "A gathering worth keeping."
+          : "A recurring tradition worth tending.";
 
       // Frequency label
       const FREQ_LABELS: Record<string, string> = {
+        once: "Just once",
         weekly: "Every week",
         biweekly: "Every 2 weeks",
         monthly: "Once a month",
@@ -610,9 +615,9 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
         lines.push(`Location: ${ritual.location.trim()}`);
       }
 
-      lines.push(`A ${freqLabel.toLowerCase()} tradition.`);
+      lines.push(isOnce ? "A one-time gathering." : `A ${freqLabel.toLowerCase()} tradition.`);
 
-      if (warmLine && warmLine !== "A recurring tradition worth tending.") {
+      if (warmLine && warmLine !== "A recurring tradition worth tending." && warmLine !== "A gathering worth keeping.") {
         lines.push("");
         lines.push(warmLine);
       }

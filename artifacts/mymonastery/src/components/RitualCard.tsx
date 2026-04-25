@@ -81,7 +81,7 @@ export function RitualCard({ ritual, onDelete }: RitualCardProps) {
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
             <div className="flex items-center gap-1.5">
               <Calendar size={14} />
-              <span className="capitalize">{ritual.frequency}</span>
+              <span className="capitalize">{ritual.frequency === "once" ? "Just once" : ritual.frequency}</span>
             </div>
             {ritual.nextMeetupDate && (
               <div className="flex items-center gap-1.5">

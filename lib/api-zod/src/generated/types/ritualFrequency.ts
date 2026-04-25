@@ -10,6 +10,7 @@ export type RitualFrequency =
   (typeof RitualFrequency)[keyof typeof RitualFrequency];
 
 export const RitualFrequency = {
+  once: "once",
   weekly: "weekly",
   biweekly: "biweekly",
   monthly: "monthly",

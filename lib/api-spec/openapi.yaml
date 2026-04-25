@@ -312,7 +312,7 @@ components:
           type: ["string", "null"]
         frequency:
           type: string
-          enum: [weekly, biweekly, monthly]
+          enum: [once, weekly, biweekly, monthly]
         dayPreference:
           type: ["string", "null"]
         location:
@@ -375,7 +375,7 @@ components:
           type: string
         frequency:
           type: string
-          enum: [weekly, biweekly, monthly]
+          enum: [once, weekly, biweekly, monthly]
         dayPreference:
           type: string
         participants:
@@ -401,7 +401,7 @@ components:
           type: string
         frequency:
           type: string
-          enum: [weekly, biweekly, monthly]
+          enum: [once, weekly, biweekly, monthly]
         dayPreference:
           type: string
         participants:

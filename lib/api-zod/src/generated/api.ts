@@ -51,7 +51,7 @@ export const ListRitualsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
   description: zod.string().nullish(),
-  frequency: zod.enum(["weekly", "biweekly", "monthly"]),
+  frequency: zod.enum(["once", "weekly", "biweekly", "monthly"]),
   dayPreference: zod.string().nullish(),
   location: zod.string().nullish(),
   participants: zod.array(
@@ -78,7 +78,7 @@ export const ListRitualsResponse = zod.array(ListRitualsResponseItem);
 export const CreateRitualBody = zod.object({
   name: zod.string(),
   description: zod.string().optional(),
-  frequency: zod.enum(["weekly", "biweekly", "monthly"]),
+  frequency: zod.enum(["once", "weekly", "biweekly", "monthly"]),
   dayPreference: zod.string().optional(),
   dayOfWeek: zod.enum(["MO", "TU", "WE", "TH", "FR", "SA", "SU"]).optional(),
   monthlyType: zod.enum(["day_of_month", "day_of_week_in_month"]).optional(),
@@ -108,7 +108,7 @@ export const GetRitualResponse = zod
     id: zod.number(),
     name: zod.string(),
     description: zod.string().nullish(),
-    frequency: zod.enum(["weekly", "biweekly", "monthly"]),
+    frequency: zod.enum(["once", "weekly", "biweekly", "monthly"]),
     dayPreference: zod.string().nullish(),
     location: zod.string().nullish(),
     participants: zod.array(
@@ -166,7 +166,7 @@ export const UpdateRitualParams = zod.object({
 export const UpdateRitualBody = zod.object({
   name: zod.string().optional(),
   description: zod.string().optional(),
-  frequency: zod.enum(["weekly", "biweekly", "monthly"]).optional(),
+  frequency: zod.enum(["once", "weekly", "biweekly", "monthly"]).optional(),
   dayPreference: zod.string().optional(),
   dayOfWeek: zod.enum(["MO", "TU", "WE", "TH", "FR", "SA", "SU"]).optional(),
   monthlyType: zod.enum(["day_of_month", "day_of_week_in_month"]).optional(),
@@ -188,7 +188,7 @@ export const UpdateRitualResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   description: zod.string().nullish(),
-  frequency: zod.enum(["weekly", "biweekly", "monthly"]),
+  frequency: zod.enum(["once", "weekly", "biweekly", "monthly"]),
   dayPreference: zod.string().nullish(),
   participants: zod.array(
     zod.object({

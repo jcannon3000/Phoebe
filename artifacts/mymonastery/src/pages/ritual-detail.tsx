@@ -361,12 +361,15 @@ export default function RitualDetail() {
 
   // ── Rhythm health ────────────────────────────────────────────────────────────
   const lastCompletedMeetup = timeline?.past.find(m => m.status === "completed") ?? null;
+  const isOneTime = ritual.frequency === "once";
   const rhythmDays = ritual.frequency === "biweekly" ? 14 : ritual.frequency === "monthly" ? 30 : 7;
-  const nextDueDate = lastCompletedMeetup
+  // One-time gatherings have no recurring rhythm to fall behind, so we
+  // never compute a "next due" date for them.
+  const nextDueDate = !isOneTime && lastCompletedMeetup
     ? addDays(parseISO(lastCompletedMeetup.scheduledDate), rhythmDays)
     : null;
   const daysUntilDue = nextDueDate ? differenceInDays(nextDueDate, new Date()) : null;
-  const isRhythmOverdue = daysUntilDue !== null && daysUntilDue < 0;
+  const isRhythmOverdue = !isOneTime && daysUntilDue !== null && daysUntilDue < 0;
   // Dots: up to 5 past cycles + 1 upcoming slot
   const pastDots = (timeline?.past ?? []).slice(0, 5).map(m =>
     m.status === "completed" ? "completed" as const : "missed" as const
@@ -385,7 +388,11 @@ export default function RitualDetail() {
               {/* Rhythm + since */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ border: "1px solid rgba(46,107,64,0.3)", color: "#8FAF96" }}>
-                  {ritual.frequency === "biweekly" ? "Biweekly" : ritual.frequency.charAt(0).toUpperCase() + ritual.frequency.slice(1)}
+                  {ritual.frequency === "once"
+                    ? "One-time"
+                    : ritual.frequency === "biweekly"
+                    ? "Biweekly"
+                    : ritual.frequency.charAt(0).toUpperCase() + ritual.frequency.slice(1)}
                 </span>
                 {(ritual as any).createdAt && (
                   <span className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
@@ -404,6 +411,7 @@ export default function RitualDetail() {
                 </p>
               )}
               {(() => {
+                const isOnce = ritual.frequency === "once";
                 const freqWord =
                   ritual.frequency === "biweekly" ? "biweekly" :
                   ritual.frequency === "weekly" ? "weekly" :
@@ -416,7 +424,7 @@ export default function RitualDetail() {
                   `met ${timesMet} times`;
                 return (
                   <p className="mt-1.5 text-xs" style={{ color: "rgba(143,175,150,0.65)" }}>
-                    A {freqWord} tradition · {metLabel}
+                    {isOnce ? "A one-time gathering" : `A ${freqWord} tradition`} · {metLabel}
                   </p>
                 );
               })()}
@@ -510,7 +518,9 @@ export default function RitualDetail() {
                   </p>
                   {!nextDueDate && (
                     <p className="text-sm mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                      Commit to a {ritual.frequency} rhythm by scheduling your first gathering.
+                      {ritual.frequency === "once"
+                        ? "Pick a date and place to make this gathering real."
+                        : `Commit to a ${ritual.frequency} rhythm by scheduling your first gathering.`}
                     </p>
                   )}
                 </div>

@@ -16,6 +16,7 @@ const TEMPLATE_OPTIONS = [
 ];
 
 const RHYTHM_OPTIONS = [
+  { value: "once", emoji: "📅", label: "Just once", tagline: "A single gathering, no rhythm" },
   { value: "weekly", emoji: "📅", label: "Every week", tagline: "A weekly commitment" },
   { value: "biweekly", emoji: "📅", label: "Every two weeks", tagline: "A fortnightly rhythm" },
   { value: "monthly", emoji: "📅", label: "Once a month", tagline: "A monthly anchor" },
@@ -42,7 +43,7 @@ export default function TraditionNew() {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedPeople, setSelectedPeople] = useState<{ name: string; email: string }[]>([]);
   const [newPeople, setNewPeople] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
-  const [rhythm, setRhythm] = useState("");
+  const [rhythm, setRhythm] = useState("once");
   const [firstPick, setFirstPick] = useState("");
   const [altTime1, setAltTime1] = useState("");
   const [altTime2, setAltTime2] = useState("");
@@ -50,7 +51,7 @@ export default function TraditionNew() {
   // alt-time coordination and just lock in the first pick. Flexible
   // keeps the existing flow of First Pick + two optional alternates
   // that members can weigh in on.
-  const [timeMode, setTimeMode] = useState<"fixed" | "flexible">("flexible");
+  const [timeMode, setTimeMode] = useState<"fixed" | "flexible">("fixed");
   const [firstLocation, setFirstLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -572,10 +573,12 @@ export default function TraditionNew() {
           {step === 5 && (
             <motion.div key="s5" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                When will you first gather? 🌿
+                {rhythm === "once" ? "When will you gather? 🌿" : "When will you first gather? 🌿"}
               </h1>
               <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>
-                {timeMode === "fixed"
+                {rhythm === "once"
+                  ? "Pick a date, time, and place."
+                  : timeMode === "fixed"
                   ? "This gathering meets at a set time. Just pick when."
                   : "Pick a time to meet. Alternates are optional — your group can weigh in."}
               </p>

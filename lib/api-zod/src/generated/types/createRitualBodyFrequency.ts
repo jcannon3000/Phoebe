@@ -10,6 +10,7 @@ export type CreateRitualBodyFrequency =
   (typeof CreateRitualBodyFrequency)[keyof typeof CreateRitualBodyFrequency];
 
 export const CreateRitualBodyFrequency = {
+  once: "once",
   weekly: "weekly",
   biweekly: "biweekly",
   monthly: "monthly",

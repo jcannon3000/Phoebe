@@ -35,10 +35,19 @@ export function computeStreak(meetups: Meetup[], frequency: string): StreakResul
   const lastMeetupDate = lastCompleted ? new Date(lastCompleted.scheduledDate as unknown as string).toISOString() : null;
 
   const now = new Date();
-  const frequencyDays = frequency === "weekly" ? 7 : frequency === "biweekly" ? 14 : 30;
 
   let nextMeetupDate: string | null = null;
   let status: "on_track" | "overdue" | "needs_scheduling" = "needs_scheduling";
+
+  // One-time gatherings have no rhythm to fall behind. They sit in
+  // needs_scheduling until they happen, then "on_track" forever after —
+  // we never compute a next date for them.
+  if (frequency === "once") {
+    status = lastMeetupDate ? "on_track" : "needs_scheduling";
+    return { streak, lastMeetupDate, status, nextMeetupDate };
+  }
+
+  const frequencyDays = frequency === "weekly" ? 7 : frequency === "biweekly" ? 14 : 30;
 
   if (lastMeetupDate) {
     const lastDate = new Date(lastMeetupDate);
