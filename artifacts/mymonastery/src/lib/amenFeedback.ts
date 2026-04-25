@@ -12,6 +12,7 @@
 
 let _audioCtx: AudioContext | null = null;
 let _unlockHookInstalled = false;
+let _visibilityHookInstalled = false;
 // Queue of audio attempts that fired before the AudioContext was
 // allowed to leave its "suspended" state. Replayed verbatim once the
 // first user gesture unlocks the context. Without this, the FIRST
@@ -63,6 +64,35 @@ function isAudioStillLocked(): boolean {
   return !!_audioCtx && _audioCtx.state === "suspended";
 }
 
+// Once an AudioContext has been unlocked by a user gesture, iOS/WKWebView
+// will let resume() succeed programmatically — but the context still gets
+// suspended whenever the app backgrounds (Home button, app switcher,
+// long idle on locked screen). Without this, the user comes back to
+// Phoebe and taps Amen but the bell falls onto a suspended context and
+// nothing plays. We listen for the app/page becoming visible again and
+// kick off resume() so the context is awake by the time the next sound
+// fires. Also drains any swells that queued up while suspended.
+function ensureVisibilityResume() {
+  if (_visibilityHookInstalled || typeof window === "undefined") return;
+  _visibilityHookInstalled = true;
+  const tryResume = () => {
+    if (!_audioCtx || _audioCtx.state !== "suspended") return;
+    _audioCtx.resume().then(() => {
+      const drained = _pendingAudio.splice(0, _pendingAudio.length);
+      for (const fn of drained) {
+        try { fn(); } catch { /* per-callback failure shouldn't block */ }
+      }
+    }).catch(() => { /* ignore — next user gesture will retry */ });
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") tryResume();
+  });
+  window.addEventListener("focus", tryResume);
+  window.addEventListener("pageshow", tryResume);
+  // Capacitor fires this when the native shell resumes the WebView.
+  document.addEventListener("resume", tryResume);
+}
+
 function playChurchBell() {
   try {
     type WindowWithWebkitAudio = Window &
@@ -73,6 +103,7 @@ function playChurchBell() {
     if (!_audioCtx) _audioCtx = new Ctx();
     const ctx = _audioCtx;
     ensureAudioUnlock();
+    ensureVisibilityResume();
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
@@ -175,11 +206,13 @@ export function triggerSubmitFeedback() {
     if (!_audioCtx) _audioCtx = new Ctx();
     const ctx = _audioCtx;
     ensureAudioUnlock();
+    ensureVisibilityResume();
     // If the context hasn't been unlocked by a user gesture yet, defer
     // the entire call rather than scheduling oscillators on a deaf
     // context — same fix as playOpeningSwell. Browser audio policy
     // applies on web too, not just iOS.
     if (isAudioStillLocked()) {
+      void ctx.resume().catch(() => { /* ignore */ });
       _pendingAudio.push(() => triggerSubmitFeedback());
       return;
     }
@@ -272,13 +305,16 @@ export function playOpeningSwell(octaveStep: number = 0) {
     // will be alive enough to actually make sound.
     if (!_audioCtx) _audioCtx = new Ctx();
     ensureAudioUnlock();
+    ensureVisibilityResume();
     if (isAudioStillLocked()) {
+      void _audioCtx.resume().catch(() => { /* ignore */ });
       _pendingAudio.push(() => playOpeningSwell(octaveStep));
       return;
     }
     if (!_audioCtx) _audioCtx = new Ctx();
     const ctx = _audioCtx;
     ensureAudioUnlock();
+    ensureVisibilityResume();
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
