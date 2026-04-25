@@ -71,8 +71,17 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
             style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
           >
-            {/* Close button */}
-            <div className="flex justify-end p-4 pb-2">
+            {/* Close button. The drawer spans the full viewport height
+                from top: 0, which on a notched iPhone puts this row
+                under the status bar / camera housing — users reported
+                the X was physically hard to tap. Pad the top by the
+                larger of 1rem and env(safe-area-inset-top) so the
+                button is always below the notch on native and stays
+                sensible on non-notched devices + web. */}
+            <div
+              className="flex justify-end px-4 pb-2"
+              style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+            >
               <button onClick={onClose} className="p-2 rounded-xl transition-colors" style={{ color: "#8FAF96" }}>
                 <X size={20} />
               </button>
