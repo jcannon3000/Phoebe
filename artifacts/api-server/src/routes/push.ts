@@ -1,8 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
 import { and, eq, sql } from "drizzle-orm";
-import { db, deviceTokensTable, usersTable } from "@workspace/db";
-import { deleteCalendarEvent } from "../lib/calendar";
+import { db, deviceTokensTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -59,24 +58,24 @@ router.post("/push/device-token", async (req, res): Promise<void> => {
       `token=${parsed.data.token.slice(0, 12)}…`
     );
 
-    // Once a user has a push channel, the bell calendar invite becomes
-    // redundant (and would double-notify). Remove any stale event we
-    // created earlier via /bell/preferences. Fire-and-forget so a
-    // calendar API blip doesn't fail the token-registration request.
-    (async () => {
-      try {
-        const [row] = await db.select({ bellCalendarEventId: usersTable.bellCalendarEventId })
-          .from(usersTable).where(eq(usersTable.id, user.id));
-        if (row?.bellCalendarEventId) {
-          await deleteCalendarEvent(user.id, row.bellCalendarEventId).catch(() => null);
-          await db.update(usersTable)
-            .set({ bellCalendarEventId: null })
-            .where(eq(usersTable.id, user.id));
-        }
-      } catch (err) {
-        console.warn("[push] bell calendar cleanup failed:", err);
-      }
-    })();
+    // Granting push permission is the bell opt-in. Auto-enable the
+    // morning bell at 07:00 local for any user who doesn't already have
+    // a time set — they don't opt in from onboarding anymore. We use
+    // COALESCE so a user who explicitly chose a different time keeps it
+    // on subsequent token re-registrations (token rotation, reinstalls).
+    // Same pass clears any stale calendar event ID — the calendar-invite
+    // path is gone, push is the only delivery channel now.
+    try {
+      await db.execute(sql`
+        UPDATE users
+        SET bell_enabled = TRUE,
+            daily_bell_time = COALESCE(daily_bell_time, '07:00'),
+            bell_calendar_event_id = NULL
+        WHERE id = ${user.id}
+      `);
+    } catch (err) {
+      console.warn("[push] bell auto-enable failed:", err);
+    }
 
     res.json({ ok: true });
   } catch (err) {

@@ -4,16 +4,12 @@ import { z } from "zod/v4";
 import {
   db, sharedMomentsTable, momentUserTokensTable,
   groupsTable, groupMembersTable, circleDailyFocusTable, circleIntentionsTable, usersTable,
-  deviceTokensTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
-import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
-import { sendDailyBellIcsInvite } from "../lib/email";
+import { deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
 import { runBellSender } from "../lib/bellSender";
 
 const router: IRouter = Router();
-
-const APP_URL = process.env["APP_URL"] ?? "https://withphoebe.app";
 
 // ─── Auth helper ────────────────────────────────────────────────────────────
 function getUser(req: any): { id: number } | null {
@@ -178,11 +174,13 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
 });
 
 // ─── PUT /api/bell/preferences — update bell settings ───────────────────────
+// Push-only since the calendar-invite path was retired. Granting push
+// permission auto-enables the bell at 07:00 (see /api/push/device-token);
+// this endpoint stays for users who want to change time / disable.
 router.put("/bell/preferences", async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-
 
     const schema = z.object({
       bellEnabled: z.boolean(),
@@ -191,208 +189,15 @@ router.put("/bell/preferences", async (req, res): Promise<void> => {
     });
 
     const parsed = schema.parse(req.body);
-    console.log(`[bell] PUT preferences for user ${user.id}:`, parsed);
 
-    // Get current user state via raw SQL
-    const u = await getBellUser(user.id);
-    if (!u) { res.status(404).json({ error: "User not found" }); return; }
-
-    const turningOn = parsed.bellEnabled && !u.bellEnabled;
-    const turningOff = !parsed.bellEnabled && u.bellEnabled;
-    const changingTime = parsed.bellEnabled && u.bellEnabled && u.bellCalendarEventId;
-
-    // ── Delete old bell calendar event if turning off or changing time ──
-    if ((turningOff || changingTime) && u.bellCalendarEventId) {
-      try {
-        await deleteCalendarEvent(user.id, u.bellCalendarEventId);
-        console.log(`[bell] Deleted old bell event ${u.bellCalendarEventId}`);
-      } catch { /* event may already be gone */ }
-      await pool.query(`UPDATE users SET bell_calendar_event_id = NULL WHERE id = $1`, [user.id]);
-    }
-
-    // ── When turning ON: remove ALL calendar events (practices, letters, gatherings) ──
-    if (turningOn) {
-      let removed = 0;
-
-      // 1. Practice-level calendar events (moment_user_tokens)
-      try {
-        const tokensResult = await pool.query(
-          `SELECT id, google_calendar_event_id FROM moment_user_tokens
-           WHERE LOWER(email) = LOWER($1) AND google_calendar_event_id IS NOT NULL`,
-          [u.email],
-        );
-        for (const t of tokensResult.rows) {
-          if (!t.google_calendar_event_id) continue;
-          try { await deleteCalendarEvent(user.id, t.google_calendar_event_id); removed++; } catch { /* non-fatal */ }
-          await pool.query(`UPDATE moment_user_tokens SET google_calendar_event_id = NULL WHERE id = $1`, [t.id]);
-        }
-      } catch (err) {
-        console.error("[bell] moment_user_tokens cleanup error (non-fatal):", err);
-      }
-
-      // 2. Per-window/letter calendar events (moment_calendar_events)
-      try {
-        // Find moment_member IDs for this user's email
-        const memberResult = await pool.query(
-          `SELECT mut.id AS token_id, mce.id AS mce_id, mce.google_calendar_event_id
-           FROM moment_user_tokens mut
-           JOIN moment_calendar_events mce ON mce.moment_member_id = mut.id
-           WHERE LOWER(mut.email) = LOWER($1) AND mce.google_calendar_event_id IS NOT NULL`,
-          [u.email],
-        );
-        for (const r of memberResult.rows) {
-          if (!r.google_calendar_event_id) continue;
-          try { await deleteCalendarEvent(user.id, r.google_calendar_event_id); removed++; } catch { /* non-fatal */ }
-          await pool.query(`UPDATE moment_calendar_events SET google_calendar_event_id = NULL WHERE id = $1`, [r.mce_id]);
-        }
-      } catch (err) {
-        console.error("[bell] moment_calendar_events cleanup error (non-fatal):", err);
-      }
-
-      // 3. Gathering/meetup calendar events (meetups) — for rituals the user created
-      try {
-        const meetupsResult = await pool.query(
-          `SELECT m.id, m.google_calendar_event_id
-           FROM meetups m
-           JOIN rituals r ON r.id = m.ritual_id
-           WHERE r.created_by = $1 AND m.google_calendar_event_id IS NOT NULL`,
-          [user.id],
-        );
-        for (const r of meetupsResult.rows) {
-          if (!r.google_calendar_event_id) continue;
-          try { await deleteCalendarEvent(user.id, r.google_calendar_event_id); removed++; } catch { /* non-fatal */ }
-          await pool.query(`UPDATE meetups SET google_calendar_event_id = NULL WHERE id = $1`, [r.id]);
-        }
-      } catch (err) {
-        console.error("[bell] meetups cleanup error (non-fatal):", err);
-      }
-
-      console.log(`[bell] Removed ${removed} total calendar events for user ${user.id}`);
-    }
-
-    // ── Create bell calendar event if turning on or changing time ──
-    // Two paths, tried in order:
-    //   1. Google Calendar API event on the invites@withphoebe.app
-    //      workspace mailbox (preferred — gives us RSVP tracking via
-    //      getCalendarEventAttendees in the GET handler).
-    //   2. Fallback: send a real calendar invite as a MIME email with
-    //      a text/calendar;method=REQUEST part + .ics attachment.
-    //
-    // EXCEPTION: users with an active APNs device token (Phoebe Mobile
-    // installed) skip the calendar invite entirely — the bell scheduler
-    // will deliver the reminder as a push instead. The calendar event
-    // stays the fallback for everyone without the mobile app.
-    let bellCalendarEventId: string | null = null;
-    let icsInviteSent = false;
-    const hasActiveToken = parsed.bellEnabled
-      ? (await db
-          .select({ id: deviceTokensTable.id })
-          .from(deviceTokensTable)
-          .where(and(
-            eq(deviceTokensTable.userId, user.id),
-            isNull(deviceTokensTable.invalidatedAt),
-          ))
-          .limit(1)).length > 0
-      : false;
-    if (hasActiveToken) {
-      console.log(`[bell] Skipping calendar event for user ${user.id} — push-enabled`);
-    }
-    if (parsed.bellEnabled && !hasActiveToken) {
-      const [hh, mm] = parsed.dailyBellTime.split(":").map(Number);
-      const tz = parsed.timezone;
-
-      const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-      const startLocalStr = `${todayStr}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`;
-      const endMm = mm + 5;
-      const endHh = hh + Math.floor(endMm / 60);
-      const endLocalStr = `${todayStr}T${String(endHh).padStart(2, "0")}:${String(endMm % 60).padStart(2, "0")}:00`;
-
-      try {
-        console.log(`[bell] Creating calendar event: ${startLocalStr} - ${endLocalStr} in ${tz}`);
-        bellCalendarEventId = await createCalendarEvent(user.id, {
-          summary: `🔔 Daily Bell — Phoebe`,
-          description: [
-            `A daily time to pause and pray with your community.`,
-            ``,
-            `Open Phoebe: ${APP_URL}`,
-          ].join("\n"),
-          startDate: new Date(),
-          startLocalStr,
-          endLocalStr,
-          attendees: [u.email],
-          timeZone: tz,
-          recurrence: ["RRULE:FREQ=DAILY"],
-          colorId: "2",
-          transparency: "transparent",
-          reminders: [
-            { method: "popup", minutes: 0 },
-          ],
-        }).catch((err) => {
-          console.error("[bell] Calendar event creation failed:", err);
-          return null;
-        });
-        console.log(`[bell] Calendar event result: ${bellCalendarEventId ?? "null (no event created)"}`);
-      } catch (err) {
-        console.error("[bell] Calendar event creation error:", err);
-      }
-
-      // Fallback: if the Google Calendar API call didn't create an event,
-      // email an ICS invite instead. This keeps the bell feature working
-      // for users whose accounts can't be reached via the workspace
-      // calendar path (missing refresh token, scope issues, etc.).
-      if (!bellCalendarEventId) {
-        try {
-          icsInviteSent = await sendDailyBellIcsInvite({
-            to: u.email,
-            userId: user.id,
-            timeZone: tz,
-            startLocalStr,
-            endLocalStr,
-            summary: "🔔 Daily Bell — Phoebe",
-            description: [
-              "A daily time to pause and pray with your community.",
-              "",
-              `Open Phoebe: ${APP_URL}`,
-            ].join("\n"),
-          });
-          console.log(`[bell] ICS email fallback: ${icsInviteSent ? "sent" : "failed"} for user ${user.id}`);
-        } catch (err) {
-          console.error("[bell] ICS email fallback error:", err);
-        }
-      }
-    }
-
-    // ── Save preferences via raw SQL ──
     await updateBellPrefs(user.id, {
       bellEnabled: parsed.bellEnabled,
       dailyBellTime: parsed.dailyBellTime,
       timezone: parsed.timezone,
-      bellCalendarEventId: parsed.bellEnabled ? bellCalendarEventId : null,
+      bellCalendarEventId: null,
     });
 
-    console.log(`[bell] Saved preferences for user ${user.id}, bellEnabled=${parsed.bellEnabled}`);
-
-    // Return enough for the client to show an honest confirmation.
-    // inviteSent is true if EITHER path succeeded — the user has a
-    // calendar invite on the way regardless of which channel delivered
-    // it. calendarStatus starts at "pending" (awaiting accept) when
-    // there's a real Google Calendar event to poll attendees for, or
-    // "ics-pending" when we fell back to an email invite (we have no
-    // RSVP signal to poll, so the status never auto-promotes — the
-    // user's acceptance just lands in their calendar directly).
-    const inviteSent = parsed.bellEnabled && (!!bellCalendarEventId || icsInviteSent);
-    let calendarStatus: "pending" | "ics-pending" | "none" = "none";
-    if (parsed.bellEnabled) {
-      if (bellCalendarEventId) calendarStatus = "pending";
-      else if (icsInviteSent) calendarStatus = "ics-pending";
-    }
-    res.json({
-      ok: true,
-      ...parsed,
-      inviteSent,
-      calendarStatus,
-      bellCalendarEventId: bellCalendarEventId ?? null,
-    });
+    res.json({ ok: true, ...parsed });
   } catch (err) {
     console.error("PUT /api/bell/preferences error:", err);
     res.status(500).json({ error: "Server error" });
