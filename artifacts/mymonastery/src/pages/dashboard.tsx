@@ -2575,6 +2575,10 @@ export default function Dashboard() {
   type DashPrayerRequest = {
     id: number; isAnswered: boolean; isOwnRequest?: boolean; closedAt?: string | null;
     ownerId?: number; ownerName?: string | null; ownerAvatarUrl?: string | null; isAnonymous?: boolean;
+    // True when THIS viewer has tapped Amen on this request today (in
+    // their tz). Drives the "X more prayers / Continue praying"
+    // partial-progress card state below.
+    myAmenedToday?: boolean;
   };
   type DashPrayerFor = {
     id: number; expired: boolean; expiresAt: string;
@@ -3346,12 +3350,26 @@ export default function Dashboard() {
               const key = `pfor-${p.recipientEmail ?? p.id}`;
               addFace(key, p.recipientName ?? "Someone", p.recipientAvatarUrl ?? null);
             }
+            // Partial-progress detection. The slideshow opens at the
+            // first un-prayed slide, so we count how many of the
+            // viewer-visible requests they HAVEN'T amened today —
+            // that's the number they'd see if they continue. Only
+            // surface "X more prayers / Continue praying" when at
+            // least one was prayed AND at least one remains.
+            const visibleReqs = (dashPrayerRequests ?? []).filter(
+              (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
+            );
+            const amenedTodayCount = visibleReqs.filter((r) => r.myAmenedToday === true).length;
+            const unPrayedCount = visibleReqs.length - amenedTodayCount;
+            const partialRemaining =
+              amenedTodayCount > 0 && unPrayedCount > 0 ? unPrayedCount : 0;
             return (
               <div className="mt-5">
                 <PrayerListCard
                   pendingCount={pendingPrayerCount}
                   streak={prayerStreak}
                   prayedToday={prayerListDoneToday}
+                  partialRemaining={partialRemaining}
                   faces={faces}
                   keyPrefix="anchor"
                 />
