@@ -572,6 +572,25 @@ export async function migrate() {
     // account for the rest of the local day.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_invite_last_shown_date TEXT`);
 
+    // ── Letter window pushes ───────────────────────────────────────────────
+    // Dedupe table for the scheduler that fires "your write window
+    // opened" (small_group, once per period) and "your reply window is
+    // still open" (one_to_one, fired N days after a letter you haven't
+    // responded to). One row per (correspondence, user, periodStart,
+    // kind) so a long-running scheduler tick or a redeploy can't
+    // double-push.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS letter_window_pushes (
+        id SERIAL PRIMARY KEY,
+        correspondence_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        period_start_date TEXT NOT NULL,
+        kind TEXT NOT NULL,                                -- "open" | "respond"
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS letter_window_pushes_uk ON letter_window_pushes (correspondence_id, user_id, period_start_date, kind)`);
+
     // ── Phone-number contact discovery ─────────────────────────────────────
     // Three columns:
     //   phone_number             — display form, what the user typed

@@ -83,6 +83,13 @@ if (process.env["DISABLE_BELL_SCHEDULER"] !== "true") {
   import("./lib/bellSender").then(({ startBellScheduler }) => startBellScheduler()).catch((err) => {
     logger.error({ err }, "[bell-scheduler] failed to boot");
   });
+  // Letter-window push scheduler — same gating env var (one switch
+  // turns off all background work for local dev). Sweeps every 15
+  // minutes for new periods opening (small_group) and 2-day-overdue
+  // respond reminders (one_to_one).
+  import("./lib/letterWindowSender").then(({ startLetterWindowScheduler }) => startLetterWindowScheduler()).catch((err) => {
+    logger.error({ err }, "[letter-window-scheduler] failed to boot");
+  });
 }
 
 app.use("/api", router);

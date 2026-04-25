@@ -368,23 +368,18 @@ export function sendPrayerForYouPush(recipientUserId: number) {
   });
 }
 
-// Fires per-recipient (not per-correspondence). The author is NOT in the
-// list — the caller filters them out. Tap deep-links into the letters
-// app's conversation view (for small_group) or directly into the write
-// surface (for one_to_one, where receiving a letter also opens the
-// recipient's write window — so the most useful next action is to
-// write back, not just read).
+// "{Name} wrote you a letter." Fires when a 1:1 letter arrives — read-
+// focused copy because the user might not be ready to reply right
+// away (a follow-up reminder push handles the "your turn is still
+// open" beat 2 days later, if they haven't written by then).
 //
-// Copy branches on group type:
-//   one_to_one  → "✨ {Name} wrote — your turn to write back."
-//   small_group → "✉️ You have a new letter / {Name} wrote in '{name}'."
+// Small_group letters do NOT push at all. Members get a separate
+// "your write window opened" push at the start of each new period
+// instead — a community feed isn't supposed to ping you every time
+// someone in it writes.
 //
-// The caller passes the letterId so we can set an APNs collapse-id.
-// With the collapse-id set, if we somehow send twice for the same
-// letter (a retry, a race, a second deploy firing the same hook),
-// iOS will REPLACE the earlier notification rather than stacking a
-// duplicate on the lock screen. One letter → one notification,
-// idempotently.
+// The caller passes the letterId for the APNs collapse-id so retries
+// / races / re-deploys can't double-notify.
 export function sendNewLetterPush(
   userId: number,
   opts: {
@@ -392,25 +387,54 @@ export function sendNewLetterPush(
     correspondenceId: number;
     correspondenceName: string;
     authorName: string;
-    isOneToOne?: boolean;
   }
 ) {
-  const oneToOne = opts.isOneToOne === true;
   return sendPushToUser(userId, {
-    title: oneToOne
-      ? `✨ ${opts.authorName} wrote — your turn`
-      : "✉️ You have a new letter",
-    body: oneToOne
-      ? `Open “${opts.correspondenceName}” to read and write back.`
-      : `${opts.authorName} wrote in “${opts.correspondenceName}.”`,
-    // 1:1 lands on /write so the recipient is one tap from the compose
-    // surface; group lands on the conversation view since multiple
-    // members might need to read first.
-    path: oneToOne
-      ? `/mail/correspondences/${opts.correspondenceId}/write`
-      : `/mail/correspondences/${opts.correspondenceId}`,
+    title: `✉️ ${opts.authorName} wrote you a letter`,
+    body: `Open “${opts.correspondenceName}” to read.`,
+    path: `/mail/correspondences/${opts.correspondenceId}`,
     threadId: `letter-${opts.correspondenceId}`,
     collapseId: `letter-${opts.letterId}`,
+    sound: "default",
+  });
+}
+
+// Follow-up reminder for a 1:1 correspondence. Fires N days after the
+// last incoming letter if the recipient still hasn't written back AND
+// the period is still open. Once per period per recipient — the
+// scheduler tracks via letter_window_pushes (kind = "respond").
+//
+// Copy is gentler than the initial "you got a letter" — assumes the
+// user already saw it and just needs the time/space prompt.
+export function sendLetterRespondReminderPush(
+  userId: number,
+  opts: { correspondenceId: number; correspondenceName: string; authorName: string },
+) {
+  return sendPushToUser(userId, {
+    title: `✨ ${opts.authorName} is waiting for you`,
+    body: `Your reply window is still open in “${opts.correspondenceName}.”`,
+    path: `/mail/correspondences/${opts.correspondenceId}/write`,
+    threadId: `letter-${opts.correspondenceId}`,
+    sound: "default",
+  });
+}
+
+// "Your write window just opened in {name}." Fires once per member at
+// the start of each small_group correspondence period. The period is
+// the 14-day cycle anchored to the correspondence's startedAt; the
+// scheduler computes current period start, and if no
+// letter_window_pushes row exists for (correspondence, user,
+// periodStart, kind="open") we push and insert the tracker.
+export function sendLetterPeriodOpenPush(
+  userId: number,
+  opts: { correspondenceId: number; correspondenceName: string; periodStartDate: string },
+) {
+  return sendPushToUser(userId, {
+    title: `✉️ Time to write in “${opts.correspondenceName}”`,
+    body: "Your group's write window is open.",
+    path: `/mail/correspondences/${opts.correspondenceId}/write`,
+    threadId: `letter-${opts.correspondenceId}`,
+    collapseId: `letter-period-open-${opts.correspondenceId}-${opts.periodStartDate}`,
     sound: "default",
   });
 }

@@ -79,3 +79,22 @@ export const letterRemindersTable = pgTable("letter_reminders", {
 ]);
 
 export type LetterReminder = typeof letterRemindersTable.$inferSelect;
+
+// Dedupe table for the letter-window push scheduler. Two kinds of
+// pushes go through it:
+//   "open"    — small_group: "your write window opened" at period start
+//   "respond" — one_to_one:  "your reply window is still open" 2 days
+//                            after the last incoming letter
+// One row per (correspondence, user, periodStart, kind).
+export const letterWindowPushesTable = pgTable("letter_window_pushes", {
+  id: serial("id").primaryKey(),
+  correspondenceId: integer("correspondence_id").notNull().references(() => correspondencesTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull(),
+  periodStartDate: text("period_start_date").notNull(),
+  kind: text("kind").notNull(),  // "open" | "respond"
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  unique("letter_window_pushes_uk").on(table.correspondenceId, table.userId, table.periodStartDate, table.kind),
+]);
+
+export type LetterWindowPush = typeof letterWindowPushesTable.$inferSelect;

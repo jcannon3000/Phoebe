@@ -663,16 +663,17 @@ router.post(
       // logs with PERMISSION_DENIED stack traces. Push is now the only
       // notification channel for "you have a new letter."
       void correspondenceUrl;
-      if (m.userId) {
+      // Push only on one_to_one — small_group members get a single
+      // "your write window opened" push at the start of each period
+      // instead, fired by the scheduled letter-window sweep. A
+      // community feed shouldn't ping you every time someone in it
+      // writes.
+      if (m.userId && correspondence.groupType === "one_to_one") {
         sendNewLetterPush(m.userId, {
           letterId: letter.id,
           correspondenceId,
           correspondenceName: correspondence.name,
           authorName: auth.name,
-          // For one_to_one a new letter == the recipient's write
-          // window opening; the push uses turn-focused copy + lands
-          // them on /write. For small_group it stays read-focused.
-          isOneToOne: correspondence.groupType === "one_to_one",
         }).catch((err) => console.error("Failed to send new letter push:", err));
       }
     }
