@@ -466,19 +466,14 @@ a:active,
   transform: scale(0.97);
 }
 
-/* Closing-slide background pulse — slow color breathe that marks the
-   end of the prayer slideshow. Cycles between the base #0C1F12 and a
-   slightly brighter green so it reads as "you arrived" without ever
-   becoming visually loud. ~3.2s round trip; infinite while the
-   closing slide is mounted. The peak color is the midpoint between
-   the base and the previous "loud" peak (#173626), so the pulse
-   amplitude is roughly half what it was — felt too pronounced before. */
-@keyframes closing-pulse {
-  0%, 100% { background-color: #0C1F12; }
-  50%      { background-color: #11291C; }
-}
+/* Closing-slide background — a static, slightly brighter green than
+   the base #0C1F12 so the slide reads as a quiet "you arrived" panel
+   without the active feel of the rest of the slideshow. The previous
+   version animated this color back and forth (a subtle breathe);
+   testers found even the soft version drew the eye more than the
+   moment wanted. Keep the warmer color, drop the motion. */
 .closing-pulse {
-  animation: closing-pulse 3.2s ease-in-out infinite;
+  background-color: #11291C;
 }
 
 /* Prayer-request avatar pulse — the border of an author's avatar
