@@ -44,32 +44,41 @@ export function LiturgicalDateHeader({ date }: { date?: Date }) {
 
   const dateLine = format(d, "EEEE, d MMMM");
   const dateLong = format(d, "EEEE, d MMMM yyyy");
+  void dateLong;
 
-  const isFeastHeader =
-    day.rank === "principal_feast" || day.rank === "holy_day" || day.rank === "sunday";
-
-  // Header layout by rank:
-  //  - Principal / Holy / Sunday: feast name primary, date subtitle
-  //    (the feast IS the day — surface it at the top).
-  //  - Lesser Feast: calendar date primary, "Feast of <name>, <year>"
-  //    as the muted subtitle. These are optional commemorations, so
-  //    the date stays the headline and the saint sits beneath it.
-  //  - Ferial: calendar date primary, seasonal label ("The Third
-  //    Week of Easter") as subtitle.
-  let primary: string;
+  // Header layout (post-tester feedback):
+  // The calendar date is ALWAYS the headline. The feast / commemoration /
+  // seasonal label always sits beneath it as the muted subtitle. The
+  // earlier behavior swapped the two for principal feasts and holy days,
+  // which read as visually inconsistent — the date jumping out of its
+  // home position depending on the kind of day. Now the structure is
+  // stable; only the subtitle text changes.
+  //
+  // Subtitle text by rank:
+  //  - Principal feast or holy day: "Feast of <name>" — even for the
+  //    biggest days like Saint Mark the Evangelist. The "Feast of"
+  //    prefix is what users explicitly asked for.
+  //  - Sunday: the day's seasonal label as-is (e.g. "The Third
+  //    Sunday of Easter"). No "Feast of" since the name already reads
+  //    naturally.
+  //  - Lesser feast: "Feast of <commemoration>" (with life dates if
+  //    we have them).
+  //  - Ferial: seasonal label if any, else nothing.
+  const primary = dateLine;
   let secondary: string | null;
-  if (isFeastHeader) {
-    primary = day.name;
-    secondary = dateLong;
+  if (day.rank === "principal_feast" || day.rank === "holy_day") {
+    secondary = `Feast of ${day.name}`;
+  } else if (day.rank === "sunday") {
+    secondary = day.name || null;
   } else if (day.commemoration) {
-    primary = dateLine;
     secondary = day.life
       ? `Feast of ${day.commemoration}, ${day.life}`
       : `Feast of ${day.commemoration}`;
   } else {
-    primary = dateLine;
     secondary = day.name || null;
   }
+  const isFeastHeader = false;
+  void isFeastHeader;
 
   // Tap-to-open-detail is paused per user request — the header is
   // display-only for now. The FeastDetailSheet + detailOpen state
