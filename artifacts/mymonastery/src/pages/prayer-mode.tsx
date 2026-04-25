@@ -215,7 +215,7 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
         </p>
         <p
           className="text-[14px] italic pr-7"
-          style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
+          style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           “{word}”
         </p>
@@ -449,7 +449,7 @@ function SlideContent({
         </p>
         <p
           className="text-[22px] leading-[1.5] font-medium italic"
-          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           Would you like to pray for one of your friends?
         </p>
@@ -521,7 +521,7 @@ function SlideContent({
         </p>
         <p
           className="text-[22px] leading-[1.5] font-medium italic"
-          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           How can the community pray for you?
         </p>
@@ -542,7 +542,7 @@ function SlideContent({
             background: "rgba(46,107,64,0.12)",
             border: "1px solid rgba(46,107,64,0.3)",
             color: "#F0EDE6",
-            fontFamily: "Playfair Display, Georgia, serif",
+            fontFamily: "'Space Grotesk', sans-serif",
             fontStyle: "italic",
             lineHeight: 1.65,
           }}
@@ -581,7 +581,7 @@ function SlideContent({
         </p>
         <p
           className="text-[22px] leading-[1.5] font-medium italic"
-          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           Your prayer for {slide.recipientName} has ended.
         </p>
@@ -640,7 +640,7 @@ function SlideContent({
         )}
         <p
           className="text-[22px] leading-[1.4] font-medium"
-          style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           {slide.recipientName}
         </p>
@@ -660,7 +660,7 @@ function SlideContent({
                   className="italic whitespace-pre-wrap"
                   style={{
                     color: "#C8D4C0",
-                    fontFamily: "Playfair Display, Georgia, serif",
+                    fontFamily: "'Space Grotesk', sans-serif",
                     fontSize: `${fit.size}px`,
                     lineHeight: fit.leading,
                   }}
@@ -698,17 +698,22 @@ function SlideContent({
           text. Intercession/circle slides skip this block. */}
       {slide.kind === "request" && (slide.authorName || slide.authorAvatarUrl) && (
         <div className="flex flex-col items-center gap-3">
+          {/* The author avatar's border pulses softly while their
+              prayer is on screen — a small "this is them" heartbeat
+              that ties the request body back to the person who asked.
+              Animation is a CSS keyframe (.prayer-avatar-pulse) that
+              breathes the border between the resting green and a
+              brighter green, ~2.4s per cycle, infinite. */}
           {slide.authorAvatarUrl ? (
             <img
               src={slide.authorAvatarUrl}
               alt={slide.authorName ?? "Prayer author"}
-              className="w-16 h-16 rounded-full object-cover"
-              style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+              className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
             />
           ) : (
             <div
-              className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold"
-              style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+              className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
+              style={{ background: "#1A4A2E", color: "#A8C5A0" }}
             >
               {(slide.authorName ?? "")
                 .split(" ")
@@ -718,7 +723,7 @@ function SlideContent({
             </div>
           )}
           {slide.authorName && (
-            <p className="text-[14px]" style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}>
+            <p className="text-[14px]" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
               {slide.authorName}
             </p>
           )}
@@ -738,7 +743,7 @@ function SlideContent({
 
       <p
         className="text-[22px] leading-[1.5] font-medium italic"
-        style={{ color: "#E8E4D8", fontFamily: "Playfair Display, Georgia, serif" }}
+        style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
       >
         {slide.text}
       </p>
@@ -840,7 +845,7 @@ function SlideContent({
                 className="italic"
                 style={{
                   color: "#C8D4C0",
-                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontFamily: "'Space Grotesk', sans-serif",
                   fontSize: `${fit.size}px`,
                   lineHeight: fit.leading,
                 }}
@@ -881,7 +886,7 @@ function SlideContent({
                 className="italic"
                 style={{
                   color: "#C8D4C0",
-                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontFamily: "'Space Grotesk', sans-serif",
                   fontSize: `${fit.size}px`,
                   lineHeight: fit.leading,
                 }}
@@ -1484,10 +1489,13 @@ export default function PrayerModePage() {
   // the user's second prayer today and no Duolingo card pops.
   useEffect(() => {
     if (phase !== "closing") return;
-    // Resolve the chord progression: every prior slide cycled
-    // 0 → 1 → 2 → 0 → … via slideIndex % 3, so the closing pad lands
-    // back on the base octave for a "we're home" feel.
-    playOpeningSwell(0);
+    // Continue the chord progression: each prior slide played
+    // `slideIndex % 3`, so the closing slide picks up where the last
+    // would have left off. Treat the closing as slide N+1 in the
+    // sequence — `slides.length % 3`. If the slideshow had 5 slides
+    // (0,1,2,0,1), the closing lands on 2; if it had 3, the closing
+    // lands back on 0 naturally.
+    playOpeningSwell(slides.length % 3);
     try {
       window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "heavy" } }));
     } catch { /* ignore */ }
@@ -1650,8 +1658,15 @@ export default function PrayerModePage() {
 
   return (
     <div
+      // Closing-slide background pulses gently to mark "you arrived" —
+      // a slow color breathe between the base #0C1F12 and a softly
+      // brighter green, ~3.2s per cycle, infinite while the closing
+      // slide is up. The pulse is implemented as a CSS animation on
+      // the .closing-pulse class (see index.css). Other phases keep
+      // the static background.
+      className={phase === "closing" ? "closing-pulse" : undefined}
       style={{
-        background: "#0C1F12",
+        background: phase === "closing" ? undefined : "#0C1F12",
         minHeight: "100dvh",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",

@@ -11,6 +11,39 @@
  */
 
 let _audioCtx: AudioContext | null = null;
+let _unlockHookInstalled = false;
+
+// iOS WKWebView (and Safari) only let an AudioContext leave the
+// "suspended" state from inside a handler that's running because of a
+// real user gesture. If the slideshow page is reached via a tap, the
+// context unlocks fine; but if the user reloads mid-slideshow (or
+// follows a deep-link), the context is created in a non-gesture
+// context and our `ctx.resume()` calls silently fail — and every
+// `playOpeningSwell()` call quietly produces nothing.
+//
+// Fix: install one-shot listeners for the next user interaction, and
+// resume the context from inside that handler. Once unlocked the
+// context stays unlocked for the lifetime of the page, so the
+// listeners self-remove on first fire.
+function ensureAudioUnlock() {
+  if (_unlockHookInstalled || typeof window === "undefined") return;
+  _unlockHookInstalled = true;
+  const unlock = () => {
+    try {
+      if (_audioCtx && _audioCtx.state === "suspended") {
+        void _audioCtx.resume();
+      }
+    } catch { /* ignore */ }
+    document.removeEventListener("touchend", unlock);
+    document.removeEventListener("pointerdown", unlock);
+    document.removeEventListener("click", unlock);
+    document.removeEventListener("keydown", unlock);
+  };
+  document.addEventListener("touchend", unlock, { passive: true });
+  document.addEventListener("pointerdown", unlock, { passive: true });
+  document.addEventListener("click", unlock);
+  document.addEventListener("keydown", unlock);
+}
 
 function playChurchBell() {
   try {
@@ -21,6 +54,7 @@ function playChurchBell() {
     if (!Ctx) return;
     if (!_audioCtx) _audioCtx = new Ctx();
     const ctx = _audioCtx;
+    ensureAudioUnlock();
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
@@ -122,6 +156,7 @@ export function triggerSubmitFeedback() {
     if (!Ctx) return;
     if (!_audioCtx) _audioCtx = new Ctx();
     const ctx = _audioCtx;
+    ensureAudioUnlock();
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
@@ -206,6 +241,7 @@ export function playOpeningSwell(octaveStep: number = 0) {
     if (!Ctx) return;
     if (!_audioCtx) _audioCtx = new Ctx();
     const ctx = _audioCtx;
+    ensureAudioUnlock();
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;

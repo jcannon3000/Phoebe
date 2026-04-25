@@ -458,3 +458,35 @@ a:active,
 .tap-shrink:active {
   transform: scale(0.97);
 }
+
+/* Closing-slide background pulse — slow color breathe that marks the
+   end of the prayer slideshow. Cycles between the base #0C1F12 and a
+   slightly brighter green so it reads as "you arrived" without ever
+   becoming visually loud. ~3.2s round trip; infinite while the
+   closing slide is mounted. */
+@keyframes closing-pulse {
+  0%, 100% { background-color: #0C1F12; }
+  50%      { background-color: #173626; }
+}
+.closing-pulse {
+  animation: closing-pulse 3.2s ease-in-out infinite;
+}
+
+/* Prayer-request avatar pulse — the border of an author's avatar
+   breathes softly while their request is on a slide. Pulls the user's
+   eye to "this person asked for this" without the staticness of a
+   plain ring. ~2.4s round trip; runs infinite while the slide is up. */
+@keyframes prayer-avatar-pulse {
+  0%, 100% {
+    border-color: rgba(46, 107, 64, 0.3);
+    box-shadow: 0 0 0 0 rgba(143, 175, 150, 0.0);
+  }
+  50% {
+    border-color: rgba(143, 175, 150, 0.85);
+    box-shadow: 0 0 0 4px rgba(143, 175, 150, 0.18);
+  }
+}
+.prayer-avatar-pulse {
+  border: 1px solid rgba(46, 107, 64, 0.3);
+  animation: prayer-avatar-pulse 2.4s ease-in-out infinite;
+}
