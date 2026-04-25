@@ -1178,13 +1178,16 @@ export default function SettingsPage() {
         <SectionHeader label="Account" />
         <AccountSection />
 
-        {/* ── Phone number — used for contact discovery so people who
-              already have you in their address book can find you on
-              Phoebe. Verification (SMS) isn't live yet, so the form
-              warns the user to enter their own real number only. */}
-        <div className="mb-8">
-          <PhoneSection />
-        </div>
+        {/* Phone number section temporarily hidden — SMS verification
+            isn't live yet, so collecting numbers does nothing useful and
+            seeing a "Save phone number" form on first launch confused
+            testers about whether they were required to provide one.
+            Re-enable once contact-discovery actually does something. */}
+        {false && (
+          <div className="mb-8">
+            <PhoneSection />
+          </div>
+        )}
 
         {/* ── Presence ── */}
         <div className="mb-8">
