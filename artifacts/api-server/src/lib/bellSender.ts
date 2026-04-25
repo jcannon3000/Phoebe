@@ -72,10 +72,16 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
         if (diff < 0 || diff >= 15) continue;
       }
 
+      // Dedup row is inserted ONLY after a successful push. If APNs
+      // throws (rare but happens — token rotation, network blip), we
+      // leave the slate clean so the next 15-min tick can retry.
+      // Inserting on failure means a single transient error silently
+      // mutes the user for the rest of the day.
       try {
         await sendBellPush(user.id);
       } catch (err) {
-        logger.warn({ err, userId: user.id }, "[bell] push dispatch failed");
+        logger.warn({ err, userId: user.id }, "[bell] push dispatch failed — skipping dedup insert so we retry next tick");
+        continue;
       }
 
       await db.insert(bellNotificationsTable).values({
@@ -153,7 +159,8 @@ export async function runEveningNudgeSender(): Promise<void> {
       try {
         await sendEveningNudgePush(user.id);
       } catch (err) {
-        logger.warn({ err, userId: user.id }, "[bell-evening] push dispatch failed");
+        logger.warn({ err, userId: user.id }, "[bell-evening] push dispatch failed — skipping dedup insert so we retry next tick");
+        continue;
       }
 
       await db.insert(bellNotificationsTable).values({
