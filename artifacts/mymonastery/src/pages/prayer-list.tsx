@@ -989,6 +989,27 @@ export default function PrayerListPage() {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
+  // Auto-open the DetailModal when arrived here via a deep link that
+  // carries `?detail=req:42` (or prayer-for / prayer-from). Used by
+  // push notifications — when a circle member leaves a word on
+  // someone's prayer request, the push payload's `path` is
+  // /prayer-list?detail=req:<id>, so tapping the notification lands
+  // the user directly inside the popup that holds the comment, not
+  // on the bare list. Re-runs when the search string changes so a
+  // second push (or a manual nav) reopens the right modal.
+  const search = typeof window !== "undefined" ? window.location.search : "";
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const raw = params.get("detail");
+    if (!raw) return;
+    const [kind, idStr] = raw.split(":");
+    const id = parseInt(idStr ?? "", 10);
+    if (Number.isNaN(id)) return;
+    if (kind === "req") setDetail({ kind: "request", id });
+    else if (kind === "prayer-for") setDetail({ kind: "prayer-for", id });
+    else if (kind === "prayer-from") setDetail({ kind: "prayer-from", id });
+  }, [search]);
+
   if (authLoading || !user) return null;
 
   // Filter each list with the same final-day rule we use elsewhere — a
