@@ -130,7 +130,7 @@
   --destructive-foreground: 42 25% 92%;
 
   --app-font-sans: 'Space Grotesk', sans-serif;
-  --app-font-serif: Georgia, 'Times New Roman', serif;
+  --app-font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --app-font-mono: Menlo, monospace;
 
   --radius: 1rem;
