@@ -6,6 +6,7 @@ import { NetworkBanner } from "@/components/NetworkBanner";
 import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { Component, useEffect, type ReactNode, type ErrorInfo } from "react";
 
 // Scroll the window to (0, 0) on every route change. Without this,
@@ -259,6 +260,29 @@ function DayBoundaryRefresh() {
   return null;
 }
 
+// Refresh react-query caches every time the iOS app returns to the
+// foreground — the native shell dispatches `phoebe:appactive` from
+// Capacitor's appStateChange. Without this, an app that sat in the
+// background overnight (or for a few minutes during a conversation)
+// re-paints its last frame with stale data: yesterday's "you've
+// already prayed" state, an unreceived comment, a closed letter that
+// still shows as open. Throttled to once every 5s so a quick app-
+// switch dance doesn't fire a refetch storm.
+function ForegroundRefresh() {
+  useEffect(() => {
+    let lastInvalidate = 0;
+    const onActive = () => {
+      const now = Date.now();
+      if (now - lastInvalidate < 5000) return;
+      lastInvalidate = now;
+      queryClient.invalidateQueries();
+    };
+    window.addEventListener("phoebe:appactive", onActive);
+    return () => window.removeEventListener("phoebe:appactive", onActive);
+  }, []);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -269,6 +293,8 @@ function App() {
           <ForegroundPushToast />
           <NetworkBanner />
           <DayBoundaryRefresh />
+          <ForegroundRefresh />
+          <PullToRefresh />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
             <Router />
