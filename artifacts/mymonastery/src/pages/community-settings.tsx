@@ -361,7 +361,7 @@ export default function CommunitySettingsPage() {
                     color: "rgba(200,212,192,0.7)",
                   }}
                 >
-                  <p className="text-xs italic" style={{ fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif" }}>
+                  <p className="text-xs italic" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
                     No intentions yet. Add the first prayer this circle holds.
                   </p>
                 </div>
@@ -382,7 +382,7 @@ export default function CommunitySettingsPage() {
                         className="text-sm leading-snug"
                         style={{
                           color: "#F0EDE6",
-                          fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                          fontFamily: "Georgia, 'Times New Roman', serif",
                           fontStyle: "italic",
                         }}
                       >
@@ -482,7 +482,7 @@ export default function CommunitySettingsPage() {
                     background: "rgba(46,107,64,0.12)",
                     border: "1px solid rgba(46,107,64,0.3)",
                     color: "#F0EDE6",
-                    fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                    fontFamily: "Georgia, 'Times New Roman', serif",
                     fontStyle: "italic",
                   }}
                 />
@@ -497,7 +497,7 @@ export default function CommunitySettingsPage() {
                         background: "rgba(46,107,64,0.12)",
                         border: "1px solid rgba(46,107,64,0.25)",
                         color: "rgba(200,212,192,0.8)",
-                        fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                        fontFamily: "Georgia, 'Times New Roman', serif",
                       }}
                     >
                       {ex}

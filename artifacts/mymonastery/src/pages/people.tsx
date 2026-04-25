@@ -291,7 +291,7 @@ function PersonCard({
                   </p>
                   <p
                     className="text-[13px] italic truncate"
-                    style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
+                    style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}
                   >
                     {activePrayerFor.prayerText}
                   </p>
@@ -327,7 +327,7 @@ function PersonCard({
                   </p>
                   <p
                     className="text-[13px] italic truncate"
-                    style={{ color: "#E8D9B0", fontFamily: "Playfair Display, Georgia, serif" }}
+                    style={{ color: "#E8D9B0", fontFamily: "Georgia, 'Times New Roman', serif" }}
                   >
                     {activePrayerForMe.prayerText}
                   </p>

@@ -857,7 +857,7 @@ export default function MomentDetail() {
                   </p>
                 )}
                 {moment.fastingIntention && (
-                  <p className="text-[13px] italic mt-1 leading-relaxed" style={{ color: "rgba(200,212,192,0.7)", fontFamily: "Playfair Display, Georgia, serif" }}>
+                  <p className="text-[13px] italic mt-1 leading-relaxed" style={{ color: "rgba(200,212,192,0.7)", fontFamily: "Georgia, 'Times New Roman', serif" }}>
                     {moment.fastingIntention}
                   </p>
                 )}
@@ -1015,7 +1015,7 @@ export default function MomentDetail() {
               className="italic whitespace-pre-wrap text-[15px] leading-[1.55]"
               style={{
                 color: "#C8D4C0",
-                fontFamily: "'Playfair Display', Georgia, serif",
+                fontFamily: "Georgia, 'Times New Roman', serif",
               }}
             >
               {moment.intercessionFullText}

@@ -248,7 +248,7 @@ export default function BcpIntercessionsPage() {
                 className="text-[15px] leading-[2] italic"
                 style={{
                   color: "#C8D4C0",
-                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontFamily: "Georgia, 'Times New Roman', serif",
                 }}
               >
                 {selectedPrayer.text}

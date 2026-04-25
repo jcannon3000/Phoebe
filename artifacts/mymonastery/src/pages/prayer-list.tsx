@@ -397,7 +397,7 @@ function PrayerForCard({ p, onOpen }: { p: MyActivePrayerFor; onOpen: () => void
           <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
             {p.recipientName}
           </p>
-          <p className="text-xs italic line-clamp-1" style={{ color: "#A8C5A0", fontFamily: "Playfair Display, Georgia, serif" }}>
+          <p className="text-xs italic line-clamp-1" style={{ color: "#A8C5A0", fontFamily: "Georgia, 'Times New Roman', serif" }}>
             {p.prayerText}
           </p>
         </div>
@@ -448,7 +448,7 @@ function PrayerFromCard({ p, onOpen }: { p: PrayerForMe; onOpen: () => void }) {
               className="text-[13px] italic leading-snug"
               style={{
                 color: "#E8D9B0",
-                fontFamily: "Playfair Display, Georgia, serif",
+                fontFamily: "Georgia, 'Times New Roman', serif",
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
@@ -688,7 +688,7 @@ function DetailModal({
               ) : (
                 <p
                   className="text-lg leading-relaxed italic mb-4"
-                  style={{ color: "#F0EDE6", fontFamily: "Playfair Display, Georgia, serif" }}
+                  style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif" }}
                 >
                   {req.body}
                 </p>
@@ -853,7 +853,7 @@ function DetailModal({
 
                 <p
                   className="text-base leading-relaxed italic mb-5"
-                  style={{ color: "#F0EDE6", fontFamily: "Playfair Display, Georgia, serif", whiteSpace: "pre-wrap" }}
+                  style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", whiteSpace: "pre-wrap" }}
                 >
                   {myFor.prayerText}
                 </p>
@@ -914,7 +914,7 @@ function DetailModal({
               {fromMe.prayerText && (
                 <p
                   className="text-base leading-relaxed italic"
-                  style={{ color: "#F0EDE6", fontFamily: "Playfair Display, Georgia, serif", whiteSpace: "pre-wrap" }}
+                  style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", whiteSpace: "pre-wrap" }}
                 >
                   {fromMe.prayerText}
                 </p>
@@ -1227,7 +1227,7 @@ export default function PrayerListPage() {
                   color: "#F0EDE6",
                   marginBottom: 22,
                   fontStyle: "italic",
-                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontFamily: "Georgia, 'Times New Roman', serif",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
                 }}
@@ -1392,7 +1392,7 @@ function PrayerListComposeBar() {
                   lineHeight: 1.5,
                   color: "rgba(240,237,230,0.9)",
                   fontStyle: "italic",
-                  fontFamily: "Playfair Display, Georgia, serif",
+                  fontFamily: "Georgia, 'Times New Roman', serif",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
                 }}

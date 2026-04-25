@@ -185,7 +185,7 @@ export default function CommunityNewPage() {
                         background: "rgba(46,107,64,0.12)",
                         border: "1px solid rgba(46,107,64,0.25)",
                         color: "rgba(200,212,192,0.8)",
-                        fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                        fontFamily: "Georgia, 'Times New Roman', serif",
                       }}
                     >
                       {ex}

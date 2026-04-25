@@ -235,7 +235,7 @@ export default function PrayerForNew() {
                       background: "#0F2818",
                       border: "1.5px solid rgba(46,107,64,0.35)",
                       color: "#F0EDE6",
-                      fontFamily: "Playfair Display, Georgia, serif",
+                      fontFamily: "Georgia, 'Times New Roman', serif",
                       fontStyle: "italic",
                       lineHeight: 1.6,
                     }}

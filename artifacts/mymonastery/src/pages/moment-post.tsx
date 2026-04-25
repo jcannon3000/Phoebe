@@ -507,7 +507,7 @@ function IntercessionPrayerPage({
           <motion.h1
             variants={headerItem}
             className="text-[22px] leading-[1.5] font-medium italic mb-2"
-            style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#E8E4D8" }}
+            style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#E8E4D8" }}
           >
             {topic}
           </motion.h1>
@@ -541,7 +541,7 @@ function IntercessionPrayerPage({
             >
               <p
                 className="text-[15px] leading-[1.8] italic whitespace-pre-wrap"
-                style={{ fontFamily: "Playfair Display, Georgia, serif", color: "#C8D4C0" }}
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#C8D4C0" }}
               >
                 {fullText}
               </p>
@@ -1142,7 +1142,7 @@ export default function MomentPostPage() {
             </h1>
             <p className="text-sm" style={{ color: "#8FAF96" }}>{todayStr}</p>
             {intentionLine && (
-              <p className="text-[13px] italic mt-2 leading-relaxed" style={{ color: "rgba(200,212,192,0.7)", fontFamily: "Playfair Display, Georgia, serif" }}>
+              <p className="text-[13px] italic mt-2 leading-relaxed" style={{ color: "rgba(200,212,192,0.7)", fontFamily: "Georgia, 'Times New Roman', serif" }}>
                 {intentionLine}
               </p>
             )}
@@ -1239,7 +1239,7 @@ export default function MomentPostPage() {
 
               {myPost?.reflectionText && (
                 <div className="mt-4 rounded-xl px-4 py-3" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.2)" }}>
-                  <p className="text-[13px] italic" style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}>
+                  <p className="text-[13px] italic" style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}>
                     "{myPost.reflectionText}"
                   </p>
                 </div>
@@ -1249,7 +1249,7 @@ export default function MomentPostPage() {
             <div className="flex-1 flex flex-col">
               {/* Rotating reflection */}
               <div className="rounded-xl px-4 py-3 mb-6" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.18)" }}>
-                <p className="text-[13px] italic leading-relaxed" style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}>
+                <p className="text-[13px] italic leading-relaxed" style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}>
                   {todayReflection}
                 </p>
               </div>

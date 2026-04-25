@@ -1299,7 +1299,7 @@ export default function CommunityDetailPage() {
                     className="text-sm italic leading-snug"
                     style={{
                       color: "#F0EDE6",
-                      fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif",
+                      fontFamily: "Georgia, 'Times New Roman', serif",
                     }}
                   >
                     {intn.title}

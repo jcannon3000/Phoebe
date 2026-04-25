@@ -502,7 +502,7 @@ function IntercessionMock() {
           className="text-[16px] md:text-[17px] leading-[1.5] font-medium italic mb-3"
           style={{
             color: "#E8E4D8",
-            fontFamily: "'Playfair Display', Georgia, serif",
+            fontFamily: "Georgia, 'Times New Roman', serif",
           }}
         >
           Margaret's mother, as she begins treatment this week.
@@ -536,7 +536,7 @@ function IntercessionMock() {
             className="text-[10px] leading-[1.75] italic"
             style={{
               color: "#C8D4C0",
-              fontFamily: "'Playfair Display', Georgia, serif",
+              fontFamily: "Georgia, 'Times New Roman', serif",
             }}
           >
             O Father of mercies and God of all comfort, look graciously upon
@@ -680,7 +680,7 @@ function LectioMock() {
           className="text-[11px] leading-[1.55] italic"
           style={{
             color: "#E8E4D8",
-            fontFamily: "'Playfair Display', Georgia, serif",
+            fontFamily: "Georgia, 'Times New Roman', serif",
           }}
         >
           …and their eyes were opened, and they recognized him. And he

@@ -268,7 +268,7 @@ export default function PrayerFeedDetailPage() {
             {todayEntry.scriptureRef && (
               <p
                 className="text-xs italic mt-3"
-                style={{ color: "#8FAF96", fontFamily: "var(--font-serif, 'Playfair Display'), Georgia, serif" }}
+                style={{ color: "#8FAF96", fontFamily: "Georgia, 'Times New Roman', serif" }}
               >
                 — {todayEntry.scriptureRef}
               </p>

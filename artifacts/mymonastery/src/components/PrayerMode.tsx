@@ -29,7 +29,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
         className="text-[22px] leading-[1.5] font-medium italic"
         style={{
           color: "#E8E4D8",
-          fontFamily: "Playfair Display, Georgia, serif",
+          fontFamily: "Georgia, 'Times New Roman', serif",
         }}
       >
         {slide.text}
@@ -55,7 +55,7 @@ function SlideContent({ slide, onAdvance }: { slide: PrayerSlide; onAdvance: () 
             className="text-[13px] leading-[1.85] italic"
             style={{
               color: "#C8D4C0",
-              fontFamily: "Playfair Display, Georgia, serif",
+              fontFamily: "Georgia, 'Times New Roman', serif",
             }}
           >
             {bcpPrayer.text}
@@ -195,7 +195,7 @@ export function PrayerMode({ intercessions, prayerRequests, onClose, onComplete 
               className="text-[15px] leading-[2] italic"
               style={{
                 color: "#C8D4C0",
-                fontFamily: "Playfair Display, Georgia, serif",
+                fontFamily: "Georgia, 'Times New Roman', serif",
               }}
             >
               {CLOSING_COLLECT}

@@ -1,11 +1,9 @@
 @import "@fontsource-variable/space-grotesk";
-/* Playfair Display — italic-only, used for prayer-request body text in
-   the slideshow so a written request reads as a written request. We
-   import only the weights/styles we actually use to keep the bundle
-   lean (default + italic 400/500). */
-@import "@fontsource/playfair-display/400.css";
-@import "@fontsource/playfair-display/400-italic.css";
-@import "@fontsource/playfair-display/500-italic.css";
+/* Serif slot is system Georgia — no web-font import needed. Georgia
+   ships on every Apple platform and is what the early parchment-era
+   build used; we're back to it for prayer-request bodies in the
+   slideshow because it reads as written-by-hand without the high
+   Didone contrast Playfair carried. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -130,7 +128,7 @@
   --destructive-foreground: 42 25% 92%;
 
   --app-font-sans: 'Space Grotesk', sans-serif;
-  --app-font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --app-font-serif: Georgia, 'Times New Roman', serif;
   --app-font-mono: Menlo, monospace;
 
   --radius: 1rem;

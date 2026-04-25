@@ -209,7 +209,7 @@ function PrayerDetail({
           className="text-base whitespace-pre-wrap"
           style={{
             color: "#F0EDE6",
-            fontFamily: "Playfair Display, Georgia, serif",
+            fontFamily: "Georgia, 'Times New Roman', serif",
             fontStyle: "italic",
             lineHeight: 1.65,
           }}

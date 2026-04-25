@@ -123,7 +123,7 @@ export default function WaitlistAdminPage() {
                   {entry.reason && (
                     <p
                       className="text-sm mt-2 italic leading-relaxed"
-                      style={{ color: "#C8D4C0", fontFamily: "Playfair Display, Georgia, serif" }}
+                      style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}
                     >
                       "{entry.reason}"
                     </p>
