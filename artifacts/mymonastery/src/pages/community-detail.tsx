@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 
@@ -1535,6 +1535,41 @@ export default function CommunityDetailPage() {
                       {linkCopied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
                     </button>
                   </div>
+
+                  {/* Send via Messages — pops the iOS share sheet (or
+                      Messages directly via `sms:`) with a pre-filled
+                      invite text. iMessage auto-renders the link preview
+                      because withphoebe.app serves Open Graph tags, so
+                      the recipient sees a real card, not a bare URL.
+                      The phoebe:share event is consumed by the native
+                      Capacitor shell; on plain web we fall back to the
+                      web Share API, then to a `sms:` URL as last resort. */}
+                  <button
+                    onClick={() => {
+                      const text = `You're invited to join ${group.name} on Phoebe — a small private circle for shared prayer. Tap to join:`;
+                      const shareDetail = { title: group.name, text, url: inviteUrl };
+                      // Native shell path — dispatched event, Capacitor
+                      // Share plugin opens the iOS share sheet.
+                      window.dispatchEvent(new CustomEvent("phoebe:share", { detail: shareDetail }));
+                      // Web fallback — try navigator.share, then sms:.
+                      const isNative = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
+                        .PhoebeNative?.isNative?.();
+                      if (isNative) return;
+                      const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
+                      if (typeof nav.share === "function") {
+                        void nav.share(shareDetail).catch(() => {
+                          // Cancelled or unsupported — fall through to sms:
+                          window.location.href = `sms:?body=${encodeURIComponent(`${text} ${inviteUrl}`)}`;
+                        });
+                      } else {
+                        window.location.href = `sms:?body=${encodeURIComponent(`${text} ${inviteUrl}`)}`;
+                      }
+                    }}
+                    className="w-full py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 mb-2"
+                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                  >
+                    <MessageSquareText size={14} /> Send via Messages
+                  </button>
 
                   <button
                     onClick={() => {
