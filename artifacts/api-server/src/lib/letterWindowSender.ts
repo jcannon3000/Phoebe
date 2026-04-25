@@ -24,7 +24,7 @@
 // inline at create time for one_to_one. Group letters do NOT push at
 // all on arrival; the period-open ping below is the only group push.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   db,
   correspondencesTable,
@@ -42,7 +42,17 @@ import { logger } from "./logger";
 
 export async function runLetterWindowSweep(): Promise<void> {
   const now = new Date();
-  const correspondences = await db.select().from(correspondencesTable);
+  // Only ACTIVE, NON-ARCHIVED correspondences. The previous sweep
+  // pulled all rows and was firing "Time to write" pushes for old
+  // test threads — a tester reported four duplicate pushes on the
+  // lock screen for various archived "Letters with X" experiments.
+  // Members of an archived correspondence are also archived (the
+  // member rows have an archivedAt timestamp), but the cleaner gate
+  // is on the correspondence itself.
+  const correspondences = await db.select()
+    .from(correspondencesTable)
+    .where(eq(correspondencesTable.isActive, true));
+  void isNull;
 
   for (const c of correspondences) {
     try {
@@ -55,10 +65,12 @@ export async function runLetterWindowSweep(): Promise<void> {
         .where(eq(correspondenceMembersTable.correspondenceId, c.id));
 
       if (c.groupType === "small_group") {
-        // Every joined member gets one push per period.
+        // Every joined member gets one push per period. small_group
+        // copy uses "Time to share with {correspondenceName}" — no
+        // recipient name to look up.
         for (const m of members) {
           if (!m.userId || !m.joinedAt) continue;
-          await pushOnce(c.id, m.userId, periodStartStr, c.name);
+          await pushOnce(c.id, m.userId, periodStartStr, c.name, /*isOneToOne*/ false);
         }
       } else {
         // one_to_one: push only the participant whose turn it currently
@@ -114,7 +126,11 @@ export async function runLetterWindowSweep(): Promise<void> {
             ? formatPeriodStartDateString(turn.windowOpenDate)
             : periodStartStr;
 
-          await pushOnce(c.id, m.userId, turnKey, c.name);
+          // 1:1 push names the OTHER participant: "Time to write Maya."
+          // Use their member name; fall back to email local-part if
+          // name is missing.
+          const recipientName = (other.name ?? other.email.split("@")[0] ?? "your friend").trim();
+          await pushOnce(c.id, m.userId, turnKey, c.name, /*isOneToOne*/ true, recipientName);
         }
       }
     } catch (err) {
@@ -131,6 +147,8 @@ async function pushOnce(
   userId: number,
   periodKey: string,
   correspondenceName: string,
+  isOneToOne: boolean,
+  recipientName?: string,
 ): Promise<void> {
   const [existing] = await db.select({ id: letterWindowPushesTable.id })
     .from(letterWindowPushesTable)
@@ -142,18 +160,27 @@ async function pushOnce(
     ));
   if (existing) return;
 
-  await sendLetterPeriodOpenPush(userId, {
-    correspondenceId,
-    correspondenceName,
-    periodStartDate: periodKey,
-  }).catch((err) => logger.warn({ err, userId, correspondenceId }, "[letter-window] open push failed"));
-
-  await db.insert(letterWindowPushesTable).values({
+  // Insert the dedupe row FIRST, then send. If insertion succeeds and
+  // the send fails, we'd rather miss one push than spam a user with
+  // four duplicates next tick (a tester reported four "Time to write
+  // in 'Letters with…'" pushes in a row from old archived threads).
+  // ON CONFLICT DO NOTHING means a race where two concurrent ticks both
+  // checked-then-inserted produces exactly one row + at most one push.
+  const ins = await db.insert(letterWindowPushesTable).values({
     correspondenceId,
     userId,
     periodStartDate: periodKey,
     kind: "open",
-  }).onConflictDoNothing();
+  }).onConflictDoNothing().returning({ id: letterWindowPushesTable.id });
+  if (ins.length === 0) return;  // another tick beat us to it
+
+  await sendLetterPeriodOpenPush(userId, {
+    correspondenceId,
+    correspondenceName,
+    periodStartDate: periodKey,
+    isOneToOne,
+    recipientName,
+  }).catch((err) => logger.warn({ err, userId, correspondenceId }, "[letter-window] open push failed"));
 }
 
 // Scheduler — same shape as bellSender. First tick 60s after boot,

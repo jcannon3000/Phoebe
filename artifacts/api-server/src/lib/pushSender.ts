@@ -419,19 +419,38 @@ export function sendLetterRespondReminderPush(
   });
 }
 
-// "Your write window just opened in {name}." Fires once per member at
-// the start of each small_group correspondence period. The period is
-// the 14-day cycle anchored to the correspondence's startedAt; the
-// scheduler computes current period start, and if no
-// letter_window_pushes row exists for (correspondence, user,
-// periodStart, kind="open") we push and insert the tracker.
+// Period-open push. Copy branches on group type so the title speaks
+// the right vocabulary:
+//   one_to_one  → "Time to write {recipientName}." (names the other
+//                 participant; that's the entire relationship, no
+//                 need to invoke the correspondence's title)
+//   small_group → "Time to share with {correspondenceName}." (the
+//                 group is the unit; "share" is more inclusive than
+//                 "write" for an audience that might also be reading
+//                 each other's posts)
+//
+// Fires once per member per period via the scheduler-side dedupe in
+// letter_window_pushes; the collapse-id is belt-and-suspenders.
 export function sendLetterPeriodOpenPush(
   userId: number,
-  opts: { correspondenceId: number; correspondenceName: string; periodStartDate: string },
+  opts: {
+    correspondenceId: number;
+    correspondenceName: string;
+    periodStartDate: string;
+    isOneToOne: boolean;
+    /** Other participant's display name — required when isOneToOne. */
+    recipientName?: string | null;
+  },
 ) {
+  const title = opts.isOneToOne
+    ? `✉️ Time to write ${opts.recipientName ?? "your friend"}`
+    : `✉️ Time to share with ${opts.correspondenceName}`;
+  const body = opts.isOneToOne
+    ? `Your reply window is open.`
+    : `Your group's write window is open.`;
   return sendPushToUser(userId, {
-    title: `✉️ Time to write in “${opts.correspondenceName}”`,
-    body: "Your group's write window is open.",
+    title,
+    body,
     path: `/mail/correspondences/${opts.correspondenceId}/write`,
     threadId: `letter-${opts.correspondenceId}`,
     collapseId: `letter-period-open-${opts.correspondenceId}-${opts.periodStartDate}`,
