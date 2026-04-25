@@ -11,7 +11,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 
-import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek, endOfWeek, addWeeks } from "date-fns";
+import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek, endOfWeek, addWeeks, differenceInCalendarDays } from "date-fns";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -767,8 +767,14 @@ function LetterCard({
   const shouldPulse = needsWrite || hasUnread;
 
   const windowOpenAt = (isOneToOne && c.windowOpenDate) ? new Date(c.windowOpenDate) : null;
+  // Count calendar-day boundaries between today and the open date so the
+  // user-perceived "days remaining" lines up with the calendar. Naive
+  // hour-math + ceil overcounts when the letter's timestamp sits later
+  // in the day than "now": April 23 22:00 + 7 days = April 30 22:00,
+  // and on April 25 11:00 the raw diff is ~5.46d → ceil = 6, but the
+  // user (looking at calendar dates) expects 5.
   const daysUntilOpen = (windowOpenAt && windowOpenAt.getTime() > Date.now())
-    ? Math.max(1, Math.ceil((windowOpenAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(1, differenceInCalendarDays(windowOpenAt, new Date()))
     : null;
 
   let statusText = "";
