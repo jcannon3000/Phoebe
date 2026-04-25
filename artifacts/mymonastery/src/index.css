@@ -470,10 +470,12 @@ a:active,
    end of the prayer slideshow. Cycles between the base #0C1F12 and a
    slightly brighter green so it reads as "you arrived" without ever
    becoming visually loud. ~3.2s round trip; infinite while the
-   closing slide is mounted. */
+   closing slide is mounted. The peak color is the midpoint between
+   the base and the previous "loud" peak (#173626), so the pulse
+   amplitude is roughly half what it was — felt too pronounced before. */
 @keyframes closing-pulse {
   0%, 100% { background-color: #0C1F12; }
-  50%      { background-color: #173626; }
+  50%      { background-color: #11291C; }
 }
 .closing-pulse {
   animation: closing-pulse 3.2s ease-in-out infinite;
