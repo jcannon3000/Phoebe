@@ -1476,8 +1476,22 @@ export default function PrayerModePage() {
   // The server is idempotent per TZ-local day — calling twice doesn't
   // double-count. If this is the first completion today, we pop the
   // Duolingo-style celebration with the new streak count.
+  //
+  // Also fire the audio + haptic moment that marks the conclusion: a
+  // resolving swell at the base octave (matches the opening) plus a
+  // heavy haptic. Independent of `firstToday` — every arrival on the
+  // closing slide should feel like crossing a threshold, even if it's
+  // the user's second prayer today and no Duolingo card pops.
   useEffect(() => {
     if (phase !== "closing") return;
+    // Resolve the chord progression: every prior slide cycled
+    // 0 → 1 → 2 → 0 → … via slideIndex % 3, so the closing pad lands
+    // back on the base octave for a "we're home" feel.
+    playOpeningSwell(0);
+    try {
+      window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "heavy" } }));
+    } catch { /* ignore */ }
+
     let cancelled = false;
     (async () => {
       try {
@@ -1489,7 +1503,8 @@ export default function PrayerModePage() {
         queryClient.invalidateQueries({ queryKey: ["/api/prayer-streak"] });
         if (body.firstToday) {
           setCelebration({ streak: body.streak });
-          // Success haptic on the celebration entrance.
+          // Success haptic on the celebration entrance — distinct
+          // beat from the heavy "you arrived" haptic above.
           try {
             window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } }));
           } catch { /* ignore */ }
