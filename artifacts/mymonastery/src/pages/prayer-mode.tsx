@@ -54,6 +54,11 @@ interface PrayerRequest {
   // Used by the slideshow to either show their existing word or offer
   // a compose field.
   myWord?: string | null;
+  // True if THIS viewer has tapped Amen on this request today (in
+  // their tz). Used to (a) start the slideshow at the next un-prayed
+  // request when the user partially completed it earlier, and (b)
+  // drive the dashboard's "X more prayers" partial-progress card.
+  myAmenedToday?: boolean;
 }
 
 interface PrayerSlide {
@@ -100,6 +105,11 @@ interface PrayerSlide {
   // members with avatars when the candidate pool is larger than
   // the visible slot count.
   communityFaces?: Array<{ name: string; email: string; avatarUrl: string | null }>;
+  // True if THIS viewer already prayed this slide today. The slideshow
+  // skips past these on entry so a partially-completed session resumes
+  // at the next un-prayed slide. We don't HIDE these slides — the user
+  // can still scroll/navigate back — we just pick the initial index.
+  alreadyPrayedToday?: boolean;
 }
 
 // One row from GET /api/groups/me/circle-intentions. Flattened across every
@@ -1372,6 +1382,7 @@ export default function PrayerModePage() {
         myWord: r.myWord ?? null,
         authorName: r.ownerName ?? null,
         authorAvatarUrl: r.ownerAvatarUrl ?? null,
+        alreadyPrayedToday: r.myAmenedToday === true,
       })),
     ...activePrayersFor.map((p): PrayerSlide => {
       // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
@@ -1431,7 +1442,15 @@ export default function PrayerModePage() {
     });
   }
 
-  const [index, setIndex] = useState(0);
+  // Resume-where-you-left-off: open at the first slide the viewer
+  // hasn't already prayed today. If they completed everything earlier,
+  // start from the top — they'll see the closing slide once they tap
+  // through. Computed lazily on mount so subsequent re-renders (e.g.
+  // a prayer-request mutation invalidating cache) don't reset position.
+  const [index, setIndex] = useState(() => {
+    const firstUnPrayed = slides.findIndex((s) => !s.alreadyPrayedToday);
+    return firstUnPrayed >= 0 ? firstUnPrayed : 0;
+  });
   const [phase, setPhase] = useState<"prayer" | "closing">("prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);

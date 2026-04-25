@@ -1667,6 +1667,7 @@ function PrayerListCard({
   keyPrefix,
   muted = false,
   prayedToday = false,
+  partialRemaining = 0,
   faces,
 }: {
   pendingCount: number;
@@ -1680,15 +1681,23 @@ function PrayerListCard({
   // slot instead of "Pray". Card keeps the same dimensions + accent
   // bar + streak chip so the home-screen anchor stays put.
   prayedToday?: boolean;
+  // Third state: > 0 when the user prayed SOME of today's slides but
+  // not all. Subtitle becomes "{N} more prayers" and CTA flips to
+  // "Continue praying". 0 means either fresh (use the default
+  // "X waiting" subtitle) or fully done (prayedToday handles that).
+  // The slideshow itself opens at the first un-prayed slide so this
+  // count matches what they'll see when they tap through.
+  partialRemaining?: number;
   // Up to 3 avatars of people whose prayers appear in today's
   // slideshow. Rendered on line 2 before the count text. Empty
   // array = no avatars shown.
   faces?: Array<{ key: string; name: string; avatarUrl: string | null }>;
 }) {
   const colors = CATEGORY_COLORS.practices;
-  const subtitle = pendingCount === 1
-    ? "1 prayer waiting for you"
-    : `${pendingCount} prayers waiting for you`;
+  const isPartial = partialRemaining > 0 && !prayedToday;
+  const subtitle = isPartial
+    ? (partialRemaining === 1 ? "1 more prayer" : `${partialRemaining} more prayers`)
+    : (pendingCount === 1 ? "1 prayer waiting for you" : `${pendingCount} prayers waiting for you`);
 
   return (
     <Link key={`${keyPrefix}-prayer-list`} href="/prayer-mode" className="block">
@@ -1839,7 +1848,7 @@ function PrayerListCard({
                   : "1px solid rgba(111,175,133,0.45)",
               }}
             >
-              {prayedToday ? "Pray again" : "Pray"}
+              {prayedToday ? "Pray again" : isPartial ? "Continue praying" : "Pray"}
               <span aria-hidden> →</span>
             </div>
           )}

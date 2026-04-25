@@ -115,14 +115,28 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     // is in a different tz.
     let amenCountToday: number | null = null;
     let amenCountTotal: number | null = null;
+    // Pull all amens once so we can derive both the owner-only counts
+    // and the per-viewer "did I amen this today?" flag without two
+    // round-trips. The viewer flag drives the slideshow's resume-
+    // where-you-left-off behavior + the dashboard "X more prayers"
+    // partial-progress card state.
+    const amens = await db
+      .select({
+        prayedAt: prayerRequestAmensTable.prayedAt,
+        userId: prayerRequestAmensTable.userId,
+      })
+      .from(prayerRequestAmensTable)
+      .where(eq(prayerRequestAmensTable.requestId, r.id));
+
+    let myAmenedToday = false;
+    for (const row of amens) {
+      if (row.userId !== sessionUserId) continue;
+      if (!row.prayedAt) continue;
+      const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
+      if (ymd === viewerTodayYmd) { myAmenedToday = true; break; }
+    }
+
     if (isOwnRequest) {
-      const amens = await db
-        .select({
-          prayedAt: prayerRequestAmensTable.prayedAt,
-          userId: prayerRequestAmensTable.userId,
-        })
-        .from(prayerRequestAmensTable)
-        .where(eq(prayerRequestAmensTable.requestId, r.id));
       const distinctUserDays = new Set<string>();
       const distinctUsersToday = new Set<number>();
       for (const row of amens) {
@@ -169,6 +183,11 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       needsRenewal,
       amenCountToday,
       amenCountTotal,
+      // True if THIS viewer (not anyone) has tapped Amen on this
+      // request today, in their own timezone. Drives the "skip
+      // already-prayed slides" resume + the dashboard partial-
+      // progress card state.
+      myAmenedToday,
     };
   }));
 

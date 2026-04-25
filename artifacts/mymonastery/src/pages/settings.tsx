@@ -110,6 +110,21 @@ function PhoneSection() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Native-only gate. Phone-number entry is a contact-discovery feature
+  // and the only way to populate it cleanly is "Use my number from iOS
+  // Contacts" — that path doesn't exist on the web build, so showing
+  // the form there is just an empty input asking for a number we have
+  // no way to verify. Hide the entire section unless we're inside the
+  // Capacitor shell (matching the MobileDeviceSection pattern below).
+  const [isNative, setIsNative] = useState(false);
+  useEffect(() => {
+    try {
+      const phoebeNative = (window as { PhoebeNative?: { isNative?: () => boolean } }).PhoebeNative;
+      if (phoebeNative?.isNative?.()) setIsNative(true);
+    } catch {
+      /* ignore */
+    }
+  }, []);
   // iOS-Contacts pre-fill state. We let the user verify by attestation:
   // tap "Use my number from iOS Contacts" → we read all contacts → find
   // the entry whose emails include the user's signed-in email → present
@@ -258,6 +273,8 @@ function PhoneSection() {
   }
 
   const current = user?.phoneNumber ?? null;
+
+  if (!isNative) return null;
 
   return (
     <SettingsCard>

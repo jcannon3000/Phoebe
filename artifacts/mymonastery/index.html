@@ -9,9 +9,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="canonical" href="https://withphoebe.app/" />
 
-    <!-- Icons -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <!-- Icons. We ship a PNG rendering of the iOS app icon as the
+         favicon so the browser tab + add-to-home-screen tile match
+         what the user sees on iOS. The earlier SVG was a plain orange
+         rectangle that didn't match the brand. -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
 
     <!-- Open Graph (iMessage, Slack, WhatsApp, Facebook, LinkedIn) -->
     <meta property="og:type" content="website" />

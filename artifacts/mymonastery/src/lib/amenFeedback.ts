@@ -209,9 +209,13 @@ export function playOpeningSwell(octaveStep: number = 0) {
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
-    const SWELL_IN = 1.0;
-    const HOLD     = 0.3;
-    const FADE_OUT = 1.1;
+    // ~6.4s total — matches the perceived length of the old four-pad
+    // opener (which was ~7s of evolving sound across overlapping pads)
+    // so each per-slide swell still feels like a full chapel exhale,
+    // not a brief chime.
+    const SWELL_IN = 2.5;
+    const HOLD     = 0.8;
+    const FADE_OUT = 3.1;
     const TOTAL    = SWELL_IN + HOLD + FADE_OUT;
 
     // Clamp the step to [0, 4] so a pathological caller can't set the
