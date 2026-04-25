@@ -669,6 +669,16 @@ function PhoneSection() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // iOS-Contacts pre-fill state. We let the user verify by attestation:
+  // tap "Use my number from iOS Contacts" → we read all contacts → find
+  // the entry whose emails include the user's signed-in email → present
+  // its phone numbers as one-tap buttons. The number must already exist
+  // in the user's own iOS Contacts under their own email, which is much
+  // stronger than self-attestation (anyone could type any number, but
+  // they can't trivially write to someone else's iOS Contacts).
+  const [iosStage, setIosStage] = useState<"idle" | "reading" | "no-native" | "denied" | "no-match" | "error">("idle");
+  const [iosCandidates, setIosCandidates] = useState<string[]>([]);
+  const [iosErrorMsg, setIosErrorMsg] = useState<string | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: (phone: string) =>
@@ -679,6 +689,9 @@ function PhoneSection() {
         prev ? { ...prev, phoneNumber: body.phoneNumber } : prev);
       setEditing(false);
       setError(null);
+      // Clear the iOS picker too — we've taken one of its candidates.
+      setIosCandidates([]);
+      setIosStage("idle");
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
@@ -702,6 +715,76 @@ function PhoneSection() {
     },
   });
 
+  // Wire native contact-event listeners. Mounted while the section is
+  // visible; cleaned on unmount. We branch on stage === "reading" so
+  // events fired by an unrelated dispatcher elsewhere in the app don't
+  // accidentally hijack our UI state.
+  useEffect(() => {
+    const userEmail = (user?.email ?? "").trim().toLowerCase();
+
+    function handleReady(e: Event) {
+      if (iosStage !== "reading") return;
+      const detail = (e as CustomEvent).detail as
+        | { contacts: Array<{ id: string; name: string; emails: string[]; phones: string[] }> }
+        | undefined;
+      const contacts = detail?.contacts ?? [];
+
+      // Find the contact(s) whose emails include this user's email.
+      // Their iOS contact card is the implicit "this is me" record.
+      // Fold the phones across any matching cards (a few users have
+      // duplicate cards for work + personal).
+      const phones = new Set<string>();
+      for (const c of contacts) {
+        const emails = (c.emails ?? []).map((e) => e.trim().toLowerCase());
+        if (emails.includes(userEmail)) {
+          for (const p of c.phones ?? []) {
+            const trimmed = p.trim();
+            if (trimmed) phones.add(trimmed);
+          }
+        }
+      }
+
+      if (phones.size === 0) {
+        setIosStage("no-match");
+        return;
+      }
+      setIosCandidates(Array.from(phones).slice(0, 6));
+      setIosStage("idle");
+    }
+    function handleDenied() {
+      if (iosStage !== "reading") return;
+      setIosStage("denied");
+    }
+    function handleError(e: Event) {
+      if (iosStage !== "reading") return;
+      const detail = (e as CustomEvent).detail;
+      setIosErrorMsg(detail instanceof Error ? detail.message : "Couldn't read contacts.");
+      setIosStage("error");
+    }
+
+    window.addEventListener("phoebe:contacts-ready", handleReady);
+    window.addEventListener("phoebe:contacts-denied", handleDenied);
+    window.addEventListener("phoebe:contacts-error", handleError);
+    return () => {
+      window.removeEventListener("phoebe:contacts-ready", handleReady);
+      window.removeEventListener("phoebe:contacts-denied", handleDenied);
+      window.removeEventListener("phoebe:contacts-error", handleError);
+    };
+  }, [iosStage, user?.email]);
+
+  function pickFromIosContacts() {
+    const isNative = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
+      .PhoebeNative?.isNative?.();
+    if (!isNative) {
+      setIosStage("no-native");
+      return;
+    }
+    setIosErrorMsg(null);
+    setIosCandidates([]);
+    setIosStage("reading");
+    window.dispatchEvent(new Event("phoebe:request-contacts"));
+  }
+
   const current = user?.phoneNumber ?? null;
 
   return (
@@ -711,7 +794,7 @@ function PhoneSection() {
       </p>
       <p className="text-xs mb-3" style={{ color: "#8FAF96" }}>
         People who have you in their contacts will be able to find you on
-        Phoebe. Use your own real number — we don't verify yet.
+        Phoebe.
       </p>
 
       {!editing && current && (
@@ -738,7 +821,78 @@ function PhoneSection() {
       )}
 
       {(editing || !current) && (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          {/* iOS Contacts pre-fill — only meaningful on the native shell.
+              The sequencer here is: idle → tap → reading → either we
+              get candidates (rendered as pick buttons) or one of the
+              error/denied/no-match states. Picking a candidate fires
+              saveMutation directly. */}
+          <button
+            onClick={pickFromIosContacts}
+            disabled={iosStage === "reading"}
+            className="w-full px-3 py-2.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}
+          >
+            {iosStage === "reading" ? "Reading your contacts…" : "📱 Use my number from iOS Contacts"}
+          </button>
+
+          {iosCandidates.length > 0 && (
+            <div className="space-y-2 pl-1">
+              <p className="text-[11px]" style={{ color: "#8FAF96" }}>
+                Found in your card. Tap one to use it:
+              </p>
+              {iosCandidates.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => saveMutation.mutate(p)}
+                  disabled={saveMutation.isPending}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm transition-opacity hover:opacity-80 disabled:opacity-50"
+                  style={{
+                    background: "rgba(46,107,64,0.12)",
+                    color: "#F0EDE6",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {iosStage === "no-match" && (
+            <p className="text-[11px]" style={{ color: "#8FAF96" }}>
+              We couldn't find a contact with your email ({user?.email}) in
+              your address book. Type your number below instead, or add
+              your own contact card in iOS Contacts and try again.
+            </p>
+          )}
+          {iosStage === "denied" && (
+            <p className="text-[11px]" style={{ color: "#C47A65" }}>
+              Phoebe doesn't have permission to read your contacts. Open
+              Settings → Phoebe → Contacts and turn it on.
+            </p>
+          )}
+          {iosStage === "no-native" && (
+            <p className="text-[11px]" style={{ color: "#8FAF96" }}>
+              Reading from iOS Contacts only works in the Phoebe app on
+              your phone.
+            </p>
+          )}
+          {iosStage === "error" && (
+            <p className="text-[11px]" style={{ color: "#C47A65" }}>
+              {iosErrorMsg ?? "Couldn't read contacts."}
+            </p>
+          )}
+
+          {/* Manual entry fallback — separated by a thin divider so the
+              two paths read as siblings, not as a primary + footnote. */}
+          <div className="flex items-center gap-2 my-1">
+            <div className="flex-1 h-px" style={{ background: "rgba(46,107,64,0.2)" }} />
+            <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.4)" }}>or type it</span>
+            <div className="flex-1 h-px" style={{ background: "rgba(46,107,64,0.2)" }} />
+          </div>
+
           <input
             type="tel"
             value={editing ? draft : ""}
