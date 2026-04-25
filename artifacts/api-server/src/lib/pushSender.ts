@@ -317,7 +317,7 @@ export function sendBellPush(userId: number) {
   return sendPushToUser(userId, {
     title: "🔔 Time to pray for your friends",
     body: "Open to begin praying for them and the world.",
-    path: "/prayer-list",
+    path: "/prayer-mode",
     threadId: "bell",
     sound: PHOEBE_SOUND,
   });
@@ -329,7 +329,7 @@ export function sendEveningNudgePush(userId: number) {
   return sendPushToUser(userId, {
     title: "🌙 Don't forget to pray for your friends",
     body: "A few minutes before the day closes.",
-    path: "/prayer-list",
+    path: "/prayer-mode",
     threadId: "bell",
     sound: PHOEBE_SOUND,
   });

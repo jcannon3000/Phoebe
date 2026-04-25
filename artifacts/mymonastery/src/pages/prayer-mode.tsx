@@ -1556,6 +1556,9 @@ export default function PrayerModePage() {
     // entries cycle to step 1, step 2, then back to 0 — see advance()
     // below for the per-slide calls.
     playOpeningSwell(0);
+    // Haptic on slideshow open — pairs with the swell so a push tap feels
+    // grounded the moment the first slide appears (not just when advancing).
+    window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } }));
     const t = setTimeout(() => setVisible(true), 30);
     return () => {
       body.style.overflow = prevBodyOverflow;
