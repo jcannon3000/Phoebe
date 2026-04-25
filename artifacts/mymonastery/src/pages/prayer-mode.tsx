@@ -1580,9 +1580,17 @@ export default function PrayerModePage() {
     const current = slides[index];
     if (current && current.kind === "request" && typeof current.requestId === "number") {
       const rid = current.requestId;
-      apiRequest("POST", `/api/prayer-requests/${rid}/amen`).catch(() => {
-        /* swallow — amen logging is best-effort, never blocks prayer flow */
-      });
+      apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
+        .then(() => {
+          // Refresh the prayer-requests cache so myAmenedToday flips to
+          // true. Drives the dashboard's partial-progress state ("X more
+          // prayers / Continue praying") and the slideshow's resume-where-
+          // you-left-off if the user re-enters mid-session.
+          queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+        })
+        .catch(() => {
+          /* swallow — amen logging is best-effort, never blocks prayer flow */
+        });
     }
     if (current && current.kind === "intercession" && current.momentToken && current.myUserToken) {
       const mt = current.momentToken;

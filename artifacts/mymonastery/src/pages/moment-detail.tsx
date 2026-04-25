@@ -624,7 +624,7 @@ export default function MomentDetail() {
   // the generic streak/log/sessions logic below doesn't apply.
   if (data.moment.templateType === "lectio-divina") return null;
 
-  const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, weekLogs, isCreator } = data;
+  const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, weekLogs, isCreator, group: momentGroup } = data;
 
   const parsedPracticeDays = parsePracticeDays(moment.practiceDays);
   const isIntercession = moment.templateType === "intercession";
@@ -773,7 +773,7 @@ export default function MomentDetail() {
               the anchor, and listing members becomes noisy.
               Intercessions also hide it: the "Prayed this week" pill
               row in the stats card below already lists members by name. */}
-          {members.length > 0 && !moment.group && !isIntercession && (() => {
+          {members.length > 0 && !momentGroup && !isIntercession && (() => {
             const togetherCount = windows.filter(w => w.postCount >= 2).length;
             const isPrayer = ["intercession", "morning-prayer", "evening-prayer"].includes(moment.templateType ?? "");
             const togetherVerb = isPrayer ? "prayed" : "practiced";
@@ -1774,7 +1774,7 @@ export default function MomentDetail() {
                   Showing (and letting the creator edit) a parallel
                   list was confusing and let the two sources of truth
                   drift apart. */}
-              {isCreator && !moment.group && members.length > 1 && (
+              {isCreator && !momentGroup && members.length > 1 && (
                 <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   <p className="text-sm font-medium text-foreground mb-3">Members</p>
                   <div className="space-y-2">

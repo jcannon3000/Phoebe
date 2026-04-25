@@ -106,7 +106,7 @@ const CATEGORY_COLORS: Record<Category, {
 }> = {
   letters: {
     bar: "#14402A",
-    border: "transparent",
+    border: "rgba(142,158,66,0.35)",
     bg: "rgba(20,64,42,0.25)",
     pulseClass: "animate-turn-pulse-letters",
     barPulseClass: "animate-bar-pulse-letters",
@@ -788,10 +788,11 @@ function LetterCard({
   }
 
   const lastLetter = c.recentLetters?.[0] ?? null;
-  const sentDateLine = lastLetter?.sentAt
-    ? `Sent ${format(parseISO(lastLetter.sentAt), "MMM d")}`
+  const lastLetterFromMe = lastLetter?.authorName === userName;
+  const lastLetterDateLine = lastLetter?.sentAt
+    ? `Letter ${lastLetterFromMe ? "sent" : "received"} on ${format(parseISO(lastLetter.sentAt), "MMMM d")}`
     : null;
-  const flapLines = [statusText, ...(sentDateLine ? [sentDateLine] : [])].filter(Boolean);
+  const flapLines = [statusText, ...(lastLetterDateLine ? [lastLetterDateLine] : [])].filter(Boolean);
   const letterLabel = isOneToOne ? `Letter ${Math.max(1, c.letterCount)}` : `Week ${c.currentPeriod.periodNumber}`;
 
   return (
@@ -848,6 +849,18 @@ function LetterCard({
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
             Write 🖋️
+          </span>
+        )}
+        {!hasUnread && !needsWrite && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setLocation(`/letters/${c.id}`); }}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setLocation(`/letters/${c.id}`); } }}
+            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
+            style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0" }}
+          >
+            View
           </span>
         )}
       </div>

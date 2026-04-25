@@ -282,9 +282,11 @@ export function Layout({ children }: { children: ReactNode }) {
             <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
               Phoebe
             </span>
-            <span className="text-[9px] font-semibold uppercase tracking-widest self-start mt-1.5" style={{ color: "rgba(143,175,150,0.45)", fontFamily: "'Space Grotesk', sans-serif" }}>
-              beta
-            </span>
+            {/* Header "beta" tag removed for App Store submission —
+                Apple sometimes flags this in production builds, and
+                "beta" lives in TestFlight, not on the app face. The
+                Letters nav-item beta badge stays since that one
+                feature is still actually pre-release. */}
           </Link>
         </div>
 

@@ -229,6 +229,34 @@ function Router() {
   );
 }
 
+// On iOS the WebView keeps yesterday's React state when the user re-opens
+// the app the next morning — react-query has no `refetchOnWindowFocus`
+// (we disabled it for Wi-Fi flakiness) and Capacitor doesn't auto-reload.
+// Result: the dashboard renders stale data — e.g. the prayer-list card
+// still says "Pray again" from yesterday's completion. Tracking the
+// calendar day on visibility change lets us invalidate everything once
+// per day boundary while leaving same-day re-entries alone.
+function DayBoundaryRefresh() {
+  useEffect(() => {
+    let lastDay = new Date().toDateString();
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const today = new Date().toDateString();
+      if (today !== lastDay) {
+        lastDay = today;
+        queryClient.invalidateQueries();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, []);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -238,6 +266,7 @@ function App() {
           <PushPermissionPrompt />
           <ForegroundPushToast />
           <NetworkBanner />
+          <DayBoundaryRefresh />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
             <Router />

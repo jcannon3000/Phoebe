@@ -9,6 +9,7 @@ import {
 import { pool } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
 import { sendDailyBellIcsInvite } from "../lib/email";
+import { runBellSender } from "../lib/bellSender";
 
 const router: IRouter = Router();
 
@@ -613,6 +614,21 @@ router.get("/bell/today", async (req, res): Promise<void> => {
     });
   } catch (err) {
     console.error("GET /api/bell/today error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ─── POST /api/bell/fire-now — immediately send bell to all enabled users ─────
+// Debug/admin endpoint. Bypasses the time-window check and the already-sent
+// dedup so you can force a push at any time to verify delivery.
+router.post("/bell/fire-now", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    await runBellSender({ forceNow: true });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /api/bell/fire-now error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
