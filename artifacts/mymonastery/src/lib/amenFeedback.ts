@@ -176,10 +176,22 @@ export function triggerSubmitFeedback() {
 }
 
 /**
- * Rising ambient swell — a low organ-like pad that crescendos over ~3s,
- * opening the prayer-list slideshow like a chapel exhaling. An open fifth
- * (A2 + E3 + A3) on sine + triangle waves, sent through a slowly
- * opening low-pass filter so the tone brightens as it rises.
+ * Rising ambient swell — a four-swell organ sequence that opens the
+ * prayer slideshow with three rising octaves and a final return to the
+ * base, like a chapel chord progression that climbs and resolves.
+ *
+ * Pattern (each swell is an open fifth — root, fifth, octave):
+ *   1. Base   (A2 / 110 Hz root)
+ *   2. +1 oct (A3 / 220 Hz root)
+ *   3. +2 oct (A4 / 440 Hz root)
+ *   4. Base   (A2 / 110 Hz root) — resolves back where we started
+ *
+ * Each swell is short (~1.6s in, 0.4s hold, 1.0s fade = ~3s) and they
+ * overlap by ~1.2s so the next pad joins while the previous is still
+ * ringing — that's what produces the rising-tide feel rather than four
+ * disconnected hits. Total runtime ≈ 7s, deliberately matched to the
+ * 7-second AmenButton pre-amen hold so the music settles right as the
+ * button lights up.
  *
  * Call on slideshow mount; fire-and-forget. Safe on web (plays) and
  * iOS (plays once the AudioContext resumes on the user gesture that
@@ -196,52 +208,81 @@ export function playOpeningSwell() {
     const ctx = _audioCtx;
     if (ctx.state === "suspended") void ctx.resume();
 
-    const now = ctx.currentTime;
-    const SWELL_IN = 2.8;    // crescendo duration
-    const HOLD     = 0.9;    // held at full volume
-    const FADE_OUT = 2.2;    // then fade to silence
-    const TOTAL    = SWELL_IN + HOLD + FADE_OUT;
+    const startTime = ctx.currentTime;
 
-    // Master gain — shapes the overall envelope.
-    const master = ctx.createGain();
-    master.gain.setValueAtTime(0, now);
-    master.gain.linearRampToValueAtTime(0.22, now + SWELL_IN);
-    master.gain.setValueAtTime(0.22, now + SWELL_IN + HOLD);
-    master.gain.exponentialRampToValueAtTime(0.0001, now + TOTAL);
+    // Per-swell envelope (in seconds). Total per swell ≈ 3.0s.
+    const SWELL_IN = 1.6;
+    const HOLD     = 0.4;
+    const FADE_OUT = 1.0;
+    const SWELL_TOTAL = SWELL_IN + HOLD + FADE_OUT;
 
-    // Slowly opening low-pass — the pad brightens as it rises.
+    // Stagger between swells. They overlap so each new pad joins while
+    // the previous one still has tail; that's what makes it feel like
+    // one rising thing rather than four separate notes.
+    const STAGGER = 1.7;
+
+    // Octave multipliers — base, +1 oct, +2 oct, back to base.
+    const octaves = [1, 2, 4, 1];
+
+    // Four-pad amplitude envelope: pull the higher pads back a touch
+    // so the +2-oct one doesn't shriek over a phone speaker. The
+    // resolving (4th) pad comes in slightly fuller for warmth.
+    const padGains = [0.20, 0.18, 0.14, 0.22];
+
+    // One slowly-opening low-pass for the whole sequence — keeps the
+    // brightness arc continuous across pads instead of resetting.
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
     lp.Q.value = 0.6;
-    lp.frequency.setValueAtTime(380, now);
-    lp.frequency.linearRampToValueAtTime(1600, now + SWELL_IN);
-    lp.frequency.linearRampToValueAtTime(900, now + TOTAL);
-    lp.connect(master).connect(ctx.destination);
+    const sequenceEnd = startTime + STAGGER * (octaves.length - 1) + SWELL_TOTAL;
+    lp.frequency.setValueAtTime(380, startTime);
+    lp.frequency.linearRampToValueAtTime(2400, startTime + (sequenceEnd - startTime) * 0.7);
+    lp.frequency.linearRampToValueAtTime(900, sequenceEnd);
+    lp.connect(ctx.destination);
 
-    // Open fifth — A2 (root), E3 (fifth), A3 (octave). The small upward
-    // pitch drift (+3 cents over the swell) gives a "breath" of lift.
-    const voices: Array<{ freq: number; type: OscillatorType; gain: number }> = [
-      { freq: 110, type: "sine",     gain: 0.55 },
-      { freq: 165, type: "triangle", gain: 0.28 },
-      { freq: 220, type: "sine",     gain: 0.22 },
-    ];
+    octaves.forEach((octMult, i) => {
+      const swellStart = startTime + i * STAGGER;
+      const peakAt     = swellStart + SWELL_IN;
+      const holdEnd    = peakAt + HOLD;
+      const fadeEnd    = holdEnd + FADE_OUT;
 
-    for (const v of voices) {
-      const osc = ctx.createOscillator();
-      osc.type = v.type;
-      osc.frequency.setValueAtTime(v.freq, now);
-      // Tiny upward glide — pitch rises ~0.3% during the swell, then
-      // settles. Organic, not obvious.
-      osc.frequency.linearRampToValueAtTime(v.freq * 1.003, now + SWELL_IN);
-      osc.frequency.linearRampToValueAtTime(v.freq, now + TOTAL);
+      // Per-pad gain envelope (its own crescendo + fade so they stack
+      // cleanly without the master clipping when they overlap).
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0, swellStart);
+      master.gain.linearRampToValueAtTime(padGains[i] ?? 0.18, peakAt);
+      master.gain.setValueAtTime(padGains[i] ?? 0.18, holdEnd);
+      master.gain.exponentialRampToValueAtTime(0.0001, fadeEnd);
+      master.connect(lp);
 
-      const vg = ctx.createGain();
-      vg.gain.value = v.gain;
+      // Open fifth at this octave — root, fifth, octave-up. The
+      // higher pads taper their voice gains a touch to keep the
+      // upper end from getting strident on tinny phone speakers.
+      const rootFreq = 110 * octMult;
+      const tipped = octMult >= 4 ? 0.85 : 1; // dampen +2-oct
+      const voices: Array<{ freq: number; type: OscillatorType; gain: number }> = [
+        { freq: rootFreq,         type: "sine",     gain: 0.55 * tipped },
+        { freq: rootFreq * 1.5,   type: "triangle", gain: 0.28 * tipped },
+        { freq: rootFreq * 2,     type: "sine",     gain: 0.22 * tipped },
+      ];
 
-      osc.connect(vg).connect(lp);
-      osc.start(now);
-      osc.stop(now + TOTAL + 0.1);
-    }
+      for (const v of voices) {
+        const osc = ctx.createOscillator();
+        osc.type = v.type;
+        osc.frequency.setValueAtTime(v.freq, swellStart);
+        // Same subtle ~0.3% upward drift as before — gives each pad
+        // a tiny "breath" rather than a static drone.
+        osc.frequency.linearRampToValueAtTime(v.freq * 1.003, peakAt);
+        osc.frequency.linearRampToValueAtTime(v.freq, fadeEnd);
+
+        const vg = ctx.createGain();
+        vg.gain.value = v.gain;
+
+        osc.connect(vg).connect(master);
+        osc.start(swellStart);
+        osc.stop(fadeEnd + 0.1);
+      }
+    });
   } catch {
     // Audio blocked / unsupported — silent fallback.
   }

@@ -298,21 +298,25 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
   );
 }
 
-// 3-second pause-before-Amen. When a slide first appears the button
+// 7-second pause-before-Amen. When a slide first appears the button
 // shows a dim green pill with a left-to-right progress wash and no
-// label. After 3 seconds the wash hits 100%, the button brightens,
+// label. After 7 seconds the wash hits 100%, the button brightens,
 // "Amen →" fades up, and a soft "light" haptic fires — distinct from
 // the medium-impact haptic that triggers on the tap itself, so the
 // reveal and the press feel like two different events.
 //
 // Why: tappers were ripping through the slideshow in a few seconds
 // without actually pausing on each prayer. The forced wait turns
-// each slide into a real moment of attention.
+// each slide into a real moment of attention. Bumped from 3s → 7s
+// after testing showed 3 was too short to actually settle into the
+// prayer — eyes finished reading and the hand was already on the
+// button. 7s gives enough room for a breath and a second pass through
+// the words. The CSS keyframe duration in index.css is kept in sync.
 //
 // Accepts a `slideKey` prop so the parent can force a remount-style
 // reset when the slide changes (we use the slide index).
 function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdvance: () => void }) {
-  const HOLD_MS = 3000;
+  const HOLD_MS = 7000;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

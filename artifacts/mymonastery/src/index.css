@@ -427,5 +427,34 @@ textarea:focus {
 }
 .amen-progress-fill {
   width: 0%;
-  animation: amen-progress-grow 3s linear forwards;
+  /* Kept in sync with HOLD_MS in pages/prayer-mode.tsx — both must
+     match or the wash will hit 100% before the button enables (or
+     after, leaving an awkward static-full bar). */
+  animation: amen-progress-grow 7s linear forwards;
+}
+
+/* Press feedback — every interactive surface (buttons, links, anything
+   marked role="button" or carrying the .tap-shrink helper) shrinks a
+   touch on tap, like it's being pushed in. Quick ease-out on the way
+   down so the press feels immediate; the same transition takes it back
+   on release. Disabled buttons skip the effect (nothing should "give"
+   under your finger if the action isn't available).
+   Cards rendered as <div onClick=...> need the .tap-shrink class
+   explicitly since CSS can't target click handlers; the SettingsCard
+   wrapper component already applies it for free. */
+button,
+a,
+[role="button"],
+.tap-shrink {
+  transition: transform 0.12s ease-out;
+  transform-origin: center;
+  /* Kill the default iOS Safari grey overlay on tap — we're providing
+     our own feedback now and the double-effect looks broken. */
+  -webkit-tap-highlight-color: transparent;
+}
+button:not(:disabled):active,
+a:active,
+[role="button"]:active,
+.tap-shrink:active {
+  transform: scale(0.97);
 }

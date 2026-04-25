@@ -21,7 +21,7 @@ function SectionHeader({ label }: { label: string }) {
 function SettingsCard({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-xl px-5 py-4 mb-3"
+      className="rounded-xl px-5 py-4 mb-3 tap-shrink"
       style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.18)" }}
     >
       {children}
