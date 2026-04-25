@@ -370,7 +370,14 @@ export function sendPrayerForYouPush(recipientUserId: number) {
 
 // Fires per-recipient (not per-correspondence). The author is NOT in the
 // list — the caller filters them out. Tap deep-links into the letters
-// app's conversation view.
+// app's conversation view (for small_group) or directly into the write
+// surface (for one_to_one, where receiving a letter also opens the
+// recipient's write window — so the most useful next action is to
+// write back, not just read).
+//
+// Copy branches on group type:
+//   one_to_one  → "✨ {Name} wrote — your turn to write back."
+//   small_group → "✉️ You have a new letter / {Name} wrote in '{name}'."
 //
 // The caller passes the letterId so we can set an APNs collapse-id.
 // With the collapse-id set, if we somehow send twice for the same
@@ -385,12 +392,23 @@ export function sendNewLetterPush(
     correspondenceId: number;
     correspondenceName: string;
     authorName: string;
+    isOneToOne?: boolean;
   }
 ) {
+  const oneToOne = opts.isOneToOne === true;
   return sendPushToUser(userId, {
-    title: "✉️ You have a new letter",
-    body: `${opts.authorName} wrote in “${opts.correspondenceName}.”`,
-    path: `/mail/correspondences/${opts.correspondenceId}`,
+    title: oneToOne
+      ? `✨ ${opts.authorName} wrote — your turn`
+      : "✉️ You have a new letter",
+    body: oneToOne
+      ? `Open “${opts.correspondenceName}” to read and write back.`
+      : `${opts.authorName} wrote in “${opts.correspondenceName}.”`,
+    // 1:1 lands on /write so the recipient is one tap from the compose
+    // surface; group lands on the conversation view since multiple
+    // members might need to read first.
+    path: oneToOne
+      ? `/mail/correspondences/${opts.correspondenceId}/write`
+      : `/mail/correspondences/${opts.correspondenceId}`,
     threadId: `letter-${opts.correspondenceId}`,
     collapseId: `letter-${opts.letterId}`,
     sound: "default",
@@ -451,3 +469,48 @@ export function sendNewGroupMomentPush(
     sound: "default",
   });
 }
+
+// First-ever amen on a brand-new prayer request — the moment the
+// owner's ask stops being theirs alone. Sender-anonymous (the request
+// owner gets the FEELING, not a name; community signal, not a
+// reply). Fires exactly once per request, gated server-side. The
+// collapse-id makes that exactness idempotent against any race.
+export function sendFirstAmenPush(
+  recipientUserId: number,
+  opts: { prayerRequestId: number },
+) {
+  return sendPushToUser(recipientUserId, {
+    title: "🌿 Your community is praying for you",
+    body: "The first prayer just went up for your request.",
+    path: "/prayer-list",
+    threadId: `prayer-request-${opts.prayerRequestId}`,
+    collapseId: `first-amen-${opts.prayerRequestId}`,
+    sound: "default",
+  });
+}
+
+// "3 people are praying for you today." Fires the moment the third
+// distinct (user, today-in-owner-tz) amen lands. Today is bucketed in
+// the owner's timezone so the count matches what they see in the UI.
+// Collapse-id includes the date so a request that crosses days can
+// fire on each new day, but only once per day.
+export function sendThirdAmenTodayPush(
+  recipientUserId: number,
+  opts: { prayerRequestId: number; localYmd: string },
+) {
+  return sendPushToUser(recipientUserId, {
+    title: "🙏🏽 3 people are praying for you today",
+    body: "Your request is being carried.",
+    path: "/prayer-list",
+    threadId: `prayer-request-${opts.prayerRequestId}`,
+    collapseId: `third-amen-${opts.prayerRequestId}-${opts.localYmd}`,
+    sound: "default",
+  });
+}
+
+// (`sendLetterWindowOpenPush` removed — for one-to-one correspondences
+// the moment a letter arrives IS the moment the recipient's write
+// window opens, so we just branch sendNewLetterPush below by group
+// type and use turn-focused copy. For small_group there's no "your
+// turn" — anyone can write any time during the period — so the
+// generic "you have a new letter" framing stays.)

@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
-import { sendPrayerWordPush } from "../lib/pushSender";
+import { sendPrayerWordPush, sendFirstAmenPush, sendThirdAmenTodayPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -511,17 +511,74 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   // was the only person touching the community, every amen was dropped
   // and the tiles stayed at zero. Every tap now records; the UI still
   // gets to decide whether to surface the author's own amen count.
+
+  // Push gating — TWO signals fire from the amen path, both gated to
+  // avoid the "12-person circle becomes a notification storm during
+  // morning prayer" failure mode the previous all-amens push had:
   //
-  // Note: Amens deliberately do NOT push the request author. Amens are
-  // a lightweight "I'm with you" signal — a tap, not a message — and
-  // notifying on every one would turn a 12-person circle into a
-  // notification storm during morning prayer. Written prayer-words
-  // (handled by POST /word) are the comment surface that does push.
+  //   1. First-ever amen on the request → "Your community is praying
+  //      for you." The moment the owner's ask stops being theirs alone.
+  //   2. Third distinct (user, today-in-owner-tz) amen on the request →
+  //      "3 people are praying for you today." Once per request per day.
+  //
+  // We pull all prior amens for this request before the insert so we
+  // can distinguish "first ever" from "user is back later in the day"
+  // and compute today's distinct-user count without a race.
+  const isOwnerSelfAmen = request.ownerId === sessionUserId;
+
+  let firstAmenFire = false;
+  let thirdTodayFire = false;
+  let ownerLocalYmd = "";
+
+  if (!isOwnerSelfAmen) {
+    const [owner] = await db.select({ timezone: usersTable.timezone })
+      .from(usersTable).where(eq(usersTable.id, request.ownerId));
+    const ownerTz = owner?.timezone || "UTC";
+    ownerLocalYmd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(new Date());
+
+    const prior = await db.select({
+      userId: prayerRequestAmensTable.userId,
+      prayedAt: prayerRequestAmensTable.prayedAt,
+    })
+      .from(prayerRequestAmensTable)
+      .where(eq(prayerRequestAmensTable.requestId, id));
+
+    firstAmenFire = prior.length === 0;
+
+    // Distinct users who already amened today (in owner's tz) BEFORE
+    // this insert. If this insert adds a NEW user-day pair AND the
+    // pre-count was exactly 2, we just hit 3 → fire.
+    const distinctTodayBefore = new Set<number>();
+    let sessionAlreadyToday = false;
+    for (const r of prior) {
+      if (!r.prayedAt) continue;
+      const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(r.prayedAt);
+      if (ymd !== ownerLocalYmd) continue;
+      distinctTodayBefore.add(r.userId);
+      if (r.userId === sessionUserId) sessionAlreadyToday = true;
+    }
+    thirdTodayFire = !sessionAlreadyToday && distinctTodayBefore.size === 2;
+  }
 
   await db.insert(prayerRequestAmensTable).values({
     requestId: id,
     userId: sessionUserId,
   });
+
+  if (firstAmenFire) {
+    sendFirstAmenPush(request.ownerId, { prayerRequestId: id }).catch((err) => {
+      console.warn("[prayer/amen] first-amen push failed:", err);
+    });
+  }
+  if (thirdTodayFire) {
+    sendThirdAmenTodayPush(request.ownerId, {
+      prayerRequestId: id,
+      localYmd: ownerLocalYmd,
+    }).catch((err) => {
+      console.warn("[prayer/amen] third-amen push failed:", err);
+    });
+  }
+
   res.json({ ok: true });
 });
 

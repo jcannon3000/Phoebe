@@ -669,6 +669,10 @@ router.post(
           correspondenceId,
           correspondenceName: correspondence.name,
           authorName: auth.name,
+          // For one_to_one a new letter == the recipient's write
+          // window opening; the push uses turn-focused copy + lands
+          // them on /write. For small_group it stays read-focused.
+          isOneToOne: correspondence.groupType === "one_to_one",
         }).catch((err) => console.error("Failed to send new letter push:", err));
       }
     }
