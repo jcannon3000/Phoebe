@@ -618,6 +618,29 @@ router.get("/bell/today", async (req, res): Promise<void> => {
   }
 });
 
+// ─── POST /api/bell/clear-today — wipe today's dedup row for caller ─────────
+// Debug endpoint. Lets us re-test the scheduled bell path on the same day:
+// after firing once via fire-now (or a real scheduled run), the
+// bell_notifications row blocks any further sends until tomorrow. This
+// removes that row so the next 15-min scheduler tick treats today as fresh.
+router.post("/bell/clear-today", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const u = await getBellUser(user.id);
+    const tz = u?.timezone ?? "America/New_York";
+    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    const r = await pool.query(
+      `DELETE FROM bell_notifications WHERE user_id = $1 AND bell_date IN ($2, $3)`,
+      [user.id, todayStr, `${todayStr}-evening`],
+    );
+    res.json({ ok: true, deleted: r.rowCount ?? 0, todayStr });
+  } catch (err) {
+    console.error("POST /api/bell/clear-today error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── POST /api/bell/fire-now — immediately send bell to all enabled users ─────
 // Debug/admin endpoint. Bypasses the time-window check and the already-sent
 // dedup so you can force a push at any time to verify delivery.
