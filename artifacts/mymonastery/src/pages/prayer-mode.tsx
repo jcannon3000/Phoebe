@@ -743,7 +743,18 @@ function SlideContent({
 
       <p
         className="text-[22px] leading-[1.5] font-medium italic"
-        style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
+        style={{
+          color: "#E8E4D8",
+          // Prayer-request bodies render in Playfair Display — the
+          // serif weight reads as a written-down request the way the
+          // app-wide Space Grotesk doesn't. Other slide kinds
+          // (intercessions, circle intentions) stay Space Grotesk to
+          // match the rest of the slideshow's chrome.
+          fontFamily:
+            slide.kind === "request"
+              ? "'Playfair Display', Georgia, serif"
+              : "'Space Grotesk', sans-serif",
+        }}
       >
         {slide.text}
       </p>

@@ -152,6 +152,42 @@ router.post(
       res.status(400).json({ error: "Duplicate emails" }); return;
     }
 
+    // Prevent duplicate active one_to_one correspondences between the same two people.
+    if (type === "one_to_one") {
+      const otherEmail = members[0].email.toLowerCase();
+      const myMemberships = await db
+        .select({ correspondenceId: correspondenceMembersTable.correspondenceId })
+        .from(correspondenceMembersTable)
+        .where(eq(correspondenceMembersTable.email, auth.email.toLowerCase()));
+
+      for (const { correspondenceId } of myMemberships) {
+        const [existing] = await db
+          .select()
+          .from(correspondencesTable)
+          .where(and(
+            eq(correspondencesTable.id, correspondenceId),
+            eq(correspondencesTable.isActive, true),
+            eq(correspondencesTable.groupType, "one_to_one"),
+          ));
+        if (!existing) continue;
+
+        const [otherMember] = await db
+          .select()
+          .from(correspondenceMembersTable)
+          .where(and(
+            eq(correspondenceMembersTable.correspondenceId, correspondenceId),
+            eq(correspondenceMembersTable.email, otherEmail),
+          ));
+        if (otherMember) {
+          res.status(409).json({
+            error: "duplicate_correspondence",
+            message: `You already have an active correspondence with ${members[0].name || otherEmail}.`,
+          });
+          return;
+        }
+      }
+    }
+
     const [correspondence] = await db
       .insert(correspondencesTable)
       .values({ name, createdByUserId: auth.userId, groupType: type })

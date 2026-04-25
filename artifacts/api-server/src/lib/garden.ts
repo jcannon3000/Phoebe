@@ -31,10 +31,25 @@ export async function getGardenUserIds(userId: number): Promise<number[]> {
   const myGroupIds = Array.from(new Set(myMemberships.map(r => r.groupId)));
 
   const groupPeerIds = new Set<number>();
+  // Per-group peer breakdown for diagnostics — when a user reports an
+  // empty garden we want to know whether they appear to be in zero
+  // groups, in groups with no other members, in groups whose other
+  // members have no Phoebe account yet, or in groups that get fully
+  // veto-filtered. Aggregate the raw row counts so we can tell which.
+  const peerDiag: Array<{
+    groupId: number;
+    rows: number;
+    rowsWithUserId: number;
+    rowsWithEmailMatch: number;
+    rowsResolved: number;
+  }> = [];
   if (myGroupIds.length > 0) {
     const peerRows = await db
       .select({
+        groupId: groupMembersTable.groupId,
         rowUserId: groupMembersTable.userId,
+        rowEmail: groupMembersTable.email,
+        rowRole: groupMembersTable.role,
         emailUserId: usersTable.id,
       })
       .from(groupMembersTable)
@@ -47,11 +62,31 @@ export async function getGardenUserIds(userId: number): Promise<number[]> {
         sql`(${groupMembersTable.role} IS NULL
              OR ${groupMembersTable.role} <> 'hidden_admin')`,
       ));
+    const byGroup = new Map<number, typeof peerRows>();
+    for (const row of peerRows) {
+      const list = byGroup.get(row.groupId) ?? [];
+      list.push(row);
+      byGroup.set(row.groupId, list);
+    }
+    for (const gid of myGroupIds) {
+      const rows = byGroup.get(gid) ?? [];
+      let withUserId = 0, withEmailMatch = 0, resolved = 0;
+      for (const row of rows) {
+        if (typeof row.rowUserId === "number") withUserId++;
+        if (typeof row.emailUserId === "number") withEmailMatch++;
+        const id = row.rowUserId ?? row.emailUserId;
+        if (typeof id === "number" && id !== userId) resolved++;
+      }
+      peerDiag.push({ groupId: gid, rows: rows.length, rowsWithUserId: withUserId, rowsWithEmailMatch: withEmailMatch, rowsResolved: resolved });
+    }
     for (const row of peerRows) {
       const id = row.rowUserId ?? row.emailUserId;
       if (typeof id === "number" && id !== userId) groupPeerIds.add(id);
     }
   }
+  console.log(
+    `[garden] viewer=${userId} email=${viewerEmail} groups=[${myGroupIds.join(",")}] peerDiag=${JSON.stringify(peerDiag)}`,
+  );
 
   const correspondentIds = await getCorrespondentUserIds(userId);
   for (const id of correspondentIds) {

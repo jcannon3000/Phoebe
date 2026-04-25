@@ -64,6 +64,12 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
   const isOneToOne = item.groupType === "one_to_one";
   const isOverdue = isOneToOne && item.turnState === "OVERDUE";
 
+  // Days until write window opens (Letter 3+ waiting state after receiving a letter)
+  const waitingDays = (isOneToOne && item.turnState === "WAITING" && item.windowOpenDate)
+    ? Math.max(0, Math.ceil((new Date(item.windowOpenDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const showCountdown = waitingDays !== null && waitingDays > 0;
+
   // Case-insensitive email comparison — otherwise the current user's own
   // row leaks into "otherMembers" when the stored email casing differs from
   // the auth email, producing titles like "Dialogue with test" where the
@@ -137,7 +143,13 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
             )}
           </div>
 
-          {unread && item.unreadPreview && (
+          {showCountdown && (
+            <p className="text-xs mt-1.5" style={{ color: "#8FAF96" }}>
+              You can reply in {waitingDays} day{waitingDays !== 1 ? "s" : ""}
+            </p>
+          )}
+
+          {unread && item.unreadPreview && !showCountdown && (
             <p className="text-sm mt-2 line-clamp-2 italic" style={{ color: "#8FAF96", fontFamily: isOneToOne ? "Georgia, serif" : undefined }}>
               {item.unreadPreview.content}
             </p>
