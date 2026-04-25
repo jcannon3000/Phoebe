@@ -268,7 +268,6 @@ type Slide =
   | { kind: "welcome" }
   | { kind: "profile-picture" }
   | InfoSlide
-  | { kind: "bell" }
   | { kind: "prayer-request" };
 
 const SLIDES: Slide[] = [
@@ -311,7 +310,6 @@ const SLIDES: Slide[] = [
     calm: true,
     footnote: "To mute someone, visit their profile in the People tab and tap Mute.",
   },
-  { kind: "bell" },
   { kind: "prayer-request" },
 ];
 
@@ -589,136 +587,6 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
 
       <p className="text-xs mt-3 mb-3" style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}>
         You can change this anytime in Settings.
-      </p>
-
-      <button
-        onClick={onNext}
-        className="text-sm transition-opacity hover:opacity-80"
-        style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
-      >
-        Skip for now
-      </button>
-    </div>
-  );
-}
-
-// ─── Bell slide (interactive) ─────────────────────────────────────────────────
-
-function BellSlide({ onNext }: { onNext: () => void }) {
-  const [hour, setHour] = useState(7);
-  const [ampm, setAmpm] = useState<"AM" | "PM">("AM");
-  const [saving, setSaving] = useState(false);
-
-  const to24h = (h: number, ap: "AM" | "PM") => {
-    if (ap === "AM") return h === 12 ? "00" : String(h).padStart(2, "0");
-    return h === 12 ? "12" : String(h + 12).padStart(2, "0");
-  };
-
-  async function handleSet() {
-    setSaving(true);
-    try {
-      const time = `${to24h(hour, ampm)}:00`;
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      await apiRequest(
-        "PUT",
-        "/api/bell/preferences",
-        { bellEnabled: true, dailyBellTime: time, timezone },
-      );
-      onNext();
-    } catch {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto w-full px-2">
-      <h2
-        className="text-2xl md:text-4xl font-semibold mb-4 leading-tight"
-        style={{ color: C.text, fontFamily: C.font }}
-      >
-        Your daily bell.
-      </h2>
-      <p
-        className="text-sm md:text-base leading-relaxed font-light mb-10"
-        style={{ color: C.sage, fontFamily: C.font }}
-      >
-        Like a monastery bell that calls you to prayer, Phoebe will ring once a day at a time you choose. Five minutes. Whatever practices are waiting will be there. One notification, one rhythm, one daily touchpoint.
-      </p>
-
-      {/* Time picker */}
-      <div
-        className="rounded-2xl px-8 py-6 mb-3 w-full max-w-xs"
-        style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}
-      >
-        <div className="flex items-center justify-center gap-4">
-          {/* Hour stepper */}
-          <div className="flex flex-col items-center gap-1">
-            <button
-              onClick={() => setHour(h => h === 12 ? 1 : h + 1)}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
-              style={{ background: "rgba(46,107,64,0.25)", color: C.sage }}
-            >
-              ▲
-            </button>
-            <span
-              className="text-5xl font-bold tabular-nums w-16 text-center"
-              style={{ color: C.text, fontFamily: C.font, letterSpacing: "-0.03em" }}
-            >
-              {String(hour).padStart(2, "0")}
-            </span>
-            <button
-              onClick={() => setHour(h => h === 1 ? 12 : h - 1)}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
-              style={{ background: "rgba(46,107,64,0.25)", color: C.sage }}
-            >
-              ▼
-            </button>
-          </div>
-
-          <span className="text-4xl font-light mb-0.5" style={{ color: "rgba(143,175,150,0.4)" }}>:</span>
-
-          <span
-            className="text-5xl font-bold tabular-nums w-16 text-center"
-            style={{ color: "rgba(143,175,150,0.3)", fontFamily: C.font, letterSpacing: "-0.03em" }}
-          >
-            00
-          </span>
-
-          {/* AM/PM toggle */}
-          <div className="flex flex-col gap-1.5 ml-2">
-            {(["AM", "PM"] as const).map(ap => (
-              <button
-                key={ap}
-                onClick={() => setAmpm(ap)}
-                className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all"
-                style={{
-                  background: ampm === ap ? "#2D5E3F" : "rgba(46,107,64,0.12)",
-                  color: ampm === ap ? C.text : C.sage,
-                  border: `1px solid ${ampm === ap ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.18)"}`,
-                }}
-              >
-                {ap}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="text-xs mt-4" style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}>
-          You can change this anytime in your settings.
-        </p>
-      </div>
-
-      {/* Set button */}
-      <motion.button
-        onClick={handleSet}
-        disabled={saving}
-        className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60"
-        style={{ background: "#2D5E3F", color: C.text }}
-      >
-        {saving ? "Setting…" : "Set my bell"}
-      </motion.button>
-
-      <p className="text-xs mt-2 mb-4" style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}>
-        One notification a day. No more.
       </p>
 
       <button
@@ -1059,7 +927,6 @@ export default function UserOnboarding() {
   const slide = SLIDES[index];
   const isFirst = index === 0;
   const isInteractive =
-    slide.kind === "bell" ||
     slide.kind === "prayer-request" ||
     slide.kind === "profile-picture";
 
@@ -1071,8 +938,6 @@ export default function UserOnboarding() {
         return <ProfilePictureSlide onNext={next} />;
       case "info":
         return <InfoSlideView slide={slide} />;
-      case "bell":
-        return <BellSlide onNext={next} />;
       case "prayer-request":
         return <PrayerRequestSlide onComplete={completeOnboarding} preview={isPreview} />;
     }

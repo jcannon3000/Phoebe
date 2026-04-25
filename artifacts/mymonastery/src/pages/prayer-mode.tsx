@@ -1499,7 +1499,10 @@ export default function PrayerModePage() {
     const prevMeta = meta?.getAttribute("content") ?? "#091A10";
     meta?.setAttribute("content", SLIDE_BG);
     // Rising ambient swell — the chapel exhaling as the slideshow opens.
-    playOpeningSwell();
+    // First slide always plays the base octave (step 0). Subsequent slide
+    // entries cycle to step 1, step 2, then back to 0 — see advance()
+    // below for the per-slide calls.
+    playOpeningSwell(0);
     const t = setTimeout(() => setVisible(true), 30);
     return () => {
       body.style.overflow = prevBodyOverflow;
@@ -1547,7 +1550,14 @@ export default function PrayerModePage() {
     setSlideVisible(false);
     setTimeout(() => {
       if (index < slides.length - 1) {
-        setIndex((i) => i + 1);
+        const nextIndex = index + 1;
+        setIndex(nextIndex);
+        // Per-slide rising swell — cycles through 3 octave steps so
+        // the chord climbs slide-by-slide (0 → +1 → +2) and resolves
+        // back to base on every fourth slide. The first slide already
+        // played octave 0 on mount; this fires for every subsequent
+        // entry. Fire-and-forget; safe on web + iOS.
+        playOpeningSwell(nextIndex % 3);
       } else {
         setPhase("closing");
       }

@@ -1,11 +1,11 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight } from "lucide-react";
-import { useDemoFlag, useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
+import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -50,7 +50,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     ...(isBetaAdmin ? [
       { emoji: "🔐", label: "Pilot Users", path: "/beta" },
       { emoji: "📜", label: "Waitlist",    path: "/waitlist" },
-      { emoji: "🔔", label: "Bells",       path: "/bells-admin" },
     ] : []),
     { emoji: "ℹ️", label: "About",       path: "/church-deck"  },
   ];
@@ -246,171 +245,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-// ─── Bell Nudge Popup ────────────────────────────────────────────────────────
-// Shows once per day for beta users who either:
-// 1. Haven't activated the Daily Bell yet
-// 2. Have activated but haven't accepted the calendar invite (pending/tentative)
-
-const BELL_DISMISS_KEY = "phoebe:bell-nudge-dismissed";
-const BELL_ACCEPT_DISMISS_KEY = "phoebe:bell-accept-nudge-dismissed";
-
-function BellNudge() {
-  const { user } = useAuth();
-  const [, setLocation] = useLocation();
-  const [visible, setVisible] = useState(false);
-  const [nudgeType, setNudgeType] = useState<"setup" | "accept">("setup");
-
-  const { data: bellPrefs } = useQuery<{ bellEnabled: boolean; calendarStatus?: string }>({
-    queryKey: ["/api/bell/preferences"],
-    queryFn: () => apiRequest("GET", "/api/bell/preferences"),
-    enabled: !!user,
-  });
-
-  useEffect(() => {
-    if (!user || !bellPrefs) return;
-
-    const today = new Date().toISOString().slice(0, 10);
-
-    // Priority 1: Bell is active but invite not accepted (pending/tentative)
-    if (bellPrefs.bellEnabled && (bellPrefs.calendarStatus === "pending" || bellPrefs.calendarStatus === "tentative")) {
-      const lastDismissed = localStorage.getItem(BELL_ACCEPT_DISMISS_KEY);
-      if (lastDismissed === today) return;
-      setNudgeType("accept");
-      const timer = setTimeout(() => setVisible(true), 1500);
-      return () => clearTimeout(timer);
-    }
-
-    // Priority 2: Bell not activated yet
-    if (!bellPrefs.bellEnabled) {
-      const lastDismissed = localStorage.getItem(BELL_DISMISS_KEY);
-      if (lastDismissed === today) return;
-      setNudgeType("setup");
-      const timer = setTimeout(() => setVisible(true), 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [user, bellPrefs]);
-
-  function dismiss() {
-    const today = new Date().toISOString().slice(0, 10);
-    localStorage.setItem(nudgeType === "accept" ? BELL_ACCEPT_DISMISS_KEY : BELL_DISMISS_KEY, today);
-    setVisible(false);
-  }
-
-  function goToSettings() {
-    dismiss();
-    setLocation("/settings");
-  }
-
-  if (!visible) return null;
-
-  const isAcceptNudge = nudgeType === "accept";
-
-  // Accept nudge: small bottom toast
-  if (isAcceptNudge) {
-    return (
-      <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed bottom-6 left-4 right-4 z-50 flex justify-center"
-        >
-          <div
-            className="w-full max-w-md rounded-2xl px-5 py-4 shadow-2xl"
-            style={{
-              background: "#0D1F14",
-              border: "1px solid rgba(46,107,64,0.3)",
-              boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
-            }}
-          >
-            <div className="flex items-start gap-4">
-              <span className="text-2xl mt-0.5">🔔</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Accept your Daily Bell
-                </p>
-                <p className="text-xs leading-relaxed" style={{ color: "#8FAF96" }}>
-                  Accept the calendar invite so your bell rings each day. Check your email or calendar app.
-                </p>
-                <div className="flex gap-3 mt-3">
-                  <button
-                    onClick={dismiss}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ color: "#8FAF96" }}
-                  >
-                    Got it
-                  </button>
-                </div>
-              </div>
-              <button
-                onClick={dismiss}
-                className="flex-shrink-0 mt-0.5 transition-opacity hover:opacity-60"
-                style={{ color: "rgba(143,175,150,0.4)" }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    );
-  }
-
-  // Setup nudge: fullscreen modal
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className="fixed inset-0 z-50 flex items-center justify-center"
-        style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 30, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-md mx-4 rounded-2xl overflow-hidden"
-          style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)" }}
-        >
-          <div className="px-6 pt-10 pb-6 text-center">
-            <div className="text-5xl mb-6">🔔</div>
-            <h2 className="text-xl font-bold mb-4" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              The Daily Bell
-            </h2>
-            <p className="text-sm leading-relaxed mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
-              For centuries, monastic bells have called communities to prayer.
-            </p>
-            <p className="text-sm mt-4 leading-relaxed mx-auto max-w-[280px]" style={{ color: "#8FAF96" }}>
-              Set up your bell — a daily calendar reminder that brings all your practices into one moment.
-            </p>
-          </div>
-
-          <div className="px-6 pb-6 flex gap-3">
-            <button
-              onClick={dismiss}
-              className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-              style={{ color: "#8FAF96", background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}
-            >
-              Not now
-            </button>
-            <button
-              onClick={goToSettings}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{ background: "#4a7c59", color: "#ffffff" }}
-            >
-              Set it up
-            </button>
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-}
-
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -475,10 +309,6 @@ export function Layout({ children }: { children: ReactNode }) {
       </header>
 
       <DrawerMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      {/* BellNudge popup disabled per user direction — don't bug
-          people about the bell every day. Component is kept in the
-          file so it can be turned back on later by uncommenting. */}
-      {/* <BellNudge /> */}
 
       <main className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
         <motion.div

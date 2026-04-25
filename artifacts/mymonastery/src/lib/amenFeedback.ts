@@ -176,28 +176,28 @@ export function triggerSubmitFeedback() {
 }
 
 /**
- * Rising ambient swell — a four-swell organ sequence that opens the
- * prayer slideshow with three rising octaves and a final return to the
- * base, like a chapel chord progression that climbs and resolves.
+ * Rising ambient swell — a single open-fifth pad (root, fifth, octave)
+ * with a gentle crescendo and fade. Total runtime ≈ 2.4s.
  *
- * Pattern (each swell is an open fifth — root, fifth, octave):
- *   1. Base   (A2 / 110 Hz root)
- *   2. +1 oct (A3 / 220 Hz root)
- *   3. +2 oct (A4 / 440 Hz root)
- *   4. Base   (A2 / 110 Hz root) — resolves back where we started
+ * Pass `octaveStep` to shift the chord up a power of two:
+ *   0 → A2 / 110 Hz root  (base; what the slideshow opens with)
+ *   1 → A3 / 220 Hz root  (one octave up)
+ *   2 → A4 / 440 Hz root  (two octaves up)
  *
- * Each swell is short (~1.6s in, 0.4s hold, 1.0s fade = ~3s) and they
- * overlap by ~1.2s so the next pad joins while the previous is still
- * ringing — that's what produces the rising-tide feel rather than four
- * disconnected hits. Total runtime ≈ 7s, deliberately matched to the
- * 7-second AmenButton pre-amen hold so the music settles right as the
- * button lights up.
+ * The prayer slideshow calls this on every slide entry, with octaveStep
+ * cycling 0 → 1 → 2 → 0 → 1 → 2 → … via `slideIndex % 3`. The first
+ * slide stays the same, the next two climb, and the fourth resolves
+ * back to the original — a chord progression that climbs and resets
+ * across the whole list.
  *
- * Call on slideshow mount; fire-and-forget. Safe on web (plays) and
- * iOS (plays once the AudioContext resumes on the user gesture that
- * navigated into the slideshow).
+ * The low-pass cutoff scales with the octave so the +2 step doesn't
+ * lose its high voices to the filter. Master gain tapers slightly at
+ * higher octaves so the bright pads don't shriek on a phone speaker.
+ *
+ * Call fire-and-forget. Safe on web (plays) and iOS (plays once the
+ * AudioContext resumes on the user gesture that triggered it).
  */
-export function playOpeningSwell() {
+export function playOpeningSwell(octaveStep: number = 0) {
   try {
     type WindowWithWebkitAudio = Window &
       typeof globalThis & { webkitAudioContext?: typeof AudioContext };
@@ -208,81 +208,63 @@ export function playOpeningSwell() {
     const ctx = _audioCtx;
     if (ctx.state === "suspended") void ctx.resume();
 
-    const startTime = ctx.currentTime;
+    const now = ctx.currentTime;
+    const SWELL_IN = 1.0;
+    const HOLD     = 0.3;
+    const FADE_OUT = 1.1;
+    const TOTAL    = SWELL_IN + HOLD + FADE_OUT;
 
-    // Per-swell envelope (in seconds). Total per swell ≈ 3.0s.
-    const SWELL_IN = 1.6;
-    const HOLD     = 0.4;
-    const FADE_OUT = 1.0;
-    const SWELL_TOTAL = SWELL_IN + HOLD + FADE_OUT;
+    // Clamp the step to [0, 4] so a pathological caller can't set the
+    // chord into ultrasound and lose the entire sound to the lowpass.
+    const safeStep = Math.max(0, Math.min(4, Math.floor(octaveStep) || 0));
+    const octMult = Math.pow(2, safeStep);
+    const rootFreq = 110 * octMult;
 
-    // Stagger between swells. They overlap so each new pad joins while
-    // the previous one still has tail; that's what makes it feel like
-    // one rising thing rather than four separate notes.
-    const STAGGER = 1.7;
+    // Master volume taper — pull higher steps back a touch so the +2
+    // step doesn't read as much louder than the base, and so the
+    // brightness doesn't fatigue across a long slideshow.
+    const masterPeak = safeStep >= 2 ? 0.18 : safeStep >= 1 ? 0.20 : 0.22;
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0, now);
+    master.gain.linearRampToValueAtTime(masterPeak, now + SWELL_IN);
+    master.gain.setValueAtTime(masterPeak, now + SWELL_IN + HOLD);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + TOTAL);
 
-    // Octave multipliers — base, +1 oct, +2 oct, back to base.
-    const octaves = [1, 2, 4, 1];
-
-    // Four-pad amplitude envelope: pull the higher pads back a touch
-    // so the +2-oct one doesn't shriek over a phone speaker. The
-    // resolving (4th) pad comes in slightly fuller for warmth.
-    const padGains = [0.20, 0.18, 0.14, 0.22];
-
-    // One slowly-opening low-pass for the whole sequence — keeps the
-    // brightness arc continuous across pads instead of resetting.
+    // Slow-opening low-pass that scales with octave — at higher steps
+    // we open the cutoff wider so the upper voices aren't muffled.
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
     lp.Q.value = 0.6;
-    const sequenceEnd = startTime + STAGGER * (octaves.length - 1) + SWELL_TOTAL;
-    lp.frequency.setValueAtTime(380, startTime);
-    lp.frequency.linearRampToValueAtTime(2400, startTime + (sequenceEnd - startTime) * 0.7);
-    lp.frequency.linearRampToValueAtTime(900, sequenceEnd);
-    lp.connect(ctx.destination);
+    const lpStart = 380 * octMult;
+    const lpPeak  = 1800 * octMult;
+    lp.frequency.setValueAtTime(lpStart, now);
+    lp.frequency.linearRampToValueAtTime(lpPeak, now + SWELL_IN);
+    lp.frequency.linearRampToValueAtTime(lpStart * 2, now + TOTAL);
+    lp.connect(master).connect(ctx.destination);
 
-    octaves.forEach((octMult, i) => {
-      const swellStart = startTime + i * STAGGER;
-      const peakAt     = swellStart + SWELL_IN;
-      const holdEnd    = peakAt + HOLD;
-      const fadeEnd    = holdEnd + FADE_OUT;
+    // Open fifth at the chosen octave — root, fifth, octave-up.
+    const voices: Array<{ freq: number; type: OscillatorType; gain: number }> = [
+      { freq: rootFreq,         type: "sine",     gain: 0.55 },
+      { freq: rootFreq * 1.5,   type: "triangle", gain: 0.28 },
+      { freq: rootFreq * 2,     type: "sine",     gain: 0.22 },
+    ];
 
-      // Per-pad gain envelope (its own crescendo + fade so they stack
-      // cleanly without the master clipping when they overlap).
-      const master = ctx.createGain();
-      master.gain.setValueAtTime(0, swellStart);
-      master.gain.linearRampToValueAtTime(padGains[i] ?? 0.18, peakAt);
-      master.gain.setValueAtTime(padGains[i] ?? 0.18, holdEnd);
-      master.gain.exponentialRampToValueAtTime(0.0001, fadeEnd);
-      master.connect(lp);
+    for (const v of voices) {
+      const osc = ctx.createOscillator();
+      osc.type = v.type;
+      osc.frequency.setValueAtTime(v.freq, now);
+      // Subtle ~0.3% upward drift — gives the pad a breath rather than
+      // a static drone.
+      osc.frequency.linearRampToValueAtTime(v.freq * 1.003, now + SWELL_IN);
+      osc.frequency.linearRampToValueAtTime(v.freq, now + TOTAL);
 
-      // Open fifth at this octave — root, fifth, octave-up. The
-      // higher pads taper their voice gains a touch to keep the
-      // upper end from getting strident on tinny phone speakers.
-      const rootFreq = 110 * octMult;
-      const tipped = octMult >= 4 ? 0.85 : 1; // dampen +2-oct
-      const voices: Array<{ freq: number; type: OscillatorType; gain: number }> = [
-        { freq: rootFreq,         type: "sine",     gain: 0.55 * tipped },
-        { freq: rootFreq * 1.5,   type: "triangle", gain: 0.28 * tipped },
-        { freq: rootFreq * 2,     type: "sine",     gain: 0.22 * tipped },
-      ];
+      const vg = ctx.createGain();
+      vg.gain.value = v.gain;
 
-      for (const v of voices) {
-        const osc = ctx.createOscillator();
-        osc.type = v.type;
-        osc.frequency.setValueAtTime(v.freq, swellStart);
-        // Same subtle ~0.3% upward drift as before — gives each pad
-        // a tiny "breath" rather than a static drone.
-        osc.frequency.linearRampToValueAtTime(v.freq * 1.003, peakAt);
-        osc.frequency.linearRampToValueAtTime(v.freq, fadeEnd);
-
-        const vg = ctx.createGain();
-        vg.gain.value = v.gain;
-
-        osc.connect(vg).connect(master);
-        osc.start(swellStart);
-        osc.stop(fadeEnd + 0.1);
-      }
-    });
+      osc.connect(vg).connect(lp);
+      osc.start(now);
+      osc.stop(now + TOTAL + 0.1);
+    }
   } catch {
     // Audio blocked / unsupported — silent fallback.
   }

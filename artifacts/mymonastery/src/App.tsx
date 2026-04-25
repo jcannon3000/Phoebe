@@ -108,13 +108,11 @@ import CommunitySettingsPage from "./pages/community-settings";
 import CommunityJoinPage from "./pages/community-join";
 import BetaAdminPage from "./pages/beta-admin";
 import WaitlistAdminPage from "./pages/waitlist-admin";
-import BellsAdminPage from "./pages/bells-admin";
 import BetaClaimPage from "./pages/beta-claim";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
 import FeaturesDeck from "./pages/features-deck";
 import UserOnboarding from "./pages/user-onboarding";
-import BellPage from "./pages/bell";
 import FeedbackPage from "./pages/feedback";
 import MutedUsersPage from "./pages/muted-users";
 import PrayerFeedNewPage from "./pages/prayer-feed-new";
@@ -214,13 +212,11 @@ function Router() {
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />
-      <Route path="/bells-admin" component={BellsAdminPage} />
       <Route path="/beta/claim" component={BetaClaimPage} />
       <Route path="/learn" component={LearnPage} />
       <Route path="/onboarding" component={UserOnboarding} />
       <Route path="/church-deck" component={ChurchDeck} />
       <Route path="/learn/features" component={FeaturesDeck} />
-      <Route path="/bell" component={BellPage} />
       <Route path="/feedback" component={FeedbackPage} />
       <Route path="/settings/muted" component={MutedUsersPage} />
       <Route path="/people/:email" component={PersonProfile} />
