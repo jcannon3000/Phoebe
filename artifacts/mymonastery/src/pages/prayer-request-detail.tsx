@@ -119,7 +119,7 @@ export default function PrayerRequestDetailPage() {
               className="text-[22px] leading-[1.5] font-medium italic"
               style={{
                 color: "#E8E4D8",
-                fontFamily: "'Playfair Display', Georgia, serif",
+                fontFamily: "Georgia, 'Times New Roman', serif",
               }}
             >
               {data.body}
@@ -157,7 +157,7 @@ export default function PrayerRequestDetailPage() {
                   className="italic"
                   style={{
                     color: "#E8E4D8",
-                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontFamily: "Georgia, 'Times New Roman', serif",
                     fontSize: 18,
                     lineHeight: 1.55,
                   }}
