@@ -83,15 +83,6 @@ export default function PrayerRequestDetailPage() {
         position: "relative",
       }}
     >
-      <button
-        onClick={() => setLocation("/dashboard")}
-        aria-label="Close"
-        className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
-        style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
-      >
-        ×
-      </button>
-
       <div
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
@@ -117,98 +108,75 @@ export default function PrayerRequestDetailPage() {
 
         {data && (
           <div className="w-full flex flex-col items-center text-center gap-5">
+            <p
+              className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+              style={{ color: "rgba(143,175,150,0.45)" }}
+            >
+              Your prayer request
+            </p>
+
+            <p
+              className="text-[22px] leading-[1.5] font-medium italic"
+              style={{
+                color: "#E8E4D8",
+                fontFamily: "'Playfair Display', Georgia, serif",
+              }}
+            >
+              {data.body}
+            </p>
+
             {latestWord && (
-              <div className="flex flex-col items-center gap-3">
+              <div
+                className="w-full rounded-2xl px-6 py-5 mt-4 flex flex-col items-center text-center gap-3"
+                style={{
+                  background: "rgba(46,107,64,0.12)",
+                  border: "1px solid rgba(46,107,64,0.15)",
+                }}
+              >
                 {latestWord.authorAvatarUrl ? (
                   <img
                     src={latestWord.authorAvatarUrl}
                     alt={latestWord.authorName}
-                    className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
+                    className="w-12 h-12 rounded-full object-cover prayer-avatar-pulse"
                   />
                 ) : (
                   <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-base font-semibold prayer-avatar-pulse"
                     style={{ background: "#1A4A2E", color: "#A8C5A0" }}
                   >
                     {initials(latestWord.authorName)}
                   </div>
                 )}
                 <p
-                  className="text-[14px]"
-                  style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
-                >
-                  {latestWord.authorName}
-                </p>
-              </div>
-            )}
-
-            <p
-              className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-              style={{ color: "rgba(143,175,150,0.45)" }}
-            >
-              {latestWord ? "Word of Comfort" : "Prayer Request"}
-            </p>
-
-            {latestWord ? (
-              <p
-                className="text-[22px] leading-[1.5] font-medium italic"
-                style={{
-                  color: "#E8E4D8",
-                  fontFamily: "Georgia, 'Times New Roman', serif",
-                }}
-              >
-                {latestWord.content}
-              </p>
-            ) : (
-              <p
-                className="text-[22px] leading-[1.5] font-medium italic"
-                style={{
-                  color: "#E8E4D8",
-                  fontFamily: "Georgia, 'Times New Roman', serif",
-                }}
-              >
-                {data.body}
-              </p>
-            )}
-
-            {latestWord && (
-              <div
-                className="w-full rounded-2xl px-6 py-5 text-left mt-4"
-                style={{
-                  background: "rgba(46,107,64,0.12)",
-                  border: "1px solid rgba(46,107,64,0.15)",
-                }}
-              >
-                <p
-                  className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-2"
+                  className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                   style={{ color: "rgba(143,175,150,0.45)" }}
                 >
-                  Your prayer request
+                  Word of Comfort from {latestWord.authorName}
                 </p>
                 <p
                   className="italic"
                   style={{
-                    color: "#C8D4C0",
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    fontSize: 15,
-                    lineHeight: 1.7,
+                    color: "#E8E4D8",
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: 18,
+                    lineHeight: 1.55,
                   }}
                 >
-                  {data.body}
+                  {latestWord.content}
                 </p>
               </div>
             )}
 
             <button
-              onClick={() => setLocation("/prayer-list")}
-              className="mt-4 px-5 py-2.5 rounded-full text-sm"
+              onClick={() => setLocation("/dashboard")}
+              className="mt-6 px-6 py-3 rounded-full text-sm font-medium"
               style={{
                 color: "#C8D4C0",
                 background: "rgba(200,212,192,0.08)",
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
-              Manage prayer request
+              ← Back
             </button>
           </div>
         )}
