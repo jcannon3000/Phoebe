@@ -995,20 +995,28 @@ export default function PrayerListPage() {
   // someone's prayer request, the push payload's `path` is
   // /prayer-list?detail=req:<id>, so tapping the notification lands
   // the user directly inside the popup that holds the comment, not
-  // on the bare list. Re-runs when the search string changes so a
-  // second push (or a manual nav) reopens the right modal.
-  const search = typeof window !== "undefined" ? window.location.search : "";
+  // on the bare list.
+  //
+  // Wouter only re-renders on pathname change, so a deep link that
+  // changes only the query string (push lands while user is already
+  // on /prayer-list) wouldn't otherwise trigger this effect. We
+  // listen to popstate ourselves and read the live search each time.
   useEffect(() => {
-    const params = new URLSearchParams(search);
-    const raw = params.get("detail");
-    if (!raw) return;
-    const [kind, idStr] = raw.split(":");
-    const id = parseInt(idStr ?? "", 10);
-    if (Number.isNaN(id)) return;
-    if (kind === "req") setDetail({ kind: "request", id });
-    else if (kind === "prayer-for") setDetail({ kind: "prayer-for", id });
-    else if (kind === "prayer-from") setDetail({ kind: "prayer-from", id });
-  }, [search]);
+    const openFromSearch = (qs: string) => {
+      const raw = new URLSearchParams(qs).get("detail");
+      if (!raw) return;
+      const [kind, idStr] = raw.split(":");
+      const id = parseInt(idStr ?? "", 10);
+      if (Number.isNaN(id)) return;
+      if (kind === "req") setDetail({ kind: "request", id });
+      else if (kind === "prayer-for") setDetail({ kind: "prayer-for", id });
+      else if (kind === "prayer-from") setDetail({ kind: "prayer-from", id });
+    };
+    openFromSearch(window.location.search);
+    const onPop = () => openFromSearch(window.location.search);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   if (authLoading || !user) return null;
 

@@ -192,6 +192,31 @@ async function postDeviceToken(token: string): Promise<boolean> {
 }
 
 let pushListenersWired = false;
+let pushActionListenerWired = false;
+
+// Tapping a notification can wake the app from a cold start. The OS fires
+// `pushNotificationActionPerformed` shortly after launch — if our listener
+// is still gated behind `registerForPushIfRequested` (which only runs after
+// the web app dispatches `phoebe:request-push-permission`, on a 4s delay
+// inside wireLifecycle), the event lands before we're listening and the
+// deep link is dropped. Attaching the listener at boot, before any gating,
+// guarantees we catch the very first tap of an install-resume.
+async function wirePushActionListener() {
+  if (pushActionListenerWired) return;
+  pushActionListenerWired = true;
+  try {
+    await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
+      const path = (notification.data as Record<string, string> | undefined)?.["path"];
+      if (typeof path === "string" && path.startsWith("/")) {
+        window.history.pushState({}, "", path);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }
+    });
+  } catch {
+    // Plugin not available in this environment — non-fatal.
+  }
+}
+
 async function registerForPushIfRequested() {
   const handler = async () => {
     try {
@@ -244,15 +269,8 @@ async function registerForPushIfRequested() {
           window.dispatchEvent(new CustomEvent("phoebe:push-error", { detail: err }));
         });
 
-        // Tapping a notification in Notification Center deep-links into the
-        // app. The payload carries a `path` for us to route to.
-        await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
-          const path = (notification.data as Record<string, string> | undefined)?.["path"];
-          if (typeof path === "string" && path.startsWith("/")) {
-            window.history.pushState({}, "", path);
-            window.dispatchEvent(new PopStateEvent("popstate"));
-          }
-        });
+        // The `pushNotificationActionPerformed` listener is wired at boot
+        // by `wirePushActionListener`, not here — see that function for why.
 
         // Foreground delivery: iOS suppresses the OS banner while the app is
         // open, so without this listener a push arriving during active use
@@ -903,6 +921,7 @@ function exposePublicApi() {
   wireKeyboardInsets();
   wireBackGesture();
   wireDeepLinks();
+  wirePushActionListener();
   registerForPushIfRequested();
   wireNativeShare();
   wireHaptics();

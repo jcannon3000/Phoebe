@@ -141,19 +141,18 @@ export default function TraditionNew() {
 
   function handleTypeSelect(t: string) {
     setTemplate(t);
-    const opt = TEMPLATE_OPTIONS.find((o) => o.value === t);
-    if (opt && t !== "custom") {
-      setName(`${opt.emoji} ${opt.label}`);
-      setDescription(opt.tagline);
-    } else {
-      setName("");
-      setDescription("");
-    }
+    setName("");
+    setDescription("");
     setStep(2);
   }
 
   function handleNameNext() {
-    if (!name.trim()) { setError("Give your gathering a name."); return; }
+    const opt = TEMPLATE_OPTIONS.find((o) => o.value === template);
+    const hasTemplateFallback = !!opt && template !== "custom";
+    if (!name.trim() && !hasTemplateFallback) {
+      setError("Give your gathering a name.");
+      return;
+    }
     setError("");
     // Community gathering: skip the "Who's coming?" step. Participants
     // are the whole community, auto-populated at create time.
@@ -382,7 +381,10 @@ export default function TraditionNew() {
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What is this gathering about?"
+                  placeholder={(() => {
+                    const opt = TEMPLATE_OPTIONS.find((o) => o.value === template);
+                    return opt && template !== "custom" ? opt.tagline : "What is this gathering about?";
+                  })()}
                   rows={4}
                   className="w-full px-4 py-3.5 rounded-xl text-base focus:outline-none resize-none"
                   style={{ background: "#091A10", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
