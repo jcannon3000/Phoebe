@@ -255,7 +255,7 @@ export default function WriteLetter() {
           <p className="text-[13px]" style={{ color: "#9a9390" }}>{correspondence?.name}</p>
           {correspondence?.currentPeriod && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
-              {isOneToOne ? `Letter ${correspondence.currentPeriod.periodNumber}` : `Round ${correspondence.currentPeriod.periodNumber}`}
+              {isOneToOne ? `Letter ${(correspondence.letters?.length ?? 0) + 1}` : `Round ${correspondence.currentPeriod.periodNumber}`}
             </p>
           )}
           {isOverdue && waitingDays > 0 && (

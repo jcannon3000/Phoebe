@@ -19,9 +19,11 @@ type Correspondence = {
   id: number;
   name: string;
   groupType: string;
+  letterCount: number;
   unreadCount: number;
   myTurn: boolean;
   turnState?: "WAITING" | "OPEN" | "OVERDUE" | "SENT";
+  windowOpenDate?: string | null;
   members: Array<{ name: string | null; email: string }>;
   recentLetters: Array<{ authorName: string; sentAt: string }>;
   currentPeriod: {
@@ -29,7 +31,7 @@ type Correspondence = {
     periodLabel: string;
     hasWrittenThisPeriod: boolean;
     isLastThreeDays: boolean;
-    membersWritten: Array<{ name: string; hasWritten: boolean }>;
+    membersWritten: Array<{ name: string; email?: string; hasWritten: boolean }>;
   };
 };
 
@@ -764,12 +766,18 @@ function LetterCard({
   const iWrote = isOneToOne ? !needsWrite : !needsWrite;
   const shouldPulse = needsWrite || hasUnread;
 
+  const windowOpenAt = (isOneToOne && c.windowOpenDate) ? new Date(c.windowOpenDate) : null;
+  const daysUntilOpen = (windowOpenAt && windowOpenAt.getTime() > Date.now())
+    ? Math.max(1, Math.ceil((windowOpenAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
   let statusText = "";
   if (hasUnread) {
     statusText = `${otherMembers} wrote 🌿`;
   } else if (isOneToOne) {
     if (ts === "OVERDUE") statusText = `Overdue · write when you're ready 🌿`;
     else if (ts === "OPEN") statusText = `Your turn to write 🖋️`;
+    else if (daysUntilOpen) statusText = `Reply opens in ${daysUntilOpen} day${daysUntilOpen !== 1 ? "s" : ""}`;
     else statusText = `Waiting for ${otherMembers}`;
   } else if (iWrote && !theyWrote) {
     statusText = `Your update is in 🌿`;
@@ -784,6 +792,7 @@ function LetterCard({
     ? `Sent ${format(parseISO(lastLetter.sentAt), "MMM d")}`
     : null;
   const flapLines = [statusText, ...(sentDateLine ? [sentDateLine] : [])].filter(Boolean);
+  const letterLabel = isOneToOne ? `Letter ${Math.max(1, c.letterCount)}` : `Week ${c.currentPeriod.periodNumber}`;
 
   return (
     <BarCard key={`${keyPrefix}-${c.id}`} href={`/letters/${c.id}`} pulse={shouldPulse} category="letters">
@@ -797,11 +806,23 @@ function LetterCard({
           )}
         </div>
         <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-          {isOneToOne ? `Letter ${c.currentPeriod.periodNumber}` : `Week ${c.currentPeriod.periodNumber}`}
+          {letterLabel}
         </span>
       </div>
       <div className="flex items-center justify-between gap-2 mt-1.5">
         <SplitFlapLine lines={flapLines} />
+        {hasUnread && !needsWrite && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setLocation(`/letters/${c.id}`); }}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setLocation(`/letters/${c.id}`); } }}
+            className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
+            style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0" }}
+          >
+            Read 📮
+          </span>
+        )}
         {needsWrite && (
           // Use an onClick-driven span instead of a nested wouter <Link>.
           // BarCard already wraps its contents in a <Link> (<a>), and nested
@@ -3047,9 +3068,8 @@ export default function Dashboard() {
     }
 
     // ── Letters placement
-    // Only actionable correspondences (unread, my turn, overdue) surface on
-    // the dashboard. Letters I'm waiting on the other side for stay parked
-    // in /letters — showing them here just creates guilt with no action.
+    // Actionable (unread, my turn, overdue) → Today.
+    // WAITING with a known future window → Upcoming (so you know when to come back).
     for (const c of (dashCorrespondences ?? [])) {
       const actionable =
         c.unreadCount > 0 ||
@@ -3058,6 +3078,19 @@ export default function Dashboard() {
         c.turnState === "OVERDUE";
       if (actionable) {
         todayItems.push({ kind: "letter", data: c });
+      } else if (
+        c.groupType === "one_to_one" &&
+        c.turnState === "WAITING" &&
+        c.windowOpenDate
+      ) {
+        const windowMs = new Date(c.windowOpenDate).getTime();
+        if (windowMs > Date.now()) {
+          if (windowMs < sevenDaysFromToday.getTime()) {
+            weekItems.push({ kind: "letter", data: c });
+          } else {
+            monthItems.push({ kind: "letter", data: c });
+          }
+        }
       }
     }
 

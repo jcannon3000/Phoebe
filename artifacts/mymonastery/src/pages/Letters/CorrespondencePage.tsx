@@ -155,7 +155,7 @@ export default function CorrespondencePage() {
     .join(", ");
 
   const periodLabel = isOneToOne
-    ? `Letter ${currentPeriod.periodNumber}`
+    ? `Letter ${letters.length + 1}`
     : `Round ${currentPeriod.periodNumber}`;
 
   const turnState: TurnState | undefined = data.turnState;
@@ -167,10 +167,7 @@ export default function CorrespondencePage() {
     .filter((l) => (l.authorEmail || "").toLowerCase() !== me)
     .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())[0];
 
-  const showCalendarPrompt =
-    isOneToOne &&
-    data.firstExchangeComplete === true &&
-    (data.myCalendarPromptState ?? null) === null;
+  const showCalendarPrompt = false;
 
   return (
     <Layout>
@@ -387,7 +384,7 @@ export default function CorrespondencePage() {
                       }}
                     >
                       <p className="text-[11px] font-semibold uppercase mb-3" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
-                        {letter.authorName} · {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
+                        {letter.authorName} · {isOneToOne ? `Letter ${letters.length - index}` : `Update ${letter.letterNumber}`}
                         {isOneToOne && ` · ${formatLetterDate(letter.sentAt)}`}
                       </p>
 

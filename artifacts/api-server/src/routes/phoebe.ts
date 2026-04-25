@@ -849,6 +849,24 @@ router.get(
         ),
       );
 
+    if (draft && correspondence.groupType === "one_to_one") {
+      // If the user has already sent a letter for this period, the draft is stale
+      // (left over from their last turn). Delete it so draft-ahead starts fresh.
+      const [sentThisPeriod] = await db
+        .select({ id: lettersTable.id })
+        .from(lettersTable)
+        .where(and(
+          eq(lettersTable.correspondenceId, correspondenceId),
+          eq(lettersTable.authorEmail, auth.email),
+          eq(lettersTable.periodStartDate, periodInfo.periodStartStr),
+        ));
+      if (sentThisPeriod) {
+        await db.delete(letterDraftsTable).where(eq(letterDraftsTable.id, draft.id));
+        res.json(null);
+        return;
+      }
+    }
+
     res.json(draft || null);
   }),
 );
