@@ -56,13 +56,7 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
   });
-  // Your own request always sinks to the bottom of the list. The feed
-  // is for carrying other people's prayers; your own belongs last, as
-  // a tail reminder rather than the opener of the section.
-  const requests = [
-    ...rawRequests.filter(r => !r.isOwnRequest),
-    ...rawRequests.filter(r => r.isOwnRequest),
-  ];
+  const requests = rawRequests;
 
   const submitMutation = useMutation({
     mutationFn: ({ body, durationDays: days }: { body: string; durationDays: number }) =>
