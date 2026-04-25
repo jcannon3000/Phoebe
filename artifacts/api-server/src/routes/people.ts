@@ -72,23 +72,28 @@ router.get("/people", async (req, res): Promise<void> => {
   );
   if (myGroupIds.length > 0) {
     // Garden = every member of the viewer's groups, excluding
-    // hidden admins of those groups. Using inArray here (instead
-    // of the hand-rolled sql.join) because the Drizzle
-    // expansion on inArray is the canonical IN clause. We also
-    // relaxed joinedAt IS NOT NULL — an invited but not-yet-
-    // accepted member is still part of the community roster and
-    // should contribute to the garden. If a user with legacy
-    // data never had joinedAt stamped, filtering them out left
-    // whole gardens empty.
+    // hidden admins of those groups. We left-join through
+    // usersTable on userId so that membership rows whose `email`
+    // column is empty (admin-added members keyed only by userId,
+    // legacy backfills, etc.) still resolve to a real person. The
+    // earlier version skipped any row with `!row.email`, which
+    // matched garden.ts's behavior for prayer-feed visibility but
+    // left the People page silently empty for any group whose
+    // rows happened to be userId-only — exactly the "I see prayer
+    // requests but no people" failure mode users keep reporting.
     const peerRows = await db
       .select({
-        email: groupMembersTable.email,
-        name: groupMembersTable.name,
+        rowUserId: groupMembersTable.userId,
+        rowEmail: groupMembersTable.email,
+        rowName: groupMembersTable.name,
         joinedAt: groupMembersTable.joinedAt,
         role: groupMembersTable.role,
         groupId: groupMembersTable.groupId,
+        userEmail: usersTable.email,
+        userName: usersTable.name,
       })
       .from(groupMembersTable)
+      .leftJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
       .where(and(
         inArray(groupMembersTable.groupId, myGroupIds),
         sql`(${groupMembersTable.role} IS NULL
@@ -96,16 +101,20 @@ router.get("/people", async (req, res): Promise<void> => {
       ));
     console.log(
       `[GET /people] peerRows=${peerRows.length} ` +
-      `sample=${JSON.stringify(peerRows.slice(0, 3).map(r => ({ e: r.email, r: r.role, g: r.groupId, j: !!r.joinedAt })))}`,
+      `sample=${JSON.stringify(peerRows.slice(0, 3).map(r => ({ rowEmail: r.rowEmail, userEmail: r.userEmail, role: r.role, g: r.groupId, j: !!r.joinedAt })))}`,
     );
     for (const row of peerRows) {
-      if (!row.email) continue;
-      const emailLower = row.email.toLowerCase();
+      // Prefer the membership row's email (kept in sync at invite
+      // time), fall back to the joined users row when the membership
+      // row was created with userId only.
+      const resolvedEmail = (row.rowEmail || row.userEmail || "").trim();
+      if (!resolvedEmail) continue;
+      const emailLower = resolvedEmail.toLowerCase();
       if (emailLower === ownerEmailLower) continue;
       if (map.has(emailLower)) continue;
       map.set(emailLower, {
-        name: row.name || row.email,
-        email: row.email,
+        name: row.rowName || row.userName || resolvedEmail,
+        email: resolvedEmail,
         sharedCircleCount: 0,
         firstCircleDate: row.joinedAt ?? new Date(),
         sharedRitualIds: [],
@@ -237,6 +246,21 @@ router.get("/people", async (req, res): Promise<void> => {
 
   // Batch-fetch most recent bloom window date per shared moment
   const lastBloomMap = new Map<number, string>();
+
+  // Owner's moment IDs — derived once and reused per-person inside the
+  // map below to compute "shared practices." This was previously
+  // referenced as a free variable at the per-person level (`if
+  // (ownerMomentIds.length > 0)`) but never defined in this handler,
+  // which would throw `ReferenceError: ownerMomentIds is not defined`
+  // the first time someone landed in the garden. The Promise.all
+  // around the map swallowed the rejection into a 500 and the People
+  // page rendered blank — the recurring "empty garden" report users
+  // keep filing. Mirrors the same lookup used by /people/:email.
+  const ownerTokenRowsForMoments = await db
+    .select({ momentId: momentUserTokensTable.momentId })
+    .from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.email, ownerEmail));
+  const ownerMomentIds = ownerTokenRowsForMoments.map(t => t.momentId);
 
   const peopleEnriched = await Promise.all(
     Array.from(map.values()).map(async (p) => {
