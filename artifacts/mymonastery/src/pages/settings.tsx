@@ -235,7 +235,15 @@ function PhoneSection() {
         setIosStage("no-match");
         return;
       }
-      setIosCandidates(Array.from(phones).slice(0, 6));
+      // Earlier flow: render candidates as tap-to-pick buttons, save on
+      // tap. New flow: pre-fill the input with the first candidate and
+      // open the form so the user just hits Save (or edits first).
+      // Avoids the extra UI when there's one obvious answer.
+      const list = Array.from(phones);
+      const first = list[0] ?? "";
+      setDraft(first);
+      setEditing(true);
+      setIosCandidates([]);
       setIosStage("idle");
     }
     function handleDenied() {
@@ -324,30 +332,6 @@ function PhoneSection() {
           >
             {iosStage === "reading" ? "Reading your contacts…" : "📱 Use my number from iOS Contacts"}
           </button>
-
-          {iosCandidates.length > 0 && (
-            <div className="space-y-2 pl-1">
-              <p className="text-[11px]" style={{ color: "#8FAF96" }}>
-                Found in your card. Tap one to use it:
-              </p>
-              {iosCandidates.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => saveMutation.mutate(p)}
-                  disabled={saveMutation.isPending}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm transition-opacity hover:opacity-80 disabled:opacity-50"
-                  style={{
-                    background: "rgba(46,107,64,0.12)",
-                    color: "#F0EDE6",
-                    border: "1px solid rgba(46,107,64,0.3)",
-                    fontFamily: "'Space Grotesk', sans-serif",
-                  }}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
 
           {iosStage === "no-match" && (
             <div className="text-[11px] space-y-1.5" style={{ color: "#8FAF96" }}>
