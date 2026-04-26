@@ -479,13 +479,14 @@ export default function LectioPage() {
         }}
       >
         <div
-          className="max-w-2xl mx-auto w-full px-5 pt-6 pb-2"
+          className="max-w-2xl mx-auto w-full px-5 pb-2"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr auto 1fr",
             alignItems: "center",
             gap: 12,
             pointerEvents: "auto",
+            paddingTop: "max(1.5rem, calc(env(safe-area-inset-top) + 0.5rem))",
           }}
         >
           <Link href="/dashboard">
