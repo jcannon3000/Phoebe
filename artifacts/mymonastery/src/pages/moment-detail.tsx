@@ -1146,16 +1146,22 @@ export default function MomentDetail() {
           );
         })()}
 
-        {/* Progressive Goal Display — suppressed for intercessions.
-            The daily prayer card above already surfaces the rhythm
-            (streaks, today's count, who's prayed this week). A second
-            "X-day goal" bar duplicates the signal and adds visual noise. */}
-        {!isIntercession && (() => {
+        {/* Progressive Goal Display — for intercessions we suppress the
+            in-progress bar (the daily prayer card above already surfaces
+            the rhythm), but the goal-reached branch is allowed through so
+            creators can still renew. */}
+        {(() => {
           const sessionsGoal = moment.commitmentSessionsGoal ?? null;
           // Use API-computed session count from window bloom data — the DB
           // field commitmentSessionsLogged may be inflated by double-bloom bugs.
           const sessionsLogged = data?.computedSessionsLogged ?? (moment.commitmentSessionsLogged ?? 0);
           const tendFreely = moment.commitmentTendFreely ?? false;
+          const goalReached = !!sessionsGoal && sessionsLogged >= sessionsGoal;
+          // Intercessions skip every branch except the celebration / renew
+          // block — that's the only state where the creator needs this
+          // surface, and rendering progress bars here would double up with
+          // the daily prayer card.
+          if (isIntercession && !goalReached) return null;
           const freq = moment.frequency;
           const daysPerWeek = moment.frequencyDaysPerWeek ?? null;
           const ladder = getGoalLadder(freq, daysPerWeek);

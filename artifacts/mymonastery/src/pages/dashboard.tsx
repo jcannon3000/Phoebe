@@ -35,7 +35,7 @@ type Correspondence = {
   };
 };
 
-type Moment = {
+export type Moment = {
   id: number;
   name: string;
   templateType: string | null;
@@ -998,7 +998,7 @@ function stripTrailingEmoji(s: string): string {
   return s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
 }
 
-function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
+export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment; userEmail: string; keyPrefix: string; nextWindow?: string }) {
   const [, setLocation] = useLocation();
   const emoji = (m as any).customEmoji || PRACTICE_EMOJI[m.templateType || "custom"] || "🌱";
   // Lectio uses its per-user stage-done flag instead of todayPostCount since
