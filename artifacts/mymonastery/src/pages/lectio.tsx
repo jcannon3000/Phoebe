@@ -578,9 +578,13 @@ export default function LectioPage() {
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
+          // Header is position:fixed and already consumes safe-area-inset-top
+          // internally (max(1.5rem, env+0.5rem) + ~30px bar + 8px pb-2 ≈
+          // safe+46). Padding here only needs to clear that visual extent
+          // plus a small gap, NOT add the safe inset again.
           paddingTop: isFullHeightSlide
-            ? "calc(env(safe-area-inset-top) + 80px)"
-            : "calc(env(safe-area-inset-top) + 96px)",
+            ? "calc(env(safe-area-inset-top) + 64px)"
+            : "calc(env(safe-area-inset-top) + 56px)",
           // var(--kb-inset) is set by the native shell on iOS when the
           // keyboard is open. Lifting bottom padding by the keyboard
           // height shifts the centered slide content up so the textarea's
