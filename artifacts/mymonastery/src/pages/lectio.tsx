@@ -552,9 +552,13 @@ export default function LectioPage() {
           paddingTop: isFullHeightSlide
             ? "calc(env(safe-area-inset-top) + 80px)"
             : "calc(env(safe-area-inset-top) + 96px)",
+          // var(--kb-inset) is set by the native shell on iOS when the
+          // keyboard is open. Lifting bottom padding by the keyboard
+          // height shifts the centered slide content up so the textarea's
+          // Share button stays visible above the keyboard.
           paddingBottom: isFullHeightSlide
-            ? "calc(env(safe-area-inset-bottom) + 132px)"
-            : "calc(env(safe-area-inset-bottom) + 112px)",
+            ? "calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 132px)"
+            : "calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 112px)",
         }}
       >
         <div
@@ -659,7 +663,7 @@ export default function LectioPage() {
         style={{
           position: "fixed",
           left: "50%",
-          bottom: "calc(env(safe-area-inset-bottom) + 16px)",
+          bottom: "calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 16px)",
           transform: "translateX(-50%)",
           zIndex: 50,
           background: "rgba(19,44,29,0.92)",
