@@ -455,8 +455,9 @@ export default function LectioPage() {
   return (
     <div
       style={{
-        height: "100vh",
+        height: "100dvh",
         overflow: "hidden",
+        overscrollBehavior: "none",
         background: BG,
         color: WARM_TEXT,
         display: "flex",
@@ -548,8 +549,12 @@ export default function LectioPage() {
         }`}
         style={{
           minHeight: 0,
-          paddingTop: isFullHeightSlide ? 80 : 96,
-          paddingBottom: isFullHeightSlide ? 132 : 112,
+          paddingTop: isFullHeightSlide
+            ? "calc(env(safe-area-inset-top) + 80px)"
+            : "calc(env(safe-area-inset-top) + 96px)",
+          paddingBottom: isFullHeightSlide
+            ? "calc(env(safe-area-inset-bottom) + 132px)"
+            : "calc(env(safe-area-inset-bottom) + 112px)",
         }}
       >
         <div
@@ -654,7 +659,7 @@ export default function LectioPage() {
         style={{
           position: "fixed",
           left: "50%",
-          bottom: 16,
+          bottom: "calc(env(safe-area-inset-bottom) + 16px)",
           transform: "translateX(-50%)",
           zIndex: 50,
           background: "rgba(19,44,29,0.92)",
