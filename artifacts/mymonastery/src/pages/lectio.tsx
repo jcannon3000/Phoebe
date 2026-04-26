@@ -572,37 +572,33 @@ export default function LectioPage() {
           current.kind === "entry";
         return (
       <main
-        className="flex-1 flex flex-col px-5"
+        className="flex-1 px-5"
         style={{
           minHeight: 0,
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
-          // Header is position:fixed and already consumes safe-area-inset-top
-          // internally (max(1.5rem, env+0.5rem) + ~30px bar + 8px pb-2 ≈
-          // safe+46). Padding here only needs to clear that visual extent
-          // plus a small gap, NOT add the safe inset again.
-          paddingTop: isFullHeightSlide
-            ? "calc(env(safe-area-inset-top) + 64px)"
-            : "calc(env(safe-area-inset-top) + 56px)",
-          // var(--kb-inset) is set by the native shell on iOS when the
-          // keyboard is open. Lifting bottom padding by the keyboard
-          // height shifts the centered slide content up so the textarea's
-          // Share button stays visible above the keyboard.
-          paddingBottom: isFullHeightSlide
-            ? "calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 132px)"
-            : "calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 112px)",
+          // Header is position:fixed at the top with its own safe-area
+          // padding; we just need enough top padding to clear it.
+          paddingTop: "calc(env(safe-area-inset-top) + 56px)",
+          // Bottom nav is position:fixed with safe-area-bottom + 16 + ~50
+          // pill height. Pad enough to clear it plus keyboard inset when
+          // the textarea is focused.
+          paddingBottom: "calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 112px)",
+          // FullHeight slides need to behave as a flex column so the
+          // inner reading/responses card can fill and scroll internally.
+          ...(isFullHeightSlide
+            ? { display: "flex", flexDirection: "column" }
+            : null),
         }}
       >
         <div
           className="max-w-2xl w-full mx-auto"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            ...(isFullHeightSlide
-              ? { flex: 1, minHeight: 0 }
-              : { minHeight: "100%", justifyContent: "flex-start" }),
-          }}
+          style={
+            isFullHeightSlide
+              ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }
+              : undefined
+          }
         >
           <AnimatePresence mode="wait">
             <motion.div
