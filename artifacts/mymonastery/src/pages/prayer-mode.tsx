@@ -1189,23 +1189,26 @@ export default function PrayerModePage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
-  const { data: momentsData } = useQuery<{ moments: Moment[] }>({
+  const momentsQuery = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
     enabled: !!user,
   });
+  const momentsData = momentsQuery.data;
 
-  const { data: prayerRequests = [] } = useQuery<PrayerRequest[]>({
+  const prayerRequestsQuery = useQuery<PrayerRequest[]>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     enabled: !!user,
   });
+  const prayerRequests = prayerRequestsQuery.data ?? [];
 
-  const { data: myPrayersFor = [] } = useQuery<MyActivePrayerFor[]>({
+  const myPrayersForQuery = useQuery<MyActivePrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
     enabled: !!user,
   });
+  const myPrayersFor = myPrayersForQuery.data ?? [];
 
   // Friends list — used by the "pray for someone" final slide that
   // appears after the main list when the viewer already has an active
@@ -1217,11 +1220,12 @@ export default function PrayerModePage() {
   // Every active intention from every prayer circle this user belongs to.
   // Surfaced as its own slide-kind so members carry the circle's shared
   // intentions alongside their own intercessions and others' requests.
-  const { data: circleIntentionsData } = useQuery<{ intentions: CircleIntention[] }>({
+  const circleIntentionsQuery = useQuery<{ intentions: CircleIntention[] }>({
     queryKey: ["/api/groups/me/circle-intentions"],
     queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"),
     enabled: !!user,
   });
+  const circleIntentionsData = circleIntentionsQuery.data;
 
   // Streak number for the closing slide (always shown — user explicitly
   // asked for it regardless of whether today is a "first today" event).
@@ -1461,15 +1465,53 @@ export default function PrayerModePage() {
     });
   }
 
-  // Resume-where-you-left-off: open at the first slide the viewer
-  // hasn't already prayed today. If they completed everything earlier,
-  // start from the top — they'll see the closing slide once they tap
-  // through. Computed lazily on mount so subsequent re-renders (e.g.
-  // a prayer-request mutation invalidating cache) don't reset position.
-  const [index, setIndex] = useState(() => {
-    const firstUnPrayed = slides.findIndex((s) => !s.alreadyPrayedToday);
-    return firstUnPrayed >= 0 ? firstUnPrayed : 0;
-  });
+  // All four data queries finished resolving. The slideshow waits for
+  // this before deciding the start index — otherwise, opening from a
+  // bell push (cold start) would compute slides off an empty cache,
+  // mount at index 0, then "flip around" to the right slot once data
+  // arrived. The user reported that flicker; the loading screen below
+  // covers it.
+  const dataReady =
+    momentsQuery.isSuccess &&
+    prayerRequestsQuery.isSuccess &&
+    myPrayersForQuery.isSuccess &&
+    circleIntentionsQuery.isSuccess;
+
+  // Today key in local time — used to scope localStorage progress so
+  // a session started yesterday doesn't bleed into today's resume.
+  const slideshowTodayKey = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const progressStorageKey = `phoebe:slideshow-progress:${slideshowTodayKey}`;
+
+  // -1 sentinel = "not initialised yet". Once data is ready, an effect
+  // computes the resume index from (a) localStorage progress saved on
+  // X-out / advance, falling back to (b) the first un-amened request.
+  // Keeping initialisation in an effect (not the useState initialiser)
+  // ensures we don't read `slides` while it's still empty.
+  const [index, setIndex] = useState<number>(-1);
+
+  useEffect(() => {
+    if (!dataReady || index !== -1) return;
+    let resumeAt = 0;
+    try {
+      const raw = localStorage.getItem(progressStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { completed?: number };
+        if (typeof parsed.completed === "number" &&
+            parsed.completed > 0 &&
+            parsed.completed < slides.length) {
+          resumeAt = parsed.completed;
+        }
+      }
+    } catch { /* ignore corrupt entry */ }
+    if (resumeAt === 0) {
+      const firstUnPrayed = slides.findIndex((s) => !s.alreadyPrayedToday);
+      resumeAt = firstUnPrayed >= 0 ? firstUnPrayed : 0;
+    }
+    setIndex(resumeAt);
+  }, [dataReady, index, progressStorageKey, slides]);
   const [phase, setPhase] = useState<"prayer" | "closing">("prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
@@ -1618,6 +1660,19 @@ export default function PrayerModePage() {
     setTimeout(() => {
       if (index < slides.length - 1) {
         const nextIndex = index + 1;
+        // Persist per-day progress so the dashboard can render
+        // "Continue praying / N more prayers" if the user X-outs
+        // mid-list. The streak endpoint only flips loggedToday=true
+        // on the closing slide, so without this we couldn't tell
+        // "started but didn't finish" from "fresh" — and the count
+        // had to span all slide kinds (intercessions, prayers-for,
+        // circle intentions), not just prayer-request amens.
+        try {
+          localStorage.setItem(progressStorageKey, JSON.stringify({
+            completed: nextIndex,
+            total: slides.length,
+          }));
+        } catch { /* private mode / quota — non-fatal */ }
         setIndex(nextIndex);
         // Per-slide rising swell — cycles through 3 octave steps so
         // the chord climbs slide-by-slide (0 → +1 → +2) and resolves
@@ -1626,10 +1681,33 @@ export default function PrayerModePage() {
         // entry. Fire-and-forget; safe on web + iOS.
         playOpeningSwell(nextIndex % 3);
       } else {
+        // Reaching the end — clear the progress entry so a re-entry
+        // later today doesn't resume past the end. The closing slide
+        // handles the "fully done" case via loggedToday on the server.
+        try {
+          localStorage.removeItem(progressStorageKey);
+        } catch { /* non-fatal */ }
         setPhase("closing");
       }
       setSlideVisible(true);
     }, 220);
+  };
+
+  // X-out handler — persists progress (so the dashboard can show
+  // "Continue praying"), invalidates the home-screen queries (so the
+  // user lands on a fresh dashboard rather than stale cached data),
+  // then routes home.
+  const handleExit = () => {
+    try {
+      if (index > 0 && index < slides.length) {
+        localStorage.setItem(progressStorageKey, JSON.stringify({
+          completed: index,
+          total: slides.length,
+        }));
+      }
+    } catch { /* non-fatal */ }
+    queryClient.invalidateQueries();
+    setLocation("/dashboard");
   };
 
   const handleDone = async () => {
@@ -1679,6 +1757,34 @@ export default function PrayerModePage() {
 
   if (authLoading || !user) return null;
 
+  // Hold a calm loading screen until queries resolve AND the resume
+  // index is computed. Prevents the bell-push cold start from briefly
+  // mounting at slide 0 and then jumping to the right resume slot.
+  if (!dataReady || index < 0) {
+    return (
+      <div
+        style={{
+          background: "#0C1F12",
+          minHeight: "100dvh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          className="animate-spin"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            border: "2px solid rgba(232,228,216,0.6)",
+            borderTopColor: "transparent",
+          }}
+        />
+      </div>
+    );
+  }
+
   const slide = slides[index];
 
   return (
@@ -1702,7 +1808,7 @@ export default function PrayerModePage() {
           return to the home view rather than dropping the user back into
           the prayer-list they were just trying to step away from. */}
       <button
-        onClick={() => setLocation("/dashboard")}
+        onClick={handleExit}
         aria-label="Exit prayer mode"
         className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
         style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}

@@ -1734,7 +1734,14 @@ function PrayerListCard({
   faces?: Array<{ key: string; name: string; avatarUrl: string | null }>;
 }) {
   const colors = CATEGORY_COLORS.practices;
-  const isPartial = partialRemaining > 0 && !prayedToday;
+  // "Continue praying" beats "Pray again" when there's still un-prayed
+  // work today. Prior logic gated isPartial on !prayedToday, so a user
+  // who prayed earlier today and then had new prayers come in (or
+  // re-entered the slideshow and bailed mid-list) saw "Pray again"
+  // instead of being told they had more to do. The localStorage-backed
+  // partialRemaining (saved by prayer-mode on advance / X-out) now
+  // covers all slide kinds, not just request amens.
+  const isPartial = partialRemaining > 0;
   const subtitle = isPartial
     ? (partialRemaining === 1 ? "1 more prayer" : `${partialRemaining} more prayers`)
     : (pendingCount === 1 ? "1 prayer waiting for you" : `${pendingCount} prayers waiting for you`);
@@ -1888,7 +1895,7 @@ function PrayerListCard({
                   : "1px solid rgba(111,175,133,0.45)",
               }}
             >
-              {prayedToday ? "Pray again" : isPartial ? "Continue praying" : "Pray"}
+              {isPartial ? "Continue praying" : prayedToday ? "Pray again" : "Pray"}
               <span aria-hidden> →</span>
             </div>
           )}
@@ -2531,16 +2538,14 @@ export default function Dashboard() {
     localStorage.setItem("phoebe:profile-pic-prompted", "1");
   }, []);
 
-  // Daily prayer-slideshow invite state. The effect that populates it is
-  // declared further down, AFTER the momentsData useQuery call — placing it
-  // before would read momentsData in the effect's dep array while it's
-  // still in the TDZ, crashing the first render.
-  const [prayerInviteVisible, setPrayerInviteVisible] = useState(false);
-  const [prayerInviteCount, setPrayerInviteCount] = useState(0);
+  // The daily "N prayers waiting for you" popup was removed at the
+  // user's request — the always-visible PrayerListCard already covers
+  // the invite, and the popup felt like noise on every launch.
 
-  // Local-timezone YYYY-MM-DD. Used as the once-per-day gate; sent to the
-  // server so the stamp follows the account across devices rather than
-  // living in each device's localStorage.
+  // Local-timezone YYYY-MM-DD. Used to read today's slideshow progress
+  // (saved by prayer-mode on advance / X-out) so the PrayerListCard
+  // can render "Continue praying / N more prayers" when the user
+  // started today's slideshow but didn't finish.
   function todayLocalKey(): string {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -2548,16 +2553,6 @@ export default function Dashboard() {
     const dd = String(d.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   }
-
-  const dismissPrayerInvite = useCallback(() => {
-    setPrayerInviteVisible(false);
-    // Account-level stamp happens at show-time; this just hides the modal.
-  }, []);
-
-  const beginPrayerInvite = useCallback(() => {
-    dismissPrayerInvite();
-    setLocation("/prayer-mode");
-  }, [dismissPrayerInvite, setLocation]);
 
   // ── "You have a new letter" popup ──────────────────────────────────────
   // Queued behind the daily prayer-invite and the beta-welcome so only one
@@ -2626,12 +2621,12 @@ export default function Dashboard() {
   };
   type DashCircleIntention = { id: number; groupId: number };
 
-  const { data: dashPrayerRequests, isLoading: dashPrayerRequestsLoading } = useQuery<DashPrayerRequest[]>({
+  const { data: dashPrayerRequests } = useQuery<DashPrayerRequest[]>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     enabled: !!user,
   });
-  const { data: dashPrayersFor, isLoading: dashPrayersForLoading } = useQuery<DashPrayerFor[]>({
+  const { data: dashPrayersFor } = useQuery<DashPrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
     enabled: !!user,
@@ -2639,7 +2634,7 @@ export default function Dashboard() {
   // Circle intentions — shared prayer intentions inside every prayer circle
   // the user belongs to. Each intention is its own prayer (a circle can have
   // many intentions), so we count rows, not circles.
-  const { data: dashCircleIntentions, isLoading: dashCircleIntentionsLoading } =
+  const { data: dashCircleIntentions } =
     useQuery<{ intentions: DashCircleIntention[] }>({
       queryKey: ["/api/groups/me/circle-intentions"],
       queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"),
@@ -2656,135 +2651,10 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  // In-session latch — even if momentsData refetches and re-runs the effect,
-  // we never re-trigger the popup within the same page load.
-  const prayerInviteHandledThisSessionRef = useRef(false);
-
-  // Local copy of the prayer-streak query. React Query dedupes by key,
-  // so this shares the cache entry with the canonical declaration lower
-  // down in the component — no double fetch. We need `loggedToday` here
-  // (above the `prayerListDoneToday` computation) to gate the popup.
-  const { data: popupStreakData } = useQuery<{ loggedToday?: boolean }>({
-    queryKey: ["/api/prayer-streak"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
-    enabled: !!user,
-    staleTime: 60_000,
-  });
-  const popupLoggedToday = popupStreakData?.loggedToday ?? false;
-
-  useEffect(() => {
-    if (!user) return;
-    if (prayerInviteHandledThisSessionRef.current) return;
-
-    // Wait for the beta-welcome popup to be dismissed first so we never
-    // stack two modals on top of each other on a new user's very first
-    // visit. The ref is NOT set here, so once betaWelcomeVisible flips to
-    // false this effect re-runs naturally.
-    if (betaWelcomeVisible) return;
-
-    // CRITICAL: wait until every query has finished loading. Previously the
-    // effect fired as each query resolved independently — if /prayers-for/mine
-    // arrived first with 1 item and /moments was still pending, the count
-    // computed as "1" and the popup locked in before the other data arrived.
-    // Also wait for popupStreakData so we don't pester someone who already
-    // prayed today just because the streak query hadn't resolved yet.
-    if (momentsLoading || dashPrayerRequestsLoading || dashPrayersForLoading || dashCircleIntentionsLoading) return;
-    if (popupStreakData === undefined) return;
-
-    const today = todayLocalKey();
-
-    // Gate #1 — they've already prayed today. Don't pester. We also accept
-    // Authoritative signal is the server's per-viewer loggedToday
-    // flag. Previous fallback checked todayPostCount on every
-    // intercession, but that's a GLOBAL count — it marked brand-new
-    // users as "already prayed" if they'd just joined a community
-    // whose intercessions had already been prayed by existing
-    // members. Dropped.
-    if (popupLoggedToday) {
-      prayerInviteHandledThisSessionRef.current = true;
-      return;
-    }
-
-    // Gate #2 — the popup has already been shown once today (any
-    // device). "Once per local calendar day" is the user-level rule:
-    // anyone who hasn't done the slideshow today should see this
-    // popup exactly one time. We key on the server-stamped local
-    // date string rather than a rolling N-hour timestamp so the
-    // window matches the user's subjective "today".
-    if (user.prayerInviteLastShownDate === today) {
-      prayerInviteHandledThisSessionRef.current = true;
-      return;
-    }
-
-    // A single prayer circle (intercession moment) can hold many intentions —
-    // each intention is its own prayer in the slideshow. Count intentions
-    // when they exist; only fall back to counting the circle itself for
-    // intercession moments that have zero intentions yet (legacy circles
-    // still driven by the old single-intention field).
-    const circleIntentions = dashCircleIntentions?.intentions ?? [];
-    const intentionCountByGroup = new Map<number, number>();
-    for (const i of circleIntentions) {
-      intentionCountByGroup.set(i.groupId, (intentionCountByGroup.get(i.groupId) ?? 0) + 1);
-    }
-    let activeIntercessions = 0;
-    // `moments` was previously destructured in an earlier refactor step
-    // then dropped when the block was trimmed — left this loop referencing
-    // an undeclared identifier. A user reported a 'Can't find variable:
-    // moments' crash in production. Re-declare from momentsData.
-    const moments = momentsData?.moments ?? [];
-    for (const m of moments) {
-      if (m.templateType !== "intercession") continue;
-      const gid = m.group?.id;
-      const intentions = gid ? (intentionCountByGroup.get(gid) ?? 0) : 0;
-      // Each intention is its own slide; circles with no intentions still
-      // count once for the legacy single-topic flow.
-      activeIntercessions += intentions > 0 ? intentions : 1;
-    }
-    // Circles we're in but that aren't surfaced as moments (e.g. the user
-    // just joined and hasn't fetched) — don't double-count; skip.
-    const othersRequests = (dashPrayerRequests ?? []).filter(
-      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
-    ).length;
-    // Match prayer-mode's filter exactly: drop server-expired AND
-    // final-day prayers (daysLeft === 0). Previously the dashboard
-    // counted every non-expired prayer-for, but the slideshow hides
-    // the final-day ones, so the popup claimed "7 prayers waiting"
-    // while the user saw 6 slides — the user flagged that directly.
-    const activePrayersFor = countActivePrayersFor(dashPrayersFor);
-    const total = activeIntercessions + othersRequests + activePrayersFor;
-
-    // Show the invite to anyone who hasn't already prayed today.
-    // Previously we additionally required `total > 0` (at least one
-    // prayer waiting), which meant a brand-new user in a community
-    // with no intercessions silently missed the popup. The user
-    // explicitly asked: "anyone who has not gone through their
-    // prayer list slideshow today gets a pop up just once". We now
-    // show it unconditionally once per calendar day (gate #1 above
-    // still suppresses it if they've already prayed).
-    const shouldShow = true;
-
-    if (shouldShow) {
-      // Stamp BEFORE show (fire-and-forget) so a tab-close / reload
-      // before dismiss still prevents a second popup today. We send
-      // both the local date (used by the gate above) and let the
-      // server derive the timestamp from its own now().
-      const nowIso = new Date().toISOString();
-      apiRequest("PATCH", "/api/auth/me/prayer-invite-shown", { date: today })
-        .then(() => queryClient.setQueryData<typeof user>(["/api/auth/me"], prev =>
-          prev ? {
-            ...prev,
-            prayerInviteLastShownDate: today,
-            prayerInviteLastShownAt: nowIso,
-          } : prev,
-        ))
-        .catch(() => { /* best-effort; next load will try again */ });
-      prayerInviteHandledThisSessionRef.current = true;
-      setPrayerInviteCount(total);
-      setPrayerInviteVisible(true);
-    }
-    // If total === 0 we DON'T stamp — a later visit in the same day with
-    // a queued prayer should still get a chance to see the popup.
-  }, [user, betaWelcomeVisible, momentsData, momentsLoading, dashPrayerRequests, dashPrayerRequestsLoading, dashPrayersFor, dashPrayersForLoading, dashCircleIntentions, dashCircleIntentionsLoading, queryClient, popupLoggedToday, popupStreakData]);
+  // The daily prayer-invite popup logic and its supporting effect were
+  // removed at the user's request. dashCircleIntentions / dashPrayersFor /
+  // dashPrayerRequests stay because the dashboard cards and the
+  // PrayerListCard partial-progress count still consume them.
 
   // Correspondences — drives both the "you have a new letter" popup and
   // the letter cards mixed into the Today / This week / This month buckets.
@@ -3197,65 +3067,13 @@ export default function Dashboard() {
         }
       `}</style>
       {/* Daily prayer-slideshow invite — shown once per calendar day when
-          the user has prayers queued up. Takes priority over beta welcome. */}
-      <AnimatePresence>
-        {prayerInviteVisible && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center px-6"
-            style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
-            onClick={dismissPrayerInvite}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 8 }}
-              transition={{ duration: 0.25 }}
-              className="rounded-2xl px-8 py-8 text-center max-w-sm w-full"
-              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
-              onClick={e => e.stopPropagation()}
-            >
-              <p className="text-4xl mb-4">🙏</p>
-              <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Daily Prayer List
-              </p>
-              <h2
-                className="text-xl font-bold mb-6"
-                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                {prayerInviteCount > 0
-                  ? `${prayerInviteCount} ${prayerInviteCount === 1 ? "prayer" : "prayers"} waiting for you`
-                  : "Time for your daily prayer"}
-              </h2>
-              <div className="flex flex-col gap-2.5">
-                <button
-                  onClick={beginPrayerInvite}
-                  className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                >
-                  Begin praying →
-                </button>
-                <button
-                  onClick={dismissPrayerInvite}
-                  className="px-6 py-2.5 text-sm font-medium transition-opacity hover:opacity-80"
-                  style={{ color: "rgba(143,175,150,0.7)" }}
-                >
-                  Continue to home
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          The daily "N prayers waiting for you" popup was removed —
+          the always-visible PrayerListCard already invites the user. */}
 
-      {/* "You have a new letter" popup — queued after the daily prayer-invite
-          and the beta-welcome so only one modal ever shows at a time. The
-          gate on prayerInviteVisible/betaWelcomeVisible keeps us last in
-          line: while either is open, this one waits. */}
+      {/* "You have a new letter" popup — queued after the beta-welcome
+          so only one modal ever shows at a time. */}
       <AnimatePresence>
-        {newLetterPopup && !prayerInviteVisible && !betaWelcomeVisible && (
+        {newLetterPopup && !betaWelcomeVisible && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -3402,19 +3220,27 @@ export default function Dashboard() {
               const key = `pfor-${p.recipientEmail ?? p.id}`;
               addFace(key, p.recipientName ?? "Someone", p.recipientAvatarUrl ?? null);
             }
-            // Partial-progress detection. The slideshow opens at the
-            // first un-prayed slide, so we count how many of the
-            // viewer-visible requests they HAVEN'T amened today —
-            // that's the number they'd see if they continue. Only
-            // surface "X more prayers / Continue praying" when at
-            // least one was prayed AND at least one remains.
-            const visibleReqs = (dashPrayerRequests ?? []).filter(
-              (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
-            );
-            const amenedTodayCount = visibleReqs.filter((r) => r.myAmenedToday === true).length;
-            const unPrayedCount = visibleReqs.length - amenedTodayCount;
-            const partialRemaining =
-              amenedTodayCount > 0 && unPrayedCount > 0 ? unPrayedCount : 0;
+            // Partial-progress detection — read the localStorage
+            // entry the slideshow writes on every advance() and on
+            // X-out. Counts ALL slide kinds (intercessions, circle
+            // intentions, prayer requests, prayers-for), not just
+            // request amens. The previous request-only path read
+            // 0 when the user prayed two intercessions and bailed,
+            // and the dashboard fell through to "Pray again".
+            let partialRemaining = 0;
+            try {
+              const todayKey = todayLocalKey();
+              const raw = localStorage.getItem(`phoebe:slideshow-progress:${todayKey}`);
+              if (raw) {
+                const parsed = JSON.parse(raw) as { completed?: number; total?: number };
+                if (typeof parsed.completed === "number" &&
+                    typeof parsed.total === "number" &&
+                    parsed.completed > 0 &&
+                    parsed.completed < parsed.total) {
+                  partialRemaining = parsed.total - parsed.completed;
+                }
+              }
+            } catch { /* corrupt entry — fall through to zero */ }
             return (
               <div className="mt-5">
                 <PrayerListCard
