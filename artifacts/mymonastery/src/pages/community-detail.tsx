@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
+import { MomentCard, type Moment } from "@/pages/dashboard";
 
 const FONT = "'Space Grotesk', sans-serif";
 
@@ -1646,6 +1647,20 @@ export default function CommunityDetailPage() {
             s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
 
           const renderMomentCard = (m: CommunityMoment, emoji: string) => {
+            // Lectio cards mirror the home dashboard exactly — same shared
+            // component, same flap lines, same "Reflect 📜" pulse pill. The
+            // /api/moments payload already carries the lectio enrichment
+            // fields, so a direct cast is safe here.
+            if (m.templateType === "lectio-divina") {
+              return (
+                <MomentCard
+                  key={`comm-lectio-${m.id}`}
+                  m={m as unknown as Moment}
+                  userEmail={user.email}
+                  keyPrefix="comm"
+                />
+              );
+            }
             // Intercessions are now group-scoped, not people-scoped —
             // show which communities this practice is shared with
             // instead of listing individual members. We're already on
