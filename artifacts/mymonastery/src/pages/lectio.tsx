@@ -593,11 +593,10 @@ export default function LectioPage() {
         <div
           className="max-w-2xl w-full mx-auto"
           style={{
-            flex: "1 0 auto",
+            minHeight: "100%",
             display: "flex",
             flexDirection: "column",
             justifyContent: isFullHeightSlide ? "stretch" : "center",
-            minHeight: 0,
           }}
         >
           <AnimatePresence mode="wait">
