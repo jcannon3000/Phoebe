@@ -596,7 +596,7 @@ export default function LectioPage() {
             minHeight: "100%",
             display: "flex",
             flexDirection: "column",
-            justifyContent: isFullHeightSlide ? "stretch" : "center",
+            justifyContent: isFullHeightSlide ? "stretch" : "flex-start",
           }}
         >
           <AnimatePresence mode="wait">
