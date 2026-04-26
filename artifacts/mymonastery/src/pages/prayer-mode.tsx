@@ -59,6 +59,9 @@ interface PrayerRequest {
   // request when the user partially completed it earlier, and (b)
   // drive the dashboard's "X more prayers" partial-progress card.
   myAmenedToday?: boolean;
+  // ISO timestamp when the request stops appearing to non-owners
+  // unless renewed. Used by the slideshow as a defensive expiry filter.
+  expiresAt?: string | null;
 }
 
 interface PrayerSlide {
@@ -1379,7 +1382,15 @@ export default function PrayerModePage() {
     // deliberately exclude the viewer's own requests; they don't need to
     // be shown their own ask as a slide to pray for.
     ...prayerRequests
-      .filter((r) => !r.isAnswered && !r.isOwnRequest)
+      .filter((r) => {
+        if (r.isAnswered || r.isOwnRequest) return false;
+        // Defense in depth: the personal feed already drops others'
+        // expired requests at the SQL layer, but a stale cache (e.g.
+        // an expiry crossing while the user is mid-session) could let
+        // one slip through. Skip it so it never appears as a slide.
+        if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+        return true;
+      })
       .map((r): PrayerSlide => ({
         kind: "request",
         text: r.body,

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, asc, desc, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, or, asc, desc, gt, inArray, isNull, sql } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -1530,6 +1530,15 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
   // been silently 500-ing this endpoint since the member-scoped
   // query was added. Using `inArray()` produces the canonical
   // `owner_id IN ($2, $3, ...)` which is what we actually want.
+  // Expired requests (past expiresAt with no renewal) drop off the
+  // community dashboard for everyone — including the owner. The owner
+  // can still see and renew their expired request from /prayer-list,
+  // which intentionally keeps them visible there.
+  const notExpired = or(
+    isNull(prayerRequestsTable.expiresAt),
+    gt(prayerRequestsTable.expiresAt, new Date()),
+  );
+
   const rows = memberUserIds.length > 0
     ? await db
         .select({
@@ -1546,6 +1555,7 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
         .where(and(
           sql`${prayerRequestsTable.closedAt} IS NULL`,
+          notExpired,
           or(
             eq(prayerRequestsTable.groupId, group.id),
             inArray(prayerRequestsTable.ownerId, memberUserIds),
@@ -1567,6 +1577,7 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         .leftJoin(usersTable, eq(prayerRequestsTable.ownerId, usersTable.id))
         .where(and(
           sql`${prayerRequestsTable.closedAt} IS NULL`,
+          notExpired,
           eq(prayerRequestsTable.groupId, group.id),
         ))
         .orderBy(desc(prayerRequestsTable.createdAt));
