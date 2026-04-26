@@ -539,7 +539,9 @@ export default function LectioPage() {
           page. Other slides center their content. */}
       {(() => {
         const isFullHeightSlide =
-          current.kind === "reading" || current.kind === "all-responses";
+          current.kind === "reading" ||
+          current.kind === "all-responses" ||
+          current.kind === "entry";
         return (
       <main
         className={`flex-1 flex px-5 ${
@@ -984,7 +986,16 @@ function EntrySlide({
   const canShare = !submitting && draft.trim().length > 0 && !belowMin && !aboveMax;
 
   return (
-    <div className="py-2">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        paddingTop: 8,
+        paddingBottom: 8,
+      }}
+    >
       <p
         style={{
           color: FAINT_GREEN,
@@ -1009,10 +1020,11 @@ function EntrySlide({
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        rows={7}
         placeholder="Take your time…"
         style={{
           width: "100%",
+          flex: 1,
+          minHeight: 0,
           background: "transparent",
           border: "none",
           outline: "none",
