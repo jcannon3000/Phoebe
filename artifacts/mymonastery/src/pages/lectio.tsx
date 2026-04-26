@@ -531,12 +531,16 @@ export default function LectioPage() {
         </div>
       </header>
 
-      {/* Slide content. Main is flex-1 inside a fixed-height viewport so it
-          takes all the space between the top of the window and the bottom.
-          Full-height slides (reading, all-responses) get top/bottom padding
-          so they fit cleanly between the fixed header and the fixed nav —
-          and their scrolling happens inside their own card, not on the
-          page. Other slides center their content. */}
+      {/* Slide content. Main fills the gap between the fixed header and
+          fixed nav. Pattern: main scrolls vertically; the inner wrapper
+          has `min-height: 100%` + flex-column + `justify-content: center`
+          so content sits perfectly centered when it fits and grows
+          (scrollable inside main) when it doesn't. That keeps the page
+          locked in place — the user can't pan the entire viewport —
+          while still gracefully handling tall slides on small screens.
+          Full-height slides (reading, all-responses, entry) stretch to
+          fill so the textarea / scrolling card can use all the space,
+          and the entry CTA sits above the keyboard via --kb-inset. */}
       {(() => {
         const isFullHeightSlide =
           current.kind === "reading" ||
@@ -544,13 +548,12 @@ export default function LectioPage() {
           current.kind === "entry";
         return (
       <main
-        className={`flex-1 flex px-5 ${
-          isFullHeightSlide
-            ? "items-stretch justify-center"
-            : "items-center justify-center"
-        }`}
+        className="flex-1 flex flex-col px-5"
         style={{
           minHeight: 0,
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
           paddingTop: isFullHeightSlide
             ? "calc(env(safe-area-inset-top) + 80px)"
             : "calc(env(safe-area-inset-top) + 96px)",
@@ -564,12 +567,14 @@ export default function LectioPage() {
         }}
       >
         <div
-          className="max-w-2xl w-full"
-          style={
-            isFullHeightSlide
-              ? { display: "flex", flexDirection: "column", minHeight: 0 }
-              : undefined
-          }
+          className="max-w-2xl w-full mx-auto"
+          style={{
+            flex: "1 0 auto",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: isFullHeightSlide ? "stretch" : "center",
+            minHeight: 0,
+          }}
         >
           <AnimatePresence mode="wait">
             <motion.div
