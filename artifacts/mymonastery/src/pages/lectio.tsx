@@ -300,6 +300,30 @@ export default function LectioPage() {
 
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Lock body / html scrolling while Lectio is mounted. Without this,
+  // iOS WebView lets the document body scroll behind our `100dvh +
+  // overflow:hidden` root — the symptom is a slide that loads showing
+  // the bottom of the page and lets the user pan it up too high.
+  // Mirrors prayer-mode.tsx and prayer-list.tsx.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyHeight = body.style.height;
+    const prevHtmlHeight = html.style.height;
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    body.style.height = "100%";
+    html.style.height = "100%";
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      html.style.overflow = prevHtmlOverflow;
+      body.style.height = prevBodyHeight;
+      html.style.height = prevHtmlHeight;
+    };
+  }, []);
+
   const slides = useMemo<Slide[]>(() => (data ? buildSlides(data) : []), [data]);
   const [slideIdx, setSlideIdx] = useState(0);
   const [initialized, setInitialized] = useState(false);
