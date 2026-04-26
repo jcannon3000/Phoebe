@@ -1168,6 +1168,16 @@ router.get("/groups/:slug/members", async (req, res): Promise<void> => {
     ? members
     : members.filter(m => m.role !== "hidden_admin" || m.userId === user.id);
 
+  const memberEmails = Array.from(new Set(
+    visibleMembers.map(m => m.email?.toLowerCase()).filter((e): e is string => !!e)
+  ));
+  const betaRows = memberEmails.length
+    ? await db.select({ email: betaUsersTable.email })
+        .from(betaUsersTable)
+        .where(inArray(betaUsersTable.email, memberEmails))
+    : [];
+  const betaSet = new Set(betaRows.map(r => r.email.toLowerCase()));
+
   res.json({
     members: visibleMembers.map(m => ({
       id: m.id,
@@ -1176,6 +1186,7 @@ router.get("/groups/:slug/members", async (req, res): Promise<void> => {
       role: m.role,
       joinedAt: m.joinedAt,
       pending: !m.joinedAt,
+      isBeta: m.email ? betaSet.has(m.email.toLowerCase()) : false,
     })),
   });
 });

@@ -42,7 +42,7 @@ type FocusEntry = {
   createdAt: string;
 };
 type Member = {
-  id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean; avatarUrl?: string | null;
+  id: number; name: string | null; email: string; role: string; joinedAt: string | null; pending?: boolean; avatarUrl?: string | null; isBeta?: boolean;
 };
 type PrayerRequest = {
   id: number; body: string; ownerName: string | null; ownerAvatarUrl: string | null; wordCount: number;
@@ -2416,6 +2416,15 @@ export default function CommunityDetailPage() {
                           title="Invisible member with admin access (pilot-designated)"
                         >
                           Hidden admin
+                        </span>
+                      )}
+                      {m.isBeta && (
+                        <span
+                          className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(193,127,36,0.1)", color: "#E8B872", border: "1px solid rgba(193,127,36,0.3)" }}
+                          title="Pilot tester / app developer"
+                        >
+                          App developer
                         </span>
                       )}
                       {isRecentlyJoined(m.joinedAt) && (
