@@ -223,7 +223,13 @@ export default function RitualDetail() {
       .catch(() => null);
   }, [showInviteSheet, ritualId]);
 
-  const joinLink = `${window.location.origin}/join/${(ritual as any)?.scheduleToken ?? ""}`;
+  // Inside Capacitor `window.location.origin` is `capacitor://localhost`,
+  // so a link copied from the iOS app would be unfollowable. Pin to the
+  // public host on native; Universal Links carry the tap back into the app.
+  const isNativeShell = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
+    .PhoebeNative?.isNative?.();
+  const linkOrigin = isNativeShell ? "https://withphoebe.app" : window.location.origin;
+  const joinLink = `${linkOrigin}/join/${(ritual as any)?.scheduleToken ?? ""}`;
 
   const handleAddEmailToQueue = () => {
     const email = inviteEmailInput.trim();

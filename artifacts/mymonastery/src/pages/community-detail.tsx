@@ -1488,8 +1488,15 @@ export default function CommunityDetailPage() {
             community. Admins can copy or rotate; rotation invalidates the old
             link immediately (useful if it was shared too widely). */}
         {showInvite && (() => {
+          // Inside the iOS Capacitor shell, `window.location.origin` is
+          // `capacitor://localhost` — useless when shared via SMS. Force
+          // the public host so the link clicks into a real browser (or
+          // back into the app via Universal Links → applinks:withphoebe.app).
+          const isNativeShell = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
+            .PhoebeNative?.isNative?.();
+          const linkOrigin = isNativeShell ? "https://withphoebe.app" : window.location.origin;
           const inviteUrl = group.inviteToken
-            ? `${window.location.origin}/communities/join/${group.slug}/${group.inviteToken}`
+            ? `${linkOrigin}/communities/join/${group.slug}/${group.inviteToken}`
             : "";
           const copyToClipboard = async () => {
             if (!inviteUrl) return;
@@ -2496,11 +2503,16 @@ export default function CommunityDetailPage() {
                             e.preventDefault();
                             e.stopPropagation();
                             const who = isSelf ? "yourself" : (m.name || m.email);
+                            // "Reveal" only flips visibility — keep admin
+                            // powers. Demoting all the way to "member"
+                            // here surprised admins who only wanted to
+                            // come out of hiding. If the goal is to
+                            // demote, use the regular role control.
                             const msg = isSelf
-                              ? "Reveal yourself as a regular member? You'll show up in the roster and lose admin powers."
-                              : `Reveal ${who} as a regular member? They'll appear in the roster and lose admin powers.`;
+                              ? "Reveal yourself? You'll appear in the roster and stay an admin."
+                              : `Reveal ${who}? They'll appear in the roster and stay an admin.`;
                             if (window.confirm(msg)) {
-                              changeRoleMutation.mutate({ memberId: m.id, role: "member" });
+                              changeRoleMutation.mutate({ memberId: m.id, role: "admin" });
                             }
                           }}
                           disabled={changingThisRow}
