@@ -113,7 +113,7 @@ const CATEGORY_COLORS: Record<Category, {
   },
   practices: {
     bar: "#2E6B40",
-    border: "transparent",
+    border: "rgba(111,175,133,0.35)",
     bg: "rgba(46,107,64,0.15)",
     pulseClass: "animate-turn-pulse-practices",
     barPulseClass: "animate-bar-pulse-practices",

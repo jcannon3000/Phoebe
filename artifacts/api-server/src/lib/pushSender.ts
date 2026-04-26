@@ -596,3 +596,66 @@ export function sendThirdAmenTodayPush(
 // type and use turn-focused copy. For small_group there's no "your
 // turn" — anyone can write any time during the period — so the
 // generic "you have a new letter" framing stays.)
+
+// Lectio Divina stage reminder. Fires at ~09:30 local on Mon (Stage 1
+// — Lectio), Wed (Stage 2 — Meditatio), Fri (Stage 3 — Oratio) for any
+// circle member who hasn't yet reflected on that stage this week. The
+// body names the gospel passage, the stage number, and the circle so
+// the user can decide whether to open it without opening the app.
+export function sendLectioReminderPush(
+  userId: number,
+  opts: {
+    momentToken: string;
+    userToken: string;
+    momentId: number;
+    stageNumber: 1 | 2 | 3;
+    gospelReference: string;  // e.g. "John 10:1-10"
+    communityName: string;    // the lectio moment's name
+    sundayDate: string;       // YYYY-MM-DD — for collapseId uniqueness
+    stage: string;            // raw stage key for collapseId
+  },
+) {
+  return sendPushToUser(userId, {
+    title: "It's time for Lectio Divina",
+    body: `Tap to read and reflect on ${opts.gospelReference} for Stage ${opts.stageNumber} with ${opts.communityName}`,
+    path: `/lectio/${opts.momentToken}/${opts.userToken}`,
+    threadId: `lectio-${opts.momentId}`,
+    collapseId: `lectio-${opts.momentId}-${opts.stage}-${opts.sundayDate}`,
+    sound: PHOEBE_SOUND,
+  });
+}
+
+// Evening catch-up reminder for Lectio Divina. Fires the day AFTER a
+// stage day (Tue/Thu/Sat ~19:30 local) for circle members who still
+// haven't reflected. Copy branches on othersCompletedCount:
+//   >= 1: "Join N others in Lectio Divina" — social pull
+//   == 0: "Join {community} for Lectio Divina" — first-mover framing
+// Body always names the stage and gospel reference so the recipient
+// knows exactly what's left.
+export function sendLectioEveningReminderPush(
+  userId: number,
+  opts: {
+    momentToken: string;
+    userToken: string;
+    momentId: number;
+    stageNumber: 1 | 2 | 3;
+    gospelReference: string;
+    communityName: string;
+    sundayDate: string;
+    stage: string;
+    othersCompletedCount: number;
+  },
+) {
+  const title = opts.othersCompletedCount >= 1
+    ? `Join ${opts.othersCompletedCount} other${opts.othersCompletedCount === 1 ? "" : "s"} in Lectio Divina`
+    : `Join ${opts.communityName} for Lectio Divina`;
+  const body = `Complete Stage ${opts.stageNumber} of ${opts.gospelReference}${opts.othersCompletedCount >= 1 ? ` with ${opts.communityName}` : ""}`;
+  return sendPushToUser(userId, {
+    title,
+    body,
+    path: `/lectio/${opts.momentToken}/${opts.userToken}`,
+    threadId: `lectio-${opts.momentId}`,
+    collapseId: `lectio-evening-${opts.momentId}-${opts.stage}-${opts.sundayDate}`,
+    sound: PHOEBE_SOUND,
+  });
+}
