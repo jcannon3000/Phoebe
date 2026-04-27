@@ -638,14 +638,31 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
     // pre-count was exactly 2, we just hit 3 → fire.
     const distinctTodayBefore = new Set<number>();
     let sessionAlreadyToday = false;
+    let firstEverAmenWasToday = false;
     for (const r of prior) {
       if (!r.prayedAt) continue;
       const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(r.prayedAt);
-      if (ymd !== ownerLocalYmd) continue;
-      distinctTodayBefore.add(r.userId);
-      if (r.userId === sessionUserId) sessionAlreadyToday = true;
+      if (ymd === ownerLocalYmd) {
+        distinctTodayBefore.add(r.userId);
+        if (r.userId === sessionUserId) sessionAlreadyToday = true;
+      }
     }
-    thirdTodayFire = !sessionAlreadyToday && distinctTodayBefore.size === 2;
+    // If the request's first-ever amen happened today, the owner already
+    // got the "your community is praying for you" push today — don't
+    // double-tap them with the 3-today push on the same day.
+    const earliestPrior = prior.reduce<Date | null>((acc, r) => {
+      if (!r.prayedAt) return acc;
+      if (!acc || r.prayedAt < acc) return r.prayedAt;
+      return acc;
+    }, null);
+    if (earliestPrior) {
+      const earliestYmd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(earliestPrior);
+      firstEverAmenWasToday = earliestYmd === ownerLocalYmd;
+    } else {
+      // No prior amens → this insert IS the first-ever, which is today.
+      firstEverAmenWasToday = true;
+    }
+    thirdTodayFire = !firstEverAmenWasToday && !sessionAlreadyToday && distinctTodayBefore.size === 2;
   }
 
   await db.insert(prayerRequestAmensTable).values({
