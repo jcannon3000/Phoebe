@@ -213,9 +213,24 @@ function buildSlides(data: LectioData): Slide[] {
   return slides;
 }
 
-// Always land on the status slide — it shows the week overview and lets
-// the user navigate to the right stage from there.
-function initialSlideIndex(_data: LectioData, slides: Slide[]): number {
+// Default landing is the status slide (week overview). When the dashboard
+// "Responses" pill links here it appends `?view=responses`, asking us to
+// jump straight to the current stage's responses slide instead.
+function initialSlideIndex(data: LectioData, slides: Slide[]): number {
+  if (typeof window !== "undefined") {
+    const view = new URLSearchParams(window.location.search).get("view");
+    if (view === "responses") {
+      const stage = data.currentStage;
+      if (stage) {
+        const idx = slides.findIndex(
+          (sl) => sl.stage === stage && sl.kind === "responses",
+        );
+        if (idx >= 0) return idx;
+      }
+      const allIdx = slides.findIndex((sl) => sl.kind === "all-responses");
+      if (allIdx >= 0) return allIdx;
+    }
+  }
   const statusIdx = slides.findIndex((sl) => sl.kind === "status");
   if (statusIdx >= 0) return statusIdx;
   return 0;

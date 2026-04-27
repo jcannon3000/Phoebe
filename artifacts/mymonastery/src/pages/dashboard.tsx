@@ -1099,8 +1099,11 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
   // on, so both the card and the Pray pill fall through to openHref.
   const prayHref: string | null = null;
 
+  // When the user has already submitted this stage's reflection ("Responses"
+  // pill state), drop them directly into the responses slide for the current
+  // stage — they don't need to land on the week-overview status page first.
   const openHref = (isLectio && m.momentToken && m.myUserToken)
-    ? `/lectio/${m.momentToken}/${m.myUserToken}`
+    ? `/lectio/${m.momentToken}/${m.myUserToken}${isLectioCaughtUp ? "?view=responses" : ""}`
     : (shouldPulse && isMorningPrayer && m.myUserToken)
     ? `/morning-prayer/${m.id}/${m.myUserToken}`
     : `/moments/${m.id}`;
@@ -3043,15 +3046,26 @@ export default function Dashboard() {
     }
 
     // Chronological sort for Upcoming / This month so cards line up by next
-    // occurrence (e.g. Wed gathering before Sunday service before next-week
-    // letter window). Items without a known next date sort to the end.
+    // occurrence including time of day — a 9am Lectio lands before the same
+    // day's 6:30pm gathering, and a Sunday service drops to last when its
+    // date is later in the week.
     const itemSortMs = (item: DashboardItem): number => {
       if (item.kind === "service" && item.nextDate) {
-        return startOfDay(item.nextDate).getTime();
+        const base = startOfDay(item.nextDate).getTime();
+        const hhmm = item.data.times[0]?.time;
+        if (hhmm) {
+          const [hStr, mStr] = hhmm.split(":");
+          const h = parseInt(hStr, 10);
+          const m = parseInt(mStr, 10);
+          if (Number.isFinite(h) && Number.isFinite(m)) {
+            return base + (h * 60 + m) * 60 * 1000;
+          }
+        }
+        return base;
       }
       if (item.kind === "gathering") {
         const d = computeNextGatheringDate(item.data);
-        return d ? startOfDay(d).getTime() : Number.POSITIVE_INFINITY;
+        return d ? d.getTime() : Number.POSITIVE_INFINITY;
       }
       if (item.kind === "letter") {
         const ms = item.data.windowOpenDate ? new Date(item.data.windowOpenDate).getTime() : NaN;
@@ -3059,7 +3073,11 @@ export default function Dashboard() {
       }
       if (item.kind === "moment") {
         const daysAhead = nextWindowDaysAhead(item.data);
-        return addDays(startOfDay(new Date()), daysAhead).getTime();
+        const base = addDays(startOfDay(new Date()), daysAhead).getTime();
+        // Lectio target time = 9am, so it sorts before evening gatherings
+        // on the same day. Other moments default to 9am as well — a sane
+        // morning anchor when no explicit time is set.
+        return base + 9 * 60 * 60 * 1000;
       }
       return Number.POSITIVE_INFINITY;
     };
