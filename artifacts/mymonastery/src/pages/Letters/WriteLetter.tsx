@@ -99,8 +99,13 @@ export default function WriteLetter() {
   });
 
   const isOneToOne = correspondence?.groupType === "one_to_one";
-  const minWords = isOneToOne ? 100 : 50;
+  const minWords = 100;
   const maxWords = 1000;
+  // Threshold at which the counter switches from a "minimum to hit" UI
+  // to the cap-aware "X / 1000" UI. Below this, the user is being
+  // encouraged to write more; once they're well past the floor and
+  // approaching the ceiling, surface the ceiling.
+  const cap_visible_at = 800;
 
   // Load draft
   useEffect(() => {
@@ -110,13 +115,31 @@ export default function WriteLetter() {
     }
   }, [draft]);
 
-  // Auto-resize textarea
+  // Track the visible viewport height (visualViewport excludes the
+  // keyboard on iOS / Capacitor's resize:None mode), so we can shrink
+  // the outer container to fit above the keyboard. Without this, the
+  // bottom of the letter slides under the keyboard and is unreachable
+  // because the page can't scroll past its own height.
+  const [viewportH, setViewportH] = useState<number>(() =>
+    typeof window !== "undefined"
+      ? window.visualViewport?.height ?? window.innerHeight
+      : 0,
+  );
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+    const vv = window.visualViewport;
+    if (!vv) {
+      const onResize = () => setViewportH(window.innerHeight);
+      window.addEventListener("resize", onResize);
+      return () => window.removeEventListener("resize", onResize);
     }
-  }, [content]);
+    const onChange = () => setViewportH(vv.height);
+    vv.addEventListener("resize", onChange);
+    vv.addEventListener("scroll", onChange);
+    return () => {
+      vv.removeEventListener("resize", onChange);
+      vv.removeEventListener("scroll", onChange);
+    };
+  }, []);
 
   const saveDraft = useCallback(async () => {
     if (!correspondenceId || content === lastSavedRef.current) return;
@@ -247,7 +270,17 @@ export default function WriteLetter() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F8F3EC" }}>
+    <div
+      className="flex flex-col"
+      style={{
+        background: "#F8F3EC",
+        // Lock the whole page to the *visible* viewport (excludes the
+        // iOS keyboard) so the writing area's scroll region ends right
+        // above the keyboard, never under it.
+        height: viewportH ? `${viewportH}px` : "100dvh",
+        overflow: "hidden",
+      }}
+    >
       {/* Minimal header */}
       <div className="px-6 pt-6 pb-3 flex items-center justify-between max-w-3xl mx-auto w-full">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
@@ -308,9 +341,15 @@ export default function WriteLetter() {
               >
                 {wordCount}
               </span>
-              <span className="text-[13px]" style={{ color: "#9a9390" }}>
-                / {maxWords} words
-              </span>
+              {wordCount >= cap_visible_at ? (
+                <span className="text-[13px]" style={{ color: "#9a9390" }}>
+                  / {maxWords} words
+                </span>
+              ) : (
+                <span className="text-[13px]" style={{ color: "#9a9390" }}>
+                  words
+                </span>
+              )}
               {!wordCountMet && (
                 <span className="text-[12px]" style={{ color: "#C17F24" }}>
                   · {minWords - wordCount} to go
@@ -360,17 +399,20 @@ export default function WriteLetter() {
         )}
       </div>
 
-      {/* Writing area */}
-      <div className="flex-1 px-6 pt-6 pb-8 max-w-3xl mx-auto w-full">
+      {/* Writing area — flex-1 + min-h-0 lets the textarea scroll
+          internally instead of pushing the page past the visible
+          viewport, so the bottom of the letter stays reachable when
+          the keyboard is up. */}
+      <div className="flex-1 min-h-0 px-6 pt-6 pb-3 max-w-3xl mx-auto w-full flex">
         <textarea
           ref={textareaRef}
           value={content}
           onChange={(e) => { setContent(e.target.value); setConfirmSend(false); }}
           placeholder={isOneToOne
             ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
-            : `What's been happening these past two weeks?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
+            : `What's been happening these past two weeks?\n\nA moment, a thought, something you noticed.\n100 words or more. 🌿`
           }
-          className="w-full min-h-[50vh] resize-none focus:outline-none placeholder:italic"
+          className="w-full h-full resize-none focus:outline-none placeholder:italic"
           style={{
             color: "#2C1810",
             backgroundColor: "transparent",
@@ -380,10 +422,10 @@ export default function WriteLetter() {
             caretColor: "#5C7A5F",
             boxShadow: "none",
             whiteSpace: "pre-wrap",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
           }}
         />
-
-        {/* signature removed — reader sees author name in metadata */}
       </div>
     </div>
   );
