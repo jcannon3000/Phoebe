@@ -99,7 +99,7 @@ export default function WriteLetter() {
   });
 
   const isOneToOne = correspondence?.groupType === "one_to_one";
-  const minWords = 100;
+  const minWords = isOneToOne ? 100 : 50;
   const maxWords = 1000;
   // Threshold at which the counter switches from a "minimum to hit" UI
   // to the cap-aware "X / 1000" UI. Below this, the user is being
@@ -410,7 +410,7 @@ export default function WriteLetter() {
           onChange={(e) => { setContent(e.target.value); setConfirmSend(false); }}
           placeholder={isOneToOne
             ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
-            : `What's been happening these past two weeks?\n\nA moment, a thought, something you noticed.\n100 words or more. 🌿`
+            : `What's been happening these past two weeks?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
           }
           className="w-full h-full resize-none focus:outline-none placeholder:italic"
           style={{
