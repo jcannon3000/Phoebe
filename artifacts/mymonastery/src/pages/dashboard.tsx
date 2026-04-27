@@ -2120,45 +2120,51 @@ function TimeSection({
 }) {
   if (items.length === 0 && !trailingCards) return null;
 
-  const letterItems = items.filter(i => i.kind === "letter") as Array<Extract<DashboardItem, { kind: "letter" }>>;
-  const momentItems = items.filter(i => i.kind === "moment") as Array<Extract<DashboardItem, { kind: "moment" }>>;
-  const gatheringItems = items.filter(i => i.kind === "gathering") as Array<Extract<DashboardItem, { kind: "gathering" }>>;
-  const serviceItems = items.filter(i => i.kind === "service") as Array<Extract<DashboardItem, { kind: "service" }>>;
-  const feedItems = items.filter(i => i.kind === "feed") as Array<Extract<DashboardItem, { kind: "feed" }>>;
-
-  // Letters where it's the user's turn (or there are unread letters) always
-  // render as individual cards. Passive letters collapse into a summary
-  // card when there are 2+ of them, otherwise they render individually.
-  const actionLetters = letterItems.filter(
-    i => i.data.unreadCount > 0 || i.data.turnState === "OPEN" || i.data.turnState === "OVERDUE"
-  );
-  const passiveLetters = letterItems.filter(
-    i => !(i.data.unreadCount > 0 || i.data.turnState === "OPEN" || i.data.turnState === "OVERDUE")
+  // Render in the input array's order — caller (parent useMemo) has
+  // already sorted by chronological time-of-occurrence so a 9am Lectio
+  // lands before the same day's 6:30pm gathering and a Sunday service
+  // drops to last when its date is later in the week. Earlier this
+  // function bucketed by `kind` (services → gatherings → moments → …),
+  // which threw the chronological order out the window.
+  const isPassiveLetter = (item: DashboardItem): boolean =>
+    item.kind === "letter" &&
+    !(item.data.unreadCount > 0 || item.data.turnState === "OPEN" || item.data.turnState === "OVERDUE");
+  const passiveLetters = items.filter(
+    (i): i is Extract<DashboardItem, { kind: "letter" }> => i.kind === "letter" && isPassiveLetter(i),
   );
   const showPassiveAsSummary = passiveLetters.length >= 2;
 
-  const visibleCardCount =
-    momentItems.length +
-    actionLetters.length +
-    (showPassiveAsSummary ? 1 : passiveLetters.length) +
-    serviceItems.length +
-    feedItems.length +
-    gatheringItems.length +
-    (trailingCards ? 1 : 0);
-  const scrollable = visibleCardCount > 3;
-
-  const cards = (
-    <div className="space-y-3">
-      {actionLetters.map((item) => (
+  // Walk the items in chronological order. When the summary collapse
+  // is active, drop passive letters from their inline slot and emit
+  // ONE summary card at the position of the earliest passive letter.
+  let summaryEmitted = false;
+  const renderedNodes: React.ReactNode[] = [];
+  for (const item of items) {
+    if (item.kind === "letter" && isPassiveLetter(item) && showPassiveAsSummary) {
+      if (!summaryEmitted) {
+        summaryEmitted = true;
+        renderedNodes.push(
+          <LetterSummaryCard
+            key={`${label}-l-summary`}
+            correspondences={passiveLetters.map(i => i.data)}
+            userEmail={userEmail}
+          />,
+        );
+      }
+      continue;
+    }
+    if (item.kind === "letter") {
+      renderedNodes.push(
         <LetterCard
           key={`${label}-l-${item.data.id}`}
           c={item.data}
           userEmail={userEmail}
           userName={userName}
           keyPrefix={label}
-        />
-      ))}
-      {serviceItems.map((item) => (
+        />,
+      );
+    } else if (item.kind === "service") {
+      renderedNodes.push(
         <ServiceCard
           key={`${label}-s-${item.data.id}`}
           schedule={item.data}
@@ -2166,44 +2172,45 @@ function TimeSection({
           isOnDate={item.isOnDate}
           onOpen={() => onOpenService(item.data, item.nextDate)}
           keyPrefix={label}
-        />
-      ))}
-      {gatheringItems.map((item) => (
+        />,
+      );
+    } else if (item.kind === "gathering") {
+      renderedNodes.push(
         <GatheringCard
           key={`${label}-g-${item.data.id}`}
           r={item.data}
           keyPrefix={label}
           badge={item.badge}
           onOpen={() => onOpenGathering(item.data)}
-        />
-      ))}
-      {feedItems.map((item) => (
+        />,
+      );
+    } else if (item.kind === "feed") {
+      renderedNodes.push(
         <FeedTodayCard
           key={`${label}-f-${item.data.feed.id}`}
           sf={item.data}
           keyPrefix={label}
-        />
-      ))}
-      {momentItems.map((item) => (
-        <MomentCard key={`${label}-m-${item.data.id}`} m={item.data} userEmail={userEmail} keyPrefix={label} nextWindow={item.nextWindow} />
-      ))}
-      {showPassiveAsSummary ? (
-        <LetterSummaryCard
-          key={`${label}-l-summary`}
-          correspondences={passiveLetters.map(i => i.data)}
+        />,
+      );
+    } else if (item.kind === "moment") {
+      renderedNodes.push(
+        <MomentCard
+          key={`${label}-m-${item.data.id}`}
+          m={item.data}
           userEmail={userEmail}
-        />
-      ) : (
-        passiveLetters.map((item) => (
-          <LetterCard
-            key={`${label}-l-${item.data.id}`}
-            c={item.data}
-            userEmail={userEmail}
-            userName={userName}
-            keyPrefix={label}
-          />
-        ))
-      )}
+          keyPrefix={label}
+          nextWindow={item.nextWindow}
+        />,
+      );
+    }
+  }
+
+  const visibleCardCount = renderedNodes.length + (trailingCards ? 1 : 0);
+  const scrollable = visibleCardCount > 3;
+
+  const cards = (
+    <div className="space-y-3">
+      {renderedNodes}
       {trailingCards}
     </div>
   );
