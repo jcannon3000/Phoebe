@@ -351,16 +351,6 @@ export function sendEveningNudgePush(userId: number) {
   });
 }
 
-export function sendNewMemberPush(adminUserId: number, groupSlug: string, memberName: string) {
-  return sendPushToUser(adminUserId, {
-    title: `New member in your community`,
-    body: `${memberName} just joined.`,
-    path: `/communities/${groupSlug}`,
-    threadId: "member-joined",
-    sound: PHOEBE_SOUND_MID,
-  });
-}
-
 // Fan-out wrapper. We iterate in parallel so a slow / unresponsive APNs
 // call for one recipient doesn't hold up the rest of the request.
 // Errors are swallowed per-user inside sendPushToUser → sendOneApns.
@@ -554,7 +544,7 @@ export function sendFirstAmenPush(
   const firstName = (opts.prayerName || "Someone").split(/\s+/)[0] || "Someone";
   return sendPushToUser(recipientUserId, {
     title: "You've been held in prayer",
-    body: `The first prayer just went up for your request... by ${firstName}.`,
+    body: `The first amen just went up for your request by ${firstName}.`,
     path: "/prayer-list",
     threadId: `prayer-request-${opts.prayerRequestId}`,
     collapseId: `first-amen-${opts.prayerRequestId}`,
