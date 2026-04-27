@@ -1703,31 +1703,11 @@ router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => 
   // stays defined so we can re-enable it with narrower logic (e.g.
   // daily digest, or only for prayer circles the admin leads).
 
-  // Push to every joined member except the author. Admins are already
-  // covered by the email+push notifyAdminsOfNewPrayerRequest path; this
-  // layer broadens the audience for push (email stays admin-only to
-  // avoid inbox noise). Anonymous posts still notify — we just hide the
-  // author name in the push body.
-  (async () => {
-    try {
-      const members = await db.select({ userId: groupMembersTable.userId, joinedAt: groupMembersTable.joinedAt })
-        .from(groupMembersTable)
-        .where(eq(groupMembersTable.groupId, group.id));
-      const recipientIds = members
-        .filter(m => m.joinedAt != null)
-        .map(m => m.userId)
-        .filter((id): id is number => id != null && id !== user.id);
-      if (recipientIds.length === 0) return;
-      const authorDisplay = parsed.data.isAnonymous ? null : (member.name ?? user.name);
-      for (const rid of recipientIds) {
-        sendNewPrayerRequestPush(rid, group.slug, authorDisplay).catch((err) =>
-          console.warn("[groups] prayer-request push failed:", err)
-        );
-      }
-    } catch (err) {
-      console.warn("[groups] broad prayer-request push failed:", err);
-    }
-  })();
+  // Community-wide "New prayer request" push is disabled — requesters
+  // didn't want to ping every member on every new request. The request
+  // still appears on the community home and in each member's prayer
+  // list / slideshow; we just don't pre-empt their lock screen.
+  void sendNewPrayerRequestPush;
 
   res.json({ ok: true, id: inserted.id });
 });
