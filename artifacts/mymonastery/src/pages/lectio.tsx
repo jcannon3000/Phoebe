@@ -215,15 +215,14 @@ function buildSlides(data: LectioData): Slide[] {
 
 // Default landing is the status slide (week overview). When the dashboard
 // "Responses" pill links here it appends `?view=responses`, asking us to
-// jump straight to the combined all-responses view (the "What the circle
-// heard" feed) — readers want the cleaner cross-stage view, not a single
-// stage's green panel.
+// jump straight to the current stage's per-stage responses slide (the
+// "WHAT OTHERS HEARD" feed) — that's the clean, card-less view readers
+// want. Falls back to the combined all-responses panel only if a per-
+// stage one isn't available.
 function initialSlideIndex(data: LectioData, slides: Slide[]): number {
   if (typeof window !== "undefined") {
     const view = new URLSearchParams(window.location.search).get("view");
     if (view === "responses") {
-      const allIdx = slides.findIndex((sl) => sl.kind === "all-responses");
-      if (allIdx >= 0) return allIdx;
       const stage = data.currentStage;
       if (stage) {
         const idx = slides.findIndex(
@@ -231,6 +230,8 @@ function initialSlideIndex(data: LectioData, slides: Slide[]): number {
         );
         if (idx >= 0) return idx;
       }
+      const allIdx = slides.findIndex((sl) => sl.kind === "all-responses");
+      if (allIdx >= 0) return allIdx;
     }
   }
   const statusIdx = slides.findIndex((sl) => sl.kind === "status");
