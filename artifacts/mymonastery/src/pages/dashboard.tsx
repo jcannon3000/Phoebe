@@ -816,7 +816,7 @@ function LetterCard({
           {letterLabel}
         </span>
       </div>
-      <div className="flex items-center justify-between gap-2 mt-1.5">
+      <div className="flex items-center justify-between gap-2 mt-1.5 -mr-2">
         <SplitFlapLine lines={flapLines} />
         {hasUnread && !needsWrite && (
           <span

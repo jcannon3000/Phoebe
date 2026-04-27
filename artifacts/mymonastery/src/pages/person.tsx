@@ -632,14 +632,18 @@ export default function PersonProfile() {
               </>
             )}
 
-            {/* CTA */}
+            {/* CTA — if no letter correspondence exists with this person yet,
+                nudge toward writing them a letter; otherwise default to the
+                broader "invite to something new" affordance. */}
             <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
               <Link
-                href="/moment/new"
+                href={sharedLetters.length === 0 ? "/letters/new" : "/moment/new"}
                 className="text-sm font-medium transition-opacity hover:opacity-70"
                 style={{ color: "#8FAF96" }}
               >
-                + Invite {firstName} to something new 🌿
+                {sharedLetters.length === 0
+                  ? `+ Write ${firstName} a letter 📮`
+                  : `+ Invite ${firstName} to something new 🌿`}
               </Link>
             </div>
           </motion.div>
