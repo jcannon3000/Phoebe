@@ -39,8 +39,11 @@ function todayDateInTz(timezone: string): string {
 
 // ─── Main bell sender ───────────────────────────────────────────────────────
 //
-// Push-only. Fires for any user with bellEnabled = true inside the 0-14
-// minute window past their dailyBellTime in their local timezone.
+// Push-only. Fires for every user inside the 0-14 minute window past their
+// dailyBellTime (default 07:00) in their local timezone. The bell is on by
+// default for everyone — if their phone allows notifications, they get it.
+// `sendPushToUser` no-ops for users without an active device token, so
+// users who haven't installed the app simply don't receive anything.
 // De-duped via a `bell_notifications` row keyed on (userId, todayStr).
 // `forceNow: true` bypasses both the time-window check and the dedup —
 // used by the /api/bell/fire-now debug endpoint.
@@ -53,8 +56,7 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
       dailyBellTime: usersTable.dailyBellTime,
       timezone: usersTable.timezone,
     })
-    .from(usersTable)
-    .where(eq(usersTable.bellEnabled, true));
+    .from(usersTable);
 
   if (bellUsers.length === 0) return;
 
@@ -109,8 +111,8 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
 
 // ─── Evening nudge (7 PM local, push-only, skip if prayed today) ────────────
 //
-// Fires for any bellEnabled user inside the 19:00–19:14 window in their
-// local timezone, *unless* they've already logged a prayer ("amen") today —
+// Fires for every user inside the 19:00–19:14 window in their local
+// timezone, *unless* they've already logged a prayer ("amen") today —
 // in that case they've already tended to their practice and the nudge would
 // be noise. De-duped via a `"${date}-evening"` row in bell_notifications.
 
@@ -121,8 +123,7 @@ export async function runEveningNudgeSender(): Promise<void> {
       email: usersTable.email,
       timezone: usersTable.timezone,
     })
-    .from(usersTable)
-    .where(eq(usersTable.bellEnabled, true));
+    .from(usersTable);
 
   if (bellUsers.length === 0) return;
 
