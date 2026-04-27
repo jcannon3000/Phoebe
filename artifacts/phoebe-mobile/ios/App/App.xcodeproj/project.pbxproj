@@ -17,6 +17,8 @@
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 		ADF3D1BD2F9AF27500B85EDF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ADF3D1BC2F9AF27500B85EDF /* PrivacyInfo.xcprivacy */; };
 		PB0EBE7515E0001000000001 /* PhoebeRising.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000002 /* PhoebeRising.caf */; };
+		PB0EBE7515E0001000000004 /* PhoebeRising-low.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */; };
+		PB0EBE7515E0001000000006 /* PhoebeRising-high.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +37,8 @@
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 		PB0EBE7515E0001000000002 /* PhoebeRising.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PhoebeRising.caf; sourceTree = "<group>"; };
+		PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PhoebeRising-low.caf"; sourceTree = "<group>"; };
+		PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PhoebeRising-high.caf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,6 +93,8 @@
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 				PB0EBE7515E0001000000002 /* PhoebeRising.caf */,
+				PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */,
+				PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -173,6 +179,8 @@
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
 				PB0EBE7515E0001000000001 /* PhoebeRising.caf in Resources */,
+				PB0EBE7515E0001000000004 /* PhoebeRising-low.caf in Resources */,
+				PB0EBE7515E0001000000006 /* PhoebeRising-high.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
