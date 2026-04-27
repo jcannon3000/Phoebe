@@ -215,11 +215,15 @@ function buildSlides(data: LectioData): Slide[] {
 
 // Default landing is the status slide (week overview). When the dashboard
 // "Responses" pill links here it appends `?view=responses`, asking us to
-// jump straight to the current stage's responses slide instead.
+// jump straight to the combined all-responses view (the "What the circle
+// heard" feed) — readers want the cleaner cross-stage view, not a single
+// stage's green panel.
 function initialSlideIndex(data: LectioData, slides: Slide[]): number {
   if (typeof window !== "undefined") {
     const view = new URLSearchParams(window.location.search).get("view");
     if (view === "responses") {
+      const allIdx = slides.findIndex((sl) => sl.kind === "all-responses");
+      if (allIdx >= 0) return allIdx;
       const stage = data.currentStage;
       if (stage) {
         const idx = slides.findIndex(
@@ -227,8 +231,6 @@ function initialSlideIndex(data: LectioData, slides: Slide[]): number {
         );
         if (idx >= 0) return idx;
       }
-      const allIdx = slides.findIndex((sl) => sl.kind === "all-responses");
-      if (allIdx >= 0) return allIdx;
     }
   }
   const statusIdx = slides.findIndex((sl) => sl.kind === "status");
@@ -2117,27 +2119,16 @@ function AllResponsesSlide({ data }: { data: LectioData }) {
           minHeight: 0,
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
-          padding: "22px 24px 26px",
+          padding: "12px 24px 26px",
         }}
       >
         <p
           style={{
-            color: FAINT_GREEN,
-            fontSize: 11,
-            letterSpacing: "0.22em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-            textAlign: "center",
-          }}
-        >
-          The week's reading
-        </p>
-        <p
-          style={{
             color: WARM_TEXT,
-            fontSize: 20,
-            lineHeight: 1.4,
-            marginBottom: 24,
+            fontSize: 17,
+            lineHeight: 1.3,
+            margin: 0,
+            marginBottom: 14,
             textAlign: "center",
             fontFamily: SPACE_GROTESK,
           }}
