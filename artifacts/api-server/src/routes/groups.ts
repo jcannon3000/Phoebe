@@ -26,7 +26,7 @@ import crypto from "crypto";
 import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
-import { sendNewMemberPush, sendPushToUsers } from "../lib/pushSender";
+import { sendPushToUsers } from "../lib/pushSender";
 import { pool } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
@@ -1143,20 +1143,6 @@ export async function notifyAdminsOfNewMember(
     ));
   const userIds = adminMembers.map(a => a.userId).filter((id): id is number => id != null);
   if (userIds.length === 0) return;
-
-  // Push to each admin. Fire-and-forget. Slug is required for the deep
-  // link; if the caller didn't pass it, look it up once.
-  if (!groupSlug) {
-    const [g] = await db.select({ slug: groupsTable.slug }).from(groupsTable).where(eq(groupsTable.id, groupId));
-    groupSlug = g?.slug;
-  }
-  if (groupSlug) {
-    for (const adminUserId of userIds) {
-      sendNewMemberPush(adminUserId, groupSlug, joiner.name).catch((err) =>
-        console.warn("[groups/notify-admins] push dispatch failed:", err)
-      );
-    }
-  }
 
   const adminUsers = await db.select({
     email: usersTable.email,
