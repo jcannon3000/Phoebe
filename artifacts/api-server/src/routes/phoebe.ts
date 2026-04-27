@@ -23,7 +23,7 @@ import {
   sendNewLetterEmail,
   sendReminderEmail,
 } from "../lib/letterEmails";
-import { sendPushToUsers } from "../lib/pushSender";
+import { sendNewLetterPush } from "../lib/pushSender";
 import {
   sendLetterWindowOpenCalendarEvent,
   sendLetterOverdueCalendarEvent,
@@ -608,22 +608,21 @@ router.post(
     // Push to every joined correspondence member except the author. We
     // filter on `userId != null` so invited-but-not-signed-up members
     // (whose device_tokens row wouldn't exist anyway) are naturally
-    // skipped. Fire-and-forget so a slow APNs call doesn't hold up the
-    // letter write's response.
-    {
-      const recipientUserIds = members
-        .filter((m) => m.userId != null && m.userId !== auth.userId && m.joinedAt)
-        .map((m) => m.userId as number);
-      if (recipientUserIds.length > 0) {
-        sendPushToUsers(recipientUserIds, {
-          title: correspondence.name,
-          body: `${auth.name} wrote.`,
-          path: `/mail/correspondences/${correspondenceId}`,
-          threadId: `letter-${correspondenceId}`,
-          sound: "default",
-        }).catch((err) => {
-          console.warn("[phoebe] letter push dispatch failed:", err);
-        });
+    // skipped. One_to_one only — small_group members get a single
+    // "your write window opened" push at period start instead, so a
+    // community feed doesn't ping you per-letter. Fire-and-forget.
+    if (type === "one_to_one") {
+      for (const m of members) {
+        if (m.userId == null) continue;
+        if (m.userId === auth.userId) continue;
+        if (!m.joinedAt) continue;
+        if (m.archivedAt) continue;
+        sendNewLetterPush(m.userId, {
+          letterId: letter.id,
+          correspondenceId,
+          correspondenceName: correspondence.name,
+          authorName: resolvedAuthorName,
+        }).catch((err) => console.warn("[phoebe] letter push dispatch failed:", err));
       }
     }
 
