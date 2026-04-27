@@ -117,10 +117,7 @@ export default function WriteLetter() {
 
   // Track the keyboard inset (window.innerHeight − visualViewport.height
   // on Capacitor's resize:None mode). We use this as bottom padding on
-  // the page so the user can scroll the active typing line above the
-  // keyboard, and so the action bar stays reachable. Apple Notes-style:
-  // textarea is auto-growing in document flow, the page scrolls
-  // naturally, and iOS keeps the caret on screen for free.
+  // the page so the active typing line can be scrolled above the keyboard.
   const [keyboardH, setKeyboardH] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;
@@ -138,17 +135,75 @@ export default function WriteLetter() {
     };
   }, []);
 
-  // Auto-grow the textarea so it lives in document flow rather than
-  // having a fixed scroll region. This is the trick that makes iOS
-  // behave like Apple Notes — when the textarea is just a long element
-  // on the page, iOS auto-scrolls the caret above the keyboard, and
-  // the user can pan up to see anything they wrote earlier.
+  // Apple Notes-style caret tracking. iOS only auto-scrolls a focused
+  // textarea's *box* into view, never the caret line within it — so once
+  // the textarea is taller than the visible area, the caret slides
+  // behind the keyboard with every newline. We mirror the textarea into
+  // a hidden div, find the caret's exact viewport Y, and scroll the
+  // window so the caret always sits comfortably above the keyboard.
+  const ensureCaretVisible = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const style = window.getComputedStyle(ta);
+    const mirror = document.createElement("div");
+    const copyProps: Array<keyof CSSStyleDeclaration> = [
+      "fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight",
+      "letterSpacing", "wordSpacing", "textTransform", "textIndent",
+      "whiteSpace", "wordWrap", "overflowWrap",
+      "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+      "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+      "boxSizing",
+    ];
+    for (const p of copyProps) {
+      (mirror.style as unknown as Record<string, string>)[p as string] =
+        (style as unknown as Record<string, string>)[p as string];
+    }
+    mirror.style.position = "absolute";
+    mirror.style.top = "-9999px";
+    mirror.style.left = "-9999px";
+    mirror.style.visibility = "hidden";
+    mirror.style.whiteSpace = "pre-wrap";
+    mirror.style.wordWrap = "break-word";
+    mirror.style.width = `${ta.clientWidth}px`;
+    const pos = ta.selectionEnd ?? ta.value.length;
+    mirror.textContent = ta.value.substring(0, pos);
+    const marker = document.createElement("span");
+    marker.textContent = ta.value.substring(pos) || ".";
+    mirror.appendChild(marker);
+    document.body.appendChild(mirror);
+    const taRect = ta.getBoundingClientRect();
+    const mirrorRect = mirror.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    const caretY = taRect.top + (markerRect.top - mirrorRect.top);
+    const lineH = parseFloat(style.lineHeight) || 27;
+    document.body.removeChild(mirror);
+
+    const visibleBottom = window.innerHeight - keyboardH;
+    const safeBottom = visibleBottom - lineH - 24;
+    const safeTop = 80;
+    if (caretY + lineH > safeBottom) {
+      window.scrollBy({ top: caretY + lineH - safeBottom, behavior: "auto" });
+    } else if (caretY < safeTop) {
+      window.scrollBy({ top: caretY - safeTop, behavior: "auto" });
+    }
+  }, [keyboardH]);
+
+  // Auto-grow the textarea on every content change so it lives in
+  // normal page flow, then re-anchor the caret above the keyboard.
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
     ta.style.height = `${ta.scrollHeight}px`;
-  }, [content]);
+    requestAnimationFrame(ensureCaretVisible);
+  }, [content, ensureCaretVisible]);
+
+  // When the keyboard first appears, drag the caret up too — otherwise
+  // the existing caret position is suddenly hidden under the keyboard
+  // until the user types another character.
+  useEffect(() => {
+    if (keyboardH > 0) requestAnimationFrame(ensureCaretVisible);
+  }, [keyboardH, ensureCaretVisible]);
 
   const saveDraft = useCallback(async () => {
     if (!correspondenceId || content === lastSavedRef.current) return;
