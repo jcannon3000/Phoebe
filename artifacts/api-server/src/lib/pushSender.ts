@@ -404,7 +404,7 @@ export function sendNewLetterPush(
   return sendPushToUser(userId, {
     title: `${opts.authorName} wrote you a letter`,
     body: `Open “${opts.correspondenceName}” to read.`,
-    path: `/mail/correspondences/${opts.correspondenceId}`,
+    path: `/letters/${opts.correspondenceId}`,
     threadId: `letter-${opts.correspondenceId}`,
     collapseId: `letter-${opts.letterId}`,
     sound: PHOEBE_SOUND_MID,
@@ -425,7 +425,7 @@ export function sendLetterRespondReminderPush(
   return sendPushToUser(userId, {
     title: `${opts.authorName} is waiting for you`,
     body: `Your reply window is still open in “${opts.correspondenceName}.”`,
-    path: `/mail/correspondences/${opts.correspondenceId}/write`,
+    path: `/letters/${opts.correspondenceId}/write`,
     threadId: `letter-${opts.correspondenceId}`,
     sound: PHOEBE_SOUND_MID,
   });
@@ -463,7 +463,7 @@ export function sendLetterPeriodOpenPush(
   return sendPushToUser(userId, {
     title,
     body,
-    path: `/mail/correspondences/${opts.correspondenceId}/write`,
+    path: `/letters/${opts.correspondenceId}/write`,
     threadId: `letter-${opts.correspondenceId}`,
     collapseId: `letter-period-open-${opts.correspondenceId}-${opts.periodStartDate}`,
     sound: PHOEBE_SOUND_MID,
