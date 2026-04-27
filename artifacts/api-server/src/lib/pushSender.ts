@@ -357,13 +357,18 @@ export async function sendPushToUsers(userIds: number[], payload: PushPayload): 
 }
 
 // Names the sender so the recipient knows who started the prayer. Tap
-// opens /dashboard where they can see their list of prayers.
-export function sendPrayerForYouPush(recipientUserId: number, senderName: string) {
+// deep-links to the same prayer-from-me detail slide the prayer list
+// already shows — recipient sees who wrote it and reads the prayer text.
+export function sendPrayerForYouPush(
+  recipientUserId: number,
+  senderName: string,
+  prayerForId: number,
+) {
   const firstName = (senderName || "Someone").split(/\s+/)[0] || "Someone";
   return sendPushToUser(recipientUserId, {
     title: `${firstName} is praying for you`,
     body: "Open Phoebe to see.",
-    path: "/dashboard",
+    path: `/prayer-list?detail=prayer-from:${prayerForId}`,
     threadId: "prayer-for-you",
     sound: PHOEBE_SOUND,
   });

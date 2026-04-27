@@ -124,7 +124,11 @@ router.post("/prayers-for", async (req, res): Promise<void> => {
     .returning();
 
   // Fire-and-forget — an APNs hiccup shouldn't break the create response.
-  sendPrayerForYouPush(parsed.data.recipientUserId, sender?.name || "Someone").catch((err) => {
+  sendPrayerForYouPush(
+    parsed.data.recipientUserId,
+    sender?.name || "Someone",
+    created.id,
+  ).catch((err) => {
     console.warn("[prayers-for] push dispatch failed:", err);
   });
 
