@@ -3072,11 +3072,25 @@ export default function Dashboard() {
         return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
       }
       if (item.kind === "moment") {
-        const daysAhead = nextWindowDaysAhead(item.data);
+        // Lectio doesn't use the generic practiceDays field — its cadence
+        // is fixed at Mon/Wed/Fri (lectio/meditatio/oratio). Compute the
+        // next reflection day directly so the card sorts correctly.
+        const isLectioItem = item.data.templateType === "lectio-divina";
+        let daysAhead: number;
+        if (isLectioItem) {
+          const todayDow = new Date().getDay();
+          const lectioDows = [1, 3, 5];
+          let i = 1;
+          for (; i <= 7; i++) {
+            if (lectioDows.includes((todayDow + i) % 7)) break;
+          }
+          daysAhead = i;
+        } else {
+          daysAhead = nextWindowDaysAhead(item.data);
+        }
         const base = addDays(startOfDay(new Date()), daysAhead).getTime();
-        // Lectio target time = 9am, so it sorts before evening gatherings
-        // on the same day. Other moments default to 9am as well — a sane
-        // morning anchor when no explicit time is set.
+        // 9am anchor so morning practices sort before same-day evening
+        // gatherings.
         return base + 9 * 60 * 60 * 1000;
       }
       return Number.POSITIVE_INFINITY;
