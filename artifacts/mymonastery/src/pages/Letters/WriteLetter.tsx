@@ -115,31 +115,40 @@ export default function WriteLetter() {
     }
   }, [draft]);
 
-  // Track the visible viewport height (visualViewport excludes the
-  // keyboard on iOS / Capacitor's resize:None mode), so we can shrink
-  // the outer container to fit above the keyboard. Without this, the
-  // bottom of the letter slides under the keyboard and is unreachable
-  // because the page can't scroll past its own height.
-  const [viewportH, setViewportH] = useState<number>(() =>
-    typeof window !== "undefined"
-      ? window.visualViewport?.height ?? window.innerHeight
-      : 0,
-  );
+  // Track the keyboard inset (window.innerHeight − visualViewport.height
+  // on Capacitor's resize:None mode). We use this as bottom padding on
+  // the page so the user can scroll the active typing line above the
+  // keyboard, and so the action bar stays reachable. Apple Notes-style:
+  // textarea is auto-growing in document flow, the page scrolls
+  // naturally, and iOS keeps the caret on screen for free.
+  const [keyboardH, setKeyboardH] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) {
-      const onResize = () => setViewportH(window.innerHeight);
-      window.addEventListener("resize", onResize);
-      return () => window.removeEventListener("resize", onResize);
-    }
-    const onChange = () => setViewportH(vv.height);
-    vv.addEventListener("resize", onChange);
-    vv.addEventListener("scroll", onChange);
+    if (!vv) return;
+    const update = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height);
+      setKeyboardH(inset);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
     return () => {
-      vv.removeEventListener("resize", onChange);
-      vv.removeEventListener("scroll", onChange);
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
     };
   }, []);
+
+  // Auto-grow the textarea so it lives in document flow rather than
+  // having a fixed scroll region. This is the trick that makes iOS
+  // behave like Apple Notes — when the textarea is just a long element
+  // on the page, iOS auto-scrolls the caret above the keyboard, and
+  // the user can pan up to see anything they wrote earlier.
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [content]);
 
   const saveDraft = useCallback(async () => {
     if (!correspondenceId || content === lastSavedRef.current) return;
@@ -274,11 +283,7 @@ export default function WriteLetter() {
       className="flex flex-col"
       style={{
         background: "#F8F3EC",
-        // Lock the whole page to the *visible* viewport (excludes the
-        // iOS keyboard) so the writing area's scroll region ends right
-        // above the keyboard, never under it.
-        height: viewportH ? `${viewportH}px` : "100dvh",
-        overflow: "hidden",
+        minHeight: "100dvh",
       }}
     >
       {/* Minimal header */}
@@ -399,11 +404,15 @@ export default function WriteLetter() {
         )}
       </div>
 
-      {/* Writing area — flex-1 + min-h-0 lets the textarea scroll
-          internally instead of pushing the page past the visible
-          viewport, so the bottom of the letter stays reachable when
-          the keyboard is up. */}
-      <div className="flex-1 min-h-0 px-6 pt-6 pb-3 max-w-3xl mx-auto w-full flex">
+      {/* Writing area — auto-growing textarea in normal document flow.
+          The page scrolls vertically; iOS auto-scrolls the caret above
+          the keyboard, and the user can pan up freely to see earlier
+          paragraphs. Bottom padding includes the keyboard inset so the
+          end of the letter is always reachable above the keyboard. */}
+      <div
+        className="flex-1 px-6 pt-6 max-w-3xl mx-auto w-full"
+        style={{ paddingBottom: `${keyboardH + 24}px` }}
+      >
         <textarea
           ref={textareaRef}
           value={content}
@@ -412,7 +421,8 @@ export default function WriteLetter() {
             ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
             : `What's been happening these past two weeks?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
           }
-          className="w-full h-full resize-none focus:outline-none placeholder:italic"
+          rows={8}
+          className="w-full resize-none focus:outline-none placeholder:italic block"
           style={{
             color: "#2C1810",
             backgroundColor: "transparent",
@@ -422,8 +432,9 @@ export default function WriteLetter() {
             caretColor: "#5C7A5F",
             boxShadow: "none",
             whiteSpace: "pre-wrap",
-            overflowY: "auto",
-            WebkitOverflowScrolling: "touch",
+            overflow: "hidden",
+            border: "none",
+            padding: 0,
           }}
         />
       </div>
