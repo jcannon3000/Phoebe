@@ -230,11 +230,12 @@ function isActionableToday(moment: {
   fastingDay?: string | null;
   fastingDayOfMonth?: number | null;
 }): boolean {
-  // Lectio Divina: actionable Mon–Sat in the practice's timezone. Sunday is
-  // the communal reveal ("this week's journey"), which moves to "this week".
+  // Lectio Divina: actionable on the three stage days (Mon/Wed/Fri) only.
+  // Tue/Thu/Sat are evening-reminder catch-up days, not primary action days,
+  // so they shouldn't surface a "Today" card. Sunday is the communal reveal.
   if (moment.templateType === "lectio-divina") {
     const dow = getCurrentDayOfWeekInTz(moment.timezone || "UTC");
-    return dow >= 1 && dow <= 6;
+    return dow === 1 || dow === 3 || dow === 5;
   }
   // Fasting: day-of-cadence lives in its own fields. Specific-date fasts are
   // only "today" on their exact date; weekly fasts on their weekday; monthly
@@ -268,8 +269,9 @@ function isActionableTomorrow(moment: {
   const tomorrowDow = (todayDow + 1) % 7;
 
   if (moment.templateType === "lectio-divina") {
-    // Actionable tomorrow if tomorrow is Mon–Sat; Sunday is the reveal.
-    return tomorrowDow >= 1 && tomorrowDow <= 6;
+    // Only flag the next fresh stage day (Mon/Wed/Fri). Tue/Thu/Sat are
+    // evening catch-up days, not the next "window".
+    return tomorrowDow === 1 || tomorrowDow === 3 || tomorrowDow === 5;
   }
   // Fasting: cadence lives in fasting-specific fields.
   if (moment.templateType === "fasting") {
@@ -1330,16 +1332,17 @@ router.get("/moments", async (req, res): Promise<void> => {
     if (momentIds.length === 0) { res.json({ moments: [] }); return; }
 
     const now = new Date();
-    const oneDayMs = 24 * 60 * 60 * 1000;
+    // Keep aligned with dashboard GoalReachedModal renewal window (2 days).
+    const graceMs = 2 * 24 * 60 * 60 * 1000;
     const flatMoments = (await db.select().from(sharedMomentsTable)
       .where(inArray(sharedMomentsTable.id, momentIds)))
       .filter(m => {
         if (m.ritualId !== null || m.state === "archived") return false;
-        // Intercessions get a 1-day grace period after hitting their goal.
+        // Intercessions get a 2-day grace period after hitting their goal.
         // After that they're hidden (and auto-archived by the cleanup job).
         if (m.templateType === "intercession") {
           const reachedAt = (m as Record<string, unknown>).commitmentGoalReachedAt as Date | null;
-          if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > oneDayMs) return false;
+          if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return false;
           // Intercessions that already hit their goal before the stamping code was
           // deployed have totalBlooms > 0 but no commitmentGoalReachedAt. Treat
           // them as expired immediately — they're past their goal with no known
@@ -3664,8 +3667,9 @@ router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    // Auto-archive intercessions whose 1-day grace period has expired
-    const graceCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Auto-archive intercessions whose 2-day grace period has expired.
+    // Aligned with dashboard GoalReachedModal renewal window.
+    const graceCutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     const expiredIntercessions = await db.select({ id: sharedMomentsTable.id })
       .from(sharedMomentsTable)
       .where(

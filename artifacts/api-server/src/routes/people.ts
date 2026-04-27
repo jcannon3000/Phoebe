@@ -315,11 +315,11 @@ router.get("/people", async (req, res): Promise<void> => {
             .where(inArray(sharedMomentsTable.id, sharedMomentIds));
 
           const nowMs = Date.now();
-          const oneDayMs = 24 * 60 * 60 * 1000;
+          const graceMs = 2 * 24 * 60 * 60 * 1000;
           const isExpiredIntercession = (m: typeof sharedMomentsRaw[number]) => {
             if (m.templateType !== "intercession") return false;
             const reachedAt = m.commitmentGoalReachedAt;
-            if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > oneDayMs) return true;
+            if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > graceMs) return true;
             if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return true;
             return false;
           };
@@ -466,14 +466,14 @@ router.get("/people/:email", async (req, res): Promise<void> => {
       }).from(sharedMomentsTable).where(inArray(sharedMomentsTable.id, sharedMomentIds));
 
       // Mirror the filter used by the main moments list: intercessions that
-      // have passed their 1-day grace period after hitting their goal are
+      // have passed their 2-day grace period after hitting their goal are
       // treated as past, not active (see routes/moments.ts).
       const now = Date.now();
-      const oneDayMs = 24 * 60 * 60 * 1000;
+      const graceMs = 2 * 24 * 60 * 60 * 1000;
       const isExpiredIntercession = (m: typeof allMoments[number]) => {
         if (m.templateType !== "intercession") return false;
         const reachedAt = m.commitmentGoalReachedAt;
-        if (reachedAt && (now - new Date(reachedAt).getTime()) > oneDayMs) return true;
+        if (reachedAt && (now - new Date(reachedAt).getTime()) > graceMs) return true;
         // Legacy intercessions that hit their goal before the stamping code
         // was deployed: totalBlooms > 0 with no reachedAt — treat as expired.
         if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return true;

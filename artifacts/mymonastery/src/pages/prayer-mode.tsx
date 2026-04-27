@@ -1492,8 +1492,18 @@ export default function PrayerModePage() {
   // ensures we don't read `slides` while it's still empty.
   const [index, setIndex] = useState<number>(-1);
 
+  // Snapshot of the slide list captured the first time data is ready.
+  // Once a session starts we navigate against this frozen copy so a
+  // mid-show refetch (e.g., an intercession's 24h grace boundary
+  // crossing while the user is praying) can't drop a slide under the
+  // user — the symptom was a "flash → jump back" glitch when the live
+  // `slides` array shrank between renders.
+  const [frozenSlides, setFrozenSlides] = useState<PrayerSlide[] | null>(null);
+
   useEffect(() => {
     if (!dataReady || index !== -1) return;
+    const captured = slides;
+    setFrozenSlides(captured);
     let resumeAt = 0;
     try {
       const raw = localStorage.getItem(progressStorageKey);
@@ -1501,17 +1511,21 @@ export default function PrayerModePage() {
         const parsed = JSON.parse(raw) as { completed?: number };
         if (typeof parsed.completed === "number" &&
             parsed.completed > 0 &&
-            parsed.completed < slides.length) {
+            parsed.completed < captured.length) {
           resumeAt = parsed.completed;
         }
       }
     } catch { /* ignore corrupt entry */ }
     if (resumeAt === 0) {
-      const firstUnPrayed = slides.findIndex((s) => !s.alreadyPrayedToday);
+      const firstUnPrayed = captured.findIndex((s) => !s.alreadyPrayedToday);
       resumeAt = firstUnPrayed >= 0 ? firstUnPrayed : 0;
     }
     setIndex(resumeAt);
   }, [dataReady, index, progressStorageKey, slides]);
+
+  // All consumers below should read from this — `slides` is the live
+  // (re-rendering) array, `displaySlides` is the stable session copy.
+  const displaySlides = frozenSlides ?? slides;
   const [phase, setPhase] = useState<"prayer" | "closing">("prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
@@ -1528,10 +1542,10 @@ export default function PrayerModePage() {
 
   // Initialise phase once slides are loaded
   useEffect(() => {
-    if (slides.length === 0 && momentsData && prayerRequests && myPrayersFor) {
+    if (displaySlides.length === 0 && momentsData && prayerRequests && myPrayersFor) {
       setPhase("closing");
     }
-  }, [slides.length, momentsData, prayerRequests, myPrayersFor]);
+  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor]);
 
   // When the user lands on the closing slide, log the prayer-list streak.
   // The server is idempotent per TZ-local day — calling twice doesn't
@@ -1551,7 +1565,7 @@ export default function PrayerModePage() {
     // sequence — `slides.length % 3`. If the slideshow had 5 slides
     // (0,1,2,0,1), the closing lands on 2; if it had 3, the closing
     // lands back on 0 naturally.
-    playOpeningSwell(slides.length % 3);
+    playOpeningSwell(displaySlides.length % 3);
     try {
       window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "heavy" } }));
     } catch { /* ignore */ }
@@ -1625,7 +1639,7 @@ export default function PrayerModePage() {
     //   with isCheckin=true, so a community intercession amen counts
     //   on the intercession detail page and in the streak even if the
     //   viewer bails out of the slideshow before the closing slide.
-    const current = slides[index];
+    const current = displaySlides[index];
     if (current && current.kind === "request" && typeof current.requestId === "number") {
       const rid = current.requestId;
       apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
@@ -1658,7 +1672,7 @@ export default function PrayerModePage() {
     }
     setSlideVisible(false);
     setTimeout(() => {
-      if (index < slides.length - 1) {
+      if (index < displaySlides.length - 1) {
         const nextIndex = index + 1;
         // Persist per-day progress so the dashboard can render
         // "Continue praying / N more prayers" if the user X-outs
@@ -1670,7 +1684,7 @@ export default function PrayerModePage() {
         try {
           localStorage.setItem(progressStorageKey, JSON.stringify({
             completed: nextIndex,
-            total: slides.length,
+            total: displaySlides.length,
           }));
         } catch { /* private mode / quota — non-fatal */ }
         setIndex(nextIndex);
@@ -1699,10 +1713,10 @@ export default function PrayerModePage() {
   // then routes home.
   const handleExit = () => {
     try {
-      if (index > 0 && index < slides.length) {
+      if (index > 0 && index < displaySlides.length) {
         localStorage.setItem(progressStorageKey, JSON.stringify({
           completed: index,
-          total: slides.length,
+          total: displaySlides.length,
         }));
       }
     } catch { /* non-fatal */ }
@@ -1715,15 +1729,19 @@ export default function PrayerModePage() {
     // through — skipping ones we already logged per-slide in `advance`.
     // Server-side check-ins are idempotent per day anyway, but avoiding
     // the re-POST trims tail latency on the closing slide.
-    const toLog = intercessions.filter(
-      (m) =>
-        m.momentToken &&
-        m.myUserToken &&
-        !loggedIntercessionsRef.current.has(m.momentToken),
+    // Log against the frozen slide list, not the live `intercessions`
+    // array — if a moment vanished from the API mid-session we still
+    // want to credit the user for what they actually walked through.
+    const toLog = displaySlides.filter(
+      (s): s is PrayerSlide & { momentToken: string; myUserToken: string } =>
+        s.kind === "intercession" &&
+        !!s.momentToken &&
+        !!s.myUserToken &&
+        !loggedIntercessionsRef.current.has(s.momentToken),
     );
     await Promise.allSettled(
-      toLog.map((m) =>
-        apiRequest("POST", `/api/moment/${m.momentToken}/${m.myUserToken}/post`, {
+      toLog.map((s) =>
+        apiRequest("POST", `/api/moment/${s.momentToken}/${s.myUserToken}/post`, {
           isCheckin: true,
         }),
       ),
@@ -1785,7 +1803,7 @@ export default function PrayerModePage() {
     );
   }
 
-  const slide = slides[index];
+  const slide = displaySlides[index];
 
   return (
     <div
@@ -1875,10 +1893,10 @@ export default function PrayerModePage() {
       </div>
 
       {/* Progress */}
-      {phase === "prayer" && slides.length > 0 && (
+      {phase === "prayer" && displaySlides.length > 0 && (
         <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none">
           <p className="text-xs" style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em" }}>
-            {index + 1} of {slides.length}
+            {index + 1} of {displaySlides.length}
           </p>
         </div>
       )}

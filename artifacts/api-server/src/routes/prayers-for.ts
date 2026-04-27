@@ -105,6 +105,10 @@ router.post("/prayers-for", async (req, res): Promise<void> => {
     .where(eq(usersTable.id, parsed.data.recipientUserId));
   if (!recipient) { res.status(404).json({ error: "Recipient not found" }); return; }
 
+  const [sender] = await db.select({ name: usersTable.name })
+    .from(usersTable)
+    .where(eq(usersTable.id, sessionUserId));
+
   const now = new Date();
   const expiresAt = new Date(now.getTime() + parsed.data.durationDays * 24 * 60 * 60 * 1000);
 
@@ -119,9 +123,8 @@ router.post("/prayers-for", async (req, res): Promise<void> => {
     })
     .returning();
 
-  // Push to the recipient. Sender-anonymous per Phoebe convention.
   // Fire-and-forget — an APNs hiccup shouldn't break the create response.
-  sendPrayerForYouPush(parsed.data.recipientUserId).catch((err) => {
+  sendPrayerForYouPush(parsed.data.recipientUserId, sender?.name || "Someone").catch((err) => {
     console.warn("[prayers-for] push dispatch failed:", err);
   });
 

@@ -315,7 +315,7 @@ async function getApnsJwt(): Promise<string> {
 // everyone and stays readable when the count would be 0.
 export function sendBellPush(userId: number) {
   return sendPushToUser(userId, {
-    title: "🔔 Time to pray for your friends",
+    title: "Time to pray for your friends",
     body: "Open to begin praying for them and the world.",
     path: "/prayer-mode",
     threadId: "bell",
@@ -327,7 +327,7 @@ export function sendBellPush(userId: number) {
 // prayer that day — see runEveningNudgeSender for the gating.
 export function sendEveningNudgePush(userId: number) {
   return sendPushToUser(userId, {
-    title: "🌙 Don't forget to pray for your friends",
+    title: "Don't forget to pray for your friends",
     body: "A few minutes before the day closes.",
     path: "/prayer-mode",
     threadId: "bell",
@@ -345,16 +345,6 @@ export function sendNewMemberPush(adminUserId: number, groupSlug: string, member
   });
 }
 
-export function sendNewPrayerRequestPush(userId: number, groupSlug: string, authorName: string | null) {
-  return sendPushToUser(userId, {
-    title: "New prayer request",
-    body: authorName ? `${authorName} shared a request.` : "Someone shared a request.",
-    path: `/communities/${groupSlug}`,
-    threadId: "prayer-request-new",
-    sound: PHOEBE_SOUND,
-  });
-}
-
 // Fan-out wrapper. We iterate in parallel so a slow / unresponsive APNs
 // call for one recipient doesn't hold up the rest of the request.
 // Errors are swallowed per-user inside sendPushToUser → sendOneApns.
@@ -366,12 +356,12 @@ export async function sendPushToUsers(userIds: number[], payload: PushPayload): 
   await Promise.all(unique.map(id => sendPushToUser(id, payload).catch(() => ({ attempted: 0, succeeded: 0, invalidated: 0 }))));
 }
 
-// Sender-anonymous. Phoebe's convention: a prayer "for you" is a gift,
-// not a transaction — we don't reveal who. Tap opens /dashboard where
-// the recipient can see their list of prayers.
-export function sendPrayerForYouPush(recipientUserId: number) {
+// Names the sender so the recipient knows who started the prayer. Tap
+// opens /dashboard where they can see their list of prayers.
+export function sendPrayerForYouPush(recipientUserId: number, senderName: string) {
+  const firstName = (senderName || "Someone").split(/\s+/)[0] || "Someone";
   return sendPushToUser(recipientUserId, {
-    title: "Someone is praying for you",
+    title: `${firstName} is praying for you`,
     body: "Open Phoebe to see.",
     path: "/dashboard",
     threadId: "prayer-for-you",
@@ -401,7 +391,7 @@ export function sendNewLetterPush(
   }
 ) {
   return sendPushToUser(userId, {
-    title: `✉️ ${opts.authorName} wrote you a letter`,
+    title: `${opts.authorName} wrote you a letter`,
     body: `Open “${opts.correspondenceName}” to read.`,
     path: `/mail/correspondences/${opts.correspondenceId}`,
     threadId: `letter-${opts.correspondenceId}`,
@@ -422,7 +412,7 @@ export function sendLetterRespondReminderPush(
   opts: { correspondenceId: number; correspondenceName: string; authorName: string },
 ) {
   return sendPushToUser(userId, {
-    title: `✨ ${opts.authorName} is waiting for you`,
+    title: `${opts.authorName} is waiting for you`,
     body: `Your reply window is still open in “${opts.correspondenceName}.”`,
     path: `/mail/correspondences/${opts.correspondenceId}/write`,
     threadId: `letter-${opts.correspondenceId}`,
@@ -454,8 +444,8 @@ export function sendLetterPeriodOpenPush(
   },
 ) {
   const title = opts.isOneToOne
-    ? `✉️ Time to write ${opts.recipientName ?? "your friend"}`
-    : `✉️ Time to share with ${opts.correspondenceName}`;
+    ? `Time to write ${opts.recipientName ?? "your friend"}`
+    : `Time to share with ${opts.correspondenceName}`;
   const body = opts.isOneToOne
     ? `Your reply window is open.`
     : `Your group's write window is open.`;
@@ -532,42 +522,21 @@ export function sendNewGroupMomentPush(
 }
 
 // First-ever amen on a brand-new prayer request — the moment the
-// owner's ask stops being theirs alone. Sender-anonymous (the request
-// owner gets the FEELING, not a name; community signal, not a
-// reply). Fires exactly once per request, gated server-side. The
-// collapse-id makes that exactness idempotent against any race.
+// owner's ask stops being theirs alone. Names the first pray-er so the
+// owner sees who started carrying it. Fires exactly once per request,
+// gated server-side. The collapse-id makes that exactness idempotent
+// against any race.
 export function sendFirstAmenPush(
   recipientUserId: number,
-  opts: { prayerRequestId: number },
+  opts: { prayerRequestId: number; prayerName: string },
 ) {
+  const firstName = (opts.prayerName || "Someone").split(/\s+/)[0] || "Someone";
   return sendPushToUser(recipientUserId, {
-    title: "🌿 Your community is praying for you",
-    body: "The first prayer just went up for your request.",
+    title: "You've been held in prayer",
+    body: `The first prayer just went up for your request... by ${firstName}.`,
     path: "/prayer-list",
     threadId: `prayer-request-${opts.prayerRequestId}`,
     collapseId: `first-amen-${opts.prayerRequestId}`,
-    sound: PHOEBE_SOUND,
-  });
-}
-
-// Fires for every garden member when a user shares a new prayer
-// request via POST /api/prayer-requests. Distinct from the group-
-// scoped `sendNewPrayerRequestPush` above (that one targets a specific
-// community feed). Tap lands on the dedicated request page (same
-// shape as the "word of comfort" landing page, just with no comment
-// yet) so the recipient sees the asker's name and an explicit
-// invitation to pray. Collapse-id is per-request so a re-broadcast
-// (shouldn't happen, but defensive) replaces rather than stacks.
-export function sendGardenPrayerRequestPush(
-  recipientUserId: number,
-  opts: { prayerRequestId: number; ownerName: string },
-) {
-  return sendPushToUser(recipientUserId, {
-    title: `🙏🏽 ${opts.ownerName} is asking for your prayers`,
-    body: "Tap to pray for them.",
-    path: `/prayer-requests/${opts.prayerRequestId}`,
-    threadId: `prayer-request-${opts.prayerRequestId}`,
-    collapseId: `new-prayer-request-${opts.prayerRequestId}`,
     sound: PHOEBE_SOUND,
   });
 }
@@ -582,7 +551,7 @@ export function sendThirdAmenTodayPush(
   opts: { prayerRequestId: number; localYmd: string },
 ) {
   return sendPushToUser(recipientUserId, {
-    title: "🙏🏽 3 people are praying for you today",
+    title: "3 people are praying for you today",
     body: "Your request is being carried.",
     path: "/prayer-list",
     threadId: `prayer-request-${opts.prayerRequestId}`,
