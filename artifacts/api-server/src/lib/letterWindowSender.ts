@@ -70,6 +70,10 @@ export async function runLetterWindowSweep(): Promise<void> {
         // recipient name to look up.
         for (const m of members) {
           if (!m.userId || !m.joinedAt) continue;
+          // Per-member archive: when a participant archives a dialogue
+          // on their side, the correspondence may still be active for
+          // others, but they shouldn't get window pushes.
+          if (m.archivedAt) continue;
           await pushOnce(c.id, m.userId, periodStartStr, c.name, /*isOneToOne*/ false);
         }
       } else {
@@ -102,6 +106,10 @@ export async function runLetterWindowSweep(): Promise<void> {
 
         for (const m of members) {
           if (!m.userId || !m.joinedAt) continue;
+          // Per-member archive: when a participant archives a dialogue
+          // on their side, the correspondence may still be active for
+          // others, but they shouldn't get window pushes.
+          if (m.archivedAt) continue;
           const other = members.find((x) => x.id !== m.id);
           if (!other) continue;
 

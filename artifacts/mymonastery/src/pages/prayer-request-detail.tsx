@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 
@@ -27,6 +27,108 @@ type PrayerRequestDetail = {
   viewerIsOwner: boolean;
   words: PrayerWord[];
 };
+
+// Inline compose for a viewer's "word of comfort" on this request —
+// mirrors the field on the prayer-mode slideshow so the experience
+// matches whether the viewer arrives from the bell push or the daily
+// slideshow. Submits to POST /api/prayer-requests/:id/word; the route
+// idempotently inserts/updates so a re-tap from the same viewer just
+// edits their existing word.
+function RequestWordField({ requestId }: { requestId: number }) {
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState("");
+  const [submittedWord, setSubmittedWord] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    const content = draft.trim();
+    if (!content || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content });
+      setSubmittedWord(content);
+      setDraft("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : String(err);
+      const friendly = /closed|expired|answered/i.test(raw)
+        ? "This prayer is closed — can't leave a word."
+        : /unauthorized|401/i.test(raw)
+          ? "Please sign in and try again."
+          : /network|failed to fetch|offline/i.test(raw)
+            ? "No connection — try again in a moment."
+            : "Couldn't send your word. Tap again?";
+      setError(friendly);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (submittedWord) {
+    return (
+      <div
+        className="w-full rounded-2xl px-5 py-3 text-left mt-2"
+        style={{
+          background: "rgba(46,107,64,0.08)",
+          border: "1px solid rgba(46,107,64,0.18)",
+        }}
+      >
+        <p className="text-[10px] uppercase tracking-[0.14em] mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+          Your word
+        </p>
+        <p className="text-[14px] italic" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+          “{submittedWord}”
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full mt-2">
+      <div
+        className="w-full rounded-full px-4 py-1.5 flex items-center gap-2"
+        style={{
+          background: "rgba(46,107,64,0.1)",
+          border: error ? "1px solid rgba(196,122,101,0.6)" : "1px solid rgba(46,107,64,0.25)",
+        }}
+      >
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); if (error) setError(null); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+          placeholder="Leave a word of comfort…"
+          maxLength={120}
+          className="word-of-comfort-input flex-1 bg-transparent outline-none text-[14px] py-1.5"
+          style={{
+            color: "#E8E4D8",
+            fontSize: 16,
+            background: "transparent",
+            boxShadow: "none",
+            WebkitAppearance: "none",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        />
+        <button
+          onClick={submit}
+          disabled={!draft.trim() || submitting}
+          aria-label="Send word"
+          className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          {submitting ? "…" : "→"}
+        </button>
+      </div>
+      {error && (
+        <p className="text-[12px] mt-1.5 px-2" style={{ color: "#C47A65" }} role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function initials(name: string): string {
   return name
@@ -155,6 +257,10 @@ export default function PrayerRequestDetailPage() {
             >
               {data.body}
             </p>
+
+            {!data.viewerIsOwner && (
+              <RequestWordField requestId={data.id} />
+            )}
 
             {data.viewerIsOwner && latestWord && (
               <div

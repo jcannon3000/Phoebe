@@ -651,6 +651,9 @@ router.post(
     for (const m of members) {
       if (m.email === auth.email) continue;
       if (!m.joinedAt) continue;
+      // If the recipient has archived this dialogue on their side, don't
+      // send a "new letter" push — they've stepped away from the thread.
+      if (m.archivedAt) continue;
 
       const correspondenceUrl = m.userId
         ? `${frontendUrl}/letters/${correspondenceId}`

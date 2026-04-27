@@ -491,8 +491,9 @@ export function sendPrayerWordPush(
   const path = opts.prayerRequestId
     ? `/prayer-requests/${opts.prayerRequestId}`
     : "/prayer-list";
+  const firstName = (opts.authorName || "Someone").split(/\s+/)[0] || "Someone";
   return sendPushToUser(recipientUserId, {
-    title: `💬 ${opts.authorName} raised you in prayer`,
+    title: `${firstName} prayed for you`,
     body: "Open Phoebe to read what they wrote.",
     path,
     threadId: opts.prayerRequestId ? `prayer-request-${opts.prayerRequestId}` : "prayer-word",
