@@ -7,7 +7,7 @@ import {
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
-import { runBellSender } from "../lib/bellSender";
+import { runBellSender, runLectioReminderSender, runLectioEveningReminderSender } from "../lib/bellSender";
 
 const router: IRouter = Router();
 
@@ -457,6 +457,34 @@ router.post("/bell/fire-now", async (req, res): Promise<void> => {
     res.json({ ok: true });
   } catch (err) {
     console.error("POST /api/bell/fire-now error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ─── POST /api/bell/lectio-fire-now — force-send Lectio stage reminder ────────
+// Same shape as /bell/fire-now but for the Lectio Divina morning reminder.
+// Bypasses the time-window and dedup. Use after a deploy if a tick was missed.
+router.post("/bell/lectio-fire-now", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    await runLectioReminderSender({ forceNow: true });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /api/bell/lectio-fire-now error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ─── POST /api/bell/lectio-evening-fire-now — force-send evening catch-up ─────
+router.post("/bell/lectio-evening-fire-now", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    await runLectioEveningReminderSender({ forceNow: true });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /api/bell/lectio-evening-fire-now error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

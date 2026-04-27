@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
-import { sendPrayerWordPush, sendFirstAmenPush, sendThirdAmenTodayPush, sendGardenPrayerRequestPush } from "../lib/pushSender";
+import { sendPrayerWordPush, sendFirstAmenPush, sendThirdAmenTodayPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -314,7 +314,6 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
   // requesters didn't want to ping every connection on every new
   // request. The request still appears on each garden member's prayer
   // list / slideshow; we just don't pre-empt their lock screen.
-  void sendGardenPrayerRequestPush;
   void getGardenUserIds;
 
   res.status(201).json(created);
@@ -671,7 +670,12 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   });
 
   if (firstAmenFire) {
-    sendFirstAmenPush(request.ownerId, { prayerRequestId: id }).catch((err) => {
+    const [prayer] = await db.select({ name: usersTable.name })
+      .from(usersTable).where(eq(usersTable.id, sessionUserId));
+    sendFirstAmenPush(request.ownerId, {
+      prayerRequestId: id,
+      prayerName: prayer?.name || "Someone",
+    }).catch((err) => {
       console.warn("[prayer/amen] first-amen push failed:", err);
     });
   }

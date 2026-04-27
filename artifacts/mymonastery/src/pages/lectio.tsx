@@ -688,7 +688,10 @@ export default function LectioPage() {
           doesn't sit on top of a visibly darker rectangle. */}
 
       {/* Floating nav pill at the bottom of the viewport. Fixed so scrolling
-          inside a slide (e.g. the gospel card) doesn't move the nav. */}
+          inside a slide (e.g. the gospel card) doesn't move the nav. Hidden
+          on entry slides — the textarea has its own Back / Share controls
+          and the keyboard would push the pill on top of the text. */}
+      {current.kind !== "entry" && (
       <nav
         aria-label="Slide navigation"
         style={{
@@ -727,14 +730,12 @@ export default function LectioPage() {
 
           let actionLabel: string | null = null;
           // Welcome slide has its own "Begin 🌿" button, so no pill here.
+          // Entry slide hides this nav entirely (the textarea owns its own
+          // Back / Share controls), so no actionLabel branch is needed for it.
           if (current.kind === "prompt") {
             actionLabel = "Read";
           } else if (current.kind === "reading") {
             actionLabel = "Reflect";
-          } else if (current.kind === "entry") {
-            // Only offer the nav pill once the user has already submitted —
-            // otherwise they should use the Share button on the slide itself.
-            if (stageData?.userHasSubmitted) actionLabel = "Responses";
           } else if (current.kind === "responses") {
             const nextSlide = slides[slideIdx + 1];
             if (nextSlide) {
@@ -819,6 +820,7 @@ export default function LectioPage() {
           );
         })()}
       </nav>
+      )}
 
       {/* Settings menu overlay */}
       <AnimatePresence>

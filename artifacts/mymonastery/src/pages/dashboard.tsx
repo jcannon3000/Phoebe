@@ -3042,6 +3042,30 @@ export default function Dashboard() {
       else monthItems.push(item);
     }
 
+    // Chronological sort for Upcoming / This month so cards line up by next
+    // occurrence (e.g. Wed gathering before Sunday service before next-week
+    // letter window). Items without a known next date sort to the end.
+    const itemSortMs = (item: DashboardItem): number => {
+      if (item.kind === "service" && item.nextDate) {
+        return startOfDay(item.nextDate).getTime();
+      }
+      if (item.kind === "gathering") {
+        const d = computeNextGatheringDate(item.data);
+        return d ? startOfDay(d).getTime() : Number.POSITIVE_INFINITY;
+      }
+      if (item.kind === "letter") {
+        const ms = item.data.windowOpenDate ? new Date(item.data.windowOpenDate).getTime() : NaN;
+        return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
+      }
+      if (item.kind === "moment") {
+        const daysAhead = nextWindowDaysAhead(item.data);
+        return addDays(startOfDay(new Date()), daysAhead).getTime();
+      }
+      return Number.POSITIVE_INFINITY;
+    };
+    weekItems.sort((a, b) => itemSortMs(a) - itemSortMs(b));
+    monthItems.sort((a, b) => itemSortMs(a) - itemSortMs(b));
+
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
   }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, isBeta]);
 

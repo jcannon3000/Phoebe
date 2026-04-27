@@ -266,10 +266,13 @@ export async function runLectioReminderSender(opts: { forceNow?: boolean } = {})
       const stageInfo = LECTIO_DOW_TO_STAGE[dow];
       if (!stageInfo) continue;
 
+      // Fire any time at-or-after 9:30 local on the stage day. The
+      // dedup row below guarantees once-per-user-per-day, so a missed
+      // tick (server restart, GC pause, late deploy) self-heals on the
+      // next 15-min cycle instead of silently swallowing the day.
       if (!opts.forceNow) {
         const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
-        const diff = (nowH * 60 + nowM) - (9 * 60 + 30);
-        if (diff < 0 || diff >= 15) continue;
+        if ((nowH * 60 + nowM) < (9 * 60 + 30)) continue;
       }
 
       const todayStr = todayDateInTz(tz);
@@ -434,10 +437,12 @@ export async function runLectioEveningReminderSender(opts: { forceNow?: boolean 
       const stageInfo = LECTIO_EVENING_DOW_TO_STAGE[dow];
       if (!stageInfo) continue;
 
+      // Fire any time at-or-after 19:30 local on the catch-up day. The
+      // dedup row below ensures once-per-user-per-day so a missed tick
+      // doesn't drop the reminder for the entire evening.
       if (!opts.forceNow) {
         const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
-        const diff = (nowH * 60 + nowM) - (19 * 60 + 30);
-        if (diff < 0 || diff >= 15) continue;
+        if ((nowH * 60 + nowM) < (19 * 60 + 30)) continue;
       }
 
       const todayStr = todayDateInTz(tz);

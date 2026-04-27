@@ -26,7 +26,7 @@ import crypto from "crypto";
 import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
-import { sendNewMemberPush, sendNewPrayerRequestPush, sendPushToUsers } from "../lib/pushSender";
+import { sendNewMemberPush, sendPushToUsers } from "../lib/pushSender";
 import { pool } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
@@ -470,6 +470,26 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
   if (!beta) { res.status(403).json({ error: "Metrics are beta only for now" }); return; }
 
   try {
+    // Bucket "today" / "this week" in the requesting admin's local
+    // timezone — matches how moment_posts.window_date is *written*
+    // (todayDateInTz in moments.ts) and how prayer.ts dedupes amens.
+    // Doing it in UTC here was the bug that made evening prayers for
+    // non-UTC users land in the wrong day bucket.
+    const [adminUser] = await db
+      .select({ timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id));
+    const tz = adminUser?.timezone || "UTC";
+    const ymdInTz = (d: Date): string => {
+      try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d); }
+      catch { return d.toISOString().slice(0, 10); }
+    };
+    const nowDate = new Date();
+    const todayStr = ymdInTz(nowDate);
+    const weekStartDate = new Date(nowDate);
+    weekStartDate.setUTCDate(weekStartDate.getUTCDate() - 6);
+    const weekStartStr = ymdInTz(weekStartDate);
+
     // A "prayer event" is one of two things logged by a member of this
     // community:
     //   1. A prayer-list completion check-in (moment_posts row with
@@ -478,16 +498,11 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
     //   2. An Amen tap (prayer_request_amens row — fired once per non-
     //      own request slide in prayer-mode, plus anywhere else we wire
     //      an Amen button in future).
-    // We UNION both signals and dedup by (user, day), because when a
-    // user walks their list they generate several rows but that's still
-    // "one day of prayer" for metrics purposes.
+    // We UNION both signals and dedup by (user, day) where day is a
+    // local YYYY-MM-DD string, because walking the list generates
+    // several rows but that's still "one day of prayer".
     const q = await pool.query(`
-      WITH now_range AS (
-        SELECT
-          date_trunc('day', now()) AS today_start,
-          (date_trunc('day', now()) - interval '6 days') AS week_start
-      ),
-      members AS (
+      WITH members AS (
         -- Hidden admins are observers, not members. They don't count
         -- toward member totals, don't contribute to "people praying"
         -- buckets, and their prayer requests are not community feed
@@ -514,10 +529,14 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         WHERE owner_id IN (SELECT user_id FROM members)
       ),
       -- Dedup "did this member pray today?" across both signals.
+      -- The 'day' column is YYYY-MM-DD text in the admin's local
+      -- timezone so all comparisons against $2/$3 are apples-to-apples.
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM (
-          -- Prayer-list completions (intercession check-ins).
-          SELECT mt.user_id, mp.window_date::date AS day
+          -- Prayer-list completions. window_date is already stored as
+          -- a YYYY-MM-DD string in the moment owner's tz; close enough
+          -- to admin's tz for community-level metrics.
+          SELECT mt.user_id, mp.window_date AS day
           FROM moment_posts mp
           JOIN member_tokens mt ON mt.user_token = mp.user_token
           WHERE mp.is_checkin = 1
@@ -525,30 +544,35 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
 
           UNION
 
-          -- Explicit amens on other members' requests.
-          SELECT a.user_id, a.prayed_at::date AS day
+          -- Explicit amens on other members' requests. prayed_at is a
+          -- UTC timestamptz; project to the admin's local date.
+          SELECT a.user_id,
+                 to_char((a.prayed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
           FROM prayer_request_amens a
           WHERE a.user_id IN (SELECT user_id FROM members)
+            AND a.prayed_at IS NOT NULL
         ) _
       )
       SELECT
         (SELECT COUNT(*) FROM members)::int AS total_members,
 
         (SELECT COUNT(*) FROM member_requests)::int AS prayer_requests_total,
-        (SELECT COUNT(*) FROM member_requests, now_range WHERE created_at >= today_start)::int AS prayer_requests_today,
-        (SELECT COUNT(*) FROM member_requests, now_range WHERE created_at >= week_start)::int AS prayer_requests_week,
+        (SELECT COUNT(*) FROM member_requests
+           WHERE to_char((created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS prayer_requests_today,
+        (SELECT COUNT(*) FROM member_requests
+           WHERE to_char((created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS prayer_requests_week,
 
         -- "Times prayed" = sum of (user, day) pairs. Five amens in one
         -- afternoon still count as one day of prayer.
         (SELECT COUNT(*) FROM prayer_days)::int AS times_prayed_total,
-        (SELECT COUNT(*) FROM prayer_days, now_range WHERE day >= today_start::date)::int AS times_prayed_today,
-        (SELECT COUNT(*) FROM prayer_days, now_range WHERE day >= week_start::date)::int AS times_prayed_week,
+        (SELECT COUNT(*) FROM prayer_days WHERE day >= $2)::int AS times_prayed_today,
+        (SELECT COUNT(*) FROM prayer_days WHERE day >= $3)::int AS times_prayed_week,
 
         -- Distinct users who have prayed in each window.
-        (SELECT COUNT(DISTINCT user_id) FROM prayer_days, now_range WHERE day >= today_start::date)::int AS prayed_today,
-        (SELECT COUNT(DISTINCT user_id) FROM prayer_days, now_range WHERE day >= week_start::date)::int AS prayed_week,
+        (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $2)::int AS prayed_today,
+        (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $3)::int AS prayed_week,
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days)::int AS prayed_all_time
-    `, [result.group.id]);
+    `, [result.group.id, todayStr, weekStartStr, tz]);
     const row = q.rows[0] ?? {};
     res.json({
       groupName: result.group.name,
@@ -570,6 +594,78 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[groups/metrics] query failed:", err);
     res.status(500).json({ error: "Couldn't load metrics" });
+  }
+});
+
+// GET /api/groups/:slug/metrics-debug — admin-only inspection of the raw rows
+// the metrics aggregator sees for each member. Useful when "Today=0" and you
+// want to know whether the writes actually landed, whether the userToken→email
+// join resolved, and what local-day the events bucketed into.
+router.get("/groups/:slug/metrics-debug", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const result = await requireAdmin(String(req.params.slug ?? ""), user.id);
+  if (!result) { res.status(403).json({ error: "Admin only" }); return; }
+
+  const [adminUser] = await db.select({ timezone: usersTable.timezone })
+    .from(usersTable).where(eq(usersTable.id, user.id));
+  const tz = adminUser?.timezone || "UTC";
+  const todayStr = (() => {
+    try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date()); }
+    catch { return new Date().toISOString().slice(0, 10); }
+  })();
+
+  try {
+    const q = await pool.query(`
+      WITH members AS (
+        SELECT u.id AS user_id, u.email, LOWER(u.email) AS email_lower, u.name
+        FROM users u
+        JOIN group_members gm ON gm.user_id = u.id
+        WHERE gm.group_id = $1
+          AND gm.joined_at IS NOT NULL
+          AND gm.role <> 'hidden_admin'
+      ),
+      member_tokens AS (
+        SELECT t.user_token, m.user_id
+        FROM moment_user_tokens t
+        JOIN members m ON LOWER(t.email) = m.email_lower
+      ),
+      checkins AS (
+        SELECT mt.user_id, mp.window_date AS day, mp.created_at, mp.user_token
+        FROM moment_posts mp
+        JOIN member_tokens mt ON mt.user_token = mp.user_token
+        WHERE mp.is_checkin = 1
+      ),
+      amens AS (
+        SELECT a.user_id,
+               to_char((a.prayed_at AT TIME ZONE $2)::date, 'YYYY-MM-DD') AS day,
+               a.prayed_at, a.request_id
+        FROM prayer_request_amens a
+        WHERE a.user_id IN (SELECT user_id FROM members)
+      )
+      SELECT
+        (SELECT json_agg(row_to_json(m.*)) FROM members m) AS members,
+        (SELECT json_agg(row_to_json(c.*)) FROM (
+          SELECT * FROM checkins ORDER BY created_at DESC LIMIT 50
+        ) c) AS recent_checkins,
+        (SELECT json_agg(row_to_json(a.*)) FROM (
+          SELECT * FROM amens ORDER BY prayed_at DESC LIMIT 50
+        ) a) AS recent_amens,
+        (SELECT json_agg(row_to_json(mt.*)) FROM member_tokens mt) AS member_tokens
+    `, [result.group.id, tz]);
+    const row = q.rows[0] ?? {};
+    res.json({
+      adminTimezone: tz,
+      todayLocal: todayStr,
+      groupId: result.group.id,
+      members: row.members ?? [],
+      memberTokens: row.member_tokens ?? [],
+      recentCheckins: row.recent_checkins ?? [],
+      recentAmens: row.recent_amens ?? [],
+    });
+  } catch (err) {
+    console.error("[groups/metrics-debug] query failed:", err);
+    res.status(500).json({ error: "Debug query failed" });
   }
 });
 
@@ -1707,7 +1803,6 @@ router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => 
   // didn't want to ping every member on every new request. The request
   // still appears on the community home and in each member's prayer
   // list / slideshow; we just don't pre-empt their lock screen.
-  void sendNewPrayerRequestPush;
 
   res.json({ ok: true, id: inserted.id });
 });
