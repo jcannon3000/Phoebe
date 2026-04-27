@@ -61,13 +61,30 @@ export default function WriteLetter() {
     const prevRoot = root?.style.backgroundColor;
     const prevBody = document.body.style.backgroundColor;
     const prevHtml = document.documentElement.style.backgroundColor;
+    // Other routes (lectio, prayer-mode) lock body/html to overflow:hidden +
+    // height:100% so they can position-fix their nav. If the user lands
+    // here straight from one of those, the lock can carry over and stop
+    // the page from scrolling at all. Force scrollability while writing
+    // and restore on unmount.
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyHeight = document.body.style.height;
+    const prevHtmlHeight = document.documentElement.style.height;
     if (root) root.style.backgroundColor = "#F8F3EC";
     document.body.style.backgroundColor = "#F8F3EC";
     document.documentElement.style.backgroundColor = "#F8F3EC";
+    document.body.style.overflow = "auto";
+    document.documentElement.style.overflow = "auto";
+    document.body.style.height = "auto";
+    document.documentElement.style.height = "auto";
     return () => {
       if (root) root.style.backgroundColor = prevRoot || "";
       document.body.style.backgroundColor = prevBody || "";
       document.documentElement.style.backgroundColor = prevHtml || "";
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.height = prevBodyHeight;
+      document.documentElement.style.height = prevHtmlHeight;
     };
   }, []);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -460,14 +477,12 @@ export default function WriteLetter() {
       </div>
 
       {/* Writing area — auto-growing textarea in normal document flow.
-          The page scrolls vertically; iOS auto-scrolls the caret above
-          the keyboard, and the user can pan up freely to see earlier
-          paragraphs. Bottom padding includes the keyboard inset so the
-          end of the letter is always reachable above the keyboard. */}
-      <div
-        className="flex-1 px-6 pt-6 max-w-3xl mx-auto w-full"
-        style={{ paddingBottom: `${keyboardH + 24}px` }}
-      >
+          A trailing spacer (sized to keyboard + a full screen) gives
+          the page enough scrollable runway that the active typing line
+          can always be scrolled above the keyboard, even on a brand
+          new draft. The spacer doesn't affect the saved letter — it's
+          just empty room below the textarea. */}
+      <div className="flex-1 px-6 pt-6 max-w-3xl mx-auto w-full">
         <textarea
           ref={textareaRef}
           value={content}
@@ -490,6 +505,12 @@ export default function WriteLetter() {
             overflow: "hidden",
             border: "none",
             padding: 0,
+          }}
+        />
+        <div
+          aria-hidden
+          style={{
+            height: `${keyboardH + Math.round((typeof window !== "undefined" ? window.innerHeight : 800) * 0.9)}px`,
           }}
         />
       </div>
