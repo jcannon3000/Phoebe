@@ -1,3 +1,21 @@
+// ApiError carries the parsed JSON body alongside a user-readable
+// `.message`. Callers that just want to display an error can read
+// `err.message` (preferred from `body.message`, then `body.error`,
+// then the raw response text). Callers that switch on the server's
+// error code (e.g. WriteLetter) can read `err.body.error` /
+// `err.body.nextPeriodStart` etc. without having to JSON.parse the
+// message string.
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
 export async function apiRequest<T = unknown>(
   method: string,
   url: string,
@@ -12,16 +30,15 @@ export async function apiRequest<T = unknown>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    // If the server responded with JSON containing an `error` field,
-    // surface that string as the Error message instead of the raw
-    // JSON body — otherwise callers that display err.message end up
-    // showing `{"error":"..."}` to users.
-    let message = text;
-    try {
-      const parsed = JSON.parse(text);
-      if (parsed && typeof parsed.error === "string") message = parsed.error;
-    } catch { /* not JSON — fall through with raw text */ }
-    throw new Error(message || `${method} ${url} failed: ${res.status}`);
+    let parsed: unknown = null;
+    try { parsed = JSON.parse(text); } catch { /* not JSON */ }
+    let message = text || `${method} ${url} failed: ${res.status}`;
+    if (parsed && typeof parsed === "object") {
+      const p = parsed as Record<string, unknown>;
+      if (typeof p.message === "string" && p.message.trim()) message = p.message;
+      else if (typeof p.error === "string") message = p.error;
+    }
+    throw new ApiError(message, res.status, parsed ?? text);
   }
 
   const contentType = res.headers.get("content-type") ?? "";
