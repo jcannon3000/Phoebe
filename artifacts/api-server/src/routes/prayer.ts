@@ -310,29 +310,12 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
     })
     .returning();
 
-  // Notify everyone who would see this request — the owner's garden
-  // (group peers + correspondents). Anonymous requests skip the push:
-  // surfacing the owner's name in the title would defeat the toggle.
-  // Symmetric in the common case; the hidden_admin veto can give a few
-  // false positives (we'd push someone who can't actually see the
-  // request) but the by-id endpoint will 403 them, so the worst case
-  // is an empty page on tap, not a leak.
-  if (!parsed.data.isAnonymous && owner?.name) {
-    getGardenUserIds(sessionUserId)
-      .then((audience) => {
-        for (const recipientId of audience) {
-          sendGardenPrayerRequestPush(recipientId, {
-            prayerRequestId: created.id,
-            ownerName: owner.name as string,
-          }).catch((err) => {
-            console.error(`[prayer-requests] new-request push failed for user=${recipientId}`, err);
-          });
-        }
-      })
-      .catch((err) => {
-        console.error(`[prayer-requests] failed to compute audience for new request ${created.id}`, err);
-      });
-  }
+  // Garden-wide "{owner} is asking for your prayers" push is disabled —
+  // requesters didn't want to ping every connection on every new
+  // request. The request still appears on each garden member's prayer
+  // list / slideshow; we just don't pre-empt their lock screen.
+  void sendGardenPrayerRequestPush;
+  void getGardenUserIds;
 
   res.status(201).json(created);
 });
