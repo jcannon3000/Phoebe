@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 
 interface MemberData {
   id: number;
@@ -266,21 +266,18 @@ export default function WriteLetter() {
       setLocation(`/letters/${correspondenceId}${tokenParam}`);
     },
     onError: (err: Error) => {
-      try {
-        const parsed = JSON.parse(err.message);
-        if (parsed.error === "already_written" || parsed.error === "already_written_this_period") {
-          setErrorState({ message: "You've already written this period.", nextPeriodStart: parsed.nextPeriodStart });
-        } else if (parsed.error === "not_your_turn") {
-          setErrorState({ message: parsed.message || "It's not your turn yet.", nextPeriodStart: parsed.nextPeriodStart });
-        } else {
-          // Prefer the human-readable `message` over the machine code in
-          // `error` — the server sends both now (e.g. send_failed + a
-          // detailed error message). Falling back to error code and
-          // finally a generic string keeps the old behavior intact.
-          setErrorState({ message: parsed.message || parsed.error || "Something went wrong." });
-        }
-      } catch {
-        setErrorState({ message: "Something went wrong. Try again." });
+      const body = err instanceof ApiError && err.body && typeof err.body === "object"
+        ? (err.body as { error?: string; message?: string; nextPeriodStart?: string })
+        : null;
+      const code = body?.error;
+      if (code === "already_written" || code === "already_written_this_period") {
+        setErrorState({ message: "You've already written this period.", nextPeriodStart: body?.nextPeriodStart });
+      } else if (code === "not_your_turn") {
+        setErrorState({ message: body?.message || "It's not your turn yet.", nextPeriodStart: body?.nextPeriodStart });
+      } else {
+        setErrorState({
+          message: body?.message || body?.error || err.message || "Something went wrong.",
+        });
       }
       setConfirmSend(false);
     },
