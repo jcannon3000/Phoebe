@@ -37,7 +37,15 @@ const COLOR_LABEL: Record<LiturgicalColor, string> = {
 //     label ("The Third Week of Easter") beneath.
 // A small colored dot sits to the left as a liturgical-color cue.
 // Tapping a feast name opens a detail sheet.
-export function LiturgicalDateHeader({ date }: { date?: Date }) {
+export function LiturgicalDateHeader({
+  date,
+  feastOnly = false,
+  fallbackText,
+}: {
+  date?: Date;
+  feastOnly?: boolean;
+  fallbackText?: string;
+}) {
   const d = date ?? new Date();
   const day = getDay(d, { observeLesserFeasts: readLesserFeastsPref() });
   const [detailOpen, setDetailOpen] = useState(false);
@@ -45,6 +53,37 @@ export function LiturgicalDateHeader({ date }: { date?: Date }) {
   const dateLine = format(d, "EEEE, d MMMM");
   const dateLong = format(d, "EEEE, d MMMM yyyy");
   void dateLong;
+
+  if (feastOnly) {
+    let feast: string | null = null;
+    if (day.rank === "principal_feast" || day.rank === "holy_day") {
+      feast = `Feast of ${day.name}`;
+    } else if (day.rank === "sunday") {
+      feast = day.name || null;
+    } else if (day.commemoration) {
+      feast = day.life
+        ? `Feast of ${day.commemoration}, ${day.life}`
+        : `Feast of ${day.commemoration}`;
+    }
+    const text = feast ?? fallbackText ?? null;
+    if (!text) return null;
+    return (
+      <div className="min-w-0">
+        <p
+          style={{
+            color: "#F0EDE6",
+            fontSize: 22,
+            fontWeight: 600,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.2,
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
+        >
+          {text}
+        </p>
+      </div>
+    );
+  }
 
   // Header layout (post-tester feedback):
   // The calendar date is ALWAYS the headline. The feast / commemoration /

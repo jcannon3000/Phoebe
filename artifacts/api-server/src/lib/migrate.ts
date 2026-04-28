@@ -1105,6 +1105,33 @@ export async function migrate() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     `);
 
+    // content_reports — user reports of objectionable UGC. Required by
+    // App Store review (Guideline 1.2): apps with user-generated content
+    // must offer in-app reporting and operator follow-up within 24h.
+    // The table records who reported what, why, and a status field for
+    // the eventual moderation queue. Idempotent CREATE so re-deploys
+    // don't trip over "already exists."
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS content_reports (
+        id SERIAL PRIMARY KEY,
+        reporter_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        target_id INTEGER NOT NULL,
+        reason TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        reviewed_at TIMESTAMP WITH TIME ZONE
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS idx_content_reports_status_created
+        ON content_reports (status, created_at)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS idx_content_reports_reporter
+        ON content_reports (reporter_user_id)
+    `);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

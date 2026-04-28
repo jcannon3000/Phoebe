@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
+import { PrayerRequestQuickEntry } from "@/components/prayer-request-quick-entry";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
@@ -3258,8 +3259,12 @@ export default function Dashboard() {
             direction — the liturgical date/feast IS the header now.
             Extra bottom margin sits between the feast subtitle and
             the pill strip so the feast has room to breathe. */}
-        <div className="mb-8">
-          {/* Liturgical date now lives in the sticky page header (top-aligned with the Menu pill) on the home dashboard. */}
+        <div className="mb-4">
+          {/* Show the feast/Sunday/commemoration when there is one;
+              otherwise fall back to the brand tagline. Plain ferial
+              seasonal labels ("The Fourth Week of Easter") are
+              suppressed in favor of the tagline. */}
+          <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
 
           {/* Menu pill strip removed — nav lives in the side Menu. */}
 
@@ -3324,6 +3329,17 @@ export default function Dashboard() {
               </div>
             );
           })()}
+
+          {/* Quick prayer-request entry — sits directly under the daily
+              prayer card so adding a request is the next obvious tap.
+              The full Prayer Requests list still lives lower on the
+              page; this surface only renders the input + duration
+              sheet. */}
+          {filter === null && (
+            <div className="mt-7">
+              <PrayerRequestQuickEntry />
+            </div>
+          )}
         </div>
 
         {/* ── Loading skeleton ── */}
@@ -3427,7 +3443,7 @@ export default function Dashboard() {
             No extra wrapper margin: the previous TimeSection's mb-8 already
             provides the section-to-section gap, matching how This month sits
             below This week. */}
-        {filter === null && <PrayerSection maxVisible={3} />}
+        {filter === null && <PrayerSection maxVisible={3} hideEntry />}
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
