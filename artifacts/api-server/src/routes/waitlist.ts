@@ -48,6 +48,17 @@ router.post("/waitlist", async (req, res): Promise<void> => {
   const source = parsed.data.source?.trim() || "homepage";
 
   try {
+    // If they already have a Phoebe account, don't add them to the
+    // waitlist — direct them to sign in instead. Returns 200 (not 400) so
+    // the homepage form can render a friendly "you already have an
+    // account" state without looking like a validation failure.
+    const [existingUser] = await db.select({ id: usersTable.id })
+      .from(usersTable).where(eq(usersTable.email, email));
+    if (existingUser) {
+      res.json({ ok: true, alreadyHasAccount: true });
+      return;
+    }
+
     const [existing] = await db.select({ id: waitlistTable.id })
       .from(waitlistTable).where(eq(waitlistTable.email, email));
     if (existing) {
