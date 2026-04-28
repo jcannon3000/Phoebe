@@ -513,8 +513,34 @@ router.post(
       .where(eq(correspondencesTable.id, correspondenceId));
     if (!correspondence) { res.status(404).json({ error: "Not found" }); return; }
 
-    const { member, members } = await getMembership(correspondenceId, auth);
-    if (!member || !member.joinedAt) { res.status(403).json({ error: "Not a joined member" }); return; }
+    let { member, members } = await getMembership(correspondenceId, auth);
+    if (!member) { res.status(403).json({ error: "Not a joined member" }); return; }
+
+    // Auto-join: a recipient who signed up to Phoebe outside the
+    // /i/<inviteToken> flow can land here with their member row still
+    // showing joinedAt:null and userId:null (the row was created by
+    // the sender's invite, keyed only by email). They've proven
+    // ownership of the email by being authenticated as it, so we
+    // stamp joinedAt + link userId now and proceed instead of
+    // bouncing them with a confusing "Not a joined member" splash.
+    if (!member.joinedAt) {
+      const now = new Date();
+      await db
+        .update(correspondenceMembersTable)
+        .set({ joinedAt: now, userId: auth.userId, name: member.name ?? auth.name })
+        .where(eq(correspondenceMembersTable.id, member.id));
+      member = { ...member, joinedAt: now, userId: auth.userId, name: member.name ?? auth.name };
+      members = members.map((m) => (m.id === member!.id ? member! : m));
+    } else if (member.userId == null) {
+      // joined but never linked (legacy rows): link the userId so
+      // future lookups by userId work too.
+      await db
+        .update(correspondenceMembersTable)
+        .set({ userId: auth.userId })
+        .where(eq(correspondenceMembersTable.id, member.id));
+      member = { ...member, userId: auth.userId };
+      members = members.map((m) => (m.id === member!.id ? member! : m));
+    }
 
     const { content } = req.body as { content: string };
     const type = (correspondence.groupType === "one_to_one" ? "one_to_one" : "group") as "one_to_one" | "group";
