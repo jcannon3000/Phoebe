@@ -68,5 +68,47 @@
 	     covers the formal declaration; this entry covers the audit. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+
+	<!-- Home-screen quick actions (long-press the app icon).
+	     Static shortcuts ship in Info.plist so they're always
+	     present without runtime registration. AppDelegate's
+	     `application(_:performActionFor:completionHandler:)` maps
+	     each `UIApplicationShortcutItemType` to a deep-link path
+	     by posting the matching universal-link URL through the
+	     existing native-shell appUrlOpen path — same routing
+	     mechanism the rest of the deep-link wiring uses. -->
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>app.withphoebe.mobile.shortcut.prayer-list</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Begin prayer list</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Walk through today's prayers</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeFavorite</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>app.withphoebe.mobile.shortcut.prayer-request-new</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>New prayer request</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Share what to carry</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeAdd</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>app.withphoebe.mobile.shortcut.letter-new</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Write a letter</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>To one friend</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeCompose</string>
+		</dict>
+	</array>
 </dict>
 </plist>

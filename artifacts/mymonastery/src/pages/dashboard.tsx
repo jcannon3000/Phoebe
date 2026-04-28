@@ -1699,6 +1699,57 @@ function ServiceCard({
   );
 }
 
+// ─── Prayer pill ────────────────────────────────────────────────────────────
+// Compact menu card that anchors a prayer surface. Three of these sit
+// in a row under the Daily Prayer List card — they are the entry
+// points to the user's own requests, the prayers others are offering
+// for them, and the manage-prayer dashboard.
+
+function PrayerPill({
+  href,
+  label,
+  count,
+  showDot = false,
+}: {
+  href: string;
+  label: string;
+  count: number;
+  showDot?: boolean;
+}) {
+  return (
+    <Link href={href} className="block">
+      <div
+        className="relative h-full rounded-xl px-3 py-3 flex flex-col justify-between"
+        style={{
+          background: "#0F2818",
+          border: "1px solid rgba(46,107,64,0.45)",
+          minHeight: 78,
+        }}
+      >
+        {showDot && (
+          <span
+            aria-label="Unviewed"
+            className="absolute top-2 right-2 rounded-full"
+            style={{ width: 9, height: 9, background: "#E04A3F" }}
+          />
+        )}
+        <p
+          className="text-[11px] font-medium leading-snug pr-3"
+          style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {label}
+        </p>
+        <p
+          className="text-lg font-semibold mt-1 tabular-nums"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.01em" }}
+        >
+          {count}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 // ─── Prayer-list fallback card ──────────────────────────────────────────────
 // Shown in the Today section when nothing else is pending there but the user
 // still has prayers queued in their slideshow. Gives them a clear next step
@@ -1713,6 +1764,7 @@ function PrayerListCard({
   prayedToday = false,
   partialRemaining = 0,
   faces,
+  gardenPrayedTodayCount = 0,
 }: {
   pendingCount: number;
   streak: number;
@@ -1736,6 +1788,11 @@ function PrayerListCard({
   // slideshow. Rendered on line 2 before the count text. Empty
   // array = no avatars shown.
   faces?: Array<{ key: string; name: string; avatarUrl: string | null }>;
+  // How many people in the viewer's garden have walked their own
+  // slideshow today. When > 0 the subtitle alternates between the
+  // primary content and "X people prayed with you today" with a
+  // gentle cross-fade.
+  gardenPrayedTodayCount?: number;
 }) {
   const colors = CATEGORY_COLORS.practices;
   // "Continue praying" beats "Pray again" when there's still un-prayed
@@ -1746,9 +1803,31 @@ function PrayerListCard({
   // partialRemaining (saved by prayer-mode on advance / X-out) now
   // covers all slide kinds, not just request amens.
   const isPartial = partialRemaining > 0;
-  const subtitle = isPartial
+  const primarySubtitle = isPartial
     ? (partialRemaining === 1 ? "1 more prayer" : `${partialRemaining} more prayers`)
-    : (pendingCount === 1 ? "1 prayer waiting for you" : `${pendingCount} prayers waiting for you`);
+    : prayedToday
+      ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
+      : (pendingCount === 1 ? "1 prayer waiting for you" : `${pendingCount} prayers waiting for you`);
+  const gardenSubtitle = gardenPrayedTodayCount > 0
+    ? (gardenPrayedTodayCount === 1
+        ? "1 person prayed with you today"
+        : `${gardenPrayedTodayCount} people prayed with you today`)
+    : null;
+  // Alternate the subtitle every 4s when there is a garden line to
+  // surface. Index 0 = primary content, index 1 = garden line.
+  const [subtitleIdx, setSubtitleIdx] = useState(0);
+  useEffect(() => {
+    if (!gardenSubtitle) {
+      setSubtitleIdx(0);
+      return;
+    }
+    const id = setInterval(() => {
+      setSubtitleIdx(i => (i === 0 ? 1 : 0));
+    }, 4000);
+    return () => clearInterval(id);
+  }, [gardenSubtitle]);
+  const visibleSubtitle = gardenSubtitle && subtitleIdx === 1 ? gardenSubtitle : primarySubtitle;
+  const visibleSubtitleKey = gardenSubtitle && subtitleIdx === 1 ? "garden" : "primary";
 
   return (
     <Link key={`${keyPrefix}-prayer-list`} href="/prayer-mode" className="block">
@@ -1844,19 +1923,26 @@ function PrayerListCard({
                   ))}
                 </div>
               )}
-              <p
-                className="text-sm truncate"
-                style={{
-                  color: "#8FAF96",
-                  lineHeight: "20px",
-                  margin: 0,
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                {prayedToday
-                  ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
-                  : subtitle}
-              </p>
+              <div className="relative min-w-0 flex-1" style={{ height: 20 }}>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.p
+                    key={visibleSubtitleKey}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-sm truncate absolute inset-0"
+                    style={{
+                      color: "#8FAF96",
+                      lineHeight: "20px",
+                      margin: 0,
+                      fontFamily: "'Space Grotesk', sans-serif",
+                    }}
+                  >
+                    {visibleSubtitle}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
             </div>
             {streak > 0 && (
               // Pill mirrors the View list chip size so both sit
@@ -2642,6 +2728,14 @@ export default function Dashboard() {
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
     enabled: !!user,
   });
+  // Prayers others are currently offering for me — drives the
+  // "Prayers for You" pill (count + unviewed red dot).
+  type DashPrayerForMe = { id: number; expiresAt: string };
+  const { data: dashPrayersForMe } = useQuery<DashPrayerForMe[]>({
+    queryKey: ["/api/prayers-for/for-me"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
+    enabled: !!user,
+  });
   // Circle intentions — shared prayer intentions inside every prayer circle
   // the user belongs to. Each intention is its own prayer (a circle can have
   // many intentions), so we count rows, not circles.
@@ -2715,13 +2809,14 @@ export default function Dashboard() {
 
   // Prayer-list streak (consecutive days finishing a full slideshow) — used
   // by the Today-empty fallback card to reward the habit.
-  const { data: prayerStreakData } = useQuery<{ streak: number; lastPrayedDate: string | null; loggedToday?: boolean }>({
+  const { data: prayerStreakData } = useQuery<{ streak: number; lastPrayedDate: string | null; loggedToday?: boolean; gardenPrayedTodayCount?: number }>({
     queryKey: ["/api/prayer-streak"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak"),
     enabled: !!user,
     staleTime: 60_000,
   });
   const prayerStreak = prayerStreakData?.streak ?? 0;
+  const gardenPrayedTodayCount = prayerStreakData?.gardenPrayedTodayCount ?? 0;
   // "Have they prayed today?" is now strictly the server's per-viewer
   // loggedToday flag. We used to fall back to "every intercession has
   // todayPostCount > 0", but todayPostCount is the GLOBAL count of
@@ -3324,19 +3419,68 @@ export default function Dashboard() {
                   prayedToday={prayerListDoneToday}
                   partialRemaining={partialRemaining}
                   faces={faces}
+                  gardenPrayedTodayCount={gardenPrayedTodayCount}
                   keyPrefix="anchor"
                 />
               </div>
             );
           })()}
 
-          {/* Quick prayer-request entry — sits directly under the daily
-              prayer card so adding a request is the next obvious tap.
-              The full Prayer Requests list still lives lower on the
-              page; this surface only renders the input + duration
-              sheet. */}
+          {/* Three-pill row — quick links into the dedicated prayer
+              surfaces. "Your Prayer Requests" goes to a list of the
+              user's own active requests (with comments + amen counts).
+              "Prayers for You" goes to a list of prayers others are
+              offering for them, and only renders when there is at
+              least one. A red dot in the corner flags any prayer the
+              user hasn't viewed on the dedicated page yet (tracked in
+              localStorage). "Friend's Prayer Requests" goes to the
+              full prayer-list manage page. */}
+          {filter === null && (() => {
+            const myReqCount = (dashPrayerRequests ?? []).filter(r =>
+              r.isOwnRequest && !r.isAnswered && !r.closedAt,
+            ).length;
+            const friendsReqCount = (dashPrayerRequests ?? []).filter(r =>
+              !r.isOwnRequest && !r.isAnswered && !r.closedAt,
+            ).length;
+            const prayersForMeCount = (dashPrayersForMe ?? []).length;
+            // Unviewed = any id in the list NOT in the localStorage
+            // set written by /prayers-for-me when the page loads.
+            let prayersForMeUnviewed = false;
+            try {
+              const raw = localStorage.getItem("phoebe:prayers-for-me:viewed-ids");
+              const seen: number[] = raw ? JSON.parse(raw) : [];
+              const seenSet = new Set(seen);
+              prayersForMeUnviewed = (dashPrayersForMe ?? []).some(p => !seenSet.has(p.id));
+            } catch { /* fall through with false */ }
+            return (
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <PrayerPill
+                  href="/my-prayer-requests"
+                  label="Your Prayer Requests"
+                  count={myReqCount}
+                />
+                {prayersForMeCount > 0 && (
+                  <PrayerPill
+                    href="/prayers-for-me"
+                    label="Prayers for You"
+                    count={prayersForMeCount}
+                    showDot={prayersForMeUnviewed}
+                  />
+                )}
+                <PrayerPill
+                  href="/prayer-list"
+                  label="Friend's Prayer Requests"
+                  count={friendsReqCount}
+                />
+              </div>
+            );
+          })()}
+
+          {/* Quick prayer-request entry — sits directly under the
+              three-pill row so adding a request is the next obvious
+              tap. */}
           {filter === null && (
-            <div className="mt-7">
+            <div className="mt-5">
               <PrayerRequestQuickEntry />
             </div>
           )}
@@ -3439,11 +3583,10 @@ export default function Dashboard() {
           );
         })()}
 
-        {/* Prayer Requests — hidden when filter active.
-            No extra wrapper margin: the previous TimeSection's mb-8 already
-            provides the section-to-section gap, matching how This month sits
-            below This week. */}
-        {filter === null && <PrayerSection maxVisible={3} hideEntry />}
+        {/* Prayer Requests bottom section removed — replaced by the
+            3-pill row under the Daily Prayer List card up top, which
+            routes to dedicated /my-prayer-requests, /prayers-for-me,
+            and /prayer-list pages. */}
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
