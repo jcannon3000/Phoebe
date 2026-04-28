@@ -223,15 +223,21 @@ function initialSlideIndex(data: LectioData, slides: Slide[]): number {
   if (typeof window !== "undefined") {
     const view = new URLSearchParams(window.location.search).get("view");
     if (view === "responses") {
-      const stage = data.currentStage;
-      if (stage) {
+      // Land on the most recent stage the user has submitted — that's the
+      // per-stage "WHAT OTHERS HEARD" feed they expect when they tap the
+      // dashboard's Responses pill. data.currentStage is unreliable when
+      // the user is between cadence days, so pick the latest submitted
+      // stage from STAGE_ORDER directly.
+      const submitted = STAGE_ORDER.filter(
+        (s) => data.stages[s].unlocked && data.stages[s].userHasSubmitted,
+      );
+      const target = submitted[submitted.length - 1] ?? data.currentStage ?? null;
+      if (target) {
         const idx = slides.findIndex(
-          (sl) => sl.stage === stage && sl.kind === "responses",
+          (sl) => sl.stage === target && sl.kind === "responses",
         );
         if (idx >= 0) return idx;
       }
-      const allIdx = slides.findIndex((sl) => sl.kind === "all-responses");
-      if (allIdx >= 0) return allIdx;
     }
   }
   const statusIdx = slides.findIndex((sl) => sl.kind === "status");
