@@ -70,6 +70,11 @@ interface PrayerSlide {
   attribution: string;
   fullText?: string | null;
   intention?: string | null;
+  // intercession specific — "bcp" when the intercession was picked from
+  // the Book of Common Prayer. Drives the "From the Book of Common Prayer"
+  // attribution caption even when the topic title doesn't exactly match
+  // a BCP_PRAYERS entry (e.g. user lightly edited the title).
+  source?: string | null;
   // request specific — lets us record an amen against the originating
   // prayer request when the viewer taps "Amen" to advance.
   requestId?: number;
@@ -876,7 +881,11 @@ function SlideContent({
         <RequestWordField requestId={slide.requestId} initialWord={slide.myWord ?? null} />
       )}
 
-      {/* Custom intercession — show the user's own prayer text */}
+      {/* Custom intercession — show the user's own prayer text. When the
+          intercession was picked from the Book of Common Prayer but the
+          topic title wasn't an exact match against BCP_PRAYERS (e.g. the
+          user lightly edited it), we still render the BCP attribution
+          caption underneath so the source is never silently dropped. */}
       {!bcpPrayer && slide.fullText && (
         <div
           className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
@@ -901,6 +910,14 @@ function SlideContent({
               </p>
             );
           })()}
+          {slide.source === "bcp" && (
+            <p
+              className="text-[9px] uppercase tracking-[0.14em] mt-3"
+              style={{ color: "rgba(143,175,150,0.3)" }}
+            >
+              From the Book of Common Prayer
+            </p>
+          )}
         </div>
       )}
 
@@ -1360,6 +1377,7 @@ export default function PrayerModePage() {
         text: title,
         intention: intentionSub,
         fullText: m.intercessionFullText?.trim() || null,
+        source: m.intercessionSource ?? null,
         attribution: attributionLabel ? `with ${attributionLabel}` : "",
         weekPrayCount: m.weekPostCount ?? 0,
         momentToken: m.momentToken,

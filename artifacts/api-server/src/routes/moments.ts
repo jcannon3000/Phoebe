@@ -1582,22 +1582,40 @@ router.get("/moments", async (req, res): Promise<void> => {
         // or reset by goal hits. Walk backwards through bloom windows.
         //
         // Threshold semantics:
-        // - Intercessions: any single prayer by any member blooms the day.
-        //   A community intercession isn't a group-commitment practice —
-        //   if even one person lifted it, the community prayed today.
+        // - Intercessions: ≥2 distinct users praying *and* ≥2 members.
+        //   A *group* streak is a together streak — one solo prayer
+        //   shouldn't bloom the day for the community, otherwise a
+        //   single-member intercession would silently rack up a fake
+        //   group streak. (The personal streak still counts solo prayers.)
         // - Everything else (practices): majority threshold
         //   ceil(members/2), min 2, requires ≥2 members.
         const isIntercessionMoment = m.templateType === "intercession";
+        const uniqueUsersOnDate = (date: string) => {
+          const set = new Set<string>();
+          for (const p of allPosts) {
+            if (p.windowDate === date) set.add(p.userToken);
+          }
+          return set.size;
+        };
         const bloomThreshold = isIntercessionMoment
-          ? 1
+          ? 2
           : Math.max(2, Math.ceil(allMembers.length / 2));
-        const todayBloom = isIntercessionMoment
-          ? todayPosts.length >= 1
-          : (todayPosts.length >= bloomThreshold && allMembers.length >= 2);
+        const todayBloom = allMembers.length >= 2 &&
+          (isIntercessionMoment
+            ? uniqueUsersOnDate(todayDate) >= bloomThreshold
+            : todayPosts.length >= bloomThreshold);
+        // Past-day bloom: for intercessions, recompute from posts
+        // (uniqueUsers≥2) instead of trusting w.status, since legacy
+        // windows were evaluated against the old single-prayer rule and
+        // would inflate the streak.
+        const isBloomDay = (w: { windowDate: string; status: string }) =>
+          isIntercessionMoment
+            ? (allMembers.length >= 2 && uniqueUsersOnDate(w.windowDate) >= 2)
+            : w.status === "bloom";
         let groupStreak = todayBloom ? 1 : 0;
         for (const w of sortedWindows) {
           if (w.windowDate === todayDate) continue;
-          if (w.status === "bloom") { groupStreak++; } else { break; }
+          if (isBloomDay(w)) { groupStreak++; } else { break; }
         }
 
         // Actual session count from window bloom data — the DB field
@@ -2026,19 +2044,35 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
   // Compute group streak from actual window bloom data — not the
   // currentStreak field which can be corrupted by double-bloom bugs
   // or reset by goal hits. Walk backwards through bloom windows.
-  // Intercessions bloom on a single prayer (see /moments list for the
-  // companion version of this rule).
+  //
+  // Intercessions: a *group* streak only makes sense when the group
+  // actually prayed together — one solo prayer per day shouldn't bloom
+  // the day for the group, otherwise a single-member intercession
+  // accrues a fake "group streak" indistinguishable from the personal
+  // one. Require ≥2 distinct users praying that day, AND a community
+  // of ≥2 members. (My-streak still counts solo prayers.)
   const isIntercessionMoment = moment.templateType === "intercession";
+  const uniqueUsersOnDate = (date: string) => {
+    const set = new Set<string>();
+    for (const p of postsByDate[date] ?? []) set.add(p.userToken);
+    return set.size;
+  };
   const bloomThreshold = isIntercessionMoment
-    ? 1
+    ? 2
     : Math.max(2, Math.ceil(allMembers.length / 2));
-  const todayBloom = isIntercessionMoment
-    ? todayPosts.length >= 1
-    : (todayPosts.length >= bloomThreshold && allMembers.length >= 2);
+  const todayBloom = allMembers.length >= 2 &&
+    uniqueUsersOnDate(windowDate) >= bloomThreshold;
+  // For intercessions, recompute past-day bloom from posts (uniqueUsers≥2)
+  // rather than trusting w.status, since legacy windows were evaluated
+  // against the old single-prayer rule and would inflate the streak.
+  const isBloomDay = (w: { windowDate: string; status: string }) =>
+    isIntercessionMoment
+      ? (allMembers.length >= 2 && uniqueUsersOnDate(w.windowDate) >= 2)
+      : w.status === "bloom";
   let groupStreak = todayBloom ? 1 : 0;
   for (const w of sortedWindows) {
     if (w.windowDate === windowDate) continue;
-    if (w.status === "bloom") { groupStreak++; } else { break; }
+    if (isBloomDay(w)) { groupStreak++; } else { break; }
   }
   // Group best: longest consecutive bloom run across all windows.
   // Skip today's window in the loop (its status may be stale) and
@@ -2049,7 +2083,7 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     const chronological = [...sortedWindows].reverse();
     for (const w of chronological) {
       if (w.windowDate === windowDate) continue; // skip today
-      if (w.status === "bloom") { run++; if (run > groupBest) groupBest = run; }
+      if (isBloomDay(w)) { run++; if (run > groupBest) groupBest = run; }
       else { run = 0; }
     }
     // Include today's bloom if applicable

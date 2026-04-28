@@ -62,7 +62,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>Your email address and display name (required)</li>
             <li>A profile photo (optional)</li>
-            <li>A password, or a Sign in with Google / Sign in with Apple identifier</li>
+            <li>A password (hashed with scrypt and a per-user salt), or — on iOS — a Sign in with Apple identifier</li>
           </ul>
           <p>As you use the app, you can create content that we store on your behalf:</p>
           <ul className="list-disc pl-5 space-y-1">
@@ -114,13 +114,13 @@ export default function PrivacyPage() {
           <p>We share limited data with the following providers so the app can function:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong>Google</strong> — if you Sign in with Google, we receive your email and profile info. If
-              your community uses calendar invites, Phoebe creates Google Calendar events from a shared account
-              (invites@withphoebe.app) and sends them via Gmail.
+              <strong>Google</strong> — if your community uses calendar invites, Phoebe creates Google Calendar
+              events from a shared account (invites@withphoebe.app) and sends them via Gmail. We don't use
+              Google for sign-in.
             </li>
             <li>
-              <strong>Apple</strong> — Sign in with Apple and Apple Push Notification service, both governed by
-              Apple's privacy terms.
+              <strong>Apple</strong> — Sign in with Apple (iOS only) and Apple Push Notification service, both
+              governed by Apple's privacy terms.
             </li>
             <li>
               <strong>Railway</strong> — our API server and Postgres database run on Railway (Railway Corp.).

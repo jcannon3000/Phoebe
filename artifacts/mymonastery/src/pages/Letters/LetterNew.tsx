@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import ImprintSlideshow, { correspondenceSlides } from "@/components/ImprintSlideshow";
@@ -52,6 +52,37 @@ export default function LetterNew() {
       .then(d => { setConnections(d.connections ?? []); setConnectionsLoading(false); })
       .catch(() => { setConnections([]); setConnectionsLoading(false); });
   }, []);
+
+  // Existing correspondences — used to prevent starting a duplicate
+  // one_to_one with someone you're already writing to.
+  const { data: correspondences } = useQuery<Array<{
+    id: number;
+    groupType: string;
+    members: Array<{ email: string }>;
+  }>>({
+    queryKey: ["/api/phoebe/correspondences"],
+    queryFn: async () => {
+      try {
+        return await apiRequest("GET", "/api/phoebe/correspondences");
+      } catch {
+        return await apiRequest("GET", "/api/letters/correspondences");
+      }
+    },
+    enabled: !!user,
+  });
+
+  const myEmail = (user?.email || "").toLowerCase();
+  const existingOneToOneByEmail = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of correspondences ?? []) {
+      if (c.groupType !== "one_to_one") continue;
+      for (const m of c.members) {
+        const e = (m.email || "").toLowerCase();
+        if (e && e !== myEmail) map.set(e, c.id);
+      }
+    }
+    return map;
+  }, [correspondences, myEmail]);
 
   const createMutation = useMutation({
     mutationFn: (data: { type: CorrespondenceType; name: string; members: Member[] }) =>
@@ -123,6 +154,12 @@ export default function LetterNew() {
     }
     if (type === "one_to_one") {
       const other = validMembers[0];
+      const existingId = existingOneToOneByEmail.get(other.email.trim().toLowerCase());
+      if (existingId) {
+        setError("You're already writing with them — opening that correspondence…");
+        setLocation(`/letters/${existingId}`);
+        return;
+      }
       const autoName = `Letters with ${other.name || other.email.split("@")[0]}`;
       createMutation.mutate({ type: "one_to_one", name: autoName, members: validMembers });
     } else {
@@ -241,13 +278,18 @@ export default function LetterNew() {
               </p>
 
               {/* Connection suggestions */}
-              {!connectionsLoading && connections.length > 0 && (
+              {(() => {
+                const visibleConnections = type === "one_to_one"
+                  ? connections.filter(c => !existingOneToOneByEmail.has(c.email.toLowerCase()))
+                  : connections;
+                if (connectionsLoading || visibleConnections.length === 0) return null;
+                return (
                 <div className="mb-7">
                   <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "#8FAF96" }}>
                     From your practices 🌿
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {connections.map((c) => {
+                    {visibleConnections.map((c) => {
                       const sel = selectedConnectionEmails.has(c.email.toLowerCase());
                       return (
                         <button
@@ -272,7 +314,8 @@ export default function LetterNew() {
                     })}
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               <div className="space-y-5">
                 {members.map((m, i) => (
