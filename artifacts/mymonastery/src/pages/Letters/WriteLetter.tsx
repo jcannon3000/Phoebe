@@ -136,19 +136,28 @@ export default function WriteLetter() {
   // on Capacitor's resize:None mode). We use this as bottom padding on
   // the page so the active typing line can be scrolled above the keyboard.
   const [keyboardH, setKeyboardH] = useState(0);
+  // Track viewport height too, so the trailing spacer that gives the
+  // page its scroll runway can re-size on rotation / split-screen and
+  // doesn't get frozen at whatever innerHeight was on first render.
+  const [viewportH, setViewportH] = useState(
+    typeof window !== "undefined" ? window.innerHeight : 800,
+  );
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
     const update = () => {
-      const inset = Math.max(0, window.innerHeight - vv.height);
-      setKeyboardH(inset);
+      const ih = window.innerHeight;
+      const vvh = vv?.height ?? ih;
+      setKeyboardH(Math.max(0, ih - vvh));
+      setViewportH(ih);
     };
     update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
     return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
     };
   }, []);
 
@@ -352,14 +361,22 @@ export default function WriteLetter() {
       className="flex flex-col"
       style={{
         background: "#F8F3EC",
-        minHeight: "100dvh",
+        // Intentionally no min-height. iOS WKWebView with KeyboardResize.None
+        // mis-handles 100dvh when the keyboard is up — the container clamps
+        // to the shrunken viewport and our trailing spacer can't extend
+        // document height past it, killing the scroll runway. Letting the
+        // container size to its content (header + action bar + textarea +
+        // spacer) keeps html/body taller than the viewport, which is what
+        // window.scrollBy needs to actually move.
       }}
     >
       {/* Minimal header */}
       <div className="px-6 pt-6 pb-3 flex items-center justify-between max-w-3xl mx-auto w-full">
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
         <div className="text-center">
-          <p className="text-[13px]" style={{ color: "#9a9390" }}>{correspondence?.name}</p>
+          <p className="text-[13px]" style={{ color: "#9a9390" }}>
+            {isOneToOne && otherMembers ? `Letters with ${otherMembers}` : correspondence?.name}
+          </p>
           {correspondence?.currentPeriod && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? `Letter ${(correspondence.letters?.length ?? 0) + 1}` : `Round ${correspondence.currentPeriod.periodNumber}`}
@@ -507,7 +524,10 @@ export default function WriteLetter() {
         <div
           aria-hidden
           style={{
-            height: `${keyboardH + Math.round((typeof window !== "undefined" ? window.innerHeight : 800) * 0.9)}px`,
+            // A full extra viewport plus the keyboard. Reactive to
+            // viewport changes (rotate/split-screen) so it's never
+            // frozen at first-paint innerHeight.
+            height: `${keyboardH + viewportH}px`,
           }}
         />
       </div>
