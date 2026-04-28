@@ -12,6 +12,7 @@ import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import { reconcileGroupPracticeMembers } from "./groups";
+import { getGardenUserIds } from "../lib/garden";
 // Inline stub for new-group-moment push notifications. The real implementation
 // lives in ../lib/pushSender in the device-tokens branch of work; until that
 // file is committed, this stub keeps production builds green. Fire-and-forget
@@ -4101,10 +4102,73 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
       cursor = stepBack(cursor);
     }
 
-    res.json({ streak, lastPrayedDate, loggedToday });
+    // How many people in the viewer's garden have walked their own
+    // prayer slideshow today (in their own local timezone). Used by
+    // the Daily Prayer List card to alternate the subtitle with
+    // "X people prayed with you today".
+    let gardenPrayedTodayCount = 0;
+    try {
+      const gardenIds = await getGardenUserIds(sessionUserId);
+      if (gardenIds.length > 0) {
+        const gardenUsers = await db
+          .select({ id: usersTable.id, email: usersTable.email, timezone: usersTable.timezone })
+          .from(usersTable)
+          .where(inArray(usersTable.id, gardenIds));
+        const emails = gardenUsers.map(g => (g.email || "").toLowerCase()).filter(Boolean);
+        if (emails.length > 0) {
+          const tokenRows = await db
+            .select({ userToken: momentUserTokensTable.userToken, email: momentUserTokensTable.email })
+            .from(momentUserTokensTable);
+          const tokensByEmail = new Map<string, string[]>();
+          for (const t of tokenRows) {
+            const e = (t.email || "").toLowerCase();
+            if (!emails.includes(e)) continue;
+            const list = tokensByEmail.get(e) ?? [];
+            list.push(t.userToken);
+            tokensByEmail.set(e, list);
+          }
+          const allGardenTokens = Array.from(tokensByEmail.values()).flat();
+          if (allGardenTokens.length > 0) {
+            const checkinRows = await db
+              .select({
+                userToken: momentPostsTable.userToken,
+                windowDate: momentPostsTable.windowDate,
+              })
+              .from(momentPostsTable)
+              .where(and(
+                inArray(momentPostsTable.userToken, allGardenTokens),
+                eq(momentPostsTable.isCheckin, 1),
+              ));
+            const tokenToEmail = new Map<string, string>();
+            for (const [email, tokens] of tokensByEmail.entries()) {
+              for (const tok of tokens) tokenToEmail.set(tok, email);
+            }
+            const todayByEmail = new Map<string, string>();
+            for (const g of gardenUsers) {
+              const e = (g.email || "").toLowerCase();
+              if (!e) continue;
+              todayByEmail.set(e, todayDateInTz(g.timezone || "UTC"));
+            }
+            const prayedEmails = new Set<string>();
+            for (const r of checkinRows) {
+              const email = tokenToEmail.get(r.userToken);
+              if (!email) continue;
+              if (r.windowDate === todayByEmail.get(email)) {
+                prayedEmails.add(email);
+              }
+            }
+            gardenPrayedTodayCount = prayedEmails.size;
+          }
+        }
+      }
+    } catch (gardenErr) {
+      console.error("GET /api/prayer-streak garden count failed:", gardenErr);
+    }
+
+    res.json({ streak, lastPrayedDate, loggedToday, gardenPrayedTodayCount });
   } catch (err) {
     console.error("GET /api/prayer-streak error:", err);
-    res.json({ streak: 0, lastPrayedDate: null, loggedToday: false });
+    res.json({ streak: 0, lastPrayedDate: null, loggedToday: false, gardenPrayedTodayCount: 0 });
   }
 });
 

@@ -29,7 +29,27 @@ interface PrayerRequest {
   amenCountTotal?: number | null;
 }
 
-export function PrayerSection({ maxVisible = 0, hideEntry = false }: { maxVisible?: number; hideEntry?: boolean }) {
+export function PrayerSection({
+  maxVisible = 0,
+  hideEntry = false,
+  filterMode = "all",
+  hideHeader = false,
+  emptyText,
+}: {
+  maxVisible?: number;
+  hideEntry?: boolean;
+  // "all" = both your requests and your community's. "own" = only the
+  // viewer's. "others" = everyone but the viewer (their community's
+  // requests). The dedicated /my-prayer-requests page uses "own"; the
+  // bottom-of-dashboard surface used "all" historically.
+  filterMode?: "all" | "own" | "others";
+  // When true, swap the collapsible "Prayer Requests 🙏🏽" header off so
+  // the surface is just the input (when shown) + the rows. Used by
+  // dedicated pages that already have their own page header.
+  hideHeader?: boolean;
+  // Override empty-state copy. Defaults to the friendly community line.
+  emptyText?: string;
+}) {
   // maxVisible: 0 = show all, N = show N then "See all" button
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -56,7 +76,11 @@ export function PrayerSection({ maxVisible = 0, hideEntry = false }: { maxVisibl
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
   });
-  const requests = rawRequests;
+  const requests = filterMode === "own"
+    ? rawRequests.filter(r => r.isOwnRequest)
+    : filterMode === "others"
+      ? rawRequests.filter(r => !r.isOwnRequest)
+      : rawRequests;
 
   const submitMutation = useMutation({
     mutationFn: ({ body, durationDays: days }: { body: string; durationDays: number }) =>
@@ -154,27 +178,29 @@ export function PrayerSection({ maxVisible = 0, hideEntry = false }: { maxVisibl
     };
   }, [showModal]);
 
+  const sectionOpen = hideHeader ? true : isOpen;
   return (
     <div className="mt-2">
-      {/* Section header */}
-      <button
-        onClick={() => setIsOpen(o => !o)}
-        className="w-full flex items-center gap-3 mb-4 group"
-        aria-expanded={isOpen}
-      >
-        <h2 className="text-lg font-semibold shrink-0" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          Prayer Requests 🙏🏽
-        </h2>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-        <span
-          className="text-xs shrink-0 transition-transform duration-200"
-          style={{ color: "#9a9390", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+      {!hideHeader && (
+        <button
+          onClick={() => setIsOpen(o => !o)}
+          className="w-full flex items-center gap-3 mb-4 group"
+          aria-expanded={isOpen}
         >
-          ▾
-        </span>
-      </button>
+          <h2 className="text-lg font-semibold shrink-0" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+            Prayer Requests 🙏🏽
+          </h2>
+          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+          <span
+            className="text-xs shrink-0 transition-transform duration-200"
+            style={{ color: "#9a9390", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          >
+            ▾
+          </span>
+        </button>
+      )}
 
-      {isOpen && (
+      {sectionOpen && (
         <div className="mt-3">
           {/* Input area — suppressed when an external quick-entry surface
               (e.g. the dashboard quick entry under the Daily Prayer
@@ -225,7 +251,7 @@ export function PrayerSection({ maxVisible = 0, hideEntry = false }: { maxVisibl
           {/* Empty state */}
           {!isLoading && requests.length === 0 && (
             <p className="text-sm text-center" style={{ color: "#8FAF96" }}>
-              Your community is here to carry what you're carrying.
+              {emptyText ?? "Your community is here to carry what you're carrying."}
             </p>
           )}
 

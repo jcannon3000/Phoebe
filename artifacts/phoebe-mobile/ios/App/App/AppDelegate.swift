@@ -6,8 +6,55 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
+    // Pending deep-link path captured at cold launch via a home-screen
+    // quick action. We can't dispatch into the WebView at
+    // `didFinishLaunching` time because Capacitor hasn't finished
+    // booting yet; instead we stash the path and replay it on
+    // `applicationDidBecomeActive`, by which point the JS bridge is
+    // ready to receive it.
+    private var pendingShortcutPath: String?
+
+    // Map an iOS UIApplicationShortcutItem.type to the in-app path the
+    // web router knows. Keep these literal — Wouter's routes are the
+    // canonical source of truth and this list mirrors them.
+    private func pathForShortcut(_ type: String) -> String? {
+        switch type {
+        case "app.withphoebe.mobile.shortcut.prayer-list":
+            return "/prayer-mode"
+        case "app.withphoebe.mobile.shortcut.prayer-request-new":
+            return "/pray-request/new"
+        case "app.withphoebe.mobile.shortcut.letter-new":
+            return "/letters/new"
+        default:
+            return nil
+        }
+    }
+
+    // Push a deep-link URL through the same Capacitor App API path
+    // `appUrlOpen` uses for universal links. The native shell already
+    // listens for that event and routes via Wouter, so quick actions
+    // and universal links share one routing pipeline.
+    private func dispatchShortcut(path: String) {
+        guard let url = URL(string: "https://withphoebe.app" + path) else { return }
+        _ = ApplicationDelegateProxy.shared.application(
+            UIApplication.shared,
+            open: url,
+            options: [:]
+        )
+    }
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // If the app was cold-launched by tapping a home-screen quick
+        // action, capture the target path now and replay it once the
+        // WebView is ready (see applicationDidBecomeActive). Returning
+        // false prevents the system from also calling
+        // `performActionFor:` on launch, which would otherwise double-
+        // route the same shortcut.
+        if let shortcut = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem,
+           let path = pathForShortcut(shortcut.type) {
+            pendingShortcutPath = path
+            return false
+        }
         return true
     }
 
@@ -26,7 +73,37 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        // Drain any cold-launch shortcut that was captured in
+        // didFinishLaunching. By the time the app is "active," the
+        // Capacitor WebView is up and ready to receive the deep-link
+        // event. Re-set to nil so a subsequent active-state cycle
+        // doesn't re-fire the same nav.
+        if let path = pendingShortcutPath {
+            pendingShortcutPath = nil
+            // Defer one runloop turn so the JS bridge has finished
+            // wiring its appUrlOpen listener — without this, fast
+            // devices race past the listener install.
+            DispatchQueue.main.async { [weak self] in
+                self?.dispatchShortcut(path: path)
+            }
+        }
+    }
+
+    // Warm-launch path: app was already running (foregrounded or
+    // backgrounded) when the user picked a quick action. iOS calls
+    // this method directly; we route immediately since Capacitor is
+    // already alive.
+    func application(
+        _ application: UIApplication,
+        performActionFor shortcutItem: UIApplicationShortcutItem,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        guard let path = pathForShortcut(shortcutItem.type) else {
+            completionHandler(false)
+            return
+        }
+        dispatchShortcut(path: path)
+        completionHandler(true)
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

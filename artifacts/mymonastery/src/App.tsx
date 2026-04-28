@@ -96,6 +96,8 @@ import PrayerRequestDetailPage from "./pages/prayer-request-detail";
 import PrayerForNew from "./pages/prayer-for-new";
 import PrayerRequestNew from "./pages/prayer-request-new";
 import PrayerForDetail from "./pages/prayer-for-detail";
+import MyPrayerRequestsPage from "./pages/my-prayer-requests";
+import PrayersForMePage from "./pages/prayers-for-me";
 import SettingsPage from "./pages/settings";
 import AboutPage from "./pages/about";
 import PrivacyPage from "./pages/privacy";
@@ -157,6 +159,30 @@ const queryClient = new QueryClient({
   },
 });
 
+// Invalidate every React Query cache when the user taps an iOS push
+// notification. The native shell fires `phoebe:notification-tap` from
+// inside its `pushNotificationActionPerformed` handler, BEFORE pushing
+// the new history state — so by the time the destination route mounts
+// and reads its query, the refetch is already in flight. The result is
+// that landing on the dashboard (or any feed page) after a tap shows
+// fresh data on first paint instead of the stale snapshot we had cached.
+//
+// Doing this at the App-level rather than per-page lets us treat the
+// whole client cache as cold whenever there's evidence the server state
+// changed under us. Cheap operation (queries the user is currently
+// looking at refetch; off-screen ones are just marked stale and refetch
+// on next mount).
+function NotificationTapPrewarm() {
+  useEffect(() => {
+    const handler = () => {
+      try { queryClient.invalidateQueries(); } catch { /* non-fatal */ }
+    };
+    window.addEventListener("phoebe:notification-tap", handler);
+    return () => window.removeEventListener("phoebe:notification-tap", handler);
+  }, []);
+  return null;
+}
+
 function Router() {
   return (
     <Switch>
@@ -188,6 +214,8 @@ function Router() {
       <Route path="/people" component={People} />
       <Route path="/people/find" component={FindFriendsPage} />
       <Route path="/prayer-list" component={PrayerListPage} />
+      <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
+      <Route path="/prayers-for-me" component={PrayersForMePage} />
       <Route path="/prayer-mode" component={PrayerModePage} />
       <Route path="/prayer-requests/:id" component={PrayerRequestDetailPage} />
       {/* /pray-for/new (no email) must sit above the two /pray-for/:email
@@ -294,6 +322,7 @@ function App() {
           <NetworkBanner />
           <DayBoundaryRefresh />
           <ForegroundRefresh />
+          <NotificationTapPrewarm />
           <PullToRefresh />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />

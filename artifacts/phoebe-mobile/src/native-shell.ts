@@ -207,6 +207,12 @@ async function wirePushActionListener() {
   try {
     await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
       const path = (notification.data as Record<string, string> | undefined)?.["path"];
+      // Pre-warm: tell the web app to invalidate its cached server
+      // state so the destination page renders fresh data instead of
+      // whatever was last fetched. Fires BEFORE the navigation so
+      // React Query has a head start on the refetch — by the time
+      // the route mounts, the response is usually already in flight.
+      window.dispatchEvent(new CustomEvent("phoebe:notification-tap"));
       if (typeof path === "string" && path.startsWith("/")) {
         window.history.pushState({}, "", path);
         window.dispatchEvent(new PopStateEvent("popstate"));
