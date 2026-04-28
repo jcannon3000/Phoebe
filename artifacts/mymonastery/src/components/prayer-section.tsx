@@ -29,7 +29,7 @@ interface PrayerRequest {
   amenCountTotal?: number | null;
 }
 
-export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
+export function PrayerSection({ maxVisible = 0, hideEntry = false }: { maxVisible?: number; hideEntry?: boolean }) {
   // maxVisible: 0 = show all, N = show N then "See all" button
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -176,29 +176,33 @@ export function PrayerSection({ maxVisible = 0 }: { maxVisible?: number }) {
 
       {isOpen && (
         <div className="mt-3">
-          {/* Input area */}
-          <div className="flex gap-2 mb-4">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
-              placeholder="What's going on this week in your life? 🌿"
-              maxLength={1000}
-              className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
-              style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
-            />
-            <button
-              type="button"
-              onClick={handleSendClick}
-              disabled={!inputValue.trim()}
-              className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-              style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
-            >
-              🙏🏽
-            </button>
-          </div>
+          {/* Input area — suppressed when an external quick-entry surface
+              (e.g. the dashboard quick entry under the Daily Prayer
+              List card) is rendering the input separately. */}
+          {!hideEntry && (
+            <div className="flex gap-2 mb-4">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
+                placeholder="How can we pray for you? 🌿"
+                maxLength={1000}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
+                style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
+              />
+              <button
+                type="button"
+                onClick={handleSendClick}
+                disabled={!inputValue.trim()}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                🙏🏽
+              </button>
+            </div>
+          )}
 
           {/* Loading state — explicit dark sage so it blends into the
               page while data loads (bg-card + border-border can render

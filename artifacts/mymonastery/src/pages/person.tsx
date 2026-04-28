@@ -129,6 +129,14 @@ export default function PersonProfile() {
   const [wordJustSent, setWordJustSent] = useState(false);
   const [showMuteModal, setShowMuteModal] = useState(false);
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
+  // Report flow — required by App Store Guideline 1.2 for any app
+  // with user-generated content. We open a modal that takes an
+  // optional free-text reason and POSTs to /api/reports with
+  // kind='user' + the target user's id. Reports queue in
+  // content_reports; we (operator) review and act within 24h.
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportSent, setReportSent] = useState(false);
 
   // Fetch all correspondences and filter to ones that include this person
   const { data: correspondencesData } = useQuery<CorrespondenceItem[]>({
@@ -161,6 +169,19 @@ export default function PersonProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/people", email, user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/mutes"] });
+    },
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: (reason: string) =>
+      apiRequest("POST", "/api/reports", {
+        kind: "user",
+        targetId: (person as any)?.userId,
+        reason: reason.trim() || undefined,
+      }),
+    onSuccess: () => {
+      setReportSent(true);
+      setReportReason("");
     },
   });
 
@@ -339,6 +360,27 @@ export default function PersonProfile() {
                         style={{ color: "#C25C5C" }}
                       >
                         🔇 Mute {firstName}
+                      </button>
+                    )}
+
+                    {/* Report — App Store Guideline 1.2 path. Sits
+                        below Mute since reporting is the rarer, more
+                        deliberate action. Disabled when there's no
+                        userId on the person record (e.g. an invited
+                        contact who hasn't joined yet — nothing to
+                        report). */}
+                    {(person as any).userId && (
+                      <button
+                        onClick={() => {
+                          setShowSettingsPopup(false);
+                          setReportSent(false);
+                          setReportReason("");
+                          setShowReportModal(true);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                        style={{ color: "#C25C5C", borderTop: "1px solid rgba(46,107,64,0.18)" }}
+                      >
+                        🚩 Report {firstName}
                       </button>
                     )}
                   </div>
@@ -689,6 +731,90 @@ export default function PersonProfile() {
                 {muteMutation.isPending ? "Muting…" : "Mute"}
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ── Report confirmation modal ─────────────────────────────────── */}
+      {/* Required by App Store Guideline 1.2. Optional reason field
+          posts to /api/reports; the backend records it in
+          content_reports for operator review. We promise (in App
+          Review notes + privacy policy) to act within 24 hours. */}
+      {showReportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+          onClick={() => setShowReportModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-sm rounded-2xl px-6 py-6"
+            style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-4 text-center">🚩</div>
+            <h2 className="text-lg font-semibold text-center mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {reportSent ? "Thank you" : `Report ${firstName}?`}
+            </h2>
+            {reportSent ? (
+              <>
+                <p className="text-sm text-center leading-relaxed mb-6" style={{ color: "#8FAF96" }}>
+                  We'll review the report within 24 hours. You may also want to mute {firstName} so their content stops appearing for you in the meantime.
+                </p>
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  className="w-full py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ background: "rgba(46,107,64,0.18)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
+                >
+                  Close
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-center leading-relaxed mb-4" style={{ color: "#8FAF96" }}>
+                  Tell us what's wrong. We review every report and act within 24 hours.
+                </p>
+                <textarea
+                  value={reportReason}
+                  onChange={e => setReportReason(e.target.value)}
+                  placeholder="Optional — what should we know?"
+                  rows={4}
+                  maxLength={2000}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none mb-2"
+                  style={{
+                    background: "rgba(200,212,192,0.05)",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    color: "#F0EDE6",
+                    fontSize: 16,
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                />
+                {reportMutation.isError && (
+                  <p className="text-xs mb-3" style={{ color: "#C47A65" }}>
+                    Couldn't send the report. Please try again.
+                  </p>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+                    style={{ background: "rgba(46,107,64,0.08)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.18)" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => reportMutation.mutate(reportReason)}
+                    disabled={reportMutation.isPending}
+                    className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                    style={{ background: "rgba(194,92,92,0.2)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.3)" }}
+                  >
+                    {reportMutation.isPending ? "Sending…" : "Send report"}
+                  </button>
+                </div>
+              </>
+            )}
           </motion.div>
         </div>
       )}

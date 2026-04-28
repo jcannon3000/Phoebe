@@ -25,6 +25,7 @@ import prayerFeedsRouter from "./prayer-feeds";
 import prayerStreakRouter from "./prayer-streak";
 import pushRouter from "./push";
 import authAppleRouter from "./auth-apple";
+import reportsRouter from "./reports";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(prayerFeedsRouter);
 router.use(prayerStreakRouter);
 router.use(pushRouter);
 router.use(authAppleRouter);
+router.use(reportsRouter);
 
 export default router;
