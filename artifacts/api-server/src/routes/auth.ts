@@ -4,7 +4,7 @@ import { Router, type IRouter } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
-import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable } from "@workspace/db";
+import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
@@ -503,6 +503,14 @@ router.post(
     .insert(usersTable)
     .values({ email: normalizedEmail, name: name.trim(), passwordHash })
     .returning();
+
+  // If they were on the waitlist, drop their entry — they have an account
+  // now, so the list shouldn't keep their email indefinitely.
+  try {
+    await db.delete(waitlistTable).where(eq(waitlistTable.email, normalizedEmail));
+  } catch (err) {
+    console.error("[auth/register] waitlist cleanup failed:", err);
+  }
 
   // If this was a community-invite signup, auto-join the group so the new
   // user shows up as a member immediately.
