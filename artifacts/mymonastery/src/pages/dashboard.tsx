@@ -2968,7 +2968,12 @@ export default function Dashboard() {
 
     // ── Letters placement
     // Actionable (unread, my turn, overdue) → Today.
-    // WAITING with a known future window → Upcoming (so you know when to come back).
+    // WAITING with a known future window → Upcoming, but ONLY when the
+    // window is for *me* to write back (i.e. they sent the last letter
+    // and the 7-day reply gate is counting down). If I sent the most
+    // recent letter, the window belongs to *them* — there's nothing for
+    // me to do, so it doesn't belong on the dashboard at all.
+    const dashUserName = user?.name ?? "";
     for (const c of (dashCorrespondences ?? [])) {
       const actionable =
         c.unreadCount > 0 ||
@@ -2982,6 +2987,8 @@ export default function Dashboard() {
         c.turnState === "WAITING" &&
         c.windowOpenDate
       ) {
+        const lastLetterFromMe = c.recentLetters?.[0]?.authorName === dashUserName;
+        if (lastLetterFromMe) continue;
         const windowMs = new Date(c.windowOpenDate).getTime();
         if (windowMs > Date.now()) {
           if (windowMs < sevenDaysFromToday.getTime()) {
@@ -3252,7 +3259,7 @@ export default function Dashboard() {
             Extra bottom margin sits between the feast subtitle and
             the pill strip so the feast has room to breathe. */}
         <div className="mb-8">
-          <LiturgicalDateHeader />
+          {/* Liturgical date now lives in the sticky page header (top-aligned with the Menu pill) on the home dashboard. */}
 
           {/* Menu pill strip removed — nav lives in the side Menu. */}
 

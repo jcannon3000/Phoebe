@@ -499,6 +499,16 @@ export default function MomentDetail() {
     enabled: !!user && editingPractice,
   });
 
+  // Admin-of-this-group check, used to gate the top "+ Invite" button.
+  // Hook MUST live above the early returns below so the call order is
+  // stable across the loading→loaded transition (React error #310).
+  const parentGroupSlug = data?.group?.slug ?? null;
+  const { data: parentGroupData } = useQuery<{ myRole?: string | null }>({
+    queryKey: parentGroupSlug ? [`/api/groups/${parentGroupSlug}`] : ["__no_parent_group__"],
+    queryFn: () => apiRequest("GET", `/api/groups/${parentGroupSlug}`),
+    enabled: !!parentGroupSlug,
+  });
+
   const attachGroupMutation = useMutation({
     mutationFn: (groupId: number) =>
       apiRequest("POST", `/api/moments/${id}/groups`, { groupId }),
@@ -626,6 +636,13 @@ export default function MomentDetail() {
 
   const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, weekLogs, isCreator, group: momentGroup } = data;
 
+  // Standalone moments: creator can invite. Group-attached moments:
+  // only the group's admin can invite. (parentGroupData is fetched
+  // above the early returns to keep hook order stable.)
+  const isGroupAdmin =
+    parentGroupData?.myRole === "admin" || parentGroupData?.myRole === "hidden_admin";
+  const canInvite = momentGroup ? isGroupAdmin : isCreator;
+
   const parsedPracticeDays = parsePracticeDays(moment.practiceDays);
   const isIntercession = moment.templateType === "intercession";
   const isContemplative = moment.templateType === "contemplative";
@@ -703,12 +720,14 @@ export default function MomentDetail() {
         <div className="mb-5">
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-2xl font-semibold text-foreground mb-1 min-w-0 break-words">{displayTitle}</h1>
-            <button
-              onClick={() => setShowInvite(true)}
-              className="shrink-0 mt-0.5 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-3 py-1.5 hover:bg-[#5C7A5F]/8 transition-colors whitespace-nowrap"
-            >
-              + Invite 🌿
-            </button>
+            {canInvite && (
+              <button
+                onClick={() => setShowInvite(true)}
+                className="shrink-0 mt-0.5 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-3 py-1.5 hover:bg-[#5C7A5F]/8 transition-colors whitespace-nowrap"
+              >
+                + Invite 🌿
+              </button>
+            )}
           </div>
 
           {/* Group badge(s). Multi-group intercessions can be attached
@@ -949,6 +968,55 @@ export default function MomentDetail() {
                   ? "You've prayed today 🌿"
                   : (prayedTodayCount === 1 ? "1 has prayed" : `${prayedTodayCount} have prayed`))
               : `${todayPostCount} of ${memberCount} logged`;
+          // Stack of faces of those who've actually prayed today. Replaces
+          // the "Pray 🙏🏽" CTA on intercessions — entry to prayer happens
+          // from the dashboard slideshow, so this card's job is to surface
+          // *who* is praying with you today, not to nudge the action again.
+          const prayedToday = isIntercession
+            ? (todayLogs ?? []).filter(l => !!l.loggedAt)
+            : [];
+          const MAX_FACES = 6;
+          const visibleFaces = prayedToday.slice(0, MAX_FACES);
+          const overflowCount = Math.max(0, prayedToday.length - MAX_FACES);
+          const PrayedFaces = () => (
+            <div className="flex items-center -space-x-2 shrink-0">
+              {visibleFaces.map((p, i) => (
+                p.avatarUrl ? (
+                  <img
+                    key={`${p.email}-${i}`}
+                    src={p.avatarUrl}
+                    alt=""
+                    className="w-8 h-8 rounded-full object-cover"
+                    style={{ border: "2px solid #0F2818" }}
+                  />
+                ) : (
+                  <div
+                    key={`${p.email}-${i}`}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold"
+                    style={{
+                      background: "rgba(168,197,160,0.2)",
+                      color: "#A8C5A0",
+                      border: "2px solid #0F2818",
+                    }}
+                  >
+                    {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
+                  </div>
+                )
+              ))}
+              {overflowCount > 0 && (
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                  style={{
+                    background: "rgba(143,175,150,0.18)",
+                    color: "#8FAF96",
+                    border: "2px solid #0F2818",
+                  }}
+                >
+                  +{overflowCount}
+                </div>
+              )}
+            </div>
+          );
           return (isOpenNow || isMorningPrayer) ? (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
@@ -960,13 +1028,17 @@ export default function MomentDetail() {
               <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>{headline}</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{subline}</p>
             </div>
-            {postUrl && (
-              <Link href={postUrl}>
-                <span className="text-sm font-semibold rounded-full px-4 py-2 whitespace-nowrap transition-colors"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  {actionLabel}
-                </span>
-              </Link>
+            {isIntercession ? (
+              prayedToday.length > 0 ? <PrayedFaces /> : null
+            ) : (
+              postUrl && (
+                <Link href={postUrl}>
+                  <span className="text-sm font-semibold rounded-full px-4 py-2 whitespace-nowrap transition-colors"
+                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                    {actionLabel}
+                  </span>
+                </Link>
+              )
             )}
           </motion.div>
         ) : (
@@ -985,12 +1057,8 @@ export default function MomentDetail() {
                 {nextPracticeLabel(moment.frequency, moment.scheduledTime, moment.dayOfWeek, parsedPracticeDays, moment.timeOfDay)}
               </p>
             </div>
-            {isIntercession && postUrl ? (
-              <Link href={postUrl}>
-                <span className="shrink-0 text-sm font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-4 py-2 hover:bg-[#5C7A5F]/5 transition-colors cursor-pointer whitespace-nowrap">
-                  Pray 🙏🏽
-                </span>
-              </Link>
+            {isIntercession ? (
+              prayedToday.length > 0 ? <PrayedFaces /> : <span className="text-2xl" aria-hidden>🌿</span>
             ) : (
               <span className="text-2xl" aria-hidden>🌿</span>
             )}
@@ -1843,33 +1911,11 @@ export default function MomentDetail() {
                 </div>
               )}
 
-              {/* Invite permissions toggle — creator only */}
-              {isCreator && (() => {
-                const currentAmi = (moment as unknown as { allowMemberInvites?: boolean }).allowMemberInvites ?? true;
-                return (
-                  <div className="flex items-center justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Members can invite</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Allow any member to invite new people</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        editMutation.mutate({ allowMemberInvites: !currentAmi });
-                      }}
-                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ml-4"
-                      style={{
-                        background: currentAmi ? "rgba(92,122,95,0.7)" : "rgba(0,0,0,0.12)",
-                        border: "1px solid rgba(92,122,95,0.4)",
-                      }}
-                    >
-                      <span
-                        className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
-                        style={{ transform: currentAmi ? "translateX(22px)" : "translateX(3px)" }}
-                      />
-                    </button>
-                  </div>
-                );
-              })()}
+              {/* "Members can invite" toggle removed — invitation is now
+                  always restricted to the group's admin. Letting any member
+                  pull strangers into a community's intercession opens too
+                  much surface area for abuse and dilutes the trust the
+                  small-group format depends on. */}
 
               {/* Non-creator: Leave only */}
               {!isCreator && (

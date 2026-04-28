@@ -26,6 +26,35 @@ export default function Onboarding() {
   const [error, setError] = useState("");
   const [waitlistDone, setWaitlistDone] = useState<"new" | "already" | null>(null);
 
+  // Sign in with Apple — only surfaced inside the Phoebe iOS app shell,
+  // where the native shell (phoebe-mobile/src/native-shell.ts) listens
+  // for `phoebe:request-apple-signin`, opens the Apple sheet, posts the
+  // identity token to /api/auth/apple/native, and reloads to /dashboard.
+  // On the plain web build no one listens, so we hide the button rather
+  // than offering a button that does nothing.
+  const [isNative, setIsNative] = useState(false);
+  const [appleSubmitting, setAppleSubmitting] = useState(false);
+  useEffect(() => {
+    try {
+      const phoebeNative = (window as { PhoebeNative?: { isNative?: () => boolean } }).PhoebeNative;
+      if (phoebeNative?.isNative?.()) setIsNative(true);
+    } catch { /* ignore */ }
+    const onErr = (e: Event) => {
+      setAppleSubmitting(false);
+      const detail = (e as CustomEvent).detail;
+      const msg = typeof detail === "string"
+        ? detail
+        : (detail as { message?: string } | null | undefined)?.message;
+      setError(
+        /cancel/i.test(msg ?? "")
+          ? ""
+          : "Couldn't sign in with Apple. Please try again or use email and password."
+      );
+    };
+    window.addEventListener("phoebe:apple-signin-error", onErr);
+    return () => window.removeEventListener("phoebe:apple-signin-error", onErr);
+  }, []);
+
   const searchParams = new URLSearchParams(window.location.search);
   const redirectTo = searchParams.get("redirect") || "/dashboard";
 
@@ -245,6 +274,42 @@ export default function Onboarding() {
                       <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
                     ) : "Sign in"}
                   </button>
+
+                  {/* Sign in with Apple — native-only. Native shell
+                      handles the actual sheet + token round-trip; we
+                      just dispatch the event the shell is listening
+                      for. Apple HIG: SIWA must be at least as
+                      prominent as alternatives — same width, similar
+                      visual weight as the password button above. */}
+                  {isNative && (
+                    <>
+                      <div className="flex items-center gap-2 mt-2 mb-1">
+                        <div className="flex-1 h-px" style={{ background: "rgba(143,175,150,0.18)" }} />
+                        <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.5)" }}>or</span>
+                        <div className="flex-1 h-px" style={{ background: "rgba(143,175,150,0.18)" }} />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={appleSubmitting || submitting}
+                        onClick={() => {
+                          setError("");
+                          setAppleSubmitting(true);
+                          window.dispatchEvent(new Event("phoebe:request-apple-signin"));
+                        }}
+                        className="flex items-center justify-center gap-2 w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60"
+                        style={{ background: "#000", color: "#fff" }}
+                      >
+                        {appleSubmitting ? (
+                          <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        ) : (
+                          <>
+                            <span style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif", fontSize: 16, lineHeight: 1 }}></span>
+                            <span>Sign in with Apple</span>
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
                 </motion.form>
               )}
 

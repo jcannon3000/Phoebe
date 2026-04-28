@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight } from "lucide-react";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
+import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -260,6 +261,12 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isBeta } = useBetaStatus();
+  const [layoutLocation] = useLocation();
+  // Hide the "Phoebe" brand title on the home dashboard so the date and
+  // the day's content sit higher up the page. The Menu pill still
+  // anchors the header on the right; the brand stays visible on every
+  // other page as an affordance to tap back to home.
+  const isHomeDashboard = layoutLocation === "/" || layoutLocation === "/dashboard";
 
   // Personal streak = consecutive days I've finished a prayer-list slideshow.
   const { data: streakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
@@ -272,22 +279,24 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
-      <header className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center" style={{ background: "#091A10" }}>
-        <div className="flex items-center gap-6">
-          <Link
-            href="/dashboard"
-            onClick={() => window.dispatchEvent(new CustomEvent("phoebe:reset-filter"))}
-            className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
-          >
-            <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-              Phoebe
-            </span>
-            {/* Header "beta" tag removed for App Store submission —
-                Apple sometimes flags this in production builds, and
-                "beta" lives in TestFlight, not on the app face. The
-                Letters nav-item beta badge stays since that one
-                feature is still actually pre-release. */}
-          </Link>
+      <header
+        className={`sticky top-0 z-10 px-4 sm:px-6 md:px-8 ${isHomeDashboard ? "pt-3 pb-1" : "pt-5 pb-2 md:pt-6 md:pb-5"} flex justify-between items-start`}
+        style={{ background: "#091A10" }}
+      >
+        <div className="flex items-center gap-6 min-w-0 flex-1">
+          {isHomeDashboard ? (
+            <LiturgicalDateHeader />
+          ) : (
+            <Link
+              href="/dashboard"
+              onClick={() => window.dispatchEvent(new CustomEvent("phoebe:reset-filter"))}
+              className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+            >
+              <span className="text-3xl font-bold transition-colors" style={{ letterSpacing: "-0.03em", fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                Phoebe
+              </span>
+            </Link>
+          )}
         </div>
 
         {user && (

@@ -632,20 +632,20 @@ export default function PersonProfile() {
               </>
             )}
 
-            {/* CTA — if no letter correspondence exists with this person yet,
-                nudge toward writing them a letter; otherwise default to the
-                broader "invite to something new" affordance. */}
-            <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
-              <Link
-                href={sharedLetters.length === 0 ? "/letters/new" : "/moment/new"}
-                className="text-sm font-medium transition-opacity hover:opacity-70"
-                style={{ color: "#8FAF96" }}
-              >
-                {sharedLetters.length === 0
-                  ? `+ Write ${firstName} a letter 📮`
-                  : `+ Invite ${firstName} to something new 🌿`}
-              </Link>
-            </div>
+            {/* CTA — only when there's no letter correspondence yet.
+                Once one exists, the dialogue is the relationship and the
+                profile shouldn't push another channel on top of it. */}
+            {sharedLetters.length === 0 && (
+              <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
+                <Link
+                  href="/letters/new"
+                  className="text-sm font-medium transition-opacity hover:opacity-70"
+                  style={{ color: "#8FAF96" }}
+                >
+                  + Write {firstName} a letter 📮
+                </Link>
+              </div>
+            )}
           </motion.div>
         )}
       </div>

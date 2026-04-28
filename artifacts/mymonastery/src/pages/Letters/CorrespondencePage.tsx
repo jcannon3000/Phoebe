@@ -202,111 +202,135 @@ export default function CorrespondencePage() {
         )}
         <div className="mb-5" />
 
-        {/* Period bar */}
-        <div
-          className={`rounded-2xl overflow-hidden mb-4 transition-shadow ${data.myTurn ? "animate-turn-pulse" : ""}`}
-          style={{
-            background: isOverdue ? "#1A2D1A" : "#0F2818",
-            border: `1px solid ${isOverdue ? "rgba(217,180,74,0.35)" : "rgba(46,107,64,0.35)"}`,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-          }}
-        >
-          <div className="flex">
-            <div className="w-[3px] flex-shrink-0" style={{ background: isOverdue ? "#D9B44A" : "#8FAF96" }} />
-            <div className="flex-1 p-5">
-              <p className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: isOverdue ? "#D9B44A" : "#8FAF96", letterSpacing: "0.1em" }}>
-                {periodLabel}
-              </p>
+        {/* Period card — mirrors the dashboard's Daily Prayer List card:
+            row 1 title + chip, row 2 subtitle, row 3 full-width CTA. */}
+        {(() => {
+          // Resolve subtitle + CTA in a single pass so the card layout
+          // is uniform across every state.
+          let subtitle: string | null = null;
+          let ctaLabel: string | null = null;
+          let ctaHref: string | null = null;
+          let ctaFilled = true;
 
-              {/* CTA — one_to_one: driven by turnState */}
-              {isOneToOne ? (
-                <>
-                  {isOverdue && lastLetterByOther && (
-                    <p className="text-sm mb-3" style={{ color: "#D9B44A" }}>
-                      {otherMembers} has been waiting {daysSince(lastLetterByOther.sentAt)} days. No rush — write when you're ready. 🌿
-                    </p>
-                  )}
-                  {(() => {
-                    // Figure out whose turn is "next" so we can offer a
-                    // draft-ahead button when the window hasn't opened yet.
-                    const lastLetter = [...letters].sort(
-                      (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
-                    )[0];
-                    const nextIsMine = !!lastLetter && lastLetter.authorEmail !== userEmail;
-                    const windowOpenAt = data.windowOpenDate ? new Date(data.windowOpenDate) : null;
-                    const isWaitingForWindow =
-                      turnState === "WAITING" &&
-                      nextIsMine &&
-                      !!windowOpenAt &&
-                      windowOpenAt.getTime() > Date.now();
-                    const daysUntilOpen = isWaitingForWindow && windowOpenAt
-                      ? Math.max(1, Math.ceil((windowOpenAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-                      : 0;
+          if (isOneToOne) {
+            const lastLetter = [...letters].sort(
+              (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+            )[0];
+            const nextIsMine = !!lastLetter && lastLetter.authorEmail !== userEmail;
+            const windowOpenAt = data.windowOpenDate ? new Date(data.windowOpenDate) : null;
+            const isWaitingForWindow =
+              turnState === "WAITING" &&
+              nextIsMine &&
+              !!windowOpenAt &&
+              windowOpenAt.getTime() > Date.now();
+            const daysUntilOpen = isWaitingForWindow && windowOpenAt
+              ? Math.max(1, Math.ceil((windowOpenAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+              : 0;
 
-                    if (isOpen) {
-                      return (
-                        <Link href={writeUrl}>
-                          <button
-                            className="w-full py-3 rounded-xl text-base font-semibold"
-                            style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                          >
-                            Write your letter 🖋️
-                          </button>
-                        </Link>
-                      );
-                    }
-                    if (isWaitingForWindow) {
-                      return (
-                        <>
-                          <Link href={writeUrl}>
-                            <button
-                              className="w-full py-3 rounded-xl text-base font-semibold"
-                              style={{
-                                background: "transparent",
-                                color: "#C8D4C0",
-                                border: "1px solid rgba(142,158,66,0.4)",
-                              }}
-                            >
-                              Start drafting 🖋️
-                            </button>
-                          </Link>
-                          <p className="text-xs mt-2" style={{ color: "#8FAF96" }}>
-                            Window opens in {daysUntilOpen} {daysUntilOpen === 1 ? "day" : "days"} · your draft will wait.
-                          </p>
-                        </>
-                      );
-                    }
-                    if (letters.length > 0 && !nextIsMine) {
-                      return (
-                        <p className="text-sm" style={{ color: "#8FAF96" }}>
-                          Your letter is sent. 🌿 Waiting for {otherMembers} to write back.
-                        </p>
-                      );
-                    }
-                    return (
-                      <p className="text-sm" style={{ color: "#8FAF96" }}>
-                        Waiting for {otherMembers} to write... 🌿
-                      </p>
-                    );
-                  })()}
-                </>
-              ) : data.myTurn && !currentPeriod.hasWrittenThisPeriod ? (
-                <Link href={writeUrl}>
-                  <button
-                    className="w-full py-3 rounded-xl text-base font-semibold"
-                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            if (isOpen) {
+              subtitle = isOverdue && lastLetterByOther
+                ? `${otherMembers} has been waiting ${daysSince(lastLetterByOther.sentAt)} days · no rush 🌿`
+                : "Your turn to write 🖋️";
+              ctaLabel = "Write your letter 🖋️";
+              ctaHref = writeUrl;
+            } else if (isWaitingForWindow) {
+              subtitle = `Window opens in ${daysUntilOpen} ${daysUntilOpen === 1 ? "day" : "days"} · your draft will wait`;
+              ctaLabel = "Start drafting 🖋️";
+              ctaHref = writeUrl;
+              ctaFilled = false;
+            } else if (letters.length > 0 && !nextIsMine) {
+              subtitle = `Your letter is sent · waiting for ${otherMembers} 🌿`;
+            } else {
+              subtitle = `Waiting for ${otherMembers} to write… 🌿`;
+            }
+          } else if (data.myTurn && !currentPeriod.hasWrittenThisPeriod) {
+            subtitle = "Your turn to share";
+            ctaLabel = "Share your update 📮";
+            ctaHref = writeUrl;
+          } else if (currentPeriod.hasWrittenThisPeriod) {
+            subtitle = "Your update is in for this round 🌿";
+          }
+
+          return (
+            <div
+              className={`rounded-xl mb-4 transition-shadow ${data.myTurn ? "animate-turn-pulse" : ""}`}
+              style={{
+                background: isOverdue ? "#1A2D1A" : "#0F2818",
+                border: `1px solid ${isOverdue ? "rgba(217,180,74,0.35)" : "rgba(46,107,64,0.45)"}`,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+              }}
+            >
+              <div className="px-4 pt-3 pb-3">
+                {/* Line 1: title (left) — chip slot reserved on the right
+                    so the layout matches the prayer-list card even when
+                    we have nothing to show there yet. */}
+                <div className="flex items-start justify-between gap-2">
+                  <span
+                    className="text-base font-semibold"
+                    style={{
+                      color: "#F0EDE6",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                    }}
                   >
-                    Share your update 📮
-                  </button>
-                </Link>
-              ) : currentPeriod.hasWrittenThisPeriod ? (
-                <p className="text-sm" style={{ color: "#8FAF96" }}>
-                  Your update is in for this round. 🌿
-                </p>
-              ) : null}
+                    📮 {periodLabel}
+                  </span>
+                  {isOverdue && (
+                    <span
+                      className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase"
+                      style={{
+                        color: "#D9B44A",
+                        background: "rgba(217,180,74,0.10)",
+                        border: "1px solid rgba(217,180,74,0.35)",
+                        letterSpacing: "0.08em",
+                        fontFamily: "'Space Grotesk', sans-serif",
+                      }}
+                    >
+                      Overdue
+                    </span>
+                  )}
+                </div>
+
+                {/* Line 2: subtitle */}
+                {subtitle && (
+                  <p
+                    className="mt-1.5 text-sm"
+                    style={{
+                      color: isOverdue ? "#D9B44A" : "#8FAF96",
+                      lineHeight: "20px",
+                      margin: "6px 0 0",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                    }}
+                  >
+                    {subtitle}
+                  </p>
+                )}
+
+                {/* Line 3: full-width CTA, when one applies */}
+                {ctaLabel && ctaHref && (
+                  <Link href={ctaHref}>
+                    <div
+                      className="mt-3 w-full rounded-xl text-center cursor-pointer"
+                      style={{
+                        background: ctaFilled ? "#4A7A5B" : "transparent",
+                        color: "#F0EDE6",
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        letterSpacing: "-0.01em",
+                        padding: "9px 16px",
+                        border: ctaFilled
+                          ? "1px solid rgba(111,175,133,0.45)"
+                          : "1px solid rgba(142,158,66,0.4)",
+                      }}
+                    >
+                      {ctaLabel}
+                    </div>
+                  </Link>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Calendar prompt — shown once, after first exchange is complete */}
         {showCalendarPrompt && (
@@ -368,7 +392,7 @@ export default function CorrespondencePage() {
                 .map((m) => m.name || m.email.split("@")[0]);
 
               return (
-                <div key={letter.id}>
+                <div key={letter.id} className="mb-3">
                   <Link href={`/letters/${correspondenceId}/read/${letter.id}${tokenParam}`}>
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
@@ -378,37 +402,27 @@ export default function CorrespondencePage() {
                         background: "#0F2818",
                         border: `1px solid rgba(92,122,95,${isOwn ? "0.35" : "0.2"})`,
                         borderLeft: `3px solid ${isOwn ? "#8FAF96" : "rgba(46,107,64,0.4)"}`,
-                        borderRadius: "16px",
-                        padding: "24px 28px",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+                        borderRadius: "14px",
+                        padding: "14px 16px",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
                       }}
                     >
-                      <p className="text-[11px] font-semibold uppercase mb-3" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
+                      <p className="text-[11px] font-semibold uppercase mb-1" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
                         {letter.authorName} · {isOneToOne ? `Letter ${letters.length - index}` : `Update ${letter.letterNumber}`}
                         {isOneToOne && ` · ${formatLetterDate(letter.sentAt)}`}
                       </p>
 
-                      <p className="text-[17px] leading-[1.9] whitespace-pre-wrap line-clamp-6" style={{ color: "#F0EDE6", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>
+                      <p className="text-sm leading-snug truncate" style={{ color: "#C8D4C0", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>
                         {letter.content}
                       </p>
 
                       {isOwn && readByOthers.length > 0 && (
-                        <p className="text-xs mt-3" style={{ color: "#8FAF96" }}>
+                        <p className="text-[11px] mt-1.5" style={{ color: "#8FAF96" }}>
                           Read by {readByOthers.join(", ")} 🌿
                         </p>
                       )}
-
-                      <p className="text-xs mt-4 font-medium" style={{ color: "#8FAF96" }}>
-                        Read full letter →
-                      </p>
                     </motion.div>
                   </Link>
-
-                  {index < letters.length - 1 && (
-                    <div className="flex items-center justify-center py-4" style={{ color: "rgba(200,212,192,0.2)" }}>
-                      <span className="text-sm tracking-[0.5em]">· · ·</span>
-                    </div>
-                  )}
                 </div>
               );
             })}
