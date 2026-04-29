@@ -463,13 +463,17 @@ router.post("/bell/fire-now", async (req, res): Promise<void> => {
 
 // ─── POST /api/bell/lectio-fire-now — force-send Lectio stage reminder ────────
 // Same shape as /bell/fire-now but for the Lectio Divina morning reminder.
-// Bypasses the time-window and dedup. Use after a deploy if a tick was missed.
+// Default bypasses the time-window + dedup gates only. Pass `?force=all`
+// to ALSO bypass the "user already submitted this stage this week" gate
+// — useful for confirming push delivery end-to-end without having to
+// delete the reflection row first.
 router.post("/bell/lectio-fire-now", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const bypassReflectionGate = req.query.force === "all";
   try {
-    await runLectioReminderSender({ forceNow: true });
-    res.json({ ok: true });
+    await runLectioReminderSender({ forceNow: true, bypassReflectionGate });
+    res.json({ ok: true, bypassReflectionGate });
   } catch (err) {
     console.error("POST /api/bell/lectio-fire-now error:", err);
     res.status(500).json({ error: "Server error" });
