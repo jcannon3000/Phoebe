@@ -923,13 +923,13 @@ function PromptSlide({ stage }: { stage: Stage }) {
 }
 
 function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
-  // The gospel is displayed as a bordered card that fills the available
-  // vertical space between the fixed header and the fixed nav. The title +
-  // verse reference sit at the top of the card; the gospel text itself is
-  // the only thing that scrolls (inside the card), so the page chrome
-  // stays put and the page never scrolls. A small gradient overlay sits
-  // at the bottom of the card to hint there's more text below when the
-  // user hasn't scrolled to the end.
+  // Per UX feedback: drop the bordered card chrome and let the gospel
+  // sit directly on the page background. The pulsing border was reading
+  // as visual noise (and was the source of repeated complaints). Keeps
+  // the same internal layout — fixed title block, scrollable body, fade
+  // overlay at the bottom — but with no card background, border, or
+  // shadow. The fade now resolves to the page background (#091A10)
+  // instead of the old card tint.
   return (
     <div
       style={{
@@ -937,18 +937,12 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        background: CARD_BG,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 18,
-        boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
-        overflow: "hidden",
         position: "relative",
       }}
     >
       <div
         style={{
-          padding: "22px 24px 14px",
-          borderBottom: `1px solid ${BORDER}`,
+          padding: "22px 4px 14px",
           textAlign: "center",
         }}
       >
@@ -984,7 +978,7 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           lineHeight: 1.8,
           fontFamily: SPACE_GROTESK,
           whiteSpace: "pre-wrap",
-          padding: "22px 24px 26px",
+          padding: "8px 4px 26px",
         }}
       >
         {reading.gospelText}
@@ -998,9 +992,7 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
           bottom: 0,
           height: 56,
           pointerEvents: "none",
-          background: `linear-gradient(to bottom, ${CARD_FADE_TRANSPARENT} 0%, ${CARD_FADE_SOLID} 100%)`,
-          borderBottomLeftRadius: 18,
-          borderBottomRightRadius: 18,
+          background: `linear-gradient(to bottom, rgba(9,26,16,0) 0%, rgba(9,26,16,0.98) 100%)`,
         }}
       />
     </div>
