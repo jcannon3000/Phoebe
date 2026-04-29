@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { getDay, readLesserFeastsPref } from "@/lib/liturgical";
 import type { LiturgicalColor, LiturgicalDay } from "@/lib/liturgical";
@@ -71,19 +71,14 @@ export function LiturgicalDateHeader({
     // "A Place Set Apart for Connection" tagline. Feast days swap the
     // text in place without changing the typography, so the header
     // silhouette stays put across the year.
-    return (
-      <div className="min-w-0">
-        <p
-          className="text-[11px] tracking-widest uppercase"
-          style={{
-            color: "rgba(143,175,150,0.5)",
-            fontFamily: "'Space Grotesk', sans-serif",
-          }}
-        >
-          {text}
-        </p>
-      </div>
-    );
+    //
+    // Long feast names ("Feast of Catherine of Siena, 1347-1380") would
+    // otherwise wrap onto two lines and shove the rest of the header
+    // around. We constrain to a single line and animate the text as a
+    // marquee/ticker only when it actually overflows: hold at the
+    // start for a beat, slide left to reveal the tail, pause, slide
+    // back, repeat.
+    return <FeastTicker text={text} />;
   }
 
   // Header layout (post-tester feedback):
@@ -161,6 +156,85 @@ export function LiturgicalDateHeader({
         <FeastDetailSheet day={day} dateLong={dateLong} onClose={() => setDetailOpen(false)} />
       )}
     </>
+  );
+}
+
+// Single-line feast eyebrow with a conditional marquee/ticker. We
+// measure the rendered text width vs. the container width on every
+// mount, font-load, and resize. If the text fits, it sits still. If
+// it overflows we set a CSS custom property to the negative overflow
+// distance and apply a keyframe animation that holds at 0, slides to
+// that distance, pauses, returns, pauses, repeats. Keeping the math
+// pixel-exact (instead of always animating to -100% or similar) lets
+// the same animation read well at every viewport width.
+function FeastTicker({ text }: { text: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLSpanElement | null>(null);
+  const [overflowPx, setOverflowPx] = useState(0);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const span = textRef.current;
+    if (!container || !span) return;
+
+    const measure = () => {
+      const containerWidth = container.clientWidth;
+      const textWidth = span.scrollWidth;
+      // Add a 1-pixel slack so we don't trigger the animation on a
+      // sub-pixel rounding difference.
+      const diff = textWidth - containerWidth;
+      setOverflowPx(diff > 1 ? diff : 0);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    ro.observe(span);
+    return () => ro.disconnect();
+  }, [text]);
+
+  // Re-measure once webfonts have loaded, since the initial paint can
+  // happen with the fallback font and a different metric.
+  useEffect(() => {
+    const fonts = (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts;
+    if (fonts?.ready) {
+      fonts.ready.then(() => {
+        const container = containerRef.current;
+        const span = textRef.current;
+        if (!container || !span) return;
+        const diff = span.scrollWidth - container.clientWidth;
+        setOverflowPx(diff > 1 ? diff : 0);
+      }).catch(() => {});
+    }
+  }, [text]);
+
+  const animate = overflowPx > 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="min-w-0 overflow-hidden"
+      style={{ whiteSpace: "nowrap" }}
+    >
+      <span
+        ref={textRef}
+        className={animate ? "animate-feast-ticker" : ""}
+        style={{
+          display: "inline-block",
+          color: "rgba(143,175,150,0.5)",
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: 11,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          // The keyframe animation reads this value on the element
+          // itself; we set it to the negative overflow distance so
+          // the text slides exactly far enough to reveal the tail.
+          ["--feast-distance" as string]: `${-overflowPx}px`,
+        }}
+      >
+        {text}
+      </span>
+    </div>
   );
 }
 

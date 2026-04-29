@@ -1699,51 +1699,6 @@ function ServiceCard({
   );
 }
 
-// ─── Prayer pill ────────────────────────────────────────────────────────────
-// Compact menu card that anchors a prayer surface. Three of these sit
-// in a row under the Daily Prayer List card — they are the entry
-// points to the user's own requests, the prayers others are offering
-// for them, and the manage-prayer dashboard.
-
-function PrayerPill({
-  href,
-  label,
-  showDot = false,
-}: {
-  href: string;
-  label: string;
-  showDot?: boolean;
-}) {
-  // Single-line rounded-full menu pill — matches the old dashboard
-  // pill strip (Communities / Prayer List / Intercessions) so the
-  // home screen reads as one tidy band of pills, not three stacked
-  // cards. Counts have been dropped from the label per product
-  // direction — the click destination shows the list in full, the
-  // pill itself is just a category door. Unviewed prayers raise a
-  // small red dot at the top-right.
-  return (
-    <Link
-      href={href}
-      className="relative inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80 shrink-0"
-      style={{
-        background: "rgba(122,158,125,0.14)",
-        color: "#7A9E7D",
-        border: "1px solid rgba(122,158,125,0.28)",
-        fontFamily: "'Space Grotesk', sans-serif",
-      }}
-    >
-      <span>{label}</span>
-      {showDot && (
-        <span
-          aria-label="Unviewed"
-          className="absolute rounded-full"
-          style={{ top: -2, right: -2, width: 8, height: 8, background: "#E04A3F" }}
-        />
-      )}
-    </Link>
-  );
-}
-
 // ─── Prayer-list fallback card ──────────────────────────────────────────────
 // Shown in the Today section when nothing else is pending there but the user
 // still has prayers queued in their slideshow. Gives them a clear next step
@@ -3425,55 +3380,16 @@ export default function Dashboard() {
             );
           })()}
 
-          {/* Three-pill row — quick links into the dedicated prayer
-              surfaces. "Your Prayer Requests" goes to a list of the
-              user's own active requests (with comments + amen counts).
-              "Prayers for You" goes to a list of prayers others are
-              offering for them, and only renders when there is at
-              least one. A red dot in the corner flags any prayer the
-              user hasn't viewed on the dedicated page yet (tracked in
-              localStorage). "Friend's Prayer Requests" goes to the
-              full prayer-list manage page. */}
-          {filter === null && (() => {
-            const prayersForMeCount = (dashPrayersForMe ?? []).length;
-            // Unviewed = any id in the list NOT in the localStorage
-            // set written by /prayers-for-me when the page loads.
-            let prayersForMeUnviewed = false;
-            try {
-              const raw = localStorage.getItem("phoebe:prayers-for-me:viewed-ids");
-              const seen: number[] = raw ? JSON.parse(raw) : [];
-              const seenSet = new Set(seen);
-              prayersForMeUnviewed = (dashPrayersForMe ?? []).some(p => !seenSet.has(p.id));
-            } catch { /* fall through with false */ }
-            // Order: friends → prayers for you → your requests. Friends'
-            // active requests are the most actionable surface (others
-            // need our prayers right now), so it leads. paddingLeft of
-            // 4 hugs the pill row a hair off the card edge so it feels
-            // intentional rather than flush-aligned.
-            return (
-              <ScrollStrip className="mt-5" contentStyle={{ gap: 8, paddingLeft: 4 }}>
-                <PrayerPill
-                  href="/prayer-list"
-                  label="Friend's Prayer Requests"
-                />
-                {prayersForMeCount > 0 && (
-                  <PrayerPill
-                    href="/prayers-for-me"
-                    label="Prayers for You"
-                    showDot={prayersForMeUnviewed}
-                  />
-                )}
-                <PrayerPill
-                  href="/my-prayer-requests"
-                  label="Your Prayer Requests"
-                />
-              </ScrollStrip>
-            );
-          })()}
+          {/* Prayer pills removed per product direction — the
+              dedicated /my-prayer-requests, /prayers-for-me, and
+              /prayer-list surfaces are now reachable from the side
+              menu (or via deep links). The home dashboard reads
+              cleaner without the secondary pill row sitting between
+              the prayer-list card and the request entry input. */}
 
           {/* Quick prayer-request entry — sits directly under the
-              three-pill row so adding a request is the next obvious
-              tap. */}
+              daily prayer card so adding a request is the next
+              obvious tap. */}
           {filter === null && (
             <div className="mt-5">
               <PrayerRequestQuickEntry />
