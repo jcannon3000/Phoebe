@@ -2509,6 +2509,16 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<"practices" | null>(null);
+  // Native vs. web detection. The iOS shell injects `window.PhoebeNative`
+  // before the JS bundle runs, so reading it once at mount is safe and
+  // avoids a first-paint flash. We use this to show the calendar date
+  // above the feast eyebrow on web only — the native app keeps the
+  // tighter header since the OS status bar already shows time/date.
+  const [isNative] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const phoebeNative = (window as { PhoebeNative?: { isNative?: () => boolean } }).PhoebeNative;
+    return !!phoebeNative?.isNative?.();
+  });
   // Service-schedule modal: which schedule (and computed next occurrence) is
   // currently showing its full list of service times.
   const [openService, setOpenService] = useState<{ schedule: ServiceSchedule; nextDate: Date } | null>(null);
@@ -3304,11 +3314,27 @@ export default function Dashboard() {
       <div className="dash-shell flex flex-col w-full pb-36">
 
         {/* ── Header ── */}
-        {/* Eyebrow ("A Place Set Apart…") removed per product
-            direction — the liturgical date/feast IS the header now.
-            Extra bottom margin sits between the feast subtitle and
-            the pill strip so the feast has room to breathe. */}
+        {/* On native iOS the OS status bar already gives the time +
+            date so the header stays tight. On web (no status bar
+            context) we put the calendar date back above the feast
+            eyebrow, so visitors land on a page that tells them what
+            today is at a glance. */}
         <div className="mb-4">
+          {!isNative && (
+            <p
+              className="mb-1"
+              style={{
+                color: "#F0EDE6",
+                fontSize: 22,
+                fontWeight: 600,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.2,
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {format(new Date(), "EEEE, d MMMM")}
+            </p>
+          )}
           {/* Show the feast/Sunday/commemoration when there is one;
               otherwise fall back to the brand tagline. Plain ferial
               seasonal labels ("The Fourth Week of Easter") are
