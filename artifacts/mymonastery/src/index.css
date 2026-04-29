@@ -360,14 +360,33 @@ textarea:focus {
    with brighter peaks for the same reason. */
 @keyframes turn-pulse-practices {
   0%, 100% { border-color: rgba(111,175,133,0.35); }
-  50%      { border-color: rgba(168,220,180,1); }
+  50%      { border-color: rgba(140,195,160,0.65); }
 }
 @keyframes bar-pulse-practices {
   0%, 100% { background-color: rgba(46,107,64,0.4); }
-  50%      { background-color: rgba(168,220,180,1); }
+  50%      { background-color: rgba(95,150,115,0.7); }
 }
 .animate-turn-pulse-practices { animation: turn-pulse-practices 2.0s ease-in-out infinite; }
 .animate-bar-pulse-practices  { animation: bar-pulse-practices 2.0s ease-in-out infinite; }
+
+/* ── Feast-name eyebrow ticker ────────────────────────────────────── */
+/* The header eyebrow ("Feast of Catherine of Siena, 1347-1380") would
+   otherwise wrap and shove the rest of the header around. We measure
+   overflow at runtime and set --feast-distance on the element to the
+   negative pixel distance the text needs to travel. The keyframes
+   then hold at the start (~3s), slide to the end, hold briefly, and
+   slide back. Tuned long enough that the text is readable at every
+   stop. Falls back to a static line when the text fits. */
+@keyframes feast-ticker {
+  0%, 25%   { transform: translateX(0); }
+  55%       { transform: translateX(var(--feast-distance, 0)); }
+  65%       { transform: translateX(var(--feast-distance, 0)); }
+  90%, 100% { transform: translateX(0); }
+}
+.animate-feast-ticker {
+  animation: feast-ticker 14s ease-in-out infinite;
+  will-change: transform;
+}
 
 /* ── Category-specific pulse: Gatherings (green) ───────────────────── */
 @keyframes turn-pulse-gatherings {
