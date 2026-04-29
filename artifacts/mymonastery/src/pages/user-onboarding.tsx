@@ -86,78 +86,92 @@ function DashboardMock() {
   );
 }
 
-// Daily-rhythm mock: an iOS-style lock screen with the push notification
-// the user actually receives once a day inviting them into the prayer
-// slideshow. The visual sells the daily-habit promise more concretely
-// than any copy can — they see the bell-icon push, the app name, the
-// "tap to begin" body, and intuit "this app sends me one notification a
-// day, and it's a kind one."
+// Daily-rhythm mock: a still-frame of an actual prayer-request slide
+// from the daily slideshow. Mirrors prayer-mode.tsx layout — pulsing
+// author avatar, "Prayer Request" eyebrow, author name, italic Playfair
+// body, dim "hold" Amen button, and the "1 of 3" progress beneath.
+// Onboarding users see exactly what they'll be tapping through every
+// day, instead of a notification card that only hints at the slideshow.
 function DailyPushMock() {
   return (
     <div
-      className="rounded-[28px] md:rounded-[32px] mx-auto w-full max-w-[320px] md:max-w-[380px] overflow-hidden"
+      className="rounded-[28px] md:rounded-[32px] mx-auto w-full max-w-[320px] md:max-w-[380px] overflow-hidden relative"
       style={{
-        background: "linear-gradient(180deg, #1A2B22 0%, #0A1410 70%, #050A07 100%)",
+        background: "#0C1F12",
         border: "1px solid rgba(200,212,192,0.15)",
         boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
         margin: "0 auto",
+        minHeight: 460,
       }}
     >
-      {/* Lock-screen clock */}
-      <div className="text-center pt-7 pb-5" style={{ color: "#F0EDE6", fontFamily: C.font }}>
-        <div className="text-[12px] font-medium opacity-70">Tuesday, 29 April</div>
-        <div className="text-[56px] font-light leading-none mt-1" style={{ letterSpacing: "-0.04em" }}>
-          9:00
+      {/* X exit button (top-right of the slide chrome) */}
+      <div
+        className="absolute top-5 right-5 w-8 h-8 rounded-full flex items-center justify-center text-base"
+        style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+        aria-hidden
+      >
+        ×
+      </div>
+
+      {/* Center stack — author avatar, eyebrow, name, body */}
+      <div className="flex flex-col items-center justify-center text-center px-8 pt-16 pb-10">
+        {/* Author avatar with the pulse ring (same vibe as the live
+            .prayer-avatar-pulse class — using a static glow here so
+            the still mock reads as if mid-pulse). */}
+        <div
+          className="w-14 h-14 rounded-full flex items-center justify-center text-[14px] font-semibold mb-4"
+          style={{
+            background: "#1A4A2E",
+            color: "#A8C5A0",
+            border: "1.5px solid rgba(143,175,150,0.85)",
+            boxShadow: "0 0 0 4px rgba(143,175,150,0.18)",
+            fontFamily: C.font,
+          }}
+        >
+          MW
+        </div>
+        <p
+          className="text-[10px] font-semibold uppercase mb-2"
+          style={{ color: "rgba(143,175,150,0.45)", letterSpacing: "0.18em", fontFamily: C.font }}
+        >
+          Prayer Request
+        </p>
+        <p className="text-[11px] mb-4" style={{ color: "#C8D4C0", fontFamily: C.font }}>
+          Margaret W.
+        </p>
+        <p
+          className="text-[15px] font-medium italic leading-relaxed max-w-[260px]"
+          style={{ color: "#E8E4D8", fontFamily: "Georgia, serif" }}
+        >
+          For my mother, who begins treatment this week.
+        </p>
+      </div>
+
+      {/* Amen button (dim "hold" state — the live UI shows the wash
+          filling for ~7s before turning bright; static here) */}
+      <div className="flex justify-center pb-2">
+        <div
+          className="px-7 py-2.5 rounded-full text-[12px] font-medium"
+          style={{
+            background: "rgba(46,107,64,0.18)",
+            border: "1px solid rgba(46,107,64,0.3)",
+            color: "rgba(232,228,216,0.4)",
+            fontFamily: C.font,
+            minWidth: 120,
+            textAlign: "center",
+          }}
+        >
+          Amen →
         </div>
       </div>
 
-      {/* Notification card — modeled on iOS 17+ stacked notification look */}
-      <div className="px-3 pb-4">
-        <div
-          className="rounded-2xl px-3.5 py-3 flex gap-3"
-          style={{
-            background: "rgba(40, 50, 44, 0.85)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            border: "0.5px solid rgba(200,212,192,0.08)",
-          }}
-        >
-          {/* App icon — small green tile with a 🌿 */}
-          <div
-            className="w-9 h-9 rounded-[10px] shrink-0 flex items-center justify-center text-[18px]"
-            style={{ background: "#2D5E3F" }}
-            aria-hidden
-          >
-            🌿
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-0.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wider truncate" style={{ color: "#F0EDE6", fontFamily: C.font, letterSpacing: "0.04em" }}>
-                Phoebe
-              </p>
-              <p className="text-[10px] shrink-0" style={{ color: "rgba(240,237,230,0.55)" }}>
-                now
-              </p>
-            </div>
-            <p className="text-[13px] font-semibold leading-tight" style={{ color: "#F0EDE6", fontFamily: C.font }}>
-              Begin today's prayer
-            </p>
-            <p className="text-[12px] leading-snug mt-0.5" style={{ color: "rgba(240,237,230,0.75)", fontFamily: C.font }}>
-              3 prayer requests from your circle, plus today's intercessions.
-            </p>
-          </div>
-        </div>
-        {/* Suggestion of a stacked second notification underneath */}
-        <div
-          className="mx-2 mt-1 rounded-2xl h-3"
-          style={{
-            background: "rgba(40, 50, 44, 0.45)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-          }}
-          aria-hidden
-        />
-      </div>
+      {/* Slide-progress label */}
+      <p
+        className="text-center text-[10px] pb-5"
+        style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em", fontFamily: C.font }}
+      >
+        1 of 3
+      </p>
     </div>
   );
 }
