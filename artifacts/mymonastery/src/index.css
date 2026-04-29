@@ -352,16 +352,22 @@ textarea:focus {
 .animate-bar-pulse-letters  { animation: bar-pulse-letters 2.5s ease-in-out infinite; }
 
 /* ── Category-specific pulse: Practices (deep forest) ──────────────── */
+/* Border pulses between the resting practice border (mint at 0.35) and
+   a vivid mint at full opacity. Earlier values (0.15 → 0.7 of dark
+   forest) read as nearly static against the card's own green
+   background — the Lectio "Reflect" card needed a clearly alive border
+   so users see it's still waiting for them. Bar pulses in lockstep
+   with brighter peaks for the same reason. */
 @keyframes turn-pulse-practices {
-  0%, 100% { border-color: rgba(46,107,64,0.15); }
-  50%      { border-color: rgba(46,107,64,0.7); }
+  0%, 100% { border-color: rgba(111,175,133,0.35); }
+  50%      { border-color: rgba(168,220,180,1); }
 }
 @keyframes bar-pulse-practices {
-  0%, 100% { background-color: rgba(46,107,64,0.2); }
-  50%      { background-color: rgba(46,107,64,1); }
+  0%, 100% { background-color: rgba(46,107,64,0.4); }
+  50%      { background-color: rgba(168,220,180,1); }
 }
-.animate-turn-pulse-practices { animation: turn-pulse-practices 2.5s ease-in-out infinite; }
-.animate-bar-pulse-practices  { animation: bar-pulse-practices 2.5s ease-in-out infinite; }
+.animate-turn-pulse-practices { animation: turn-pulse-practices 2.0s ease-in-out infinite; }
+.animate-bar-pulse-practices  { animation: bar-pulse-practices 2.0s ease-in-out infinite; }
 
 /* ── Category-specific pulse: Gatherings (green) ───────────────────── */
 @keyframes turn-pulse-gatherings {
