@@ -67,15 +67,16 @@ export function LiturgicalDateHeader({
     }
     const text = feast ?? fallbackText ?? null;
     if (!text) return null;
+    // Small uppercase eyebrow — same size/treatment as the original
+    // "A Place Set Apart for Connection" tagline. Feast days swap the
+    // text in place without changing the typography, so the header
+    // silhouette stays put across the year.
     return (
       <div className="min-w-0">
         <p
+          className="text-[11px] tracking-widest uppercase"
           style={{
-            color: "#F0EDE6",
-            fontSize: 22,
-            fontWeight: 600,
-            letterSpacing: "-0.02em",
-            lineHeight: 1.2,
+            color: "rgba(143,175,150,0.5)",
             fontFamily: "'Space Grotesk', sans-serif",
           }}
         >

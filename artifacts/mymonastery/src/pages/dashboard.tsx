@@ -1716,36 +1716,36 @@ function PrayerPill({
   count: number;
   showDot?: boolean;
 }) {
+  // Single-line rounded-full menu pill — matches the old dashboard
+  // pill strip (Communities / Prayer List / Intercessions) so the
+  // home screen reads as one tidy band of pills, not three stacked
+  // cards. Count sits inline as a muted chip after the label;
+  // unviewed prayers raise a small red dot at the top-right.
   return (
-    <Link href={href} className="block">
-      <div
-        className="relative h-full rounded-xl px-3 py-3 flex flex-col justify-between"
-        style={{
-          background: "#0F2818",
-          border: "1px solid rgba(46,107,64,0.45)",
-          minHeight: 78,
-        }}
+    <Link
+      href={href}
+      className="relative inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-opacity hover:opacity-80 shrink-0"
+      style={{
+        background: "rgba(122,158,125,0.14)",
+        color: "#7A9E7D",
+        border: "1px solid rgba(122,158,125,0.28)",
+        fontFamily: "'Space Grotesk', sans-serif",
+      }}
+    >
+      <span>{label}</span>
+      <span
+        className="tabular-nums"
+        style={{ color: "rgba(240,237,230,0.85)", opacity: 0.9 }}
       >
-        {showDot && (
-          <span
-            aria-label="Unviewed"
-            className="absolute top-2 right-2 rounded-full"
-            style={{ width: 9, height: 9, background: "#E04A3F" }}
-          />
-        )}
-        <p
-          className="text-[11px] font-medium leading-snug pr-3"
-          style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {label}
-        </p>
-        <p
-          className="text-lg font-semibold mt-1 tabular-nums"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.01em" }}
-        >
-          {count}
-        </p>
-      </div>
+        {count}
+      </span>
+      {showDot && (
+        <span
+          aria-label="Unviewed"
+          className="absolute rounded-full"
+          style={{ top: -2, right: -2, width: 8, height: 8, background: "#E04A3F" }}
+        />
+      )}
     </Link>
   );
 }
@@ -3453,7 +3453,7 @@ export default function Dashboard() {
               prayersForMeUnviewed = (dashPrayersForMe ?? []).some(p => !seenSet.has(p.id));
             } catch { /* fall through with false */ }
             return (
-              <div className="mt-5 grid grid-cols-3 gap-2">
+              <ScrollStrip className="mt-5" contentStyle={{ gap: 8 }}>
                 <PrayerPill
                   href="/my-prayer-requests"
                   label="Your Prayer Requests"
@@ -3472,7 +3472,7 @@ export default function Dashboard() {
                   label="Friend's Prayer Requests"
                   count={friendsReqCount}
                 />
-              </div>
+              </ScrollStrip>
             );
           })()}
 
