@@ -214,7 +214,15 @@ function dowInTz(timezone: string): number {
   }
 }
 
-export async function runLectioReminderSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+// `forceNow` skips the time-window and dedup gates so an admin debug
+// endpoint can fire a missed tick. `bypassReflectionGate` *additionally*
+// skips the "this user has already submitted that stage this week" gate,
+// for verifying push delivery end-to-end without having to delete the
+// reflection row first. Default is the safe behavior that production
+// uses on every tick.
+export async function runLectioReminderSender(
+  opts: { forceNow?: boolean; bypassReflectionGate?: boolean } = {},
+): Promise<void> {
   // Pull every membership in any lectio-divina moment, joined to the
   // matching registered user (by email). Email-only invitees with no
   // account get skipped — pushes need a userId to resolve device tokens.
@@ -293,18 +301,22 @@ export async function runLectioReminderSender(opts: { forceNow?: boolean } = {})
       }
 
       // Skip if the user already submitted this stage for this week.
-      const [existingReflection] = await db
-        .select({ id: lectioReflectionsTable.id })
-        .from(lectioReflectionsTable)
-        .where(
-          and(
-            eq(lectioReflectionsTable.momentId, m.momentId),
-            eq(lectioReflectionsTable.sundayDate, sundayStr),
-            eq(lectioReflectionsTable.userToken, m.userToken),
-            eq(lectioReflectionsTable.stage, stageInfo.stage),
-          ),
-        );
-      if (existingReflection) continue;
+      // Admin debug callers can pass `bypassReflectionGate: true` to
+      // verify delivery without first deleting the reflection row.
+      if (!opts.bypassReflectionGate) {
+        const [existingReflection] = await db
+          .select({ id: lectioReflectionsTable.id })
+          .from(lectioReflectionsTable)
+          .where(
+            and(
+              eq(lectioReflectionsTable.momentId, m.momentId),
+              eq(lectioReflectionsTable.sundayDate, sundayStr),
+              eq(lectioReflectionsTable.userToken, m.userToken),
+              eq(lectioReflectionsTable.stage, stageInfo.stage),
+            ),
+          );
+        if (existingReflection) continue;
+      }
 
       try {
         await sendLectioReminderPush(m.userId, {
