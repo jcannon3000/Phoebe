@@ -1887,7 +1887,12 @@ function PrayerListCard({
               Streak moved off Line 1 to sit aligned with the View
               list pill above it and the CTA below it. */}
           <div className="mt-1.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
+            {/* `flex-1 min-w-0` is load-bearing: the subtitle inside is
+                `absolute inset-0` for the cross-fade, which means it
+                contributes 0 intrinsic width. Without flex-1 here, the
+                whole row collapses to just the avatar stack and the
+                subtitle vanishes — that bug shipped briefly. */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               {faces && faces.length > 0 && (
                 <div className="flex items-center -space-x-2 shrink-0">
                   {faces.slice(0, 3).map((f) => (
