@@ -1043,6 +1043,19 @@ export default function PrayerListPage() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto w-full pb-24">
+        {/* Back link to /dashboard — matches the pattern on the
+            sibling prayer surfaces (/my-prayer-requests,
+            /prayers-for-me) so every drilled-in prayer page has a
+            consistent way out. */}
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 transition-opacity hover:opacity-80"
+          style={{ color: "#8FAF96" }}
+        >
+          <ChevronLeft size={14} />
+          Back
+        </Link>
+
         {/* Header */}
         <div className="mb-4">
           <h1

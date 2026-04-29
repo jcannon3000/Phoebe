@@ -1708,19 +1708,19 @@ function ServiceCard({
 function PrayerPill({
   href,
   label,
-  count,
   showDot = false,
 }: {
   href: string;
   label: string;
-  count: number;
   showDot?: boolean;
 }) {
   // Single-line rounded-full menu pill — matches the old dashboard
   // pill strip (Communities / Prayer List / Intercessions) so the
   // home screen reads as one tidy band of pills, not three stacked
-  // cards. Count sits inline as a muted chip after the label;
-  // unviewed prayers raise a small red dot at the top-right.
+  // cards. Counts have been dropped from the label per product
+  // direction — the click destination shows the list in full, the
+  // pill itself is just a category door. Unviewed prayers raise a
+  // small red dot at the top-right.
   return (
     <Link
       href={href}
@@ -1733,12 +1733,6 @@ function PrayerPill({
       }}
     >
       <span>{label}</span>
-      <span
-        className="tabular-nums"
-        style={{ color: "rgba(240,237,230,0.85)", opacity: 0.9 }}
-      >
-        {count}
-      </span>
       {showDot && (
         <span
           aria-label="Unviewed"
@@ -3441,12 +3435,6 @@ export default function Dashboard() {
               localStorage). "Friend's Prayer Requests" goes to the
               full prayer-list manage page. */}
           {filter === null && (() => {
-            const myReqCount = (dashPrayerRequests ?? []).filter(r =>
-              r.isOwnRequest && !r.isAnswered && !r.closedAt,
-            ).length;
-            const friendsReqCount = (dashPrayerRequests ?? []).filter(r =>
-              !r.isOwnRequest && !r.isAnswered && !r.closedAt,
-            ).length;
             const prayersForMeCount = (dashPrayersForMe ?? []).length;
             // Unviewed = any id in the list NOT in the localStorage
             // set written by /prayers-for-me when the page loads.
@@ -3457,25 +3445,27 @@ export default function Dashboard() {
               const seenSet = new Set(seen);
               prayersForMeUnviewed = (dashPrayersForMe ?? []).some(p => !seenSet.has(p.id));
             } catch { /* fall through with false */ }
+            // Order: friends → prayers for you → your requests. Friends'
+            // active requests are the most actionable surface (others
+            // need our prayers right now), so it leads. paddingLeft of
+            // 4 hugs the pill row a hair off the card edge so it feels
+            // intentional rather than flush-aligned.
             return (
-              <ScrollStrip className="mt-5" contentStyle={{ gap: 8 }}>
+              <ScrollStrip className="mt-5" contentStyle={{ gap: 8, paddingLeft: 4 }}>
                 <PrayerPill
-                  href="/my-prayer-requests"
-                  label="Your Prayer Requests"
-                  count={myReqCount}
+                  href="/prayer-list"
+                  label="Friend's Prayer Requests"
                 />
                 {prayersForMeCount > 0 && (
                   <PrayerPill
                     href="/prayers-for-me"
                     label="Prayers for You"
-                    count={prayersForMeCount}
                     showDot={prayersForMeUnviewed}
                   />
                 )}
                 <PrayerPill
-                  href="/prayer-list"
-                  label="Friend's Prayer Requests"
-                  count={friendsReqCount}
+                  href="/my-prayer-requests"
+                  label="Your Prayer Requests"
                 />
               </ScrollStrip>
             );
