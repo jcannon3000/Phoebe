@@ -70,9 +70,11 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "Prayer, held in common.",
+    headline: "A daily call to prayer.",
     body: [
-      "People share what they are carrying. Others in the community respond with a word or a prayer, and make people feel heard and cared for.",
+      "People share what they're carrying with their community.",
+      "Once a day, Phoebe gathers everyone's prayer requests into a quiet slideshow and sends a push notification — a soft tap on the shoulder.",
+      "Tap through. Leave a word. Tap Amen. The whole community's prayers, held in a few minutes — every day, together.",
     ],
     mock: "prayer-requests",
   },
