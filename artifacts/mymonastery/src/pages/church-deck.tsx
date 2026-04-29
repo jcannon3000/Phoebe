@@ -73,7 +73,7 @@ const SLIDES: Slide[] = [
     headline: "A daily call to prayer.",
     body: [
       "People share what they're carrying with their community.",
-      "Once a day, Phoebe gathers everyone's prayer requests into a quiet slideshow and sends a push notification — a soft tap on the shoulder.",
+      "Once a day, Phoebe rings — a real bell on the phone — and opens a slideshow of every prayer request from your community.",
       "Tap through. Leave a word. Tap Amen. The whole community's prayers, held in a few minutes — every day, together.",
     ],
     mock: "prayer-requests",
