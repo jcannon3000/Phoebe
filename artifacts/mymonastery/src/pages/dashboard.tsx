@@ -1744,18 +1744,19 @@ function PrayerListCard({
   gardenPrayedTodayCount?: number;
 }) {
   const colors = CATEGORY_COLORS.practices;
-  // "Continue praying" beats "Pray again" when there's still un-prayed
-  // work today. Prior logic gated isPartial on !prayedToday, so a user
-  // who prayed earlier today and then had new prayers come in (or
-  // re-entered the slideshow and bailed mid-list) saw "Pray again"
-  // instead of being told they had more to do. The localStorage-backed
-  // partialRemaining (saved by prayer-mode on advance / X-out) now
-  // covers all slide kinds, not just request amens.
-  const isPartial = partialRemaining > 0;
-  const primarySubtitle = isPartial
-    ? (partialRemaining === 1 ? "1 more prayer" : `${partialRemaining} more prayers`)
-    : prayedToday
-      ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
+  // "Continue praying" only shows when the user hasn't yet completed
+  // today's slideshow. Once they've finished a pass (prayedToday=true),
+  // a partially-bailed second pass is just that — a casual re-visit —
+  // and the card stays in its restful "Pray again / N prayers prayed
+  // today" state instead of nudging them as if they had unfinished
+  // work. The earlier behavior surfaced "Continue praying" any time
+  // partialRemaining > 0, which read as wrong when the user had
+  // explicitly closed the loop earlier in the day.
+  const isPartial = partialRemaining > 0 && !prayedToday;
+  const primarySubtitle = prayedToday
+    ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
+    : isPartial
+      ? (partialRemaining === 1 ? "1 more prayer" : `${partialRemaining} more prayers`)
       : (pendingCount === 1 ? "1 prayer waiting for you" : `${pendingCount} prayers waiting for you`);
   const gardenSubtitle = gardenPrayedTodayCount > 0
     ? (gardenPrayedTodayCount === 1
