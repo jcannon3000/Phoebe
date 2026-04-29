@@ -372,7 +372,7 @@ const SLIDES: Slide[] = [
   {
     kind: "info",
     title: "A daily call to prayer.",
-    body: "Once a day at a time you choose, Phoebe sends one quiet notification. Tap it and a slideshow opens — your circle's prayer requests, one slide at a time, three or four minutes total. A small daily rhythm of carrying each other.",
+    body: "Once a day, Phoebe sends you one quiet notification. Tap it and a slideshow opens — your circle's prayer requests, one slide at a time, three or four minutes total. A small daily rhythm of carrying each other.",
     mock: "daily-push",
   },
   // 4
