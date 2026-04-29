@@ -86,6 +86,82 @@ function DashboardMock() {
   );
 }
 
+// Daily-rhythm mock: an iOS-style lock screen with the push notification
+// the user actually receives once a day inviting them into the prayer
+// slideshow. The visual sells the daily-habit promise more concretely
+// than any copy can — they see the bell-icon push, the app name, the
+// "tap to begin" body, and intuit "this app sends me one notification a
+// day, and it's a kind one."
+function DailyPushMock() {
+  return (
+    <div
+      className="rounded-[28px] md:rounded-[32px] mx-auto w-full max-w-[320px] md:max-w-[380px] overflow-hidden"
+      style={{
+        background: "linear-gradient(180deg, #1A2B22 0%, #0A1410 70%, #050A07 100%)",
+        border: "1px solid rgba(200,212,192,0.15)",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,212,192,0.05)",
+        margin: "0 auto",
+      }}
+    >
+      {/* Lock-screen clock */}
+      <div className="text-center pt-7 pb-5" style={{ color: "#F0EDE6", fontFamily: C.font }}>
+        <div className="text-[12px] font-medium opacity-70">Tuesday, 29 April</div>
+        <div className="text-[56px] font-light leading-none mt-1" style={{ letterSpacing: "-0.04em" }}>
+          9:00
+        </div>
+      </div>
+
+      {/* Notification card — modeled on iOS 17+ stacked notification look */}
+      <div className="px-3 pb-4">
+        <div
+          className="rounded-2xl px-3.5 py-3 flex gap-3"
+          style={{
+            background: "rgba(40, 50, 44, 0.85)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "0.5px solid rgba(200,212,192,0.08)",
+          }}
+        >
+          {/* App icon — small green tile with a 🌿 */}
+          <div
+            className="w-9 h-9 rounded-[10px] shrink-0 flex items-center justify-center text-[18px]"
+            style={{ background: "#2D5E3F" }}
+            aria-hidden
+          >
+            🌿
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-0.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider truncate" style={{ color: "#F0EDE6", fontFamily: C.font, letterSpacing: "0.04em" }}>
+                Phoebe
+              </p>
+              <p className="text-[10px] shrink-0" style={{ color: "rgba(240,237,230,0.55)" }}>
+                now
+              </p>
+            </div>
+            <p className="text-[13px] font-semibold leading-tight" style={{ color: "#F0EDE6", fontFamily: C.font }}>
+              Begin today's prayer
+            </p>
+            <p className="text-[12px] leading-snug mt-0.5" style={{ color: "rgba(240,237,230,0.75)", fontFamily: C.font }}>
+              3 prayer requests from your circle, plus today's intercessions.
+            </p>
+          </div>
+        </div>
+        {/* Suggestion of a stacked second notification underneath */}
+        <div
+          className="mx-2 mt-1 rounded-2xl h-3"
+          style={{
+            background: "rgba(40, 50, 44, 0.45)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+          }}
+          aria-hidden
+        />
+      </div>
+    </div>
+  );
+}
+
 function PrayerRequestsMock() {
   const requests = [
     { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
@@ -253,7 +329,7 @@ function GatheringsMock() {
 
 // ─── Slide definitions ────────────────────────────────────────────────────────
 
-type MockKey = "community" | "prayer-requests" | "bcp" | "lectio" | "gatherings";
+type MockKey = "community" | "prayer-requests" | "daily-push" | "bcp" | "lectio" | "gatherings";
 
 type InfoSlide = {
   kind: "info";
@@ -287,6 +363,18 @@ const SLIDES: Slide[] = [
     body: "Every week your community shares what they're carrying. You can respond with a word or a prayer, and make people feel heard and cared for.",
     mock: "prayer-requests",
   },
+  // Daily-rhythm slide. New users almost always ask "but how do I
+  // remember to come back?" — show them the answer concretely:
+  // one push notification a day, surfacing a slideshow of their
+  // community's prayer requests. The mock notification on this
+  // slide is what they'll actually see on their lock screen, so
+  // they recognize it the first time it arrives.
+  {
+    kind: "info",
+    title: "A daily call to prayer.",
+    body: "Once a day at a time you choose, Phoebe sends one quiet notification. Tap it and a slideshow opens — your circle's prayer requests, one slide at a time, three or four minutes total. A small daily rhythm of carrying each other.",
+    mock: "daily-push",
+  },
   // 4
   {
     kind: "info",
@@ -316,6 +404,7 @@ const SLIDES: Slide[] = [
 const MOCK_COMPONENTS: Record<MockKey, () => React.ReactElement> = {
   "community": DashboardMock,
   "prayer-requests": PrayerRequestsMock,
+  "daily-push": DailyPushMock,
   "bcp": BCPPrayerModeMock,
   "lectio": LectioMock,
   "gatherings": GatheringsMock,
