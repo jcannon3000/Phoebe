@@ -1339,30 +1339,36 @@ router.get("/moments", async (req, res): Promise<void> => {
       .where(inArray(sharedMomentsTable.id, momentIds)))
       .filter(m => {
         if (m.ritualId !== null || m.state === "archived") return false;
-        // Intercessions get a 2-day grace period after hitting their goal.
-        // After that they're hidden (and auto-archived by the cleanup job).
+        // Intercessions: hide once the current commitment cycle is finished
+        // (with a 2-day grace period when we have a completion timestamp).
+        // The cleanup cron mirrors this exactly to auto-archive after grace.
         if (m.templateType === "intercession") {
           const mAny = m as Record<string, unknown>;
+          // Tend-freely is by definition never "complete" — keep showing.
+          if (mAny.commitmentTendFreely === true) return true;
           const reachedAt = mAny.commitmentGoalReachedAt as Date | null;
-          if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return false;
-          // Legacy filter: an intercession that hit its goal BEFORE the
-          // stamping code was deployed has totalBlooms > 0 with no
-          // commitmentGoalReachedAt. We can't grant a grace period (no
-          // completion timestamp), so it reads as expired immediately.
-          //
-          // CRUCIAL: this filter must not catch RENEWED practices. The
-          // renew endpoint clears commitmentGoalReachedAt, which leaves
-          // the row looking identical to the legacy state (no stamp,
-          // totalBlooms still > 0 from prior cycles). To distinguish,
-          // gate the filter on "has never entered the commitment flow":
-          // a renewed/tend-freely/goal-set practice has at least one of
-          // commitmentSessionsGoal, commitmentTendFreely, or
-          // commitmentGoalTier > 1, none of which a true legacy row has.
-          const hasEnteredCommitmentFlow =
-            mAny.commitmentSessionsGoal !== null ||
-            mAny.commitmentTendFreely === true ||
-            (((mAny.commitmentGoalTier as number | null) ?? 1) > 1);
-          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && !hasEnteredCommitmentFlow) return false;
+          if (reachedAt) {
+            // Stamped completion → 2-day grace, then hide.
+            if ((now.getTime() - new Date(reachedAt).getTime()) > graceMs) return false;
+            return true;
+          }
+          // No stamp. Evaluate goal-completion directly per mode so a
+          // renewed practice that finished its NEW goal without firing
+          // the stamping path (or a legacy row with no stamp at all)
+          // still gets hidden.
+          const sessionsGoal = mAny.commitmentSessionsGoal as number | null;
+          if (sessionsGoal != null && sessionsGoal > 0) {
+            // Sessions-based goal (renewal flow) — hit when logged ≥ goal.
+            const logged = (mAny.commitmentSessionsLogged as number | null) ?? 0;
+            if (logged >= sessionsGoal) return false;
+            return true;
+          }
+          // Days/streak-based goal: totalBlooms counts completed cycles
+          // (incremented once per goal hit), commitmentGoalTier tracks how
+          // many cycles the user has *committed to*. totalBlooms ≥ tier
+          // means "current cycle is finished but not stamped" — expired.
+          const tier = (mAny.commitmentGoalTier as number | null) ?? 1;
+          if (m.goalDays > 0 && m.totalBlooms >= tier) return false;
         }
         return true;
       });
@@ -3736,29 +3742,36 @@ router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
       console.info(`Cleanup: archived ${expiredIds.length} expired intercession(s) past grace period`);
     }
 
-    // Also archive intercessions that hit their goal before the stamping code was
-    // deployed (totalBlooms > 0 but no commitmentGoalReachedAt). Grace period is
-    // forfeit since we don't know when they finished.
+    // Also archive intercessions whose current commitment cycle finished
+    // without firing the goal-reached stamping path. Grace period is
+    // forfeit since we don't have a completion timestamp.
     //
-    // The trailing AND clause excludes any practice that has entered the
-    // commitment-progression flow — renewals clear commitmentGoalReachedAt,
-    // which would otherwise leave a renewed row looking exactly like a true
-    // legacy row and get it archived on the next cleanup tick. Renewal sets
-    // commitmentGoalTier > 1 (always), commitmentSessionsGoal (when picking
-    // a new goal), or commitmentTendFreely (when going freeform); a true
-    // legacy row has none of these. Mirrors the read filter in /api/moments.
+    // Mirrors the read filter in /api/moments — three modes, evaluated
+    // per row:
+    //   - tend-freely → never expires (excluded)
+    //   - sessions-based goal → expired when sessions_logged ≥ goal
+    //   - days/streak-based goal (incl. legacy) → expired when
+    //       total_blooms ≥ commitment_goal_tier (each completed cycle
+    //       bumps total_blooms by 1; tier defaults to 1, so legacy rows
+    //       with any blooms still match).
     const legacyExpired = await db.select({ id: sharedMomentsTable.id })
       .from(sharedMomentsTable)
       .where(
         and(
           eq(sharedMomentsTable.templateType, "intercession"),
-          sql`goal_days > 0
-            AND total_blooms > 0
-            AND commitment_goal_reached_at IS NULL
+          sql`commitment_goal_reached_at IS NULL
             AND state != 'archived'
-            AND commitment_sessions_goal IS NULL
             AND commitment_tend_freely = false
-            AND commitment_goal_tier <= 1`
+            AND (
+              (commitment_sessions_goal IS NOT NULL
+                AND commitment_sessions_goal > 0
+                AND COALESCE(commitment_sessions_logged, 0) >= commitment_sessions_goal)
+              OR (
+                commitment_sessions_goal IS NULL
+                AND goal_days > 0
+                AND total_blooms >= COALESCE(commitment_goal_tier, 1)
+              )
+            )`
         )
       );
     if (legacyExpired.length > 0) {
