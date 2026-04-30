@@ -22,7 +22,7 @@ import { App } from "@capacitor/app";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { Keyboard } from "@capacitor/keyboard";
-import { Haptics, ImpactStyle } from "@capacitor/haptics";
+import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { PushNotifications, type Token } from "@capacitor/push-notifications";
 import { Share } from "@capacitor/share";
 import { Preferences } from "@capacitor/preferences";
@@ -329,14 +329,35 @@ function wireNativeShare() {
 
 // ─── Haptics ───────────────────────────────────────────────────────────────
 // Small, opinionated API: web app dispatches `phoebe:haptic` with
-// `{ style: "light" | "medium" | "heavy" | "success" | "warning" | "error" }`.
-// Keeps native-shell the only place that knows about ImpactStyle.
+// `{ style: "light" | "medium" | "heavy" | "success" | "warning" | "error"
+//          | "celebration" }`.
+// Keeps native-shell the only place that knows about ImpactStyle /
+// NotificationType.
+//
+// "celebration" is the lesson-complete moment — when the prayer-list
+// slideshow lands on its closing slide. We chain iOS's built-in
+// notification(.success) double-tap with a heavy impact ~140ms later, so
+// the user gets a noticeably bigger thump than a single "heavy" beat.
+// That's the Duolingo "you finished" feel: ding-ding-THUMP.
 function wireHaptics() {
   window.addEventListener("phoebe:haptic", e => {
     const detail = (e as CustomEvent).detail as { style?: string } | undefined;
     const s = detail?.style ?? "light";
     try {
       switch (s) {
+        case "celebration":
+          // Step 1: the iOS success-notification pattern — two quick
+          // taps that read as "completion" everywhere on the platform.
+          Haptics.notification({ type: NotificationType.Success });
+          // Step 2: a heavy thump shortly after for emphasis. The
+          // delay matters: too tight and it merges with the second
+          // success tap into one undifferentiated buzz; too loose and
+          // it stops feeling like one celebratory event. ~140ms hits
+          // the sweet spot on iPhone 13/15 hardware.
+          window.setTimeout(() => {
+            Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
+          }, 140);
+          break;
         case "heavy":
           Haptics.impact({ style: ImpactStyle.Heavy });
           break;
@@ -344,12 +365,13 @@ function wireHaptics() {
           Haptics.impact({ style: ImpactStyle.Medium });
           break;
         case "success":
+          Haptics.notification({ type: NotificationType.Success });
+          break;
         case "warning":
+          Haptics.notification({ type: NotificationType.Warning });
+          break;
         case "error":
-          // Notification haptic styles — fall through to a distinct impact
-          // so we still feel different. Finer patterns can be added later
-          // once we settle on a haptic vocabulary.
-          Haptics.impact({ style: ImpactStyle.Medium });
+          Haptics.notification({ type: NotificationType.Error });
           break;
         default:
           Haptics.impact({ style: ImpactStyle.Light });
