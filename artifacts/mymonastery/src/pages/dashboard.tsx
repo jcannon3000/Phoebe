@@ -1834,33 +1834,17 @@ function PrayerListCard({
           <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
         )}
         <div className="flex-1 px-4 pt-3 pb-3">
-          {/* Line 1: title + "View list" pill (top-right corner).
-              View list takes the user to /prayer-list — the
-              management surface for their prayer items. The tap
-              on the outer card still routes to /prayer-mode via
-              the wrapping Link; View list's stopPropagation
-              diverts the tap to the management page. */}
-          <div className="flex items-start justify-between gap-2">
+          {/* Line 1: title only. The "View list" pill that used to live
+              up here moved down to line 3 (paired with the Pray CTA as
+              two equal-width pills) so the bottom of the card carries
+              both navigation choices visibly. */}
+          <div className="flex items-start gap-2">
             <span
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
               🕯️ Daily Prayer List
             </span>
-            <Link
-              href="/prayer-list"
-              onClick={(e) => e.stopPropagation()}
-              className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase transition-opacity hover:opacity-80"
-              style={{
-                color: "#C8D4C0",
-                background: "rgba(200,212,192,0.08)",
-                border: "1px solid rgba(143,175,150,0.35)",
-                letterSpacing: "0.08em",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              View list
-            </Link>
           </div>
 
           {/* Line 2: avatar stack + count on the left, streak on
@@ -1950,31 +1934,78 @@ function PrayerListCard({
             )}
           </div>
 
-          {/* Line 3: full-width CTA.
-                - Not prayed → "Pray →"
-                - Prayed    → "Pray again →" (lighter tone so the
-                  card still reads 'done' but the option is there)
-              The outer Link already wraps the whole card so the
-              button itself isn't an extra tap target — it's a
-              visible affordance that mirrors the slideshow entry. */}
+          {/* Line 3: two equal-width pills side by side.
+                - Left  → "Pray" / "Continue praying" / "Pray again"
+                  (the existing CTA — routes to /prayer-mode via the
+                  wrapping Link, no separate handler needed).
+                - Right → "View list" — diverts to /prayer-list. Carries
+                  a red dot in the top-right corner when there is at
+                  least one open request from someone else the viewer
+                  hasn't yet amened today (newPrayersCount > 0). The
+                  dot is the at-a-glance signal that the list has
+                  something fresh to engage with — replaces the role
+                  the bottom-of-page Prayer Requests section used to
+                  play before it was removed.
+              flex with `flex-1` on each pill makes both pills equal
+              width regardless of label length. */}
           {!muted && (
-            <div
-              className="mt-3 w-full rounded-xl text-center"
-              style={{
-                background: prayedToday ? "rgba(111,175,133,0.22)" : "#4A7A5B",
-                color: "#F0EDE6",
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 14,
-                fontWeight: 500,
-                letterSpacing: "-0.01em",
-                padding: "7px 16px",
-                border: prayedToday
-                  ? "1px solid rgba(111,175,133,0.35)"
-                  : "1px solid rgba(111,175,133,0.45)",
-              }}
-            >
-              {isPartial ? "Continue praying" : prayedToday ? "Pray again" : "Pray"}
-              <span aria-hidden> →</span>
+            <div className="mt-3 w-full flex gap-2">
+              <div
+                className="flex-1 rounded-xl text-center"
+                style={{
+                  background: prayedToday ? "rgba(111,175,133,0.22)" : "#4A7A5B",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  letterSpacing: "-0.01em",
+                  padding: "7px 12px",
+                  border: prayedToday
+                    ? "1px solid rgba(111,175,133,0.35)"
+                    : "1px solid rgba(111,175,133,0.45)",
+                }}
+              >
+                {isPartial ? "Continue praying" : prayedToday ? "Pray again" : "Pray"}
+                <span aria-hidden> →</span>
+              </div>
+              <Link
+                href="/prayer-list"
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 rounded-xl text-center relative"
+                style={{
+                  background: "rgba(200,212,192,0.08)",
+                  color: "#C8D4C0",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  letterSpacing: "-0.01em",
+                  padding: "7px 12px",
+                  border: "1px solid rgba(143,175,150,0.35)",
+                  textDecoration: "none",
+                }}
+              >
+                View list
+                <span aria-hidden> →</span>
+                {newPrayersCount > 0 && (
+                  <span
+                    aria-label={`${newPrayersCount} new prayer${newPrayersCount === 1 ? "" : "s"}`}
+                    className="absolute"
+                    style={{
+                      top: 6,
+                      right: 8,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 9999,
+                      // iOS-notification-dot red. The 1.5px ring
+                      // matches the surrounding pill background so
+                      // the dot reads as a discrete notification on
+                      // top of the button instead of a smear.
+                      background: "#E63946",
+                      boxShadow: "0 0 0 1.5px rgba(15,40,24,1)",
+                    }}
+                  />
+                )}
+              </Link>
             </div>
           )}
         </div>
