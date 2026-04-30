@@ -1572,9 +1572,11 @@ export default function PrayerModePage() {
   //
   // Also fire the audio + haptic moment that marks the conclusion: a
   // resolving swell at the base octave (matches the opening) plus a
-  // heavy haptic. Independent of `firstToday` — every arrival on the
-  // closing slide should feel like crossing a threshold, even if it's
-  // the user's second prayer today and no Duolingo card pops.
+  // big "celebration" haptic — the iOS success-notification double-tap
+  // chained with a heavy thump ~140ms later, à la Duolingo's lesson-
+  // complete moment. Independent of `firstToday` — every arrival on
+  // the closing slide should feel like crossing a threshold, even if
+  // it's the user's second prayer today and no streak card pops.
   useEffect(() => {
     if (phase !== "closing") return;
     // Continue the chord progression: each prior slide played
@@ -1585,7 +1587,7 @@ export default function PrayerModePage() {
     // lands back on 0 naturally.
     playOpeningSwell(displaySlides.length % 3);
     try {
-      window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "heavy" } }));
+      window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "celebration" } }));
     } catch { /* ignore */ }
 
     let cancelled = false;
