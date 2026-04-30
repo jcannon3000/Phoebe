@@ -71,6 +71,8 @@ import GuestSchedule from "./pages/guest-schedule";
 import InvitePage from "./pages/invite";
 import People from "./pages/people";
 import PersonProfile from "./pages/person";
+import ReportUserPage from "./pages/report-user";
+import ReportsAdminPage from "./pages/reports-admin";
 import FindFriendsPage from "./pages/find-friends";
 import TraditionNew from "./pages/tradition-new";
 import LettersPage from "./pages/Letters/LettersPage";
@@ -213,6 +215,8 @@ function Router() {
       <Route path="/letters/:id" component={CorrespondencePage} />
       <Route path="/people" component={People} />
       <Route path="/people/find" component={FindFriendsPage} />
+      <Route path="/people/:email/report" component={ReportUserPage} />
+      <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/prayer-list" component={PrayerListPage} />
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
       <Route path="/prayers-for-me" component={PrayersForMePage} />
