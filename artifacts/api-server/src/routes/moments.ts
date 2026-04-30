@@ -1344,6 +1344,8 @@ router.get("/moments", async (req, res): Promise<void> => {
         // The cleanup cron mirrors this exactly to auto-archive after grace.
         if (m.templateType === "intercession") {
           const mAny = m as Record<string, unknown>;
+          // TEMP DIAGNOSTIC — remove after confirming the filter
+          console.info(`[intercession-filter] id=${m.id} name="${m.name}" intention="${(m as { intention?: string }).intention ?? ""}" goalDays=${m.goalDays} totalBlooms=${m.totalBlooms} reachedAt=${mAny.commitmentGoalReachedAt} sessionsGoal=${mAny.commitmentSessionsGoal} sessionsLogged=${mAny.commitmentSessionsLogged} tier=${mAny.commitmentGoalTier} tendFreely=${mAny.commitmentTendFreely} state=${m.state}`);
           // Tend-freely is by definition never "complete" — keep showing.
           if (mAny.commitmentTendFreely === true) return true;
           const reachedAt = mAny.commitmentGoalReachedAt as Date | null;

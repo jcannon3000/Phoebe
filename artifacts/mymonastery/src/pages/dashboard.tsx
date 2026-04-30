@@ -1835,13 +1835,10 @@ function PrayerListCard({
           <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
         )}
         <div className="flex-1 px-4 pt-3 pb-3">
-          {/* Line 1: title on the left, avatar stack of people whose
-              prayers are queued in today's slideshow on the right.
-              The avatars used to sit on line 2 next to the subtitle,
-              but once the View list pill moved off this row (down to
-              line 3), the top-right corner was empty — promoting the
-              faces here both fills that space and gives them more
-              breathing room than they had crammed against the count. */}
+          {/* Line 1: title on the left, streak chip on the right.
+              Streak sits up here so it reads as the headline metric;
+              avatars dropped down to line 2 next to the subtitle so
+              the right-edge column reads streak → faces → View list. */}
           <div className="flex items-center justify-between gap-2">
             <span
               className="text-base font-semibold"
@@ -1849,6 +1846,51 @@ function PrayerListCard({
             >
               🕯️ Daily Prayer List
             </span>
+            {streak > 0 && (
+              <span
+                className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tabular-nums"
+                style={{
+                  color: "#E8A94C",
+                  background: "rgba(232,169,76,0.10)",
+                  border: "1px solid rgba(232,169,76,0.30)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+                aria-label={`${streak}-day prayer streak`}
+              >
+                🔥 {streak}
+              </span>
+            )}
+          </div>
+
+          {/* Line 2: subtitle on the left (cross-fading rotation across
+              "X waiting", "X new prayers", and the garden-prayed-with-you
+              variant), avatar stack on the right. Streak used to live
+              here — it moved up to line 1 to read as the headline. */}
+          <div className="mt-1.5 flex items-center justify-between gap-3">
+            {/* `flex-1 min-w-0` is load-bearing: the subtitle is
+                `absolute inset-0` for the cross-fade, which means it
+                contributes 0 intrinsic width. Without flex-1 here the
+                subtitle vanishes — that bug shipped briefly. */}
+            <div className="relative min-w-0 flex-1" style={{ height: 20 }}>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.p
+                  key={visibleSubtitleKey}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-sm truncate absolute inset-0"
+                  style={{
+                    color: "#8FAF96",
+                    lineHeight: "20px",
+                    margin: 0,
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  {visibleSubtitle}
+                </motion.p>
+              </AnimatePresence>
+            </div>
             {faces && faces.length > 0 && (
               <div className="flex items-center -space-x-2 shrink-0">
                 {faces.slice(0, 3).map((f) => (
@@ -1883,54 +1925,6 @@ function PrayerListCard({
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Line 2: subtitle on the left (cross-fading rotation across
-              "X waiting", "X new prayers", and the garden-prayed-with-you
-              variant), streak chip on the right. Avatars used to live
-              here too — they moved up to line 1's empty right corner. */}
-          <div className="mt-1.5 flex items-center justify-between gap-3">
-            {/* `flex-1 min-w-0` is load-bearing: the subtitle is
-                `absolute inset-0` for the cross-fade, which means it
-                contributes 0 intrinsic width. Without flex-1 here the
-                subtitle vanishes — that bug shipped briefly. */}
-            <div className="relative min-w-0 flex-1" style={{ height: 20 }}>
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.p
-                  key={visibleSubtitleKey}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="text-sm truncate absolute inset-0"
-                  style={{
-                    color: "#8FAF96",
-                    lineHeight: "20px",
-                    margin: 0,
-                    fontFamily: "'Space Grotesk', sans-serif",
-                  }}
-                >
-                  {visibleSubtitle}
-                </motion.p>
-              </AnimatePresence>
-            </div>
-            {streak > 0 && (
-              // Sits flush with the avatar stack on line 1 and the
-              // View list pill on line 3 — those three elements form
-              // a tidy right-edge column down the card.
-              <span
-                className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tabular-nums"
-                style={{
-                  color: "#E8A94C",
-                  background: "rgba(232,169,76,0.10)",
-                  border: "1px solid rgba(232,169,76,0.30)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-                aria-label={`${streak}-day prayer streak`}
-              >
-                🔥 {streak}
-              </span>
             )}
           </div>
 
