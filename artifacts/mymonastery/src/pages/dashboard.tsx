@@ -1743,8 +1743,9 @@ function PrayerListCard({
   // count matches what they'll see when they tap through.
   partialRemaining?: number;
   // Up to 3 avatars of people whose prayers appear in today's
-  // slideshow. Rendered on line 2 before the count text. Empty
-  // array = no avatars shown.
+  // slideshow. Rendered in the top-right corner of line 1
+  // (the spot the View list pill used to occupy before it moved
+  // to the bottom-row pill pair). Empty array = no avatars shown.
   faces?: Array<{ key: string; name: string; avatarUrl: string | null }>;
   // How many people in the viewer's garden have walked their own
   // slideshow today. When > 0 the subtitle alternates between the
@@ -1834,91 +1835,90 @@ function PrayerListCard({
           <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
         )}
         <div className="flex-1 px-4 pt-3 pb-3">
-          {/* Line 1: title only. The "View list" pill that used to live
-              up here moved down to line 3 (paired with the Pray CTA as
-              two equal-width pills) so the bottom of the card carries
-              both navigation choices visibly. */}
-          <div className="flex items-start gap-2">
+          {/* Line 1: title on the left, avatar stack of people whose
+              prayers are queued in today's slideshow on the right.
+              The avatars used to sit on line 2 next to the subtitle,
+              but once the View list pill moved off this row (down to
+              line 3), the top-right corner was empty — promoting the
+              faces here both fills that space and gives them more
+              breathing room than they had crammed against the count. */}
+          <div className="flex items-center justify-between gap-2">
             <span
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
               🕯️ Daily Prayer List
             </span>
-          </div>
-
-          {/* Line 2: avatar stack + count on the left, streak on
-              the right. Avatars are a small face row (up to 3,
-              overlapping) of people whose prayers are queued in
-              today's slideshow — anchors the count to real people.
-              Streak moved off Line 1 to sit aligned with the View
-              list pill above it and the CTA below it. */}
-          <div className="mt-1.5 flex items-center justify-between gap-3">
-            {/* `flex-1 min-w-0` is load-bearing: the subtitle inside is
-                `absolute inset-0` for the cross-fade, which means it
-                contributes 0 intrinsic width. Without flex-1 here, the
-                whole row collapses to just the avatar stack and the
-                subtitle vanishes — that bug shipped briefly. */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {faces && faces.length > 0 && (
-                <div className="flex items-center -space-x-2 shrink-0">
-                  {faces.slice(0, 3).map((f) => (
-                    <div
-                      key={f.key}
-                      title={f.name}
-                      className="rounded-full overflow-hidden shrink-0"
-                      style={{
-                        width: 22, height: 22,
-                        border: "1.5px solid #0F2818",
-                        background: "#1A4A2E",
-                      }}
-                    >
-                      {f.avatarUrl ? (
-                        <img
-                          src={f.avatarUrl}
-                          alt={f.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="w-full h-full flex items-center justify-center text-[9px] font-semibold"
-                          style={{ color: "#A8C5A0" }}
-                        >
-                          {f.name
-                            .split(" ")
-                            .slice(0, 2)
-                            .map((w) => w[0]?.toUpperCase() ?? "")
-                            .join("")}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="relative min-w-0 flex-1" style={{ height: 20 }}>
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.p
-                    key={visibleSubtitleKey}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="text-sm truncate absolute inset-0"
+            {faces && faces.length > 0 && (
+              <div className="flex items-center -space-x-2 shrink-0">
+                {faces.slice(0, 3).map((f) => (
+                  <div
+                    key={f.key}
+                    title={f.name}
+                    className="rounded-full overflow-hidden shrink-0"
                     style={{
-                      color: "#8FAF96",
-                      lineHeight: "20px",
-                      margin: 0,
-                      fontFamily: "'Space Grotesk', sans-serif",
+                      width: 24, height: 24,
+                      border: "1.5px solid #0F2818",
+                      background: "#1A4A2E",
                     }}
                   >
-                    {visibleSubtitle}
-                  </motion.p>
-                </AnimatePresence>
+                    {f.avatarUrl ? (
+                      <img
+                        src={f.avatarUrl}
+                        alt={f.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center text-[10px] font-semibold"
+                        style={{ color: "#A8C5A0" }}
+                      >
+                        {f.name
+                          .split(" ")
+                          .slice(0, 2)
+                          .map((w) => w[0]?.toUpperCase() ?? "")
+                          .join("")}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
+            )}
+          </div>
+
+          {/* Line 2: subtitle on the left (cross-fading rotation across
+              "X waiting", "X new prayers", and the garden-prayed-with-you
+              variant), streak chip on the right. Avatars used to live
+              here too — they moved up to line 1's empty right corner. */}
+          <div className="mt-1.5 flex items-center justify-between gap-3">
+            {/* `flex-1 min-w-0` is load-bearing: the subtitle is
+                `absolute inset-0` for the cross-fade, which means it
+                contributes 0 intrinsic width. Without flex-1 here the
+                subtitle vanishes — that bug shipped briefly. */}
+            <div className="relative min-w-0 flex-1" style={{ height: 20 }}>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.p
+                  key={visibleSubtitleKey}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-sm truncate absolute inset-0"
+                  style={{
+                    color: "#8FAF96",
+                    lineHeight: "20px",
+                    margin: 0,
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  {visibleSubtitle}
+                </motion.p>
+              </AnimatePresence>
             </div>
             {streak > 0 && (
-              // Pill mirrors the View list chip size so both sit
-              // flush to the same right edge of the card.
+              // Sits flush with the avatar stack on line 1 and the
+              // View list pill on line 3 — those three elements form
+              // a tidy right-edge column down the card.
               <span
                 className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tabular-nums"
                 style={{
