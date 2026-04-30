@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { PrayerSection } from "@/components/prayer-section";
-import { PrayerRequestQuickEntry } from "@/components/prayer-request-quick-entry";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
@@ -3442,14 +3441,10 @@ export default function Dashboard() {
               cleaner without the secondary pill row sitting between
               the prayer-list card and the request entry input. */}
 
-          {/* Quick prayer-request entry — sits directly under the
-              daily prayer card so adding a request is the next
-              obvious tap. */}
-          {filter === null && (
-            <div className="mt-5">
-              <PrayerRequestQuickEntry />
-            </div>
-          )}
+          {/* Quick prayer-request entry moved back down to the
+              "Prayer Requests" section at the bottom of the page —
+              the user wanted the input to live alongside the list
+              the way it did originally. */}
         </div>
 
         {/* ── Loading skeleton ── */}
@@ -3549,10 +3544,14 @@ export default function Dashboard() {
           );
         })()}
 
-        {/* Prayer Requests bottom section removed — replaced by the
-            3-pill row under the Daily Prayer List card up top, which
-            routes to dedicated /my-prayer-requests, /prayers-for-me,
-            and /prayer-list pages. */}
+        {/* Prayer Requests — restored at the bottom of the home
+            screen. Capped at 3 visible rows with a "See all (N) →"
+            expander, and the submission input lives inside the
+            section so adding a request stays where the list is
+            (rather than floating up under the Daily Prayer List
+            card). filterMode defaults to "all" so the user sees
+            their own requests mixed with their community's. */}
+        <PrayerSection maxVisible={3} />
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
