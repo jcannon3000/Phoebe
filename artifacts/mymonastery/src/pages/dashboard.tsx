@@ -2860,6 +2860,19 @@ export default function Dashboard() {
   // right now. Same computation the invite-popup uses, but memoized so the
   // dashboard can show it on a fallback card regardless of whether the
   // popup fires.
+  // Reciprocity gate: others' prayer requests are only surfaced to
+  // viewers who have an open prayer request of their own. The slideshow
+  // (prayer-mode.tsx) already enforces this — mirroring it here keeps
+  // the dashboard count, avatars, and red-dot signal in sync with what
+  // the slideshow will actually render. A viewer with no active ask
+  // sees no requests in the slideshow and shouldn't see them counted /
+  // dotted on the home card either.
+  const hasActiveOwnRequest = useMemo(() => {
+    return (dashPrayerRequests ?? []).some(
+      r => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
+    );
+  }, [dashPrayerRequests]);
+
   const pendingPrayerCount = useMemo(() => {
     const moments = momentsData?.moments ?? [];
     const circleIntentions = dashCircleIntentions?.intentions ?? [];
@@ -2874,25 +2887,29 @@ export default function Dashboard() {
       const intentions = gid ? (intentionCountByGroup.get(gid) ?? 0) : 0;
       activeIntercessions += intentions > 0 ? intentions : 1;
     }
-    const othersRequests = (dashPrayerRequests ?? []).filter(
-      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
-    ).length;
+    // Reciprocity-gated: viewers without an active own ask do not see
+    // others' requests in the slideshow, so they shouldn't be counted
+    // here either.
+    const othersRequests = hasActiveOwnRequest
+      ? (dashPrayerRequests ?? []).filter(
+          r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
+        ).length
+      : 0;
     const activePrayersFor = countActivePrayersFor(dashPrayersFor);
     return activeIntercessions + othersRequests + activePrayersFor;
-  }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor]);
+  }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor, hasActiveOwnRequest]);
 
   // Count of open prayer requests from others that the viewer hasn't
-  // yet amened today. Drives the "X new prayers" subtitle that rotates
-  // through the Daily Prayer List card's line-2 alternation. We
-  // deliberately exclude own requests and answered/closed ones — the
-  // user's question is "are there fresh asks I haven't engaged with",
-  // not "is the feed populated". This count is naturally a subset of
-  // pendingPrayerCount but stands on its own as a separate signal.
+  // yet amened today. Drives the "X new prayers" subtitle rotation and
+  // the red dot on the View list pill. Reciprocity-gated to match the
+  // slideshow — a viewer who hasn't shared their own ask doesn't get
+  // pinged about others' fresh requests.
   const newPrayersCount = useMemo(() => {
+    if (!hasActiveOwnRequest) return 0;
     return (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedToday,
     ).length;
-  }, [dashPrayerRequests]);
+  }, [dashPrayerRequests, hasActiveOwnRequest]);
 
   // Detect new unread letters. Runs once per session. The localStorage key
   // stores the *set* of correspondence ids that were already shown unread
@@ -3448,7 +3465,12 @@ export default function Dashboard() {
             // Up to 3 avatars of people whose prayers are in the
             // viewer's slideshow today. Source: non-own open prayer
             // request authors + active prayers-for recipients.
-            // Deduped, cap 3.
+            // Deduped, cap 3. Prayer-request authors are gated on
+            // `hasActiveOwnRequest` so the avatar stack mirrors the
+            // slideshow's reciprocity rule — a viewer with no own ask
+            // sees no request slides, so we don't tease faces here
+            // either. Prayers-for recipients are unaffected by the
+            // gate (they're a private practice, not communal).
             type Face = { key: string; name: string; avatarUrl: string | null };
             const faces: Face[] = [];
             const seen = new Set<string>();
@@ -3457,10 +3479,12 @@ export default function Dashboard() {
               seen.add(key);
               faces.push({ key, name, avatarUrl });
             };
-            for (const r of dashPrayerRequests ?? []) {
-              if (r.isAnswered || r.isOwnRequest || r.closedAt || r.isAnonymous) continue;
-              const key = `req-${r.ownerId ?? r.id}`;
-              addFace(key, r.ownerName ?? "Someone", r.ownerAvatarUrl ?? null);
+            if (hasActiveOwnRequest) {
+              for (const r of dashPrayerRequests ?? []) {
+                if (r.isAnswered || r.isOwnRequest || r.closedAt || r.isAnonymous) continue;
+                const key = `req-${r.ownerId ?? r.id}`;
+                addFace(key, r.ownerName ?? "Someone", r.ownerAvatarUrl ?? null);
+              }
             }
             for (const p of dashPrayersFor ?? []) {
               if (p.expired) continue;
