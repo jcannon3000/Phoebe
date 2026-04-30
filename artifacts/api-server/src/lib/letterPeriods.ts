@@ -261,8 +261,18 @@ export function getOneToOneTurnState(
   const lastAuthor = lower(last.authorEmail);
   const nextWriter = lastAuthor === me ? other : me;
 
+  // Window opens at the START of the seventh calendar day after the
+  // last letter, not the exact sentAt+7×24h timestamp. Without the
+  // start-of-day normalization, a letter sent at, say, 10:00 on
+  // Apr 23 would only flip to OPEN at 10:00 on Apr 30 — which
+  // means the recipient would see it as "WAITING" all morning of
+  // an otherwise-actionable day. Using setHours(0,0,0,0) makes the
+  // window cover the full calendar day in the server's local time,
+  // which is close enough to every user's local "all of Apr 30" for
+  // the dashboard's bucketing purposes.
   const windowOpen = new Date(last.sentAt);
   windowOpen.setDate(windowOpen.getDate() + WAIT_DAYS);
+  windowOpen.setHours(0, 0, 0, 0);
   const overdue = new Date(windowOpen);
   overdue.setDate(overdue.getDate() + OVERDUE_AFTER_OPEN_DAYS);
 
