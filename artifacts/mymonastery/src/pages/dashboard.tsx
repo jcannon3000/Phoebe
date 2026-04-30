@@ -774,8 +774,16 @@ function LetterCard({
   // in the day than "now": April 23 22:00 + 7 days = April 30 22:00,
   // and on April 25 11:00 the raw diff is ~5.46d → ceil = 6, but the
   // user (looking at calendar dates) expects 5.
+  //
+  // We keep zero in the result here (instead of Math.max(1, …)) so the
+  // statusText branch below can say "Opens today" when the window flips
+  // open later this calendar day. The API normalizes windowOpenDate to
+  // midnight server-time, but a user east of the server can see a
+  // calendar-diff of 0 with windowOpenAt still in the future — the old
+  // floor-to-1 made that case read "Reply opens in 1 day" which is
+  // wrong.
   const daysUntilOpen = (windowOpenAt && windowOpenAt.getTime() > Date.now())
-    ? Math.max(1, differenceInCalendarDays(windowOpenAt, new Date()))
+    ? Math.max(0, differenceInCalendarDays(windowOpenAt, new Date()))
     : null;
 
   let statusText = "";
@@ -784,6 +792,7 @@ function LetterCard({
   } else if (isOneToOne) {
     if (ts === "OVERDUE") statusText = `Overdue · write when you're ready 🌿`;
     else if (ts === "OPEN") statusText = `Your turn to write 🖋️`;
+    else if (daysUntilOpen === 0) statusText = `Opens today 🖋️`;
     else if (daysUntilOpen) statusText = `Reply opens in ${daysUntilOpen} day${daysUntilOpen !== 1 ? "s" : ""}`;
     else statusText = `Waiting for ${otherMembers}`;
   } else if (iWrote && !theyWrote) {
@@ -3028,12 +3037,26 @@ export default function Dashboard() {
     }
 
     // ── Letters placement
-    // Actionable (unread, my turn, overdue) → Today.
-    // WAITING with a known future window → Upcoming, but ONLY when the
-    // window is for *me* to write back (i.e. they sent the last letter
-    // and the 7-day reply gate is counting down). If I sent the most
-    // recent letter, the window belongs to *them* — there's nothing for
-    // me to do, so it doesn't belong on the dashboard at all.
+    // The bucket is decided by which calendar date the writing window
+    // falls on — evaluated in the viewer's local timezone via
+    // differenceInCalendarDays so the math is timezone-correct without
+    // any manual UTC fiddling:
+    //   - Actionable now (unread / my turn / OPEN / OVERDUE) → Today
+    //   - WAITING with window opening today (≤ 0 calendar days)→ Today
+    //   - WAITING with window opening tomorrow (1 calendar day)→ Tomorrow
+    //   - WAITING with window opening within 7 calendar days  → This week
+    //   - WAITING with window opening later                    → This month
+    //
+    // A letter whose window opens later today is bucketed into Today
+    // even though the API may still report turnState="WAITING" until
+    // the exact sentAt+7d timestamp ticks past. Surfacing the card on
+    // its open day is what users expect; LetterCard's status copy and
+    // the writing gate handle the few intra-day hours where the API
+    // is still WAITING.
+    //
+    // Only show WAITING letters when *I* am the next writer. If I sent
+    // the last letter, the window belongs to *them* and there's
+    // nothing for me to do.
     const dashUserName = user?.name ?? "";
     for (const c of (dashCorrespondences ?? [])) {
       const actionable =
@@ -3043,20 +3066,25 @@ export default function Dashboard() {
         c.turnState === "OVERDUE";
       if (actionable) {
         todayItems.push({ kind: "letter", data: c });
-      } else if (
+        continue;
+      }
+      if (
         c.groupType === "one_to_one" &&
         c.turnState === "WAITING" &&
         c.windowOpenDate
       ) {
         const lastLetterFromMe = c.recentLetters?.[0]?.authorName === dashUserName;
         if (lastLetterFromMe) continue;
-        const windowMs = new Date(c.windowOpenDate).getTime();
-        if (windowMs > Date.now()) {
-          if (windowMs < sevenDaysFromToday.getTime()) {
-            weekItems.push({ kind: "letter", data: c });
-          } else {
-            monthItems.push({ kind: "letter", data: c });
-          }
+        const windowDate = new Date(c.windowOpenDate);
+        const daysAhead = differenceInCalendarDays(windowDate, new Date());
+        if (daysAhead <= 0) {
+          todayItems.push({ kind: "letter", data: c });
+        } else if (daysAhead === 1) {
+          tomorrowItems.push({ kind: "letter", data: c });
+        } else if (daysAhead < 7) {
+          weekItems.push({ kind: "letter", data: c });
+        } else {
+          monthItems.push({ kind: "letter", data: c });
         }
       }
     }
