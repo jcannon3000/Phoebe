@@ -359,6 +359,25 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName }: {
           <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
             {req.body}
           </p>
+          {/* "Prayed N times" line — visible at a glance, before the
+              owner taps in. Server only populates amenCountTotal for
+              own requests (it's the deduped per-user-per-day count
+              that powers the released-popup), so we render only when
+              the value is set + > 0 to avoid a sad "0 times" on a
+              brand-new request. We render under the body rather than
+              inline with the right-rail pills so the count gets a
+              full row to breathe and reads as encouragement, not as
+              a stat chip. */}
+          {req.isOwnRequest
+            && typeof req.amenCountTotal === "number"
+            && req.amenCountTotal > 0 && (
+            <p
+              className="text-[11px] mt-1"
+              style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              🙏 Prayed {req.amenCountTotal} {req.amenCountTotal === 1 ? "time" : "times"}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {req.words.length > 0 && (
