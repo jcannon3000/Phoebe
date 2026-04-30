@@ -753,7 +753,28 @@ function LetterCard({
     ? `Dialogue with ${otherMembers}`
     : (c.name?.replace(/^Letters with\b/, "Dialogue with")) || `Sharing with ${otherMembers}`;
 
-  const ts = c.turnState;
+  // Local-TZ override of the OPEN verdict. The server computes windowOpen
+  // in UTC; a letter sent late-evening in the user's local time lands on
+  // the next UTC date, which pushes the open window one calendar day past
+  // what the user perceives. Trust the local computation when it says the
+  // window has opened: read the latest letter's sentAt with local
+  // getDate()/getMonth()/getFullYear() (browser uses local TZ), add 7
+  // calendar days, and compare against today's local calendar date.
+  const localWindowOpenForMe = (() => {
+    if (!isOneToOne) return false;
+    const lastLetter = c.recentLetters?.[0] ?? null;
+    if (!lastLetter || !lastLetter.sentAt) return false;
+    if (lastLetter.authorName === userName) return false; // not my turn
+    const sent = new Date(lastLetter.sentAt);
+    const sentLocal = new Date(sent.getFullYear(), sent.getMonth(), sent.getDate());
+    const opens = new Date(sentLocal.getFullYear(), sentLocal.getMonth(), sentLocal.getDate() + 7);
+    const n = new Date();
+    const today = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    return today.getTime() >= opens.getTime();
+  })();
+  const ts: Correspondence["turnState"] = (localWindowOpenForMe && c.turnState === "WAITING")
+    ? "OPEN"
+    : c.turnState;
   const hasUnread = c.unreadCount > 0;
 
   // For one-to-one: drive everything from the state machine

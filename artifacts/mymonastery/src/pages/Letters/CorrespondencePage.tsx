@@ -159,7 +159,27 @@ export default function CorrespondencePage() {
     : `Round ${currentPeriod.periodNumber}`;
 
   const turnState: TurnState | undefined = data.turnState;
-  const isOpen = isOneToOne && (turnState === "OPEN" || turnState === "OVERDUE");
+  // Server computes the window in UTC; if a letter was sent late-evening in
+  // the user's local time it can land on the *next* UTC date, which pushes
+  // windowOpen one day past what the user perceives. Recompute the OPEN
+  // verdict locally from the latest letter's sentAt — getDate()/getMonth()/
+  // getFullYear() read in the browser's local TZ, so a letter the user sees
+  // as "April 23" + 7 calendar days = "April 30 OPEN" regardless of the
+  // server's clock or the timestamp's UTC roll-over.
+  const lastLetterAny = [...letters].sort(
+    (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+  )[0];
+  const localWindowOpenForMe = (() => {
+    if (!isOneToOne || !lastLetterAny) return false;
+    if ((lastLetterAny.authorEmail || "").toLowerCase() === me) return false; // not my turn
+    const sent = new Date(lastLetterAny.sentAt);
+    const sentLocal = new Date(sent.getFullYear(), sent.getMonth(), sent.getDate());
+    const opens = new Date(sentLocal.getFullYear(), sentLocal.getMonth(), sentLocal.getDate() + 7);
+    const n = new Date();
+    const today = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    return today.getTime() >= opens.getTime();
+  })();
+  const isOpen = isOneToOne && (turnState === "OPEN" || turnState === "OVERDUE" || localWindowOpenForMe);
   const isOverdue = isOneToOne && turnState === "OVERDUE";
 
   // Other member's most recent letter — used for "waiting since" copy on OVERDUE.
@@ -251,19 +271,26 @@ export default function CorrespondencePage() {
             subtitle = "Your update is in for this round 🌿";
           }
 
+          // Use ctaFilled to vary outline vs solid — but the pill itself
+          // matches the dashboard's BarCard "Write 🖋️" pill exactly so
+          // the two surfaces read as one card style.
+          void ctaFilled;
           return (
             <div
-              className={`rounded-xl mb-4 transition-shadow ${data.myTurn ? "animate-turn-pulse" : ""}`}
+              className={`relative flex rounded-xl overflow-hidden mb-4 transition-shadow ${data.myTurn ? "animate-turn-pulse" : ""}`}
               style={{
                 background: isOverdue ? "#1A2D1A" : "#0F2818",
                 border: `1px solid ${isOverdue ? "rgba(217,180,74,0.35)" : "rgba(46,107,64,0.45)"}`,
                 boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
               }}
             >
-              <div className="px-4 pt-3 pb-3">
-                {/* Line 1: title (left) — chip slot reserved on the right
-                    so the layout matches the prayer-list card even when
-                    we have nothing to show there yet. */}
+              {/* Left side-bar — matches the dashboard letter card. */}
+              <div
+                className="w-1 flex-shrink-0"
+                style={{ background: isOverdue ? "#D9B44A" : "#5C8A5F" }}
+              />
+              <div className="flex-1 px-4 pt-3 pb-2">
+                {/* Line 1: title (left) + Overdue chip (right, when applicable). */}
                 <div className="flex items-start justify-between gap-2">
                   <span
                     className="text-base font-semibold"
@@ -290,43 +317,39 @@ export default function CorrespondencePage() {
                   )}
                 </div>
 
-                {/* Line 2: subtitle */}
-                {subtitle && (
-                  <p
-                    className="mt-1.5 text-sm"
-                    style={{
-                      color: isOverdue ? "#D9B44A" : "#8FAF96",
-                      lineHeight: "20px",
-                      margin: "6px 0 0",
-                      fontFamily: "'Space Grotesk', sans-serif",
-                    }}
-                  >
-                    {subtitle}
-                  </p>
-                )}
-
-                {/* Line 3: full-width CTA, when one applies */}
-                {ctaLabel && ctaHref && (
-                  <Link href={ctaHref}>
-                    <div
-                      className="mt-3 w-full rounded-xl text-center cursor-pointer"
+                {/* Line 2: status text (left) + Write pill (right) — matches
+                    the dashboard's BarCard layout for one-to-one letters. */}
+                <div className="flex items-center justify-between gap-2 mt-1.5 -mr-2">
+                  {subtitle ? (
+                    <p
+                      className="text-sm flex-1 min-w-0 truncate"
                       style={{
-                        background: ctaFilled ? "#4A7A5B" : "transparent",
-                        color: "#F0EDE6",
+                        color: isOverdue ? "#D9B44A" : "#8FAF96",
+                        lineHeight: "20px",
+                        margin: 0,
                         fontFamily: "'Space Grotesk', sans-serif",
-                        fontSize: 14,
-                        fontWeight: 500,
-                        letterSpacing: "-0.01em",
-                        padding: "9px 16px",
-                        border: ctaFilled
-                          ? "1px solid rgba(111,175,133,0.45)"
-                          : "1px solid rgba(142,158,66,0.4)",
                       }}
                     >
-                      {ctaLabel}
-                    </div>
-                  </Link>
-                )}
+                      {subtitle}
+                    </p>
+                  ) : (
+                    <span className="flex-1" />
+                  )}
+                  {ctaLabel && ctaHref && (
+                    <Link href={ctaHref}>
+                      <span
+                        className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
+                        style={{
+                          background: "#2D5E3F",
+                          color: "#F0EDE6",
+                          fontFamily: "'Space Grotesk', sans-serif",
+                        }}
+                      >
+                        {ctaLabel}
+                      </span>
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           );
