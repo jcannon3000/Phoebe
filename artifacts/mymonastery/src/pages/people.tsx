@@ -436,8 +436,24 @@ export default function People() {
     },
     [iPrayFor],
   );
+  // Mirror the iPrayForEmails filter: a prayer that's on its final day
+  // (0 days left) is visually "done" even though the server hasn't
+  // marked it expired yet, so it shouldn't surface as "they're praying
+  // for you" on the people card. The /prayers-for/for-me/history feed
+  // still carries it for the manage-prayer-list backlog.
   const prayForMeEmails = useMemo(
-    () => new Set(prayForMe.map(p => p.prayerEmail.toLowerCase())),
+    () => {
+      const now = new Date();
+      const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const set = new Set<string>();
+      for (const p of prayForMe) {
+        const expires = new Date(p.expiresAt);
+        const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+        const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
+        if (daysLeft > 0) set.add(p.prayerEmail.toLowerCase());
+      }
+      return set;
+    },
     [prayForMe],
   );
 
@@ -545,7 +561,19 @@ export default function People() {
                     }
                     activePrayerForMe={
                       prayForMe.find(
-                        p => p.prayerEmail.toLowerCase() === person.email.toLowerCase(),
+                        p => {
+                          if (p.prayerEmail.toLowerCase() !== person.email.toLowerCase()) return false;
+                          // Hide on the final day ("0 days left / Day N of N")
+                          // — same rule as activePrayerFor above. Past prayers
+                          // still surface in the manage-prayer-list backlog
+                          // via the /prayers-for/for-me/history endpoint.
+                          const expires = new Date(p.expiresAt);
+                          const now = new Date();
+                          const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate());
+                          const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                          const daysLeft = Math.max(0, Math.round((expiresDay.getTime() - todayDay.getTime()) / 86400000));
+                          return daysLeft > 0;
+                        }
                       ) ?? null
                     }
                   />
