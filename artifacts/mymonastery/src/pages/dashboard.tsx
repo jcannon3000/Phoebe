@@ -6,7 +6,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
-import { PrayerSection } from "@/components/prayer-section";
+import { PrayerRequestQuickEntry } from "@/components/prayer-request-quick-entry";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
@@ -1722,6 +1722,7 @@ function PrayerListCard({
   partialRemaining = 0,
   faces,
   gardenPrayedTodayCount = 0,
+  newPrayersCount = 0,
 }: {
   pendingCount: number;
   streak: number;
@@ -1750,6 +1751,12 @@ function PrayerListCard({
   // primary content and "X people prayed with you today" with a
   // gentle cross-fade.
   gardenPrayedTodayCount?: number;
+  // How many open prayer requests from others the viewer hasn't yet
+  // amened today. Surfaces as "X new prayers" rotated into the line-2
+  // alternation so the user gets a nudge about un-engaged requests
+  // even though the home screen no longer carries a Prayer Requests
+  // section underneath.
+  newPrayersCount?: number;
 }) {
   const colors = CATEGORY_COLORS.practices;
   // "Continue praying" only shows when the user hasn't yet completed
@@ -1771,21 +1778,39 @@ function PrayerListCard({
         ? "1 person prayed with you today"
         : `${gardenPrayedTodayCount} people prayed with you today`)
     : null;
-  // Alternate the subtitle every 4s when there is a garden line to
-  // surface. Index 0 = primary content, index 1 = garden line.
+  const newPrayersSubtitle = newPrayersCount > 0
+    ? (newPrayersCount === 1 ? "1 new prayer" : `${newPrayersCount} new prayers`)
+    : null;
+  // Build the rotation list. The primary subtitle is always slot 0;
+  // additional slots are appended only when their data exists, so the
+  // rotation length matches the number of meaningful messages we have
+  // to show. With one slot we don't tick at all (single value, no
+  // animation cost); with two or three we cycle every 4s.
+  const subtitleSlots = useMemo(() => {
+    const slots: Array<{ key: string; text: string }> = [
+      { key: "primary", text: primarySubtitle },
+    ];
+    if (newPrayersSubtitle) slots.push({ key: "new", text: newPrayersSubtitle });
+    if (gardenSubtitle) slots.push({ key: "garden", text: gardenSubtitle });
+    return slots;
+  }, [primarySubtitle, newPrayersSubtitle, gardenSubtitle]);
   const [subtitleIdx, setSubtitleIdx] = useState(0);
   useEffect(() => {
-    if (!gardenSubtitle) {
-      setSubtitleIdx(0);
-      return;
-    }
+    // Reset to the primary slot whenever the rotation set changes
+    // (e.g. an amen tap drops newPrayersCount to 0 and the "new"
+    // slot disappears mid-cycle). Without this we'd briefly index
+    // out of bounds and render a blank line during the cross-fade.
+    setSubtitleIdx(0);
+    if (subtitleSlots.length <= 1) return;
     const id = setInterval(() => {
-      setSubtitleIdx(i => (i === 0 ? 1 : 0));
+      setSubtitleIdx(i => (i + 1) % subtitleSlots.length);
     }, 4000);
     return () => clearInterval(id);
-  }, [gardenSubtitle]);
-  const visibleSubtitle = gardenSubtitle && subtitleIdx === 1 ? gardenSubtitle : primarySubtitle;
-  const visibleSubtitleKey = gardenSubtitle && subtitleIdx === 1 ? "garden" : "primary";
+  }, [subtitleSlots]);
+  const safeIdx = subtitleIdx < subtitleSlots.length ? subtitleIdx : 0;
+  const activeSlot = subtitleSlots[safeIdx];
+  const visibleSubtitle = activeSlot.text;
+  const visibleSubtitleKey = activeSlot.key;
 
   return (
     <Link key={`${keyPrefix}-prayer-list`} href="/prayer-mode" className="block">
@@ -2825,6 +2850,19 @@ export default function Dashboard() {
     return activeIntercessions + othersRequests + activePrayersFor;
   }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor]);
 
+  // Count of open prayer requests from others that the viewer hasn't
+  // yet amened today. Drives the "X new prayers" subtitle that rotates
+  // through the Daily Prayer List card's line-2 alternation. We
+  // deliberately exclude own requests and answered/closed ones — the
+  // user's question is "are there fresh asks I haven't engaged with",
+  // not "is the feed populated". This count is naturally a subset of
+  // pendingPrayerCount but stands on its own as a separate signal.
+  const newPrayersCount = useMemo(() => {
+    return (dashPrayerRequests ?? []).filter(
+      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedToday,
+    ).length;
+  }, [dashPrayerRequests]);
+
   // Detect new unread letters. Runs once per session. The localStorage key
   // stores the *set* of correspondence ids that were already shown unread
   // on last dismiss — a new unread correspondence id (or a previously-read
@@ -3428,6 +3466,7 @@ export default function Dashboard() {
                   partialRemaining={partialRemaining}
                   faces={faces}
                   gardenPrayedTodayCount={gardenPrayedTodayCount}
+                  newPrayersCount={newPrayersCount}
                   keyPrefix="anchor"
                 />
               </div>
@@ -3441,10 +3480,18 @@ export default function Dashboard() {
               cleaner without the secondary pill row sitting between
               the prayer-list card and the request entry input. */}
 
-          {/* Quick prayer-request entry moved back down to the
-              "Prayer Requests" section at the bottom of the page —
-              the user wanted the input to live alongside the list
-              the way it did originally. */}
+          {/* Quick prayer-request entry — sits directly under the
+              daily prayer card so adding a request is the next
+              obvious tap. The bottom-of-page Prayer Requests
+              section was removed; the Daily Prayer List card's
+              line-2 subtitle now rotates "X new prayers" so the
+              user still hears about fresh requests they haven't
+              engaged with. */}
+          {filter === null && (
+            <div className="mt-5">
+              <PrayerRequestQuickEntry />
+            </div>
+          )}
         </div>
 
         {/* ── Loading skeleton ── */}
@@ -3544,14 +3591,14 @@ export default function Dashboard() {
           );
         })()}
 
-        {/* Prayer Requests — restored at the bottom of the home
-            screen. Capped at 3 visible rows with a "See all (N) →"
-            expander, and the submission input lives inside the
-            section so adding a request stays where the list is
-            (rather than floating up under the Daily Prayer List
-            card). filterMode defaults to "all" so the user sees
-            their own requests mixed with their community's. */}
-        <PrayerSection maxVisible={3} />
+        {/* Prayer Requests bottom section removed — the quick-entry
+            input sits under the Daily Prayer List card up top, and
+            that card's line-2 subtitle rotates "X new prayers" so
+            the user gets a nudge about un-engaged requests without
+            needing a second list down here. The dedicated
+            /my-prayer-requests, /prayers-for-me, and /prayer-list
+            pages remain reachable from the side menu and from the
+            "View list" pill on the Daily Prayer List card. */}
 
         {/* Footer */}
         <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>

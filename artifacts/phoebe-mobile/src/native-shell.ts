@@ -335,10 +335,68 @@ function wireNativeShare() {
 // NotificationType.
 //
 // "celebration" is the lesson-complete moment — when the prayer-list
-// slideshow lands on its closing slide. We chain iOS's built-in
-// notification(.success) double-tap with a heavy impact ~140ms later, so
-// the user gets a noticeably bigger thump than a single "heavy" beat.
-// That's the Duolingo "you finished" feel: ding-ding-THUMP.
+// slideshow lands on its closing slide. We open with iOS's success
+// notification (a quick "ding-ding") and then keep the haptic engine
+// firing rapid heavy impacts for ~2.2 seconds so the buzz feels
+// SUSTAINED, the way Duolingo's lesson-complete celebration does. The
+// Capacitor Haptics plugin doesn't expose Core Haptics' continuous
+// patterns directly, so we approximate by pulsing impacts on a tight
+// interval — at ~70ms spacing the Taptic Engine doesn't have time to
+// fully relax between hits and the felt result is a continuous rumble
+// rather than discrete taps.
+//
+// We track the active rumble in a module-scoped handle so a second
+// "celebration" event mid-rumble cancels the first cleanly, instead
+// of stacking two intervals on top of each other.
+let celebrationRumbleHandle: number | null = null;
+function fireCelebrationRumble() {
+  // Cancel any in-flight rumble from a prior celebration so we don't
+  // stack haptic loops.
+  if (celebrationRumbleHandle !== null) {
+    window.clearInterval(celebrationRumbleHandle);
+    celebrationRumbleHandle = null;
+  }
+
+  // Opening flourish — iOS notification(.success) gives the recognizable
+  // "completion" double-tap.
+  try {
+    Haptics.notification({ type: NotificationType.Success });
+  } catch { /* non-fatal */ }
+
+  // Sustained rumble — heavy impacts every 70ms for ~2.2s. We start
+  // 110ms after the success notification so the opening double-tap
+  // reads as its own beat before the rumble takes over, instead of
+  // being swallowed by it.
+  const RUMBLE_START_MS = 110;
+  const PULSE_INTERVAL_MS = 70;
+  const RUMBLE_TOTAL_MS = 2200;
+  window.setTimeout(() => {
+    const startedAt = Date.now();
+    const tick = () => {
+      Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
+    };
+    // Fire the first pulse synchronously so there's no perceptible
+    // gap between the opening double-tap and the rumble.
+    tick();
+    celebrationRumbleHandle = window.setInterval(() => {
+      if (Date.now() - startedAt >= RUMBLE_TOTAL_MS) {
+        if (celebrationRumbleHandle !== null) {
+          window.clearInterval(celebrationRumbleHandle);
+          celebrationRumbleHandle = null;
+        }
+        // Closing thump — slightly heavier "the rumble landed" feel
+        // before silence. Without it the haptic just stops, which
+        // reads as a glitch rather than a finished gesture.
+        try {
+          Haptics.impact({ style: ImpactStyle.Heavy });
+        } catch { /* non-fatal */ }
+        return;
+      }
+      tick();
+    }, PULSE_INTERVAL_MS);
+  }, RUMBLE_START_MS);
+}
+
 function wireHaptics() {
   window.addEventListener("phoebe:haptic", e => {
     const detail = (e as CustomEvent).detail as { style?: string } | undefined;
@@ -346,17 +404,7 @@ function wireHaptics() {
     try {
       switch (s) {
         case "celebration":
-          // Step 1: the iOS success-notification pattern — two quick
-          // taps that read as "completion" everywhere on the platform.
-          Haptics.notification({ type: NotificationType.Success });
-          // Step 2: a heavy thump shortly after for emphasis. The
-          // delay matters: too tight and it merges with the second
-          // success tap into one undifferentiated buzz; too loose and
-          // it stops feeling like one celebratory event. ~140ms hits
-          // the sweet spot on iPhone 13/15 hardware.
-          window.setTimeout(() => {
-            Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
-          }, 140);
+          fireCelebrationRumble();
           break;
         case "heavy":
           Haptics.impact({ style: ImpactStyle.Heavy });
