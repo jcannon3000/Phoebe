@@ -131,7 +131,7 @@ function initials(name: string): string {
 // back button). When unfocused, the card list is clamped to ~3.5 cards
 // tall with a fade-out gradient so overflow is obviously scrollable. When
 // focused, the clamp + fade lift and every card is shown at full height.
-type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from" | "prayers-from-past";
+type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from";
 
 // Backlog row from GET /api/prayers-for/for-me/history. Same shape as
 // `PrayerForMe` but with the additional active/expired/acknowledged flags
@@ -229,6 +229,7 @@ function BarCard({
   pulse,
   accent = "#2E6B40",
   bg = "rgba(46,107,64,0.15)",
+  border,
   children,
 }: {
   onClick?: () => void;
@@ -236,6 +237,9 @@ function BarCard({
   pulse?: boolean;
   accent?: string;
   bg?: string;
+  /** Override the default border color — used by past-prayer cards to
+   *  fade them visually from active ones. */
+  border?: string;
   children: React.ReactNode;
 }) {
   const inner = (
@@ -245,7 +249,7 @@ function BarCard({
       className={`relative flex rounded-xl overflow-hidden transition-shadow ${pulse ? "animate-turn-pulse-practices" : ""}`}
       style={{
         background: bg,
-        border: `1px solid ${pulse ? "rgba(46,107,64,0.15)" : "rgba(46,107,64,0.28)"}`,
+        border: `1px solid ${border ?? (pulse ? "rgba(46,107,64,0.15)" : "rgba(46,107,64,0.28)")}`,
         boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         cursor: onClick || href ? "pointer" : "default",
       }}
@@ -465,8 +469,11 @@ function PrayerFromCard({ p, onOpen, isPast = false }: { p: PrayerForMe; onOpen:
   const avatarRing = isPast ? "rgba(46,107,64,0.3)" : "rgba(193,154,58,0.3)";
   const avatarBg = isPast ? "#1A4A2E" : "#3A2E14";
   const avatarFg = isPast ? "#A8C5A0" : "#E4C97C";
+  // Past prayers get a faded border to visually demote them from the
+  // currently-active block above.
+  const cardBorder = isPast ? "rgba(143,175,150,0.18)" : undefined;
   return (
-    <BarCard onClick={onOpen} accent={accent} bg={bg}>
+    <BarCard onClick={onOpen} accent={accent} bg={bg} border={cardBorder}>
       <div className="flex items-start gap-3">
         {p.prayerAvatarUrl ? (
           <img
@@ -506,7 +513,9 @@ function PrayerFromCard({ p, onOpen, isPast = false }: { p: PrayerForMe; onOpen:
             </p>
           )}
           <p className="text-[11px] mt-1" style={{ color: metaColor }}>
-            {formatPrayingSince(p.startedAt)}
+            {isPast
+              ? `Prayed ${new Date(p.startedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+              : formatPrayingSince(p.startedAt)}
           </p>
         </div>
         <span className="text-[10px] shrink-0 mt-1" style={{ color: arrowColor }}>→</span>
@@ -1206,43 +1215,29 @@ export default function PrayerListPage() {
           </SectionShell>
         )}
 
-        {/* Prayers for you */}
-        {prayersForMe.length > 0 && (focused === null || focused === "prayers-from") && (
+        {/* Prayers for you — active and past in one section. Active rows
+            render first with the warm-amber accent; past rows follow with
+            a faded border + sage palette and "Prayed Apr 23" date meta.
+            Combining the two sections means the recipient sees one rolling
+            record of who is and was holding them in prayer. */}
+        {(prayersForMe.length > 0 || pastPrayersForMe.length > 0) && (focused === null || focused === "prayers-from") && (
           <SectionShell
             id="prayers-from"
             label="Prayers for You"
-            count={prayersForMe.length}
+            count={prayersForMe.length + pastPrayersForMe.length}
             focused={focused}
             onFocus={setFocused}
           >
             {prayersForMe.map((p) => (
               <PrayerFromCard
-                key={p.id}
+                key={`active-${p.id}`}
                 p={p}
                 onOpen={() => setDetail({ kind: "prayer-from", id: p.id })}
               />
             ))}
-          </SectionShell>
-        )}
-
-        {/* Past prayers received — backlog of prayers that have either
-            expired (the prayer-er didn't renew) or been acknowledged
-            (explicitly ended). User asked for these not to disappear:
-            even if a prayer has rotated out of the prayer-er's slideshow,
-            the recipient should still see a record of who held them in
-            prayer. We exclude any rows that are still active to avoid
-            double-rendering them above. */}
-        {pastPrayersForMe.length > 0 && (focused === null || focused === "prayers-from-past") && (
-          <SectionShell
-            id="prayers-from-past"
-            label="Past prayers received"
-            count={pastPrayersForMe.length}
-            focused={focused}
-            onFocus={setFocused}
-          >
             {pastPrayersForMe.map((p) => (
               <PrayerFromCard
-                key={p.id}
+                key={`past-${p.id}`}
                 p={p}
                 isPast
                 onOpen={() => setDetail({ kind: "prayer-from", id: p.id })}
