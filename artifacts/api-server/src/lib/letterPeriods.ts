@@ -262,30 +262,37 @@ export function getOneToOneTurnState(
   const nextWriter = lastAuthor === me ? other : me;
 
   // Window opens at the START of the seventh calendar day after the
-  // last letter, not the exact sentAt+7×24h timestamp. Without the
-  // start-of-day normalization, a letter sent at, say, 10:00 on
-  // Apr 23 would only flip to OPEN at 10:00 on Apr 30 — which
-  // means the recipient would see it as "WAITING" all morning of
-  // an otherwise-actionable day. Using setHours(0,0,0,0) makes the
-  // window cover the full calendar day in the server's local time,
-  // which is close enough to every user's local "all of Apr 30" for
-  // the dashboard's bucketing purposes.
-  const windowOpen = new Date(last.sentAt);
-  windowOpen.setDate(windowOpen.getDate() + WAIT_DAYS);
-  windowOpen.setHours(0, 0, 0, 0);
-  const overdue = new Date(windowOpen);
-  overdue.setDate(overdue.getDate() + OVERDUE_AFTER_OPEN_DAYS);
+  // last letter — purely a calendar-day concept, with no time-of-day
+  // component. A letter sent any time on Apr 23 means Apr 30 is OPEN
+  // for the entire day, regardless of server timezone or the original
+  // sentAt clock-time. We compare calendar dates in UTC throughout so
+  // server timezone never shifts the boundary.
+  const sentUtcDay = Date.UTC(
+    last.sentAt.getUTCFullYear(),
+    last.sentAt.getUTCMonth(),
+    last.sentAt.getUTCDate(),
+  );
+  const windowOpenUtc = sentUtcDay + WAIT_DAYS * 24 * 60 * 60 * 1000;
+  const overdueUtc = windowOpenUtc + OVERDUE_AFTER_OPEN_DAYS * 24 * 60 * 60 * 1000;
+  const nowUtcDay = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  const windowOpen = new Date(windowOpenUtc);
+  const overdue = new Date(overdueUtc);
 
   // If requester is NOT the next writer, they're waiting.
   if (me !== nextWriter) {
     return { state: "WAITING", windowOpenDate: windowOpen, overdueDate: overdue, nextWriterEmail: nextWriter };
   }
 
-  // Requester is the next writer.
-  if (now < windowOpen) {
+  // Requester is the next writer. Compare calendar days in UTC so
+  // any moment of the windowOpen calendar day counts as OPEN.
+  if (nowUtcDay < windowOpenUtc) {
     return { state: "WAITING", windowOpenDate: windowOpen, overdueDate: overdue, nextWriterEmail: nextWriter };
   }
-  if (now >= overdue) {
+  if (nowUtcDay >= overdueUtc) {
     return { state: "OVERDUE", windowOpenDate: windowOpen, overdueDate: overdue, nextWriterEmail: nextWriter };
   }
   return { state: "OPEN", windowOpenDate: windowOpen, overdueDate: overdue, nextWriterEmail: nextWriter };
