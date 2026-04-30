@@ -254,8 +254,18 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     };
   }));
 
-  // Sort: correspondents' requests first, then by creation date (already ordered)
+  // Sort: own first, then correspondents, then everyone else.
+  // Within each tier we keep the createdAt-desc ordering from the
+  // SQL query (Array.prototype.sort is stable). Earlier the tiering
+  // was correspondents-first only — which meant the user's own newly-
+  // created request would slide BELOW any correspondent's request,
+  // even one created days ago. The user flagged that: their own
+  // prayer kept getting pushed to the bottom of the manage prayer
+  // list. Pinning own to the very top fixes that without losing
+  // the "correspondents bubble up" feature for the rest of the feed.
   enriched.sort((a, b) => {
+    if (a.isOwnRequest && !b.isOwnRequest) return -1;
+    if (!a.isOwnRequest && b.isOwnRequest) return 1;
     if (a.isCorrespondent && !b.isCorrespondent) return -1;
     if (!a.isCorrespondent && b.isCorrespondent) return 1;
     return 0;
