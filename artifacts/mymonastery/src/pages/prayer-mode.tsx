@@ -1313,6 +1313,17 @@ export default function PrayerModePage() {
     return daysLeft > 0;
   });
 
+  // Reciprocity rule: others' prayer requests are only surfaced to
+  // viewers who have an open prayer request of their own. The slideshow
+  // is meant to feel like a circle of mutual intercession — viewers who
+  // don't share their own asks shouldn't be on the receiving end of
+  // others'. Computed up front so the slides[] spread can gate the
+  // request section on it; the same flag still drives the trailing
+  // "ask-request" slide further below for viewers with no active ask.
+  const hasActiveOwnRequest = prayerRequests.some(
+    (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
+  );
+
   const slides: PrayerSlide[] = [
     ...intercessions.map((m) => {
       const title = m.intercessionTopic || m.name;
@@ -1402,29 +1413,34 @@ export default function PrayerModePage() {
     // Other people's prayer requests come before the user's own private
     // prayers-for — hearing others first, then turning inward. We
     // deliberately exclude the viewer's own requests; they don't need to
-    // be shown their own ask as a slide to pray for.
-    ...prayerRequests
-      .filter((r) => {
-        if (r.isAnswered || r.isOwnRequest) return false;
-        // Defense in depth: the personal feed already drops others'
-        // expired requests at the SQL layer, but a stale cache (e.g.
-        // an expiry crossing while the user is mid-session) could let
-        // one slip through. Skip it so it never appears as a slide.
-        if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
-        return true;
-      })
-      .map((r): PrayerSlide => ({
-        kind: "request",
-        text: r.body,
-        // Avatar + name render in-slide now; keep attribution empty so
-        // we don't duplicate "from Name" under the body.
-        attribution: "",
-        requestId: r.id,
-        myWord: r.myWord ?? null,
-        authorName: r.ownerName ?? null,
-        authorAvatarUrl: r.ownerAvatarUrl ?? null,
-        alreadyPrayedToday: r.myAmenedToday === true,
-      })),
+    // be shown their own ask as a slide to pray for. Gated on
+    // `hasActiveOwnRequest` (computed above): viewers without an open
+    // ask of their own skip this section entirely and instead see the
+    // trailing "ask-request" slide nudging them to participate.
+    ...(hasActiveOwnRequest
+      ? prayerRequests
+          .filter((r) => {
+            if (r.isAnswered || r.isOwnRequest) return false;
+            // Defense in depth: the personal feed already drops others'
+            // expired requests at the SQL layer, but a stale cache (e.g.
+            // an expiry crossing while the user is mid-session) could let
+            // one slip through. Skip it so it never appears as a slide.
+            if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+            return true;
+          })
+          .map((r): PrayerSlide => ({
+            kind: "request",
+            text: r.body,
+            // Avatar + name render in-slide now; keep attribution empty so
+            // we don't duplicate "from Name" under the body.
+            attribution: "",
+            requestId: r.id,
+            myWord: r.myWord ?? null,
+            authorName: r.ownerName ?? null,
+            authorAvatarUrl: r.ownerAvatarUrl ?? null,
+            alreadyPrayedToday: r.myAmenedToday === true,
+          }))
+      : []),
     ...activePrayersFor.map((p): PrayerSlide => {
       // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
       // this morning rather than still "Day 1".
@@ -1453,15 +1469,14 @@ export default function PrayerModePage() {
 
   // Final slide logic:
   //   - No active own request → "How can the community pray for you?"
-  //     (the existing ask-request slide).
+  //     (the existing ask-request slide). Drives both this trailing
+  //     slide AND the reciprocity gate on the request section above —
+  //     the same flag, computed once at the top of this scope.
   //   - Otherwise → no trailing slide. We previously appended a
   //     "Would you like to pray for one of your friends?" suggester
   //     ("pray-for-suggest") here, but the user asked for it to be
   //     removed from the slideshow — the list should end quietly on
   //     the last prayer, not nudge the viewer to add more.
-  const hasActiveOwnRequest = prayerRequests.some(
-    (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
-  );
   // Still computed because the SlideContent component still accepts
   // `suggestedFriends` as a prop (the type signature spans several
   // slide kinds, even though we no longer push a suggester slide).
