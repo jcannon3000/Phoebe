@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { usePrayerRequestPlaceholder } from "@/lib/usePrayerRequestPlaceholder";
 
 // Compact prayer-request entry surface. Same submission flow + duration
 // sheet as PrayerSection, but standalone so it can sit at the top of
@@ -14,6 +15,7 @@ export function PrayerRequestQuickEntry() {
   const [showModal, setShowModal] = useState(false);
   const [pendingBody, setPendingBody] = useState("");
   const [durationDays, setDurationDays] = useState<3 | 7>(3);
+  const placeholder = usePrayerRequestPlaceholder(inputValue);
 
   const submitMutation = useMutation({
     mutationFn: ({ body, durationDays: days }: { body: string; durationDays: number }) =>
@@ -63,7 +65,7 @@ export function PrayerRequestQuickEntry() {
         value={inputValue}
         onChange={e => setInputValue(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter") handleSendClick(); }}
-        placeholder="Submit a prayer request 🌿"
+        placeholder={placeholder}
         maxLength={1000}
         className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
         style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
