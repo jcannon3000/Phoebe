@@ -18,6 +18,13 @@ type PrayerWord = {
   createdAt: string | null;
 };
 
+type PrayerAmen = {
+  userId: number;
+  userName: string | null;
+  userAvatarUrl: string | null;
+  prayedAt: string;
+};
+
 type PrayerRequestDetail = {
   id: number;
   body: string;
@@ -26,6 +33,11 @@ type PrayerRequestDetail = {
   ownerAvatarUrl: string | null;
   viewerIsOwner: boolean;
   words: PrayerWord[];
+  // Owner-only — empty array for non-owner viewers. Server already
+  // dedupes (user, calendar-day in owner-tz) so we can render straight
+  // from this list without extra grouping.
+  amens: PrayerAmen[];
+  amenCountTotal: number;
 };
 
 // Inline compose for a viewer's "word of comfort" on this request —
@@ -177,8 +189,6 @@ export default function PrayerRequestDetailPage() {
     };
   }, []);
 
-  const latestWord = data?.words[0] ?? null;
-
   return (
     <div
       style={{
@@ -262,45 +272,158 @@ export default function PrayerRequestDetailPage() {
               <RequestWordField requestId={data.id} />
             )}
 
-            {data.viewerIsOwner && latestWord && (
-              <div
-                className="w-full rounded-2xl px-6 py-5 mt-4 flex flex-col items-center text-center gap-3"
+            {/* ── Owner view: who is praying + how many + every word ── */}
+            {/* Surfaces the things the first-amen / third-amen pushes are
+                celebrating. Order from top to bottom is intentional:
+                  1. The most-recent amen-er (the avatar pulse — this is
+                     what the push is heralding).
+                  2. The total count, framed as encouragement.
+                  3. The strip of all pray-er avatars.
+                  4. Every word of comfort.
+                The latestWord-only card we used to render is gone — we
+                show the full list now so a tap from any push brings up
+                the whole communal record, not just the freshest beat. */}
+            {data.viewerIsOwner && data.amens.length > 0 && (() => {
+              const latestAmen = data.amens[0];
+              const latestAmenName = latestAmen.userName ?? "Someone";
+              return (
+                <div className="w-full flex flex-col items-center text-center gap-3 mt-2">
+                  {latestAmen.userAvatarUrl ? (
+                    <img
+                      src={latestAmen.userAvatarUrl}
+                      alt={latestAmenName}
+                      className="w-14 h-14 rounded-full object-cover prayer-avatar-pulse"
+                    />
+                  ) : (
+                    <div
+                      className="w-14 h-14 rounded-full flex items-center justify-center text-base font-semibold prayer-avatar-pulse"
+                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                    >
+                      {initials(latestAmenName)}
+                    </div>
+                  )}
+                  <p
+                    className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+                    style={{ color: "rgba(143,175,150,0.5)" }}
+                  >
+                    Amen from {latestAmenName}
+                  </p>
+                </div>
+              );
+            })()}
+
+            {data.viewerIsOwner && data.amenCountTotal > 0 && (
+              <p
+                className="text-[13px]"
                 style={{
-                  background: "rgba(46,107,64,0.12)",
-                  border: "1px solid rgba(46,107,64,0.15)",
+                  color: "#C8D4C0",
+                  fontFamily: "'Space Grotesk', sans-serif",
                 }}
               >
-                {latestWord.authorAvatarUrl ? (
-                  <img
-                    src={latestWord.authorAvatarUrl}
-                    alt={latestWord.authorName}
-                    className="w-12 h-12 rounded-full object-cover prayer-avatar-pulse"
-                  />
-                ) : (
+                {data.amenCountTotal === 1
+                  ? "1 person has prayed for this so far."
+                  : `${data.amenCountTotal} people have prayed for this so far.`}
+              </p>
+            )}
+
+            {/* Strip of every pray-er, most recent leftmost. We cap the
+                visible row at 8 to keep the slide readable; the count
+                line above already conveys the full magnitude. Each
+                avatar slightly overlaps the next (negative margin) for
+                a "circle of people" feel. */}
+            {data.viewerIsOwner && data.amens.length > 1 && (
+              <div className="flex items-center justify-center -mt-1">
+                {data.amens.slice(0, 8).map((a, i) => (
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-base font-semibold prayer-avatar-pulse"
-                    style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                    key={`${a.userId}-${a.prayedAt}`}
+                    className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden border-2"
+                    style={{
+                      borderColor: "#0C1F12",
+                      marginLeft: i === 0 ? 0 : -8,
+                      background: "#1A4A2E",
+                      color: "#A8C5A0",
+                    }}
+                    title={a.userName ?? "Someone"}
                   >
-                    {initials(latestWord.authorName)}
+                    {a.userAvatarUrl ? (
+                      <img
+                        src={a.userAvatarUrl}
+                        alt={a.userName ?? "Someone"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-[11px] font-semibold">
+                        {initials(a.userName ?? "")}
+                      </span>
+                    )}
                   </div>
+                ))}
+                {data.amens.length > 8 && (
+                  <span
+                    className="ml-2 text-[11px]"
+                    style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    +{data.amens.length - 8}
+                  </span>
                 )}
+              </div>
+            )}
+
+            {/* Every word of comfort, newest first. Each word is its own
+                small card so the owner can scan who said what — much
+                richer than the single-latestWord card we used to show.
+                Past-tense framing for older words isn't necessary; the
+                ordering is enough. */}
+            {data.viewerIsOwner && data.words.length > 0 && (
+              <div className="w-full flex flex-col gap-3 mt-3">
                 <p
                   className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                   style={{ color: "rgba(143,175,150,0.45)" }}
                 >
-                  Word of Comfort from {latestWord.authorName}
+                  {data.words.length === 1 ? "Word of comfort" : "Words of comfort"}
                 </p>
-                <p
-                  className="italic"
-                  style={{
-                    color: "#E8E4D8",
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    fontSize: 18,
-                    lineHeight: 1.55,
-                  }}
-                >
-                  {latestWord.content}
-                </p>
+                {data.words.map(w => (
+                  <div
+                    key={w.id}
+                    className="w-full rounded-2xl px-5 py-4 flex flex-col items-center text-center gap-2"
+                    style={{
+                      background: "rgba(46,107,64,0.10)",
+                      border: "1px solid rgba(46,107,64,0.15)",
+                    }}
+                  >
+                    {w.authorAvatarUrl ? (
+                      <img
+                        src={w.authorAvatarUrl}
+                        alt={w.authorName}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold"
+                        style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                      >
+                        {initials(w.authorName)}
+                      </div>
+                    )}
+                    <p
+                      className="text-[10px] uppercase tracking-[0.16em] font-semibold"
+                      style={{ color: "rgba(143,175,150,0.45)" }}
+                    >
+                      from {w.authorName}
+                    </p>
+                    <p
+                      className="italic"
+                      style={{
+                        color: "#E8E4D8",
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        fontSize: 16,
+                        lineHeight: 1.55,
+                      }}
+                    >
+                      “{w.content}”
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
 
