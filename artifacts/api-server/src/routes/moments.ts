@@ -1342,13 +1342,27 @@ router.get("/moments", async (req, res): Promise<void> => {
         // Intercessions get a 2-day grace period after hitting their goal.
         // After that they're hidden (and auto-archived by the cleanup job).
         if (m.templateType === "intercession") {
-          const reachedAt = (m as Record<string, unknown>).commitmentGoalReachedAt as Date | null;
+          const mAny = m as Record<string, unknown>;
+          const reachedAt = mAny.commitmentGoalReachedAt as Date | null;
           if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return false;
-          // Intercessions that already hit their goal before the stamping code was
-          // deployed have totalBlooms > 0 but no commitmentGoalReachedAt. Treat
-          // them as expired immediately — they're past their goal with no known
-          // completion time, so the grace period is forfeit.
-          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return false;
+          // Legacy filter: an intercession that hit its goal BEFORE the
+          // stamping code was deployed has totalBlooms > 0 with no
+          // commitmentGoalReachedAt. We can't grant a grace period (no
+          // completion timestamp), so it reads as expired immediately.
+          //
+          // CRUCIAL: this filter must not catch RENEWED practices. The
+          // renew endpoint clears commitmentGoalReachedAt, which leaves
+          // the row looking identical to the legacy state (no stamp,
+          // totalBlooms still > 0 from prior cycles). To distinguish,
+          // gate the filter on "has never entered the commitment flow":
+          // a renewed/tend-freely/goal-set practice has at least one of
+          // commitmentSessionsGoal, commitmentTendFreely, or
+          // commitmentGoalTier > 1, none of which a true legacy row has.
+          const hasEnteredCommitmentFlow =
+            mAny.commitmentSessionsGoal !== null ||
+            mAny.commitmentTendFreely === true ||
+            (((mAny.commitmentGoalTier as number | null) ?? 1) > 1);
+          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && !hasEnteredCommitmentFlow) return false;
         }
         return true;
       });
@@ -3725,12 +3739,26 @@ router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
     // Also archive intercessions that hit their goal before the stamping code was
     // deployed (totalBlooms > 0 but no commitmentGoalReachedAt). Grace period is
     // forfeit since we don't know when they finished.
+    //
+    // The trailing AND clause excludes any practice that has entered the
+    // commitment-progression flow — renewals clear commitmentGoalReachedAt,
+    // which would otherwise leave a renewed row looking exactly like a true
+    // legacy row and get it archived on the next cleanup tick. Renewal sets
+    // commitmentGoalTier > 1 (always), commitmentSessionsGoal (when picking
+    // a new goal), or commitmentTendFreely (when going freeform); a true
+    // legacy row has none of these. Mirrors the read filter in /api/moments.
     const legacyExpired = await db.select({ id: sharedMomentsTable.id })
       .from(sharedMomentsTable)
       .where(
         and(
           eq(sharedMomentsTable.templateType, "intercession"),
-          sql`goal_days > 0 AND total_blooms > 0 AND commitment_goal_reached_at IS NULL AND state != 'archived'`
+          sql`goal_days > 0
+            AND total_blooms > 0
+            AND commitment_goal_reached_at IS NULL
+            AND state != 'archived'
+            AND commitment_sessions_goal IS NULL
+            AND commitment_tend_freely = false
+            AND commitment_goal_tier <= 1`
         )
       );
     if (legacyExpired.length > 0) {
