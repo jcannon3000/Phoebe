@@ -315,6 +315,7 @@ router.get("/people", async (req, res): Promise<void> => {
               // treated as legacy expired even if it has totalBlooms > 0
               // and no commitmentGoalReachedAt (renewal clears the stamp).
               commitmentSessionsGoal: sharedMomentsTable.commitmentSessionsGoal,
+              commitmentSessionsLogged: sharedMomentsTable.commitmentSessionsLogged,
               commitmentTendFreely: sharedMomentsTable.commitmentTendFreely,
               commitmentGoalTier: sharedMomentsTable.commitmentGoalTier,
             })
@@ -323,21 +324,24 @@ router.get("/people", async (req, res): Promise<void> => {
 
           const nowMs = Date.now();
           const graceMs = 2 * 24 * 60 * 60 * 1000;
+          // Mirrors the read filter in routes/moments.ts — three modes:
+          //  • tend-freely → never expires
+          //  • stamped → 2-day grace then expired
+          //  • sessions goal → expired when logged ≥ goal (no stamp = no grace)
+          //  • days goal (incl. legacy) → expired when totalBlooms ≥ tier
           const isExpiredIntercession = (m: typeof sharedMomentsRaw[number]) => {
             if (m.templateType !== "intercession") return false;
+            if (m.commitmentTendFreely === true) return false;
             const reachedAt = m.commitmentGoalReachedAt;
-            if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > graceMs) return true;
-            // Legacy filter only catches practices that have NEVER engaged
-            // with the commitment-progression flow; otherwise a renewed
-            // intercession (stamp cleared, totalBlooms still > 0) gets
-            // mis-treated as legacy expired. See routes/moments.ts for the
-            // canonical version of this check.
-            const hasEnteredCommitmentFlow =
-              m.commitmentSessionsGoal !== null ||
-              m.commitmentTendFreely === true ||
-              ((m.commitmentGoalTier ?? 1) > 1);
-            if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && !hasEnteredCommitmentFlow) return true;
-            return false;
+            if (reachedAt) {
+              return (nowMs - new Date(reachedAt).getTime()) > graceMs;
+            }
+            const sessionsGoal = m.commitmentSessionsGoal;
+            if (sessionsGoal != null && sessionsGoal > 0) {
+              return (m.commitmentSessionsLogged ?? 0) >= sessionsGoal;
+            }
+            const tier = m.commitmentGoalTier ?? 1;
+            return m.goalDays > 0 && m.totalBlooms >= tier;
           };
           const sharedMoments = sharedMomentsRaw.filter(
             m => m.state !== "archived" && !isExpiredIntercession(m),
@@ -482,31 +486,32 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         // commitmentGoalReachedAt but keeps totalBlooms, which would
         // otherwise look identical to a legacy expired row.
         commitmentSessionsGoal: sharedMomentsTable.commitmentSessionsGoal,
+        commitmentSessionsLogged: sharedMomentsTable.commitmentSessionsLogged,
         commitmentTendFreely: sharedMomentsTable.commitmentTendFreely,
         commitmentGoalTier: sharedMomentsTable.commitmentGoalTier,
         createdAt: sharedMomentsTable.createdAt,
       }).from(sharedMomentsTable).where(inArray(sharedMomentsTable.id, sharedMomentIds));
 
-      // Mirror the filter used by the main moments list: intercessions that
-      // have passed their 2-day grace period after hitting their goal are
-      // treated as past, not active (see routes/moments.ts).
+      // Mirror the filter used by the main moments list (see routes/moments.ts).
+      // Three modes: tend-freely never expires; stamped → 2-day grace; sessions
+      // goal → expired when logged ≥ goal; days goal → expired when totalBlooms
+      // ≥ commitmentGoalTier (each completed cycle increments totalBlooms, so
+      // legacy tier-1 rows with any blooms still match).
       const now = Date.now();
       const graceMs = 2 * 24 * 60 * 60 * 1000;
       const isExpiredIntercession = (m: typeof allMoments[number]) => {
         if (m.templateType !== "intercession") return false;
+        if (m.commitmentTendFreely === true) return false;
         const reachedAt = m.commitmentGoalReachedAt;
-        if (reachedAt && (now - new Date(reachedAt).getTime()) > graceMs) return true;
-        // Legacy intercessions that hit their goal before the stamping code
-        // was deployed: totalBlooms > 0 with no reachedAt — treat as expired.
-        // BUT only if the practice has never been renewed / had a new goal /
-        // gone tend-freely; renewal clears commitmentGoalReachedAt and would
-        // otherwise drag the row right back into this branch on every fetch.
-        const hasEnteredCommitmentFlow =
-          m.commitmentSessionsGoal !== null ||
-          m.commitmentTendFreely === true ||
-          ((m.commitmentGoalTier ?? 1) > 1);
-        if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && !hasEnteredCommitmentFlow) return true;
-        return false;
+        if (reachedAt) {
+          return (now - new Date(reachedAt).getTime()) > graceMs;
+        }
+        const sessionsGoal = m.commitmentSessionsGoal;
+        if (sessionsGoal != null && sessionsGoal > 0) {
+          return (m.commitmentSessionsLogged ?? 0) >= sessionsGoal;
+        }
+        const tier = m.commitmentGoalTier ?? 1;
+        return m.goalDays > 0 && m.totalBlooms >= tier;
       };
 
       const activeMoments = allMoments.filter(m => m.state !== "archived" && !isExpiredIntercession(m));
