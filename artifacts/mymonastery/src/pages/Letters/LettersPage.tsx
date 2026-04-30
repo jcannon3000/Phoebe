@@ -62,13 +62,6 @@ function formatShortDate(dateStr: string): string {
 function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; userEmail: string }) {
   const { currentPeriod } = item;
   const isOneToOne = item.groupType === "one_to_one";
-  const isOverdue = isOneToOne && item.turnState === "OVERDUE";
-
-  // Days until write window opens (Letter 3+ waiting state after receiving a letter)
-  const waitingDays = (isOneToOne && item.turnState === "WAITING" && item.windowOpenDate)
-    ? Math.max(0, Math.ceil((new Date(item.windowOpenDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : null;
-  const showCountdown = waitingDays !== null && waitingDays > 0;
 
   // Case-insensitive email comparison — otherwise the current user's own
   // row leaks into "otherMembers" when the stored email casing differs from
@@ -81,65 +74,96 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
     .filter(Boolean)
     .join(", ");
 
+  // Local-TZ override of the OPEN verdict. Mirrors the dashboard
+  // LetterCard + CorrespondencePage logic: server computes window in UTC,
+  // but a letter sent late-evening in the user's local time lands on the
+  // *next* UTC date, pushing windowOpen one calendar day past what the
+  // user perceives. Recompute using local getDate()/getMonth()/
+  // getFullYear() so a letter the user remembers as "April 23" + 7 days
+  // = "April 30 OPEN" today regardless of UTC roll-over.
   const lastLetter = item.recentLetters?.[0] ?? null;
   const lastLetterDate = lastLetter ? formatShortDate(lastLetter.sentAt) : null;
+  const localWindowOpenForMe = (() => {
+    if (!isOneToOne || !lastLetter) return false;
+    const lastFromOther = (lastLetter.authorName ?? "").trim().length > 0
+      && !item.members.some(m =>
+        (m.email || "").toLowerCase() === me
+        && (m.name === lastLetter.authorName));
+    if (!lastFromOther) return false;
+    const sent = new Date(lastLetter.sentAt);
+    const sentLocal = new Date(sent.getFullYear(), sent.getMonth(), sent.getDate());
+    const opens = new Date(sentLocal.getFullYear(), sentLocal.getMonth(), sentLocal.getDate() + 7);
+    const n = new Date();
+    const today = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    return today.getTime() >= opens.getTime();
+  })();
+  const turnState = (localWindowOpenForMe && item.turnState === "WAITING")
+    ? "OPEN"
+    : item.turnState;
+  const isOverdue = isOneToOne && turnState === "OVERDUE";
+  const myTurn = item.myTurn || (isOneToOne && (turnState === "OPEN" || turnState === "OVERDUE"));
+
+  // Days until write window opens — only show when we're truly waiting,
+  // not when local-TZ override has flipped to OPEN.
+  const waitingDays = (isOneToOne && turnState === "WAITING" && item.windowOpenDate)
+    ? Math.max(0, Math.ceil((new Date(item.windowOpenDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const showCountdown = waitingDays !== null && waitingDays > 0;
 
   const unread = item.unreadCount > 0;
-  const accentColor = isOverdue
+  const accent = isOverdue
     ? "#D9B44A"
-    : item.myTurn && !currentPeriod.hasWrittenThisPeriod
-      ? "#8E9E42"
-      : "rgba(142,158,66,0.35)";
+    : myTurn && !currentPeriod.hasWrittenThisPeriod
+      ? "#5C8A5F"
+      : "#2E6B40";
   const title = isOneToOne && otherMembers
     ? `Dialogue with ${otherMembers}`
     : (item.name?.replace(/^Letters with\b/, "Dialogue with")) || `Sharing with ${otherMembers}`;
 
+  // Match the BarCard look used on /prayer-list (manage prayer list):
+  // 1px left accent bar, rounded-xl, soft green bg + 0.28 border,
+  // px-4 pt-3 pb-3 padding.
   return (
     <Link href={`/letters/${item.id}`} className="block">
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        whileHover={{ y: -2 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="relative flex rounded-xl overflow-hidden cursor-pointer"
+        className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow"
         style={{
-          background: "#0F2818",
-          border: `1px solid rgba(142,158,66,${unread ? "0.35" : "0.2"})`,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2)",
+          background: "rgba(46,107,64,0.15)",
+          border: "1px solid rgba(46,107,64,0.28)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >
-        {/* Left accent bar */}
-        <div className="w-1 flex-shrink-0" style={{ background: accentColor }} />
+        <div className="w-1 flex-shrink-0" style={{ background: accent }} />
 
-        <div className="flex-1 p-4 min-w-0">
+        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+            <p className="text-base font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
               📮 {title}
             </p>
             {lastLetterDate && (
-              <div className="flex-shrink-0 text-right">
-                <p className="text-[10px]" style={{ color: "#8FAF96" }}>{lastLetterDate}</p>
-              </div>
+              <p className="text-[10px] shrink-0" style={{ color: "#8FAF96" }}>{lastLetterDate}</p>
             )}
           </div>
 
           <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-[11px] font-semibold uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
+            <span className="text-[11px] font-semibold uppercase shrink-0" style={{ color: "#C8D4C0", letterSpacing: "0.08em", fontFamily: "'Space Grotesk', sans-serif" }}>
               {isOneToOne ? `Letter ${Math.max(1, item.letterCount)}` : `Round ${currentPeriod.periodNumber}`}
             </span>
             <span style={{ color: "rgba(200,212,192,0.3)" }}>·</span>
             {isOverdue ? (
-              <span className="text-xs font-medium" style={{ color: "#D9B44A" }}>Overdue · write when you're ready 🌿</span>
+              <span className="text-xs font-medium truncate" style={{ color: "#D9B44A" }}>Overdue · write when you're ready 🌿</span>
+            ) : myTurn && !currentPeriod.hasWrittenThisPeriod ? (
+              <span className="text-xs font-medium truncate" style={{ color: "#C8D4C0" }}>{isOneToOne ? "Your turn to write 🖋️" : "Write your update 🖋️"}</span>
             ) : currentPeriod.hasWrittenThisPeriod ? (
-              <span className="text-xs" style={{ color: "#8FAF96" }}>{isOneToOne ? "Sent · awaiting reply 🌿" : "Update sent 🌿"}</span>
-            ) : item.myTurn ? (
-              <span className="text-xs font-medium" style={{ color: "#C8D4C0" }}>{isOneToOne ? "Your turn to write 🖋️" : "Write your update 🖋️"}</span>
+              <span className="text-xs truncate" style={{ color: "#8FAF96" }}>{isOneToOne ? "Sent · awaiting reply 🌿" : "Update sent 🌿"}</span>
             ) : unread ? (
-              <span className="text-xs font-medium" style={{ color: "#C8D4C0" }}>New {isOneToOne ? "letter" : "update"} 📮</span>
+              <span className="text-xs font-medium truncate" style={{ color: "#C8D4C0" }}>New {isOneToOne ? "letter" : "update"} 📮</span>
             ) : lastLetterDate ? (
-              <span className="text-xs" style={{ color: "#8FAF96" }}>Last: {lastLetterDate}</span>
+              <span className="text-xs truncate" style={{ color: "#8FAF96" }}>Last: {lastLetterDate}</span>
             ) : (
-              <span className="text-xs" style={{ color: "#8FAF96" }}>No letters yet</span>
+              <span className="text-xs truncate" style={{ color: "#8FAF96" }}>No letters yet</span>
             )}
           </div>
 
@@ -242,8 +266,32 @@ export default function LettersPage() {
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="space-y-8">
             {(() => {
-              const yourTurn = items.filter(i => i.myTurn && !i.currentPeriod.hasWrittenThisPeriod);
-              const waiting = items.filter(i => !i.myTurn || i.currentPeriod.hasWrittenThisPeriod);
+              // Mirror the per-card local-TZ override when bucketing into
+              // "Your Turn" vs "Waiting" — otherwise a row that the card
+              // visually marks as "Your turn to write" stays parked under
+              // "Waiting for Response" because the server still says
+              // myTurn=false / turnState=WAITING.
+              const isLocallyOpen = (i: CorrespondenceItem) => {
+                if (i.groupType !== "one_to_one") return false;
+                const last = i.recentLetters?.[0];
+                if (!last) return false;
+                const me = (user.email || "").toLowerCase();
+                const lastFromOther = !i.members.some(m =>
+                  (m.email || "").toLowerCase() === me
+                  && m.name === last.authorName);
+                if (!lastFromOther) return false;
+                const sent = new Date(last.sentAt);
+                const sentLocal = new Date(sent.getFullYear(), sent.getMonth(), sent.getDate());
+                const opens = new Date(sentLocal.getFullYear(), sentLocal.getMonth(), sentLocal.getDate() + 7);
+                const n = new Date();
+                const today = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+                return today.getTime() >= opens.getTime();
+              };
+              const isMyTurn = (i: CorrespondenceItem) =>
+                (i.myTurn && !i.currentPeriod.hasWrittenThisPeriod)
+                || (isLocallyOpen(i) && i.turnState === "WAITING");
+              const yourTurn = items.filter(isMyTurn);
+              const waiting = items.filter(i => !isMyTurn(i));
               const SectionHeader = ({ label }: { label: string }) => (
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>{label}</span>
