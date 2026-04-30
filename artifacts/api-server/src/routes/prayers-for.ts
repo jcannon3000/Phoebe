@@ -44,6 +44,14 @@ router.get("/prayers-for/mine", async (req, res): Promise<void> => {
 // ─── GET /api/prayers-for/for-me ────────────────────────────────────────────
 // Active prayers others are currently offering for me. Includes the prayer
 // text so the recipient can read it on their prayer list.
+//
+// "Active" means: not acknowledged AND not yet expired. Surfaces that show a
+// live-in-the-moment indicator (the People page's candle, the dashboard pill,
+// the dedicated /prayers-for-me page) consume this endpoint.
+//
+// The full backlog — past prayers that have rotated out of someone's active
+// slideshow — is exposed by /for-me/history below so it can be rendered on
+// the prayer list without inflating the live-state surfaces.
 router.get("/prayers-for/for-me", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -79,6 +87,65 @@ router.get("/prayers-for/for-me", async (req, res): Promise<void> => {
     .orderBy(desc(prayersForTable.startedAt));
 
   res.json(rows);
+});
+
+// ─── GET /api/prayers-for/for-me/history ────────────────────────────────────
+// Full backlog of every prayer ever offered for me — including ones that
+// have expired (the prayer-er didn't renew) and ones that have been
+// acknowledged (the prayer-er explicitly ended). Past prayers stay readable
+// here so the recipient has a permanent record of who has held them in
+// prayer, even after those prayers rotate out of the prayer-er's active
+// slideshow. Each row is tagged with `active` so the client can group
+// active vs past without recomputing the predicate.
+//
+// Mute filtering is preserved so blocking someone purges their name from
+// the historical view too.
+router.get("/prayers-for/for-me/history", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const mutedRows = await db.select({ mutedUserId: userMutesTable.mutedUserId })
+    .from(userMutesTable)
+    .where(eq(userMutesTable.muterId, sessionUserId));
+  const mutedIds = mutedRows.map(r => r.mutedUserId);
+
+  const baseWhere = eq(prayersForTable.recipientUserId, sessionUserId);
+  const whereClause = mutedIds.length > 0
+    ? and(baseWhere, notInArray(prayersForTable.prayerUserId, mutedIds))
+    : baseWhere;
+
+  const rows = await db.select({
+    id: prayersForTable.id,
+    startedAt: prayersForTable.startedAt,
+    expiresAt: prayersForTable.expiresAt,
+    acknowledgedAt: prayersForTable.acknowledgedAt,
+    prayerText: prayersForTable.prayerText,
+    prayerUserId: prayersForTable.prayerUserId,
+    prayerName: usersTable.name,
+    prayerEmail: usersTable.email,
+    prayerAvatarUrl: usersTable.avatarUrl,
+  })
+    .from(prayersForTable)
+    .innerJoin(usersTable, eq(usersTable.id, prayersForTable.prayerUserId))
+    .where(whereClause)
+    .orderBy(desc(prayersForTable.startedAt));
+
+  const now = Date.now();
+  const enriched = rows.map(r => {
+    const expired = r.expiresAt.getTime() <= now;
+    const acknowledged = r.acknowledgedAt != null;
+    return {
+      ...r,
+      acknowledgedAt: r.acknowledgedAt ? r.acknowledgedAt.toISOString() : null,
+      expired,
+      acknowledged,
+      // active = currently being held. Past = either expired with no
+      // renewal, or explicitly ended by the prayer-er.
+      active: !expired && !acknowledged,
+    };
+  });
+
+  res.json(enriched);
 });
 
 // ─── POST /api/prayers-for ──────────────────────────────────────────────────
