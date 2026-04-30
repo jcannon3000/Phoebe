@@ -50,6 +50,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     ...(isBetaAdmin ? [
       { emoji: "🔐", label: "Pilot Users", path: "/beta" },
       { emoji: "📜", label: "Waitlist",    path: "/waitlist" },
+      { emoji: "🚩", label: "Reports",     path: "/admin/reports" },
     ] : []),
     { emoji: "ℹ️", label: "About",       path: "/church-deck"  },
   ];

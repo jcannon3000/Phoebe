@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
-import { db, contentReportsTable } from "@workspace/db";
+import { desc, eq, inArray } from "drizzle-orm";
+import { db, contentReportsTable, usersTable, betaUsersTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
 // Content reporting endpoint — required by App Store Guideline 1.2 for
@@ -69,6 +70,115 @@ router.post("/reports", async (req, res): Promise<void> => {
     logger.error({ err }, "[reports] failed to insert content report");
     res.status(500).json({ error: "Couldn't save report. Please try again." });
   }
+});
+
+// Same admin gate the feedback route uses — beta_users.is_admin = true.
+async function isBetaAdmin(userId: number): Promise<boolean> {
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return false;
+  try {
+    const [beta] = await db
+      .select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    return beta?.isAdmin === true;
+  } catch {
+    return false;
+  }
+}
+
+// GET /api/reports — admin-only moderation queue. Returns every
+// content report joined with the reporter's name + email and (when
+// kind='user') the reported user's name + email so the admin can
+// triage at a glance without a second round-trip.
+router.get("/reports", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (!(await isBetaAdmin(sessionUserId))) {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+
+  const rows = await db
+    .select({
+      id: contentReportsTable.id,
+      kind: contentReportsTable.kind,
+      targetId: contentReportsTable.targetId,
+      reason: contentReportsTable.reason,
+      status: contentReportsTable.status,
+      createdAt: contentReportsTable.createdAt,
+      reviewedAt: contentReportsTable.reviewedAt,
+      reporterUserId: contentReportsTable.reporterUserId,
+      reporterName: usersTable.name,
+      reporterEmail: usersTable.email,
+    })
+    .from(contentReportsTable)
+    .leftJoin(usersTable, eq(usersTable.id, contentReportsTable.reporterUserId))
+    .orderBy(desc(contentReportsTable.createdAt));
+
+  // Enrich kind='user' rows with the reported user's name + email.
+  const userTargetIds = rows
+    .filter(r => r.kind === "user")
+    .map(r => r.targetId);
+  const targetUserMap = new Map<number, { name: string; email: string }>();
+  if (userTargetIds.length > 0) {
+    const targets = await db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(inArray(usersTable.id, userTargetIds));
+    for (const t of targets) {
+      targetUserMap.set(t.id, { name: t.name, email: t.email });
+    }
+  }
+
+  res.json({
+    reports: rows.map(r => ({
+      ...r,
+      createdAt: r.createdAt ? r.createdAt.toISOString() : null,
+      reviewedAt: r.reviewedAt ? r.reviewedAt.toISOString() : null,
+      target:
+        r.kind === "user"
+          ? targetUserMap.get(r.targetId) ?? null
+          : null,
+    })),
+  });
+});
+
+// PATCH /api/reports/:id — admin marks a report reviewed (or dismissed).
+// Status = 'reviewed' | 'dismissed'. Reviewed_at is stamped server-side.
+router.patch("/reports/:id", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (!(await isBetaAdmin(sessionUserId))) {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const schema = z.object({ status: z.enum(["reviewed", "dismissed", "open"]) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { status } = parsed.data;
+  await db
+    .update(contentReportsTable)
+    .set({
+      status,
+      reviewedAt: status === "open" ? null : new Date(),
+    })
+    .where(eq(contentReportsTable.id, id));
+  res.json({ ok: true });
 });
 
 export default router;
