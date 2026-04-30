@@ -1166,21 +1166,6 @@ export default function PrayerListPage() {
           </button>
         )}
 
-        {/* Community intercessions — intercession practices */}
-        {intercessionsSorted.length > 0 && (focused === null || focused === "intercessions") && (
-          <SectionShell
-            id="intercessions"
-            label="Community intercessions"
-            count={intercessionsSorted.length}
-            focused={focused}
-            onFocus={setFocused}
-          >
-            {intercessionsSorted.map((m) => (
-              <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
-            ))}
-          </SectionShell>
-        )}
-
         {/* Prayer Requests */}
         {allRequests.length > 0 && (focused === null || focused === "requests") && (
           <SectionShell
@@ -1262,6 +1247,26 @@ export default function PrayerListPage() {
                 isPast
                 onOpen={() => setDetail({ kind: "prayer-from", id: p.id })}
               />
+            ))}
+          </SectionShell>
+        )}
+
+        {/* Community intercessions — intercession practices.
+            Moved to the bottom of the page (was at the top): the manage
+            prayer list reads as a personal inbox of asks the user owes
+            engagement on, and intercessions are a different shape (ongoing
+            community practices, not one-off asks). Keeping them last lets
+            the personal stuff lead. */}
+        {intercessionsSorted.length > 0 && (focused === null || focused === "intercessions") && (
+          <SectionShell
+            id="intercessions"
+            label="Community intercessions"
+            count={intercessionsSorted.length}
+            focused={focused}
+            onFocus={setFocused}
+          >
+            {intercessionsSorted.map((m) => (
+              <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
             ))}
           </SectionShell>
         )}
