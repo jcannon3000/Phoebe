@@ -25,12 +25,17 @@ const router: IRouter = Router();
 // the garden membership logic (group peers + correspondents, minus
 // hidden-admin vetoes).
 
-// GET /api/prayer-requests/:id — single request + words.
-// Powers two notification landing pages:
+// GET /api/prayer-requests/:id — single request + words + amens.
+// Powers three notification landing pages:
 //   1. "X left you a word of comfort" — viewer is the owner.
 //   2. "Y is asking for your prayers" — viewer is in Y's garden.
-// We allow either case here. Words are only included for the owner —
-// other viewers see the request body but not who has commented on it.
+//   3. "The first amen just went up for your request" — viewer is
+//      the owner; the page surfaces who said amen, the running
+//      amen count, and every word people have left so far.
+//
+// Amens + words are only attached for the owner. Other viewers see
+// the request body alone — Phoebe deliberately hides who else is
+// praying for someone else's request from third parties.
 router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -69,6 +74,60 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
         .where(eq(prayerWordsTable.requestId, id))
     : [];
 
+  // Owner-only: surface who has prayed and how many times. We collapse
+  // multiple taps from the same person on the same calendar day into a
+  // single "amen" — same dedupe rule as the prayer-list feed counts —
+  // so the number on this page lines up with what the owner sees on
+  // their feed card. We surface the FULL deduped list (one row per
+  // person-day, ordered most recent first) so the owner can see who
+  // showed up and when. The most recent row is what the first-amen
+  // push is celebrating.
+  let amenCountTotal = 0;
+  let amens: Array<{
+    userId: number;
+    userName: string | null;
+    userAvatarUrl: string | null;
+    prayedAt: string;
+  }> = [];
+  if (viewerIsOwner) {
+    const rawAmens = await db
+      .select({
+        userId: prayerRequestAmensTable.userId,
+        prayedAt: prayerRequestAmensTable.prayedAt,
+        userName: usersTable.name,
+        userAvatarUrl: usersTable.avatarUrl,
+      })
+      .from(prayerRequestAmensTable)
+      .leftJoin(usersTable, eq(usersTable.id, prayerRequestAmensTable.userId))
+      .where(eq(prayerRequestAmensTable.requestId, id))
+      .orderBy(desc(prayerRequestAmensTable.prayedAt));
+
+    // Bucket by (user, calendar-day) using the OWNER's timezone (which
+    // is `sessionUserId` here since viewerIsOwner). Falls back to UTC
+    // if no tz is set on the owner row — same fallback the feed uses.
+    const [ownerTzRow] = await db
+      .select({ timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    const ownerTz = ownerTzRow?.timezone || "UTC";
+    const ymdInOwnerTz = (d: Date) =>
+      new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+
+    const seen = new Set<string>();
+    for (const a of rawAmens) {
+      const key = `${a.userId}:${ymdInOwnerTz(a.prayedAt)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      amens.push({
+        userId: a.userId,
+        userName: a.userName ?? null,
+        userAvatarUrl: a.userAvatarUrl ?? null,
+        prayedAt: a.prayedAt.toISOString(),
+      });
+    }
+    amenCountTotal = amens.length;
+  }
+
   res.json({
     id: r.id,
     body: r.body,
@@ -85,6 +144,8 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
         createdAt: w.createdAt ? w.createdAt.toISOString() : null,
       }))
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
+    amens,
+    amenCountTotal,
   });
 });
 

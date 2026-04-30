@@ -537,6 +537,13 @@ export function sendNewGroupMomentPush(
 // owner sees who started carrying it. Fires exactly once per request,
 // gated server-side. The collapse-id makes that exactness idempotent
 // against any race.
+//
+// Deep-links to the prayer-request detail slide (not the manage feed),
+// so tapping the push lands the owner on a slide-styled view of the
+// request itself: the prayer text, the avatar of who said amen, the
+// running amen count, and any words of comfort that have been left.
+// The earlier `/prayer-list` destination buried that context behind
+// another tap.
 export function sendFirstAmenPush(
   recipientUserId: number,
   opts: { prayerRequestId: number; prayerName: string },
@@ -545,7 +552,7 @@ export function sendFirstAmenPush(
   return sendPushToUser(recipientUserId, {
     title: "You've been held in prayer",
     body: `The first amen just went up for your request by ${firstName}.`,
-    path: "/prayer-list",
+    path: `/prayer-requests/${opts.prayerRequestId}`,
     threadId: `prayer-request-${opts.prayerRequestId}`,
     collapseId: `first-amen-${opts.prayerRequestId}`,
     sound: PHOEBE_SOUND_HIGH,
@@ -557,6 +564,9 @@ export function sendFirstAmenPush(
 // the owner's timezone so the count matches what they see in the UI.
 // Collapse-id includes the date so a request that crosses days can
 // fire on each new day, but only once per day.
+//
+// Deep-links to the same detail slide as the first-amen push so the
+// owner can see the three pray-ers + any words at a glance.
 export function sendThirdAmenTodayPush(
   recipientUserId: number,
   opts: { prayerRequestId: number; localYmd: string },
@@ -564,7 +574,7 @@ export function sendThirdAmenTodayPush(
   return sendPushToUser(recipientUserId, {
     title: "3 people are praying for you today",
     body: "Your request is being carried.",
-    path: "/prayer-list",
+    path: `/prayer-requests/${opts.prayerRequestId}`,
     threadId: `prayer-request-${opts.prayerRequestId}`,
     collapseId: `third-amen-${opts.prayerRequestId}-${opts.localYmd}`,
     sound: PHOEBE_SOUND_HIGH,
