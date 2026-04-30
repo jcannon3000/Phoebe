@@ -829,7 +829,13 @@ function LetterCard({
     ? `Letter ${lastLetterFromMe ? "sent" : "received"} on ${format(parseISO(lastLetter.sentAt), "MMMM d")}`
     : null;
   const flapLines = [statusText, ...(lastLetterDateLine ? [lastLetterDateLine] : [])].filter(Boolean);
-  const letterLabel = isOneToOne ? `Letter ${Math.max(1, c.letterCount)}` : `Week ${c.currentPeriod.periodNumber}`;
+  // When it's the user's turn to write the next letter, label the chip
+  // with that *next* number (Letter N+1) — the in-progress letter, not
+  // the count of already-sent ones. Otherwise show the count of letters
+  // already in the dialogue.
+  const letterLabel = isOneToOne
+    ? `Letter ${needsWrite ? c.letterCount + 1 : Math.max(1, c.letterCount)}`
+    : `Week ${c.currentPeriod.periodNumber}`;
 
   return (
     <BarCard key={`${keyPrefix}-${c.id}`} href={`/letters/${c.id}`} pulse={shouldPulse} category="letters">
