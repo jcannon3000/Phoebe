@@ -2761,6 +2761,11 @@ export default function Dashboard() {
     // their tz). Drives the "X more prayers / Continue praying"
     // partial-progress card state below.
     myAmenedToday?: boolean;
+    // True when THIS viewer has *ever* tapped Amen on this request
+    // (any day). Drives the "X new prayers" subtitle so a request
+    // they engaged with previously doesn't reappear as "new" tomorrow
+    // morning when myAmenedToday flips back to false.
+    myAmenedEver?: boolean;
   };
   type DashPrayerFor = {
     id: number; expired: boolean; expiresAt: string;
@@ -2920,15 +2925,18 @@ export default function Dashboard() {
     return activeIntercessions + othersRequests + activePrayersFor;
   }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor, hasActiveOwnRequest]);
 
-  // Count of open prayer requests from others that the viewer hasn't
-  // yet amened today. Drives the "X new prayers" subtitle rotation and
-  // the red dot on the View list pill. Reciprocity-gated to match the
-  // slideshow — a viewer who hasn't shared their own ask doesn't get
-  // pinged about others' fresh requests.
+  // Count of open prayer requests from others that the viewer has
+  // never amened. Drives the "X new prayers" subtitle rotation and
+  // the red dot on the View list pill. Uses myAmenedEver instead of
+  // myAmenedToday so a request the user already engaged with stays
+  // "not new" forever — otherwise every prayer reappears as "new"
+  // each morning when myAmenedToday resets at midnight in the user's
+  // tz, which is the bug they reported. Still reciprocity-gated to
+  // match the slideshow.
   const newPrayersCount = useMemo(() => {
     if (!hasActiveOwnRequest) return 0;
     return (dashPrayerRequests ?? []).filter(
-      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedToday,
+      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
     ).length;
   }, [dashPrayerRequests, hasActiveOwnRequest]);
 
