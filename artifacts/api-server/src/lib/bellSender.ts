@@ -39,21 +39,23 @@ function todayDateInTz(timezone: string): string {
 
 // ─── Main bell sender ───────────────────────────────────────────────────────
 //
-// Push-only. Fires for every user inside the 0-14 minute window past their
-// dailyBellTime (default 07:00) in their local timezone. The bell is on by
-// default for everyone — if their phone allows notifications, they get it.
-// `sendPushToUser` no-ops for users without an active device token, so
-// users who haven't installed the app simply don't receive anything.
-// De-duped via a `bell_notifications` row keyed on (userId, todayStr).
-// `forceNow: true` bypasses both the time-window check and the dedup —
-// used by the /api/bell/fire-now debug endpoint.
+// Push-only. Fires for every user at 08:30 local in their timezone. The
+// time is global — the per-user `dailyBellTime` column is still in the
+// schema for now but is no longer read here. The bell is on by default
+// for everyone; `sendPushToUser` no-ops for users without an active
+// device token, so users who haven't installed the app simply don't
+// receive anything. De-duped via a `bell_notifications` row keyed on
+// (userId, todayStr). `forceNow: true` bypasses both the time-window
+// check and the dedup — used by the /api/bell/fire-now debug endpoint.
+
+const DAILY_BELL_HOUR = 8;
+const DAILY_BELL_MINUTE = 30;
 
 export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   const bellUsers = await db
     .select({
       id: usersTable.id,
       email: usersTable.email,
-      dailyBellTime: usersTable.dailyBellTime,
       timezone: usersTable.timezone,
     })
     .from(usersTable);
@@ -63,7 +65,6 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
   for (const user of bellUsers) {
     try {
       const tz = user.timezone ?? "America/New_York";
-      const bellTime = user.dailyBellTime ?? "07:00";
       const todayStr = todayDateInTz(tz);
 
       if (!opts.forceNow) {
@@ -79,8 +80,7 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
         if (existing) continue;
 
         const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
-        const [bellH, bellM] = bellTime.split(":").map(Number);
-        const diff = (nowH * 60 + nowM) - (bellH * 60 + bellM);
+        const diff = (nowH * 60 + nowM) - (DAILY_BELL_HOUR * 60 + DAILY_BELL_MINUTE);
         if (diff < 0 || diff >= 15) continue;
       }
 
@@ -240,7 +240,11 @@ export async function runLectioReminderSender(
     })
     .from(momentUserTokensTable)
     .innerJoin(sharedMomentsTable, eq(sharedMomentsTable.id, momentUserTokensTable.momentId))
-    .innerJoin(usersTable, eq(usersTable.email, momentUserTokensTable.email))
+    // Case-insensitive email join. moment_user_tokens.email is inserted
+    // verbatim from invite payloads (sometimes mixed-case) while
+    // users.email is normalized to lowercase on signup, so a strict
+    // equality join silently dropped invitees whose casing didn't match.
+    .innerJoin(usersTable, sql`LOWER(${usersTable.email}) = LOWER(${momentUserTokensTable.email})`)
     .where(
       and(
         eq(sharedMomentsTable.templateType, "lectio-divina"),
@@ -381,7 +385,8 @@ export async function runLectioEveningReminderSender(opts: { forceNow?: boolean 
     })
     .from(momentUserTokensTable)
     .innerJoin(sharedMomentsTable, eq(sharedMomentsTable.id, momentUserTokensTable.momentId))
-    .innerJoin(usersTable, eq(usersTable.email, momentUserTokensTable.email))
+    // Same case-insensitive join as runLectioReminderSender — see note there.
+    .innerJoin(usersTable, sql`LOWER(${usersTable.email}) = LOWER(${momentUserTokensTable.email})`)
     .where(
       and(
         eq(sharedMomentsTable.templateType, "lectio-divina"),
