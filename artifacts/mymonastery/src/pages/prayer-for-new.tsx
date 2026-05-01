@@ -383,17 +383,17 @@ function PersonPicker({
         Search anyone in your fellowship, or pick a friend from the list below.
       </p>
 
-      {/* Search input — a faint green lift off the page background
-          rather than a darker well. Earlier the field was #0F2818,
-          which read as a "hole" punched into the page; the user
-          flagged it as too dark. The translucent green we use on
-          community rows keeps the field present without sinking
-          below the page. */}
+      {/* Search input — match the suggestion-card style below so the
+          field doesn't sit visually below the cards (the previous
+          translucent-green well read darker than the solid #0F2818
+          rows that follow it). Now the field and the rows share the
+          same background, just with a slightly lighter border to
+          telegraph the input affordance. */}
       <div
         className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-4"
         style={{
-          background: "rgba(46,107,64,0.12)",
-          border: "1px solid rgba(46,107,64,0.25)",
+          background: "#0F2818",
+          border: "1px solid rgba(46,107,64,0.45)",
         }}
       >
         <SearchIcon size={16} style={{ color: "#8FAF96" }} />
