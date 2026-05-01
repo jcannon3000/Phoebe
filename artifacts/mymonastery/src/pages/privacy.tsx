@@ -62,7 +62,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>Your email address and display name (required)</li>
             <li>A profile photo (optional)</li>
-            <li>A password (hashed with scrypt and a per-user salt), or — on iOS — a Sign in with Apple identifier</li>
+            <li>A password (hashed with scrypt and a per-user salt)</li>
           </ul>
           <p>As you use the app, you can create content that we store on your behalf:</p>
           <ul className="list-disc pl-5 space-y-1">
@@ -119,8 +119,7 @@ export default function PrivacyPage() {
               Google for sign-in.
             </li>
             <li>
-              <strong>Apple</strong> — Sign in with Apple (iOS only) and Apple Push Notification service, both
-              governed by Apple's privacy terms.
+              <strong>Apple</strong> — Apple Push Notification service, governed by Apple's privacy terms.
             </li>
             <li>
               <strong>Railway</strong> — our API server and Postgres database run on Railway (Railway Corp.).

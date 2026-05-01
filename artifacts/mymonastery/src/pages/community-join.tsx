@@ -251,6 +251,11 @@ export default function CommunityJoinPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  // App Store Review Guideline 1.2 — explicit EULA acceptance gate before
+  // any UGC can be posted. Account creation is the entry point to all
+  // user-generated content in Phoebe, so the checkbox lives here and the
+  // submit button is disabled until it's checked.
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Pre-fill name + email from the invite when it loads (per-member tokens only)
   useEffect(() => {
@@ -338,6 +343,9 @@ export default function CommunityJoinPage() {
     if (!em || !em.includes("@")) { setAuthError("Enter a valid email."); return; }
     if (!password || password.length < 6) {
       setAuthError("Password must be at least 6 characters."); return;
+    }
+    if (!agreedToTerms) {
+      setAuthError("Please agree to the Terms of Use and Privacy Policy to continue."); return;
     }
     if (!invite) return;
     setAuthSubmitting(true);
@@ -936,11 +944,35 @@ export default function CommunityJoinPage() {
                   </button>
                 </div>
 
+                {/* App Store Guideline 1.2 EULA gate. Submit is disabled
+                    until checked, and the form's onSubmit handler also
+                    re-checks before hitting the register endpoint. */}
+                <label className="flex gap-2.5 items-start text-xs leading-relaxed mt-1 cursor-pointer" style={{ color: "#8FAF96" }}>
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={e => { setAgreedToTerms(e.target.checked); setAuthError(""); }}
+                    className="mt-0.5 shrink-0 cursor-pointer"
+                    disabled={authSubmitting}
+                  />
+                  <span>
+                    I agree to Phoebe's{" "}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "#C8D4C0" }}>
+                      Terms of Use
+                    </a>
+                    {" "}and{" "}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "#C8D4C0" }}>
+                      Privacy Policy
+                    </a>
+                    . I understand that Phoebe has zero tolerance for objectionable content or abusive behavior, and that violations may result in immediate account termination.
+                  </span>
+                </label>
+
                 {authError && <p className="text-sm px-1" style={{ color: "#C47A65" }}>{authError}</p>}
 
                 <button
                   type="submit"
-                  disabled={authSubmitting}
+                  disabled={authSubmitting || !agreedToTerms}
                   className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 mt-1 btn-sage"
                 >
                   {authSubmitting ? (

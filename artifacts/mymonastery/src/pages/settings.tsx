@@ -722,7 +722,12 @@ export default function SettingsPage() {
           <DeleteAccountSection email={user.email} />
         </div>
 
-        <div className="mt-6 pb-4 text-center">
+        <div className="mt-6 pb-4 text-center flex justify-center gap-5">
+          <Link href="/terms">
+            <span className="text-xs" style={{ color: "#8FAF96", textDecoration: "underline", cursor: "pointer" }}>
+              Terms of Use
+            </span>
+          </Link>
           <Link href="/privacy">
             <span className="text-xs" style={{ color: "#8FAF96", textDecoration: "underline", cursor: "pointer" }}>
               Privacy Policy

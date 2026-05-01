@@ -103,6 +103,7 @@ import PrayersForMePage from "./pages/prayers-for-me";
 import SettingsPage from "./pages/settings";
 import AboutPage from "./pages/about";
 import PrivacyPage from "./pages/privacy";
+import TermsPage from "./pages/terms";
 import InvitationsPage from "./pages/invitations";
 import BcpPage from "./pages/bcp";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
@@ -231,6 +232,7 @@ function Router() {
       <Route path="/settings" component={SettingsPage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
       <Route path="/invitations" component={InvitationsPage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
