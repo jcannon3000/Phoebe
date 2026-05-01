@@ -1,10 +1,41 @@
-import { useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
+
+// Kind comes from a `?kind=` query param set by the FAB on the home
+// dashboard. The three kinds drive form copy only — the request itself
+// is stored as a normal prayer request, so 'kind' is not persisted in
+// the DB. If we ever want to filter feeds by kind, add a column.
+type RequestKind = "request" | "life-event" | "justice";
+const KIND_COPY: Record<RequestKind, {
+  emoji: string;
+  title: string;
+  subtitle: string;
+  placeholder: string;
+}> = {
+  "request": {
+    emoji: "🙏🏽",
+    title: "What are you carrying?",
+    subtitle: "Share what you'd like your community to pray about. It can be big or small.",
+    placeholder: "A big decision at work… a family member who's been on my heart…",
+  },
+  "life-event": {
+    emoji: "🌱",
+    title: "What's happening in your life?",
+    subtitle: "A milestone, a change, a hard week — share what your community can hold with you.",
+    placeholder: "Starting a new job next Monday… my dad just went into hospice…",
+  },
+  "justice": {
+    emoji: "⚖️",
+    title: "What injustice are you holding?",
+    subtitle: "Name the ache. Your community will pray with you for what's broken.",
+    placeholder: "The encampment sweep last night… the verdict that came down today…",
+  },
+};
 
 // Full-screen, step-by-step authoring flow for sharing your own prayer
 // request with the community. Mirrors the "gathering" and "pray-for-new"
@@ -35,8 +66,16 @@ type Step = 0 | 1;
 
 export default function PrayerRequestNew() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  const kind: RequestKind = useMemo(() => {
+    const raw = new URLSearchParams(search).get("kind") ?? "";
+    if (raw === "life-event" || raw === "justice") return raw;
+    return "request";
+  }, [search]);
+  const copy = KIND_COPY[kind];
 
   const [step, setStep] = useState<Step>(0);
   const [body, setBody] = useState("");
@@ -116,11 +155,10 @@ export default function PrayerRequestNew() {
               transition={{ duration: 0.2 }}
             >
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                What are you carrying? 🙏🏽
+                {copy.title} {copy.emoji}
               </h1>
               <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-                Share what you'd like your community to pray about. It can be
-                big or small.
+                {copy.subtitle}
               </p>
 
               <textarea
@@ -128,7 +166,7 @@ export default function PrayerRequestNew() {
                 value={body}
                 onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
                 rows={8}
-                placeholder="A big decision at work… a family member who's been on my heart…"
+                placeholder={copy.placeholder}
                 className="w-full rounded-xl px-4 py-3.5 text-base outline-none resize-none mb-2"
                 style={{
                   background: "#0F2818",

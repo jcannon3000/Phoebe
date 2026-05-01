@@ -397,6 +397,76 @@ function BarCard({
   );
 }
 
+// ─── Home FAB (everyone) ────────────────────────────────────────────────────
+// Universal floating "+" on the home dashboard. Four options: three
+// kinds of personal prayer request (request / life event / justice
+// concern) + a prayer-for-other entry point. Shared visual language
+// with the admin FAB on /communities/:slug — same green circle,
+// same expanded-card treatment, same animated rotation on tap.
+
+function HomeAuthoringFAB() {
+  const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="flex flex-col gap-2 mb-1"
+          >
+            <button
+              onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=request"); }}
+              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Prayer request</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Something on your heart, big or small</p>
+            </button>
+            <button
+              onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=life-event"); }}
+              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌱 Life event</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>A milestone, a change, a hard week</p>
+            </button>
+            <button
+              onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=justice"); }}
+              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>⚖️ Justice concern</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>An ache the world is holding</p>
+            </button>
+            <button
+              onClick={() => { setOpen(false); setLocation("/pray-for/new"); }}
+              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝 Prayer for other</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Carry someone else for a few days</p>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
+        style={{ background: "#1A4A2E", color: "#F0EDE6" }}
+        aria-label={open ? "Close menu" : "New prayer"}
+      >
+        <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
+          {open ? <X size={24} /> : <Plus size={24} />}
+        </motion.div>
+      </button>
+    </div>
+  );
+}
+
 // ─── FAB ─────────────────────────────────────────────────────────────────────
 
 function FAB() {
@@ -3708,11 +3778,18 @@ export default function Dashboard() {
             reachable via the side menu and the direct route, but it
             shouldn't pull tap-attention from the dashboard footer. */}
 
-        {/* The admin FAB (start a practice / lectio / intercession / fast)
-            used to live on the home dashboard but moved to the community
-            detail page — that's the surface where "create something for
-            this community" actually has a community context, and the
-            home screen shouldn't double as an authoring entry point. */}
+        {/* Universal home FAB — bottom-right "+" with four authoring
+            entry points everyone gets:
+              🙏🏽 Prayer request   → /pray-request/new?kind=request
+              🌱 Life event        → /pray-request/new?kind=life-event
+              ⚖️ Justice concern   → /pray-request/new?kind=justice
+              🤝 Prayer for other  → /pray-for/new
+            The first three share the same underlying form (only the
+            copy/placeholder differs per kind); the fourth jumps into
+            the existing pray-for-other authoring flow. The admin FAB
+            for community-scoped authoring lives on the community
+            detail page now, not here. */}
+        <HomeAuthoringFAB />
       </div>
 
       {/* Goal-reached celebration popup */}
