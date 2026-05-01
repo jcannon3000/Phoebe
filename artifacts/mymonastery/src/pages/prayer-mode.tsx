@@ -1795,6 +1795,21 @@ export default function PrayerModePage() {
       /* non-fatal */
     }
 
+    // Clear today's morning/evening bell from the iOS notification
+    // center. The bell push is a "time to pray for your friends"
+    // nudge — once the user has actually prayed, the lock-screen
+    // banner has done its job and lingering there into the afternoon
+    // just looks like an unread item. Native shell listens for
+    // 'phoebe:clear-notifications' and removes any delivered
+    // notification whose APN thread-id matches. No-op on web.
+    try {
+      window.dispatchEvent(
+        new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "bell" } })
+      );
+    } catch {
+      /* non-fatal */
+    }
+
     // Fade out then navigate. The CTA flow now reads: dashboard card →
     // slideshow (/prayer-mode) → home (/dashboard). The closing slide
     // already shows the streak, the people prayed-with, and the habit
