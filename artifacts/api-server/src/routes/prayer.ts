@@ -253,11 +253,14 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       .where(eq(prayerRequestAmensTable.requestId, r.id));
 
     let myAmenedToday = false;
+    let myAmenedEver = false;
     for (const row of amens) {
       if (row.userId !== sessionUserId) continue;
       if (!row.prayedAt) continue;
+      myAmenedEver = true;
       const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
-      if (ymd === viewerTodayYmd) { myAmenedToday = true; break; }
+      if (ymd === viewerTodayYmd) { myAmenedToday = true; }
+      if (myAmenedToday && myAmenedEver) break;
     }
 
     if (isOwnRequest) {
@@ -312,6 +315,11 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       // already-prayed slides" resume + the dashboard partial-
       // progress card state.
       myAmenedToday,
+      // True if THIS viewer has *ever* tapped Amen on this request
+      // (any day). Drives the dashboard's "X new prayers" subtitle
+      // and red dot — once you've engaged with a request once, it's
+      // not "new" to you anymore even after midnight rolls over.
+      myAmenedEver,
     };
   }));
 
