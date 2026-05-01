@@ -10,7 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, gte, ne, sql } from "drizzle-orm";
 import { sendBellPush, sendEveningNudgePush, sendLectioReminderPush, sendLectioEveningReminderPush } from "./pushSender";
-import { nextSundayDate } from "./rclLectionary";
+import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { logger } from "./logger";
 
 // ─── Timezone helpers ───────────────────────────────────────────────────────
@@ -255,19 +255,26 @@ export async function runLectioReminderSender(
   if (memberships.length === 0) return;
 
   // Cache the Sunday's reading once per tick — every member of every
-  // circle keys off the same upcoming-Sunday date, and the lectionary
-  // table is small but the lookup repeats per row otherwise.
+  // circle keys off the same upcoming-Sunday date. Use getReadingForSunday
+  // (NOT a raw DB query) so we fall back to bundled seed data when the
+  // lectionary_readings row hasn't been populated yet — otherwise the
+  // entire run aborts and NO member of ANY lectio circle gets a push.
+  // That's the bug we shipped originally: dashboard worked because it
+  // used the helper, the cron didn't.
   const sundayDateObj = nextSundayDate();
   const sundayStr = sundayDateObj.toISOString().slice(0, 10);
-  const [reading] = await db
-    .select({ gospelReference: lectionaryReadingsTable.gospelReference })
-    .from(lectionaryReadingsTable)
-    .where(eq(lectionaryReadingsTable.sundayDate, sundayStr));
-  if (!reading) {
-    logger.warn({ sundayStr }, "[lectio-reminder] no lectionary reading cached yet — skipping run");
+  let gospelReference: string | null = null;
+  try {
+    const reading = await getReadingForSunday(sundayDateObj);
+    gospelReference = reading.gospelReference;
+  } catch (err) {
+    logger.warn({ err, sundayStr }, "[lectio-reminder] reading lookup failed — skipping run");
     return;
   }
-  const gospelReference = reading.gospelReference;
+  if (!gospelReference) {
+    logger.warn({ sundayStr }, "[lectio-reminder] reading has no gospelReference — skipping run");
+    return;
+  }
 
   for (const m of memberships) {
     try {
@@ -396,17 +403,22 @@ export async function runLectioEveningReminderSender(opts: { forceNow?: boolean 
 
   if (memberships.length === 0) return;
 
+  // Same fallback story as runLectioReminderSender — use the helper so
+  // we don't bail when only seed data exists for this Sunday.
   const sundayDateObj = nextSundayDate();
   const sundayStr = sundayDateObj.toISOString().slice(0, 10);
-  const [reading] = await db
-    .select({ gospelReference: lectionaryReadingsTable.gospelReference })
-    .from(lectionaryReadingsTable)
-    .where(eq(lectionaryReadingsTable.sundayDate, sundayStr));
-  if (!reading) {
-    logger.warn({ sundayStr }, "[lectio-evening] no lectionary reading cached yet — skipping run");
+  let gospelReference: string | null = null;
+  try {
+    const reading = await getReadingForSunday(sundayDateObj);
+    gospelReference = reading.gospelReference;
+  } catch (err) {
+    logger.warn({ err, sundayStr }, "[lectio-evening] reading lookup failed — skipping run");
     return;
   }
-  const gospelReference = reading.gospelReference;
+  if (!gospelReference) {
+    logger.warn({ sundayStr }, "[lectio-evening] reading has no gospelReference — skipping run");
+    return;
+  }
 
   // (momentId, stage) → number of distinct userTokens with a reflection
   // submitted this week. Cached per tick so we don't re-COUNT for every
