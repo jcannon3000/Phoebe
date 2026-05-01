@@ -3502,10 +3502,25 @@ export default function Dashboard() {
             // gate (they're a private practice, not communal).
             type Face = { key: string; name: string; avatarUrl: string | null };
             const faces: Face[] = [];
-            const seen = new Set<string>();
+            const seenSource = new Set<string>();
+            const seenIdentity = new Set<string>();
+            // Dedup happens on TWO axes:
+            //   - source key (`req-<ownerId>`, `pfor-<email>`) so we
+            //     don't add the same prayer-request twice within a
+            //     single source pass
+            //   - person identity (lowercased name + avatar URL) so
+            //     when the same person shows up as both a prayer
+            //     request author AND a prayer-for recipient, only one
+            //     circle renders. Two different people with the same
+            //     display name + null avatar collapse into one slot,
+            //     which is fine — the alternative was duplicate faces.
             const addFace = (key: string, name: string, avatarUrl: string | null) => {
-              if (!key || seen.has(key) || faces.length >= 3) return;
-              seen.add(key);
+              if (!key || faces.length >= 3) return;
+              if (seenSource.has(key)) return;
+              const identity = `${(name ?? "").trim().toLowerCase()}|${avatarUrl ?? ""}`;
+              if (seenIdentity.has(identity)) return;
+              seenSource.add(key);
+              seenIdentity.add(identity);
               faces.push({ key, name, avatarUrl });
             };
             if (hasActiveOwnRequest) {
