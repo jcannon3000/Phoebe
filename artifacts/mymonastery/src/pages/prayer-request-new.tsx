@@ -165,7 +165,7 @@ export default function PrayerRequestNew() {
                 ref={bodyRef}
                 value={body}
                 onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
-                rows={8}
+                rows={4}
                 placeholder={copy.placeholder}
                 className="w-full rounded-xl px-4 py-3.5 text-base outline-none resize-none mb-2"
                 style={{
