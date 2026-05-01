@@ -608,7 +608,7 @@ export function sendLectioReminderPush(
 ) {
   return sendPushToUser(userId, {
     title: "It's time for Lectio Divina",
-    body: `Tap to read and reflect on ${opts.gospelReference} for Stage ${opts.stageNumber} with ${opts.communityName}`,
+    body: `Tap to read and reflect on ${opts.gospelReference} for Stage ${opts.stageNumber} of ${opts.communityName}`,
     path: `/lectio/${opts.momentToken}/${opts.userToken}`,
     threadId: `lectio-${opts.momentId}`,
     collapseId: `lectio-${opts.momentId}-${opts.stage}-${opts.sundayDate}`,
