@@ -922,6 +922,10 @@ export default function CommunityDetailPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [newPrayer, setNewPrayer] = useState("");
+  // Admin-only floating action button (bottom-right) — moved here from the
+  // home dashboard. Lets a community admin start a practice, lectio, fast,
+  // event, or prayer feed scoped to *this* community.
+  const [fabOpen, setFabOpen] = useState(false);
   const [newAnnouncementTitle, setNewAnnouncementTitle] = useState("");
   const [newAnnouncementContent, setNewAnnouncementContent] = useState("");
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
@@ -2622,6 +2626,82 @@ export default function CommunityDetailPage() {
           groupEmoji={group.emoji}
           onClose={() => setOpenGatheringModal(null)}
         />
+      )}
+
+      {/* Admin FAB — bottom-right floating "+" that opens a menu of
+          authoring entry points scoped to THIS community. Lectio /
+          intercession / fast jump into /moment/new with a template
+          query param; event jumps into /tradition/new with the
+          community slug pre-filled; prayer feed (beta only) goes to
+          /prayer-feeds/new. Mirrors the FAB that used to live on the
+          home dashboard but always lacked a community context. */}
+      {isAdmin && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+          <AnimatePresence>
+            {fabOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="flex flex-col gap-2 mb-1"
+              >
+                <button
+                  onClick={() => { setFabOpen(false); setLocation(`/moment/new?template=lectio-divina&community=${slug}`); }}
+                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                  style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 Start a Lectio Divina group</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Read Sunday's gospel together, unhurried</p>
+                </button>
+                <button
+                  onClick={() => { setFabOpen(false); setLocation(`/moment/new?template=intercession&community=${slug}`); }}
+                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                  style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a group intercession</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Build a rhythm of prayer together</p>
+                </button>
+                <button
+                  onClick={() => { setFabOpen(false); setLocation(`/moment/new?template=fasting&community=${slug}`); }}
+                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                  style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 Start a group fast</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Keep a shared discipline on the same day</p>
+                </button>
+                <button
+                  onClick={() => { setFabOpen(false); setLocation(`/tradition/new?community=${slug}`); }}
+                  className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                  style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📅 Add an event</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>A gathering on the community calendar</p>
+                </button>
+                {isBeta && (
+                  <button
+                    onClick={() => { setFabOpen(false); setLocation(`/prayer-feeds/new?community=${slug}`); }}
+                    className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                    style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                  >
+                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕊️ Start a prayer feed</p>
+                    <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>A cause with a new intention every day</p>
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <button
+            onClick={() => setFabOpen(o => !o)}
+            className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
+            style={{ background: "#1A4A2E", color: "#F0EDE6" }}
+            aria-label={fabOpen ? "Close menu" : "Create new"}
+          >
+            <motion.div animate={{ rotate: fabOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
+              {fabOpen ? <X size={24} /> : <Plus size={24} />}
+            </motion.div>
+          </button>
+        </div>
       )}
     </Layout>
   );

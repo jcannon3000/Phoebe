@@ -3693,7 +3693,11 @@ export default function Dashboard() {
             reachable via the side menu and the direct route, but it
             shouldn't pull tap-attention from the dashboard footer. */}
 
-        <FAB />
+        {/* The admin FAB (start a practice / lectio / intercession / fast)
+            used to live on the home dashboard but moved to the community
+            detail page — that's the surface where "create something for
+            this community" actually has a community context, and the
+            home screen shouldn't double as an authoring entry point. */}
       </div>
 
       {/* Goal-reached celebration popup */}
