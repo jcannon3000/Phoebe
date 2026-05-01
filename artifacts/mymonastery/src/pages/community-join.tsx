@@ -957,11 +957,11 @@ export default function CommunityJoinPage() {
                   />
                   <span>
                     I agree to Phoebe's{" "}
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "#C8D4C0" }}>
+                    <a href="/terms" className="underline" style={{ color: "#C8D4C0" }}>
                       Terms of Use
                     </a>
                     {" "}and{" "}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "#C8D4C0" }}>
+                    <a href="/privacy" className="underline" style={{ color: "#C8D4C0" }}>
                       Privacy Policy
                     </a>
                     . I understand that Phoebe has zero tolerance for objectionable content or abusive behavior, and that violations may result in immediate account termination.
