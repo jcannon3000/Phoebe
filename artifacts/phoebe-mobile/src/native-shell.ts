@@ -306,6 +306,45 @@ async function registerForPushIfRequested() {
   window.addEventListener("phoebe:request-push-permission", handler);
 }
 
+// ─── Clear delivered notifications from the iOS notification center ────────
+// The web app dispatches `phoebe:clear-notifications` with an optional
+// `{ threadId: string }` filter. We pull the currently-delivered list and
+// remove anything whose APN thread-id matches. Used by /prayer-mode when
+// the slideshow finishes — the morning bell ('thread-id': 'bell') has done
+// its job, so it shouldn't sit on the lock screen for the rest of the day.
+//
+// On the web build the @capacitor/push-notifications plugin is a no-op,
+// so we wrap each call in a try/catch and let dispatchers fire blindly.
+function wireClearNotifications() {
+  window.addEventListener("phoebe:clear-notifications", async e => {
+    const detail = (e as CustomEvent).detail as { threadId?: string } | undefined;
+    const threadId = detail?.threadId;
+    try {
+      const list = await PushNotifications.getDeliveredNotifications();
+      const items = list.notifications ?? [];
+      // Match against either of the iOS thread fields the plugin
+      // surfaces. Different Capacitor versions / iOS releases populate
+      // one or the other; matching both is belt-and-suspenders.
+      const matches = threadId
+        ? items.filter(n => {
+            const anyN = n as unknown as Record<string, unknown>;
+            const tid =
+              (anyN["threadIdentifier"] as string | undefined)
+              ?? (anyN["thread-id"] as string | undefined)
+              ?? ((anyN["data"] as Record<string, unknown> | undefined)?.["thread-id"] as string | undefined);
+            return tid === threadId;
+          })
+        : items;
+      if (matches.length === 0) return;
+      await PushNotifications.removeDeliveredNotifications({ notifications: matches });
+    } catch {
+      // Plugin unavailable (web build) or a transient native error —
+      // not fatal; the OS will eventually drop the notification when
+      // the user wakes their device or another reminder fires.
+    }
+  });
+}
+
 // ─── Share sheet (native) ──────────────────────────────────────────────────
 // The web app can invoke the native share sheet by dispatching
 // `phoebe:share` with `{ title, text, url }`. We fall back silently if
@@ -999,6 +1038,7 @@ function exposePublicApi() {
   wireDeepLinks();
   wirePushActionListener();
   registerForPushIfRequested();
+  wireClearNotifications();
   wireNativeShare();
   wireHaptics();
   wireContacts();
