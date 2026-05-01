@@ -48,33 +48,22 @@ function MailLink() {
   );
 }
 
-export default function TermsPage() {
+// Body extracted so the registration screen can render the same content
+// in a modal. Apple Review needs the EULA visible *before* a UGC account
+// is created — opening it in a modal preserves the user's typed
+// registration state, which routing away to /terms would have wiped.
+export function TermsBody() {
   return (
-    <div
-      className="min-h-screen w-full"
-      style={{ background: "#091A10", color: "#F0EDE6", fontFamily: "system-ui, -apple-system, sans-serif" }}
-    >
-      <div className="max-w-2xl mx-auto px-5 py-10 pb-24">
-        <button
-          type="button"
-          onClick={() => {
-            if (window.history.length > 1) window.history.back();
-            else window.location.href = "/";
-          }}
-          className="text-sm mb-6 inline-flex items-center gap-1"
-          style={{ color: "#8FAF96" }}
-        >
-          ← Back
-        </button>
-        <h1
-          className="text-3xl font-bold mb-1"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Terms of Use
-        </h1>
-        <p className="text-xs mb-8" style={{ color: "rgba(143,175,150,0.75)" }}>
-          Last updated {LAST_UPDATED}
-        </p>
+    <>
+      <h1
+        className="text-3xl font-bold mb-1"
+        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+      >
+        Terms of Use
+      </h1>
+      <p className="text-xs mb-8" style={{ color: "rgba(143,175,150,0.75)" }}>
+        Last updated {LAST_UPDATED}
+      </p>
 
         <div className="mb-8 space-y-3 text-sm leading-relaxed" style={{ color: "#C8D4C0" }}>
           <p>
@@ -543,6 +532,29 @@ export default function TermsPage() {
             <MailLink />.
           </p>
         </Section>
+    </>
+  );
+}
+
+export default function TermsPage() {
+  return (
+    <div
+      className="min-h-screen w-full"
+      style={{ background: "#091A10", color: "#F0EDE6", fontFamily: "system-ui, -apple-system, sans-serif" }}
+    >
+      <div className="max-w-2xl mx-auto px-5 py-10 pb-24">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) window.history.back();
+            else window.location.href = "/";
+          }}
+          className="text-sm mb-6 inline-flex items-center gap-1"
+          style={{ color: "#8FAF96" }}
+        >
+          ← Back
+        </button>
+        <TermsBody />
       </div>
     </div>
   );

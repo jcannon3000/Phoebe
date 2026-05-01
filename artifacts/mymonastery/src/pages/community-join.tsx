@@ -6,6 +6,8 @@ import { Eye, EyeOff, ArrowRight, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { TermsBody } from "./terms";
+import { PrivacyBody } from "./privacy";
 
 // ─── Phone-shaped mockup shell ──────────────────────────────────────────────
 // Ported from features-deck.tsx so the community invite slideshow shows the
@@ -256,6 +258,12 @@ export default function CommunityJoinPage() {
   // user-generated content in Phoebe, so the checkbox lives here and the
   // submit button is disabled until it's checked.
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  // Modal state for the inline Terms / Privacy viewers. Opening these in
+  // a same-page overlay (instead of routing to /terms or /privacy)
+  // preserves the user's typed registration data — and works around the
+  // Capacitor-iOS quirk where target=_blank with a relative URL silently
+  // does nothing, plus the parent <label> intercepting child <a> clicks.
+  const [legalModal, setLegalModal] = useState<null | "terms" | "privacy">(null);
 
   // Pre-fill name + email from the invite when it loads (per-member tokens only)
   useEffect(() => {
@@ -957,13 +965,23 @@ export default function CommunityJoinPage() {
                   />
                   <span>
                     I agree to Phoebe's{" "}
-                    <a href="/terms" className="underline" style={{ color: "#C8D4C0" }}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModal("terms"); }}
+                      className="underline"
+                      style={{ color: "#C8D4C0", background: "transparent" }}
+                    >
                       Terms of Use
-                    </a>
+                    </button>
                     {" "}and{" "}
-                    <a href="/privacy" className="underline" style={{ color: "#C8D4C0" }}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModal("privacy"); }}
+                      className="underline"
+                      style={{ color: "#C8D4C0", background: "transparent" }}
+                    >
                       Privacy Policy
-                    </a>
+                    </button>
                     . I understand that Phoebe has zero tolerance for objectionable content or abusive behavior, and that violations may result in immediate account termination.
                   </span>
                 </label>
@@ -984,6 +1002,50 @@ export default function CommunityJoinPage() {
           </AnimatePresence>
         </div>
       </main>
+
+      {legalModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.65)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setLegalModal(null); }}
+        >
+          <div
+            className="w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col"
+            style={{
+              background: "#091A10",
+              maxHeight: "90vh",
+              border: "1px solid rgba(200,212,192,0.12)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="flex items-center justify-between px-5 py-3 sticky top-0 z-10"
+              style={{
+                background: "#091A10",
+                borderBottom: "1px solid rgba(200,212,192,0.08)",
+              }}
+            >
+              <span className="text-xs uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.7)" }}>
+                {legalModal === "terms" ? "Terms of Use" : "Privacy Policy"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setLegalModal(null)}
+                className="text-sm px-3 py-1 rounded-lg"
+                style={{ color: "#F0EDE6", background: "rgba(46,107,64,0.25)" }}
+              >
+                Close
+              </button>
+            </div>
+            <div
+              className="overflow-y-auto px-5 pt-4 pb-10"
+              style={{ color: "#F0EDE6", fontFamily: "system-ui, -apple-system, sans-serif" }}
+            >
+              {legalModal === "terms" ? <TermsBody /> : <PrivacyBody />}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

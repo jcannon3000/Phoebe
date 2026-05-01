@@ -28,33 +28,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function PrivacyPage() {
+// Body extracted so the registration screen can render the same content
+// in a modal — see TermsBody for the same pattern.
+export function PrivacyBody() {
   return (
-    <div
-      className="min-h-screen w-full"
-      style={{ background: "#091A10", color: "#F0EDE6", fontFamily: "system-ui, -apple-system, sans-serif" }}
-    >
-      <div className="max-w-2xl mx-auto px-5 py-10 pb-24">
-        <button
-          type="button"
-          onClick={() => {
-            if (window.history.length > 1) window.history.back();
-            else window.location.href = "/";
-          }}
-          className="text-sm mb-6 inline-flex items-center gap-1"
-          style={{ color: "#8FAF96" }}
-        >
-          ← Back
-        </button>
-        <h1
-          className="text-3xl font-bold mb-1"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Privacy Policy
-        </h1>
-        <p className="text-xs mb-8" style={{ color: "rgba(143,175,150,0.75)" }}>
-          Last updated {LAST_UPDATED}
-        </p>
+    <>
+      <h1
+        className="text-3xl font-bold mb-1"
+        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+      >
+        Privacy Policy
+      </h1>
+      <p className="text-xs mb-8" style={{ color: "rgba(143,175,150,0.75)" }}>
+        Last updated {LAST_UPDATED}
+      </p>
 
         <Section title="Who this covers">
           <p>
@@ -238,6 +225,29 @@ export default function PrivacyPage() {
             United States
           </p>
         </Section>
+    </>
+  );
+}
+
+export default function PrivacyPage() {
+  return (
+    <div
+      className="min-h-screen w-full"
+      style={{ background: "#091A10", color: "#F0EDE6", fontFamily: "system-ui, -apple-system, sans-serif" }}
+    >
+      <div className="max-w-2xl mx-auto px-5 py-10 pb-24">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) window.history.back();
+            else window.location.href = "/";
+          }}
+          className="text-sm mb-6 inline-flex items-center gap-1"
+          style={{ color: "#8FAF96" }}
+        >
+          ← Back
+        </button>
+        <PrivacyBody />
       </div>
     </div>
   );
