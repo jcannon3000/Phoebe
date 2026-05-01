@@ -113,11 +113,17 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     const ymdInOwnerTz = (d: Date) =>
       new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 
-    const seen = new Set<string>();
+    // Every row in the table is already an "eligible" amen — the POST
+    // route throttles to at most 1 per (user, request) per 2-hour
+    // window, capped at 7/day in the owner's tz. So we count every
+    // row. We still dedupe the *avatar list* shown to the owner by
+    // user (showing 7 stamps from the same person looks weird), but
+    // amenCountTotal reflects the raw count.
+    void ymdInOwnerTz;
+    const seenUser = new Set<number>();
     for (const a of rawAmens) {
-      const key = `${a.userId}:${ymdInOwnerTz(a.prayedAt)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seenUser.has(a.userId)) continue;
+      seenUser.add(a.userId);
       amens.push({
         userId: a.userId,
         userName: a.userName ?? null,
@@ -125,7 +131,7 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
         prayedAt: a.prayedAt.toISOString(),
       });
     }
-    amenCountTotal = amens.length;
+    amenCountTotal = rawAmens.length;
   }
 
   res.json({
@@ -264,16 +270,19 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     }
 
     if (isOwnRequest) {
-      const distinctUserDays = new Set<string>();
-      const distinctUsersToday = new Set<number>();
+      // Every row is an eligible amen (POST throttles to 1 per 2h per
+      // user per request, capped at 7/day in owner-tz). Counts are
+      // raw row counts now, not user-day buckets.
+      let countTotal = 0;
+      let countToday = 0;
       for (const row of amens) {
         if (!row.prayedAt) continue;
+        countTotal += 1;
         const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
-        distinctUserDays.add(`${row.userId}:${ymd}`);
-        if (ymd === viewerTodayYmd) distinctUsersToday.add(row.userId);
+        if (ymd === viewerTodayYmd) countToday += 1;
       }
-      amenCountTotal = distinctUserDays.size;
-      amenCountToday = distinctUsersToday.size;
+      amenCountTotal = countTotal;
+      amenCountToday = countToday;
     }
 
     // Freshness flags based on expiresAt (which we no longer hard-filter on)
@@ -649,11 +658,21 @@ router.delete("/prayer-requests/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-// POST /api/prayer-requests/:id/amen — log an "Amen" tap. Unbounded: every
-// tap is its own row so we can tell "today" vs "all time" apart. Recording
-// the owner's own amen on their own request feels self-congratulatory, so
-// owners are a no-op. Any member of the app may record amens on anyone
-// else's request (the list endpoint already filters what they see).
+// POST /api/prayer-requests/:id/amen — log an "Amen" tap. Throttled per
+// (user, request): a tap only inserts a row if (a) the same user's last
+// amen on this request was at least AMEN_MIN_GAP_MS ago, and (b) the
+// user has fewer than AMEN_DAILY_CAP eligible amens on this request
+// today (in the request owner's tz). Hitting either gate returns
+// `{ ok: true, throttled: true }` without recording — the client UI
+// can keep its optimistic feedback (the tap is acknowledged), but no
+// duplicate row contributes to counts or notifications.
+//
+// Recording the owner's own amen on their own request feels self-
+// congratulatory, so owners are a no-op. Any other member may record
+// amens on someone else's request (the list endpoint already filters
+// what they see).
+const AMEN_MIN_GAP_MS = 2 * 60 * 60 * 1000;
+const AMEN_DAILY_CAP = 7;
 router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -699,6 +718,30 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
     })
       .from(prayerRequestAmensTable)
       .where(eq(prayerRequestAmensTable.requestId, id));
+
+    // Throttle: skip the insert if this user's last amen on this
+    // request was less than AMEN_MIN_GAP_MS ago, or if they've already
+    // logged AMEN_DAILY_CAP eligible amens today (owner-tz). The
+    // client's optimistic UI is unaffected; the row just doesn't
+    // contribute to counts or notifications.
+    const nowMs = Date.now();
+    let mostRecentByMeMs = 0;
+    let myAmensToday = 0;
+    for (const r of prior) {
+      if (r.userId !== sessionUserId || !r.prayedAt) continue;
+      const ts = r.prayedAt.getTime();
+      if (ts > mostRecentByMeMs) mostRecentByMeMs = ts;
+      const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(r.prayedAt);
+      if (ymd === ownerLocalYmd) myAmensToday += 1;
+    }
+    if (mostRecentByMeMs > 0 && (nowMs - mostRecentByMeMs) < AMEN_MIN_GAP_MS) {
+      res.json({ ok: true, throttled: true, reason: "min-gap" });
+      return;
+    }
+    if (myAmensToday >= AMEN_DAILY_CAP) {
+      res.json({ ok: true, throttled: true, reason: "daily-cap" });
+      return;
+    }
 
     firstAmenFire = prior.length === 0;
 

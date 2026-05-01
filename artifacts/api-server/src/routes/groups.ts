@@ -528,30 +528,32 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         FROM prayer_requests
         WHERE owner_id IN (SELECT user_id FROM members)
       ),
-      -- Dedup "did this member pray today?" across both signals.
-      -- The 'day' column is YYYY-MM-DD text in the admin's local
-      -- timezone so all comparisons against $2/$3 are apples-to-apples.
+      -- Two derived sets:
+      --   prayer_events: every individual eligible amen + checkin —
+      --     used for "times prayed" so the 7/day cap surfaces in the
+      --     metric (the amen POST already throttles to 1/2hr/user/
+      --     request, capped at 7/day, so each row in
+      --     prayer_request_amens is a real, separately-counted
+      --     prayer session)
+      --   prayer_days: distinct (user, day) — used only for
+      --     "distinct users who prayed" buckets
+      prayer_events AS (
+        SELECT mt.user_id, mp.window_date AS day
+        FROM moment_posts mp
+        JOIN member_tokens mt ON mt.user_token = mp.user_token
+        WHERE mp.is_checkin = 1
+          AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+
+        UNION ALL
+
+        SELECT a.user_id,
+               to_char((a.prayed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_request_amens a
+        WHERE a.user_id IN (SELECT user_id FROM members)
+          AND a.prayed_at IS NOT NULL
+      ),
       prayer_days AS (
-        SELECT DISTINCT user_id, day FROM (
-          -- Prayer-list completions. window_date is already stored as
-          -- a YYYY-MM-DD string in the moment owner's tz; close enough
-          -- to admin's tz for community-level metrics.
-          SELECT mt.user_id, mp.window_date AS day
-          FROM moment_posts mp
-          JOIN member_tokens mt ON mt.user_token = mp.user_token
-          WHERE mp.is_checkin = 1
-            AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-
-          UNION
-
-          -- Explicit amens on other members' requests. prayed_at is a
-          -- UTC timestamptz; project to the admin's local date.
-          SELECT a.user_id,
-                 to_char((a.prayed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-          FROM prayer_request_amens a
-          WHERE a.user_id IN (SELECT user_id FROM members)
-            AND a.prayed_at IS NOT NULL
-        ) _
+        SELECT DISTINCT user_id, day FROM prayer_events
       )
       SELECT
         (SELECT COUNT(*) FROM members)::int AS total_members,
@@ -562,11 +564,13 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(*) FROM member_requests
            WHERE to_char((created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS prayer_requests_week,
 
-        -- "Times prayed" = sum of (user, day) pairs. Five amens in one
-        -- afternoon still count as one day of prayer.
-        (SELECT COUNT(*) FROM prayer_days)::int AS times_prayed_total,
-        (SELECT COUNT(*) FROM prayer_days WHERE day >= $2)::int AS times_prayed_today,
-        (SELECT COUNT(*) FROM prayer_days WHERE day >= $3)::int AS times_prayed_week,
+        -- "Times prayed" = sum of every eligible prayer event (one row
+        -- per amen + one row per checkin). The amen POST throttles
+        -- to ≥2-hour gaps and a 7/day-per-request cap, so each row
+        -- already represents a separate, intentional prayer session.
+        (SELECT COUNT(*) FROM prayer_events)::int AS times_prayed_total,
+        (SELECT COUNT(*) FROM prayer_events WHERE day >= $2)::int AS times_prayed_today,
+        (SELECT COUNT(*) FROM prayer_events WHERE day >= $3)::int AS times_prayed_week,
 
         -- Distinct users who have prayed in each window.
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $2)::int AS prayed_today,
@@ -586,7 +590,8 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       prayerRequestsToday: Number(row.prayer_requests_today ?? 0),
       prayerRequestsThisWeek: Number(row.prayer_requests_week ?? 0),
 
-      // "times prayed" — one amen per user per day
+      // "times prayed" — every eligible amen + checkin counts
+      // separately (cap 7/user/day, ≥2-hour gap, gated at insert).
       timesPrayedTotal: Number(row.times_prayed_total ?? 0),
       timesPrayedToday: Number(row.times_prayed_today ?? 0),
       timesPrayedThisWeek: Number(row.times_prayed_week ?? 0),
