@@ -357,6 +357,11 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
     body: z.string().min(1).max(1000),
     isAnonymous: z.boolean().optional().default(false),
     durationDays: z.number().int().min(1).max(30).optional().default(3),
+    // Author's framing at submission. Drives the optional pill on cards /
+    // slideshow. Default "request" renders no pill. "community-intercession"
+    // is admin-only — the client gates the FAB choice; the server enforces
+    // the gate below before persisting.
+    kind: z.enum(["request", "life-event", "justice", "community-intercession"]).optional().default("request"),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
@@ -385,6 +390,7 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
       body: parsed.data.body,
       isAnonymous: parsed.data.isAnonymous,
       createdByName: owner?.name ?? null,
+      kind: parsed.data.kind,
       expiresAt,
     })
     .returning();

@@ -6,7 +6,6 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
-import { PrayerRequestQuickEntry } from "@/components/prayer-request-quick-entry";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
@@ -398,15 +397,24 @@ function BarCard({
 }
 
 // ─── Home FAB (everyone) ────────────────────────────────────────────────────
-// Universal floating "+" on the home dashboard. Four options: three
-// kinds of personal prayer request (request / life event / justice
-// concern) + a prayer-for-other entry point. Shared visual language
-// with the admin FAB on /communities/:slug — same green circle,
-// same expanded-card treatment, same animated rotation on tap.
+// Universal floating "+" on the home dashboard. Four user-facing options
+// (request / life event / justice / prayer-for-other) plus a fifth
+// admin-only option (community intercession) shown when the user is an
+// admin in any group. Shared visual language with the admin FAB on
+// /communities/:slug — same green circle, same expanded-card treatment,
+// same animated rotation on tap.
 
-function HomeAuthoringFAB() {
+export function HomeAuthoringFAB() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
+  // Same admin probe HomeFAB() uses below — admin in *any* group earns
+  // the community-intercession option. Server enforces nothing yet, so
+  // this is a soft gate; we'll harden if it turns out anyone bypasses it.
+  const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+  });
+  const isAdminOfAny = (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin");
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
       <AnimatePresence>
@@ -450,6 +458,16 @@ function HomeAuthoringFAB() {
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝 Prayer for other</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Carry someone else for a few days</p>
             </button>
+            {isAdminOfAny && (
+              <button
+                onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=community-intercession"); }}
+                className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              >
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ Community intercession</p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>An intention for the whole community to carry</p>
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -3649,18 +3667,6 @@ export default function Dashboard() {
               cleaner without the secondary pill row sitting between
               the prayer-list card and the request entry input. */}
 
-          {/* Quick prayer-request entry — sits directly under the
-              daily prayer card so adding a request is the next
-              obvious tap. The bottom-of-page Prayer Requests
-              section was removed; the Daily Prayer List card's
-              line-2 subtitle now rotates "X new prayers" so the
-              user still hears about fresh requests they haven't
-              engaged with. */}
-          {filter === null && (
-            <div className="mt-5">
-              <PrayerRequestQuickEntry />
-            </div>
-          )}
         </div>
 
         {/* ── Loading skeleton ── */}

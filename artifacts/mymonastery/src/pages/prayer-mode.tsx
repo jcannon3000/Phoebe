@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
+import { PrayerKindPill } from "@/components/prayer-kind-pill";
 
 // Scale the big prayer-text block by character length so long prayers
 // (like the BCP collects) stay on one screen without scrolling, and short
@@ -62,6 +63,10 @@ interface PrayerRequest {
   // ISO timestamp when the request stops appearing to non-owners
   // unless renewed. Used by the slideshow as a defensive expiry filter.
   expiresAt?: string | null;
+  // Author's framing — drives the small pill above the body on the
+  // request slide ("Life event" / "For justice" / "Community
+  // intercession"). Default "request" renders no pill.
+  kind?: string | null;
 }
 
 interface PrayerSlide {
@@ -98,6 +103,10 @@ interface PrayerSlide {
   // specific person rather than a disembodied body of text.
   authorName?: string | null;
   authorAvatarUrl?: string | null;
+  // request specific — the author's framing (life-event / justice /
+  // community-intercession). Renders a small pill next to the eyebrow
+  // when set. Distinct from PrayerSlide.kind (slide type).
+  requestKind?: string | null;
   // circle-intention specific — included so the slide can link back to the
   // community, and so we can attribute the shared nature of the prayer in
   // the subtitle.
@@ -738,16 +747,19 @@ function SlideContent({
         </div>
       )}
 
-      <p
-        className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-        style={{ color: "rgba(143,175,150,0.45)" }}
-      >
-        {slide.kind === "intercession"
-          ? "Community Intercession"
-          : slide.kind === "circle-intention"
-            ? "Circle Intention"
-            : "Prayer Request"}
-      </p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          {slide.kind === "intercession"
+            ? "Community Intercession"
+            : slide.kind === "circle-intention"
+              ? "Circle Intention"
+              : "Prayer Request"}
+        </p>
+        {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
+      </div>
 
       <p
         className="text-[22px] leading-[1.5] font-medium italic"
@@ -1438,6 +1450,7 @@ export default function PrayerModePage() {
             myWord: r.myWord ?? null,
             authorName: r.ownerName ?? null,
             authorAvatarUrl: r.ownerAvatarUrl ?? null,
+            requestKind: r.kind ?? null,
             alreadyPrayedToday: r.myAmenedToday === true,
           }))
       : []),

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { usePrayerRequestPlaceholder } from "@/lib/usePrayerRequestPlaceholder";
 import { MessageCircle } from "lucide-react";
+import { PrayerKindPill } from "@/components/prayer-kind-pill";
 
 interface PrayerRequest {
   id: number;
@@ -28,6 +29,8 @@ interface PrayerRequest {
   // counts to keep praying-for-someone anonymous.
   amenCountToday?: number | null;
   amenCountTotal?: number | null;
+  // Author's framing — drives the optional pill in the row header.
+  kind?: string | null;
 }
 
 export function PrayerSection({
@@ -320,12 +323,15 @@ export function PrayerSection({
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-1">
-                                    {isSelf ? "Your request" : `From ${displayName}`}
-                                    {request.isCorrespondent && (
-                                      <span className="ml-1.5 normal-case tracking-normal" style={{ color: "rgba(92,138,95,0.7)" }}>· 📮 Correspondent</span>
-                                    )}
-                                  </p>
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">
+                                      {isSelf ? "Your request" : `From ${displayName}`}
+                                      {request.isCorrespondent && (
+                                        <span className="ml-1.5 normal-case tracking-normal" style={{ color: "rgba(92,138,95,0.7)" }}>· 📮 Correspondent</span>
+                                      )}
+                                    </p>
+                                    <PrayerKindPill kind={request.kind} />
+                                  </div>
                                   <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6" }}>
                                     {request.body}
                                   </p>

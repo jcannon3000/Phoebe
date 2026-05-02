@@ -10,6 +10,11 @@ export const prayerRequestsTable = pgTable("prayer_requests", {
   // existing rows valid through the migration.
   groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
+  // The author's framing when they submitted: "request" (default), "life-event",
+  // or "justice". Drives the optional pill on cards / slideshow ("Life event"
+  // or "For justice"); plain "request" rows show no pill. Stored as text so
+  // we can introduce new flavors without schema work.
+  kind: text("kind").notNull().default("request"),
   createdByName: text("created_by_name"),
   isAnonymous: boolean("is_anonymous").notNull().default(false),
   isAnswered: boolean("is_answered").notNull().default(false),

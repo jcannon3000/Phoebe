@@ -1132,6 +1132,12 @@ export async function migrate() {
         ON content_reports (reporter_user_id)
     `);
 
+    // prayer_requests.kind — author's framing at submission ("request",
+    // "life-event", "justice"). Stored as text so we can add new flavors
+    // without another migration. Drives the optional pill on cards and
+    // in the slideshow; existing rows backfill to the default "request".
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'request'`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

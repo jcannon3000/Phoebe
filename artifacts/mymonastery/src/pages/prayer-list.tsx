@@ -6,6 +6,8 @@ import { ChevronLeft, X as CloseIcon, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { PrayerKindPill } from "@/components/prayer-kind-pill";
+import { HomeAuthoringFAB } from "@/pages/dashboard";
 import type { PrayerForMe, MyActivePrayerFor } from "@/components/pray-for-them";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -62,6 +64,8 @@ type PrayerRequest = {
   createdAt: string;
   amenCountToday?: number | null;
   amenCountTotal?: number | null;
+  // Author's framing — drives the optional pill in the card header.
+  kind?: string | null;
 };
 
 // Discriminated union for the detail popup — one modal component switches on
@@ -357,9 +361,12 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName }: {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-            {req.isOwnRequest ? "Your request" : `From ${displayName}`}
-          </p>
+          <div className="flex items-center gap-2 mb-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.55)" }}>
+              {req.isOwnRequest ? "Your request" : `From ${displayName}`}
+            </p>
+            <PrayerKindPill kind={req.kind} />
+          </div>
           <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
             {req.body}
           </p>
@@ -1395,6 +1402,7 @@ export default function PrayerListPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      <HomeAuthoringFAB />
     </Layout>
   );
 }
