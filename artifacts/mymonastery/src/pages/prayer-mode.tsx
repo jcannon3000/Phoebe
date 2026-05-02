@@ -1432,7 +1432,13 @@ export default function PrayerModePage() {
     ...(hasActiveOwnRequest
       ? prayerRequests
           .filter((r) => {
-            if (r.isAnswered || r.isOwnRequest) return false;
+            if (r.isAnswered) return false;
+            // Default-kind own requests stay out of the slideshow — the
+            // viewer doesn't need their own personal ask as a slide to
+            // pray for. But Justice, Life-event, and Community-intercession
+            // are intentions the author explicitly wants their community
+            // (themselves included) to carry, so we keep them in.
+            if (r.isOwnRequest && (!r.kind || r.kind === "request")) return false;
             // Defense in depth: the personal feed already drops others'
             // expired requests at the SQL layer, but a stale cache (e.g.
             // an expiry crossing while the user is mid-session) could let
