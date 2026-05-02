@@ -460,7 +460,7 @@ export function HomeAuthoringFAB() {
             </button>
             {isAdminOfAny && (
               <button
-                onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=community-intercession"); }}
+                onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
                 className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                 style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
               >

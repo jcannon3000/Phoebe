@@ -9,10 +9,11 @@ import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 // Kind comes from a `?kind=` query param set by the FAB on the home
 // dashboard. Drives form copy AND is persisted to prayer_requests.kind
 // so cards / slideshow can render the matching pill ("Life event" /
-// "For justice" / "Community intercession"). Default "request" renders
-// no pill. "community-intercession" is admin-only — gated by the FAB
-// not surfacing the option to non-admins.
-export type RequestKind = "request" | "life-event" | "justice" | "community-intercession";
+// "For justice"). Default "request" renders no pill. Community
+// intercessions are not personal prayer requests — they go through
+// /moment/new?template=intercession and live in shared_moments, so
+// they never reach this form.
+export type RequestKind = "request" | "life-event" | "justice";
 const KIND_COPY: Record<RequestKind, {
   emoji: string;
   title: string;
@@ -36,12 +37,6 @@ const KIND_COPY: Record<RequestKind, {
     title: "What injustice are you holding?",
     subtitle: "Name the ache. Your community will pray with you for what's broken.",
     placeholder: "The encampment sweep last night… the verdict that came down today…",
-  },
-  "community-intercession": {
-    emoji: "🕯️",
-    title: "What is the community holding together?",
-    subtitle: "An intercession on behalf of the whole community — something to be carried in common.",
-    placeholder: "For our neighbors mourning this week… for the families in transition…",
   },
 };
 
@@ -80,7 +75,7 @@ export default function PrayerRequestNew() {
 
   const kind: RequestKind = useMemo(() => {
     const raw = new URLSearchParams(search).get("kind") ?? "";
-    if (raw === "life-event" || raw === "justice" || raw === "community-intercession") return raw;
+    if (raw === "life-event" || raw === "justice") return raw;
     return "request";
   }, [search]);
   const copy = KIND_COPY[kind];

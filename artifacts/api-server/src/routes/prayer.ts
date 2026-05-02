@@ -358,10 +358,10 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
     isAnonymous: z.boolean().optional().default(false),
     durationDays: z.number().int().min(1).max(30).optional().default(3),
     // Author's framing at submission. Drives the optional pill on cards /
-    // slideshow. Default "request" renders no pill. "community-intercession"
-    // is admin-only — the client gates the FAB choice; the server enforces
-    // the gate below before persisting.
-    kind: z.enum(["request", "life-event", "justice", "community-intercession"]).optional().default("request"),
+    // slideshow. Default "request" renders no pill. Community intercessions
+    // are not prayer requests — they live in shared_moments via
+    // /moment/new?template=intercession, so they never reach this endpoint.
+    kind: z.enum(["request", "life-event", "justice"]).optional().default("request"),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }

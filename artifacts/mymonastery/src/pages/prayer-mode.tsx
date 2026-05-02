@@ -1435,9 +1435,9 @@ export default function PrayerModePage() {
             if (r.isAnswered) return false;
             // Default-kind own requests stay out of the slideshow — the
             // viewer doesn't need their own personal ask as a slide to
-            // pray for. But Justice, Life-event, and Community-intercession
-            // are intentions the author explicitly wants their community
-            // (themselves included) to carry, so we keep them in.
+            // pray for. But Justice and Life-event are intentions the
+            // author explicitly wants their community (themselves
+            // included) to carry, so we keep them in.
             if (r.isOwnRequest && (!r.kind || r.kind === "request")) return false;
             // Defense in depth: the personal feed already drops others'
             // expired requests at the SQL layer, but a stale cache (e.g.

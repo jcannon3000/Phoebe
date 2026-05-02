@@ -7,7 +7,6 @@
 const KIND_LABEL: Record<string, { label: string; color: string }> = {
   "life-event": { label: "Life event", color: "#8FAF96" },
   "justice": { label: "For justice", color: "#C9A24E" },
-  "community-intercession": { label: "Community intercession", color: "#B7A1D6" },
 };
 
 export function PrayerKindPill({ kind, className }: { kind: string | null | undefined; className?: string }) {
