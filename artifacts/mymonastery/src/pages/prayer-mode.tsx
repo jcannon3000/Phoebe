@@ -683,7 +683,14 @@ function SlideContent({
   // a held silence.
   if (slide.kind === "pause") {
     return (
-      <div className="w-full flex flex-col items-center text-center gap-6">
+      // The slide container sits at flex-start with a 16dvh top padding,
+      // which leaves the pause content reading high. Pull it visually
+      // toward center by reserving most of the slide's vertical space
+      // and centring the contents inside.
+      <div
+        className="w-full flex flex-col items-center text-center gap-6"
+        style={{ minHeight: "calc(100dvh - 32dvh)", justifyContent: "center" }}
+      >
         <p
           className="text-[10px] uppercase tracking-[0.18em] font-semibold"
           style={{ color: "rgba(143,175,150,0.45)" }}
@@ -2094,10 +2101,15 @@ export default function PrayerModePage() {
 
   if (authLoading || !user) return null;
 
-  // Hold a calm loading screen until queries resolve AND the resume
-  // index is computed. Prevents the bell-push cold start from briefly
-  // mounting at slide 0 and then jumping to the right resume slot.
-  if (!dataReady || index < 0) {
+  // Hold a calm loading screen until the slide list is captured into
+  // `frozenSlides` AND the resume index is computed. The snapshot is
+  // taken when `dataReady` first flips true; after that, background
+  // refetches (mount-time invalidate, focus refetch, …) flip
+  // `isFetching` true again, but we keep displaying the snapshot
+  // rather than reverting to the spinner. Without this, the user
+  // saw the first slide flash for a render, get replaced by the
+  // spinner during the refetch, then come back identical.
+  if (!frozenSlides || index < 0) {
     return (
       <div
         style={{

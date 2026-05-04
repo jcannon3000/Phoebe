@@ -113,15 +113,15 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     const ymdInOwnerTz = (d: Date) =>
       new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 
-    // Every row in the table is already an "eligible" amen — the POST
-    // route throttles to at most 1 per (user, request) per 2-hour
-    // window, capped at 7/day in the owner's tz. So we count every
-    // row. We still dedupe the *avatar list* shown to the owner by
-    // user (showing 7 stamps from the same person looks weird), but
-    // amenCountTotal reflects the raw count.
-    void ymdInOwnerTz;
+    // Counts and the avatar list both bucket by (user, day-in-owner-tz):
+    // one prayer per person per day. New writes are gated to 1/day at
+    // the POST route, but this dedupe also protects against legacy
+    // rows from the old 7/day cap inflating the visible total.
     const seenUser = new Set<number>();
+    const userDayKeys = new Set<string>();
     for (const a of rawAmens) {
+      const ymd = ymdInOwnerTz(a.prayedAt);
+      userDayKeys.add(`${a.userId}|${ymd}`);
       if (seenUser.has(a.userId)) continue;
       seenUser.add(a.userId);
       amens.push({
@@ -131,7 +131,7 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
         prayedAt: a.prayedAt.toISOString(),
       });
     }
-    amenCountTotal = rawAmens.length;
+    amenCountTotal = userDayKeys.size;
   }
 
   res.json({
@@ -278,19 +278,21 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     }
 
     if (isOwnRequest) {
-      // Every row is an eligible amen (POST throttles to 1 per 2h per
-      // user per request, capped at 7/day in owner-tz). Counts are
-      // raw row counts now, not user-day buckets.
-      let countTotal = 0;
-      let countToday = 0;
+      // Counts are bucketed by (user, day-in-viewer-tz): one prayer
+      // per person per day, no matter how many rows that person has
+      // in the table. New writes are gated to 1/day at the POST
+      // route, but this dedupe also protects against legacy rows
+      // from the old 7/day cap inflating the visible total.
+      const totalUserDays = new Set<string>();
+      const todayUsers = new Set<number>();
       for (const row of amens) {
         if (!row.prayedAt) continue;
-        countTotal += 1;
         const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
-        if (ymd === viewerTodayYmd) countToday += 1;
+        totalUserDays.add(`${row.userId}|${ymd}`);
+        if (ymd === viewerTodayYmd) todayUsers.add(row.userId);
       }
-      amenCountTotal = countTotal;
-      amenCountToday = countToday;
+      amenCountTotal = totalUserDays.size;
+      amenCountToday = todayUsers.size;
     }
 
     // Freshness flags based on expiresAt (which we no longer hard-filter on)
@@ -728,21 +730,21 @@ router.delete("/prayer-requests/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-// POST /api/prayer-requests/:id/amen — log an "Amen" tap. Throttled per
-// (user, request): a tap only inserts a row if (a) the same user's last
-// amen on this request was at least AMEN_MIN_GAP_MS ago, and (b) the
-// user has fewer than AMEN_DAILY_CAP eligible amens on this request
-// today (in the request owner's tz). Hitting either gate returns
-// `{ ok: true, throttled: true }` without recording — the client UI
-// can keep its optimistic feedback (the tap is acknowledged), but no
-// duplicate row contributes to counts or notifications.
+// POST /api/prayer-requests/:id/amen — log an "Amen" tap. Throttled
+// per (user, request, day-in-owner-tz): the user gets at most one
+// recorded amen per request per calendar day. A second tap that day
+// returns `{ ok: true, throttled: true }` without recording — the
+// client UI keeps its optimistic feedback (the tap is acknowledged)
+// but no duplicate row contributes to counts or notifications. The
+// previous 2-hour-gap + 7/day model inflated visible amen counts;
+// users wanted "X people prayed for me today" to mean X *people*,
+// not X taps.
 //
 // Recording the owner's own amen on their own request feels self-
 // congratulatory, so owners are a no-op. Any other member may record
 // amens on someone else's request (the list endpoint already filters
 // what they see).
-const AMEN_MIN_GAP_MS = 2 * 60 * 60 * 1000;
-const AMEN_DAILY_CAP = 7;
+const AMEN_DAILY_CAP = 1;
 router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -789,24 +791,16 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
       .from(prayerRequestAmensTable)
       .where(eq(prayerRequestAmensTable.requestId, id));
 
-    // Throttle: skip the insert if this user's last amen on this
-    // request was less than AMEN_MIN_GAP_MS ago, or if they've already
-    // logged AMEN_DAILY_CAP eligible amens today (owner-tz). The
-    // client's optimistic UI is unaffected; the row just doesn't
-    // contribute to counts or notifications.
-    const nowMs = Date.now();
-    let mostRecentByMeMs = 0;
+    // Throttle: skip the insert if this user has already logged an
+    // amen on this request today (in the owner's tz). One amen per
+    // person per request per day — the client's optimistic UI is
+    // unaffected; the row just doesn't contribute to counts or
+    // notifications.
     let myAmensToday = 0;
     for (const r of prior) {
       if (r.userId !== sessionUserId || !r.prayedAt) continue;
-      const ts = r.prayedAt.getTime();
-      if (ts > mostRecentByMeMs) mostRecentByMeMs = ts;
       const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(r.prayedAt);
       if (ymd === ownerLocalYmd) myAmensToday += 1;
-    }
-    if (mostRecentByMeMs > 0 && (nowMs - mostRecentByMeMs) < AMEN_MIN_GAP_MS) {
-      res.json({ ok: true, throttled: true, reason: "min-gap" });
-      return;
     }
     if (myAmensToday >= AMEN_DAILY_CAP) {
       res.json({ ok: true, throttled: true, reason: "daily-cap" });
