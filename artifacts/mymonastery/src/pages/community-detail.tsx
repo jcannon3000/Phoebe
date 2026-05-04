@@ -588,18 +588,28 @@ function CommunityGatheringDetailModal({
 }
 
 function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) {
-  // Static "<Month D> — Tap to See All Service Times" teaser.
+  // "<Month D> — <time>" when the community only has one service time on
+  // their schedule; "<Month D> — Tap to See All Service Times" when there
+  // are multiple. Single-service churches were getting an awkward "tap to
+  // see all" teaser that promised more than the schedule actually had.
   if (schedule.times.length === 0) return null;
   const now = new Date();
   const diff = (schedule.dayOfWeek - now.getDay() + 7) % 7;
   const nextDate = new Date(now);
   nextDate.setDate(now.getDate() + diff);
   const dateLabel = nextDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  // Single-service: render the time directly. If a label is present
+  // ("Sunday Service", etc.) we omit it in this collapsed home-tab
+  // pill so the line stays compact — the dedicated Gatherings tab is
+  // where the full label + location shows.
+  const trailing = schedule.times.length === 1
+    ? schedule.times[0].time
+    : "Tap to See All Service Times";
   return (
     <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
       <span style={{ color: "#C8D4C0" }}>{dateLabel}</span>
       <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
-      <span>Tap to See All Service Times</span>
+      <span>{trailing}</span>
     </div>
   );
 }
