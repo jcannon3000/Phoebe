@@ -1768,23 +1768,20 @@ export default function PrayerModePage() {
   // mount at index 0, then "flip around" to the right slot once data
   // arrived. The user reported that flicker; the loading screen below
   // covers it.
-  // Also wait for the mount-triggered refetch to settle before we
-  // capture the slide list. With cache-then-revalidate React Query
-  // flips `isSuccess` true the moment cache is read — so the snapshot
-  // would otherwise be taken from yesterday's data while today's
-  // refetch is still in flight (the day-old-push refresh bug).
-  // Requiring `!isFetching` on every query forces us to wait for the
-  // fresh response. Once we're past the initial capture (index !== -1)
-  // we no longer need this gate, but the snapshot is taken once.
+  // Use cached data the instant it's available. Earlier we also
+  // gated on `!isFetching` to wait out the mount-triggered refetch,
+  // which was meant to dodge the day-old-push refresh bug — but the
+  // cost was a buffering spinner on every cold start, even when the
+  // cache was perfectly fresh. We trade that edge case (yesterday's
+  // data briefly informing the resume index on a day rollover) for
+  // instant slideshow open. The snapshot below is captured once and
+  // frozen for the session, so a slightly later refetch can't tear
+  // slides out from under the user mid-prayer.
   const dataReady =
     momentsQuery.isSuccess &&
     prayerRequestsQuery.isSuccess &&
     myPrayersForQuery.isSuccess &&
-    circleIntentionsQuery.isSuccess &&
-    !momentsQuery.isFetching &&
-    !prayerRequestsQuery.isFetching &&
-    !myPrayersForQuery.isFetching &&
-    !circleIntentionsQuery.isFetching;
+    circleIntentionsQuery.isSuccess;
 
   // Today key in local time — used to scope localStorage progress so
   // a session started yesterday doesn't bleed into today's resume.
