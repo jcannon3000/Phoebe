@@ -603,8 +603,11 @@ export default function LectioPage() {
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
           // Header is position:fixed at the top with its own safe-area
-          // padding; we just need enough top padding to clear it.
-          paddingTop: "calc(env(safe-area-inset-top) + 56px)",
+          // padding; we just need enough top padding to clear it. The
+          // earlier 56px left a wide gap between the bar and the slide
+          // headline on every stage; 32px lands the content directly
+          // under the bar without overlap.
+          paddingTop: "calc(env(safe-area-inset-top) + 32px)",
           // Bottom nav is position:fixed with safe-area-bottom + 16 + ~50
           // pill height. Pad enough to clear it plus keyboard inset when
           // the textarea is focused.

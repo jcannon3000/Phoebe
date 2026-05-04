@@ -14,7 +14,7 @@ export function PrayerRequestQuickEntry() {
   const [inputValue, setInputValue] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [pendingBody, setPendingBody] = useState("");
-  const [durationDays, setDurationDays] = useState<3 | 7>(3);
+  const [durationDays, setDurationDays] = useState<3 | 7>(7);
   const placeholder = usePrayerRequestPlaceholder(inputValue);
 
   const submitMutation = useMutation({

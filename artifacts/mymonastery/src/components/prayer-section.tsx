@@ -67,7 +67,7 @@ export function PrayerSection({
   const placeholder = usePrayerRequestPlaceholder(inputValue);
   const [showModal, setShowModal] = useState(false);
   const [pendingBody, setPendingBody] = useState("");
-  const [durationDays, setDurationDays] = useState<3 | 7>(3);
+  const [durationDays, setDurationDays] = useState<3 | 7>(7);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [wordInputs, setWordInputs] = useState<Record<number, string>>({});
   const [showAll, setShowAll] = useState(false);

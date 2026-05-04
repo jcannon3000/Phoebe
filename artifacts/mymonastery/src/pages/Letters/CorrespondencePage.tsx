@@ -32,7 +32,7 @@ interface CorrespondenceDetail {
   name: string;
   groupType: string;
   startedAt: string;
-  members: Array<{ id: number; name: string | null; email: string; joinedAt: string | null; lastLetterAt: string | null }>;
+  members: Array<{ id: number; name: string | null; email: string; joinedAt: string | null; lastLetterAt: string | null; avatarUrl?: string | null }>;
   letters: LetterData[];
   myTurn: boolean;
   turnState?: TurnState;
@@ -211,12 +211,52 @@ export default function CorrespondencePage() {
           )}
         </div>
 
-        {/* Header — one_to_one always shows the OTHER person's name */}
-        <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          {isOneToOne && otherMembers
-            ? `Dialogue with ${otherMembers}`
-            : (data.name?.replace(/^Letters with\b/, "Dialogue with")) || `Sharing with ${otherMembers}`}
-        </h1>
+        {/* Header — one_to_one always shows the OTHER person's name.
+            Avatar stack of recipient(s) sits to the right of the title
+            so the dialogue surface always gives a face to who you're
+            writing to. */}
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {isOneToOne && otherMembers
+              ? `Dialogue with ${otherMembers}`
+              : (data.name?.replace(/^Letters with\b/, "Dialogue with")) || `Sharing with ${otherMembers}`}
+          </h1>
+          {(() => {
+            const recipients = members.filter((m) => (m.email || "").toLowerCase() !== me).slice(0, 3);
+            if (recipients.length === 0) return null;
+            return (
+              <div className="flex items-center -space-x-2 shrink-0 mt-1">
+                {recipients.map((rm) => (
+                  rm.avatarUrl ? (
+                    <img
+                      key={rm.email}
+                      src={rm.avatarUrl}
+                      alt={rm.name ?? rm.email}
+                      className="w-9 h-9 rounded-full object-cover"
+                      style={{ border: "1.5px solid #0F2818" }}
+                    />
+                  ) : (
+                    <div
+                      key={rm.email}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold"
+                      style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0F2818" }}
+                      title={rm.name ?? rm.email}
+                    >
+                      {((rm.name ?? rm.email) || "?")
+                        .trim()
+                        .split(/\s+/)
+                        .slice(0, 2)
+                        .map((s) => s[0] ?? "")
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2) || "?"}
+                    </div>
+                  )
+                ))}
+              </div>
+            );
+          })()}
+        </div>
         {isOneToOne && otherMembers && (
           <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
         )}
@@ -414,13 +454,26 @@ export default function CorrespondencePage() {
                 .filter((m) => readers.includes(m.email) || (m.id && readers.includes(m.id)))
                 .map((m) => m.name || m.email.split("@")[0]);
 
+              const authorMember = members.find((m) =>
+                (m.email || "").toLowerCase() === (letter.authorEmail || "").toLowerCase()
+              );
+              const authorAvatarUrl = authorMember?.avatarUrl ?? null;
+              const authorInitials = ((letter.authorName || "?") as string)
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((s) => s[0] ?? "")
+                .join("")
+                .toUpperCase()
+                .slice(0, 2) || "?";
+
               return (
                 <div key={letter.id} className="mb-3">
                   <Link href={`/letters/${correspondenceId}/read/${letter.id}${tokenParam}`}>
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="relative cursor-pointer"
+                      className="relative cursor-pointer flex gap-3"
                       style={{
                         background: "#0F2818",
                         border: `1px solid rgba(92,122,95,${isOwn ? "0.35" : "0.2"})`,
@@ -430,20 +483,40 @@ export default function CorrespondencePage() {
                         boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
                       }}
                     >
-                      <p className="text-[11px] font-semibold uppercase mb-1" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
-                        {letter.authorName} · {isOneToOne ? `Letter ${letters.length - index}` : `Update ${letter.letterNumber}`}
-                        {isOneToOne && ` · ${formatLetterDate(letter.sentAt)}`}
-                      </p>
-
-                      <p className="text-sm leading-snug truncate" style={{ color: "#C8D4C0", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>
-                        {letter.content}
-                      </p>
-
-                      {isOwn && readByOthers.length > 0 && (
-                        <p className="text-[11px] mt-1.5" style={{ color: "#8FAF96" }}>
-                          Read by {readByOthers.join(", ")} 🌿
-                        </p>
+                      {/* Author avatar — gives every letter card a face,
+                          not just a name. Falls back to initials when
+                          the user hasn't uploaded a photo. */}
+                      {authorAvatarUrl ? (
+                        <img
+                          src={authorAvatarUrl}
+                          alt={letter.authorName || ""}
+                          className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
+                          style={{ border: "1px solid rgba(46,107,64,0.35)" }}
+                        />
+                      ) : (
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 mt-0.5"
+                          style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.35)" }}
+                        >
+                          {authorInitials}
+                        </div>
                       )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold uppercase mb-1" style={{ color: "#8FAF96", letterSpacing: "0.1em" }}>
+                          {letter.authorName} · {isOneToOne ? `Letter ${letters.length - index}` : `Update ${letter.letterNumber}`}
+                          {isOneToOne && ` · ${formatLetterDate(letter.sentAt)}`}
+                        </p>
+
+                        <p className="text-sm leading-snug truncate" style={{ color: "#C8D4C0", fontFamily: isOneToOne ? "Georgia, serif" : "'Space Grotesk', sans-serif" }}>
+                          {letter.content}
+                        </p>
+
+                        {isOwn && readByOthers.length > 0 && (
+                          <p className="text-[11px] mt-1.5" style={{ color: "#8FAF96" }}>
+                            Read by {readByOthers.join(", ")} 🌿
+                          </p>
+                        )}
+                      </div>
                     </motion.div>
                   </Link>
                 </div>

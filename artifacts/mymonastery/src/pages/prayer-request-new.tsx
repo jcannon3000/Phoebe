@@ -1,10 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
+
+type LastMineRow = {
+  id: number;
+  body: string;
+  createdAt: string;
+  expiresAt: string | null;
+  closedAt: string | null;
+  isAnswered: boolean;
+  kind: string | null;
+  isActive: boolean;
+  isExpired: boolean;
+};
 
 // Kind comes from a `?kind=` query param set by the FAB on the home
 // dashboard. Drives form copy AND is persisted to prayer_requests.kind
@@ -88,6 +100,18 @@ export default function PrayerRequestNew() {
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (step === 0) bodyRef.current?.focus(); }, [step]);
 
+  // Pull the user's most-recent prayer request to offer a "renew this
+  // instead?" card under the textarea on step 0. Only renders for an
+  // expired/closed request — an active one already lives on /prayer-list,
+  // so showing it here would just duplicate the surface.
+  const { data: lastMineData } = useQuery<{ request: LastMineRow | null }>({
+    queryKey: ["/api/prayer-requests/last-mine"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests/last-mine"),
+    enabled: !!user,
+  });
+  const lastMine = lastMineData?.request ?? null;
+  const showRenewCard = lastMine && (lastMine.isExpired || !!lastMine.closedAt) && !lastMine.isActive;
+
   const createMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/prayer-requests", {
@@ -99,10 +123,25 @@ export default function PrayerRequestNew() {
     onSuccess: () => {
       triggerSubmitFeedback();
       qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
       setLocation("/prayer-list");
     },
     onError: (err: any) => {
       setError(err?.message || "Couldn't share this request. Please try again.");
+    },
+  });
+
+  const renewMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
+    onSuccess: () => {
+      triggerSubmitFeedback();
+      qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
+      setLocation("/prayer-list");
+    },
+    onError: (err: any) => {
+      setError(err?.message || "Couldn't renew. Please try again.");
     },
   });
 
@@ -195,6 +234,50 @@ export default function PrayerRequestNew() {
               >
                 Continue →
               </button>
+
+              {/* Renew-instead card — only when the user has a previous
+                  prayer request that's expired or released. Tapping the
+                  green pill renews it for another 7 days and routes to
+                  /prayer-list, skipping the new-request submission
+                  entirely. The textarea above stays focused so the
+                  user can still write something fresh if they prefer. */}
+              {showRenewCard && lastMine && (
+                <div
+                  className="mt-6 rounded-xl p-4"
+                  style={{
+                    background: "#0F2818",
+                    border: "1px solid rgba(46,107,64,0.35)",
+                  }}
+                >
+                  <p
+                    className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
+                    style={{ color: "rgba(143,175,150,0.6)" }}
+                  >
+                    Or renew your last one
+                  </p>
+                  <p
+                    className="text-[14px] italic leading-snug mb-3"
+                    style={{
+                      color: "rgba(232,217,176,0.85)",
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {lastMine.body}
+                  </p>
+                  <button
+                    onClick={() => renewMutation.mutate(lastMine.id)}
+                    disabled={renewMutation.isPending}
+                    className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
+                    style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
+                  >
+                    {renewMutation.isPending ? "Renewing…" : "Renew for 7 days"}
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
 

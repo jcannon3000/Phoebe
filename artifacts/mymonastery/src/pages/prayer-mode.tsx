@@ -70,7 +70,7 @@ interface PrayerRequest {
 }
 
 interface PrayerSlide {
-  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "ask-request" | "pray-for-suggest" | "circle-intention";
+  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "ask-request" | "pray-for-suggest" | "circle-intention" | "pause";
   text: string;
   attribution: string;
   fullText?: string | null;
@@ -153,6 +153,11 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
   const [word, setWord] = useState<string | null>(initialWord);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Public/private toggle — false (default) means the word goes on
+  // the request like any other; true means only the request owner
+  // and the author can see it. The author flips this with a small
+  // chip just above the send button.
+  const [isPrivate, setIsPrivate] = useState(false);
   // Failure surface — previously we silently swallowed every error here,
   // so a closed request or a transient 5xx looked identical to success
   // with no feedback. A tester reported "I tried to comment and it didn't
@@ -165,6 +170,7 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
     setWord(initialWord);
     setDraft("");
     setError(null);
+    setIsPrivate(false);
   }, [requestId, initialWord]);
 
   async function submit() {
@@ -173,7 +179,7 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
     setSubmitting(true);
     setError(null);
     try {
-      await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content });
+      await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content, isPrivate });
       triggerSubmitFeedback();
       setWord(content);
       setDraft("");
@@ -265,6 +271,37 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
 
   return (
     <div className="w-full mt-2">
+      {/* Public/private toggle — small pill above the input. Default
+          public; tap to switch to private (visible only to the owner
+          and the author). The selected state lights up in amber so the
+          author can tell at a glance which way the next submission
+          will go. */}
+      <div className="flex justify-end gap-2 mb-1.5">
+        <button
+          type="button"
+          onClick={() => setIsPrivate(false)}
+          className="text-[10px] uppercase tracking-[0.14em] font-semibold rounded-full px-2.5 py-1"
+          style={{
+            background: !isPrivate ? "rgba(46,107,64,0.35)" : "transparent",
+            color: !isPrivate ? "#C8D4C0" : "rgba(143,175,150,0.55)",
+            border: `1px solid ${!isPrivate ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.18)"}`,
+          }}
+        >
+          Public
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsPrivate(true)}
+          className="text-[10px] uppercase tracking-[0.14em] font-semibold rounded-full px-2.5 py-1"
+          style={{
+            background: isPrivate ? "rgba(193,154,58,0.20)" : "transparent",
+            color: isPrivate ? "#E8D9B0" : "rgba(143,175,150,0.55)",
+            border: `1px solid ${isPrivate ? "rgba(193,154,58,0.45)" : "rgba(46,107,64,0.18)"}`,
+          }}
+        >
+          🔒 Private
+        </button>
+      </div>
       <div
         className="w-full rounded-full px-4 py-1.5 flex items-center gap-2"
         style={{
@@ -431,6 +468,9 @@ function SlideContent({
   askSubmitting,
   suggestedFriends,
   onPrayForFriend,
+  lastMine,
+  onRenewLastMine,
+  renewingLastMine,
 }: {
   slide: PrayerSlide;
   // Stable key per slide — drives the 3-second Amen pause-reset. The
@@ -447,6 +487,14 @@ function SlideContent({
   // create-a-prayer-for page for that person.
   suggestedFriends: Array<{ name: string; email: string; avatarUrl?: string | null }>;
   onPrayForFriend: (email: string) => void;
+  // Optional renew-card data: the user's most-recent past prayer
+  // request when expired or released. Surfaces under the textarea on
+  // the ask-request slide so the user can renew instead of typing a
+  // brand-new ask. `null` if no past request, or if the past one is
+  // still active.
+  lastMine: { id: number; body: string } | null;
+  onRenewLastMine: () => void;
+  renewingLastMine: boolean;
 }) {
   const [askBody, setAskBody] = useState("");
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
@@ -582,6 +630,89 @@ function SlideContent({
             Skip
           </button>
         </div>
+
+        {/* Renew-instead card — only shown when the user's last prayer
+            request is past (expired or released), giving them a one-tap
+            way to bring it back for another 7 days instead of writing
+            a fresh ask. Mirrors the same surface on /pray-request/new. */}
+        {lastMine && (
+          <div
+            className="mt-4 w-full max-w-xs rounded-xl p-4 text-left"
+            style={{
+              background: "#0F2818",
+              border: "1px solid rgba(46,107,64,0.35)",
+            }}
+          >
+            <p
+              className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
+              style={{ color: "rgba(143,175,150,0.6)" }}
+            >
+              Or renew your last one
+            </p>
+            <p
+              className="text-[13px] italic leading-snug mb-3"
+              style={{
+                color: "rgba(232,217,176,0.85)",
+                fontFamily: "Georgia, 'Times New Roman', serif",
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {lastMine.body}
+            </p>
+            <button
+              onClick={onRenewLastMine}
+              disabled={renewingLastMine}
+              className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
+              style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
+            >
+              {renewingLastMine ? "Renewing…" : "Renew for 7 days"}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Open pause — invitation to bring anything else to prayer.
+  // Sits as the final slide before the closing summary so the user
+  // gets a meditative breath after the structured cards. Tapping
+  // Continue advances to the closing slide; there's no submit, just
+  // a held silence.
+  if (slide.kind === "pause") {
+    return (
+      <div className="w-full flex flex-col items-center text-center gap-6">
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          A moment to pause
+        </p>
+        <p
+          className="text-[22px] leading-[1.55] font-medium italic"
+          style={{
+            color: "#E8E4D8",
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            maxWidth: 380,
+          }}
+        >
+          Take a breath. Bring anything else on your heart to prayer.
+        </p>
+        <p
+          className="text-[13px] leading-relaxed"
+          style={{ color: "rgba(143,175,150,0.65)", maxWidth: 320 }}
+        >
+          Someone you haven&rsquo;t named, a worry that surfaced this morning, the world that needs holding.
+        </p>
+        <button
+          onClick={onAdvance}
+          className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          Continue →
+        </button>
       </div>
     );
   }
@@ -1053,35 +1184,39 @@ function StreakCelebration({ streak }: { streak: number }) {
 }
 
 // ─── Closing slide ─────────────────────────────────────────────────────────
-// Shown after the user finishes the prayer-list. Three layers, top to
-// bottom:
-//   1. Streak — always visible. If `celebration.firstToday`, the
-//      bursting Duolingo-style entrance fires; otherwise we render a
-//      static, calmer streak number that still reads as a daily badge.
-//   2. Avatar rail — up to 5 people the viewer has prayed for in the
-//      last 7 days, with a "+N" tail if there are more. A direct,
-//      face-level reminder that prayer is relational.
-//   3. Habit invite — copy that frames daily prayer as a practice and
-//      a "Done" button that closes the slideshow.
+// Shown after the user finishes the prayer-list. Headline metric is
+// "You prayed with N people" — community count, not streak. The streak
+// number used to lead this slide; user feedback was that the closing
+// moment should be about who you held alongside, not a personal-streak
+// scoreboard. Layers, top to bottom:
+//   1. Big number — count of distinct people whose intercession circles,
+//      requests, or prayer-fors the viewer touched in the last 7 days.
+//   2. Avatar rail — up to 5 of those faces, with a "+N" tail.
+//   3. Habit invite — same relational copy as before.
 //
-// The container shares the same `paddingTop: clamp(64px, 16dvh, 180px)`
-// as the prayer slides, but unlike the previous version it has more
-// vertical content so it doesn't read as floating high on tall screens.
+// `streak` is still passed in (and StreakCelebration still fires for
+// the firstToday milestone, briefly) but is no longer surfaced as the
+// resting state of the slide. We keep `coPrayers.length` as the
+// resting headline so the user lands on community, not personal.
 function ClosingSlide({
   celebration,
-  streak,
+  streak: _streak,
   coPrayers,
   onDone,
   visible,
 }: {
   celebration: { streak: number } | null;
+  /** Still accepted for symmetry with the celebration animation, but no
+   *  longer rendered as the resting headline. */
   streak: number;
   coPrayers: Array<{ id: number; name: string | null; avatarUrl: string | null }>;
   onDone: () => void;
   visible: boolean;
 }) {
+  void _streak;
   const visibleAvatars = coPrayers.slice(0, 5);
   const overflow = Math.max(0, coPrayers.length - visibleAvatars.length);
+  const peopleCount = coPrayers.length;
 
   return (
     <div
@@ -1092,12 +1227,19 @@ function ClosingSlide({
         gap: 28,
       }}
     >
-      {/* Streak — celebration animation on firstToday, static badge
-          otherwise. Both render from the same number so the visual
-          stays consistent. */}
-      {celebration ? (
+      {/* Celebration burst still fires on firstToday — kept for the
+          satisfying entrance — but the resting headline below is the
+          community count, not a streak number. */}
+      {celebration && (
         <StreakCelebration streak={celebration.streak} />
-      ) : (
+      )}
+
+      {/* Headline: people-prayed-with count. Only rendered if the
+          celebration animation isn't running (otherwise we have two
+          big numbers on screen). Falls back to a quiet "Held in
+          prayer" eyebrow when the count is zero, so a first-ever
+          session before any garden activity still feels complete. */}
+      {!celebration && (
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1108,26 +1250,37 @@ function ClosingSlide({
             className="text-[10px] uppercase tracking-[0.18em] font-semibold"
             style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Prayer streak
+            You prayed with
           </p>
-          <p
-            className="font-bold leading-none"
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              color: "#C8D4C0",
-              fontSize: 88,
-              letterSpacing: "-0.04em",
-              marginTop: 6,
-            }}
-          >
-            {streak}
-          </p>
-          <p
-            className="text-sm mt-1"
-            style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            {streak === 1 ? "day" : "days"}
-          </p>
+          {peopleCount > 0 ? (
+            <>
+              <p
+                className="font-bold leading-none"
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  color: "#C8D4C0",
+                  fontSize: 88,
+                  letterSpacing: "-0.04em",
+                  marginTop: 6,
+                }}
+              >
+                {peopleCount}
+              </p>
+              <p
+                className="text-sm mt-1"
+                style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                {peopleCount === 1 ? "person this week" : "people this week"}
+              </p>
+            </>
+          ) : (
+            <p
+              className="text-[22px] mt-3 italic"
+              style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              You held the world in prayer.
+            </p>
+          )}
         </motion.div>
       )}
 
@@ -1141,12 +1294,6 @@ function ClosingSlide({
           transition={{ duration: 0.4, delay: 0.15 }}
           className="flex flex-col items-center"
         >
-          <p
-            className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3"
-            style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            You prayed with
-          </p>
           <div className="flex items-center justify-center -space-x-2">
             {visibleAvatars.map((p) => (
               p.avatarUrl ? (
@@ -1289,16 +1436,94 @@ export default function PrayerModePage() {
 
   // Creating a prayer request from the final slide ("How can the community
   // pray for you?"). On success we advance past the ask slide — the
-  // slideshow then ends naturally.
+  // slideshow then ends naturally. Default duration is 7 days, matching
+  // the home FAB and the standalone authoring page.
   const createRequestMutation = useMutation({
     mutationFn: (body: string) =>
-      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays: 3 }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] }),
+      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays: 7 }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
+    },
+  });
+
+  // Renew-instead path on the ask-request slide. Pulls the user's most
+  // recent prayer request; if it's expired or released we render a
+  // small card under the textarea so they can revive that one for
+  // another 7 days instead of typing a brand-new ask.
+  const lastMineQuery = useQuery<{ request: {
+    id: number; body: string; createdAt: string; expiresAt: string | null;
+    closedAt: string | null; isAnswered: boolean; isActive: boolean; isExpired: boolean;
+  } | null }>({
+    queryKey: ["/api/prayer-requests/last-mine"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests/last-mine"),
+    enabled: !!user,
+  });
+  const renewableLastMine: { id: number; body: string } | null = (() => {
+    const r = lastMineQuery.data?.request;
+    if (!r) return null;
+    if (r.isActive) return null; // already alive — handled by /prayer-list
+    if (r.isAnswered) return null;
+    if (!r.isExpired && !r.closedAt) return null;
+    return { id: r.id, body: r.body };
+  })();
+  const renewLastMineMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
+    },
   });
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
+
+  // Force a fresh fetch of every data source the slideshow depends on
+  // every time the page mounts. Tapping a day-old bell push reuses
+  // React Query's cache from yesterday's session, so the slide list,
+  // active prayer detection, and "ask-request" gate were all computed
+  // off stale data — the user reported seeing yesterday's slides and
+  // missing the "no active prayer? share one" prompt for today.
+  // Invalidating at mount triggers a refetch immediately while the
+  // cached values still display, so by the time the slides array is
+  // captured into frozenSlides it reflects today's state.
+  //
+  // Also wipe any stale slideshow-progress entry whose key is not
+  // today's local date — yesterday's "you finished 4 of 7" entry must
+  // not pull the resume index forward into today's fresh slide list.
+  useEffect(() => {
+    if (!user) return;
+    queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/groups/me/circle-intentions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/prayer-streak"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/prayer-streak/co-prayers-week"] });
+
+    // Clear all slideshow-progress entries that aren't today's. Iterate
+    // localStorage in a try/catch so a parse failure on one stale key
+    // never blocks the rest.
+    try {
+      const todayKey = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      })();
+      const prefix = "phoebe:slideshow-progress:";
+      const toRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith(prefix)) continue;
+        if (k !== `${prefix}${todayKey}`) toRemove.push(k);
+      }
+      for (const k of toRemove) localStorage.removeItem(k);
+    } catch { /* private mode / quota — non-fatal */ }
+    // Run only once per mount. Subsequent invalidations come from the
+    // mutations that trigger them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Include every active intercession the user participates in, regardless
   // of the current window state. The slideshow is a "today's prayer list"
@@ -1517,17 +1742,42 @@ export default function PrayerModePage() {
     });
   }
 
+  // Pause slide — always present, sits as the final slide before the
+  // closing summary. A meditative breath: the user is invited to bring
+  // anything else on their heart to prayer that the slideshow couldn't
+  // know about (a worry that surfaced this morning, a person no card
+  // captured, etc.). Keeping it inside the slides array (rather than
+  // as its own phase) means it inherits the same swipe/Amen advance
+  // and persists in slideshow-progress for partial-completion math.
+  slides.push({
+    kind: "pause",
+    text: "",
+    attribution: "",
+  });
+
   // All four data queries finished resolving. The slideshow waits for
   // this before deciding the start index — otherwise, opening from a
   // bell push (cold start) would compute slides off an empty cache,
   // mount at index 0, then "flip around" to the right slot once data
   // arrived. The user reported that flicker; the loading screen below
   // covers it.
+  // Also wait for the mount-triggered refetch to settle before we
+  // capture the slide list. With cache-then-revalidate React Query
+  // flips `isSuccess` true the moment cache is read — so the snapshot
+  // would otherwise be taken from yesterday's data while today's
+  // refetch is still in flight (the day-old-push refresh bug).
+  // Requiring `!isFetching` on every query forces us to wait for the
+  // fresh response. Once we're past the initial capture (index !== -1)
+  // we no longer need this gate, but the snapshot is taken once.
   const dataReady =
     momentsQuery.isSuccess &&
     prayerRequestsQuery.isSuccess &&
     myPrayersForQuery.isSuccess &&
-    circleIntentionsQuery.isSuccess;
+    circleIntentionsQuery.isSuccess &&
+    !momentsQuery.isFetching &&
+    !prayerRequestsQuery.isFetching &&
+    !myPrayersForQuery.isFetching &&
+    !circleIntentionsQuery.isFetching;
 
   // Today key in local time — used to scope localStorage progress so
   // a session started yesterday doesn't bleed into today's resume.
@@ -1946,6 +2196,14 @@ export default function PrayerModePage() {
               onPrayForFriend={(email) => {
                 setLocation(`/pray-for/new/${encodeURIComponent(email)}`);
               }}
+              lastMine={renewableLastMine}
+              onRenewLastMine={() => {
+                if (!renewableLastMine) return;
+                renewLastMineMutation.mutate(renewableLastMine.id, {
+                  onSuccess: () => advance(),
+                });
+              }}
+              renewingLastMine={renewLastMineMutation.isPending}
             />
           </div>
         )}

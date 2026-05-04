@@ -279,6 +279,21 @@ router.get(
         .from(correspondenceMembersTable)
         .where(eq(correspondenceMembersTable.correspondenceId, correspondence.id));
 
+      // Resolve avatar URLs for every member by their email — drives the
+      // recipient profile pic on /letters dialogue cards. Stored
+      // case-insensitively on usersTable; case-insensitive email join
+      // mirrors how the lectio reminder cron resolves invitees.
+      const memberEmailsLower = members.map((m) => (m.email || "").toLowerCase());
+      const userRowsForMembers = memberEmailsLower.length
+        ? await db
+            .select({ email: usersTable.email, avatarUrl: usersTable.avatarUrl })
+            .from(usersTable)
+            .where(sql`LOWER(${usersTable.email}) IN (${sql.join(memberEmailsLower.map((e) => sql`${e}`), sql`, `)})`)
+        : [];
+      const avatarByEmail = new Map<string, string | null>(
+        userRowsForMembers.map((u) => [u.email.toLowerCase(), u.avatarUrl ?? null]),
+      );
+
       const letters = await db
         .select()
         .from(lettersTable)
@@ -329,6 +344,7 @@ router.get(
           email: m.email,
           joinedAt: m.joinedAt,
           lastLetterAt: m.lastLetterAt,
+          avatarUrl: avatarByEmail.get((m.email || "").toLowerCase()) ?? null,
         })),
         letterCount: letters.length,
         unreadCount,
@@ -428,6 +444,21 @@ router.get(
       myTurn = !hasWrittenThisPeriod;
     }
 
+    // Avatar lookup by member email — drives the recipient profile pic
+    // shown on the dialogue page header (and the per-letter author
+    // avatars on each card). Same case-insensitive join we use on the
+    // /correspondences list endpoint above.
+    const memberEmailsLower = members.map((mm) => (mm.email || "").toLowerCase());
+    const userRowsForMembers = memberEmailsLower.length
+      ? await db
+          .select({ email: usersTable.email, avatarUrl: usersTable.avatarUrl })
+          .from(usersTable)
+          .where(sql`LOWER(${usersTable.email}) IN (${sql.join(memberEmailsLower.map((e) => sql`${e}`), sql`, `)})`)
+      : [];
+    const avatarByEmail = new Map<string, string | null>(
+      userRowsForMembers.map((u) => [u.email.toLowerCase(), u.avatarUrl ?? null]),
+    );
+
     res.json({
       ...correspondence,
       members: members.map((m) => ({
@@ -436,6 +467,7 @@ router.get(
         email: m.email,
         joinedAt: m.joinedAt,
         lastLetterAt: m.lastLetterAt,
+        avatarUrl: avatarByEmail.get((m.email || "").toLowerCase()) ?? null,
       })),
       letters,
       myTurn,

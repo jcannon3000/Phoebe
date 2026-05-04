@@ -32,6 +32,7 @@ interface CorrespondenceItem {
     email: string;
     joinedAt: string | null;
     lastLetterAt: string | null;
+    avatarUrl?: string | null;
   }>;
   letterCount: number;
   unreadCount: number;
@@ -68,11 +69,16 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
   // the auth email, producing titles like "Dialogue with test" where the
   // email local-part gets displayed as if it were another person.
   const me = (userEmail || "").toLowerCase();
-  const otherMembers = item.members
-    .filter((m) => (m.email || "").toLowerCase() !== me)
+  const otherMembersFull = item.members.filter((m) => (m.email || "").toLowerCase() !== me);
+  const otherMembers = otherMembersFull
     .map((m) => m.name || m.email?.split("@")[0])
     .filter(Boolean)
     .join(", ");
+  // Up to 3 recipient avatars stacked on the right of the card. For a
+  // one-to-one dialogue this is just the other person's face; for a
+  // group it's the first three members so the card communicates "who
+  // I'm writing to" at a glance, even before the title scrolls past.
+  const recipientAvatars = otherMembersFull.slice(0, 3);
 
   // Local-TZ override of the OPEN verdict. Mirrors the dashboard
   // LetterCard + CorrespondencePage logic: server computes window in UTC,
@@ -142,9 +148,47 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
             <p className="text-base font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
               📮 {title}
             </p>
-            {lastLetterDate && (
-              <p className="text-[10px] shrink-0" style={{ color: "#8FAF96" }}>{lastLetterDate}</p>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Recipient avatars — stack of up to 3, overlapping. For a
+                  one-to-one dialogue this is just the other person; for
+                  a group it's the first three. Sits next to the date so
+                  the card has both "when did this last move" and "who
+                  am I writing to" visible at a glance. */}
+              {recipientAvatars.length > 0 && (
+                <div className="flex items-center -space-x-2">
+                  {recipientAvatars.map((rm) => (
+                    rm.avatarUrl ? (
+                      <img
+                        key={rm.email}
+                        src={rm.avatarUrl}
+                        alt={rm.name ?? rm.email}
+                        className="w-7 h-7 rounded-full object-cover"
+                        style={{ border: "1.5px solid #0F2818" }}
+                      />
+                    ) : (
+                      <div
+                        key={rm.email}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                        style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0F2818" }}
+                        title={rm.name ?? rm.email}
+                      >
+                        {((rm.name ?? rm.email) || "?")
+                          .trim()
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((s) => s[0] ?? "")
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2) || "?"}
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
+              {lastLetterDate && (
+                <p className="text-[10px]" style={{ color: "#8FAF96" }}>{lastLetterDate}</p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 mt-1.5">

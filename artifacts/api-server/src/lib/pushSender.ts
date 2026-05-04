@@ -559,6 +559,31 @@ export function sendFirstAmenPush(
   });
 }
 
+// "Your prayer is wrapping up tomorrow." Fires once per request, on
+// the calendar day BEFORE expiresAt in the owner's timezone. The
+// /prayer-requests/:id route doubles as a renewal landing page; tap
+// the push to see how many people prayed and decide whether to renew
+// or release. Dedup is handled at the caller site (renewalNudgeSentAt
+// stamp on prayer_requests).
+export function sendPrayerRenewalNudgePush(
+  recipientUserId: number,
+  opts: { prayerRequestId: number; amenCountTotal: number },
+) {
+  const carriedCopy = opts.amenCountTotal === 1
+    ? "1 amen has gone up so far."
+    : opts.amenCountTotal > 0
+      ? `${opts.amenCountTotal} amens have gone up so far.`
+      : "No rush — you can renew or let it close.";
+  return sendPushToUser(recipientUserId, {
+    title: "Your prayer is wrapping up tomorrow",
+    body: carriedCopy,
+    path: `/prayer-requests/${opts.prayerRequestId}?renew=1`,
+    threadId: `prayer-request-${opts.prayerRequestId}`,
+    collapseId: `renewal-nudge-${opts.prayerRequestId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 // "3 people are praying for you today." Fires the moment the third
 // distinct (user, today-in-owner-tz) amen lands. Today is bucketed in
 // the owner's timezone so the count matches what they see in the UI.

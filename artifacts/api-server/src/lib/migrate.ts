@@ -343,6 +343,13 @@ export async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    // is_private: when true, the word is visible only to the request
+    // owner + the author. Default false to preserve legacy behavior
+    // for rows written before this column existed.
+    await run(client, `ALTER TABLE prayer_words ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT false`);
+    // renewal_nudge_sent_at: stamped when the 1-day-left renewal push
+    // fires for a prayer request, so the cron doesn't re-send.
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS renewal_nudge_sent_at TIMESTAMPTZ`);
 
 
     // Connection cache — persists even when practices are deleted

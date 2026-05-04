@@ -225,15 +225,23 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
       .from(usersTable)
       .where(eq(usersTable.id, r.ownerId));
-    const words = await db.select({
+    const allWords = await db.select({
       authorName: prayerWordsTable.authorName,
       content: prayerWordsTable.content,
       authorUserId: prayerWordsTable.authorUserId,
       createdAt: prayerWordsTable.createdAt,
+      isPrivate: prayerWordsTable.isPrivate,
     }).from(prayerWordsTable).where(eq(prayerWordsTable.requestId, r.id));
 
-    const myWordRow = words.find(w => w.authorUserId === sessionUserId);
     const isOwnRequest = r.ownerId === sessionUserId;
+    // Privacy filter: a private word is visible only to the request
+    // owner and to its own author. Public words are visible to anyone
+    // who can see the request.
+    const words = allWords.filter(w =>
+      !w.isPrivate || isOwnRequest || w.authorUserId === sessionUserId,
+    );
+
+    const myWordRow = allWords.find(w => w.authorUserId === sessionUserId);
 
     // Amen counts — only surfaced to the owner of the request. We
     // dedupe per-user per-day: if the same person taps Amen three
@@ -356,7 +364,7 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
   const schema = z.object({
     body: z.string().min(1).max(1000),
     isAnonymous: z.boolean().optional().default(false),
-    durationDays: z.number().int().min(1).max(30).optional().default(3),
+    durationDays: z.number().int().min(1).max(30).optional().default(7),
     // Author's framing at submission. Drives the optional pill on cards /
     // slideshow. Default "request" renders no pill. Community intercessions
     // are not prayer requests — they live in shared_moments via
@@ -411,7 +419,13 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const schema = z.object({ content: z.string().min(1).max(120) });
+  const schema = z.object({
+    content: z.string().min(1).max(120),
+    // Author chooses visibility at submit time. `true` → only the
+    // request owner + the author can see it. `false` (default →
+    // legacy behavior) → anyone who can see the request sees it.
+    isPrivate: z.boolean().optional().default(false),
+  });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
@@ -428,7 +442,7 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
   let word;
   if (existing) {
     [word] = await db.update(prayerWordsTable)
-      .set({ content: parsed.data.content })
+      .set({ content: parsed.data.content, isPrivate: parsed.data.isPrivate })
       .where(eq(prayerWordsTable.id, existing.id))
       .returning();
   } else {
@@ -438,6 +452,7 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
         authorUserId: sessionUserId,
         authorName,
         content: parsed.data.content,
+        isPrivate: parsed.data.isPrivate,
       })
       .returning();
   }
@@ -534,12 +549,61 @@ router.patch("/prayer-requests/:id/renew", async (req, res): Promise<void> => {
   if (!request) { res.status(404).json({ error: "Not found" }); return; }
   if (request.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
 
-  const newExpiry = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+  // 7-day renewal — matches the default duration on a fresh request
+  // and keeps the renew/new flows consistent. Also clear closedAt so
+  // a renewal of a previously-released request truly reopens it.
+  const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const [updated] = await db.update(prayerRequestsTable)
-    .set({ expiresAt: newExpiry })
+    .set({ expiresAt: newExpiry, closedAt: null, releasePopupSeenAt: null, renewalNudgeSentAt: null })
     .where(eq(prayerRequestsTable.id, id))
     .returning();
   res.json(updated);
+});
+
+// GET /api/prayer-requests/last-mine — the user's most recently created
+// prayer request, regardless of state (active / expired / closed). Used
+// by the new-request prompts (FAB → /pray-request/new and the in-
+// slideshow "ask-request" slide) to surface a "renew this instead?"
+// card when the user starts typing a fresh ask, so the previous one
+// they actually carry doesn't get silently abandoned. Returns 200 with
+// `{ request: null }` if the user has never made a prayer request.
+router.get("/prayer-requests/last-mine", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [row] = await db.select({
+    id: prayerRequestsTable.id,
+    body: prayerRequestsTable.body,
+    createdAt: prayerRequestsTable.createdAt,
+    expiresAt: prayerRequestsTable.expiresAt,
+    closedAt: prayerRequestsTable.closedAt,
+    isAnswered: prayerRequestsTable.isAnswered,
+    kind: prayerRequestsTable.kind,
+  })
+    .from(prayerRequestsTable)
+    .where(eq(prayerRequestsTable.ownerId, sessionUserId))
+    .orderBy(desc(prayerRequestsTable.createdAt))
+    .limit(1);
+
+  if (!row) { res.json({ request: null }); return; }
+
+  const now = Date.now();
+  const expired = !!row.expiresAt && row.expiresAt.getTime() < now;
+  const isActive = !row.closedAt && !row.isAnswered && !expired;
+
+  res.json({
+    request: {
+      id: row.id,
+      body: row.body,
+      createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt?.toISOString() ?? null,
+      closedAt: row.closedAt?.toISOString() ?? null,
+      isAnswered: !!row.isAnswered,
+      kind: row.kind ?? null,
+      isActive,
+      isExpired: expired && !row.closedAt,
+    },
+  });
 });
 
 // GET /api/prayer-requests/released-unread — requests the owner hasn't

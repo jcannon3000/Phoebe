@@ -3,13 +3,20 @@ import {
   usersTable,
   bellNotificationsTable,
   prayerRequestAmensTable,
+  prayerRequestsTable,
   sharedMomentsTable,
   momentUserTokensTable,
   lectioReflectionsTable,
   lectionaryReadingsTable,
 } from "@workspace/db";
-import { eq, and, gte, ne, sql } from "drizzle-orm";
-import { sendBellPush, sendEveningNudgePush, sendLectioReminderPush, sendLectioEveningReminderPush } from "./pushSender";
+import { eq, and, gte, ne, sql, isNull } from "drizzle-orm";
+import {
+  sendBellPush,
+  sendEveningNudgePush,
+  sendLectioReminderPush,
+  sendLectioEveningReminderPush,
+  sendPrayerRenewalNudgePush,
+} from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { logger } from "./logger";
 
@@ -541,6 +548,102 @@ export async function runLectioEveningReminderSender(opts: { forceNow?: boolean 
 void sql;
 void ne;
 
+// ─── Prayer-request renewal nudge (1 day before expiry) ────────────────────
+//
+// Fires once per active prayer request when its expiresAt sits in the
+// owner's "tomorrow" — i.e. expiresAt's calendar date in the owner's
+// tz is exactly +1 day from today's calendar date. Push body names the
+// running amen count so the owner sees that what they shared has been
+// carried before deciding whether to renew or release. Dedup is via
+// the `renewal_nudge_sent_at` column on prayer_requests, stamped on
+// successful push dispatch.
+//
+// Uses the same 09:30-local time gate as the morning bell so the nudge
+// arrives at the same calm hour, not in the middle of the night.
+const RENEWAL_NUDGE_HOUR = 9;
+const RENEWAL_NUDGE_MINUTE = 30;
+export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // Pull every active, unstamped, not-yet-released request with an
+  // expiresAt set. We project the expiry into each owner's local tz
+  // below and only fire when the calendar-date diff is exactly 1.
+  const candidates = await db
+    .select({
+      id: prayerRequestsTable.id,
+      ownerId: prayerRequestsTable.ownerId,
+      expiresAt: prayerRequestsTable.expiresAt,
+      ownerTimezone: usersTable.timezone,
+    })
+    .from(prayerRequestsTable)
+    .innerJoin(usersTable, eq(usersTable.id, prayerRequestsTable.ownerId))
+    .where(
+      and(
+        isNull(prayerRequestsTable.closedAt),
+        isNull(prayerRequestsTable.renewalNudgeSentAt),
+        eq(prayerRequestsTable.isAnswered, false),
+        sql`${prayerRequestsTable.expiresAt} IS NOT NULL`,
+      ),
+    );
+
+  if (candidates.length === 0) return;
+
+  for (const c of candidates) {
+    try {
+      const tz = c.ownerTimezone ?? "America/New_York";
+      const expiresAt = c.expiresAt;
+      if (!expiresAt) continue;
+
+      // Time gate (skip if forced) — fire only at/after 09:30 local so
+      // the nudge sits with the morning bell's cadence.
+      if (!opts.forceNow) {
+        const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
+        if ((nowH * 60 + nowM) < (RENEWAL_NUDGE_HOUR * 60 + RENEWAL_NUDGE_MINUTE)) continue;
+      }
+
+      // Calendar-day diff in the owner's tz. We extract YYYY-MM-DD
+      // strings on both sides so DST and TZ offsets don't slip the
+      // boundary. Diff is computed by parsing the two strings as UTC
+      // midnights — the strings come from the same tz formatter so the
+      // arithmetic is purely about calendar days.
+      const todayStr = todayDateInTz(tz);
+      const expiryStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(expiresAt);
+      const todayUtc = Date.parse(`${todayStr}T00:00:00Z`);
+      const expiryUtc = Date.parse(`${expiryStr}T00:00:00Z`);
+      const dayDiff = Math.round((expiryUtc - todayUtc) / 86_400_000);
+      if (!opts.forceNow && dayDiff !== 1) continue;
+
+      // Pull the amen count to put a number in the push body. Throttled
+      // POST means each row is an eligible amen; total count is just
+      // COUNT(*).
+      const amenRows = await db
+        .select({ id: prayerRequestAmensTable.id })
+        .from(prayerRequestAmensTable)
+        .where(eq(prayerRequestAmensTable.requestId, c.id));
+      const amenCountTotal = amenRows.length;
+
+      try {
+        await sendPrayerRenewalNudgePush(c.ownerId, {
+          prayerRequestId: c.id,
+          amenCountTotal,
+        });
+      } catch (err) {
+        logger.warn({ err, requestId: c.id, ownerId: c.ownerId }, "[renewal-nudge] push dispatch failed — skipping stamp so we retry next tick");
+        continue;
+      }
+
+      // Stamp once the push lands so we don't re-fire on the next 15-min
+      // tick. A renewal clears this column server-side so subsequent
+      // cycles get their own nudge.
+      await db.update(prayerRequestsTable)
+        .set({ renewalNudgeSentAt: new Date() })
+        .where(eq(prayerRequestsTable.id, c.id));
+
+      logger.info({ requestId: c.id, ownerId: c.ownerId, amenCountTotal }, "[renewal-nudge] sent");
+    } catch (err) {
+      logger.error({ err, requestId: c.id }, "[renewal-nudge] processing failed");
+    }
+  }
+}
+
 // ─── Scheduler ──────────────────────────────────────────────────────────────
 
 let bellInterval: ReturnType<typeof setInterval> | null = null;
@@ -562,6 +665,9 @@ export function startBellScheduler(): void {
     runLectioEveningReminderSender().catch((err) =>
       logger.error({ err }, "[lectio-evening] initial run failed"),
     );
+    runPrayerRenewalNudgeSender().catch((err) =>
+      logger.error({ err }, "[renewal-nudge] initial run failed"),
+    );
   }, 45_000);
 
   bellInterval = setInterval(
@@ -577,6 +683,9 @@ export function startBellScheduler(): void {
       );
       runLectioEveningReminderSender().catch((err) =>
         logger.error({ err }, "[lectio-evening] scheduled run failed"),
+      );
+      runPrayerRenewalNudgeSender().catch((err) =>
+        logger.error({ err }, "[renewal-nudge] scheduled run failed"),
       );
     },
     15 * 60 * 1000,

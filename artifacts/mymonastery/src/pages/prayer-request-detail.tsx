@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { useLocation, useRoute } from "wouter";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useRoute, useSearch } from "wouter";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { playOpeningSwell } from "@/lib/amenFeedback";
+import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 
 // Dedicated landing page for "X left a word of comfort on your prayer
 // request" pushes. Mirrors the prayer-mode slideshow's visual language —
@@ -154,11 +154,40 @@ export default function PrayerRequestDetailPage() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/prayer-requests/:id");
   const id = params?.id ? Number(params.id) : NaN;
+  const search = useSearch();
+  const queryClient = useQueryClient();
+
+  // ?renew=1 — set by the 1-day-left renewal push so the owner lands
+  // on a renew/release decision UI instead of the read-only detail
+  // view. Surfaces the running amen count + a renew button + a release
+  // button so the owner can decide whether to carry the request another
+  // 7 days or let it close.
+  const showRenewSlide = useMemo(() => {
+    return new URLSearchParams(search).get("renew") === "1";
+  }, [search]);
 
   const { data, isLoading, error } = useQuery<PrayerRequestDetail>({
     queryKey: [`/api/prayer-requests/by-id/${id}`],
     queryFn: () => apiRequest("GET", `/api/prayer-requests/by-id/${id}`) as Promise<PrayerRequestDetail>,
     enabled: Number.isFinite(id),
+  });
+
+  const renewMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
+    onSuccess: () => {
+      triggerSubmitFeedback();
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      setLocation("/prayer-list");
+    },
+  });
+  const releaseMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/prayer-requests/${id}/release`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      setLocation("/prayer-list");
+    },
   });
 
   // Match prayer-mode's chrome: paint Safari/WebView background to the
@@ -254,7 +283,9 @@ export default function PrayerRequestDetailPage() {
               style={{ color: "rgba(143,175,150,0.45)" }}
             >
               {data.viewerIsOwner
-                ? "Your prayer request"
+                ? showRenewSlide
+                  ? "Your prayer is wrapping up"
+                  : "Your prayer request"
                 : `${data.ownerName ?? "Someone"} is asking for your prayers`}
             </p>
 
@@ -324,6 +355,39 @@ export default function PrayerRequestDetailPage() {
                   ? "1 person has prayed for this so far."
                   : `${data.amenCountTotal} people have prayed for this so far.`}
               </p>
+            )}
+
+            {/* Renew / release decision UI — only when the viewer is the
+                owner AND ?renew=1 is on the URL (set by the 1-day-left
+                push). Renewing extends expiresAt by 7 days and routes
+                home; releasing closes the request and routes to
+                /prayer-list so the owner sees what's still active. */}
+            {data.viewerIsOwner && showRenewSlide && (
+              <div className="w-full flex flex-col items-center gap-3 mt-4">
+                <button
+                  onClick={() => renewMutation.mutate()}
+                  disabled={renewMutation.isPending || releaseMutation.isPending}
+                  className="px-8 py-3 rounded-full text-sm font-semibold disabled:opacity-50"
+                  style={{ background: "#2D5E3F", color: "#F0EDE6", minWidth: 240 }}
+                >
+                  {renewMutation.isPending ? "Renewing…" : "Renew for 7 days 🌿"}
+                </button>
+                <button
+                  onClick={() => releaseMutation.mutate()}
+                  disabled={renewMutation.isPending || releaseMutation.isPending}
+                  className="text-[13px] transition-opacity hover:opacity-80 disabled:opacity-50"
+                  style={{ color: "rgba(143,175,150,0.7)" }}
+                >
+                  {releaseMutation.isPending ? "Closing…" : "Let it close"}
+                </button>
+                <button
+                  onClick={() => setLocation("/pray-request/new?kind=request")}
+                  className="text-[13px] transition-opacity hover:opacity-80"
+                  style={{ color: "rgba(143,175,150,0.7)" }}
+                >
+                  Or share something new →
+                </button>
+              </div>
             )}
 
             {/* Strip of every pray-er, most recent leftmost. We cap the

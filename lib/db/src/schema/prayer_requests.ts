@@ -28,6 +28,10 @@ export const prayerRequestsTable = pgTable("prayer_requests", {
   // deliberately don't auto-set closedAt on expiry — the row stays
   // visible to the user in "released" state until they acknowledge it.
   releasePopupSeenAt: timestamp("release_popup_seen_at", { withTimezone: true }),
+  // Stamped when the 1-day-left "your prayer is wrapping up" push goes
+  // out. Cron checks this before sending so we don't double-fire on
+  // a request that already got its nudge.
+  renewalNudgeSentAt: timestamp("renewal_nudge_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -37,5 +41,12 @@ export const prayerWordsTable = pgTable("prayer_words", {
   authorUserId: integer("author_user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   authorName: text("author_name").notNull(),
   content: text("content").notNull(),
+  // When true, the word is visible only to the request owner + the
+  // author. When false (the default, matching legacy behavior) it
+  // appears to everyone who can see the prayer request itself. Author
+  // sets the visibility at submit time via a small toggle; the request
+  // owner is allowed to see private words too because the whole point
+  // is to give them comfort.
+  isPrivate: boolean("is_private").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
