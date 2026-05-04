@@ -1717,11 +1717,12 @@ export default function CommunityDetailPage() {
                             {progressLabel}
                           </span>
                         )}
-                        {m.windowOpen && !prayedToday && (
-                          <span className="text-[10px] font-semibold rounded-full px-2 py-0.5" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                            Pray now
-                          </span>
-                        )}
+                        {/* "Pray now" pill removed — community intercessions
+                            now route into the unified slideshow from the
+                            home dashboard, so a separate per-card CTA was
+                            redundant. We still surface a brief status line
+                            for "prayed today" and "not today" so the card
+                            tells the viewer where things stand. */}
                         {prayedToday && (
                           <span className="text-[10px]" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
                         )}

@@ -379,7 +379,16 @@ function RequestWordField({ requestId, initialWord }: { requestId: number; initi
 //
 // Accepts a `slideKey` prop so the parent can force a remount-style
 // reset when the slide changes (we use the slide index).
-function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdvance: () => void }) {
+function AmenButton({ slideKey, onAdvance, onSkip }: {
+  slideKey: string | number;
+  onAdvance: () => void;
+  // Optional "I'm not praying for this one today" path. Renders a
+  // small text link under the Amen button when supplied; the link
+  // moves to the next slide without recording an amen. Slides
+  // without this prop (e.g. closing/celebration affordances that
+  // reuse AmenButton) just don't show the link.
+  onSkip?: () => void;
+}) {
   const HOLD_MS = 7000;
   const [ready, setReady] = useState(false);
 
@@ -401,60 +410,86 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
   }, [slideKey]);
 
   return (
-    <button
-      onClick={() => { if (ready) onAdvance(); }}
-      disabled={!ready}
-      aria-disabled={!ready}
-      aria-label={ready ? "Amen" : "Hold a moment"}
-      className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
-      style={{
-        background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
-        border: `1px solid ${ready ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
-        color: "#F0EDE6",
-        cursor: ready ? "pointer" : "default",
-        minWidth: 140,
-        // Only animate when ready flips on. While the button is still
-        // dim there's no transition active, so the initial paint can't
-        // smear from a default browser style into the dim color — the
-        // dim color is the very first thing rendered. Without this guard
-        // the button briefly flashed bright on mount before settling
-        // dark.
-        transition: ready
-          ? "background-color 360ms ease-out, border-color 360ms ease-out"
-          : "none",
-      }}
-    >
-      {/* Progress fill — always mounted, even after `ready` flips. We
-          fade it out via opacity so the bright background underneath
-          can take over without the abrupt "pop" you get when an
-          element is hard-unmounted. */}
-      <span
-        aria-hidden
-        key={slideKey}
-        className="absolute left-0 top-0 bottom-0 amen-progress-fill"
+    <div className="flex flex-col items-center gap-2.5">
+      <button
+        onClick={() => { if (ready) onAdvance(); }}
+        disabled={!ready}
+        aria-disabled={!ready}
+        aria-label={ready ? "Amen" : "Hold a moment"}
+        className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
         style={{
-          background: "rgba(46,107,64,0.45)",
-          pointerEvents: "none",
-          opacity: ready ? 0 : 1,
-          transition: "opacity 360ms ease-out",
-        }}
-      />
-      {/* Label — empty during the hold, fades up to "Amen →" the moment
-          the timer completes. The opacity transition is what gives the
-          reveal its rise; the keyed remount of the fill on slide change
-          makes sure the next slide's progress starts at 0% again. */}
-      <span
-        style={{
-          position: "relative",
-          opacity: ready ? 1 : 0,
-          transform: ready ? "translateY(0)" : "translateY(2px)",
-          transition: "opacity 280ms ease-out, transform 280ms ease-out",
-          display: "inline-block",
+          background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
+          border: `1px solid ${ready ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
+          color: "#F0EDE6",
+          cursor: ready ? "pointer" : "default",
+          minWidth: 140,
+          // Only animate when ready flips on. While the button is still
+          // dim there's no transition active, so the initial paint can't
+          // smear from a default browser style into the dim color — the
+          // dim color is the very first thing rendered. Without this guard
+          // the button briefly flashed bright on mount before settling
+          // dark.
+          transition: ready
+            ? "background-color 360ms ease-out, border-color 360ms ease-out"
+            : "none",
         }}
       >
-        Amen →
-      </span>
-    </button>
+        {/* Progress fill — always mounted, even after `ready` flips. We
+            fade it out via opacity so the bright background underneath
+            can take over without the abrupt "pop" you get when an
+            element is hard-unmounted. */}
+        <span
+          aria-hidden
+          key={slideKey}
+          className="absolute left-0 top-0 bottom-0 amen-progress-fill"
+          style={{
+            background: "rgba(46,107,64,0.45)",
+            pointerEvents: "none",
+            opacity: ready ? 0 : 1,
+            transition: "opacity 360ms ease-out",
+          }}
+        />
+        {/* Label — empty during the hold, fades up to "Amen →" the moment
+            the timer completes. The opacity transition is what gives the
+            reveal its rise; the keyed remount of the fill on slide change
+            makes sure the next slide's progress starts at 0% again. */}
+        <span
+          style={{
+            position: "relative",
+            opacity: ready ? 1 : 0,
+            transform: ready ? "translateY(0)" : "translateY(2px)",
+            transition: "opacity 280ms ease-out, transform 280ms ease-out",
+            display: "inline-block",
+          }}
+        >
+          Amen →
+        </span>
+      </button>
+      {/* "Not today" — quiet skip link. Fades up alongside the Amen
+          button (same `ready` gate) so it can't be tapped before the
+          viewer has actually settled on the slide. Keeps the user in
+          the slideshow but moves to the next slide without an amen.
+          Underline-on-hover, never bold — visually subordinate to the
+          Amen button so passing isn't the obvious move. */}
+      {onSkip && (
+        <button
+          type="button"
+          onClick={() => { if (ready) onSkip(); }}
+          disabled={!ready}
+          className="text-[12px] underline underline-offset-4"
+          style={{
+            color: "rgba(143,175,150,0.55)",
+            opacity: ready ? 1 : 0,
+            transition: "opacity 280ms ease-out",
+            background: "transparent",
+            border: "none",
+            cursor: ready ? "pointer" : "default",
+          }}
+        >
+          Not today
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -462,6 +497,7 @@ function SlideContent({
   slide,
   slideKey,
   onAdvance,
+  onSkip,
   onRenew,
   onEnd,
   onAskSubmit,
@@ -478,6 +514,9 @@ function SlideContent({
   // time we move to a new slide.
   slideKey: string | number;
   onAdvance: () => void;
+  // Move to the next slide without recording an amen / check-in.
+  // Powers the "Not today" link under the Amen button on prayer slides.
+  onSkip: () => void;
   onRenew: (id: number, days: 3 | 7) => void;
   onEnd: (id: number) => void;
   onAskSubmit: (body: string) => void;
@@ -840,7 +879,7 @@ function SlideContent({
           </p>
         )}
 
-        <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} />
+        <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} onSkip={onSkip} />
       </div>
     );
   }
@@ -1072,7 +1111,7 @@ function SlideContent({
       )}
 
       <div className="mt-4">
-        <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} />
+        <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} onSkip={onSkip} />
       </div>
     </div>
   );
@@ -1936,6 +1975,34 @@ export default function PrayerModePage() {
     };
   }, []);
 
+  // Move to the next slide without recording an amen / check-in.
+  // Used by the "Not today" hyperlink under the Amen button — gives
+  // viewers a quiet way to pass on a particular prayer (e.g. "I
+  // don't feel like I have it in me to hold this one") without
+  // skipping the rest of the slideshow.
+  const skipToNext = () => {
+    setSlideVisible(false);
+    setTimeout(() => {
+      if (index < displaySlides.length - 1) {
+        const nextIndex = index + 1;
+        try {
+          localStorage.setItem(progressStorageKey, JSON.stringify({
+            completed: nextIndex,
+            total: displaySlides.length,
+          }));
+        } catch { /* private mode / quota — non-fatal */ }
+        setIndex(nextIndex);
+        playOpeningSwell(nextIndex % 3);
+      } else {
+        try {
+          localStorage.removeItem(progressStorageKey);
+        } catch { /* non-fatal */ }
+        setPhase("closing");
+      }
+      setSlideVisible(true);
+    }, 220);
+  };
+
   const advance = () => {
     // Feedback (haptic + chime) fires immediately on tap so the response
     // feels coupled to the gesture, not to the fade.
@@ -2185,6 +2252,7 @@ export default function PrayerModePage() {
               slide={slide}
               slideKey={index}
               onAdvance={advance}
+              onSkip={skipToNext}
               onRenew={(id, days) => {
                 renewMutation.mutate({ id, days });
                 advance();
