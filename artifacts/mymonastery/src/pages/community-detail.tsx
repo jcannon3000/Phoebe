@@ -1661,14 +1661,18 @@ export default function CommunityDetailPage() {
             s.replace(/[\s\u200d]*(?:\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Emoji_Component})+$/u, "").trim();
 
           const renderMomentCard = (m: CommunityMoment, emoji: string) => {
-            // Lectio cards mirror the home dashboard exactly — same shared
-            // component, same flap lines, same "Reflect 📜" pulse pill. The
-            // /api/moments payload already carries the lectio enrichment
-            // fields, so a direct cast is safe here.
-            if (m.templateType === "lectio-divina") {
+            // Lectio AND fasting cards mirror the home dashboard exactly —
+            // same shared MomentCard component, same flap lines, same
+            // pulse pills. The /api/moments payload already carries the
+            // template-specific enrichment fields (lectio stage labels,
+            // fasting day / type / gallons-saved), so a direct cast is
+            // safe here. The simpler inline card below stays in place
+            // for intercessions, where the community page wants the
+            // tighter row layout (status pill + "Also shared with").
+            if (m.templateType === "lectio-divina" || m.templateType === "fasting") {
               return (
                 <MomentCard
-                  key={`comm-lectio-${m.id}`}
+                  key={`comm-${m.templateType}-${m.id}`}
                   m={m as unknown as Moment}
                   userEmail={user.email}
                   keyPrefix="comm"
