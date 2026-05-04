@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
 import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
+import { IOSAppDownloadPrompt } from "@/components/IOSAppDownloadPrompt";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { Component, useEffect, type ReactNode, type ErrorInfo } from "react";
@@ -324,6 +325,7 @@ function App() {
         <ErrorBoundary>
           <GlobalButtonHaptics />
           <PushPermissionPrompt />
+          <IOSAppDownloadPrompt />
           <ForegroundPushToast />
           <NetworkBanner />
           <DayBoundaryRefresh />
