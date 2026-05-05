@@ -7,12 +7,23 @@ interface ClimateSlideshowProps {
   entry: { id: number; title: string; body: string; scriptureRef: string | null };
   dayLocal: string;
   alreadyPrayed: boolean;
+  // Closing-slide counters. Parish is null for unparished users — that's a
+  // first-class state, not an error condition. The parish association is
+  // purely additive on top of the global daily prayer.
+  globalCount: number;
+  parish: { name: string; count: number } | null;
   onClose: () => void;
 }
 
 type Phase = "entry" | "closing";
 
-export function ClimateSlideshow({ entry, alreadyPrayed, onClose }: ClimateSlideshowProps) {
+export function ClimateSlideshow({
+  entry,
+  alreadyPrayed,
+  globalCount,
+  parish,
+  onClose,
+}: ClimateSlideshowProps) {
   const [phase, setPhase] = useState<Phase>("entry");
   const [visible, setVisible] = useState(false);
   const queryClient = useQueryClient();
@@ -153,22 +164,60 @@ export function ClimateSlideshow({ entry, alreadyPrayed, onClose }: ClimateSlide
                 {alreadyPrayed ? "Welcome back." : "You prayed today."}
               </h3>
 
-              {/*
-                Session 3 will populate this slot with the dual counter:
-                  • N people praying today globally
-                  • N people from your parish praying today
-                For now, a quiet placeholder keeps the closing slide whole.
-              */}
-              <p
-                className="text-sm"
-                style={{ color: "#8FAF96" }}
-              >
-                Thank you for joining the daily prayer for creation.
-              </p>
+              {/* Counters. Global always shown; parish only when the user
+                  has joined one — being unparished is fine, the parish
+                  association is purely additive. */}
+              <div className="flex flex-col gap-3 w-full max-w-xs">
+                <div
+                  className="rounded-2xl px-5 py-4"
+                  style={{
+                    background: "rgba(46,107,64,0.14)",
+                    border: "1px solid rgba(46,107,64,0.22)",
+                  }}
+                >
+                  <p
+                    className="text-3xl font-bold"
+                    style={{
+                      color: "#F0EDE6",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      letterSpacing: "-0.03em",
+                    }}
+                  >
+                    {globalCount}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>
+                    {globalCount === 1 ? "person praying today" : "people praying today"}
+                  </p>
+                </div>
+
+                {parish && (
+                  <div
+                    className="rounded-2xl px-5 py-4"
+                    style={{
+                      background: "rgba(46,107,64,0.08)",
+                      border: "1px solid rgba(46,107,64,0.15)",
+                    }}
+                  >
+                    <p
+                      className="text-3xl font-bold"
+                      style={{
+                        color: "#F0EDE6",
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        letterSpacing: "-0.03em",
+                      }}
+                    >
+                      {parish.count}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "#8FAF96" }}>
+                      from {parish.name}
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={handleClose}
-                className="mt-6 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-80 active:scale-[0.98]"
+                className="mt-4 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-80 active:scale-[0.98]"
                 style={{
                   background: "rgba(46,107,64,0.28)",
                   border: "1px solid rgba(46,107,64,0.5)",

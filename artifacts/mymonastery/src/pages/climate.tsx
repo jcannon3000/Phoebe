@@ -14,6 +14,8 @@ interface TodayResponse {
   } | null;
   prayedToday: boolean;
   dayLocal: string;
+  globalCount: number;
+  parish: { name: string; count: number } | null;
 }
 
 export default function ClimatePage() {
@@ -151,6 +153,8 @@ export default function ClimatePage() {
           entry={entry}
           dayLocal={dayLocal}
           alreadyPrayed={prayedToday}
+          globalCount={data?.globalCount ?? 0}
+          parish={data?.parish ?? null}
           onClose={() => setSlideshowOpen(false)}
         />
       )}

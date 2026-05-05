@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   db,
   usersTable,
+  groupsTable,
   prayerFeedsTable,
   prayerFeedEntriesTable,
   prayerFeedPrayersTable,
@@ -88,10 +89,17 @@ router.get("/climate/feed", requireClimate, async (req, res): Promise<void> => {
   }
 });
 
-// GET /api/climate/today — today's entry plus this user's prayed status
+// GET /api/climate/today — today's entry, this user's prayed status, and
+// the dual counters that drive the closing slide:
+//   • globalCount — how many distinct people prayed today's entry globally
+//   • parish     — { name, count } scoped to the caller's parish, or null
+//                  if the caller has no parish_id set yet
 router.get("/climate/today", requireClimate, async (req, res): Promise<void> => {
   try {
-    const userId = (req.user as { id: number }).id;
+    const u = req.user as { id: number; parishId: number | null };
+    const userId = u.id;
+    const parishId = u.parishId ?? null;
+
     const { feed, entry, dayLocal } = await loadTodayContext();
 
     if (!feed) {
@@ -99,6 +107,9 @@ router.get("/climate/today", requireClimate, async (req, res): Promise<void> => 
     }
 
     let prayedToday = false;
+    let globalCount = 0;
+    let parish: { name: string; count: number } | null = null;
+
     if (entry) {
       const [prayer] = await db
         .select({ id: prayerFeedPrayersTable.id })
@@ -110,9 +121,41 @@ router.get("/climate/today", requireClimate, async (req, res): Promise<void> => 
           ),
         );
       prayedToday = !!prayer;
+
+      // Global count: distinct people who prayed today's entry. Each
+      // entry corresponds to one calendar day in the feed's TZ, so this
+      // is equivalent to "how many people have prayed today globally."
+      // We rely on the (entry_id, user_id) unique index — a plain COUNT
+      // is already distinct.
+      const [{ count: gc }] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(prayerFeedPrayersTable)
+        .where(eq(prayerFeedPrayersTable.entryId, entry.id));
+      globalCount = Number(gc) || 0;
+
+      if (parishId) {
+        const [parishRow] = await db
+          .select({ id: groupsTable.id, name: groupsTable.name })
+          .from(groupsTable)
+          .where(eq(groupsTable.id, parishId));
+
+        if (parishRow) {
+          const [{ count: pc }] = await db
+            .select({ count: sql<number>`COUNT(*)::int` })
+            .from(prayerFeedPrayersTable)
+            .innerJoin(usersTable, eq(usersTable.id, prayerFeedPrayersTable.userId))
+            .where(
+              and(
+                eq(prayerFeedPrayersTable.entryId, entry.id),
+                eq(usersTable.parishId, parishId),
+              ),
+            );
+          parish = { name: parishRow.name, count: Number(pc) || 0 };
+        }
+      }
     }
 
-    res.json({ entry, prayedToday, dayLocal });
+    res.json({ entry, prayedToday, dayLocal, globalCount, parish });
   } catch (err) {
     res.status(500).json({ error: "Failed to load today's climate entry" });
   }
