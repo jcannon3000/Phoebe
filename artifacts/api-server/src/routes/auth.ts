@@ -265,6 +265,26 @@ router.patch("/auth/me/presence", async (req, res): Promise<void> => {
   res.json({ showPresence });
 });
 
+// PATCH /auth/me/bell-enabled — simple on/off for the daily push. The full
+// /api/bell/preferences endpoint also touches calendar event ids and the
+// daily_bell_time string; this is a lighter affordance the climate
+// settings UI uses to mute the 7am push without dragging the calendar
+// integration into the toggle.
+router.patch("/auth/me/bell-enabled", async (req, res): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = (req.user as { id: number }).id;
+  const { bellEnabled } = req.body;
+  if (typeof bellEnabled !== "boolean") {
+    res.status(400).json({ error: "bellEnabled must be a boolean" });
+    return;
+  }
+  await db.update(usersTable).set({ bellEnabled } as Record<string, unknown>).where(eq(usersTable.id, userId));
+  if (req.user) {
+    (req.user as Record<string, unknown>).bellEnabled = bellEnabled;
+  }
+  res.json({ bellEnabled });
+});
+
 // PATCH /auth/me/prayer-invite-shown — record that the daily prayer-list
 // popup was just shown. The dashboard re-shows it every 6 hours of idle
 // when the user still hasn't prayed, so we stamp a timestamp rather than

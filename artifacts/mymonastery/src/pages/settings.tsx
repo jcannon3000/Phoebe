@@ -637,6 +637,13 @@ export default function SettingsPage() {
 
   if (isLoading || !user) return null;
 
+  // Climate-only users see a slim view — Phoebe's full settings page
+  // exposes presence, contact discovery, muted people, etc., none of
+  // which are meaningful when the only experience is the daily prayer.
+  if (user.climateOnly) {
+    return <ClimateOnlySettings />;
+  }
+
   return (
     <Layout>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
@@ -718,6 +725,142 @@ export default function SettingsPage() {
             any app that creates accounts must offer in-app deletion. Also
             a legitimate privacy affordance for web users. Gated behind a
             confirm step (type your email) to prevent accidents. */}
+        <div className="mt-4">
+          <DeleteAccountSection email={user.email} />
+        </div>
+
+        <div className="mt-6 pb-4 text-center flex justify-center gap-5">
+          <Link href="/terms">
+            <span className="text-xs" style={{ color: "#8FAF96", textDecoration: "underline", cursor: "pointer" }}>
+              Terms of Use
+            </span>
+          </Link>
+          <Link href="/privacy">
+            <span className="text-xs" style={{ color: "#8FAF96", textDecoration: "underline", cursor: "pointer" }}>
+              Privacy Policy
+            </span>
+          </Link>
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
+// ─── Climate-only settings ────────────────────────────────────────────────
+// Slim view for users who signed up via /climate. Cuts out PhoneSection,
+// Presence, MutedPeople — none of which are meaningful when the only
+// surface they touch is the daily prayer. Keeps the parts that matter:
+// account (name/avatar), the daily push toggle, parish, sign-out, export,
+// delete account.
+function ClimateOnlySettings() {
+  const { user } = useAuth();
+  const logout = useLogout();
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
+  const bellToggle = useMutation({
+    mutationFn: (bellEnabled: boolean) =>
+      apiRequest("PATCH", "/api/auth/me/bell-enabled", { bellEnabled }),
+    onSuccess: (_data, bellEnabled) => {
+      queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) =>
+        prev ? { ...prev, bellEnabled } : prev
+      );
+    },
+  });
+
+  if (!user) return null;
+
+  return (
+    <Layout>
+      <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
+        {/* Header */}
+        <div className="mb-8">
+          <h1
+            className="text-2xl font-bold mb-1"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            Settings 🌿
+          </h1>
+          <p className="text-sm" style={{ color: "#8FAF96" }}>
+            Your account, notifications, and parish.
+          </p>
+        </div>
+
+        {/* ── Account ── */}
+        <SectionHeader label="Account" />
+        <AccountSection />
+
+        {/* ── Notifications ── */}
+        <SectionHeader label="Notifications" />
+        <div className="mb-8">
+          <SettingsCard>
+            <button
+              onClick={() => bellToggle.mutate(!user.bellEnabled)}
+              className="w-full flex items-center justify-between"
+            >
+              <div className="text-left">
+                <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+                  Daily prayer notification 🔔
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                  A short prayer for the climate, every morning at 7am.
+                </p>
+              </div>
+              <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${user.bellEnabled ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
+                <div className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${user.bellEnabled ? "left-[21px]" : "left-[3px]"}`} style={{ background: "#F0EDE6" }} />
+              </div>
+            </button>
+          </SettingsCard>
+        </div>
+
+        {/* ── Parish ── */}
+        <SectionHeader label="Parish" />
+        <div className="mb-8">
+          <Link
+            href="/climate/parish"
+            className="block rounded-2xl px-4 py-3.5"
+            style={{
+              background: "rgba(46,107,64,0.10)",
+              border: "1px solid rgba(46,107,64,0.18)",
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "#F0EDE6" }}
+                >
+                  {user.parishId === null ? "Connect to a parish" : "Change your parish"}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                  Adds a parish counter on the closing slide.
+                </p>
+              </div>
+              <span style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
+            </div>
+          </Link>
+        </div>
+
+        {/* ── Mobile (Face ID) ──
+            Same as the regular settings — only renders inside the iOS shell. */}
+        <MobileDeviceSection />
+
+        {/* ── Sign out ── */}
+        <button
+          onClick={() => { logout(); setLocation("/"); }}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80"
+          style={{ background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.18)" }}
+        >
+          <LogOut size={15} />
+          Sign out
+        </button>
+
+        {/* ── Export my data ── */}
+        <div className="mt-8">
+          <ExportDataSection />
+        </div>
+
+        {/* ── Delete account ── */}
         <div className="mt-4">
           <DeleteAccountSection email={user.email} />
         </div>
