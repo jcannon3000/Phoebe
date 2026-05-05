@@ -2030,7 +2030,10 @@ router.get("/groups/me/circle-intentions", async (req, res): Promise<void> => {
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
     // Circles this user belongs to. Match via user id; legacy email-only rows
-    // get picked up wherever we stitch userId on signup.
+    // get picked up wherever we stitch userId on signup. Hidden_admin
+    // memberships are excluded — the role grants admin powers without
+    // content visibility, so circle intentions in those groups
+    // shouldn't reach the viewer's slideshow either.
     const rows = await db.select({
       groupId: groupsTable.id,
       groupName: groupsTable.name,
@@ -2043,6 +2046,8 @@ router.get("/groups/me/circle-intentions", async (req, res): Promise<void> => {
       .where(and(
         eq(groupsTable.isPrayerCircle, true),
         eq(groupMembersTable.userId, user.id),
+        sql`(${groupMembersTable.role} IS NULL
+             OR ${groupMembersTable.role} <> 'hidden_admin')`,
       ));
 
     if (rows.length === 0) { res.json({ intentions: [] }); return; }

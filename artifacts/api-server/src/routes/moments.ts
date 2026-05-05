@@ -1406,6 +1406,57 @@ router.get("/moments", async (req, res): Promise<void> => {
     const extraLinkRows = flatMomentIds.length > 0
       ? await db.select().from(momentGroupsTable).where(inArray(momentGroupsTable.momentId, flatMomentIds))
       : [];
+
+    // Hidden-admin visibility filter. A user who is hidden_admin in
+    // a group should NOT see that group's content in their feed —
+    // the role is purely managerial. We drop any moment whose only
+    // path to this user runs through a hidden-admin membership: if
+    // the moment is in a single group and the user is hidden_admin
+    // there, hide it; if it spans multiple groups, keep it as long
+    // as the user is a regular (non-hidden_admin) member somewhere.
+    const myMembershipRows = await db
+      .select({ groupId: groupMembersTable.groupId, role: groupMembersTable.role })
+      .from(groupMembersTable)
+      .where(eq(groupMembersTable.userId, sessionUserId));
+    const hiddenAdminGroupSet = new Set(
+      myMembershipRows.filter(r => r.role === "hidden_admin").map(r => r.groupId),
+    );
+    const visibleGroupSet = new Set(
+      myMembershipRows.filter(r => r.role !== "hidden_admin").map(r => r.groupId),
+    );
+    if (hiddenAdminGroupSet.size > 0) {
+      // momentId → set of groupIds this moment is linked to.
+      const linkedByMoment = new Map<number, Set<number>>();
+      for (const m of flatMoments) {
+        const set = new Set<number>();
+        if (typeof m.groupId === "number") set.add(m.groupId);
+        linkedByMoment.set(m.id, set);
+      }
+      for (const link of extraLinkRows) {
+        const set = linkedByMoment.get(link.momentId);
+        if (set) set.add(link.groupId);
+      }
+      // Keep a moment iff it has no group attachment (personal
+      // practice — visibility comes from token alone) OR at least
+      // one of its groups is one where the viewer is NOT
+      // hidden_admin.
+      const visibleMomentIds = new Set<number>();
+      for (const [momentId, groupIds] of linkedByMoment.entries()) {
+        if (groupIds.size === 0) { visibleMomentIds.add(momentId); continue; }
+        let hasVisiblePath = false;
+        for (const gid of groupIds) {
+          if (!hiddenAdminGroupSet.has(gid) || visibleGroupSet.has(gid)) {
+            hasVisiblePath = true;
+            break;
+          }
+        }
+        if (hasVisiblePath) visibleMomentIds.add(momentId);
+      }
+      // In-place filter; downstream code reads from flatMoments.
+      for (let i = flatMoments.length - 1; i >= 0; i--) {
+        if (!visibleMomentIds.has(flatMoments[i].id)) flatMoments.splice(i, 1);
+      }
+    }
     const primaryIds = flatMoments.map(m => m.groupId).filter((id): id is number => id !== null);
     const extraIds = extraLinkRows.map(r => r.groupId);
     const groupIds = [...new Set([...primaryIds, ...extraIds])];

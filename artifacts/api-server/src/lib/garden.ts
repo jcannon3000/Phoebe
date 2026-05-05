@@ -11,6 +11,11 @@
 //   3. A global veto: if the viewer belongs to ANY group where
 //      candidate X is a hidden_admin, X is dropped even if rules 1/2
 //      would have included them via some other path.
+//   4. The viewer's own hidden_admin memberships do NOT contribute
+//      peers — being a hidden admin in a community is purely a
+//      management role and confers no content visibility into that
+//      community. Mirror of the existing rule that group members
+//      can't see hidden_admins.
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, groupMembersTable, usersTable } from "@workspace/db";
@@ -21,14 +26,28 @@ export async function getGardenUserIds(userId: number): Promise<number[]> {
   if (!user) return [];
   const viewerEmail = user.email.toLowerCase();
 
+  // Viewer's memberships, with role.
+  //   `myGroupIds` — groups where the viewer is a regular member or
+  //     non-hidden admin. Used for rule 1 (peer-set source). Hidden-
+  //     admin groups are dropped here so their content stays out of
+  //     the viewer's feed.
+  //   `vetoLookupGroupIds` — every group the viewer belongs to,
+  //     INCLUDING hidden-admin ones. Used for rule 3 (veto): a peer
+  //     who's hidden_admin in any group the viewer belongs to gets
+  //     dropped even if some other path would have added them.
   const myMemberships = await db
-    .select({ groupId: groupMembersTable.groupId })
+    .select({ groupId: groupMembersTable.groupId, role: groupMembersTable.role })
     .from(groupMembersTable)
     .where(
       sql`${groupMembersTable.userId} = ${userId}
           OR LOWER(${groupMembersTable.email}) = ${viewerEmail}`,
     );
-  const myGroupIds = Array.from(new Set(myMemberships.map(r => r.groupId)));
+  const myGroupIds = Array.from(new Set(
+    myMemberships
+      .filter(r => r.role !== "hidden_admin")
+      .map(r => r.groupId),
+  ));
+  const vetoLookupGroupIds = Array.from(new Set(myMemberships.map(r => r.groupId)));
 
   const groupPeerIds = new Set<number>();
   // Per-group peer breakdown for diagnostics — when a user reports an
@@ -93,7 +112,7 @@ export async function getGardenUserIds(userId: number): Promise<number[]> {
     if (id !== userId) groupPeerIds.add(id);
   }
 
-  if (myGroupIds.length > 0 && groupPeerIds.size > 0) {
+  if (vetoLookupGroupIds.length > 0 && groupPeerIds.size > 0) {
     const vetoRows = await db
       .select({
         rowUserId: groupMembersTable.userId,
@@ -105,7 +124,7 @@ export async function getGardenUserIds(userId: number): Promise<number[]> {
         sql`LOWER(${usersTable.email}) = LOWER(${groupMembersTable.email})`,
       )
       .where(and(
-        inArray(groupMembersTable.groupId, myGroupIds),
+        inArray(groupMembersTable.groupId, vetoLookupGroupIds),
         eq(groupMembersTable.role, "hidden_admin"),
       ));
     for (const row of vetoRows) {
