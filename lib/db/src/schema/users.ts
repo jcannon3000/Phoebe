@@ -54,6 +54,8 @@ export const usersTable = pgTable("users", {
   phoneNumber: text("phone_number"),
   phoneNumberNormalized: text("phone_number_normalized"),
   phoneHash: text("phone_hash"),
+  climateEnrolled: boolean("climate_enrolled").notNull().default(false),
+  parishId: integer("parish_id"),  // FK to groups.id, enforced only in migration SQL — no .references() here to avoid circular import
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -92,3 +92,12 @@ export function useDemoFlag(_flag: string): boolean {
   const { isBeta } = useBetaStatus();
   return isBeta;
 }
+
+/**
+ * Returns whether the current user is enrolled in Phoebe Climate.
+ * Reads directly from the /api/auth/me payload — no extra network call.
+ */
+export function useClimateStatus(): { isClimate: boolean } {
+  const { user } = useAuth();
+  return { isClimate: user?.climateEnrolled ?? false };
+}

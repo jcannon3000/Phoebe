@@ -26,6 +26,7 @@ import prayerStreakRouter from "./prayer-streak";
 import pushRouter from "./push";
 import authAppleRouter from "./auth-apple";
 import reportsRouter from "./reports";
+import climateRouter from "./climate";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(prayerStreakRouter);
 router.use(pushRouter);
 router.use(authAppleRouter);
 router.use(reportsRouter);
+router.use(climateRouter);
 
 export default router;

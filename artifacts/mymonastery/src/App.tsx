@@ -127,6 +127,7 @@ import PrayerFeedNewPage from "./pages/prayer-feed-new";
 import PrayerFeedManagePage from "./pages/prayer-feed-manage";
 import PrayerFeedsBrowsePage from "./pages/prayer-feeds-browse";
 import PrayerFeedDetailPage from "./pages/prayer-feed-detail";
+import ClimatePage from "./pages/climate";
 
 // Retry policy tuned for flaky / captive-portal Wi-Fi (libraries, hotels,
 // coffee shops): a single TLS reset or TCP RST on the first fetch after
@@ -262,6 +263,7 @@ function Router() {
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />
       <Route path="/prayer-feeds" component={PrayerFeedsBrowsePage} />
       <Route path="/prayer-feeds/:slug" component={PrayerFeedDetailPage} />
+      <Route path="/climate" component={ClimatePage} />
       <Route component={NotFound} />
     </Switch>
   );

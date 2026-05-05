@@ -190,6 +190,7 @@ router.get("/auth/me", (req, res) => {
     prayerInviteLastShownDate: string | null;
     prayerInviteLastShownAt: Date | string | null;
     phoneNumber: string | null;
+    climateEnrolled: boolean;
   };
   res.json({
     id: u.id,
@@ -211,6 +212,7 @@ router.get("/auth/me", (req, res) => {
           : String(u.prayerInviteLastShownAt))
       : null,
     phoneNumber: u.phoneNumber ?? null,
+    climateEnrolled: u.climateEnrolled ?? false,
   });
 });
 

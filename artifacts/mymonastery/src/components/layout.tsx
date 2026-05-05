@@ -40,6 +40,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // the dashboard's filter; removed — the dashboard itself is the home
     // surface, and the Practices pill there is the canonical way to narrow.
     { emoji: "🙏🏽", label: "Manage Prayer List", path: "/prayer-list" },
+    ...(user?.climateEnrolled ? [{ emoji: "🌿", label: "Phoebe Climate", path: "/climate" }] : []),
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "👥", label: "People",      path: "/people" },
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },

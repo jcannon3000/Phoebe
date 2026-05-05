@@ -1145,6 +1145,26 @@ export async function migrate() {
     // in the slideshow; existing rows backfill to the default "request".
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'request'`);
 
+    // ── Phoebe Climate (invite-only section) ────────────────────────────────
+    // climate_enrolled flag
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS climate_enrolled BOOLEAN NOT NULL DEFAULT FALSE`);
+
+    // parish_id FK (nullable, no NOT NULL)
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_id INTEGER REFERENCES groups(id)`);
+
+    // Seed the phoebe-climate feed (idempotent — skips if slug already exists)
+    // Uses first admin beta user as creator; no-ops if no admin user exists yet.
+    await run(client, `
+      INSERT INTO prayer_feeds (slug, title, timezone, state, creator_user_id)
+      SELECT 'phoebe-climate', 'Phoebe Climate', 'America/New_York', 'live', u.id
+      FROM users u
+      JOIN beta_users bu ON LOWER(u.email) = LOWER(bu.email)
+      WHERE bu.is_admin = true
+      ORDER BY u.id ASC
+      LIMIT 1
+      ON CONFLICT DO NOTHING
+    `);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

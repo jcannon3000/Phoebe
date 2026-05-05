@@ -18,6 +18,7 @@ export interface AuthUser {
   // contact-discovery match endpoint, but we only surface the raw
   // form to the UI for editing.
   phoneNumber: string | null;
+  climateEnrolled: boolean;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {
