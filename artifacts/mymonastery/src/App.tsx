@@ -128,6 +128,7 @@ import PrayerFeedManagePage from "./pages/prayer-feed-manage";
 import PrayerFeedsBrowsePage from "./pages/prayer-feeds-browse";
 import PrayerFeedDetailPage from "./pages/prayer-feed-detail";
 import ClimatePage from "./pages/climate";
+import ClimateAdminPage from "./pages/climate-admin";
 
 // Retry policy tuned for flaky / captive-portal Wi-Fi (libraries, hotels,
 // coffee shops): a single TLS reset or TCP RST on the first fetch after
@@ -263,6 +264,9 @@ function Router() {
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />
       <Route path="/prayer-feeds" component={PrayerFeedsBrowsePage} />
       <Route path="/prayer-feeds/:slug" component={PrayerFeedDetailPage} />
+      {/* /climate/admin must come before /climate so the specific route
+          matches first under wouter's order-sensitive Switch. */}
+      <Route path="/climate/admin" component={ClimateAdminPage} />
       <Route path="/climate" component={ClimatePage} />
       <Route component={NotFound} />
     </Switch>

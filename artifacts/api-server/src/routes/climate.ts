@@ -4,11 +4,12 @@ import {
   usersTable,
   groupsTable,
   groupAnnouncementsTable,
+  betaUsersTable,
   prayerFeedsTable,
   prayerFeedEntriesTable,
   prayerFeedPrayersTable,
 } from "@workspace/db";
-import { eq, and, sql, gte, asc, isNotNull } from "drizzle-orm";
+import { eq, and, sql, gte, lte, asc, desc, isNotNull } from "drizzle-orm";
 import { hashPassword } from "./auth";
 import { rateLimit } from "../lib/rate-limit";
 
@@ -22,6 +23,29 @@ function requireClimate(req: any, res: any, next: any) {
     res.status(403).json({ error: "Not enrolled in Phoebe Climate" }); return;
   }
   next();
+}
+
+// Climate admin = beta admin for v1. The audience is small enough that
+// reusing beta_users.is_admin keeps the auth surface minimal; if climate
+// curation needs to delegate beyond beta admins later we'll add a
+// dedicated climate_admins table.
+async function requireClimateAdmin(req: any, res: any, next: any) {
+  if (!req.isAuthenticated?.() || !req.user) {
+    res.status(401).json({ error: "Not authenticated" }); return;
+  }
+  const u = req.user as { id: number; email: string };
+  try {
+    const [admin] = await db
+      .select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    if (!admin?.isAdmin) {
+      res.status(403).json({ error: "Climate admin access required" }); return;
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: "Failed to verify admin access" });
+  }
 }
 
 // Today in a tz as a YYYY-MM-DD string. Inlined here (not shared with
@@ -339,6 +363,185 @@ router.post("/climate/enroll-self", async (req, res): Promise<void> => {
     (req.user as Record<string, unknown>).climateEnrolled = true;
   }
   res.json({ ok: true });
+});
+
+// ─── Climate admin: prayer entry curation ──────────────────────────────
+// Beta admins manage the phoebe-climate feed's daily entries. Distinct
+// from the generic /prayer-feeds/:slug/manage flow because phoebe-climate
+// is platform-owned (creator_user_id NULL) and the existing route gates
+// on creator identity. These endpoints touch the same prayer_feed_entries
+// table directly so the slideshow + push picks up changes immediately.
+
+// GET /api/climate/admin — feed metadata for the admin (admins-only check
+// returns 403 for non-admins, distinct from the public GET /climate/feed)
+router.get("/climate/admin", requireClimateAdmin, async (req, res): Promise<void> => {
+  try {
+    const [feed] = await db
+      .select({
+        id: prayerFeedsTable.id,
+        slug: prayerFeedsTable.slug,
+        title: prayerFeedsTable.title,
+        timezone: prayerFeedsTable.timezone,
+        state: prayerFeedsTable.state,
+        subscriberCount: prayerFeedsTable.subscriberCount,
+      })
+      .from(prayerFeedsTable)
+      .where(eq(prayerFeedsTable.slug, "phoebe-climate"));
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+    res.json({ feed });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load feed" });
+  }
+});
+
+// GET /api/climate/admin/entries — list entries in a date range (defaults
+// to last 7 days through next 30 days if no params given). Admins see
+// every state — drafts, scheduled, published.
+router.get("/climate/admin/entries", requireClimateAdmin, async (req, res): Promise<void> => {
+  try {
+    const [feed] = await db
+      .select({ id: prayerFeedsTable.id, timezone: prayerFeedsTable.timezone })
+      .from(prayerFeedsTable)
+      .where(eq(prayerFeedsTable.slug, "phoebe-climate"));
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+
+    const today = todayInTz(feed.timezone);
+    const fromRaw = typeof req.query.from === "string" ? req.query.from : null;
+    const toRaw = typeof req.query.to === "string" ? req.query.to : null;
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+
+    // Default window: 7 days back through 30 days forward.
+    const todayDate = new Date(today + "T00:00:00Z");
+    const defaultFrom = new Date(todayDate);
+    defaultFrom.setUTCDate(defaultFrom.getUTCDate() - 7);
+    const defaultTo = new Date(todayDate);
+    defaultTo.setUTCDate(defaultTo.getUTCDate() + 30);
+
+    const from = fromRaw && dateRe.test(fromRaw)
+      ? fromRaw
+      : defaultFrom.toISOString().slice(0, 10);
+    const to = toRaw && dateRe.test(toRaw)
+      ? toRaw
+      : defaultTo.toISOString().slice(0, 10);
+
+    const entries = await db
+      .select()
+      .from(prayerFeedEntriesTable)
+      .where(
+        and(
+          eq(prayerFeedEntriesTable.feedId, feed.id),
+          gte(prayerFeedEntriesTable.entryDate, from),
+          lte(prayerFeedEntriesTable.entryDate, to),
+        ),
+      )
+      .orderBy(desc(prayerFeedEntriesTable.entryDate));
+
+    res.json({ entries, today });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load entries" });
+  }
+});
+
+// POST /api/climate/admin/entries — upsert an entry by date. Body:
+//   { entryDate, title, body, scriptureRef?, state }
+// where state is "draft" | "scheduled" | "published".
+router.post("/climate/admin/entries", requireClimateAdmin, async (req, res): Promise<void> => {
+  try {
+    const userId = (req.user as { id: number }).id;
+    const body = req.body as {
+      entryDate?: string;
+      title?: string;
+      body?: string;
+      scriptureRef?: string | null;
+      state?: "draft" | "scheduled" | "published";
+    };
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!body.entryDate || !dateRe.test(body.entryDate)) {
+      res.status(400).json({ error: "entryDate must be YYYY-MM-DD" }); return;
+    }
+    if (!body.title || body.title.trim().length === 0) {
+      res.status(400).json({ error: "Title is required" }); return;
+    }
+    if (typeof body.body !== "string") {
+      res.status(400).json({ error: "Body is required" }); return;
+    }
+    const state = body.state ?? "draft";
+    if (!["draft", "scheduled", "published"].includes(state)) {
+      res.status(400).json({ error: "Invalid state" }); return;
+    }
+
+    const [feed] = await db
+      .select({ id: prayerFeedsTable.id })
+      .from(prayerFeedsTable)
+      .where(eq(prayerFeedsTable.slug, "phoebe-climate"));
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+
+    const publishedAt = state === "published" ? new Date() : null;
+    const [row] = await db
+      .insert(prayerFeedEntriesTable)
+      .values({
+        feedId: feed.id,
+        entryDate: body.entryDate,
+        title: body.title,
+        body: body.body,
+        scriptureRef: body.scriptureRef ?? null,
+        state,
+        createdByUserId: userId,
+        publishedAt,
+      })
+      .onConflictDoUpdate({
+        target: [prayerFeedEntriesTable.feedId, prayerFeedEntriesTable.entryDate],
+        set: {
+          title: body.title,
+          body: body.body,
+          scriptureRef: body.scriptureRef ?? null,
+          state,
+          updatedAt: new Date(),
+          // Stamp publishedAt the first time we go to published; preserve
+          // the original timestamp on subsequent edits to a published entry.
+          publishedAt: sql`CASE WHEN ${prayerFeedEntriesTable.publishedAt} IS NULL AND ${state === "published"} THEN NOW() ELSE ${prayerFeedEntriesTable.publishedAt} END`,
+        },
+      })
+      .returning();
+    res.json({ entry: row });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save entry" });
+  }
+});
+
+// DELETE /api/climate/admin/entries/:date — remove an entry. Idempotent.
+router.delete("/climate/admin/entries/:date", requireClimateAdmin, async (req, res): Promise<void> => {
+  try {
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    const date = req.params.date;
+    if (!date || !dateRe.test(date)) {
+      res.status(400).json({ error: "Invalid date" }); return;
+    }
+    const [feed] = await db
+      .select({ id: prayerFeedsTable.id })
+      .from(prayerFeedsTable)
+      .where(eq(prayerFeedsTable.slug, "phoebe-climate"));
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+    await db
+      .delete(prayerFeedEntriesTable)
+      .where(
+        and(
+          eq(prayerFeedEntriesTable.feedId, feed.id),
+          eq(prayerFeedEntriesTable.entryDate, date),
+        ),
+      );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete entry" });
+  }
 });
 
 // PATCH /api/climate/onboarding — mark the climate-specific onboarding

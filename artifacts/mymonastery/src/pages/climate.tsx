@@ -1,8 +1,10 @@
 import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { ClimateSlideshow } from "@/components/ClimateSlideshow";
 import { ClimateSignup } from "@/components/ClimateSignup";
 import { ClimateOnboarding } from "@/components/ClimateOnboarding";
@@ -148,6 +150,7 @@ function ClimateJoin() {
 // and opens the slideshow modal on tap. Also lists upcoming prayer walks.
 function ClimateTab() {
   const [slideshowOpen, setSlideshowOpen] = useState(false);
+  const { rawIsAdmin } = useBetaStatus();
 
   const { data, isLoading: todayLoading } = useQuery<TodayResponse>({
     queryKey: ["/api/climate/today"],
@@ -167,21 +170,33 @@ function ClimateTab() {
   return (
     <div className="flex flex-col gap-6 pt-2">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <div className="text-4xl">🌿</div>
-        <h1
-          className="text-2xl font-bold"
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            color: "#F0EDE6",
-            letterSpacing: "-0.03em",
-          }}
-        >
-          Phoebe Climate
-        </h1>
-        <p className="text-sm" style={{ color: "#8FAF96" }}>
-          Daily prayer for creation
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <div className="text-4xl">🌿</div>
+          <h1
+            className="text-2xl font-bold"
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              color: "#F0EDE6",
+              letterSpacing: "-0.03em",
+            }}
+          >
+            Phoebe Climate
+          </h1>
+          <p className="text-sm" style={{ color: "#8FAF96" }}>
+            Daily prayer for creation
+          </p>
+        </div>
+
+        {rawIsAdmin && (
+          <Link
+            href="/climate/admin"
+            className="text-xs font-semibold whitespace-nowrap pt-2"
+            style={{ color: "#A8C5A0" }}
+          >
+            Curate →
+          </Link>
+        )}
       </div>
 
       {/* Today's entry — primary content */}
