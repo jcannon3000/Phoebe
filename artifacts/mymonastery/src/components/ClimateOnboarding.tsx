@@ -15,7 +15,7 @@ const SLIDES: Array<{
   {
     emoji: "🌿",
     title: "Welcome to Phoebe Climate.",
-    body: "A short prayer for creation, every morning, alongside others praying together for climate justice.",
+    body: "A short prayer for the climate, every morning, alongside others praying with us.",
   },
   {
     emoji: "🔔",

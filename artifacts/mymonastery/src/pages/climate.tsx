@@ -119,8 +119,8 @@ function ClimateJoin() {
           className="text-sm leading-relaxed italic"
           style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}
         >
-          Pray together for climate justice. One short prayer each morning at 7am
-          — joined by people across parishes and traditions.
+          Pray for the climate with us. One short prayer each morning at 7am —
+          joined by people across parishes and traditions.
         </p>
       </div>
 
