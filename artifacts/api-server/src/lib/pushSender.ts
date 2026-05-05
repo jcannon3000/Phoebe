@@ -339,6 +339,22 @@ export function sendBellPush(userId: number) {
   });
 }
 
+// Climate daily push (7 AM local for enrolled users). Replaces the
+// regular morning bell for climate-enrolled users — see
+// runBellSender for the where-clause that disjoins the two audiences.
+// Body falls back to a generic invitation if today's entry hasn't
+// been authored yet, so the push still fires and the user sees the
+// "no entry today" state on /climate.
+export function sendClimateDailyPush(userId: number, entryTitle: string | null) {
+  return sendPushToUser(userId, {
+    title: "Phoebe Climate",
+    body: entryTitle ?? "A daily prayer for creation.",
+    path: "/climate",
+    threadId: "climate-daily",
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 // Evening nudge (7 PM local). Only fires if the user hasn't logged a
 // prayer that day — see runEveningNudgeSender for the gating.
 export function sendEveningNudgePush(userId: number) {

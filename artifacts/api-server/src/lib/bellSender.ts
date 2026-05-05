@@ -8,6 +8,8 @@ import {
   momentUserTokensTable,
   lectioReflectionsTable,
   lectionaryReadingsTable,
+  prayerFeedsTable,
+  prayerFeedEntriesTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull } from "drizzle-orm";
 import {
@@ -16,6 +18,7 @@ import {
   sendLectioReminderPush,
   sendLectioEveningReminderPush,
   sendPrayerRenewalNudgePush,
+  sendClimateDailyPush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { logger } from "./logger";
@@ -62,13 +65,19 @@ const DAILY_BELL_HOUR = 7;
 const DAILY_BELL_MINUTE = 0;
 
 export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // Climate-enrolled users are excluded here — they receive
+  // `runClimateDailySender` instead, at the same 7am local slot. We
+  // disjoin the two audiences at the SQL level so a climate-enrolled
+  // user never gets back-to-back duplicate pushes (the standard bell
+  // immediately followed by the climate daily).
   const bellUsers = await db
     .select({
       id: usersTable.id,
       email: usersTable.email,
       timezone: usersTable.timezone,
     })
-    .from(usersTable);
+    .from(usersTable)
+    .where(eq(usersTable.climateEnrolled, false));
 
   if (bellUsers.length === 0) return;
 
@@ -664,6 +673,114 @@ export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } =
   }
 }
 
+// ─── Climate daily sender (7 AM local for climate-enrolled users) ──────────
+//
+// Mirrors `runBellSender` in shape and timing — fires at 07:00 in each
+// user's local timezone, dedups via a slot-keyed `bell_notifications`
+// row (`${todayStr}-climate`), and inserts the dedup row only after a
+// successful push so transient APNs failures self-heal on the next
+// 15-min tick.
+//
+// The phoebe-climate feed is platform-owned; today's entry is the same
+// for every recipient (it's keyed by the feed's timezone, not the
+// user's), so we look it up ONCE per tick before the user loop and
+// reuse it across all sends. If the feed itself is missing we log and
+// bail — that's a deploy-time invariant violation, not a per-user
+// condition.
+export async function runClimateDailySender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // Look up the climate feed once per tick — id + timezone are all we
+  // need to find today's entry below.
+  const [feed] = await db
+    .select({
+      id: prayerFeedsTable.id,
+      timezone: prayerFeedsTable.timezone,
+    })
+    .from(prayerFeedsTable)
+    .where(eq(prayerFeedsTable.slug, "phoebe-climate"));
+
+  if (!feed) {
+    logger.warn("[climate-daily] phoebe-climate feed not found — skipping run");
+    return;
+  }
+
+  // Today's entry, also looked up once per tick. The entry is keyed by
+  // the feed's TZ (not each user's), so all recipients see the same
+  // title. If no entry has been authored/published for today we still
+  // fire the push with a fallback title — better to land the daily
+  // ping than to silently skip the cohort.
+  const feedTodayStr = todayDateInTz(feed.timezone);
+  const [entry] = await db
+    .select({
+      id: prayerFeedEntriesTable.id,
+      title: prayerFeedEntriesTable.title,
+    })
+    .from(prayerFeedEntriesTable)
+    .where(
+      and(
+        eq(prayerFeedEntriesTable.feedId, feed.id),
+        eq(prayerFeedEntriesTable.entryDate, feedTodayStr),
+        eq(prayerFeedEntriesTable.state, "published"),
+      ),
+    );
+  const entryTitle: string | null = entry?.title ?? null;
+
+  const climateUsers = await db
+    .select({
+      id: usersTable.id,
+      email: usersTable.email,
+      timezone: usersTable.timezone,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.climateEnrolled, true));
+
+  if (climateUsers.length === 0) return;
+
+  for (const user of climateUsers) {
+    try {
+      const tz = user.timezone ?? "America/New_York";
+      const todayStr = todayDateInTz(tz);
+      const dedupKey = `${todayStr}-climate`;
+
+      if (!opts.forceNow) {
+        const [existing] = await db
+          .select()
+          .from(bellNotificationsTable)
+          .where(
+            and(
+              eq(bellNotificationsTable.userId, user.id),
+              eq(bellNotificationsTable.bellDate, dedupKey),
+            ),
+          );
+        if (existing) continue;
+
+        const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
+        const diff = (nowH * 60 + nowM) - (DAILY_BELL_HOUR * 60 + DAILY_BELL_MINUTE);
+        if (diff < 0 || diff >= 15) continue;
+      }
+
+      // Same dedup discipline as runBellSender: insert AFTER push
+      // success so a transient APNs error doesn't mute the user for
+      // the rest of the day.
+      try {
+        await sendClimateDailyPush(user.id, entryTitle);
+      } catch (err) {
+        logger.warn({ err, userId: user.id }, "[climate-daily] push dispatch failed — skipping dedup insert so we retry next tick");
+        continue;
+      }
+
+      await db.insert(bellNotificationsTable).values({
+        userId: user.id,
+        bellDate: dedupKey,
+        sentAt: new Date(),
+      });
+
+      logger.info({ userId: user.id, dedupKey, entryId: entry?.id ?? null }, "[climate-daily] sent climate daily push");
+    } catch (err) {
+      logger.error({ err, userId: user.id }, "[climate-daily] user processing failed");
+    }
+  }
+}
+
 // ─── Scheduler ──────────────────────────────────────────────────────────────
 
 let bellInterval: ReturnType<typeof setInterval> | null = null;
@@ -691,6 +808,9 @@ export function startBellScheduler(): void {
     runPrayerRenewalNudgeSender().catch((err) =>
       logger.error({ err }, "[renewal-nudge] initial run failed"),
     );
+    runClimateDailySender().catch((err) =>
+      logger.error({ err }, "[climate-daily] initial run failed"),
+    );
   }, 45_000);
 
   bellInterval = setInterval(
@@ -712,6 +832,9 @@ export function startBellScheduler(): void {
       );
       runPrayerRenewalNudgeSender().catch((err) =>
         logger.error({ err }, "[renewal-nudge] scheduled run failed"),
+      );
+      runClimateDailySender().catch((err) =>
+        logger.error({ err }, "[climate-daily] scheduled run failed"),
       );
     },
     15 * 60 * 1000,
