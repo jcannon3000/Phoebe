@@ -1,7 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "wouter";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { ClimateSlideshow } from "@/components/ClimateSlideshow";
@@ -68,22 +67,32 @@ export default function ClimatePage() {
 
   return (
     <Layout>
-      {!user ? <ClimateSignup /> : !user.climateEnrolled ? <ClimateInviteOnly /> : <ClimateTab />}
+      {!user ? <ClimateSignup /> : !user.climateEnrolled ? <ClimateJoin /> : <ClimateTab />}
     </Layout>
   );
 }
 
-// Authenticated Phoebe user who isn't enrolled in Climate. We don't want
-// the silent-redirect-to-/dashboard behavior here — landing on /climate
-// is intentional, and explaining why they don't see anything beats
-// teleporting them away.
-function ClimateInviteOnly() {
+// Existing Phoebe user who hasn't joined Climate yet — one-tap opt-in.
+// Symmetric with the unauth signup form: anyone with the URL can join.
+// climate_only stays false for these users, so their regular Phoebe
+// drawer is preserved and Phoebe Climate is added as an extra surface.
+function ClimateJoin() {
+  const queryClient = useQueryClient();
+  const joinMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/climate/enroll-self"),
+    onSuccess: () => {
+      // Refetching /api/auth/me flips climateEnrolled true, which the
+      // dispatcher above reads to surface the onboarding flow next.
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+
   return (
-    <div className="flex flex-col gap-6 pt-2 max-w-md mx-auto w-full text-center">
-      <div className="flex flex-col gap-1 items-center">
-        <div className="text-4xl">🌿</div>
+    <div className="flex flex-col gap-8 pt-2 max-w-md mx-auto w-full">
+      <div className="flex flex-col gap-2 text-center">
+        <div className="text-5xl">🌿</div>
         <h1
-          className="text-2xl font-bold"
+          className="text-3xl font-bold"
           style={{
             fontFamily: "'Space Grotesk', sans-serif",
             color: "#F0EDE6",
@@ -92,28 +101,44 @@ function ClimateInviteOnly() {
         >
           Phoebe Climate
         </h1>
-      </div>
-
-      <div
-        className="rounded-2xl px-5 py-6"
-        style={{
-          background: "rgba(200,212,192,0.04)",
-          border: "1px dashed rgba(46,107,64,0.2)",
-        }}
-      >
-        <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-          Phoebe Climate is invite-only right now. If you'd like to join, reach
-          out through Water &amp; Wilderness DC.
+        <p className="text-sm" style={{ color: "#8FAF96" }}>
+          A daily prayer for creation, sent every morning.
         </p>
       </div>
 
-      <Link
-        href="/dashboard"
-        className="text-sm font-semibold"
-        style={{ color: "#A8C5A0" }}
+      <div
+        className="rounded-2xl px-5 py-5"
+        style={{
+          background: "rgba(46,107,64,0.10)",
+          border: "1px solid rgba(46,107,64,0.18)",
+        }}
       >
-        ← Back to Phoebe
-      </Link>
+        <p
+          className="text-sm leading-relaxed italic"
+          style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}
+        >
+          Pray together for climate justice. One short prayer each morning at 7am
+          — joined by people across parishes and traditions.
+        </p>
+      </div>
+
+      <button
+        onClick={() => joinMutation.mutate()}
+        disabled={joinMutation.isPending}
+        className="w-full py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-80 active:scale-[0.99] disabled:opacity-50"
+        style={{
+          background: "#2D5E3F",
+          color: "#F0EDE6",
+          fontFamily: "'Space Grotesk', sans-serif",
+        }}
+      >
+        {joinMutation.isPending ? "Joining…" : "Join Phoebe Climate"}
+      </button>
+
+      <p className="text-[11px] text-center" style={{ color: "rgba(143,175,150,0.5)" }}>
+        You'll receive a daily prayer notification at 7am. Your existing Phoebe
+        experience is unchanged.
+      </p>
     </div>
   );
 }

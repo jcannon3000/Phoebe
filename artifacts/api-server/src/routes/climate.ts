@@ -321,6 +321,26 @@ router.get("/climate/walks", requireClimate, async (req, res): Promise<void> => 
   }
 });
 
+// POST /api/climate/enroll-self — self-enroll an existing Phoebe user.
+// Symmetric with the unauth signup at /climate: anyone with the URL can
+// opt in. No invite-token gate today; if the URL spreads we'll add one.
+// climate_only stays false for existing Phoebe users — they keep their
+// regular drawer and gain Phoebe Climate as an additional surface.
+router.post("/climate/enroll-self", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated?.() || !req.user) {
+    res.status(401).json({ error: "Not authenticated" }); return;
+  }
+  const userId = (req.user as { id: number }).id;
+  await db
+    .update(usersTable)
+    .set({ climateEnrolled: true })
+    .where(eq(usersTable.id, userId));
+  if (req.user) {
+    (req.user as Record<string, unknown>).climateEnrolled = true;
+  }
+  res.json({ ok: true });
+});
+
 // PATCH /api/climate/onboarding — mark the climate-specific onboarding
 // flow complete. Called once after the user finishes the intro slides.
 router.patch("/climate/onboarding", requireClimate, async (req, res): Promise<void> => {
