@@ -7,11 +7,12 @@ import {
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
   lectioReflectionsTable, groupsTable, groupMembersTable, momentGroupsTable,
+  prayerFeedSubscriptionsTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
-import { reconcileGroupPracticeMembers } from "./groups";
+import { reconcileGroupPracticeMembers, reconcileFeedPracticeMembers } from "./groups";
 import { getGardenUserIds } from "../lib/garden";
 // Inline stub for new-group-moment push notifications. The real implementation
 // lives in ../lib/pushSender in the device-tokens branch of work; until that
@@ -1321,6 +1322,25 @@ router.get("/moments", async (req, res): Promise<void> => {
         ]));
         await Promise.all(allPracticeIds.map(id => reconcileGroupPracticeMembers(id)));
       }
+
+      // Same pre-reconcile pattern for feed-scoped intercessions:
+      // every feed the viewer subscribes to has its intercessions
+      // synced against the current subscriber roster before we read
+      // tokens. Keeps newly-published feed intercessions instantly
+      // visible without waiting for a per-moment write to fire.
+      const myFeedRows = await db.select({ feedId: prayerFeedSubscriptionsTable.feedId })
+        .from(prayerFeedSubscriptionsTable)
+        .where(eq(prayerFeedSubscriptionsTable.userId, sessionUserId));
+      const myFeedIds = [...new Set(myFeedRows.map(r => r.feedId))];
+      if (myFeedIds.length > 0) {
+        const feedPractices = await db.select({ id: sharedMomentsTable.id })
+          .from(sharedMomentsTable)
+          .where(and(
+            inArray(sharedMomentsTable.prayerFeedId, myFeedIds),
+            sql`${sharedMomentsTable.state} != 'archived'`,
+          ));
+        await Promise.all(feedPractices.map(p => reconcileFeedPracticeMembers(p.id)));
+      }
     } catch (err) {
       console.error("[GET /api/moments] pre-reconcile failed:", err);
     }
@@ -1372,14 +1392,20 @@ router.get("/moments", async (req, res): Promise<void> => {
       }
     }
 
-    // Reconcile membership for every group-linked practice BEFORE we read
-    // tokens. Practices attached to a group reflect the group's current
-    // roster — this is the authoritative sync point, so a stale eager-path
-    // can't leak into the response.
+    // Reconcile membership for every group-linked AND feed-linked
+    // practice. Practices attached to a group reflect the group's current
+    // roster; feed-scoped intercessions reflect the feed's subscribers.
+    // Either way, this is the authoritative sync point so a stale eager
+    // path can't leak into the response.
     await Promise.all(
       flatMoments
         .filter(m => m.groupId !== null && m.groupId !== undefined)
         .map(m => reconcileGroupPracticeMembers(m.id))
+    );
+    await Promise.all(
+      flatMoments
+        .filter(m => m.prayerFeedId !== null && m.prayerFeedId !== undefined)
+        .map(m => reconcileFeedPracticeMembers(m.id))
     );
 
     // Build a set of emails that have actual user accounts (i.e. have signed up).

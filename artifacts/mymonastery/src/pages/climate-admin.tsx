@@ -6,117 +6,133 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 
-interface Entry {
+interface Intercession {
   id: number;
-  feedId: number;
-  entryDate: string; // YYYY-MM-DD in feed tz
-  title: string;
-  body: string;
-  scriptureRef: string | null;
-  state: "draft" | "scheduled" | "published";
-  prayCount: number;
-  publishedAt: string | null;
+  name: string;
+  intention: string;
+  intercessionTopic: string | null;
+  intercessionFullText: string | null;
+  intercessionSource: string | null;
+  scheduledTime: string;
+  frequency: string;
+  state: string;
   createdAt: string;
-  updatedAt: string;
 }
 
-interface EntriesResponse {
-  entries: Entry[];
-  today: string;
+interface IntercessionsResponse {
+  intercessions: Intercession[];
+  subscriberCount: number;
 }
 
-// Curation portal for the daily climate prayer entries. Beta-admin gated
-// (matches the requireClimateAdmin middleware on the API). List view
-// shows recent + upcoming entries; tap one to edit, or tap "New entry"
-// to author a future date.
+// Curation portal for the climate feed's community intercessions. Beta-
+// admin gated. Authoring uses the same primitives as a regular community
+// intercession (shared_moments with templateType="intercession") — the
+// only difference is they're scoped to the climate feed instead of a
+// group, so subscribers receive them on the regular dashboard +
+// prayer-mode slideshow.
 export default function ClimateAdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { rawIsAdmin, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
 
-  // Editor state. `editingDate` doubles as the "is the editor open" flag.
-  const [editingDate, setEditingDate] = useState<string | null>(null);
+  // Editor state. `editing` is the row being edited, or "new" for create.
+  const [editing, setEditing] = useState<Intercession | "new" | null>(null);
   const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [scriptureRef, setScriptureRef] = useState("");
-  const [state, setState] = useState<"draft" | "scheduled" | "published">("draft");
+  const [fullText, setFullText] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("07:00");
+  const [frequency, setFrequency] = useState("daily");
 
   const queryClient = useQueryClient();
 
-  // Gate: redirect non-admins away. Note we also gate the API server-side,
-  // so this is just UX hygiene to avoid empty-state confusion.
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
-    if (!betaLoading && user && !rawIsAdmin) setLocation("/climate");
+    if (!betaLoading && user && !rawIsAdmin) setLocation("/dashboard");
   }, [user, authLoading, rawIsAdmin, betaLoading, setLocation]);
 
-  const { data, isLoading } = useQuery<EntriesResponse>({
-    queryKey: ["/api/climate/admin/entries"],
-    queryFn: () => apiRequest("GET", "/api/climate/admin/entries"),
+  const { data, isLoading } = useQuery<IntercessionsResponse>({
+    queryKey: ["/api/climate/admin/intercessions"],
+    queryFn: () => apiRequest("GET", "/api/climate/admin/intercessions"),
     enabled: !!user && rawIsAdmin,
   });
 
-  const saveMutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: () =>
-      apiRequest("POST", "/api/climate/admin/entries", {
-        entryDate: editingDate,
+      apiRequest("POST", "/api/climate/admin/intercessions", {
         title,
-        body,
-        scriptureRef: scriptureRef || null,
-        state,
+        fullText,
+        scheduledTime,
+        frequency,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/entries"] });
-      // Also invalidate the public today endpoint so an admin who just
-      // published today's entry sees it on /climate without a hard reload.
-      queryClient.invalidateQueries({ queryKey: ["/api/climate/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/intercessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
       closeEditor();
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (date: string) =>
-      apiRequest("DELETE", `/api/climate/admin/entries/${date}`),
+  const updateMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("PATCH", `/api/climate/admin/intercessions/${id}`, {
+        title,
+        fullText,
+        scheduledTime,
+        frequency,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/climate/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/intercessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
       closeEditor();
     },
   });
 
-  function openEditorForDate(date: string) {
-    const existing = (data?.entries ?? []).find((e) => e.entryDate === date);
-    setEditingDate(date);
-    setTitle(existing?.title ?? "");
-    setBody(existing?.body ?? "");
-    setScriptureRef(existing?.scriptureRef ?? "");
-    setState(existing?.state ?? "draft");
-  }
+  const archiveMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", `/api/climate/admin/intercessions/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/intercessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+      closeEditor();
+    },
+  });
 
-  function openNewEntry() {
-    // Default date: tomorrow in the feed's tz (which we approximate via
-    // the server-provided "today" string).
-    const today = data?.today ?? new Date().toISOString().slice(0, 10);
-    const tomorrow = new Date(today + "T00:00:00Z");
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    const dateStr = tomorrow.toISOString().slice(0, 10);
-    setEditingDate(dateStr);
-    setTitle("");
-    setBody("");
-    setScriptureRef("");
-    setState("draft");
+  function openEditor(target: Intercession | "new") {
+    setEditing(target);
+    if (target === "new") {
+      setTitle("");
+      setFullText("");
+      setScheduledTime("07:00");
+      setFrequency("daily");
+    } else {
+      setTitle(target.intercessionTopic ?? target.name ?? "");
+      setFullText(target.intercessionFullText ?? "");
+      setScheduledTime(target.scheduledTime ?? "07:00");
+      setFrequency(target.frequency ?? "daily");
+    }
   }
 
   function closeEditor() {
-    setEditingDate(null);
+    setEditing(null);
+  }
+
+  function handleSave() {
+    if (!editing) return;
+    if (editing === "new") {
+      createMutation.mutate();
+    } else {
+      updateMutation.mutate(editing.id);
+    }
   }
 
   if (authLoading || !user || !rawIsAdmin) {
     return <Layout><div /></Layout>;
   }
 
-  const entries = data?.entries ?? [];
-  const today = data?.today ?? "";
+  const intercessions = data?.intercessions ?? [];
+  const subscriberCount = data?.subscriberCount ?? 0;
+  const active = intercessions.filter(i => i.state !== "archived");
+  const archived = intercessions.filter(i => i.state === "archived");
+
+  const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Layout>
@@ -141,24 +157,25 @@ export default function ClimateAdminPage() {
               Curate Phoebe Climate
             </h1>
             <p className="text-sm" style={{ color: "#8FAF96" }}>
-              The daily prayer for creation. Authored once, sent to every
-              enrolled user at 7am local.
+              {subscriberCount === 0
+                ? "Climate intercessions surface on every subscriber's dashboard."
+                : `${subscriberCount} ${subscriberCount === 1 ? "person is subscribed" : "people are subscribed"}.`}
             </p>
           </div>
 
           <Link
-            href="/climate"
+            href="/dashboard"
             className="text-xs font-semibold whitespace-nowrap pt-2"
             style={{ color: "#A8C5A0" }}
           >
-            ← View
+            ← Dashboard
           </Link>
         </div>
 
-        {/* New entry button */}
-        {!editingDate && (
+        {/* New intercession button */}
+        {!editing && (
           <button
-            onClick={openNewEntry}
+            onClick={() => openEditor("new")}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm transition-colors"
             style={{
               background: "rgba(46,107,64,0.15)",
@@ -166,12 +183,12 @@ export default function ClimateAdminPage() {
               color: "#8FAF96",
             }}
           >
-            + New entry
+            + New intercession
           </button>
         )}
 
         {/* Editor */}
-        {editingDate && (
+        {editing && (
           <div
             className="rounded-2xl p-5 flex flex-col gap-3"
             style={{
@@ -184,33 +201,12 @@ export default function ClimateAdminPage() {
                 className="text-sm font-semibold"
                 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
               >
-                {entries.find((e) => e.entryDate === editingDate) ? "Edit entry" : "New entry"}
+                {editing === "new" ? "New intercession" : "Edit intercession"}
               </p>
-              <button
-                onClick={closeEditor}
-                className="text-xs"
-                style={{ color: "#8FAF96" }}
-              >
+              <button onClick={closeEditor} className="text-xs" style={{ color: "#8FAF96" }}>
                 Cancel
               </button>
             </div>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
-                Date (in feed timezone)
-              </span>
-              <input
-                type="date"
-                value={editingDate}
-                onChange={(e) => setEditingDate(e.target.value)}
-                className="px-3 py-2 rounded-lg text-sm bg-transparent"
-                style={{
-                  border: "1px solid rgba(46,107,64,0.4)",
-                  color: "#F0EDE6",
-                  colorScheme: "dark",
-                }}
-              />
-            </label>
 
             <label className="flex flex-col gap-1">
               <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
@@ -231,12 +227,12 @@ export default function ClimateAdminPage() {
 
             <label className="flex flex-col gap-1">
               <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
-                Prayer body
+                Prayer text
               </span>
               <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="The prayer itself. This is what people read in the slideshow."
+                value={fullText}
+                onChange={(e) => setFullText(e.target.value)}
+                placeholder="The prayer body. This is what subscribers read in the slideshow."
                 rows={6}
                 className="px-3 py-2 rounded-lg text-sm bg-transparent resize-none italic"
                 style={{
@@ -247,140 +243,104 @@ export default function ClimateAdminPage() {
               />
             </label>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
-                Scripture reference (optional)
-              </span>
-              <input
-                type="text"
-                value={scriptureRef}
-                onChange={(e) => setScriptureRef(e.target.value)}
-                placeholder="e.g. Romans 8:19–22"
-                className="px-3 py-2 rounded-lg text-sm bg-transparent"
-                style={{
-                  border: "1px solid rgba(46,107,64,0.4)",
-                  color: "#F0EDE6",
-                }}
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
+                  Scheduled time
+                </span>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="px-3 py-2 rounded-lg text-sm bg-transparent"
+                  style={{
+                    border: "1px solid rgba(46,107,64,0.4)",
+                    color: "#F0EDE6",
+                    colorScheme: "dark",
+                  }}
+                />
+              </label>
 
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
-                State
-              </span>
-              <div className="flex gap-1.5">
-                {(["draft", "scheduled", "published"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setState(s)}
-                    className="flex-1 px-3 py-2 rounded-lg text-xs font-medium capitalize transition-colors"
-                    style={{
-                      background: state === s ? "rgba(46,107,64,0.4)" : "rgba(46,107,64,0.12)",
-                      color: state === s ? "#F0EDE6" : "#8FAF96",
-                      border: "1px solid rgba(46,107,64,0.3)",
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-                Only <span className="font-semibold">published</span> entries appear on the climate tab and trigger the 7am push.
-              </p>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
+                  Frequency
+                </span>
+                <select
+                  value={frequency}
+                  onChange={(e) => setFrequency(e.target.value)}
+                  className="px-3 py-2 rounded-lg text-sm bg-transparent"
+                  style={{
+                    border: "1px solid rgba(46,107,64,0.4)",
+                    color: "#F0EDE6",
+                    colorScheme: "dark",
+                  }}
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </label>
             </div>
 
             <div className="flex items-center justify-between gap-2 mt-2">
               <button
-                onClick={() => saveMutation.mutate()}
-                disabled={
-                  saveMutation.isPending ||
-                  !title.trim() ||
-                  !body.trim() ||
-                  !editingDate
-                }
+                onClick={handleSave}
+                disabled={saving || !title.trim() || !fullText.trim()}
                 className="px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {saveMutation.isPending ? "Saving…" : "Save"}
+                {saving ? "Saving…" : "Save"}
               </button>
-              {entries.find((e) => e.entryDate === editingDate) && (
+              {editing !== "new" && (
                 <button
                   onClick={() => {
-                    if (window.confirm("Delete this entry?")) {
-                      deleteMutation.mutate(editingDate);
+                    if (window.confirm("Archive this intercession? It will stop showing on subscribers' dashboards.")) {
+                      archiveMutation.mutate(editing.id);
                     }
                   }}
-                  disabled={deleteMutation.isPending}
+                  disabled={archiveMutation.isPending}
                   className="text-xs"
                   style={{ color: "#E89B9B" }}
                 >
-                  Delete
+                  Archive
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* Entry list */}
-        {!editingDate && (
+        {/* Active intercessions */}
+        {!editing && (
           <div className="flex flex-col gap-2">
             <p
               className="text-[10px] font-semibold uppercase tracking-widest mt-2"
               style={{ color: "rgba(200,212,192,0.4)" }}
             >
-              Entries
+              Active
             </p>
             {isLoading ? (
-              <p className="text-sm" style={{ color: "rgba(143,175,150,0.5)" }}>
-                Loading…
-              </p>
-            ) : entries.length === 0 ? (
+              <p className="text-sm" style={{ color: "rgba(143,175,150,0.5)" }}>Loading…</p>
+            ) : active.length === 0 ? (
               <p className="text-sm" style={{ color: "#8FAF96" }}>
-                No entries in this window. Tap "New entry" to add one.
+                No active intercessions yet. Tap "New intercession" to add one.
               </p>
             ) : (
-              entries.map((e) => (
+              active.map((i) => (
                 <button
-                  key={e.id}
-                  onClick={() => openEditorForDate(e.entryDate)}
+                  key={i.id}
+                  onClick={() => openEditor(i)}
                   className="text-left rounded-2xl px-4 py-3 transition-colors"
                   style={{
-                    background:
-                      e.entryDate === today
-                        ? "rgba(46,107,64,0.18)"
-                        : "rgba(46,107,64,0.08)",
-                    border: "1px solid rgba(46,107,64,0.2)",
+                    background: "rgba(46,107,64,0.10)",
+                    border: "1px solid rgba(46,107,64,0.18)",
                   }}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <p
-                      className="text-xs font-medium"
-                      style={{ color: "#8FAF96" }}
-                    >
-                      {e.entryDate}
-                      {e.entryDate === today ? " · today" : ""}
-                    </p>
-                    <span
-                      className="text-[10px] uppercase tracking-widest font-semibold"
-                      style={{
-                        color:
-                          e.state === "published"
-                            ? "#A8C5A0"
-                            : e.state === "scheduled"
-                              ? "#C8B978"
-                              : "rgba(143,175,150,0.6)",
-                      }}
-                    >
-                      {e.state}
-                    </span>
-                  </div>
                   <p
-                    className="text-sm font-semibold mt-1"
+                    className="text-sm font-semibold"
                     style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
                   >
-                    {e.title}
+                    {i.intercessionTopic ?? i.name}
                   </p>
-                  {e.body && (
+                  {i.intercessionFullText && (
                     <p
                       className="text-xs mt-1 line-clamp-2 italic"
                       style={{
@@ -388,19 +348,44 @@ export default function ClimateAdminPage() {
                         fontFamily: "Georgia, 'Times New Roman', serif",
                       }}
                     >
-                      {e.body}
+                      {i.intercessionFullText}
                     </p>
                   )}
-                  {e.state === "published" && e.prayCount > 0 && (
-                    <p
-                      className="text-[11px] mt-1.5"
-                      style={{ color: "rgba(143,175,150,0.5)" }}
-                    >
-                      {e.prayCount} {e.prayCount === 1 ? "person" : "people"} prayed
-                    </p>
-                  )}
+                  <p className="text-[11px] mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
+                    {i.frequency} · {i.scheduledTime}
+                  </p>
                 </button>
               ))
+            )}
+
+            {/* Archived */}
+            {archived.length > 0 && (
+              <>
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-widest mt-6"
+                  style={{ color: "rgba(200,212,192,0.4)" }}
+                >
+                  Archived
+                </p>
+                {archived.map((i) => (
+                  <button
+                    key={i.id}
+                    onClick={() => openEditor(i)}
+                    className="text-left rounded-2xl px-4 py-3 transition-colors opacity-60"
+                    style={{
+                      background: "rgba(200,212,192,0.04)",
+                      border: "1px solid rgba(46,107,64,0.12)",
+                    }}
+                  >
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                    >
+                      {i.intercessionTopic ?? i.name}
+                    </p>
+                  </button>
+                ))}
+              </>
             )}
           </div>
         )}

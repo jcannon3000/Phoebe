@@ -1,11 +1,19 @@
 import { pgTable, serial, text, integer, timestamp, boolean, date } from "drizzle-orm/pg-core";
 import { ritualsTable } from "./rituals";
 import { groupsTable } from "./groups";
+import { prayerFeedsTable } from "./prayer_feeds";
 
 export const sharedMomentsTable = pgTable("shared_moments", {
   id: serial("id").primaryKey(),
   ritualId: integer("ritual_id").references(() => ritualsTable.id, { onDelete: "cascade" }),
   groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "set null" }),
+  // Alternate scope: a community intercession can be attached to a prayer
+  // feed instead of a group. Subscribers of the feed receive
+  // moment_user_tokens via reconcileFeedPracticeMembers, so the moment
+  // surfaces in /api/moments and prayer-mode just like a group's would.
+  // Mutually exclusive with groupId for now (a moment is owned by one or
+  // the other), enforced at the API layer rather than via a DB check.
+  prayerFeedId: integer("prayer_feed_id").references(() => prayerFeedsTable.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   intention: text("intention").notNull(),
   loggingType: text("logging_type").notNull().default("photo"),

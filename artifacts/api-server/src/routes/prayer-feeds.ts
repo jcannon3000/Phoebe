@@ -354,7 +354,10 @@ router.delete("/prayer-feeds/:slug/entries/:date", requireBeta, async (req, res)
   res.json({ ok: true });
 });
 
-// POST /api/prayer-feeds/:slug/subscribe — idempotent subscribe
+// POST /api/prayer-feeds/:slug/subscribe — idempotent subscribe.
+// After inserting the subscription row we reconcile every feed
+// intercession's moment_user_tokens so the subscriber receives a token
+// per intercession — that's how /api/moments + prayer-mode pick them up.
 router.post("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
@@ -374,10 +377,19 @@ router.post("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Prom
   await db.update(prayerFeedsTable)
     .set({ subscriberCount: count, updatedAt: new Date() })
     .where(eq(prayerFeedsTable.id, feed.id));
+
+  // Reconcile token rosters across every feed intercession so the new
+  // subscriber gets pulled in. Imported lazily to avoid a circular
+  // import between the prayer-feeds and groups route modules.
+  const { reconcileAllPracticesForFeed } = await import("./groups");
+  await reconcileAllPracticesForFeed(feed.id);
+
   res.json({ ok: true, subscriberCount: count });
 });
 
-// DELETE /api/prayer-feeds/:slug/subscribe — unsubscribe
+// DELETE /api/prayer-feeds/:slug/subscribe — unsubscribe. Same
+// reconcile-on-the-way-out so the user's tokens for every feed
+// intercession are removed in lockstep.
 router.delete("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
@@ -392,6 +404,10 @@ router.delete("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Pr
   await db.update(prayerFeedsTable)
     .set({ subscriberCount: count, updatedAt: new Date() })
     .where(eq(prayerFeedsTable.id, feed.id));
+
+  const { reconcileAllPracticesForFeed } = await import("./groups");
+  await reconcileAllPracticesForFeed(feed.id);
+
   res.json({ ok: true, subscriberCount: count });
 });
 

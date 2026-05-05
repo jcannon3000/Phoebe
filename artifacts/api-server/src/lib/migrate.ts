@@ -1161,6 +1161,12 @@ export async function migrate() {
     // parish_id FK (nullable, no NOT NULL)
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_id INTEGER REFERENCES groups(id)`);
 
+    // BCP-47 locale code. Default English so legacy rows render in
+    // English without backfill. Beta users can flip to "es" via
+    // Settings → Language; non-beta accounts stay locked to English
+    // at the API surface (the settings toggle is hidden for them).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'en'`);
+
     // Platform-owned feeds: drop NOT NULL on creator_user_id so editorial
     // feeds (phoebe-climate) can exist without a human creator. The
     // existing FK + ON DELETE CASCADE behaviour for user-created feeds
@@ -1192,6 +1198,35 @@ export async function migrate() {
     // up expecting the push, so we don't want the new gate to silently mute
     // them on the next deploy.
     await run(client, `UPDATE users SET bell_enabled = true WHERE climate_enrolled = true AND bell_enabled = false`);
+
+    // Phoebe Climate v2: feed-scoped community intercessions. A
+    // shared_moment can now be attached to a prayer_feed instead of a
+    // group; reconcileFeedPracticeMembers mints/removes
+    // moment_user_tokens against feed subscriptions so the moment
+    // surfaces on /api/moments + prayer-mode for every subscriber.
+    await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS prayer_feed_id INTEGER REFERENCES prayer_feeds(id) ON DELETE SET NULL`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_shared_moments_prayer_feed ON shared_moments (prayer_feed_id)`);
+
+    // Backfill: every existing climate-enrolled user gets a subscription
+    // to phoebe-climate so they pick up feed-scoped intercessions on
+    // their dashboard and slideshow without a manual opt-in step.
+    await run(client, `
+      INSERT INTO prayer_feed_subscriptions (feed_id, user_id)
+      SELECT pf.id, u.id
+      FROM users u
+      CROSS JOIN prayer_feeds pf
+      WHERE u.climate_enrolled = true
+        AND pf.slug = 'phoebe-climate'
+      ON CONFLICT DO NOTHING
+    `);
+    await run(client, `
+      UPDATE prayer_feeds
+      SET subscriber_count = (
+        SELECT COUNT(*)::int FROM prayer_feed_subscriptions s
+        WHERE s.feed_id = prayer_feeds.id
+      )
+      WHERE slug = 'phoebe-climate'
+    `);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

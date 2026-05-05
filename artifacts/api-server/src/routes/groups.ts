@@ -20,6 +20,7 @@ import {
   circleIntentionsTable,
   ritualsTable,
   meetupsTable,
+  prayerFeedSubscriptionsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
@@ -144,6 +145,94 @@ export async function reconcileGroupPracticeMembers(momentId: number): Promise<v
     }
   } catch (err) {
     console.error("[groups] reconcileGroupPracticeMembers failed for moment", momentId, err);
+  }
+}
+
+// Mirror of reconcileGroupPracticeMembers for prayer feeds. A
+// shared_moment with prayer_feed_id set has its participants = current
+// feed subscribers. This is what makes a feed-scoped intercession
+// appear on a subscriber's /api/moments + prayer-mode slideshow without
+// any custom climate-specific code path.
+//
+// Like the group variant: organizer is preserved as the smallest-id
+// token (the admin who created the intercession), and tokens are
+// removed when a user unsubscribes.
+export async function reconcileFeedPracticeMembers(momentId: number): Promise<void> {
+  try {
+    const [m] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
+    if (!m || !m.prayerFeedId) return;
+
+    // Current subscribers of this feed, joined to users for email + name.
+    const subscriberRows = await db
+      .select({
+        email: usersTable.email,
+        name: usersTable.name,
+      })
+      .from(prayerFeedSubscriptionsTable)
+      .innerJoin(usersTable, eq(usersTable.id, prayerFeedSubscriptionsTable.userId))
+      .where(eq(prayerFeedSubscriptionsTable.feedId, m.prayerFeedId));
+
+    const subscriberEmailToName = new Map<string, string | null>();
+    for (const row of subscriberRows) {
+      subscriberEmailToName.set(row.email.toLowerCase(), row.name);
+    }
+
+    const tokens = await db
+      .select()
+      .from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, momentId));
+
+    // Organizer = smallest-id token (the admin who created the moment).
+    // Preserved unconditionally even if they aren't a subscriber.
+    const organizerId = tokens.length > 0
+      ? tokens.reduce((min, t) => (t.id < min.id ? t : min), tokens[0]).id
+      : null;
+
+    const tokenEmailSet = new Set(tokens.map(t => t.email.toLowerCase()));
+    const subscriberEmailSet = new Set(subscriberEmailToName.keys());
+
+    const toAdd: { email: string; name: string }[] = [];
+    for (const email of subscriberEmailSet) {
+      if (!tokenEmailSet.has(email)) {
+        toAdd.push({ email, name: subscriberEmailToName.get(email) ?? email });
+      }
+    }
+    if (toAdd.length > 0) {
+      await db.insert(momentUserTokensTable).values(
+        toAdd.map(row => ({
+          momentId,
+          email: row.email,
+          name: row.name,
+          userToken: generateToken(),
+        })),
+      );
+    }
+
+    const toRemove = tokens.filter(t => {
+      if (t.id === organizerId) return false;
+      return !subscriberEmailSet.has(t.email.toLowerCase());
+    });
+    if (toRemove.length > 0) {
+      await db.delete(momentUserTokensTable)
+        .where(inArray(momentUserTokensTable.id, toRemove.map(t => t.id)));
+    }
+  } catch (err) {
+    console.error("[groups] reconcileFeedPracticeMembers failed for moment", momentId, err);
+  }
+}
+
+// Reconcile every moment attached to a feed — fired when a user
+// subscribes or unsubscribes so all the feed's intercessions update
+// their token rosters at once.
+export async function reconcileAllPracticesForFeed(feedId: number): Promise<void> {
+  try {
+    const moments = await db
+      .select({ id: sharedMomentsTable.id })
+      .from(sharedMomentsTable)
+      .where(eq(sharedMomentsTable.prayerFeedId, feedId));
+    await Promise.all(moments.map(m => reconcileFeedPracticeMembers(m.id)));
+  } catch (err) {
+    console.error("[groups] reconcileAllPracticesForFeed failed for feed", feedId, err);
   }
 }
 
