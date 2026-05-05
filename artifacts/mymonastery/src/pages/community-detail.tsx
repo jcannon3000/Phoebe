@@ -601,9 +601,11 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
   // Single-service: render the time directly. If a label is present
   // ("Sunday Service", etc.) we omit it in this collapsed home-tab
   // pill so the line stays compact — the dedicated Gatherings tab is
-  // where the full label + location shows.
+  // where the full label + location shows. Times come back in 24h
+  // "HH:MM" form; format with the same `formatHM12` helper the
+  // Gatherings list uses so the rendering is consistent.
   const trailing = schedule.times.length === 1
-    ? schedule.times[0].time
+    ? formatHM12(schedule.times[0].time)
     : "Tap to See All Service Times";
   return (
     <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>

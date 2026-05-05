@@ -1711,16 +1711,22 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
 // pill list so the CSS keyframe can translate from 0 to -50% and seam.
 
 function ServiceTimesPillRow({ schedule, nextDate }: { schedule: ServiceSchedule; nextDate: Date }) {
-  // Static teaser: "<Month D> — Tap to See All Service Times". Rotating
-  // pills and scrollable strips both fought the clickable card wrapper,
-  // and a plain line honors the tap target.
+  // "<Month D> — <time>" when the community has only one service time on
+  // their schedule, otherwise "<Month D> — Tap to See All Service Times".
+  // Rotating pills and scrollable strips both fought the clickable card
+  // wrapper, and a plain line honors the tap target. Times come back as
+  // 24h "HH:MM" so we run them through formatServiceTime for 12h display
+  // ("17:00" → "5:00 PM").
   if (schedule.times.length === 0) return null;
   const dateLabel = nextDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  const trailing = schedule.times.length === 1
+    ? formatServiceTime(schedule.times[0].time)
+    : "Tap to See All Service Times";
   return (
     <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
       <span style={{ color: "#C8D4C0" }}>{dateLabel}</span>
       <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
-      <span>Tap to See All Service Times</span>
+      <span>{trailing}</span>
     </div>
   );
 }
