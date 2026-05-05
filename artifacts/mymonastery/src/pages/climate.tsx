@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { ClimateSlideshow } from "@/components/ClimateSlideshow";
 import { ClimateSignup } from "@/components/ClimateSignup";
+import { ClimateOnboarding } from "@/components/ClimateOnboarding";
 
 interface TodayResponse {
   entry: {
@@ -20,16 +21,25 @@ interface TodayResponse {
   parish: { name: string; count: number } | null;
 }
 
-// /climate is dual-mode by auth state:
-//   • Unauthenticated visitor → ClimateSignup (creates a climate-enrolled account)
-//   • Authenticated, not enrolled → ClimateInviteOnly (the page is invite-only)
-//   • Authenticated, enrolled → ClimateTab (the daily-prayer surface)
+// /climate dispatches by auth + enrollment + onboarding state:
+//   • Unauthenticated → ClimateSignup (creates a climate-enrolled account)
+//   • Authenticated, not enrolled → ClimateInviteOnly
+//   • Authenticated, enrolled, NOT climate-onboarded → ClimateOnboarding
+//     (full-screen overlay, no Layout — first-run experience)
+//   • Authenticated, enrolled, climate-onboarded → ClimateTab
 export default function ClimatePage() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return <Layout><div /></Layout>;
   }
+
+  // Onboarding is a full-screen overlay — render outside Layout so
+  // the Phoebe header doesn't compete with the intro experience.
+  if (user && user.climateEnrolled && !user.climateOnboardingCompleted) {
+    return <ClimateOnboarding />;
+  }
+
   return (
     <Layout>
       {!user ? <ClimateSignup /> : !user.climateEnrolled ? <ClimateInviteOnly /> : <ClimateTab />}

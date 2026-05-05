@@ -1149,6 +1149,15 @@ export async function migrate() {
     // climate_enrolled flag
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS climate_enrolled BOOLEAN NOT NULL DEFAULT FALSE`);
 
+    // climate_onboarding_completed — separate from onboarding_completed,
+    // tracks the climate-specific intro slides shown once after signup.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS climate_onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE`);
+
+    // climate_only — true for users created via /climate signup. Existing
+    // Phoebe users keep the default false even if they later get
+    // climate_enrolled. Used to hide non-climate nav from the W&W cohort.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS climate_only BOOLEAN NOT NULL DEFAULT FALSE`);
+
     // parish_id FK (nullable, no NOT NULL)
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_id INTEGER REFERENCES groups(id)`);
 

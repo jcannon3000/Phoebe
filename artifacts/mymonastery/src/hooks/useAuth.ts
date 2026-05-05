@@ -19,6 +19,8 @@ export interface AuthUser {
   // form to the UI for editing.
   phoneNumber: string | null;
   climateEnrolled: boolean;
+  climateOnboardingCompleted: boolean;
+  climateOnly: boolean;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

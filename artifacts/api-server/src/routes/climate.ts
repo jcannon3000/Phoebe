@@ -266,7 +266,13 @@ router.post(
         name: name.trim(),
         passwordHash,
         climateEnrolled: true,
+        // Skip Phoebe's general onboarding tour. Climate has its own.
         onboardingCompleted: true,
+        // climateOnboardingCompleted defaults false — the new user will
+        // see ClimateOnboarding once before landing on the tab.
+        // climateOnly distinguishes signups via /climate from existing
+        // Phoebe users who later get climate_enrolled flipped on.
+        climateOnly: true,
       })
       .returning();
 
@@ -277,8 +283,18 @@ router.post(
   },
 );
 
-// Suppress unused-import warning if drizzle helpers aren't all consumed
-// by every code path (defensive — used inline above).
-void usersTable;
+// PATCH /api/climate/onboarding — mark the climate-specific onboarding
+// flow complete. Called once after the user finishes the intro slides.
+router.patch("/climate/onboarding", requireClimate, async (req, res): Promise<void> => {
+  const userId = (req.user as { id: number }).id;
+  await db
+    .update(usersTable)
+    .set({ climateOnboardingCompleted: true })
+    .where(eq(usersTable.id, userId));
+  if (req.user) {
+    (req.user as Record<string, unknown>).climateOnboardingCompleted = true;
+  }
+  res.json({ ok: true });
+});
 
 export default router;

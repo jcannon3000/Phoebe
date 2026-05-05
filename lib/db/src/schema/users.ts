@@ -55,6 +55,16 @@ export const usersTable = pgTable("users", {
   phoneNumberNormalized: text("phone_number_normalized"),
   phoneHash: text("phone_hash"),
   climateEnrolled: boolean("climate_enrolled").notNull().default(false),
+  // Distinct from `onboardingCompleted` (Phoebe's general onboarding tour).
+  // Climate has its own short intro shown once after signup; this column
+  // tracks completion of THAT flow. Climate users skip Phoebe's general
+  // onboarding entirely (onboardingCompleted is set true at signup).
+  climateOnboardingCompleted: boolean("climate_onboarding_completed").notNull().default(false),
+  // True for users created via /climate signup. Distinguishes "climate-only"
+  // members from existing Phoebe users who later got climate_enrolled.
+  // Used in the drawer/nav to hide non-climate surfaces from the W&W
+  // cohort while leaving dual users' experience intact.
+  climateOnly: boolean("climate_only").notNull().default(false),
   parishId: integer("parish_id"),  // FK to groups.id, enforced only in migration SQL — no .references() here to avoid circular import
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
