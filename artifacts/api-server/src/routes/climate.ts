@@ -8,6 +8,8 @@ import {
   prayerFeedPrayersTable,
 } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import { hashPassword } from "./auth";
+import { rateLimit } from "../lib/rate-limit";
 
 const router = Router();
 
@@ -203,6 +205,77 @@ router.post("/climate/today/pray", requireClimate, async (req, res): Promise<voi
     res.status(500).json({ error: "Failed to log prayer" });
   }
 });
+
+// ─── POST /api/climate/signup ────────────────────────────────────────────────
+// Climate-only account creation. Distinct from /api/auth/register because:
+//   • No invite-token / beta_users gate — climate enrollment is its own
+//     authorization, not Phoebe-beta authorization
+//   • Sets climate_enrolled = true at creation
+//   • Sets onboarding_completed = true so the new user lands directly in
+//     /climate without seeing Phoebe's general onboarding tour (climate
+//     gets its own onboarding in a future session)
+//   • Honeypot + rate-limit mirror auth/register's anti-abuse posture
+//
+// Manual gate for the W&W cohort: a new account is created freely here,
+// but only after Jeremy/admin flips climate_enrolled later... no wait,
+// we're enrolling at signup. The expectation is a closed marketing URL
+// for now; if the page is shared more widely we'll add an invite-token
+// requirement here.
+router.post(
+  "/climate/signup",
+  rateLimit({
+    name: "climate_signup",
+    max: 5,
+    windowMs: 60 * 60 * 1000,
+    message: "Too many signup attempts from your network. Please try again in an hour.",
+  }),
+  async (req, res): Promise<void> => {
+    const { email, name, password, website } = req.body as {
+      email?: string; name?: string; password?: string;
+      // Honeypot — same shape as auth/register.
+      website?: string;
+    };
+
+    if (website && website.trim().length > 0) {
+      res.status(400).json({ error: "Invalid submission." }); return;
+    }
+    if (!email || !email.includes("@")) {
+      res.status(400).json({ error: "A valid email address is required." }); return;
+    }
+    if (!name || name.trim().length < 1) {
+      res.status(400).json({ error: "Your name is required." }); return;
+    }
+    if (!password || password.length < 6) {
+      res.status(400).json({ error: "Password must be at least 6 characters." }); return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const [existing] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, normalizedEmail));
+    if (existing) {
+      res.status(400).json({ error: "An account with that email already exists." }); return;
+    }
+
+    const passwordHash = await hashPassword(password);
+    const [user] = await db
+      .insert(usersTable)
+      .values({
+        email: normalizedEmail,
+        name: name.trim(),
+        passwordHash,
+        climateEnrolled: true,
+        onboardingCompleted: true,
+      })
+      .returning();
+
+    req.login(user, (err) => {
+      if (err) { res.status(500).json({ error: "Login failed after signup." }); return; }
+      req.session.save(() => res.json({ ok: true }));
+    });
+  },
+);
 
 // Suppress unused-import warning if drizzle helpers aren't all consumed
 // by every code path (defensive — used inline above).

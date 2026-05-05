@@ -1,9 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { Link } from "wouter";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Layout } from "@/components/layout";
 import { ClimateSlideshow } from "@/components/ClimateSlideshow";
+import { ClimateSignup } from "@/components/ClimateSignup";
 
 interface TodayResponse {
   entry: {
@@ -18,24 +20,78 @@ interface TodayResponse {
   parish: { name: string; count: number } | null;
 }
 
+// /climate is dual-mode by auth state:
+//   • Unauthenticated visitor → ClimateSignup (creates a climate-enrolled account)
+//   • Authenticated, not enrolled → ClimateInviteOnly (the page is invite-only)
+//   • Authenticated, enrolled → ClimateTab (the daily-prayer surface)
 export default function ClimatePage() {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-  const [slideshowOpen, setSlideshowOpen] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && user && !user.climateEnrolled) {
-      setLocation("/dashboard");
-    }
-  }, [user, isLoading, setLocation]);
+  if (isLoading) {
+    return <Layout><div /></Layout>;
+  }
+  return (
+    <Layout>
+      {!user ? <ClimateSignup /> : !user.climateEnrolled ? <ClimateInviteOnly /> : <ClimateTab />}
+    </Layout>
+  );
+}
+
+// Authenticated Phoebe user who isn't enrolled in Climate. We don't want
+// the silent-redirect-to-/dashboard behavior here — landing on /climate
+// is intentional, and explaining why they don't see anything beats
+// teleporting them away.
+function ClimateInviteOnly() {
+  return (
+    <div className="flex flex-col gap-6 pt-2 max-w-md mx-auto w-full text-center">
+      <div className="flex flex-col gap-1 items-center">
+        <div className="text-4xl">🌿</div>
+        <h1
+          className="text-2xl font-bold"
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            color: "#F0EDE6",
+            letterSpacing: "-0.03em",
+          }}
+        >
+          Phoebe Climate
+        </h1>
+      </div>
+
+      <div
+        className="rounded-2xl px-5 py-6"
+        style={{
+          background: "rgba(200,212,192,0.04)",
+          border: "1px dashed rgba(46,107,64,0.2)",
+        }}
+      >
+        <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
+          Phoebe Climate is invite-only right now. If you'd like to join, reach
+          out through Water &amp; Wilderness DC.
+        </p>
+      </div>
+
+      <Link
+        href="/dashboard"
+        className="text-sm font-semibold"
+        style={{ color: "#A8C5A0" }}
+      >
+        ← Back to Phoebe
+      </Link>
+    </div>
+  );
+}
+
+// The daily-prayer tab itself — what an enrolled user sees when they land
+// on /climate. Pulls today's entry, surfaces it inline with a Pray button,
+// and opens the slideshow modal on tap.
+function ClimateTab() {
+  const [slideshowOpen, setSlideshowOpen] = useState(false);
 
   const { data, isLoading: todayLoading } = useQuery<TodayResponse>({
     queryKey: ["/api/climate/today"],
     queryFn: () => apiRequest("GET", "/api/climate/today"),
-    enabled: !!user?.climateEnrolled,
   });
-
-  if (isLoading || !user?.climateEnrolled) return null;
 
   const entry = data?.entry ?? null;
   const prayedToday = data?.prayedToday ?? false;
