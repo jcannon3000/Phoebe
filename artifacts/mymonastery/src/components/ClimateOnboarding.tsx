@@ -7,8 +7,6 @@ import { apiRequest } from "@/lib/queryClient";
 // followed by a "Begin" tap that flips climate_onboarding_completed and
 // drops the user into the climate tab. Distinct from Phoebe's general
 // onboarding (which climate-enrolled users skip entirely).
-//
-// Copy here is placeholder — refine with W&W before going live.
 const SLIDES: Array<{
   emoji: string;
   title: string;
@@ -17,17 +15,17 @@ const SLIDES: Array<{
   {
     emoji: "🌿",
     title: "Welcome to Phoebe Climate.",
-    body: "A short prayer for creation, every morning, alongside others across the church.",
+    body: "A short prayer for creation, every morning, alongside others praying together for climate justice.",
   },
   {
     emoji: "🔔",
     title: "Each morning at 7am,",
-    body: "you'll receive a gentle notification with the day's prayer. Open it, read, and pray — together with members of your parish and the wider diocese.",
+    body: "you'll receive a gentle notification with the day's prayer. Open it, read, and pray.",
   },
   {
     emoji: "🤲🏽",
     title: "You're part of a wider prayer.",
-    body: "Each time you pray, you're joining everyone who has prayed today — globally, and in your parish if you're connected to one. The counter at the end shows you how the prayer is rising together.",
+    body: "Each time you pray, you're joining everyone who has prayed today across parishes and traditions. The counter at the end shows the prayer rising together.",
   },
 ];
 

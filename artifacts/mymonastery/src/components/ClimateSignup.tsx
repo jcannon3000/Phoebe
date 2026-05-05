@@ -61,7 +61,7 @@ export function ClimateSignup() {
         </p>
       </div>
 
-      {/* Pitch — placeholder copy, refine before the public link goes out */}
+      {/* Pitch */}
       <div
         className="rounded-2xl px-5 py-5"
         style={{
@@ -73,9 +73,8 @@ export function ClimateSignup() {
           className="text-sm leading-relaxed italic"
           style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}
         >
-          An invite-only beta from Water &amp; Wilderness DC and the Episcopal
-          Diocese of Washington. One short prayer each morning at 7am. Pray
-          alongside others across your parish and the wider church.
+          Pray together for climate justice. One short prayer each morning at 7am
+          — joined by people across parishes and traditions.
         </p>
       </div>
 
