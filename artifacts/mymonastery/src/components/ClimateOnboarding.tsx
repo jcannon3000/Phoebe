@@ -25,7 +25,7 @@ const SLIDES: Array<{
   {
     emoji: "🤲🏽",
     title: "You're part of a wider prayer.",
-    body: "Each time you pray, you're joining everyone who has prayed today across parishes and traditions. The counter at the end shows the prayer rising together.",
+    body: "Each time you pray, you're joining everyone who has prayed today across parishes. The counter at the end shows the prayer rising together.",
   },
 ];
 

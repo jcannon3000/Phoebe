@@ -74,7 +74,7 @@ export function ClimateSignup() {
           style={{ color: "#C8D4C0", fontFamily: "Georgia, 'Times New Roman', serif" }}
         >
           Pray for the climate with us. One short prayer each morning at 7am —
-          joined by people across parishes and traditions.
+          joined by people across parishes.
         </p>
       </div>
 
