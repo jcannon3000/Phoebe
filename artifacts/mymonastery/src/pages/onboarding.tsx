@@ -27,11 +27,16 @@ export default function Onboarding() {
   const [waitlistDone, setWaitlistDone] = useState<"new" | "already" | null>(null);
 
   const searchParams = new URLSearchParams(window.location.search);
-  const redirectTo = searchParams.get("redirect") || "/dashboard";
+  const explicitRedirect = searchParams.get("redirect");
 
   useEffect(() => {
-    if (!isLoading && user) setLocation(redirectTo);
-  }, [user, isLoading, setLocation, redirectTo]);
+    if (!isLoading && user) {
+      // Climate-only users land on /climate by default, not the
+      // dashboard — they have no prayer list, no letters, etc.
+      const dest = explicitRedirect ?? (user.climateOnly ? "/climate" : "/dashboard");
+      setLocation(dest);
+    }
+  }, [user, isLoading, setLocation, explicitRedirect]);
 
   function switchMode(m: Mode) {
     setMode(m);

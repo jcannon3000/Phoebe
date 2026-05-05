@@ -35,26 +35,39 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     setLocation(path);
   }
 
-  const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
-    // Practices used to have its own top-level entry that deep-linked into
-    // the dashboard's filter; removed — the dashboard itself is the home
-    // surface, and the Practices pill there is the canonical way to narrow.
-    { emoji: "🙏🏽", label: "Manage Prayer List", path: "/prayer-list" },
-    ...(user?.climateEnrolled ? [{ emoji: "🌿", label: "Phoebe Climate", path: "/climate" }] : []),
-    { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
-    { emoji: "👥", label: "People",      path: "/people" },
-    { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
-    { divider: true },
-    { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
-    { emoji: "⚙️", label: "Settings",    path: "/settings"    },
-    { emoji: "💬", label: "Feedback",    path: "/feedback"    },
-    ...(isBetaAdmin ? [
-      { emoji: "🔐", label: "Pilot Users", path: "/beta" },
-      { emoji: "📜", label: "Waitlist",    path: "/waitlist" },
-      { emoji: "🚩", label: "Reports",     path: "/admin/reports" },
-    ] : []),
-    { emoji: "ℹ️", label: "About",       path: "/church-deck"  },
-  ];
+  // Climate-only users (signed up via /climate, never used Phoebe's
+  // other features) see a slim drawer: just Climate + Settings +
+  // Feedback + sign-out. Existing Phoebe users who later get
+  // climate_enrolled keep the full menu — they're "dual" users.
+  const climateOnly = user?.climateOnly ?? false;
+
+  const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = climateOnly
+    ? [
+        { emoji: "🌿", label: "Phoebe Climate", path: "/climate" },
+        { divider: true },
+        { emoji: "⚙️", label: "Settings",    path: "/settings"    },
+        { emoji: "💬", label: "Feedback",    path: "/feedback"    },
+      ]
+    : [
+        // Practices used to have its own top-level entry that deep-linked into
+        // the dashboard's filter; removed — the dashboard itself is the home
+        // surface, and the Practices pill there is the canonical way to narrow.
+        { emoji: "🙏🏽", label: "Manage Prayer List", path: "/prayer-list" },
+        ...(user?.climateEnrolled ? [{ emoji: "🌿", label: "Phoebe Climate", path: "/climate" }] : []),
+        { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
+        { emoji: "👥", label: "People",      path: "/people" },
+        { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
+        { divider: true },
+        { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
+        { emoji: "⚙️", label: "Settings",    path: "/settings"    },
+        { emoji: "💬", label: "Feedback",    path: "/feedback"    },
+        ...(isBetaAdmin ? [
+          { emoji: "🔐", label: "Pilot Users", path: "/beta" },
+          { emoji: "📜", label: "Waitlist",    path: "/waitlist" },
+          { emoji: "🚩", label: "Reports",     path: "/admin/reports" },
+        ] : []),
+        { emoji: "ℹ️", label: "About",       path: "/church-deck"  },
+      ];
 
   return (
     <AnimatePresence>
@@ -155,42 +168,46 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
 
             {/* ── My Communities ── */}
-            <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.4)" }}>
-                My Communities
-              </p>
-              {(groupsData?.groups ?? []).length > 0 ? (
-                <div className="space-y-1.5">
-                  {groupsData!.groups.map((g) => (
-                    <button
-                      key={g.slug}
-                      onClick={() => navigate(`/communities/${g.slug}`)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
-                      onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                      onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
-                        <div className="text-left">
-                          <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
-                          <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</p>
+            {/* Climate-only users don't have communities — hide the
+                whole section rather than show an empty state. */}
+            {!climateOnly && (
+              <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.4)" }}>
+                  My Communities
+                </p>
+                {(groupsData?.groups ?? []).length > 0 ? (
+                  <div className="space-y-1.5">
+                    {groupsData!.groups.map((g) => (
+                      <button
+                        key={g.slug}
+                        onClick={() => navigate(`/communities/${g.slug}`)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
+                        onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                        onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
+                          <div className="text-left">
+                            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
+                            <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</p>
+                          </div>
                         </div>
-                      </div>
-                      <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
-                  <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>No communities yet</p>
-                  {rawIsAdmin && (
-                    <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
-                      Create one →
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                        <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
+                    <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>No communities yet</p>
+                    {rawIsAdmin && (
+                      <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
+                        Create one →
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Navigation ── */}
             <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
@@ -280,7 +297,7 @@ export function Layout({ children }: { children: ReactNode }) {
       >
         <div className="flex items-center gap-6">
           <Link
-            href="/dashboard"
+            href={user?.climateOnly ? "/climate" : "/dashboard"}
             onClick={() => window.dispatchEvent(new CustomEvent("phoebe:reset-filter"))}
             className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
           >
