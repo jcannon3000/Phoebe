@@ -529,13 +529,15 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         WHERE owner_id IN (SELECT user_id FROM members)
       ),
       -- Two derived sets:
-      --   prayer_events: every individual prayer event — one row per
-      --     checkin, plus one row per distinct (user, request, day)
-      --     amen. The amen POST throttles to 1/(user,request,day) so
-      --     new writes are already 1-per-row, but we DISTINCT here to
-      --     keep legacy 7/day rows from inflating the metric.
-      --   prayer_days: distinct (user, day) — used only for
-      --     "distinct users who prayed" buckets
+      --   prayer_events: distinct (user, day) tuples across both
+      --     check-ins and amens. One prayer event per user per day —
+      --     a member who prays for ten requests + checks in to two
+      --     intercessions still counts as one prayer event for the
+      --     day. We dedupe via UNION (not UNION ALL) so the same
+      --     (user, day) appearing on both sides collapses to a single
+      --     row.
+      --   prayer_days: same set, kept under its old name so the
+      --     downstream SELECTs don't have to change.
       prayer_events AS (
         SELECT mt.user_id, mp.window_date AS day
         FROM moment_posts mp
@@ -543,15 +545,13 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         WHERE mp.is_checkin = 1
           AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
 
-        UNION ALL
+        UNION
 
-        SELECT user_id, day FROM (
-          SELECT DISTINCT a.user_id, a.request_id,
-                 to_char((a.prayed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-          FROM prayer_request_amens a
-          WHERE a.user_id IN (SELECT user_id FROM members)
-            AND a.prayed_at IS NOT NULL
-        ) deduped_amens
+        SELECT a.user_id,
+               to_char((a.prayed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_request_amens a
+        WHERE a.user_id IN (SELECT user_id FROM members)
+          AND a.prayed_at IS NOT NULL
       ),
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM prayer_events
@@ -565,10 +565,9 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(*) FROM member_requests
            WHERE to_char((created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS prayer_requests_week,
 
-        -- "Times prayed" = sum of every eligible prayer event. One
-        -- row per checkin + one row per distinct (user, request, day)
-        -- amen tuple — so a person counts once per request per day no
-        -- matter how many times they tap.
+        -- "Times prayed" = count of distinct (user, day) tuples. One
+        -- prayer event per person per day, no matter how many requests
+        -- they touched or how many times they tapped.
         (SELECT COUNT(*) FROM prayer_events)::int AS times_prayed_total,
         (SELECT COUNT(*) FROM prayer_events WHERE day >= $2)::int AS times_prayed_today,
         (SELECT COUNT(*) FROM prayer_events WHERE day >= $3)::int AS times_prayed_week,
@@ -591,9 +590,10 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       prayerRequestsToday: Number(row.prayer_requests_today ?? 0),
       prayerRequestsThisWeek: Number(row.prayer_requests_week ?? 0),
 
-      // "times prayed" — one row per checkin + one row per distinct
-      // (user, request, day) amen. Tapping the same request multiple
-      // times in a day counts once, not multiple.
+      // "times prayed" — count of distinct (user, day) prayer events.
+      // A user who prays for several requests and checks in to a
+      // couple of intercessions on the same day still counts as one
+      // prayer event for that day.
       timesPrayedTotal: Number(row.times_prayed_total ?? 0),
       timesPrayedToday: Number(row.times_prayed_today ?? 0),
       timesPrayedThisWeek: Number(row.times_prayed_week ?? 0),

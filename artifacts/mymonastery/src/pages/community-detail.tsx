@@ -2055,35 +2055,54 @@ export default function CommunityDetailPage() {
                         .slice(0, 2)
                         .map((w) => w[0]?.toUpperCase() ?? "")
                         .join("");
+                      // Whole card is now tappable — routes to the prayer-
+                      // request detail page (same destination as the
+                      // manage list cards), so the community surface and
+                      // the manage list feel like siblings. The word
+                      // count icon mirrors RequestCard's affordance so
+                      // the viewer can see at a glance how many words
+                      // of comfort have already been left.
                       return (
-                        <div key={r.id} className="flex rounded-xl overflow-hidden" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                          <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
-                          <div className="flex-1 px-4 py-3 flex items-start gap-3">
-                            {displayAvatar ? (
-                              <img
-                                src={displayAvatar}
-                                alt={displayName}
-                                className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
-                                style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-                              />
-                            ) : (
-                              <div
-                                className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
-                                style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                              >
-                                {initials}
+                        <Link key={r.id} href={`/prayer-requests/${r.id}`} className="block">
+                          <div className="flex rounded-xl overflow-hidden transition-colors hover:bg-[rgba(46,107,64,0.18)]" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}>
+                            <div className="w-1 shrink-0" style={{ background: "#8FAF96" }} />
+                            <div className="flex-1 px-4 py-3 flex items-start gap-3">
+                              {displayAvatar ? (
+                                <img
+                                  src={displayAvatar}
+                                  alt={displayName}
+                                  className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
+                                  style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                                />
+                              ) : (
+                                <div
+                                  className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
+                                  style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                                >
+                                  {initials}
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
+                                  {r.isOwnRequest ? "Your request" : `From ${displayName}`}
+                                </p>
+                                <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+                                  {r.body}
+                                </p>
                               </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                                {r.isOwnRequest ? "Your request" : `From ${displayName}`}
-                              </p>
-                              <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                                {r.body}
-                              </p>
+                              {r.wordCount > 0 && (
+                                <span
+                                  className="flex items-center gap-1 shrink-0 mt-1"
+                                  style={{ color: "rgba(143,175,150,0.55)" }}
+                                  aria-label={`${r.wordCount} ${r.wordCount === 1 ? "word" : "words"} of comfort`}
+                                >
+                                  <span className="text-[10px] tabular-nums">{r.wordCount}</span>
+                                  <MessageCircle size={14} />
+                                </span>
+                              )}
                             </div>
                           </div>
-                        </div>
+                        </Link>
                       );
                     })}
                   </div>

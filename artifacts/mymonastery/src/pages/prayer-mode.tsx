@@ -2007,6 +2007,19 @@ export default function PrayerModePage() {
     // Feedback (haptic + chime) fires immediately on tap so the response
     // feels coupled to the gesture, not to the fade.
     triggerAmenFeedback();
+    // Clear today's bell (morning / midday / evening) from the lock
+    // screen the moment the user prays. Each Amen tap is a "yes, I'm
+    // praying" signal — the nudge has done its job and shouldn't
+    // linger. Native shell removes any delivered push whose APN
+    // thread-id matches; idempotent if the notification was already
+    // dismissed or the user is on web.
+    try {
+      window.dispatchEvent(
+        new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "bell" } })
+      );
+    } catch {
+      /* non-fatal */
+    }
     // Record the "Amen" side effect as the viewer leaves the slide.
     // Fire-and-forget — we don't want a slow network call to gate the fade.
     // - request slide → POST /amen (the existing behaviour)

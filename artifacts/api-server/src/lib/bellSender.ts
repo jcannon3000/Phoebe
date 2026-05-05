@@ -46,17 +46,20 @@ function todayDateInTz(timezone: string): string {
 
 // ─── Main bell sender ───────────────────────────────────────────────────────
 //
-// Push-only. Fires for every user at 08:30 local in their timezone. The
-// time is global — the per-user `dailyBellTime` column is still in the
-// schema for now but is no longer read here. The bell is on by default
-// for everyone; `sendPushToUser` no-ops for users without an active
-// device token, so users who haven't installed the app simply don't
-// receive anything. De-duped via a `bell_notifications` row keyed on
-// (userId, todayStr). `forceNow: true` bypasses both the time-window
-// check and the dedup — used by the /api/bell/fire-now debug endpoint.
+// Push-only. Fires for every user at 07:00 local in their timezone — the
+// first of three daily nudges (07:00 / 14:00 / 20:00). This morning slot
+// fires unconditionally; the midday and evening slots are gentler and
+// skip users who have already prayed today. The time is global — the
+// per-user `dailyBellTime` column is still in the schema for now but is
+// no longer read here. The bell is on by default for everyone;
+// `sendPushToUser` no-ops for users without an active device token, so
+// users who haven't installed the app simply don't receive anything.
+// De-duped via a `bell_notifications` row keyed on (userId, todayStr).
+// `forceNow: true` bypasses both the time-window check and the dedup —
+// used by the /api/bell/fire-now debug endpoint.
 
-const DAILY_BELL_HOUR = 8;
-const DAILY_BELL_MINUTE = 30;
+const DAILY_BELL_HOUR = 7;
+const DAILY_BELL_MINUTE = 0;
 
 export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   const bellUsers = await db
@@ -116,14 +119,23 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
   }
 }
 
-// ─── Evening nudge (7 PM local, push-only, skip if prayed today) ────────────
+// ─── Day-call senders (midday 14:00, evening 20:00) ────────────────────────
 //
-// Fires for every user inside the 19:00–19:14 window in their local
-// timezone, *unless* they've already logged a prayer ("amen") today —
-// in that case they've already tended to their practice and the nudge would
-// be noise. De-duped via a `"${date}-evening"` row in bell_notifications.
+// Two follow-up nudges that gently re-invite a user back to prayer if the
+// 07:00 morning bell didn't catch them. Both share the same shape — fire
+// inside their 15-minute window (so the cron tick at any minute lands a
+// single send), skip users who have already prayed today (any amen tap
+// that day in the user's timezone is enough), and dedup via a slot-keyed
+// `bell_notifications` row so a refire on the next tick can't double-
+// send. The morning bell above fires unconditionally because it's the
+// wake-up call; these two are softer because they're catching people who
+// missed it.
 
-export async function runEveningNudgeSender(): Promise<void> {
+async function runDayCallSender(opts: {
+  hour: number;
+  slotKey: "midday" | "evening";
+  logTag: string;
+}): Promise<void> {
   const bellUsers = await db
     .select({
       id: usersTable.id,
@@ -139,10 +151,10 @@ export async function runEveningNudgeSender(): Promise<void> {
       const tz = user.timezone ?? "America/New_York";
 
       const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
-      if (nowH !== 19 || nowM >= 15) continue;
+      if (nowH !== opts.hour || nowM >= 15) continue;
 
       const todayStr = todayDateInTz(tz);
-      const eveningKey = `${todayStr}-evening`;
+      const slotBellDate = `${todayStr}-${opts.slotKey}`;
 
       const [existing] = await db
         .select()
@@ -150,12 +162,12 @@ export async function runEveningNudgeSender(): Promise<void> {
         .where(
           and(
             eq(bellNotificationsTable.userId, user.id),
-            eq(bellNotificationsTable.bellDate, eveningKey),
+            eq(bellNotificationsTable.bellDate, slotBellDate),
           ),
         );
       if (existing) continue;
 
-      // Skip if they've already prayed today.
+      // Skip if they've already prayed today (any amen in user-tz).
       const sinceUtc = new Date(`${todayStr}T00:00:00Z`);
       sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
       const recent = await db
@@ -177,21 +189,29 @@ export async function runEveningNudgeSender(): Promise<void> {
       try {
         await sendEveningNudgePush(user.id);
       } catch (err) {
-        logger.warn({ err, userId: user.id }, "[bell-evening] push dispatch failed — skipping dedup insert so we retry next tick");
+        logger.warn({ err, userId: user.id, slot: opts.slotKey }, `${opts.logTag} push dispatch failed — skipping dedup insert so we retry next tick`);
         continue;
       }
 
       await db.insert(bellNotificationsTable).values({
         userId: user.id,
-        bellDate: eveningKey,
+        bellDate: slotBellDate,
         sentAt: new Date(),
       });
 
-      logger.info({ userId: user.id, eveningKey }, "[bell-evening] sent evening nudge");
+      logger.info({ userId: user.id, slot: opts.slotKey, slotBellDate }, `${opts.logTag} sent`);
     } catch (err) {
-      logger.error({ err, userId: user.id }, "[bell-evening] user processing failed");
+      logger.error({ err, userId: user.id, slot: opts.slotKey }, `${opts.logTag} user processing failed`);
     }
   }
+}
+
+export async function runMiddayNudgeSender(): Promise<void> {
+  return runDayCallSender({ hour: 14, slotKey: "midday", logTag: "[bell-midday]" });
+}
+
+export async function runEveningNudgeSender(): Promise<void> {
+  return runDayCallSender({ hour: 20, slotKey: "evening", logTag: "[bell-evening]" });
 }
 
 // ─── Lectio Divina stage reminder (Mon/Wed/Fri 09:30 local) ────────────────
@@ -656,6 +676,9 @@ export function startBellScheduler(): void {
     runBellSender().catch((err) =>
       logger.error({ err }, "[bell] initial run failed"),
     );
+    runMiddayNudgeSender().catch((err) =>
+      logger.error({ err }, "[bell-midday] initial run failed"),
+    );
     runEveningNudgeSender().catch((err) =>
       logger.error({ err }, "[bell-evening] initial run failed"),
     );
@@ -674,6 +697,9 @@ export function startBellScheduler(): void {
     () => {
       runBellSender().catch((err) =>
         logger.error({ err }, "[bell] scheduled run failed"),
+      );
+      runMiddayNudgeSender().catch((err) =>
+        logger.error({ err }, "[bell-midday] scheduled run failed"),
       );
       runEveningNudgeSender().catch((err) =>
         logger.error({ err }, "[bell-evening] scheduled run failed"),
