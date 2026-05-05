@@ -941,6 +941,12 @@ export default function CommunityDetailPage() {
   const [newAnnouncementTitle, setNewAnnouncementTitle] = useState("");
   const [newAnnouncementContent, setNewAnnouncementContent] = useState("");
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+  // Prayer-walk fields. Surfaced when newAnnouncementKind === "prayer_walk".
+  // Climate-enrolled users see kind='prayer_walk' rows in their /climate
+  // feed, sorted by event_at across all groups.
+  const [newAnnouncementKind, setNewAnnouncementKind] = useState<"announcement" | "prayer_walk">("announcement");
+  const [newAnnouncementEventAt, setNewAnnouncementEventAt] = useState(""); // datetime-local value
+  const [newAnnouncementLocation, setNewAnnouncementLocation] = useState("");
   // ── Prayer Circle — "Praying today" add form state ────────────────────
   // Members can add what they are carrying in prayer today. The form is
   // collapsed by default; when `showFocusForm` is true we reveal a type
@@ -1098,10 +1104,24 @@ export default function CommunityDetailPage() {
     mutationFn: () => apiRequest("POST", `/api/groups/${slug}/announcements`, {
       title: newAnnouncementTitle || undefined,
       content: newAnnouncementContent,
+      kind: newAnnouncementKind,
+      // datetime-local has no tz suffix — convert to ISO via Date so the
+      // server gets UTC. Empty string → undefined so Zod's optional fires.
+      eventAt:
+        newAnnouncementKind === "prayer_walk" && newAnnouncementEventAt
+          ? new Date(newAnnouncementEventAt).toISOString()
+          : undefined,
+      location:
+        newAnnouncementKind === "prayer_walk" && newAnnouncementLocation
+          ? newAnnouncementLocation
+          : undefined,
     }),
     onSuccess: () => {
       setNewAnnouncementTitle("");
       setNewAnnouncementContent("");
+      setNewAnnouncementKind("announcement");
+      setNewAnnouncementEventAt("");
+      setNewAnnouncementLocation("");
       setShowAnnouncementForm(false);
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug, "announcements"] });
     },
@@ -2311,28 +2331,83 @@ export default function CommunityDetailPage() {
             {isAdmin && showAnnouncementForm && (
               <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>New Announcement</p>
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                    {newAnnouncementKind === "prayer_walk" ? "New Prayer Walk" : "New Announcement"}
+                  </p>
                   <button onClick={() => setShowAnnouncementForm(false)}><X size={16} style={{ color: "#8FAF96" }} /></button>
                 </div>
+
+                {/* Kind toggle — prayer walks surface in the Phoebe Climate
+                    feed across all groups. */}
+                <div className="flex gap-1.5 mb-3">
+                  <button
+                    onClick={() => setNewAnnouncementKind("announcement")}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{
+                      background: newAnnouncementKind === "announcement" ? "rgba(46,107,64,0.4)" : "rgba(46,107,64,0.12)",
+                      color: newAnnouncementKind === "announcement" ? "#F0EDE6" : "#8FAF96",
+                      border: "1px solid rgba(46,107,64,0.3)",
+                    }}
+                  >
+                    Announcement
+                  </button>
+                  <button
+                    onClick={() => setNewAnnouncementKind("prayer_walk")}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{
+                      background: newAnnouncementKind === "prayer_walk" ? "rgba(46,107,64,0.4)" : "rgba(46,107,64,0.12)",
+                      color: newAnnouncementKind === "prayer_walk" ? "#F0EDE6" : "#8FAF96",
+                      border: "1px solid rgba(46,107,64,0.3)",
+                    }}
+                  >
+                    🚶🏽 Prayer walk
+                  </button>
+                </div>
+
                 <input
                   type="text"
                   value={newAnnouncementTitle}
                   onChange={e => setNewAnnouncementTitle(e.target.value)}
-                  placeholder="Title (optional)"
+                  placeholder={newAnnouncementKind === "prayer_walk" ? "Walk title (e.g. Climate prayer along the Anacostia)" : "Title (optional)"}
                   className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
                   style={{ color: "#F0EDE6" }}
                 />
+
+                {newAnnouncementKind === "prayer_walk" && (
+                  <>
+                    <input
+                      type="datetime-local"
+                      value={newAnnouncementEventAt}
+                      onChange={e => setNewAnnouncementEventAt(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
+                      style={{ color: "#F0EDE6", colorScheme: "dark" }}
+                    />
+                    <input
+                      type="text"
+                      value={newAnnouncementLocation}
+                      onChange={e => setNewAnnouncementLocation(e.target.value)}
+                      placeholder="Location (e.g. Lincoln Park, DC)"
+                      className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
+                      style={{ color: "#F0EDE6" }}
+                    />
+                  </>
+                )}
+
                 <textarea
                   value={newAnnouncementContent}
                   onChange={e => setNewAnnouncementContent(e.target.value)}
-                  placeholder="Write your announcement..."
+                  placeholder={newAnnouncementKind === "prayer_walk" ? "Describe the walk — what to expect, what to bring..." : "Write your announcement..."}
                   rows={4}
                   className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm resize-none mb-2"
                   style={{ color: "#F0EDE6" }}
                 />
                 <button
                   onClick={() => announcementMutation.mutate()}
-                  disabled={!newAnnouncementContent.trim() || announcementMutation.isPending}
+                  disabled={
+                    !newAnnouncementContent.trim() ||
+                    announcementMutation.isPending ||
+                    (newAnnouncementKind === "prayer_walk" && !newAnnouncementEventAt)
+                  }
                   className="px-5 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >

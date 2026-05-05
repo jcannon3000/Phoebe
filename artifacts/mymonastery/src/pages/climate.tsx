@@ -21,6 +21,32 @@ interface TodayResponse {
   parish: { name: string; count: number } | null;
 }
 
+interface Walk {
+  id: number;
+  title: string | null;
+  content: string;
+  eventAt: string;
+  location: string | null;
+  groupName: string;
+  groupSlug: string;
+  groupEmoji: string | null;
+}
+
+interface WalksResponse {
+  walks: Walk[];
+}
+
+function formatWalkDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 // /climate dispatches by auth + enrollment + onboarding state:
 //   • Unauthenticated → ClimateSignup (creates a climate-enrolled account)
 //   • Authenticated, not enrolled → ClimateInviteOnly
@@ -94,7 +120,7 @@ function ClimateInviteOnly() {
 
 // The daily-prayer tab itself — what an enrolled user sees when they land
 // on /climate. Pulls today's entry, surfaces it inline with a Pray button,
-// and opens the slideshow modal on tap.
+// and opens the slideshow modal on tap. Also lists upcoming prayer walks.
 function ClimateTab() {
   const [slideshowOpen, setSlideshowOpen] = useState(false);
 
@@ -103,9 +129,15 @@ function ClimateTab() {
     queryFn: () => apiRequest("GET", "/api/climate/today"),
   });
 
+  const { data: walksData } = useQuery<WalksResponse>({
+    queryKey: ["/api/climate/walks"],
+    queryFn: () => apiRequest("GET", "/api/climate/walks"),
+  });
+
   const entry = data?.entry ?? null;
   const prayedToday = data?.prayedToday ?? false;
   const dayLocal = data?.dayLocal ?? "";
+  const walks = walksData?.walks ?? [];
 
   return (
     <div className="flex flex-col gap-6 pt-2">
@@ -210,6 +242,56 @@ function ClimateTab() {
         >
           <p className="text-sm" style={{ color: "#8FAF96" }}>No prayer for today yet.</p>
           <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>Check back soon.</p>
+        </div>
+      )}
+
+      {/* Upcoming prayer walks — only render the section when there's
+          something to show, no empty state spam. */}
+      {walks.length > 0 && (
+        <div className="flex flex-col gap-2.5 mt-2">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: "rgba(200,212,192,0.4)" }}
+          >
+            Upcoming prayer walks
+          </p>
+          {walks.map((w) => (
+            <div
+              key={w.id}
+              className="rounded-2xl px-4 py-3.5"
+              style={{
+                background: "rgba(46,107,64,0.08)",
+                border: "1px solid rgba(46,107,64,0.18)",
+              }}
+            >
+              <div className="flex items-start gap-2.5">
+                <span className="text-lg leading-tight pt-0.5">
+                  {w.groupEmoji ?? "🚶🏽"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-sm font-semibold leading-snug"
+                    style={{
+                      color: "#F0EDE6",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                    }}
+                  >
+                    {w.title ?? "Prayer walk"}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                    {formatWalkDate(w.eventAt)}
+                    {w.location ? ` · ${w.location}` : ""}
+                  </p>
+                  <p
+                    className="text-[11px] mt-1"
+                    style={{ color: "rgba(143,175,150,0.6)" }}
+                  >
+                    Hosted by {w.groupName}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

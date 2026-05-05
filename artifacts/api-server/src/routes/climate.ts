@@ -3,11 +3,12 @@ import {
   db,
   usersTable,
   groupsTable,
+  groupAnnouncementsTable,
   prayerFeedsTable,
   prayerFeedEntriesTable,
   prayerFeedPrayersTable,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, gte, asc, isNotNull } from "drizzle-orm";
 import { hashPassword } from "./auth";
 import { rateLimit } from "../lib/rate-limit";
 
@@ -282,6 +283,43 @@ router.post(
     });
   },
 );
+
+// GET /api/climate/walks — upcoming prayer walks across all groups.
+// Climate-enrolled users see every walk regardless of group membership;
+// these are public-by-design events the climate community can join.
+// Returns the next 10 walks sorted ascending by event_at, joined to the
+// hosting group's name + slug + emoji for the card display.
+router.get("/climate/walks", requireClimate, async (req, res): Promise<void> => {
+  try {
+    const now = new Date();
+    const rows = await db
+      .select({
+        id: groupAnnouncementsTable.id,
+        title: groupAnnouncementsTable.title,
+        content: groupAnnouncementsTable.content,
+        eventAt: groupAnnouncementsTable.eventAt,
+        location: groupAnnouncementsTable.location,
+        groupName: groupsTable.name,
+        groupSlug: groupsTable.slug,
+        groupEmoji: groupsTable.emoji,
+      })
+      .from(groupAnnouncementsTable)
+      .innerJoin(groupsTable, eq(groupsTable.id, groupAnnouncementsTable.groupId))
+      .where(
+        and(
+          eq(groupAnnouncementsTable.kind, "prayer_walk"),
+          isNotNull(groupAnnouncementsTable.eventAt),
+          gte(groupAnnouncementsTable.eventAt, now),
+        ),
+      )
+      .orderBy(asc(groupAnnouncementsTable.eventAt))
+      .limit(10);
+
+    res.json({ walks: rows });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load prayer walks" });
+  }
+});
 
 // PATCH /api/climate/onboarding — mark the climate-specific onboarding
 // flow complete. Called once after the user finishes the intro slides.

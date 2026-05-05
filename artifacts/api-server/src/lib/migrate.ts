@@ -1179,6 +1179,13 @@ export async function migrate() {
     // creator, null it out now so the row is platform-owned everywhere.
     await run(client, `UPDATE prayer_feeds SET creator_user_id = NULL WHERE slug = 'phoebe-climate' AND creator_user_id IS NOT NULL`);
 
+    // group_announcements gains optional event-shape columns so a single
+    // announcement can be flagged as a prayer walk. Climate tab surfaces
+    // every upcoming kind='prayer_walk' row across all groups.
+    await run(client, `ALTER TABLE group_announcements ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'announcement'`);
+    await run(client, `ALTER TABLE group_announcements ADD COLUMN IF NOT EXISTS event_at TIMESTAMPTZ`);
+    await run(client, `ALTER TABLE group_announcements ADD COLUMN IF NOT EXISTS location TEXT`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

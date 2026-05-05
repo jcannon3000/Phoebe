@@ -133,7 +133,13 @@ export const groupAdminNotificationsAckTable = pgTable("group_admin_notification
   acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// Lightweight announcements for group admins (simpler than full letter system)
+// Lightweight announcements for group admins (simpler than full letter system).
+//
+// Optionally event-shaped: when `kind` is "prayer_walk", the announcement
+// surfaces in the Phoebe Climate tab as an upcoming gathering, with eventAt
+// + location populated. The kind discriminator means we keep one cheap
+// table for both pure announcements and event-flavored ones — no separate
+// prayer_walks table needed for v1.
 export const groupAnnouncementsTable = pgTable("group_announcements", {
   id: serial("id").primaryKey(),
   groupId: integer("group_id").notNull()
@@ -142,5 +148,10 @@ export const groupAnnouncementsTable = pgTable("group_announcements", {
     .references(() => usersTable.id, { onDelete: "cascade" }),
   title: text("title"),
   content: text("content").notNull(),
+  // kind: "announcement" (default) | "prayer_walk"
+  kind: text("kind").notNull().default("announcement"),
+  // Populated only when kind = "prayer_walk". Null for plain announcements.
+  eventAt: timestamp("event_at", { withTimezone: true }),
+  location: text("location"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

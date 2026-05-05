@@ -2005,6 +2005,11 @@ router.post("/groups/:slug/announcements", async (req, res): Promise<void> => {
   const schema = z.object({
     title: z.string().max(200).optional(),
     content: z.string().min(1).max(5000),
+    // Optional event fields. When kind='prayer_walk', eventAt should be
+    // set; we don't require it strictly so admins can save drafts.
+    kind: z.enum(["announcement", "prayer_walk"]).optional(),
+    eventAt: z.string().datetime().optional(),
+    location: z.string().max(500).optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
@@ -2014,6 +2019,9 @@ router.post("/groups/:slug/announcements", async (req, res): Promise<void> => {
     authorUserId: user.id,
     title: parsed.data.title ?? null,
     content: parsed.data.content,
+    kind: parsed.data.kind ?? "announcement",
+    eventAt: parsed.data.eventAt ? new Date(parsed.data.eventAt) : null,
+    location: parsed.data.location ?? null,
   }).returning();
 
   res.json({ announcement });
