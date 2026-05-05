@@ -31,8 +31,9 @@ export const prayerFeedsTable = pgTable(
     tagline: text("tagline"),
     coverEmoji: text("cover_emoji"),
     coverImageUrl: text("cover_image_url"),
+    // Nullable: platform-owned feeds (e.g. phoebe-climate) have no human
+    // creator. User-created feeds set this to the creator's user id.
     creatorUserId: integer("creator_user_id")
-      .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     // Timezone the creator uses for scheduling — all entry dates are
     // interpreted as calendar days in this zone, so "today's entry" is

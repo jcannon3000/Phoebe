@@ -1152,18 +1152,23 @@ export async function migrate() {
     // parish_id FK (nullable, no NOT NULL)
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_id INTEGER REFERENCES groups(id)`);
 
-    // Seed the phoebe-climate feed (idempotent — skips if slug already exists)
-    // Uses first admin beta user as creator; no-ops if no admin user exists yet.
+    // Platform-owned feeds: drop NOT NULL on creator_user_id so editorial
+    // feeds (phoebe-climate) can exist without a human creator. The
+    // existing FK + ON DELETE CASCADE behaviour for user-created feeds
+    // is unchanged — only the nullability is relaxed.
+    await run(client, `ALTER TABLE prayer_feeds ALTER COLUMN creator_user_id DROP NOT NULL`);
+
+    // Seed the phoebe-climate feed (platform-owned, creator_user_id NULL).
+    // Idempotent — skips if the slug already exists.
     await run(client, `
       INSERT INTO prayer_feeds (slug, title, timezone, state, creator_user_id)
-      SELECT 'phoebe-climate', 'Phoebe Climate', 'America/New_York', 'live', u.id
-      FROM users u
-      JOIN beta_users bu ON LOWER(u.email) = LOWER(bu.email)
-      WHERE bu.is_admin = true
-      ORDER BY u.id ASC
-      LIMIT 1
+      VALUES ('phoebe-climate', 'Phoebe Climate', 'America/New_York', 'live', NULL)
       ON CONFLICT DO NOTHING
     `);
+
+    // Defensive: if a previous run seeded phoebe-climate with a human
+    // creator, null it out now so the row is platform-owned everywhere.
+    await run(client, `UPDATE prayer_feeds SET creator_user_id = NULL WHERE slug = 'phoebe-climate' AND creator_user_id IS NOT NULL`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
