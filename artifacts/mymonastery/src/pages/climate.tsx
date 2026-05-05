@@ -1,68 +1,181 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
-import { useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { ClimateSignup } from "@/components/ClimateSignup";
 import { ClimateOnboarding } from "@/components/ClimateOnboarding";
 
-// /climate is now a thin entry point. Once a user is enrolled and through
-// onboarding, they use the regular Phoebe dashboard + prayer-mode for
-// daily prayer — feed-scoped intercessions land in /api/moments via
-// reconcileFeedPracticeMembers, the same plumbing groups use. The
-// dispatcher below only handles the first-touch states (signup, opt-in,
-// onboarding) and otherwise sends the user home.
-//
-// Dispatch by auth + enrollment + onboarding state:
-//   • Unauthenticated → ClimateSignup (creates a climate-enrolled account)
-//   • Authenticated, not enrolled → ClimateJoin (one-tap opt-in)
+// /climate dispatcher:
+//   • Unauthenticated → ClimateSignup
+//   • Authenticated, not enrolled → ClimateJoin
 //   • Authenticated, enrolled, NOT onboarded → ClimateOnboarding
-//   • Authenticated, enrolled, onboarded → redirect to /dashboard
+//   • Authenticated, enrolled, onboarded → ClimateHub (walks + link to
+//     /dashboard for the daily prayer experience)
+//
+// Daily prayer happens on the regular /dashboard + /prayer-mode. /climate
+// is the climate-specific identity surface — upcoming gatherings live here.
 export default function ClimatePage() {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (user && user.climateEnrolled && user.climateOnboardingCompleted) {
-      setLocation("/dashboard");
-    }
-  }, [user, isLoading, setLocation]);
 
   if (isLoading) {
     return <Layout><div /></Layout>;
   }
 
   if (user && user.climateEnrolled && !user.climateOnboardingCompleted) {
-    // Onboarding is a full-screen overlay — render outside Layout so
-    // the Phoebe header doesn't compete with the intro experience.
     return <ClimateOnboarding />;
-  }
-
-  // Already enrolled + onboarded — useEffect above will redirect to
-  // /dashboard. Render an empty layout while the redirect fires.
-  if (user && user.climateEnrolled && user.climateOnboardingCompleted) {
-    return <Layout><div /></Layout>;
   }
 
   return (
     <Layout>
-      {!user ? <ClimateSignup /> : <ClimateJoin />}
+      {!user
+        ? <ClimateSignup />
+        : !user.climateEnrolled
+          ? <ClimateJoin />
+          : <ClimateHub />}
     </Layout>
   );
 }
 
-// Existing Phoebe user who hasn't joined Climate yet — one-tap opt-in.
-// climate_only stays false for these users, so their regular Phoebe
-// drawer is preserved and Phoebe Climate is added on top.
+interface Walk {
+  id: number;
+  title: string | null;
+  content: string;
+  eventAt: string;
+  location: string | null;
+  hostName: string;
+  hostSlug: string | null;
+  hostEmoji: string;
+}
+
+interface WalksResponse {
+  walks: Walk[];
+}
+
+function ClimateHub() {
+  const { data } = useQuery<WalksResponse>({
+    queryKey: ["/api/climate/walks"],
+    queryFn: () => apiRequest("GET", "/api/climate/walks"),
+  });
+  const walks = data?.walks ?? [];
+
+  return (
+    <div className="flex flex-col gap-6 pt-2 max-w-md mx-auto w-full">
+      {/* Header */}
+      <div className="flex flex-col gap-1 text-center">
+        <div className="text-4xl">🌿</div>
+        <h1
+          className="text-2xl font-bold"
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            color: "#F0EDE6",
+            letterSpacing: "-0.03em",
+          }}
+        >
+          Phoebe Climate
+        </h1>
+        <p className="text-sm" style={{ color: "#8FAF96" }}>
+          Daily prayer for the climate, with everyone subscribed.
+        </p>
+      </div>
+
+      {/* Pray now → goes to the regular dashboard where today's
+          intercessions live. The climate prayer experience is on
+          /dashboard + /prayer-mode, same as for any Phoebe user. */}
+      <Link
+        href="/dashboard"
+        className="w-full py-3.5 rounded-full text-sm font-semibold tracking-wide text-center transition-opacity hover:opacity-80 active:scale-[0.99]"
+        style={{
+          background: "#2D5E3F",
+          color: "#F0EDE6",
+          fontFamily: "'Space Grotesk', sans-serif",
+        }}
+      >
+        Pray now →
+      </Link>
+
+      {/* Upcoming prayer walks */}
+      <div className="flex flex-col gap-2.5">
+        <p
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: "rgba(200,212,192,0.4)" }}
+        >
+          Upcoming prayer walks
+        </p>
+        {walks.length === 0 ? (
+          <div
+            className="rounded-2xl px-5 py-6 text-center"
+            style={{
+              background: "rgba(200,212,192,0.04)",
+              border: "1px dashed rgba(46,107,64,0.2)",
+            }}
+          >
+            <p className="text-sm" style={{ color: "#8FAF96" }}>No walks scheduled.</p>
+            <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+              Check back soon.
+            </p>
+          </div>
+        ) : (
+          walks.map((w) => (
+            <div
+              key={w.id}
+              className="rounded-2xl px-4 py-3.5"
+              style={{
+                background: "rgba(46,107,64,0.08)",
+                border: "1px solid rgba(46,107,64,0.18)",
+              }}
+            >
+              <div className="flex items-start gap-2.5">
+                <span className="text-lg leading-tight pt-0.5">{w.hostEmoji}</span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-sm font-semibold leading-snug"
+                    style={{
+                      color: "#F0EDE6",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                    }}
+                  >
+                    {w.title ?? "Prayer walk"}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                    {new Date(w.eventAt).toLocaleString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                    {w.location ? ` · ${w.location}` : ""}
+                  </p>
+                  {w.content && (
+                    <p
+                      className="text-xs mt-1.5 line-clamp-2"
+                      style={{ color: "rgba(200,212,192,0.6)" }}
+                    >
+                      {w.content}
+                    </p>
+                  )}
+                  <p
+                    className="text-[11px] mt-2"
+                    style={{ color: "rgba(143,175,150,0.5)" }}
+                  >
+                    Hosted by {w.hostName}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ClimateJoin() {
   const queryClient = useQueryClient();
   const joinMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/climate/enroll-self"),
     onSuccess: () => {
-      // /api/auth/me drives the dispatcher above — flipping
-      // climateEnrolled true surfaces the onboarding flow next.
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
   });

@@ -1207,6 +1207,14 @@ export async function migrate() {
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS prayer_feed_id INTEGER REFERENCES prayer_feeds(id) ON DELETE SET NULL`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_shared_moments_prayer_feed ON shared_moments (prayer_feed_id)`);
 
+    // group_announcements gains feed scope: prayer walks + announcements
+    // can now belong to a feed instead of a group. group_id becomes
+    // nullable so the existing CASCADE-on-delete still makes sense for
+    // group-scoped rows while feed-scoped rows just leave it null.
+    await run(client, `ALTER TABLE group_announcements ALTER COLUMN group_id DROP NOT NULL`);
+    await run(client, `ALTER TABLE group_announcements ADD COLUMN IF NOT EXISTS prayer_feed_id INTEGER REFERENCES prayer_feeds(id) ON DELETE CASCADE`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_group_announcements_prayer_feed ON group_announcements (prayer_feed_id)`);
+
     // Backfill: every existing climate-enrolled user gets a subscription
     // to phoebe-climate so they pick up feed-scoped intercessions on
     // their dashboard and slideshow without a manual opt-in step.

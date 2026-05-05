@@ -133,17 +133,23 @@ export const groupAdminNotificationsAckTable = pgTable("group_admin_notification
   acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// Lightweight announcements for group admins (simpler than full letter system).
-//
-// Optionally event-shaped: when `kind` is "prayer_walk", the announcement
-// surfaces in the Phoebe Climate tab as an upcoming gathering, with eventAt
-// + location populated. The kind discriminator means we keep one cheap
-// table for both pure announcements and event-flavored ones — no separate
-// prayer_walks table needed for v1.
+// Lightweight announcements + events. Optionally event-shaped: when
+// `kind` is "prayer_walk", eventAt + location are populated and the row
+// surfaces as an upcoming gathering. The same row supports two scopes:
+//   • Group-scoped: groupId set, prayerFeedId null. Authored from
+//     community-detail's Announcements tab; admin must be a group admin.
+//   • Feed-scoped: prayerFeedId set, groupId null. Authored from
+//     /climate/admin; admin must be a beta admin. Surfaces to every
+//     subscriber of the feed.
+// Exactly one of (groupId, prayerFeedId) is populated per row — enforced
+// at the API layer rather than via a DB check constraint.
 export const groupAnnouncementsTable = pgTable("group_announcements", {
   id: serial("id").primaryKey(),
-  groupId: integer("group_id").notNull()
+  groupId: integer("group_id")
     .references(() => groupsTable.id, { onDelete: "cascade" }),
+  // FK enforced in migration SQL only — no .references() to avoid
+  // pulling in prayer_feeds at this point in the schema graph.
+  prayerFeedId: integer("prayer_feed_id"),
   authorUserId: integer("author_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   title: text("title"),

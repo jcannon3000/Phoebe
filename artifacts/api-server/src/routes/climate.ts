@@ -239,11 +239,21 @@ router.patch("/climate/me/parish", requireClimate, async (req, res): Promise<voi
   }
 });
 
-// ─── Prayer walks (unchanged) ──────────────────────────────────────────────
+// ─── Prayer walks ──────────────────────────────────────────────────────────
+// Walks live in group_announcements with kind='prayer_walk'. Two scopes:
+// group-scoped (groupId set) and feed-scoped (prayerFeedId set). Climate
+// users see both — group walks across all groups + feed walks on the
+// climate feed. Returns a unified `host` object so the frontend renders
+// "Hosted by <name>" without caring about scope.
 
 router.get("/climate/walks", requireClimate, async (_req, res): Promise<void> => {
   try {
     const now = new Date();
+
+    // LEFT JOIN groups (so feed-scoped walks with null groupId still
+    // come back) and LEFT JOIN prayer_feeds for the host name on the
+    // feed side. One row per walk; drizzle gives us nullable host
+    // columns we collapse below.
     const rows = await db
       .select({
         id: groupAnnouncementsTable.id,
@@ -254,9 +264,13 @@ router.get("/climate/walks", requireClimate, async (_req, res): Promise<void> =>
         groupName: groupsTable.name,
         groupSlug: groupsTable.slug,
         groupEmoji: groupsTable.emoji,
+        feedTitle: prayerFeedsTable.title,
+        feedSlug: prayerFeedsTable.slug,
+        feedEmoji: prayerFeedsTable.coverEmoji,
       })
       .from(groupAnnouncementsTable)
-      .innerJoin(groupsTable, eq(groupsTable.id, groupAnnouncementsTable.groupId))
+      .leftJoin(groupsTable, eq(groupsTable.id, groupAnnouncementsTable.groupId))
+      .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, groupAnnouncementsTable.prayerFeedId))
       .where(
         and(
           eq(groupAnnouncementsTable.kind, "prayer_walk"),
@@ -266,9 +280,190 @@ router.get("/climate/walks", requireClimate, async (_req, res): Promise<void> =>
       )
       .orderBy(asc(groupAnnouncementsTable.eventAt))
       .limit(10);
-    res.json({ walks: rows });
+
+    const walks = rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      content: r.content,
+      eventAt: r.eventAt,
+      location: r.location,
+      hostName: r.groupName ?? r.feedTitle ?? "Phoebe",
+      hostSlug: r.groupSlug ?? r.feedSlug ?? null,
+      hostEmoji: r.groupEmoji ?? r.feedEmoji ?? "🚶🏽",
+    }));
+
+    res.json({ walks });
   } catch {
     res.status(500).json({ error: "Failed to load prayer walks" });
+  }
+});
+
+// ─── Climate admin: prayer walks ──────────────────────────────────────────
+// Same shape as the community walk-creation flow (community-detail.tsx's
+// announcement form with kind=prayer_walk), just scoped to the feed.
+
+// GET /api/climate/admin/walks — list every walk on the climate feed
+// (past + upcoming), most-recent-first by event_at.
+router.get("/climate/admin/walks", requireClimateAdmin, async (_req, res): Promise<void> => {
+  try {
+    const feed = await getClimateFeed();
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+    const rows = await db
+      .select({
+        id: groupAnnouncementsTable.id,
+        title: groupAnnouncementsTable.title,
+        content: groupAnnouncementsTable.content,
+        eventAt: groupAnnouncementsTable.eventAt,
+        location: groupAnnouncementsTable.location,
+        createdAt: groupAnnouncementsTable.createdAt,
+      })
+      .from(groupAnnouncementsTable)
+      .where(
+        and(
+          eq(groupAnnouncementsTable.kind, "prayer_walk"),
+          eq(groupAnnouncementsTable.prayerFeedId, feed.id),
+        ),
+      )
+      .orderBy(desc(groupAnnouncementsTable.eventAt));
+    res.json({ walks: rows });
+  } catch {
+    res.status(500).json({ error: "Failed to load walks" });
+  }
+});
+
+// POST /api/climate/admin/walks — create a feed-scoped prayer walk.
+router.post("/climate/admin/walks", requireClimateAdmin, async (req, res): Promise<void> => {
+  try {
+    const userId = (req.user as { id: number }).id;
+    const body = req.body as {
+      title?: string;
+      content?: string;
+      eventAt?: string; // ISO 8601 string; converted to Date here
+      location?: string;
+    };
+    if (!body.title || body.title.trim().length === 0) {
+      res.status(400).json({ error: "Title is required" }); return;
+    }
+    if (!body.content || body.content.trim().length === 0) {
+      res.status(400).json({ error: "Description is required" }); return;
+    }
+    if (!body.eventAt) {
+      res.status(400).json({ error: "Date and time are required" }); return;
+    }
+    const eventAt = new Date(body.eventAt);
+    if (Number.isNaN(eventAt.getTime())) {
+      res.status(400).json({ error: "Invalid date/time" }); return;
+    }
+    const feed = await getClimateFeed();
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+    const [row] = await db
+      .insert(groupAnnouncementsTable)
+      .values({
+        groupId: null,
+        prayerFeedId: feed.id,
+        authorUserId: userId,
+        title: body.title.trim(),
+        content: body.content.trim(),
+        kind: "prayer_walk",
+        eventAt,
+        location: body.location?.trim() || null,
+      })
+      .returning();
+    res.json({ walk: row });
+  } catch (err) {
+    console.error("[climate/admin/walks] create failed", err);
+    res.status(500).json({ error: "Failed to create walk" });
+  }
+});
+
+// PATCH /api/climate/admin/walks/:id — edit a feed walk in place.
+router.patch("/climate/admin/walks/:id", requireClimateAdmin, async (req, res): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "Invalid id" }); return;
+    }
+    const feed = await getClimateFeed();
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+    const [existing] = await db
+      .select({ id: groupAnnouncementsTable.id, prayerFeedId: groupAnnouncementsTable.prayerFeedId })
+      .from(groupAnnouncementsTable)
+      .where(eq(groupAnnouncementsTable.id, id));
+    if (!existing || existing.prayerFeedId !== feed.id) {
+      res.status(404).json({ error: "Walk not found" }); return;
+    }
+    const body = req.body as {
+      title?: string;
+      content?: string;
+      eventAt?: string;
+      location?: string | null;
+    };
+    const patch: Record<string, unknown> = {};
+    if (body.title !== undefined) {
+      const t = body.title.trim();
+      if (!t) { res.status(400).json({ error: "Title cannot be empty" }); return; }
+      patch.title = t;
+    }
+    if (body.content !== undefined) {
+      const c = body.content.trim();
+      if (!c) { res.status(400).json({ error: "Description cannot be empty" }); return; }
+      patch.content = c;
+    }
+    if (body.eventAt !== undefined) {
+      const d = new Date(body.eventAt);
+      if (Number.isNaN(d.getTime())) { res.status(400).json({ error: "Invalid date/time" }); return; }
+      patch.eventAt = d;
+    }
+    if (body.location !== undefined) {
+      patch.location = body.location?.trim() || null;
+    }
+    if (Object.keys(patch).length === 0) {
+      res.json({ ok: true }); return;
+    }
+    const [row] = await db
+      .update(groupAnnouncementsTable)
+      .set(patch as any)
+      .where(eq(groupAnnouncementsTable.id, id))
+      .returning();
+    res.json({ walk: row });
+  } catch (err) {
+    console.error("[climate/admin/walks] update failed", err);
+    res.status(500).json({ error: "Failed to update walk" });
+  }
+});
+
+// DELETE /api/climate/admin/walks/:id — remove a walk. Hard delete here
+// because there's no audit value in keeping a cancelled walk (unlike
+// intercessions, which carry historical prayer counts).
+router.delete("/climate/admin/walks/:id", requireClimateAdmin, async (req, res): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "Invalid id" }); return;
+    }
+    const feed = await getClimateFeed();
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+    const [existing] = await db
+      .select({ id: groupAnnouncementsTable.id, prayerFeedId: groupAnnouncementsTable.prayerFeedId })
+      .from(groupAnnouncementsTable)
+      .where(eq(groupAnnouncementsTable.id, id));
+    if (!existing || existing.prayerFeedId !== feed.id) {
+      res.status(404).json({ error: "Walk not found" }); return;
+    }
+    await db
+      .delete(groupAnnouncementsTable)
+      .where(eq(groupAnnouncementsTable.id, id));
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Failed to delete walk" });
   }
 });
 

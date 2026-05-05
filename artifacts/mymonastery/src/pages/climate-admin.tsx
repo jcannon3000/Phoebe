@@ -24,6 +24,28 @@ interface IntercessionsResponse {
   subscriberCount: number;
 }
 
+interface Walk {
+  id: number;
+  title: string | null;
+  content: string;
+  eventAt: string;
+  location: string | null;
+  createdAt: string;
+}
+
+interface WalksResponse {
+  walks: Walk[];
+}
+
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  // datetime-local wants "YYYY-MM-DDTHH:mm" in *local* time
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // Curation portal for the climate feed's community intercessions. Beta-
 // admin gated. Authoring uses the same primitives as a regular community
 // intercession (shared_moments with templateType="intercession") — the
@@ -389,7 +411,272 @@ export default function ClimateAdminPage() {
             )}
           </div>
         )}
+
+        {/* Prayer walks — feed-scoped events. Same shape as a community
+            announcement with kind=prayer_walk, just attached to the
+            climate feed instead of a group. */}
+        {!editing && <WalksSection />}
       </div>
     </Layout>
+  );
+}
+
+// ─── Prayer walks admin section ────────────────────────────────────────────
+function WalksSection() {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<Walk | "new" | null>(null);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [eventAt, setEventAt] = useState("");
+  const [location, setLocation] = useState("");
+
+  const { data, isLoading } = useQuery<WalksResponse>({
+    queryKey: ["/api/climate/admin/walks"],
+    queryFn: () => apiRequest("GET", "/api/climate/admin/walks"),
+  });
+
+  function openEditor(target: Walk | "new") {
+    setEditing(target);
+    if (target === "new") {
+      setTitle("");
+      setContent("");
+      setEventAt("");
+      setLocation("");
+    } else {
+      setTitle(target.title ?? "");
+      setContent(target.content ?? "");
+      setEventAt(isoToLocalInput(target.eventAt));
+      setLocation(target.location ?? "");
+    }
+  }
+  function closeEditor() { setEditing(null); }
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/climate/admin/walks", {
+        title,
+        content,
+        eventAt: eventAt ? new Date(eventAt).toISOString() : undefined,
+        location: location || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/walks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/walks"] });
+      closeEditor();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("PATCH", `/api/climate/admin/walks/${id}`, {
+        title,
+        content,
+        eventAt: eventAt ? new Date(eventAt).toISOString() : undefined,
+        location: location || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/walks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/walks"] });
+      closeEditor();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", `/api/climate/admin/walks/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/walks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/climate/walks"] });
+      closeEditor();
+    },
+  });
+
+  function handleSave() {
+    if (!editing) return;
+    if (editing === "new") createMutation.mutate();
+    else updateMutation.mutate(editing.id);
+  }
+
+  const walks = data?.walks ?? [];
+  const now = Date.now();
+  const upcoming = walks.filter(w => new Date(w.eventAt).getTime() >= now);
+  const past = walks.filter(w => new Date(w.eventAt).getTime() < now);
+  const saving = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <div className="flex flex-col gap-2 mt-8">
+      <div className="flex items-center justify-between mb-1">
+        <p
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: "rgba(200,212,192,0.4)" }}
+        >
+          Prayer walks
+        </p>
+        {!editing && (
+          <button
+            onClick={() => openEditor("new")}
+            className="text-xs font-semibold"
+            style={{ color: "#A8C5A0" }}
+          >
+            + Schedule a walk
+          </button>
+        )}
+      </div>
+
+      {editing && (
+        <div
+          className="rounded-2xl p-5 flex flex-col gap-3"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.3)",
+          }}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <p
+              className="text-sm font-semibold"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              {editing === "new" ? "New prayer walk" : "Edit prayer walk"}
+            </p>
+            <button onClick={closeEditor} className="text-xs" style={{ color: "#8FAF96" }}>
+              Cancel
+            </button>
+          </div>
+
+          <input
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Walk title (e.g. Prayer along the Anacostia)"
+            className="px-3 py-2 rounded-lg text-sm bg-transparent"
+            style={{ border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+          />
+          <input
+            type="datetime-local"
+            value={eventAt}
+            onChange={e => setEventAt(e.target.value)}
+            className="px-3 py-2 rounded-lg text-sm bg-transparent"
+            style={{ border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", colorScheme: "dark" }}
+          />
+          <input
+            type="text"
+            value={location}
+            onChange={e => setLocation(e.target.value)}
+            placeholder="Location (e.g. Lincoln Park, DC)"
+            className="px-3 py-2 rounded-lg text-sm bg-transparent"
+            style={{ border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+          />
+          <textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            placeholder="Describe the walk — what to expect, what to bring..."
+            rows={4}
+            className="px-3 py-2 rounded-lg text-sm bg-transparent resize-none"
+            style={{ border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+          />
+
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <button
+              onClick={handleSave}
+              disabled={saving || !title.trim() || !content.trim() || !eventAt}
+              className="px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40"
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            {editing !== "new" && (
+              <button
+                onClick={() => {
+                  if (window.confirm("Delete this walk?")) deleteMutation.mutate(editing.id);
+                }}
+                disabled={deleteMutation.isPending}
+                className="text-xs"
+                style={{ color: "#E89B9B" }}
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!editing && (
+        <>
+          {isLoading ? (
+            <p className="text-sm" style={{ color: "rgba(143,175,150,0.5)" }}>Loading…</p>
+          ) : upcoming.length === 0 && past.length === 0 ? (
+            <p className="text-sm" style={{ color: "#8FAF96" }}>
+              No walks scheduled. Tap "Schedule a walk" to add one.
+            </p>
+          ) : (
+            <>
+              {upcoming.map(w => (
+                <button
+                  key={w.id}
+                  onClick={() => openEditor(w)}
+                  className="text-left rounded-2xl px-4 py-3 transition-colors"
+                  style={{
+                    background: "rgba(46,107,64,0.10)",
+                    border: "1px solid rgba(46,107,64,0.18)",
+                  }}
+                >
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    {w.title ?? "Prayer walk"}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                    {new Date(w.eventAt).toLocaleString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                    {w.location ? ` · ${w.location}` : ""}
+                  </p>
+                </button>
+              ))}
+              {past.length > 0 && (
+                <>
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-widest mt-4"
+                    style={{ color: "rgba(200,212,192,0.4)" }}
+                  >
+                    Past
+                  </p>
+                  {past.map(w => (
+                    <button
+                      key={w.id}
+                      onClick={() => openEditor(w)}
+                      className="text-left rounded-2xl px-4 py-3 opacity-60"
+                      style={{
+                        background: "rgba(200,212,192,0.04)",
+                        border: "1px solid rgba(46,107,64,0.12)",
+                      }}
+                    >
+                      <p
+                        className="text-sm font-semibold"
+                        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                      >
+                        {w.title ?? "Prayer walk"}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+                        {new Date(w.eventAt).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </button>
+                  ))}
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </div>
   );
 }
