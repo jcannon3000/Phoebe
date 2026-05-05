@@ -151,6 +151,7 @@ function ClimateJoin() {
 function ClimateTab() {
   const [slideshowOpen, setSlideshowOpen] = useState(false);
   const { rawIsAdmin } = useBetaStatus();
+  const { user } = useAuth();
 
   const { data, isLoading: todayLoading } = useQuery<TodayResponse>({
     queryKey: ["/api/climate/today"],
@@ -283,6 +284,37 @@ function ClimateTab() {
           <p className="text-sm" style={{ color: "#8FAF96" }}>No prayer for today yet.</p>
           <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>Check back soon.</p>
         </div>
+      )}
+
+      {/* Parish hint. Quiet link — surfaces the picker without making
+          unparished feel like a problem. Hidden once a parish is set
+          (the per-parish counter on the closing slide is the affordance
+          that the connection is doing something). */}
+      {user && user.parishId === null && (
+        <Link
+          href="/climate/parish"
+          className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3"
+          style={{
+            background: "rgba(46,107,64,0.08)",
+            border: "1px solid rgba(46,107,64,0.18)",
+          }}
+        >
+          <div>
+            <p
+              className="text-sm font-semibold"
+              style={{
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              Connect to a parish
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              See how many people from your parish prayed today.
+            </p>
+          </div>
+          <span style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
+        </Link>
       )}
 
       {/* Upcoming prayer walks — only render the section when there's

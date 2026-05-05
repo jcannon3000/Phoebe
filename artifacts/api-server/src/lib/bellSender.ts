@@ -724,6 +724,10 @@ export async function runClimateDailySender(opts: { forceNow?: boolean } = {}): 
     );
   const entryTitle: string | null = entry?.title ?? null;
 
+  // Honor bell_enabled so a climate user can mute the 7am push from
+  // settings. The startup migration backfills bell_enabled=true for
+  // existing climate users so this gate doesn't silently mute anyone
+  // mid-deploy; new climate signups also set bell_enabled=true.
   const climateUsers = await db
     .select({
       id: usersTable.id,
@@ -731,7 +735,12 @@ export async function runClimateDailySender(opts: { forceNow?: boolean } = {}): 
       timezone: usersTable.timezone,
     })
     .from(usersTable)
-    .where(eq(usersTable.climateEnrolled, true));
+    .where(
+      and(
+        eq(usersTable.climateEnrolled, true),
+        eq(usersTable.bellEnabled, true),
+      ),
+    );
 
   if (climateUsers.length === 0) return;
 

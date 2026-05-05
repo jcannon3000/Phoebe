@@ -21,6 +21,8 @@ export interface AuthUser {
   climateEnrolled: boolean;
   climateOnboardingCompleted: boolean;
   climateOnly: boolean;
+  parishId: number | null;
+  bellEnabled: boolean;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

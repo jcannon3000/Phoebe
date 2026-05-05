@@ -291,6 +291,9 @@ router.post(
         name: name.trim(),
         passwordHash,
         climateEnrolled: true,
+        // bellEnabled drives the 7am climate push. On by default at signup
+        // — users can mute it later from settings.
+        bellEnabled: true,
         // Skip Phoebe's general onboarding tour. Climate has its own.
         onboardingCompleted: true,
         // climateOnboardingCompleted defaults false — the new user will
@@ -355,14 +358,77 @@ router.post("/climate/enroll-self", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Not authenticated" }); return;
   }
   const userId = (req.user as { id: number }).id;
+  // Also flip bell_enabled=true so the 7am climate push reaches them —
+  // opting in to climate implies wanting the daily ping. They can mute
+  // it later from settings if they change their mind.
   await db
     .update(usersTable)
-    .set({ climateEnrolled: true })
+    .set({ climateEnrolled: true, bellEnabled: true })
     .where(eq(usersTable.id, userId));
   if (req.user) {
     (req.user as Record<string, unknown>).climateEnrolled = true;
+    (req.user as Record<string, unknown>).bellEnabled = true;
   }
   res.json({ ok: true });
+});
+
+// GET /api/climate/parishes — list groups available as parishes. We use
+// every non-prayer-circle group; prayer circles are tighter cells, not
+// parishes. Filter on isPrayerCircle keeps the picker focused without
+// requiring a separate is_parish flag for v1.
+router.get("/climate/parishes", requireClimate, async (req, res): Promise<void> => {
+  try {
+    const rows = await db
+      .select({
+        id: groupsTable.id,
+        name: groupsTable.name,
+        slug: groupsTable.slug,
+        emoji: groupsTable.emoji,
+      })
+      .from(groupsTable)
+      .where(eq(groupsTable.isPrayerCircle, false))
+      .orderBy(asc(groupsTable.name));
+    res.json({ parishes: rows });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load parishes" });
+  }
+});
+
+// PATCH /api/climate/me/parish — set or clear the caller's parish_id.
+// Body: { parishId: number | null }. Sending null disconnects from the
+// current parish (the parish counter on the closing slide goes hidden).
+router.patch("/climate/me/parish", requireClimate, async (req, res): Promise<void> => {
+  try {
+    const userId = (req.user as { id: number }).id;
+    const body = req.body as { parishId?: number | null };
+    const parishId =
+      body.parishId === null || body.parishId === undefined
+        ? null
+        : Number(body.parishId);
+
+    if (parishId !== null) {
+      // Verify the target group exists and isn't a prayer circle. Stops
+      // a malicious caller from pointing parish_id at an arbitrary row.
+      const [group] = await db
+        .select({ id: groupsTable.id, isPrayerCircle: groupsTable.isPrayerCircle })
+        .from(groupsTable)
+        .where(eq(groupsTable.id, parishId));
+      if (!group || group.isPrayerCircle) {
+        res.status(400).json({ error: "Invalid parish" }); return;
+      }
+    }
+
+    await db
+      .update(usersTable)
+      .set({ parishId })
+      .where(eq(usersTable.id, userId));
+    if (req.user) {
+      (req.user as Record<string, unknown>).parishId = parishId;
+    }
+    res.json({ ok: true, parishId });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update parish" });
+  }
 });
 
 // ─── Climate admin: prayer entry curation ──────────────────────────────

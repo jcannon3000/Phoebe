@@ -193,6 +193,8 @@ router.get("/auth/me", (req, res) => {
     climateEnrolled: boolean;
     climateOnboardingCompleted: boolean;
     climateOnly: boolean;
+    parishId: number | null;
+    bellEnabled: boolean;
   };
   res.json({
     id: u.id,
@@ -217,6 +219,8 @@ router.get("/auth/me", (req, res) => {
     climateEnrolled: u.climateEnrolled ?? false,
     climateOnboardingCompleted: u.climateOnboardingCompleted ?? false,
     climateOnly: u.climateOnly ?? false,
+    parishId: u.parishId ?? null,
+    bellEnabled: u.bellEnabled ?? false,
   });
 });
 

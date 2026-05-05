@@ -1186,6 +1186,13 @@ export async function migrate() {
     await run(client, `ALTER TABLE group_announcements ADD COLUMN IF NOT EXISTS event_at TIMESTAMPTZ`);
     await run(client, `ALTER TABLE group_announcements ADD COLUMN IF NOT EXISTS location TEXT`);
 
+    // Climate push opt-out: have runClimateDailySender honor users.bell_enabled
+    // so a climate user can mute the 7am push from settings. Backfill
+    // bell_enabled=true for everyone currently climate-enrolled — they signed
+    // up expecting the push, so we don't want the new gate to silently mute
+    // them on the next deploy.
+    await run(client, `UPDATE users SET bell_enabled = true WHERE climate_enrolled = true AND bell_enabled = false`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
