@@ -245,13 +245,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           >
             {officeTitle}
           </span>
-          <div style={{ textAlign: "right", minWidth: 0 }}>
-            {refLabel && (
-              <p style={{ color: MUTED_GREEN, fontSize: 12, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {refLabel}
-              </p>
-            )}
-          </div>
+          {/* Right column kept as a grid spacer so the centered
+              officeTitle pill stays centered. The day-label that
+              used to sit here ("Wednesday in the 5th Week of
+              Easter") was visually crowded against the pill on
+              narrow screens. */}
+          <div />
+
         </div>
       </header>
 
