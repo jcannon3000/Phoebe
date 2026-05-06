@@ -16,6 +16,7 @@ interface Intercession {
   scheduledTime: string;
   frequency: string;
   state: string;
+  learnMoreUrl: string | null;
   createdAt: string;
 }
 
@@ -61,6 +62,7 @@ export default function ClimateAdminPage() {
   const [editing, setEditing] = useState<Intercession | "new" | null>(null);
   const [title, setTitle] = useState("");
   const [fullText, setFullText] = useState("");
+  const [learnMoreUrl, setLearnMoreUrl] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -83,6 +85,7 @@ export default function ClimateAdminPage() {
       apiRequest("POST", "/api/climate/admin/intercessions", {
         title,
         fullText,
+        learnMoreUrl: learnMoreUrl || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/intercessions"] });
@@ -96,6 +99,7 @@ export default function ClimateAdminPage() {
       apiRequest("PATCH", `/api/climate/admin/intercessions/${id}`, {
         title,
         fullText,
+        learnMoreUrl: learnMoreUrl || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/intercessions"] });
@@ -119,9 +123,11 @@ export default function ClimateAdminPage() {
     if (target === "new") {
       setTitle("");
       setFullText("");
+      setLearnMoreUrl("");
     } else {
       setTitle(target.intercessionTopic ?? target.name ?? "");
       setFullText(target.intercessionFullText ?? "");
+      setLearnMoreUrl(target.learnMoreUrl ?? "");
     }
   }
 
@@ -256,6 +262,26 @@ export default function ClimateAdminPage() {
                   fontFamily: "Georgia, 'Times New Roman', serif",
                 }}
               />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
+                Learn-more link (optional)
+              </span>
+              <input
+                type="url"
+                value={learnMoreUrl}
+                onChange={(e) => setLearnMoreUrl(e.target.value)}
+                placeholder="https://grist.org/article-about-this-issue"
+                className="px-3 py-2 rounded-lg text-sm bg-transparent"
+                style={{
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  color: "#F0EDE6",
+                }}
+              />
+              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.5)" }}>
+                Surfaces as a "Read more" link on the slide.
+              </span>
             </label>
 
             <div className="flex items-center justify-between gap-2 mt-2">

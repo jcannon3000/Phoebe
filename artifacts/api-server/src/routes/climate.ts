@@ -21,6 +21,23 @@ function generateToken(): string {
   return crypto.randomBytes(16).toString("hex");
 }
 
+// Validate the optional Learn-More URL on a feed intercession. Accepts
+// http(s) only, prepends https:// when the user types a bare host
+// (e.g. "grist.org/article"), returns null on empty/invalid input.
+function normalizeLearnMoreUrl(input: string | null | undefined): string | null {
+  if (input === null || input === undefined) return null;
+  const trimmed = String(input).trim();
+  if (trimmed.length === 0) return null;
+  const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const u = new URL(withProto);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 function requireClimate(req: any, res: any, next: any) {
   if (!req.isAuthenticated?.() || !req.user) {
     res.status(401).json({ error: "Not authenticated" }); return;
@@ -493,6 +510,7 @@ router.get("/climate/admin/intercessions", requireClimateAdmin, async (_req, res
         scheduledTime: sharedMomentsTable.scheduledTime,
         frequency: sharedMomentsTable.frequency,
         state: sharedMomentsTable.state,
+        learnMoreUrl: sharedMomentsTable.learnMoreUrl,
         createdAt: sharedMomentsTable.createdAt,
       })
       .from(sharedMomentsTable)
@@ -524,6 +542,7 @@ router.post("/climate/admin/intercessions", requireClimateAdmin, async (req, res
     const body = req.body as {
       title?: string;
       fullText?: string;
+      learnMoreUrl?: string | null;
       scheduledTime?: string;
       frequency?: string;
       timezone?: string;
@@ -546,6 +565,7 @@ router.post("/climate/admin/intercessions", requireClimateAdmin, async (req, res
     const scheduledTime = (body.scheduledTime ?? "07:00").trim();
     const frequency = (body.frequency ?? "daily").trim();
     const timezone = (body.timezone ?? feed.timezone ?? "America/New_York").trim();
+    const learnMoreUrl = normalizeLearnMoreUrl(body.learnMoreUrl);
 
     const [moment] = await db
       .insert(sharedMomentsTable)
@@ -566,6 +586,7 @@ router.post("/climate/admin/intercessions", requireClimateAdmin, async (req, res
         goalDays: 30,
         state: "active",
         momentToken: generateToken(),
+        learnMoreUrl,
       })
       .returning();
 
@@ -610,6 +631,7 @@ router.patch("/climate/admin/intercessions/:id", requireClimateAdmin, async (req
     const body = req.body as {
       title?: string;
       fullText?: string;
+      learnMoreUrl?: string | null;
       scheduledTime?: string;
       frequency?: string;
       state?: "active" | "archived";
@@ -626,6 +648,9 @@ router.patch("/climate/admin/intercessions/:id", requireClimateAdmin, async (req
       const f = body.fullText.trim();
       if (f.length === 0) { res.status(400).json({ error: "Prayer text cannot be empty" }); return; }
       patch.intercessionFullText = f;
+    }
+    if (body.learnMoreUrl !== undefined) {
+      patch.learnMoreUrl = normalizeLearnMoreUrl(body.learnMoreUrl);
     }
     if (body.scheduledTime !== undefined) patch.scheduledTime = body.scheduledTime.trim();
     if (body.frequency !== undefined) patch.frequency = body.frequency.trim();

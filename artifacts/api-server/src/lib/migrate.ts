@@ -1206,6 +1206,7 @@ export async function migrate() {
     // surfaces on /api/moments + prayer-mode for every subscriber.
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS prayer_feed_id INTEGER REFERENCES prayer_feeds(id) ON DELETE SET NULL`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_shared_moments_prayer_feed ON shared_moments (prayer_feed_id)`);
+    await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS learn_more_url TEXT`);
 
     // group_announcements gains feed scope: prayer walks + announcements
     // can now belong to a feed instead of a group. group_id becomes

@@ -66,6 +66,12 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   allowMemberInvites: boolean("allow_member_invites").notNull().default(true),
   // Custom emoji chosen by the creator (intercessions)
   customEmoji: text("custom_emoji"),
+  // Optional outbound URL — surfaces as a "Read more" link on the
+  // intercession slide so a subscriber can read background on what
+  // they're praying for (news article, scripture commentary, etc.).
+  // Used today by climate feed admins to attach pieces from grist.org
+  // or similar, but generic — group admins can use it too.
+  learnMoreUrl: text("learn_more_url"),
 });
 
 export type SharedMoment = typeof sharedMomentsTable.$inferSelect;

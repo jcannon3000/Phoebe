@@ -36,6 +36,9 @@ type Moment = {
   // phoebe-climate is the only feed, so a non-null prayerFeedId is
   // treated as the climate-justice tag.
   prayerFeedId?: number | null;
+  // Optional outbound URL surfaced as a "Read more" link on the slide,
+  // for background context (e.g. a Grist article about the issue).
+  learnMoreUrl?: string | null;
   members: Array<{ name: string; email: string; avatarUrl?: string | null; prayedThisWeek?: boolean }>;
   todayPostCount: number;
   // Rolling 7-day distinct-prayers count (inclusive of today). Surfaced
@@ -96,6 +99,10 @@ interface PrayerSlide {
   // eyebrow. Set for feed-scoped intercessions ("Climate Justice" for
   // anything on phoebe-climate). Null/undefined for group intercessions.
   feedTag?: string | null;
+  // intercession specific — optional outbound URL ("Read more →") on the
+  // slide for background reading. Trusted because it's authored only by
+  // beta admins via the climate admin form.
+  learnMoreUrl?: string | null;
   // intercession specific — needed to fire a moment_posts check-in the
   // instant the viewer taps "Amen", so a community intercession amen
   // lands in both the intercession detail page and the streak count
@@ -1122,6 +1129,23 @@ function SlideContent({
         </div>
       )}
 
+      {/* Optional "Read more" link — surfaces an article or background
+          piece the admin attached when authoring the intercession.
+          Opens in a new tab so the user doesn't lose their slideshow
+          state mid-prayer. Subtle visual weight so it doesn't compete
+          with the Amen button below. */}
+      {slide.kind === "intercession" && slide.learnMoreUrl && (
+        <a
+          href={slide.learnMoreUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs underline decoration-dotted underline-offset-4 mt-1"
+          style={{ color: "rgba(168,197,160,0.75)" }}
+        >
+          Read more →
+        </a>
+      )}
+
       <div className="mt-4">
         <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} />
       </div>
@@ -1703,6 +1727,7 @@ export default function PrayerModePage() {
         myUserToken: m.myUserToken,
         communityFaces,
         feedTag,
+        learnMoreUrl: m.learnMoreUrl?.trim() || null,
       };
     }),
     // Circle intentions — one slide per active intention in every prayer

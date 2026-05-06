@@ -47,6 +47,10 @@ export type Moment = {
   memberCount: number;
   members: Array<{ name: string; email: string; joined?: boolean }>;
   group?: { id: number; name: string; slug: string; emoji: string | null } | null;
+  // Set when the intercession is scoped to a prayer feed (Phoebe Climate)
+  // instead of a group. Drives the dashboard's surfacing rule:
+  // feed-scoped intercessions appear as cards, group-scoped ones don't.
+  prayerFeedId?: number | null;
   todayPostCount: number;
   windowOpen: boolean;
   isActionableToday: boolean;
@@ -3187,14 +3191,18 @@ export default function Dashboard() {
       const isIntercession = m.templateType === "intercession";
       const isFasting = m.templateType === "fasting";
 
-      // Intercessions never appear as individual cards on the home
-      // dashboard — they live inside the prayer list (slideshow). The
-      // PrayerListCard surfaces the aggregated count of prayers waiting,
-      // so the user taps once to move through them all. This supersedes
-      // the earlier "hide if already prayed today" rule: the intention
-      // is that intercessions ONLY exist in the list, not as clutter on
-      // the home screen.
-      if (isIntercession) continue;
+      // Intercessions normally don't appear as individual cards on the
+      // home dashboard — they live inside the prayer list (slideshow).
+      // The PrayerListCard surfaces the aggregated count of prayers
+      // waiting, so the user taps once to move through them all.
+      //
+      // Exception: feed-scoped intercessions DO surface as cards. Group
+      // intercessions are high-volume rhythm content (one per group,
+      // many groups) and would clutter the dashboard. Feed intercessions
+      // are deliberately curated content (a small list, admin-authored)
+      // and benefit from being visible — especially on a climate-only
+      // dashboard where they're the primary signal.
+      if (isIntercession && !m.prayerFeedId) continue;
 
       const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
 

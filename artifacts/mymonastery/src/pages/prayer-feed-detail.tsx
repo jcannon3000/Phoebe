@@ -90,7 +90,13 @@ export default function PrayerFeedDetailPage() {
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
     if (!authLoading && user && !isBeta) setLocation("/dashboard");
-  }, [user, authLoading, isBeta, setLocation]);
+    // phoebe-climate moved off the prayer_feed_entries model — its
+    // content lives in shared_moments now and is surfaced through the
+    // regular dashboard + prayer-mode + the /climate hub. Hitting this
+    // legacy detail page would show a misleading "no intention
+    // published" empty state, so route the user to the new home.
+    if (slug === "phoebe-climate") setLocation("/climate");
+  }, [user, authLoading, isBeta, setLocation, slug]);
 
   // ── Feed + today's entry ───────────────────────────────────────────────
   const feedQ = useQuery<FeedResponse>({
