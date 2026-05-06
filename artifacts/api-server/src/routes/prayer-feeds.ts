@@ -82,6 +82,27 @@ async function getFeedBySlug(slug: string) {
   return feed ?? null;
 }
 
+// Edit permission for a feed:
+//   • the creator can always edit
+//   • for platform-owned feeds (creator_user_id IS NULL — e.g.
+//     phoebe-climate), any beta admin can edit. This is how Phoebe
+//     staff publish daily intentions for platform feeds without
+//     a per-feed "creator" account.
+async function canEditFeed(
+  userId: number,
+  feed: { creatorUserId: number | null },
+): Promise<boolean> {
+  if (feed.creatorUserId === userId) return true;
+  if (feed.creatorUserId !== null) return false;
+  const [u] = await db.select({ email: usersTable.email })
+    .from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return false;
+  const [admin] = await db.select({ isAdmin: betaUsersTable.isAdmin })
+    .from(betaUsersTable)
+    .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+  return !!admin?.isAdmin;
+}
+
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
 const createFeedSchema = z.object({
@@ -212,20 +233,25 @@ router.post("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
 });
 
 // GET /api/prayer-feeds/:slug — feed metadata + permission flags for the
-// caller. Creator sees everything; subscribers see published entries only.
+// caller. Editors see everything; subscribers see published entries only.
+//
+// `isCreator` here is "can edit" semantics — it's true for the human
+// creator AND for beta admins on platform-owned feeds (creatorUserId
+// NULL, e.g. phoebe-climate). The flag name is preserved for client
+// back-compat.
 router.get("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
 
-  const isCreator = feed.creatorUserId === user.id;
+  const isCreator = await canEditFeed(user.id, feed);
   const [sub] = await db.select().from(prayerFeedSubscriptionsTable)
     .where(and(
       eq(prayerFeedSubscriptionsTable.feedId, feed.id),
       eq(prayerFeedSubscriptionsTable.userId, user.id),
     ));
 
-  // Draft / paused feeds are hidden from non-creators entirely.
+  // Draft / paused feeds are hidden from non-editors entirely.
   if (!isCreator && feed.state === "draft") {
     res.status(404).json({ error: "Not found" });
     return;
@@ -239,13 +265,13 @@ router.get("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void> =
   });
 });
 
-// PUT /api/prayer-feeds/:slug — creator-only edit (includes state changes)
+// PUT /api/prayer-feeds/:slug — editor-only edit (includes state changes)
 router.put("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
-  if (feed.creatorUserId !== user.id) {
-    res.status(403).json({ error: "Only the creator can edit this feed." });
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to edit this feed." });
     return;
   }
   const parsed = updateFeedSchema.safeParse(req.body);
@@ -261,12 +287,12 @@ router.put("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void> =
 });
 
 // GET /api/prayer-feeds/:slug/entries — list entries in a date range.
-// Creator sees every state; non-creators see only published.
+// Editors see every state; non-editors see only published.
 router.get("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
-  const isCreator = feed.creatorUserId === user.id;
+  const isCreator = await canEditFeed(user.id, feed);
   if (!isCreator && feed.state === "draft") {
     res.status(404).json({ error: "Not found" });
     return;
@@ -289,14 +315,14 @@ router.get("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promise
   res.json({ entries });
 });
 
-// POST /api/prayer-feeds/:slug/entries — creator-only upsert by date.
+// POST /api/prayer-feeds/:slug/entries — editor-only upsert by date.
 // If an entry already exists for that date, it's updated in place.
 router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
-  if (feed.creatorUserId !== user.id) {
-    res.status(403).json({ error: "Only the creator can publish entries." });
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to publish to this feed." });
     return;
   }
   const parsed = entrySchema.safeParse(req.body);
@@ -333,13 +359,13 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
   res.status(201).json({ entry: row });
 });
 
-// DELETE /api/prayer-feeds/:slug/entries/:date — creator-only
+// DELETE /api/prayer-feeds/:slug/entries/:date — editor-only
 router.delete("/prayer-feeds/:slug/entries/:date", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
-  if (feed.creatorUserId !== user.id) {
-    res.status(403).json({ error: "Only the creator can delete entries." });
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to delete entries on this feed." });
     return;
   }
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;

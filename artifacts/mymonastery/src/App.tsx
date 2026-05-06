@@ -130,9 +130,16 @@ import PrayerFeedNewPage from "./pages/prayer-feed-new";
 import PrayerFeedManagePage from "./pages/prayer-feed-manage";
 import PrayerFeedsBrowsePage from "./pages/prayer-feeds-browse";
 import PrayerFeedDetailPage from "./pages/prayer-feed-detail";
-import ClimatePage from "./pages/climate";
-import ClimateAdminPage from "./pages/climate-admin";
-import ClimateParishPage from "./pages/climate-parish";
+
+// Climate is now just a prayer feed (slug: phoebe-climate). The old
+// /climate*, /climate/admin, /climate/parish routes redirect to the
+// generic prayer-feed surfaces so existing bookmarks and links keep
+// working.
+function RedirectTo({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation(to); }, [to, setLocation]);
+  return null;
+}
 
 // Retry policy tuned for flaky / captive-portal Wi-Fi (libraries, hotels,
 // coffee shops): a single TLS reset or TCP RST on the first fetch after
@@ -271,12 +278,14 @@ function Router() {
       <Route path="/prayer-feeds/:slug/manage" component={PrayerFeedManagePage} />
       <Route path="/prayer-feeds" component={PrayerFeedsBrowsePage} />
       <Route path="/prayer-feeds/:slug" component={PrayerFeedDetailPage} />
-      {/* /climate/admin and /climate/parish must come before /climate so
-          the specific routes match first under wouter's order-sensitive
-          Switch. */}
-      <Route path="/climate/admin" component={ClimateAdminPage} />
-      <Route path="/climate/parish" component={ClimateParishPage} />
-      <Route path="/climate" component={ClimatePage} />
+      {/* Climate-as-feed redirects. The dedicated Climate routes are
+          gone; admins manage daily intentions via the generic prayer-
+          feed manage page, subscribers visit the generic feed detail
+          page, and the parish-detection surface (only ever shown to
+          climate-only signups) lands on settings. */}
+      <Route path="/climate/admin">{() => <RedirectTo to="/prayer-feeds/phoebe-climate/manage" />}</Route>
+      <Route path="/climate/parish">{() => <RedirectTo to="/settings" />}</Route>
+      <Route path="/climate">{() => <RedirectTo to="/prayer-feeds/phoebe-climate" />}</Route>
       <Route component={NotFound} />
     </Switch>
   );
