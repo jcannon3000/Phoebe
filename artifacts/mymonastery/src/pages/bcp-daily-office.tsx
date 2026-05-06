@@ -367,7 +367,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     ) {
       nextIdx += 1;
     }
-    playOfficeChime();
+    // Chord climbs 0 → 1 → 2 → 0 → 1 → 2 across the slide list,
+    // matching the prayer-mode swell's pattern — keyed off the
+    // landing slide so a slide jump (e.g. portal-skip) lands on
+    // the right octave step rather than a stale one.
+    playOfficeChime(nextIdx % 3);
     setSlideIdx(nextIdx);
   }
   function prev() {
@@ -380,7 +384,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     ) {
       prevIdx -= 1;
     }
-    playOfficeChime();
+    playOfficeChime(prevIdx % 3);
     setSlideIdx(prevIdx);
   }
 

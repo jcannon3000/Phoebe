@@ -382,24 +382,18 @@ export function playOpeningSwell(octaveStep: number = 0) {
 }
 
 /**
- * Office slide chime — a softer, shorter cousin of playOpeningSwell
- * fired on every slide advance / retreat in the Daily Office and
- * Daily Devotion viewer. Distinct from the prayer-mode swell so the
- * two surfaces have their own sonic identity:
+ * Office slide chime — same chapel-exhale envelope as the prayer-
+ * mode opening swell, just rooted at D instead of A so the two
+ * surfaces have their own pitched identity. The octaveStep argument
+ * matches playOpeningSwell's contract — caller passes
+ * `slideIdx % 3` so the chord climbs and resolves across the
+ * office's slide list the same way it does in /prayer-mode.
  *
- *   • Root pitched a perfect fourth above prayer-mode (D vs A)
- *   • Major-second voicing (root + 5th) instead of open fifth
- *   • Total length ~2.5s vs 7s — slide turns happen every few
- *     seconds in a Daily Office reading, so a long pad would
- *     pile on top of itself
- *   • Lower master gain so it sits under the reading voice
- *
- * Same Web Audio plumbing as playOpeningSwell — autoplay-policy
- * unlock, queue-and-drain, visibility resume on backgrounding —
- * just with a different envelope and chord. Call fire-and-forget
+ * Plumbing (autoplay-policy unlock, queue-and-drain, visibility
+ * resume) is shared with playOpeningSwell. Call fire-and-forget
  * from a click handler.
  */
-export function playOfficeChime() {
+export function playOfficeChime(octaveStep: number = 0) {
   try {
     type WindowWithWebkitAudio = Window &
       typeof globalThis & { webkitAudioContext?: typeof AudioContext };
@@ -411,49 +405,70 @@ export function playOfficeChime() {
     ensureVisibilityResume();
     if (isAudioStillLocked()) {
       void _audioCtx.resume().catch(() => { /* ignore */ });
-      _pendingAudio.push(() => playOfficeChime());
+      _pendingAudio.push(() => playOfficeChime(octaveStep));
       return;
     }
     const ctx = _audioCtx;
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
-    // Compact envelope — a soft inhale and quick release. We never
-    // want the chime to outlast the reader's eyes settling on the
-    // new slide.
-    const SWELL_IN = 0.35;
-    const HOLD     = 0.15;
-    const FADE_OUT = 1.0;
+    // Same 7s chapel-exhale envelope as playOpeningSwell — a long
+    // crescendo, brief hold, and slow fade so the chime overlaps
+    // slightly with the reader's eyes settling on the next slide.
+    const SWELL_IN = 2.5;
+    const HOLD     = 0.8;
+    const FADE_OUT = 3.7;
     const TOTAL    = SWELL_IN + HOLD + FADE_OUT;
 
+    // Octave step bumps the whole chord up by powers of two; clamp
+    // to [0, 4] so a pathological caller can't push the chord into
+    // ultrasound where the lowpass swallows it.
+    const safeStep = Math.max(0, Math.min(4, Math.floor(octaveStep) || 0));
+    const octMult = Math.pow(2, safeStep);
+    // Root D — D2 is 73.42 Hz, a perfect fourth above prayer-mode's
+    // A2 (110 Hz). Same step ladder, different home note.
+    const rootFreq = 73.42 * octMult;
+
+    const masterPeak = safeStep >= 2 ? 0.18 : safeStep >= 1 ? 0.20 : 0.22;
     const master = ctx.createGain();
     master.gain.setValueAtTime(0, now);
-    master.gain.linearRampToValueAtTime(0.10, now + SWELL_IN);
-    master.gain.setValueAtTime(0.10, now + SWELL_IN + HOLD);
+    master.gain.linearRampToValueAtTime(masterPeak, now + SWELL_IN);
+    master.gain.setValueAtTime(masterPeak, now + SWELL_IN + HOLD);
     master.gain.exponentialRampToValueAtTime(0.0001, now + TOTAL);
 
+    // Slow-opening lowpass that tracks the chord's octave so the
+    // upper voices breathe through at higher steps without the
+    // brightness fatiguing across a long office reading.
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
     lp.Q.value = 0.6;
-    lp.frequency.setValueAtTime(900, now);
-    lp.frequency.linearRampToValueAtTime(2200, now + SWELL_IN);
-    lp.frequency.linearRampToValueAtTime(1400, now + TOTAL);
+    const lpStart = 380 * octMult;
+    const lpPeak  = 1800 * octMult;
+    lp.frequency.setValueAtTime(lpStart, now);
+    lp.frequency.linearRampToValueAtTime(lpPeak, now + SWELL_IN);
+    lp.frequency.linearRampToValueAtTime(lpStart * 2, now + TOTAL);
     lp.connect(master).connect(ctx.destination);
 
-    // D4 + A4 — a quiet open fifth a fourth above the prayer-mode
-    // root. Two voices instead of three so the chime is lighter
-    // than the slideshow swell.
+    // Open fifth — root, fifth, octave-up — same voicing as the
+    // slideshow swell so the timbre matches; only the fundamental
+    // pitch differs.
     const voices: Array<{ freq: number; type: OscillatorType; gain: number }> = [
-      { freq: 293.66, type: "sine",     gain: 0.55 },
-      { freq: 440.00, type: "triangle", gain: 0.30 },
+      { freq: rootFreq,         type: "sine",     gain: 0.55 },
+      { freq: rootFreq * 1.5,   type: "triangle", gain: 0.28 },
+      { freq: rootFreq * 2,     type: "sine",     gain: 0.22 },
     ];
 
     for (const v of voices) {
       const osc = ctx.createOscillator();
       osc.type = v.type;
       osc.frequency.setValueAtTime(v.freq, now);
+      // Subtle 0.3% upward drift — same "breath" as the slideshow.
+      osc.frequency.linearRampToValueAtTime(v.freq * 1.003, now + SWELL_IN);
+      osc.frequency.linearRampToValueAtTime(v.freq, now + TOTAL);
+
       const vg = ctx.createGain();
       vg.gain.value = v.gain;
+
       osc.connect(vg).connect(lp);
       osc.start(now);
       osc.stop(now + TOTAL + 0.1);
