@@ -271,7 +271,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
-          paddingTop: "max(120px, calc(env(safe-area-inset-top) + 108px))",
+          paddingTop: "max(72px, calc(env(safe-area-inset-top) + 60px))",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 112px)",
         }}
       >
@@ -279,9 +279,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           className="max-w-2xl w-full mx-auto"
           style={{ minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left", gap: 20 }}
         >
-          {currentSlide.emoji && (
-            <div style={{ fontSize: 40, lineHeight: 1 }}>{currentSlide.emoji}</div>
-          )}
           {/* Section eyebrow — moved here from the top-right corner of
               the fixed header. Sits above the title so the user can
               tell at a glance which part of the office they're in
