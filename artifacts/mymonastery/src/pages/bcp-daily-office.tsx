@@ -1,38 +1,65 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
-import { SlideView } from "@/components/MorningPrayer/Slide";
-import { ProgressBar } from "@/components/MorningPrayer/ProgressBar";
-import { useSlideshow } from "@/components/MorningPrayer/useSlideshow";
 
-// ── Shared standalone office viewer ─────────────────────────────────────────
-// Renders /api/office/morning or /api/office/evening as a slideshow with
-// no presence / momentId / token plumbing. Keeps the Daily Office page
-// independent from MorningPrayerSlideshow (which is the practice-bound
-// component that requires a real momentId + memberToken). Same fetch
-// shape for both offices — only theme + colors differ.
+// ── Daily Office viewer ─────────────────────────────────────────────────────
+// Visual chrome mirrors Lectio: dark forest background, top-bar with
+// Back / Menu / eyebrow+reference, body centered, bottom pill with
+// Back · section-label · Next. The slide content itself is rendered
+// inline below — no SlideView dependency, since SlideView's chrome
+// fights with this layout.
 
-const SOIL_EP = "#1A1C2E";
-const CREAM_EP = "#E8E4D8";
-const SOIL_MP = "#2C1810";
-const CREAM_MP = "#E8E4D8";
+const BG = "#091A10";
+const WARM_TEXT = "#F0EDE6";
+const MUTED_GREEN = "#8FAF96";
+const FAINT_GREEN = "rgba(143,175,150,0.55)";
+const BORDER = "rgba(200,212,192,0.15)";
+const BUTTON_BG = "#2D5E3F";
+const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
 interface OfficeViewerProps {
   office: "morning" | "evening";
   onBack: () => void;
 }
 
+interface OfficeDayInfo {
+  weekdayLabel?: string;
+  sundayLabel?: string;
+  feastName?: string | null;
+}
+
+// Friendly section label for the bottom pill, derived from the slide
+// type. Keeps the chrome readable when the eyebrow is verbose
+// (e.g. "VENITE · PSALM 95").
+const SECTION_LABEL: Record<string, string> = {
+  opening: "Opening",
+  opening_sentence: "Opening Sentence",
+  confession: "Confession",
+  absolution: "Absolution",
+  invitatory: "Invitatory",
+  invitatory_psalm: "Invitatory Psalm",
+  psalm: "Psalm",
+  lesson: "Lesson",
+  canticle: "Canticle",
+  creed: "Creed",
+  lords_prayer: "Lord's Prayer",
+  suffrages: "Suffrages",
+  collect: "Collect",
+  prayer_for_mission: "Prayer for Mission",
+  general_thanksgiving: "General Thanksgiving",
+  closing: "Closing",
+};
+
 function OfficeViewer({ office, onBack }: OfficeViewerProps) {
   const [slides, setSlides] = useState<Slide[]>([]);
+  const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
+  const [slideIdx, setSlideIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const scrollableSet = useRef<Set<number>>(new Set());
 
-  const labels = office === "morning"
-    ? { title: "Morning Prayer", emoji: "🌅", soil: SOIL_MP, cream: CREAM_MP, accent: "#8FAF96" }
-    : { title: "Evening Prayer", emoji: "🌙", soil: SOIL_EP, cream: CREAM_EP, accent: "#8B9DC3" };
+  const officeTitle = office === "morning" ? "Morning Prayer" : "Evening Prayer";
 
   useEffect(() => {
     let cancelled = false;
@@ -47,16 +74,13 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
         const fetched: Slide[] = data.slides ?? [];
         if (fetched.length === 0) throw new Error("No slides returned");
         setSlides(fetched);
-        const set = new Set<number>();
-        fetched.forEach((s, i) => { if (s.isScrollable) set.add(i); });
-        scrollableSet.current = set;
+        setOfficeDay(data.officeDay ?? null);
+        setSlideIdx(0);
       } catch (err) {
         if (!cancelled) {
-          // Surface the error message so the user-facing copy reflects
-          // the actual failure mode instead of a generic "not available."
           const msg = err instanceof Error ? err.message : String(err);
           console.error(`Failed to load ${office} prayer:`, err);
-          setError(`${labels.title} couldn't load (${msg}).`);
+          setError(`${officeTitle} couldn't load (${msg}).`);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -64,133 +88,231 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
     }
     load();
     return () => { cancelled = true; };
-  }, [office, labels.title]);
-
-  const {
-    currentIndex, direction, scrollBlocked, contentRef,
-    handleClick, handleTouchStart, handleTouchEnd, handleTouchMove, handleScroll,
-  } = useSlideshow({ total: slides.length, scrollableSlides: scrollableSet.current });
+  }, [office, officeTitle]);
 
   if (loading) {
-    const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     return (
-      <div style={{ minHeight: "100vh", background: labels.soil, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 32 }}>
-        <style>{`@keyframes office-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }`}</style>
-        <div style={{ fontSize: 48, animation: "office-pulse 2s ease-in-out infinite" }}>{labels.emoji}</div>
-        <p style={{ fontSize: 18, color: labels.accent, fontStyle: "italic", fontFamily: "Georgia, serif", textAlign: "center" }}>
-          Preparing today's office… 🌿
-        </p>
-        <p style={{ fontSize: 14, color: labels.accent, opacity: 0.7, fontFamily: "Space Grotesk, sans-serif" }}>
-          {labels.title} · {today}
-        </p>
+      <div style={{ minHeight: "100vh", background: BG, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SPACE_GROTESK }}>
+        <p style={{ color: MUTED_GREEN, fontSize: 14, letterSpacing: "0.06em" }}>Preparing today's office…</p>
       </div>
     );
   }
 
   if (error || slides.length === 0) {
     return (
-      <div style={{ minHeight: "100vh", background: labels.soil, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 32, textAlign: "center" }}>
-        <p style={{ fontSize: 18, color: labels.cream, fontFamily: "Space Grotesk, sans-serif" }}>
-          {error ?? `${labels.title} is not available right now.`}
-        </p>
-        <button onClick={onBack} style={{ fontSize: 15, color: labels.accent, fontFamily: "Space Grotesk, sans-serif", background: "none", border: "none", cursor: "pointer" }}>
+      <div style={{ minHeight: "100vh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 32, textAlign: "center", fontFamily: SPACE_GROTESK }}>
+        <p style={{ fontSize: 18, color: WARM_TEXT }}>{error ?? `${officeTitle} is not available right now.`}</p>
+        <button onClick={onBack} style={{ fontSize: 14, color: MUTED_GREEN, background: "none", border: "none", cursor: "pointer" }}>
           ← Back to Daily Offices
         </button>
       </div>
     );
   }
 
-  const currentSlide = slides[currentIndex];
-  const isForward = direction === "forward";
+  const currentSlide = slides[slideIdx];
+  const atStart = slideIdx === 0;
+  const atEnd = slideIdx === slides.length - 1;
+  const sectionLabel = SECTION_LABEL[currentSlide.type] ?? currentSlide.type.toUpperCase();
+  const refLabel = officeDay?.feastName ?? officeDay?.weekdayLabel ?? officeDay?.sundayLabel ?? "";
+
+  function next() { if (!atEnd) setSlideIdx(slideIdx + 1); }
+  function prev() { if (!atStart) setSlideIdx(slideIdx - 1); }
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: labels.soil, overflow: "hidden", touchAction: "pan-y", userSelect: "none", WebkitUserSelect: "none" }}
-      onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchMove}
+      style={{
+        height: "100dvh",
+        overflow: "hidden",
+        overscrollBehavior: "none",
+        background: BG,
+        color: WARM_TEXT,
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: SPACE_GROTESK,
+      }}
     >
-      <ProgressBar current={currentIndex} total={slides.length} currentType={currentSlide.type} />
-
-      {/* Close button — top-right, persistent across all slides so the
-          user can leave the office mid-prayer without hunting for an
-          out. Stop click propagation so we don't also advance the slide. */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onBack(); }}
-        aria-label="Close"
-        style={{
-          position: "fixed",
-          top: "max(12px, calc(env(safe-area-inset-top) + 8px))",
-          right: 16,
-          width: 36,
-          height: 36,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(255,255,255,0.06)",
-          border: `1px solid ${labels.accent}33`,
-          borderRadius: 999,
-          color: `${labels.accent}cc`,
-          fontSize: 18,
-          fontFamily: "Space Grotesk, sans-serif",
-          cursor: "pointer",
-          zIndex: 100,
-          padding: 0,
-          lineHeight: 1,
-        }}
-      >
-        ×
-      </button>
-
-      {/* Slide counter at the bottom, above the home-indicator safe area
-          so it never overlaps the device chrome. Hidden on opening +
-          closing slides so the chrome doesn't compete with the framing. */}
-      {currentSlide.type !== "opening" && currentSlide.type !== "closing" && (
+      {/* Top bar — Back / Menu / eyebrow+ref. Mirrors Lectio's header. */}
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
         <div
+          className="max-w-2xl mx-auto w-full px-5 pb-2"
           style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: "max(16px, calc(env(safe-area-inset-bottom) + 8px))",
-            textAlign: "center",
-            fontSize: 12,
-            color: `${labels.accent}88`,
-            fontFamily: "Space Grotesk, sans-serif",
-            zIndex: 90,
-            pointerEvents: "none",
+            display: "grid",
+            gridTemplateColumns: "1fr auto 1fr",
+            alignItems: "center",
+            gap: 12,
+            pointerEvents: "auto",
+            paddingTop: "max(1.5rem, calc(env(safe-area-inset-top) + 0.5rem))",
           }}
         >
-          {currentIndex + 1} of {slides.length}
+          <button
+            type="button"
+            onClick={onBack}
+            style={{ color: FAINT_GREEN, fontSize: 13, background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+          >
+            ← Back
+          </button>
+          <span
+            className="rounded-full"
+            style={{
+              background: "rgba(19,44,29,0.85)",
+              border: `1px solid ${BORDER}`,
+              color: WARM_TEXT,
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              padding: "6px 16px",
+            }}
+          >
+            {officeTitle}
+          </span>
+          <div style={{ textAlign: "right", minWidth: 0 }}>
+            <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
+              {currentSlide.eyebrow || sectionLabel}
+            </p>
+            {refLabel && (
+              <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {refLabel}
+              </p>
+            )}
+          </div>
         </div>
-      )}
+      </header>
 
-      <style>{`
-        .office-slide-enter-forward { animation: office-enter-forward 300ms ease forwards; }
-        .office-slide-enter-back { animation: office-enter-back 300ms ease forwards; }
-        @keyframes office-enter-forward { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        @keyframes office-enter-back { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-      `}</style>
-
-      <div
-        key={currentSlide.id}
-        className={direction ? (isForward ? "office-slide-enter-forward" : "office-slide-enter-back") : undefined}
-        style={{ width: "100%", height: "100%" }}
+      {/* Body */}
+      <main
+        className="flex-1 px-5"
+        style={{
+          minHeight: 0,
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
+          paddingTop: "calc(env(safe-area-inset-top) + 88px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 112px)",
+        }}
       >
-        <SlideView
-          ref={contentRef}
-          slide={currentSlide}
-          scrollBlocked={scrollBlocked}
-          onScroll={handleScroll}
-          presenceData={[]}
-          hasLogged={false}
-          onLog={() => {}}
-          onBack={onBack}
-          momentId={0}
-          memberToken=""
-          theme={office}
-        />
-      </div>
+        <div
+          className="max-w-2xl w-full mx-auto"
+          style={{ minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center", gap: 20 }}
+        >
+          {currentSlide.emoji && (
+            <div style={{ fontSize: 40, lineHeight: 1 }}>{currentSlide.emoji}</div>
+          )}
+          {currentSlide.title && (
+            <h2 style={{ fontSize: 22, fontWeight: 600, color: WARM_TEXT, letterSpacing: "-0.01em", margin: 0 }}>
+              {currentSlide.title}
+            </h2>
+          )}
+          {currentSlide.isCallAndResponse && currentSlide.callAndResponseLines ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 560, margin: "0 auto", textAlign: "left" }}>
+              {currentSlide.callAndResponseLines.map((line, i) => (
+                <div key={i}>
+                  <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginBottom: 4 }}>
+                    {line.speaker === "officiant" ? "Officiant" : line.speaker === "people" ? "People" : "All"}
+                  </p>
+                  <p style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}>
+                    {line.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : currentSlide.content ? (
+            <p
+              style={{
+                fontSize: 17,
+                lineHeight: 1.7,
+                color: WARM_TEXT,
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                fontFamily: "Georgia, 'Times New Roman', serif",
+                fontStyle: "italic",
+                maxWidth: 600,
+                marginLeft: "auto",
+                marginRight: "auto",
+              }}
+            >
+              {currentSlide.content}
+            </p>
+          ) : null}
+          {currentSlide.bcpReference && (
+            <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginTop: 8 }}>
+              {currentSlide.bcpReference}
+            </p>
+          )}
+        </div>
+      </main>
+
+      {/* Bottom nav pill — Back · section · Next/Done. Mirrors Lectio. */}
+      <nav
+        aria-label="Slide navigation"
+        style={{
+          position: "fixed",
+          left: "50%",
+          bottom: "calc(env(safe-area-inset-bottom) + 16px)",
+          transform: "translateX(-50%)",
+          zIndex: 50,
+          background: "rgba(19,44,29,0.92)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: `1px solid ${BORDER}`,
+          borderRadius: 999,
+          padding: "8px 12px",
+          boxShadow: "0 8px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.35)",
+          maxWidth: "calc(100vw - 32px)",
+        }}
+      >
+        <div className="flex items-center gap-4" style={{ minWidth: 0 }}>
+          <button
+            type="button"
+            onClick={prev}
+            disabled={atStart}
+            className="rounded-full transition-opacity disabled:opacity-20"
+            style={{
+              color: WARM_TEXT,
+              background: "transparent",
+              border: `1px solid ${BORDER}`,
+              padding: "6px 14px",
+              fontSize: 12,
+              fontFamily: SPACE_GROTESK,
+              fontWeight: 600,
+              cursor: atStart ? "default" : "pointer",
+            }}
+          >
+            Back
+          </button>
+          <p
+            style={{
+              color: FAINT_GREEN,
+              fontSize: 10,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              margin: 0,
+              whiteSpace: "nowrap",
+              flex: "0 0 auto",
+            }}
+          >
+            {slideIdx + 1} · {sectionLabel}
+          </p>
+          <button
+            type="button"
+            onClick={atEnd ? onBack : next}
+            className="rounded-full transition-opacity"
+            style={{
+              background: BUTTON_BG,
+              color: WARM_TEXT,
+              border: "none",
+              padding: "6px 16px",
+              fontSize: 12,
+              fontFamily: SPACE_GROTESK,
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {atEnd ? "Done" : "Next"}
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
