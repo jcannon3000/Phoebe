@@ -107,8 +107,14 @@ t("opening_sentence_anytime_7", "Opening Sentence", "BCP p. 115",
 t("confession_text", "Confession of Sin", "BCP p. 116",
   "Most merciful God,\nwe confess that we have sinned against you\nin thought, word, and deed,\nby what we have done,\nand by what we have left undone.\nWe have not loved you with our whole heart;\nwe have not loved our neighbors as ourselves.\nWe are truly sorry and we humbly repent.\nFor the sake of your Son Jesus Christ,\nhave mercy on us and forgive us;\nthat we may delight in your will,\nand walk in your ways,\nto the glory of your Name. Amen.");
 
+// Lay form per the BCP rubric on p. 117 (mirroring p. 80): "A deacon
+// or lay person using the preceding form remains kneeling, and
+// substitutes 'us' for 'you' and 'our' for 'your.'" Phoebe is an
+// individual / lay prayer surface — no priest at the device — so the
+// absolution is rendered as a prayer FOR forgiveness rather than the
+// priestly declaration of it.
 t("confession_absolution", "Absolution", "BCP p. 117",
-  "Almighty God have mercy on you, forgive you all your sins through our Lord Jesus Christ, strengthen you in all goodness, and by the power of the Holy Spirit keep you in eternal life. Amen.");
+  "Almighty God have mercy on us, forgive us all our sins through our Lord Jesus Christ, strengthen us in all goodness, and by the power of the Holy Spirit keep us in eternal life. Amen.");
 
 // ── Phos hilaron ──────────────────────────────────────────────────────────
 

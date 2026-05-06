@@ -360,8 +360,14 @@ async function seedStaticTexts() {
       category: "absolution",
       title: "Absolution",
       bcpReference: "BCP p. 80",
+      // Lay form per the BCP rubric on p. 80: "A deacon or lay person
+      // using the preceding form remains kneeling, and substitutes
+      // 'us' for 'you' and 'our' for 'your.'" Phoebe is an individual
+      // / lay prayer surface — there's no priest at the device — so
+      // the absolution is rendered as a prayer FOR forgiveness rather
+      // than the priestly declaration of it.
       content:
-        "Almighty God have mercy on you, forgive you all your sins through our Lord Jesus Christ, strengthen you in all goodness, and by the power of the Holy Spirit keep you in eternal life. Amen.",
+        "Almighty God have mercy on us, forgive us all our sins through our Lord Jesus Christ, strengthen us in all goodness, and by the power of the Holy Spirit keep us in eternal life. Amen.",
     },
 
     // ── Invitatory psalms ────────────────────────────────────────────
