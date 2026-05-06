@@ -31,6 +31,11 @@ type Moment = {
   intercessionTopic?: string | null;
   intercessionFullText?: string | null;
   intercessionSource?: string | null;
+  // Set when the intercession is scoped to a prayer feed instead of a
+  // group. Drives the "Climate Justice" pill on the slide. For v1
+  // phoebe-climate is the only feed, so a non-null prayerFeedId is
+  // treated as the climate-justice tag.
+  prayerFeedId?: number | null;
   members: Array<{ name: string; email: string; avatarUrl?: string | null; prayedThisWeek?: boolean }>;
   todayPostCount: number;
   // Rolling 7-day distinct-prayers count (inclusive of today). Surfaced
@@ -87,6 +92,10 @@ interface PrayerSlide {
   // this request, if any. `null` means they haven't commented yet, so
   // the slide surfaces an inline compose field.
   myWord?: string | null;
+  // intercession specific — short tag rendered as a pill under the
+  // eyebrow. Set for feed-scoped intercessions ("Climate Justice" for
+  // anything on phoebe-climate). Null/undefined for group intercessions.
+  feedTag?: string | null;
   // intercession specific — needed to fire a moment_posts check-in the
   // instant the viewer taps "Amen", so a community intercession amen
   // lands in both the intercession detail page and the streak count
@@ -912,18 +921,33 @@ function SlideContent({
         </div>
       )}
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.45)" }}
-        >
-          {slide.kind === "intercession"
-            ? "Community Intercession"
-            : slide.kind === "circle-intention"
-              ? "Circle Intention"
-              : "Prayer Request"}
-        </p>
-        {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="flex items-center gap-2 flex-wrap justify-center">
+          <p
+            className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+            style={{ color: "rgba(143,175,150,0.45)" }}
+          >
+            {slide.kind === "intercession"
+              ? "Community Intercession"
+              : slide.kind === "circle-intention"
+                ? "Circle Intention"
+                : "Prayer Request"}
+          </p>
+          {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
+        </div>
+        {slide.kind === "intercession" && slide.feedTag && (
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.4)",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            🌿 {slide.feedTag}
+          </span>
+        )}
       </div>
 
       <p
@@ -1654,17 +1678,31 @@ export default function PrayerModePage() {
           }));
         }
       }
+      // Feed-scoped intercessions get the "Climate Justice" pill under
+      // the eyebrow. phoebe-climate is the only feed for now, so a
+      // non-null prayerFeedId is treated as the climate tag — generalize
+      // to per-feed pill text when more feeds exist.
+      const feedTag = m.prayerFeedId ? "Climate Justice" : null;
+      // Feed-scoped moments don't have a primary group; replace the
+      // empty "with …" attribution with a softer subtitle so the slide
+      // doesn't read like a one-person prayer.
+      const finalAttribution = m.prayerFeedId && !attributionLabel
+        ? "Your community is holding this."
+        : attributionLabel
+          ? `with ${attributionLabel}`
+          : "";
       return {
         kind: "intercession" as const,
         text: title,
         intention: intentionSub,
         fullText: m.intercessionFullText?.trim() || null,
         source: m.intercessionSource ?? null,
-        attribution: attributionLabel ? `with ${attributionLabel}` : "",
+        attribution: finalAttribution,
         weekPrayCount: m.weekPostCount ?? 0,
         momentToken: m.momentToken,
         myUserToken: m.myUserToken,
         communityFaces,
+        feedTag,
       };
     }),
     // Circle intentions — one slide per active intention in every prayer
