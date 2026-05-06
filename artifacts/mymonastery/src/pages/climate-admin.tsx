@@ -61,8 +61,6 @@ export default function ClimateAdminPage() {
   const [editing, setEditing] = useState<Intercession | "new" | null>(null);
   const [title, setTitle] = useState("");
   const [fullText, setFullText] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("07:00");
-  const [frequency, setFrequency] = useState("daily");
 
   const queryClient = useQueryClient();
 
@@ -77,13 +75,14 @@ export default function ClimateAdminPage() {
     enabled: !!user && rawIsAdmin,
   });
 
+  // Server defaults handle scheduledTime + frequency since they're
+  // meaningless for feed intercessions — the moment lives in the prayer
+  // list whenever the user prays, no per-intercession bell window.
   const createMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/climate/admin/intercessions", {
         title,
         fullText,
-        scheduledTime,
-        frequency,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/intercessions"] });
@@ -97,8 +96,6 @@ export default function ClimateAdminPage() {
       apiRequest("PATCH", `/api/climate/admin/intercessions/${id}`, {
         title,
         fullText,
-        scheduledTime,
-        frequency,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/climate/admin/intercessions"] });
@@ -122,13 +119,9 @@ export default function ClimateAdminPage() {
     if (target === "new") {
       setTitle("");
       setFullText("");
-      setScheduledTime("07:00");
-      setFrequency("daily");
     } else {
       setTitle(target.intercessionTopic ?? target.name ?? "");
       setFullText(target.intercessionFullText ?? "");
-      setScheduledTime(target.scheduledTime ?? "07:00");
-      setFrequency(target.frequency ?? "daily");
     }
   }
 
@@ -265,44 +258,6 @@ export default function ClimateAdminPage() {
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
-                  Scheduled time
-                </span>
-                <input
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="px-3 py-2 rounded-lg text-sm bg-transparent"
-                  style={{
-                    border: "1px solid rgba(46,107,64,0.4)",
-                    color: "#F0EDE6",
-                    colorScheme: "dark",
-                  }}
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.5)" }}>
-                  Frequency
-                </span>
-                <select
-                  value={frequency}
-                  onChange={(e) => setFrequency(e.target.value)}
-                  className="px-3 py-2 rounded-lg text-sm bg-transparent"
-                  style={{
-                    border: "1px solid rgba(46,107,64,0.4)",
-                    color: "#F0EDE6",
-                    colorScheme: "dark",
-                  }}
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                </select>
-              </label>
-            </div>
-
             <div className="flex items-center justify-between gap-2 mt-2">
               <button
                 onClick={handleSave}
@@ -373,9 +328,6 @@ export default function ClimateAdminPage() {
                       {i.intercessionFullText}
                     </p>
                   )}
-                  <p className="text-[11px] mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    {i.frequency} · {i.scheduledTime}
-                  </p>
                 </button>
               ))
             )}
