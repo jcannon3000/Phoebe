@@ -1942,4 +1942,382 @@ export const PSALTER: Record<number, PsalmEntry> = {
 23 Look well whether there be any wickedness in me *
   and lead me in the way that is everlasting.`,
   },
+
+  20: {
+    title: "Exaudiat te Dominus",
+    bcpRef: "BCP p. 607",
+    content:
+`1 May the Lord answer you in the day of trouble, *
+  the Name of the God of Jacob defend you;
+2 Send you help from his holy place *
+  and strengthen you out of Zion;
+3 Remember all your offerings *
+  and accept your burnt sacrifice;
+4 Grant you your heart's desire *
+  and prosper all your plans.
+5 We will shout for joy at your victory
+  and triumph in the Name of our God; *
+  may the Lord grant all your requests.
+6 Now I know that the Lord gives victory to his anointed; *
+  he will answer him out of his holy heaven,
+  with the victorious strength of his right hand.
+7 Some put their trust in chariots and some in horses, *
+  but we will call upon the Name of the Lord our God.
+8 They collapse and fall down, *
+  but we will arise and stand upright.
+9 O Lord, give victory to the king *
+  and answer us when we call.`,
+  },
+
+  21: {
+    title: "Domine, in virtute tua",
+    bcpRef: "BCP p. 607",
+    content:
+`1 The king rejoices in your strength, O Lord; *
+  how greatly he exults in your victory!
+2 You have given him his heart's desire; *
+  you have not denied him the request of his lips.
+3 For you meet him with blessings of prosperity, *
+  and set a crown of fine gold upon his head.
+4 He asked you for life, and you gave it to him: *
+  length of days, for ever and ever.
+5 His honor is great, because of your victory; *
+  splendor and majesty have you bestowed upon him.
+6 For you will give him everlasting felicity *
+  and will make him glad with the joy of your presence.
+7 For the king puts his trust in the Lord; *
+  because of the loving-kindness of the Most High, he will not fall.
+8 Your hand will lay hold upon all your enemies; *
+  your right hand will seize all those who hate you.
+9 You will make them like a fiery furnace *
+  at the time of your appearing, O Lord;
+10 You will swallow them up in your wrath, *
+  and fire shall consume them.
+11 You will destroy their offspring from the land *
+  and their descendants from among the peoples of the earth.
+12 Though they intend evil against you
+  and devise wicked schemes, *
+  yet they shall not prevail.
+13 For you will put them to flight *
+  and aim your arrows at them.
+14 Be exalted, O Lord, in your might; *
+  we will sing and praise your power.`,
+  },
+
+  26: {
+    title: "Judica me, Domine",
+    bcpRef: "BCP p. 615",
+    content:
+`1 Give judgment for me, O Lord,
+  for I have lived with integrity; *
+  I have trusted in the Lord and have not faltered.
+2 Test me, O Lord, and try me; *
+  examine my heart and my mind.
+3 For your love is before my eyes; *
+  I have walked faithfully with you.
+4 I have not sat with the worthless, *
+  nor do I consort with the deceitful.
+5 I have hated the company of evildoers; *
+  I will not sit down with the wicked.
+6 I will wash my hands in innocence, O Lord, *
+  that I may go in procession round your altar,
+7 Singing aloud a song of thanksgiving *
+  and recounting all your wonderful deeds.
+8 Lord, I love the house in which you dwell *
+  and the place where your glory abides.
+9 Do not sweep me away with sinners, *
+  nor my life with those who thirst for blood,
+10 Whose hands are full of evil plots, *
+  and their right hand full of bribes.
+11 As for me, I will live with integrity; *
+  redeem me, O Lord, and have pity on me.
+12 My foot stands on level ground; *
+  in the full assembly I will bless the Lord.`,
+  },
+
+  28: {
+    title: "Ad te, Domine",
+    bcpRef: "BCP p. 618",
+    content:
+`1 O Lord, I call to you;
+  my Rock, do not be deaf to my cry; *
+  lest, if you do not hear me,
+  I become like those who go down to the Pit.
+2 Hear the voice of my prayer when I cry out to you, *
+  when I lift up my hands to your holy of holies.
+3 Do not snatch me away with the wicked or with the evildoers, *
+  who speak peaceably with their neighbors,
+  while strife is in their hearts.
+4 Repay them according to their deeds, *
+  and according to the wickedness of their actions.
+5 According to the work of their hands repay them, *
+  and give them their just deserts.
+6 They have no understanding of the Lord's doings,
+  nor of the works of his hands; *
+  therefore he will break them down and not build them up.
+7 Blessed is the Lord! *
+  for he has heard the voice of my prayer.
+8 The Lord is my strength and my shield; *
+  my heart trusts in him, and I have been helped;
+9 Therefore my heart dances for joy, *
+  and in my song will I praise him.
+10 The Lord is the strength of his people, *
+  a safe refuge for his anointed.
+11 Save your people and bless your inheritance; *
+  shepherd them and carry them for ever.`,
+  },
+
+  29: {
+    title: "Afferte Domino",
+    bcpRef: "BCP p. 619",
+    content:
+`1 Ascribe to the Lord, you gods, *
+  ascribe to the Lord glory and strength.
+2 Ascribe to the Lord the glory due his Name; *
+  worship the Lord in the beauty of holiness.
+3 The voice of the Lord is upon the waters;
+  the God of glory thunders; *
+  the Lord is upon the mighty waters.
+4 The voice of the Lord is a powerful voice; *
+  the voice of the Lord is a voice of splendor.
+5 The voice of the Lord breaks the cedar trees; *
+  the Lord breaks the cedars of Lebanon;
+6 He makes Lebanon skip like a calf, *
+  and Mount Hermon like a young wild ox.
+7 The voice of the Lord splits the flames of fire;
+  the voice of the Lord shakes the wilderness; *
+  the Lord shakes the wilderness of Kadesh.
+8 The voice of the Lord makes the oak trees writhe *
+  and strips the forests bare.
+9 And in the temple of the Lord *
+  all are crying, "Glory!"
+10 The Lord sits enthroned above the flood; *
+  the Lord sits enthroned as King for evermore.
+11 The Lord shall give strength to his people; *
+  the Lord shall give his people the blessing of peace.`,
+  },
+
+  31: {
+    title: "In te, Domine, speravi",
+    bcpRef: "BCP p. 621",
+    content:
+`1 In you, O Lord, have I taken refuge;
+  let me never be put to shame; *
+  deliver me in your righteousness.
+2 Incline your ear to me; *
+  make haste to deliver me.
+3 Be my strong rock, a castle to keep me safe,
+  for you are my crag and my stronghold; *
+  for the sake of your Name, lead me and guide me.
+4 Take me out of the net that they have secretly set for me, *
+  for you are my tower of strength.
+5 Into your hands I commend my spirit, *
+  for you have redeemed me,
+  O Lord, O God of truth.
+6 I hate those who cling to worthless idols, *
+  and I put my trust in the Lord.
+7 I will rejoice and be glad because of your mercy; *
+  for you have seen my affliction;
+  you know my distress.
+8 You have not shut me up in the power of the enemy; *
+  you have set my feet in an open place.
+9 Have mercy on me, O Lord, for I am in trouble; *
+  my eye is consumed with sorrow,
+  and also my throat and my belly.
+10 For my life is wasted with grief,
+  and my years with sighing; *
+  my strength fails me because of affliction,
+  and my bones are consumed.
+11 I have become a reproach to all my enemies and even to my neighbors,
+  a dismay to those of my acquaintance; *
+  when they see me in the street they avoid me.
+12 I am forgotten like a dead man, out of mind; *
+  I am as useless as a broken pot.
+13 For I have heard the whispering of the crowd;
+  fear is all around; *
+  they put their heads together against me;
+  they plot to take my life.
+14 But as for me, I have trusted in you, O Lord. *
+  I have said, "You are my God.
+15 My times are in your hand; *
+  rescue me from the hand of my enemies,
+  and from those who persecute me.
+16 Make your face to shine upon your servant, *
+  and in your loving-kindness save me."
+17 Lord, let me not be ashamed for having called upon you; *
+  rather, let the wicked be put to shame;
+  let them be silent in the grave.
+18 Let the lying lips be silenced which speak against the righteous, *
+  haughtily, disdainfully, and with contempt.
+19 How great is your goodness, O Lord!
+  which you have laid up for those who fear you; *
+  which you have done in the sight of all
+  for those who put their trust in you.
+20 You hide them in the covert of your presence from those who slander them; *
+  you keep them in your shelter from the strife of tongues.
+21 Blessed be the Lord! *
+  for he has shown me the wonders of his love in a besieged city.
+22 Yet I said in my alarm,
+  "I have been cut off from the sight of your eyes." *
+  Nevertheless, you heard the sound of my entreaty
+  when I cried out to you.
+23 Love the Lord, all you who worship him; *
+  the Lord protects the faithful,
+  but repays to the full those who act haughtily.
+24 Be strong and let your heart take courage, *
+  all you who wait for the Lord.`,
+  },
+
+  32: {
+    title: "Beati quorum",
+    bcpRef: "BCP p. 623",
+    content:
+`1 Happy are they whose transgressions are forgiven, *
+  and whose sin is put away!
+2 Happy are they to whom the Lord imputes no guilt, *
+  and in whose spirit there is no guile!
+3 While I held my tongue, my bones withered away, *
+  because of my groaning all day long.
+4 For your hand was heavy upon me day and night; *
+  my moisture was dried up as in the heat of summer.
+5 Then I acknowledged my sin to you, *
+  and did not conceal my guilt.
+6 I said, "I will confess my transgressions to the Lord." *
+  Then you forgave me the guilt of my sin.
+7 Therefore all the faithful will make their prayers to you in time of trouble; *
+  when the great waters overflow, they shall not reach them.
+8 You are my hiding-place;
+  you preserve me from trouble; *
+  you surround me with shouts of deliverance.
+9 "I will instruct you and teach you in the way that you should go; *
+  I will guide you with my eye.
+10 Do not be like horse or mule, which have no understanding; *
+  who must be fitted with bit and bridle,
+  or else they will not stay near you."
+11 Great are the tribulations of the wicked; *
+  but mercy embraces those who trust in the Lord.
+12 Be glad, you righteous, and rejoice in the Lord; *
+  shout for joy, all who are true of heart.`,
+  },
+
+  33: {
+    title: "Exultate, justi",
+    bcpRef: "BCP p. 625",
+    content:
+`1 Rejoice in the Lord, you righteous; *
+  it is good for the just to sing praises.
+2 Praise the Lord with the harp; *
+  play to him upon the psaltery and lyre.
+3 Sing for him a new song; *
+  sound a fanfare with all your skill upon the trumpet.
+4 For the word of the Lord is right, *
+  and all his works are sure.
+5 He loves righteousness and justice; *
+  the loving-kindness of the Lord fills the whole earth.
+6 By the word of the Lord were the heavens made, *
+  by the breath of his mouth all the heavenly hosts.
+7 He gathers up the waters of the ocean as in a water-skin *
+  and stores up the depths of the sea.
+8 Let all the earth fear the Lord; *
+  let all who dwell in the world stand in awe of him.
+9 For he spoke, and it came to pass; *
+  he commanded, and it stood fast.
+10 The Lord brings the will of the nations to naught; *
+  he thwarts the designs of the peoples.
+11 But the Lord's will stands fast for ever, *
+  and the designs of his heart from age to age.
+12 Happy is the nation whose God is the Lord! *
+  happy the people he has chosen to be his own!
+13 The Lord looks down from heaven, *
+  and beholds all the people in the world.
+14 From where he sits enthroned he turns his gaze *
+  on all who dwell on the earth.
+15 He fashions all the hearts of them *
+  and understands all their works.
+16 There is no king that can be saved by a mighty army; *
+  a strong man is not delivered by his great strength.
+17 The horse is a vain hope for deliverance; *
+  for all its strength it cannot save.
+18 Behold, the eye of the Lord is upon those who fear him, *
+  on those who wait upon his love,
+19 To pluck their lives from death, *
+  and to feed them in time of famine.
+20 Our soul waits for the Lord; *
+  he is our help and our shield.
+21 Indeed, our heart rejoices in him, *
+  for in his holy Name we put our trust.
+22 Let your loving-kindness, O Lord, be upon us, *
+  as we have put our trust in you.`,
+  },
+
+  35: {
+    title: "Judica, Domine",
+    bcpRef: "BCP p. 628",
+    content:
+`1 Fight those who fight me, O Lord; *
+  attack those who are attacking me.
+2 Take up shield and armor *
+  and rise up to help me.
+3 Draw the sword and bar the way against those who pursue me; *
+  say to my soul, "I am your salvation."
+4 Let those who seek after my life be shamed and humbled; *
+  let those who plot my ruin fall back and be dismayed.
+5 Let them be like chaff before the wind, *
+  and let the angel of the Lord drive them away.
+6 Let their way be dark and slippery, *
+  and let the angel of the Lord pursue them.
+7 For they have secretly spread a net for me without a cause; *
+  without a cause they have dug a pit to take me alive.
+8 Let ruin come upon them unawares; *
+  let them be caught in the net they hid;
+  let them fall into the pit they dug.
+9 Then I will be joyful in the Lord; *
+  I will glory in his victory.
+10 My very bones will say, "Lord, who is like you? *
+  You deliver the poor from those who are too strong for them,
+  the poor and needy from those who rob them."
+11 Malicious witnesses rise up against me; *
+  they charge me with matters I know nothing about.
+12 They pay me evil in exchange for good; *
+  my soul is full of despair.
+13 But when they were sick I dressed in sack-cloth *
+  and humbled myself by fasting.
+14 I prayed with my whole heart,
+  as one would for a friend or a brother; *
+  I behaved like one who mourns for his mother,
+  bowed down and grieving.
+15 But when I stumbled, they were glad and gathered together;
+  they gathered against me; *
+  strangers whom I did not know tore me to pieces and would not stop.
+16 They put me to the test and mocked me; *
+  they gnashed at me with their teeth.
+17 O Lord, how long will you look on? *
+  rescue me from the roaring beasts,
+  and my life from the young lions.
+18 I will give you thanks in the great congregation; *
+  I will praise you in the mighty throng.
+19 Do not let my treacherous foes rejoice over me, *
+  nor let those who hate me without a cause wink at each other.
+20 For they do not plan for peace, *
+  but invent deceitful schemes against the quiet in the land.
+21 They opened their mouths at me and said, *
+  "Aha! we saw it with our own eyes."
+22 You saw it, O Lord; do not be silent; *
+  O Lord, be not far from me.
+23 Awake, arise, to my cause! *
+  to my defense, my God and my Lord!
+24 Give me justice, O Lord my God,
+  according to your righteousness; *
+  do not let them triumph over me.
+25 Do not let them say in their hearts,
+  "Aha! just what we want!" *
+  Do not let them say, "We have swallowed him up."
+26 Let all who rejoice at my ruin be ashamed and disgraced; *
+  let those who boast against me be clothed with dismay and shame.
+27 Let those who favor my cause sing out with joy and be glad; *
+  let them say always, "Great is the Lord,
+  who desires the prosperity of his servant."
+28 And my tongue shall be talking of your righteousness *
+  and of your praise all the day long.`,
+  },
 };
