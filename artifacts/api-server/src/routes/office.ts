@@ -10,6 +10,7 @@ import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { seedBcpTexts } from "../seeds/bcpTexts";
+import { PSALTER } from "../seeds/bcpPsalter";
 
 const router = Router();
 
@@ -245,6 +246,19 @@ router.post("/office/seed", async (req, res) => {
     console.error("BCP seed failed:", err);
     return res.status(500).json({ error: "Seed failed", detail: String(err) });
   }
+});
+
+// GET /office/psalter — public, returns the full 1979 BCP Psalter
+router.get("/office/psalter", (_req, res) => {
+  const psalms = Object.entries(PSALTER)
+    .map(([n, p]) => ({
+      number: Number(n),
+      title: p.title,
+      bcpRef: p.bcpRef,
+      content: p.content,
+    }))
+    .sort((a, b) => a.number - b.number);
+  return res.json({ psalms });
 });
 
 export default router;

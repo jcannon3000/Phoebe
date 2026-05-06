@@ -60,6 +60,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "👥", label: "People",      path: "/people" },
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
+    { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
     // Daily Office (Morning + Evening Prayer Rite II) — beta-gated
     // for now since the slideshow is still finding its rhythm. Lessons
     // render as references; readers open scripture in their own bible.
