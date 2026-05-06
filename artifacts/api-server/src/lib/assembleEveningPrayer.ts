@@ -8,10 +8,17 @@
  * the appointed reading and encouraged to read in their own translation.
  */
 
+import { inArray } from "drizzle-orm";
+import { db, bcpTextsTable } from "@workspace/db";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getEveningCanticles } from "./eveningCanticleSelector";
 import { getLectionaryReadings } from "./lectionary";
 import { bibleGatewayUrl } from "./bibleGatewayUrl";
+import {
+  parsePsalmRef,
+  sliceVersesByRange,
+  psalmEyebrow,
+} from "./psalmRange";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
 import { buildIntercessionsSlide } from "./assembleIntercessions";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
@@ -108,12 +115,40 @@ function pickOpeningSentenceKey(season: string, dayOfMonth: number): string {
   return `${entry.prefix}${index}`;
 }
 
-function pickMissionPrayerKey(dayOfWeek: number): string {
-  return `prayer_mission_${(dayOfWeek % 3) + 1}`;
-}
-
 function pickSuffragesKey(weekInSeason: number): string {
   return weekInSeason % 2 === 1 ? "suffrages_a" : "suffrages_b";
+}
+
+// ── Closing rubric helpers ────────────────────────────────────────────────────
+//
+// BCP EP p. 126 closes with "Let us bless the Lord. / Thanks be to
+// God." (with "Alleluia, alleluia." appended Easter Day → Day of
+// Pentecost), then ONE of three scriptural blessings. Mirrors the MP
+// closing on p. 102 — same three blessings, same rotation. Kept
+// inline here so the EP assembler stays self-contained alongside its
+// embedded BCP text constants.
+
+const CONCLUDING_BLESSINGS: Array<{ ref: string; text: string }> = [
+  {
+    ref: "2 Corinthians 13:14",
+    text: "The grace of our Lord Jesus Christ, and the love of God, and the fellowship of the Holy Spirit, be with us all evermore. Amen.",
+  },
+  {
+    ref: "Romans 15:13",
+    text: "May the God of hope fill us with all joy and peace in believing through the power of the Holy Spirit. Amen.",
+  },
+  {
+    ref: "Ephesians 3:20–21",
+    text: "Glory to God whose power, working in us, can do infinitely more than we can ask or imagine: Glory to him from generation to generation in the Church, and in Christ Jesus for ever and ever. Amen.",
+  },
+];
+
+function pickConcludingBlessing(date: Date): { ref: string; text: string } {
+  // Day-of-year mod 3 — same blessing across MP and EP on a given
+  // date so the day reads as one liturgical thread.
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const day = Math.floor((date.getTime() - start) / 86_400_000);
+  return CONCLUDING_BLESSINGS[day % CONCLUDING_BLESSINGS.length];
 }
 
 // All BCP texts now come from ../data/bcpEveningPrayerTexts.ts (EP_BCP_TEXTS)
@@ -140,10 +175,34 @@ export async function assembleEveningPrayer(
   const suffragesKey = pickSuffragesKey(liturgicalDay.weekInSeason);
   const missionPrayerKey = pickMissionPrayerKey(liturgicalDay.dayOfWeek);
 
-  // Psalm numbers for EP
-  const appointedPsalmNums = readings.psalms
-    .map(p => { const num = parseInt(p.split(":")[0], 10); return isNaN(num) ? null : num; })
-    .filter((n): n is number => n !== null);
+  // Parse appointed psalms — keep both the bare number (used to look
+  // up the seeded psalm row) and the optional verse range so we can
+  // slice partial-psalm appointments like "119:73-96" before
+  // rendering. EP previously only showed the reference; now we render
+  // the full appointed text the same way Morning Prayer does.
+  const appointedPsalms = readings.psalms
+    .map(parsePsalmRef)
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+
+  // Pull psalm rows from bcp_texts (the same seeded source MP uses).
+  // EP_BCP_TEXTS only carries canticles + invariant prayers, not the
+  // 150 psalms.
+  const psalmKeys = appointedPsalms.map((p) => `psalm_${p.number}`);
+  const psalmRows =
+    psalmKeys.length > 0
+      ? await db
+          .select()
+          .from(bcpTextsTable)
+          .where(inArray(bcpTextsTable.textKey, psalmKeys))
+      : [];
+  const psalmTexts: Record<string, { content: string; title: string | null; bcpReference: string | null }> = {};
+  for (const row of psalmRows) {
+    psalmTexts[row.textKey] = {
+      content: row.content,
+      title: row.title ?? null,
+      bcpReference: row.bcpReference ?? null,
+    };
+  }
 
   /** Look up a text from embedded data */
   function getText(key: string): string {
@@ -229,14 +288,36 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 7. Appointed Psalms — shown as reference (psalms are too long to embed)
-  for (const psalmNum of appointedPsalmNums) {
+  // 7. Appointed Psalms — full text, sliced to the appointed verse
+  // range when the lectionary specifies one (e.g. "119:73-96").
+  // Mirrors Morning Prayer's psalm rendering so EP isn't a second-
+  // class surface that asks the reader to leave the office to find
+  // the text.
+  const epGloriaPatri =
+    "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
+  for (const psalmRef of appointedPsalms) {
+    const { number: psalmNum, range } = psalmRef;
+    const psalmKey = `psalm_${psalmNum}`;
+    const psalmData = psalmTexts[psalmKey];
+    const sliced =
+      psalmData && range
+        ? sliceVersesByRange(psalmData.content, range)
+        : psalmData?.content;
+    const content = sliced
+      ? sliced + epGloriaPatri
+      : `[Psalm ${psalmRef.raw} — see BCP Psalter]${epGloriaPatri}`;
+    const eyebrow = psalmEyebrow(psalmRef);
+
     slides.push(
-      slide(id(), "lesson", PSALM_EMOJI[psalmNum] ?? "📖", `PSALM ${psalmNum}`, `Psalm ${psalmNum}`, {
-        title: `Psalm ${psalmNum}`,
+      slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, content, {
+        title: psalmData?.title ?? null,
+        bcpReference: psalmData?.bcpReference ?? null,
+        isScrollable: true,
+        scrollHint: "↓ continue · tap when ready",
         metadata: {
-          reference: `Psalm ${psalmNum}`,
-          readingNote: "Pray this psalm from your BCP Psalter or Bible.",
+          psalmNumber: psalmNum,
+          psalmRange: range,
+          psalmRef: psalmRef.raw,
         },
       }),
     );

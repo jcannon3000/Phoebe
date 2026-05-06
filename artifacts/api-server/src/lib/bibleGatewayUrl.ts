@@ -110,11 +110,19 @@ export function bibleGatewayUrl(reference: string): string | null {
   const trimmed = reference.trim();
   if (!trimmed) return null;
 
-  // Drop parenthetical optional verses but keep the rest intact.
-  const noParens = trimmed.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
+  // Drop parenthetical optional verses, joining the surrounding
+  // fragments with a comma so a reference like
+  // "Hab. 3:1-10(11-15)16-18" becomes "Hab. 3:1-10,16-18" — a
+  // BibleGateway-parseable two-range query rather than the smooshed
+  // "1-1016-18".
+  const noParens = trimmed.replace(/\([^)]*\)/g, ",").replace(/\s+/g, " ").trim();
   // Collapse "1-10--2:8" / "1:1--3:5" to a clean "1-10-2:8" so the
-  // search query parses as one continuous range.
-  const cleaned = noParens.replace(/--/g, "-");
+  // search query parses as one continuous range, and normalize
+  // typographic en/em-dashes (4:5–6, 4:5—6) to plain hyphens since
+  // BibleGateway only parses ASCII hyphens.
+  const cleaned = noParens
+    .replace(/--/g, "-")
+    .replace(/[–—]/g, "-");
 
   // Split book name from chapter:verse range. Book names can have a
   // leading numeral ("1 Cor.") so the regex captures up to the LAST

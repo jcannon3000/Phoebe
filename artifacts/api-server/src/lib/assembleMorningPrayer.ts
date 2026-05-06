@@ -16,7 +16,12 @@ import { getOfficeDay } from "./liturgicalCalendar";
 import { getCanticles } from "./canticleSelector";
 import { getLectionaryReadings } from "./lectionary";
 import { bibleGatewayUrl } from "./bibleGatewayUrl";
-import { buildIntercessionsSlide } from "./assembleIntercessions";
+import {
+  parsePsalmRef,
+  sliceVersesByRange,
+  psalmEyebrow,
+} from "./psalmRange";
+import { buildIntercessionSlides } from "./assembleIntercessions";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
 // open scripture in their own bible/app. No scripture-text lookup.
 
@@ -197,14 +202,49 @@ function pickOpeningSentenceKey(
   return `${entry.prefix}${index}`;
 }
 
-/** Pick prayer for mission (rotate by day of week) */
-function pickMissionPrayerKey(dayOfWeek: number): string {
-  return `prayer_mission_${(dayOfWeek % 3) + 1}`;
-}
-
 /** Pick which suffrages set to use (A or B, alternate by week) */
 function pickSuffragesKey(weekInSeason: number): string {
   return weekInSeason % 2 === 1 ? "suffrages_a" : "suffrages_b";
+}
+
+// ── Closing rubric helpers ────────────────────────────────────────────────────
+//
+// BCP MP p. 102 / EP p. 126: after the Lord's Prayer + Suffrages +
+// Collect of the Day + intercessions + General Thanksgiving, the office
+// closes with the versicle "Let us bless the Lord. / Thanks be to God."
+// (with "Alleluia, alleluia." appended from Easter Day through the Day
+// of Pentecost), followed by ONE of three scriptural blessings:
+//
+//   • 2 Corinthians 13:14 — "The grace of our Lord Jesus Christ…"
+//   • Romans 15:13         — "May the God of hope fill us…"
+//   • Ephesians 3:20–21    — "Glory to God whose power…"
+//
+// We rotate the blessing by date-within-year so a daily reader sees all
+// three across a typical week. Phoebe is a lay surface, so the wording
+// uses "us" (matching the BCP text on p. 102 — these blessings are
+// already in first-person plural).
+
+const CONCLUDING_BLESSINGS: Array<{ ref: string; text: string }> = [
+  {
+    ref: "2 Corinthians 13:14",
+    text: "The grace of our Lord Jesus Christ, and the love of God, and the fellowship of the Holy Spirit, be with us all evermore. Amen.",
+  },
+  {
+    ref: "Romans 15:13",
+    text: "May the God of hope fill us with all joy and peace in believing through the power of the Holy Spirit. Amen.",
+  },
+  {
+    ref: "Ephesians 3:20–21",
+    text: "Glory to God whose power, working in us, can do infinitely more than we can ask or imagine: Glory to him from generation to generation in the Church, and in Christ Jesus for ever and ever. Amen.",
+  },
+];
+
+function pickConcludingBlessing(date: Date): { ref: string; text: string } {
+  // Day-of-year mod 3 cycles deterministically over the calendar — same
+  // blessing for everyone praying on the same date, three-day cadence.
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const day = Math.floor((date.getTime() - start) / 86_400_000);
+  return CONCLUDING_BLESSINGS[day % CONCLUDING_BLESSINGS.length];
 }
 
 // ── Main Assembly ─────────────────────────────────────────────────────────────
@@ -272,8 +312,6 @@ export async function assembleMorningPrayer(
   }
 
   const suffragesKey = pickSuffragesKey(liturgicalDay.weekInSeason);
-  const missionPrayerKey = pickMissionPrayerKey(liturgicalDay.dayOfWeek);
-
   const keysNeeded = [
     openingSentenceKey,
     "confession_text",
@@ -286,18 +324,16 @@ export async function assembleMorningPrayer(
     "lords_prayer_contemporary",
     suffragesKey,
     liturgicalDay.collectKey,
-    "collect_for_grace",
-    missionPrayerKey,
     "general_thanksgiving",
   ];
 
-  // Psalm keys for appointed psalms (parse psalm numbers from lectionary)
-  const appointedPsalmNums = psalms
-    .map((p) => {
-      const num = parseInt(p.split(":")[0], 10);
-      return isNaN(num) ? null : num;
-    })
-    .filter((n): n is number => n !== null);
+  // Parse appointed psalms — we keep both the bare number (used to
+  // look up the seeded psalm row) and the optional verse range, so
+  // partial-psalm appointments like "119:1-24" or "37:19-42" can be
+  // sliced down before rendering rather than dumping all 176 verses.
+  const appointedPsalms = psalms
+    .map(parsePsalmRef)
+    .filter((p): p is NonNullable<typeof p> => p !== null);
 
   const psalmKeys = [
     ...new Set([
@@ -306,7 +342,7 @@ export async function assembleMorningPrayer(
         : invitPsalmKey === "jubilate"
           ? "psalm_100"
           : null,
-      ...appointedPsalmNums.map((n) => `psalm_${n}`),
+      ...appointedPsalms.map((p) => `psalm_${p.number}`),
     ].filter(Boolean)),
   ] as string[];
 
@@ -437,15 +473,25 @@ export async function assembleMorningPrayer(
   const gloriaPatri =
     "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
 
-  for (const psalmNum of appointedPsalmNums) {
+  for (const psalmRef of appointedPsalms) {
+    const { number: psalmNum, range } = psalmRef;
     const psalmKey = `psalm_${psalmNum}`;
     const psalmData = texts[psalmKey];
-    const content = psalmData
-      ? psalmData.content + gloriaPatri
-      : `[Psalm ${psalmNum} — see BCP Psalter]${gloriaPatri}`;
+    // Slice the seeded full psalm down to the appointed verse range
+    // (when one is given). The Gloria Patri is appended to whatever
+    // we end up showing, so a partial reading still closes with the
+    // doxology like the full psalm would.
+    const sliced =
+      psalmData && range
+        ? sliceVersesByRange(psalmData.content, range)
+        : psalmData?.content;
+    const content = sliced
+      ? sliced + gloriaPatri
+      : `[Psalm ${psalmRef.raw} — see BCP Psalter]${gloriaPatri}`;
+    const eyebrow = psalmEyebrow(psalmRef);
 
     slides.push(
-      slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", `PSALM ${psalmNum}`, content, {
+      slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, content, {
         // Latin incipit goes into title so the renderer can show it as
         // italic above the verses, matching the 1979 BCP Psalter page
         // layout. Falls back to null if the psalm row hasn't been seeded
@@ -454,7 +500,12 @@ export async function assembleMorningPrayer(
         title: psalmData?.title ?? null,
         isScrollable: true,
         scrollHint: "↓ continue · tap when ready",
-        metadata: psalmData?.metadata ?? {},
+        metadata: {
+          ...(psalmData?.metadata ?? {}),
+          psalmNumber: psalmNum,
+          psalmRange: range,
+          psalmRef: psalmRef.raw,
+        },
       }),
     );
   }
@@ -552,7 +603,11 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // Collect of the Day
+  // Collect of the Day — the single closing collect. The BCP allows
+  // additional collects ("A Collect for Grace", "A Prayer for
+  // Mission", etc.) at this point in the office, but per user
+  // direction Phoebe surfaces only the proper Collect of the Day so
+  // the office stays a single, focused closing prayer.
   const collectData = texts[liturgicalDay.collectKey];
   slides.push(
     slide(id(), "collect", "📅", "COLLECT OF THE DAY", getText(liturgicalDay.collectKey), {
@@ -561,25 +616,44 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // Collect for Grace
-  slides.push(
-    slide(id(), "collect", "🌿", "A COLLECT FOR GRACE", getText("collect_for_grace"), {
-      bcpReference: "BCP p. 100",
-    }),
-  );
-
-  // Prayer for Mission
-  slides.push(
-    slide(id(), "prayer_for_mission", "🌍", "A PRAYER FOR MISSION", getText(missionPrayerKey), {
-      bcpReference: "BCP p. 100",
-    }),
-  );
-
   // General Thanksgiving
   slides.push(
     slide(id(), "general_thanksgiving", "🌾", "THE GENERAL THANKSGIVING", getText("general_thanksgiving"), {
       bcpReference: "BCP p. 101",
       metadata: { prompt: "This is often said aloud together." },
+    }),
+  );
+
+  // Concluding versicle — "Let us bless the Lord. / Thanks be to God."
+  // From Easter Day through the Day of Pentecost the BCP appends
+  // "Alleluia, alleluia." to both lines; the season's `useAlleluia`
+  // flag matches that window.
+  const concludingLines: CallAndResponseLine[] = liturgicalDay.useAlleluia
+    ? [
+        { speaker: "officiant", text: "Let us bless the Lord. Alleluia, alleluia." },
+        { speaker: "people", text: "Thanks be to God. Alleluia, alleluia." },
+      ]
+    : [
+        { speaker: "officiant", text: "Let us bless the Lord." },
+        { speaker: "people", text: "Thanks be to God." },
+      ];
+  slides.push(
+    slide(id(), "suffrages", "🔔", "LET US BLESS THE LORD", "", {
+      isCallAndResponse: true,
+      callAndResponseLines: concludingLines,
+      bcpReference: "BCP p. 102",
+    }),
+  );
+
+  // Concluding blessing — one of three scriptural blessings (BCP p.
+  // 102), rotated by date so a daily reader hears all three across a
+  // typical week. Phoebe is a lay surface — the blessings are already
+  // in first-person plural, so no pronoun substitution needed.
+  const blessing = pickConcludingBlessing(date);
+  slides.push(
+    slide(id(), "collect", "🙏🏽", "A CONCLUDING BLESSING", blessing.text, {
+      title: blessing.ref,
+      bcpReference: "BCP p. 102",
     }),
   );
 
@@ -641,8 +715,13 @@ async function injectIntercessions(
   userId: number,
   cacheDate: Date,
 ): Promise<Slide[]> {
-  const intercessionsSlide = await buildIntercessionsSlide(userId, cacheDate);
-  if (!intercessionsSlide) return slides;
+  // Per-item intercession slides — one card per prayer request,
+  // prayers-for, circle intention, or feed entry. Earlier the office
+  // used a single combined slide; the per-item shape mirrors the
+  // prayer-mode slideshow's "carry one prayer at a time" rhythm so
+  // the office's intercessions land with the same weight.
+  const intercessionSlides = await buildIntercessionSlides(userId, cacheDate);
+  if (intercessionSlides.length === 0) return slides;
   // Splice immediately before the first general_thanksgiving slide,
   // matching the BCP rubric ("Authorized intercessions and
   // thanksgivings may follow" before the General Thanksgiving). If
@@ -652,6 +731,10 @@ async function injectIntercessions(
   const insertBefore = slides.findIndex(s =>
     s.type === "general_thanksgiving" || s.type === "closing"
   );
-  if (insertBefore === -1) return [...slides, intercessionsSlide];
-  return [...slides.slice(0, insertBefore), intercessionsSlide, ...slides.slice(insertBefore)];
+  if (insertBefore === -1) return [...slides, ...intercessionSlides];
+  return [
+    ...slides.slice(0, insertBefore),
+    ...intercessionSlides,
+    ...slides.slice(insertBefore),
+  ];
 }

@@ -1,6 +1,11 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+// Boot i18next before mounting the tree so the very first render
+// reads from the resource tables. Fallback to English if Spanish
+// hasn't been activated. Runs as a side-effect import — there's no
+// React provider needed; react-i18next reads from the singleton.
+import "./i18n";
 
 createRoot(document.getElementById("root")!).render(<App />);
 

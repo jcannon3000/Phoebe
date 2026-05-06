@@ -66,6 +66,11 @@ export const usersTable = pgTable("users", {
   // cohort while leaving dual users' experience intact.
   climateOnly: boolean("climate_only").notNull().default(false),
   parishId: integer("parish_id"),  // FK to groups.id, enforced only in migration SQL — no .references() here to avoid circular import
+  // BCP-47 locale code (e.g. "en", "es"). Drives i18next on the client
+  // and template selection in pushSender / email senders. Beta users
+  // can flip this to "es" via Settings → Language; non-beta accounts
+  // stay on "en". Default English so legacy rows don't need a backfill.
+  locale: text("locale").notNull().default("en"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -22,6 +22,12 @@ import { eq, inArray } from "drizzle-orm";
 import { db, bcpTextsTable } from "@workspace/db";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getLectionaryReadings } from "./lectionary";
+import { bibleGatewayUrl } from "./bibleGatewayUrl";
+import {
+  parsePsalmRef,
+  sliceVersesByRange,
+  psalmEyebrow,
+} from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
 import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 
@@ -84,6 +90,12 @@ const COLLECT_EARLY_EVENING =
 const READING_MORNING_REF = "1 Peter 1:3";
 const READING_EARLY_EVENING_REF = "2 Corinthians 4:5–6";
 
+// Body copy on the scripture slide. Title carries the reference; body
+// is a soft prompt rather than echoing the same string, since
+// Phoebe doesn't ship scripture text — readers tap "Read on
+// BibleGateway" or open their own bible.
+const LESSON_BODY_PROMPT = "Open your Bible, or read this passage online.";
+
 // ── Main assembly ────────────────────────────────────────────────────────────
 
 export async function assembleDevotion(
@@ -106,11 +118,15 @@ export async function assembleDevotion(
   // be short. If the lectionary entry is missing or yields no psalms,
   // fall back to Psalm 51 (morning) or Psalm 134 (evening), both of
   // which the BCP suggests as the default when no psalm is appointed.
+  // We hold onto the parsed range so partial-psalm appointments like
+  // "119:73-96" get sliced down rather than rendering all 176 verses.
   const firstPsalmRaw = psalms[0] ?? (kind === "morning" ? "51" : "134");
-  const psalmNum = (() => {
-    const n = parseInt(firstPsalmRaw.split(":")[0], 10);
-    return Number.isFinite(n) ? n : (kind === "morning" ? 51 : 134);
-  })();
+  const parsedRef = parsePsalmRef(firstPsalmRaw) ?? {
+    number: kind === "morning" ? 51 : 134,
+    range: null as [number, number] | null,
+    raw: kind === "morning" ? "51" : "134",
+  };
+  const psalmNum = parsedRef.number;
 
   // Look up the psalm content. Single DB query; if the row is missing
   // we render a placeholder so the slide still appears (the user can
@@ -194,29 +210,43 @@ export async function assembleDevotion(
     );
   }
 
-  // 3. Psalm — appointed lectionary psalm for the office.
+  // 3. Psalm — appointed lectionary psalm for the office, sliced to
+  // the appointed verse range when the lectionary specifies one.
   const gloriaPatri =
     "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
-  const psalmContent = psalmRow
-    ? psalmRow.content + gloriaPatri
-    : `[Psalm ${psalmNum} — see BCP Psalter]${gloriaPatri}`;
+  const slicedPsalm =
+    psalmRow && parsedRef.range
+      ? sliceVersesByRange(psalmRow.content, parsedRef.range)
+      : psalmRow?.content;
+  const psalmContent = slicedPsalm
+    ? slicedPsalm + gloriaPatri
+    : `[Psalm ${parsedRef.raw} — see BCP Psalter]${gloriaPatri}`;
   slides.push(
-    slide(id(), "psalm", "📖", `PSALM ${psalmNum}`, psalmContent, {
+    slide(id(), "psalm", "📖", psalmEyebrow(parsedRef), psalmContent, {
       title: psalmRow?.title ?? null,
       bcpReference: psalmRow?.bcpReference ?? null,
       isScrollable: true,
       scrollHint: "↓ continue · tap when ready",
-      metadata: { psalmNumber: psalmNum, fromLectionary: true },
+      metadata: {
+        psalmNumber: psalmNum,
+        psalmRange: parsedRef.range,
+        psalmRef: parsedRef.raw,
+        fromLectionary: true,
+      },
     }),
   );
 
-  // 4. Reading — reference only, like the Office's lesson slides.
+  // 4. Reading — title carries the reference; body is a soft prompt
+  // and a BibleGateway deep link to NRSVUE so the reader can tap
+  // through without leaving Phoebe (SFSafariViewController on the
+  // iOS shell, new tab on web).
   const readingRef = isMorning ? READING_MORNING_REF : READING_EARLY_EVENING_REF;
   slides.push(
-    slide(id(), "lesson", "📜", "A READING FROM SCRIPTURE", readingRef, {
+    slide(id(), "lesson", "📜", "A READING FROM SCRIPTURE", LESSON_BODY_PROMPT, {
       title: readingRef,
       metadata: {
         reference: readingRef,
+        readUrl: bibleGatewayUrl(readingRef),
         readingNote: "Read this passage in your own Bible or preferred translation.",
       },
     }),
