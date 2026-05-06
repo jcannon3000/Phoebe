@@ -2320,4 +2320,226 @@ export const PSALTER: Record<number, PsalmEntry> = {
 28 And my tongue shall be talking of your righteousness *
   and of your praise all the day long.`,
   },
+
+  36: {
+    title: "Dixit injustus",
+    bcpRef: "BCP p. 631",
+    content:
+`1 There is a voice of rebellion deep in the heart of the wicked; *
+  there is no fear of God before his eyes.
+2 He flatters himself in his own eyes *
+  that his hateful sin will not be found out.
+3 The words of his mouth are wicked and deceitful; *
+  he has left off acting wisely and doing good.
+4 He thinks up wickedness upon his bed
+  and has set himself in no good way; *
+  he does not abhor that which is evil.
+5 Your love, O Lord, reaches to the heavens, *
+  and your faithfulness to the clouds.
+6 Your righteousness is like the strong mountains,
+  your justice like the great deep; *
+  you save both man and beast, O Lord.
+7 How priceless is your love, O God! *
+  your people take refuge under the shadow of your wings.
+8 They feast upon the abundance of your house; *
+  you give them drink from the river of your delights.
+9 For with you is the well of life, *
+  and in your light we see light.
+10 Continue your loving-kindness to those who know you, *
+  and your favor to those who are true of heart.
+11 Let not the foot of the proud come near me, *
+  nor the hand of the wicked push me aside.
+12 See how they are fallen, those who work wickedness! *
+  they are cast down and shall not be able to rise.`,
+  },
+
+  37: {
+    title: "Noli aemulari",
+    bcpRef: "BCP p. 632",
+    content:
+`1 Do not fret yourself because of evildoers; *
+  do not be jealous of those who do wrong.
+2 For they shall soon wither like the grass, *
+  and like the green grass fade away.
+3 Put your trust in the Lord and do good; *
+  dwell in the land and feed on its riches.
+4 Take delight in the Lord, *
+  and he shall give you your heart's desire.
+5 Commit your way to the Lord and put your trust in him, *
+  and he will bring it to pass.
+6 He will make your righteousness as clear as the light *
+  and your just dealing as the noonday.
+7 Be still before the Lord *
+  and wait patiently for him.
+8 Do not fret yourself over the one who prospers, *
+  the one who succeeds in evil schemes.
+9 Refrain from anger, leave rage alone; *
+  do not fret yourself; it leads only to evil.
+10 For evildoers shall be cut off, *
+  but those who wait upon the Lord shall possess the land.
+11 In a little while the wicked shall be no more; *
+  you shall search out their place, but they will not be there.
+12 But the lowly shall possess the land; *
+  they will delight in abundance of peace.
+13 The wicked plot against the righteous *
+  and gnash at them with their teeth.
+14 The Lord laughs at the wicked, *
+  because he sees that their day will come.
+15 The wicked draw their sword and bend their bow
+  to strike down the poor and needy, *
+  to slaughter those who are upright in their ways.
+16 Their sword shall go through their own heart, *
+  and their bow shall be broken.
+17 The little that the righteous has *
+  is better than great riches of the wicked.
+18 For the power of the wicked shall be broken, *
+  but the Lord upholds the righteous.
+19 The Lord cares for the lives of the godly, *
+  and their inheritance shall last for ever.
+20 They shall not be ashamed in bad times, *
+  and in days of famine they shall have enough.
+21 As for the wicked, they shall perish, *
+  and the enemies of the Lord, like the glory of the meadows, shall vanish;
+  they shall vanish like smoke.
+22 The wicked borrow and do not repay, *
+  but the righteous are generous in giving.
+23 Those who are blessed by God shall possess the land, *
+  but those who are cursed by him shall be destroyed.
+24 Our steps are directed by the Lord; *
+  he strengthens those in whose way he delights.
+25 If they stumble, they shall not fall headlong, *
+  for the Lord holds them by the hand.
+26 I have been young and now I am old, *
+  but never have I seen the righteous forsaken,
+  or their children begging bread.
+27 The righteous are always generous in their lending, *
+  and their children shall be a blessing.
+28 Turn from evil, and do good, *
+  and dwell in the land for ever.
+29 For the Lord loves justice; *
+  he does not forsake his faithful ones.
+30 They shall be kept safe for ever, *
+  but the offspring of the wicked shall be destroyed.
+31 The righteous shall possess the land *
+  and dwell in it for ever.
+32 The mouth of the righteous utters wisdom, *
+  and their tongue speaks what is right.
+33 The law of their God is in their heart, *
+  and their footsteps shall not falter.
+34 The wicked spy on the righteous *
+  and seek occasion to kill them.
+35 The Lord will not abandon them to their hand, *
+  nor let them be found guilty when brought to trial.
+36 Wait upon the Lord and keep his way; *
+  he will raise you up to possess the land,
+  and when the wicked are cut off, you will see it.
+37 I have seen the wicked in their arrogance, *
+  flourishing like a tree in full leaf.
+38 I went by, and behold, they were not there; *
+  I searched for them, but they could not be found.
+39 Mark those who are honest;
+  observe the upright; *
+  for there is a future for the peaceable.
+40 Transgressors shall be destroyed, one and all; *
+  the future of the wicked is cut off.
+41 But the deliverance of the righteous comes from the Lord; *
+  he is their stronghold in time of trouble.
+42 The Lord will help them and rescue them; *
+  he will rescue them from the wicked and deliver them,
+  because they seek refuge in him.`,
+  },
+
+  38: {
+    title: "Domine, ne in furore",
+    bcpRef: "BCP p. 635",
+    content:
+`1 O Lord, do not rebuke me in your anger; *
+  do not punish me in your wrath.
+2 For your arrows have already pierced me, *
+  and your hand presses hard upon me.
+3 There is no health in my flesh,
+  because of your indignation; *
+  there is no soundness in my body, because of my sin.
+4 For my iniquities overwhelm me; *
+  like a heavy burden they are too much for me to bear.
+5 My wounds stink and fester *
+  by reason of my foolishness.
+6 I am utterly bowed down and prostrate; *
+  I go about in mourning all the day long.
+7 My loins are filled with searing pain; *
+  there is no health in my body.
+8 I am utterly numb and crushed; *
+  I wail, because of the groaning of my heart.
+9 O Lord, you know all my desires, *
+  and my sighing is not hidden from you.
+10 My heart is pounding, my strength has failed me, *
+  and the brightness of my eyes is gone from me.
+11 My friends and companions draw back from my affliction; *
+  my neighbors stand afar off.
+12 Those who seek after my life lay snares for me; *
+  those who strive to hurt me speak of my ruin
+  and plot treachery all the day long.
+13 But I am like the deaf who do not hear, *
+  like those who are mute and who do not open their mouth.
+14 I have become like one who does not hear *
+  and from whose mouth comes no defense.
+15 For in you, O Lord, have I fixed my hope; *
+  you will answer me, O Lord my God.
+16 For I said, "Do not let them rejoice at my expense, *
+  those who gloat over me when my foot slips."
+17 Truly, I am on the verge of falling, *
+  and my pain is always with me.
+18 I will confess my iniquity *
+  and be sorry for my sin.
+19 Those who are my enemies without cause are mighty, *
+  and many in number are those who wrongfully hate me.
+20 Those who repay evil for good slander me, *
+  because I follow the course that is right.
+21 O Lord, do not forsake me; *
+  be not far from me, O my God.
+22 Make haste to help me, *
+  O Lord of my salvation.`,
+  },
+
+  39: {
+    title: "Dixi, Custodiam",
+    bcpRef: "BCP p. 637",
+    content:
+`1 I said, "I will keep watch upon my ways, *
+  so that I do not offend with my tongue.
+2 I will put a muzzle on my mouth *
+  while the wicked are in my presence."
+3 So I held my tongue and said nothing; *
+  I refrained from rash words;
+  but my pain became unbearable.
+4 My heart was hot within me;
+  while I pondered, the fire burst into flame; *
+  I spoke out with my tongue:
+5 Lord, let me know my end and the number of my days, *
+  so that I may know how short my life is.
+6 You have given me a mere handful of days,
+  and my lifetime is as nothing in your sight; *
+  truly, even those who stand erect are but a puff of wind.
+7 We walk about like a shadow,
+  and in vain we are in turmoil; *
+  we heap up riches and cannot tell who will gather them.
+8 And now, what is my hope? *
+  O Lord, my hope is in you.
+9 Deliver me from all my transgressions *
+  and do not make me the taunt of the fool.
+10 I fell silent and did not open my mouth, *
+  for surely it was you that did it.
+11 Take your affliction from me; *
+  I am worn down by the blows of your hand.
+12 With rebukes for sin you punish us;
+  like a moth you eat away all that is dear to us; *
+  truly, everyone is but a puff of wind.
+13 Hear my prayer, O Lord,
+  and give ear to my cry; *
+  hold not your peace at my tears.
+14 For I am but a sojourner with you, *
+  a wayfarer, as all my forebears were.
+15 Turn your gaze from me, that I may be glad again, *
+  before I go my way and am no more.`,
+  },
 };
