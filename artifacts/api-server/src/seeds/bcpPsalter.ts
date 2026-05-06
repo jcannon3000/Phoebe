@@ -471,6 +471,197 @@ export const PSALTER: Record<number, PsalmEntry> = {
   shall never be overthrown.`,
   },
 
+  16: {
+    title: "Conserva me, Domine",
+    bcpRef: "BCP p. 599",
+    content:
+`1 Protect me, O God, for I take refuge in you; *
+  I have said to the Lord, "You are my Lord,
+  my good above all other."
+2 All my delight is upon the godly that are in the land, *
+  upon those who are noble among the people.
+3 But those who run after other gods *
+  shall have their troubles multiplied.
+4 Their libations of blood I will not offer, *
+  nor take the names of their gods upon my lips.
+5 O Lord, you are my portion and my cup; *
+  it is you who uphold my lot.
+6 My boundaries enclose a pleasant land; *
+  indeed, I have a goodly heritage.
+7 I will bless the Lord who gives me counsel; *
+  my heart teaches me, night after night.
+8 I have set the Lord always before me; *
+  because he is at my right hand I shall not fall.
+9 My heart, therefore, is glad, and my spirit rejoices; *
+  my body also shall rest in hope.
+10 For you will not abandon me to the grave, *
+  nor let your holy one see the Pit.
+11 You will show me the path of life; *
+  in your presence there is fullness of joy,
+  and in your right hand are pleasures for evermore.`,
+  },
+
+  17: {
+    title: "Exaudi, Domine",
+    bcpRef: "BCP p. 600",
+    content:
+`1 Hear my plea of innocence, O Lord;
+  give heed to my cry; *
+  listen to my prayer, which does not come from lying lips.
+2 Let my vindication come forth from your presence; *
+  let your eyes be fixed on justice.
+3 Weigh my heart, summon me by night, *
+  melt me down; you will find no impurity in me.
+4 I give no offense with my mouth as others do; *
+  I have heeded the words of your lips.
+5 My footsteps hold fast to the ways of your law; *
+  in your paths my feet shall not stumble.
+6 I call upon you, O God, for you will answer me; *
+  incline your ear to me and hear my words.
+7 Show me your marvelous loving-kindness, *
+  O Savior of those who take refuge at your right hand
+  from those who rise up against them.
+8 Keep me as the apple of your eye; *
+  hide me under the shadow of your wings,
+9 From the wicked who assault me, *
+  from my deadly enemies who surround me.
+10 They have closed their heart to pity, *
+  and their mouth speaks proud things.
+11 They press me hard,
+  now they surround me, *
+  watching how they may cast me to the ground,
+12 Like a lion, greedy for its prey, *
+  and like a young lion lurking in secret places.
+13 Arise, O Lord; confront them and bring them down; *
+  deliver me from the wicked by your sword.
+14 Deliver me, O Lord, by your hand *
+  from those whose portion in life is this world;
+15 Whose bellies you fill with your treasure, *
+  who are well supplied with children
+  and leave their wealth to their little ones.
+16 But at my vindication I shall see your face; *
+  when I awake, I shall be satisfied, beholding your likeness.`,
+  },
+
+  18: {
+    title: "Diligam te, Domine",
+    bcpRef: "BCP p. 602",
+    content:
+`1 I love you, O Lord my strength, *
+  O Lord my stronghold, my crag, and my haven.
+2 My God, my rock in whom I put my trust, *
+  my shield, the horn of my salvation, and my refuge;
+  you are worthy of praise.
+3 I will call upon the Lord, *
+  and so shall I be saved from my enemies.
+4 The breakers of death rolled over me, *
+  and the torrents of oblivion made me afraid.
+5 The cords of hell entangled me, *
+  and the snares of death were set for me.
+6 I called upon the Lord in my distress *
+  and cried out to my God for help.
+7 He heard my voice from his heavenly dwelling; *
+  my cry of anguish came to his ears.
+8 The earth reeled and rocked; *
+  the roots of the mountains shook;
+  they reeled because of his anger.
+9 Smoke rose from his nostrils
+  and a consuming fire out of his mouth; *
+  hot burning coals blazed forth from him.
+10 He parted the heavens and came down *
+  with a storm cloud under his feet.
+11 He mounted on cherubim and flew; *
+  he swooped on the wings of the wind.
+12 He wrapped darkness about him; *
+  he made dark waters and thick clouds his pavilion.
+13 From the brightness of his presence, through the clouds, *
+  burst hailstones and coals of fire.
+14 The Lord thundered out of heaven; *
+  the Most High uttered his voice.
+15 He loosed his arrows and scattered them; *
+  he hurled thunderbolts and routed them.
+16 The beds of the seas were uncovered,
+  and the foundations of the world laid bare, *
+  at your battle cry, O Lord,
+  at the blast of the breath of your nostrils.
+17 He reached down from on high and grasped me; *
+  he drew me out of great waters.
+18 He delivered me from my strong enemies
+  and from those who hated me; *
+  for they were too mighty for me.
+19 They confronted me in the day of my disaster; *
+  but the Lord was my support.
+20 He brought me out into an open place; *
+  he rescued me because he delighted in me.
+21 The Lord rewarded me because of my righteous dealing; *
+  because my hands were clean he rewarded me;
+22 For I have kept the ways of the Lord *
+  and have not offended against my God;
+23 For all his judgments are before my eyes, *
+  and his decrees I have not put away from me;
+24 For I have been blameless with him *
+  and have kept myself from iniquity;
+25 Therefore the Lord rewarded me according to my righteous dealing, *
+  because of the cleanness of my hands in his sight.
+26 With the faithful you show yourself faithful, O God; *
+  with the forthright you show yourself forthright.
+27 With the pure you show yourself pure, *
+  but with the crooked you are wily.
+28 You will save a lowly people, *
+  but you will humble the haughty eyes.
+29 You, O Lord, are my lamp; *
+  my God, you make my darkness bright.
+30 With you I will break down an enclosure; *
+  with the help of my God I will scale any wall.
+31 As for God, his ways are perfect;
+  the words of the Lord are tried in the fire; *
+  he is a shield to all who trust in him.
+32 For who is God, but the Lord? *
+  who is the Rock, except our God?
+33 It is God who girds me about with strength *
+  and makes my way secure.
+34 He makes me sure-footed like a deer *
+  and lets me stand firm on the heights.
+35 He trains my hands for battle *
+  and my arms for bending even a bow of bronze.
+36 You have given me your shield of victory; *
+  your right hand also sustains me;
+  your loving care makes me great.
+37 You lengthen my stride beneath me, *
+  and my ankles do not give way.
+38 I pursue my enemies and overtake them; *
+  I will not turn back till I have destroyed them.
+39 I strike them down, and they cannot rise; *
+  they fall defeated at my feet.
+40 You have girded me with strength for the battle; *
+  you have cast down my adversaries beneath me;
+  you have put my enemies to flight.
+41 I destroy those who hate me;
+  they cry out, but there is none to help them; *
+  they cry to the Lord, but he does not answer.
+42 I beat them small like dust before the wind; *
+  I trample them like mud in the streets.
+43 You deliver me from the strife of the peoples; *
+  you put me at the head of the nations.
+44 A people I have not known shall serve me;
+  no sooner shall they hear than they shall obey me; *
+  strangers will cringe before me.
+45 The foreign peoples will lose heart; *
+  they shall come trembling out of their strongholds.
+46 The Lord lives! Blessed is my Rock! *
+  Exalted is the God of my salvation!
+47 He is the God who gave me victory *
+  and cast down the peoples beneath me.
+48 You rescued me from the fury of my enemies;
+  you exalted me above those who rose against me; *
+  you saved me from my deadly foe.
+49 Therefore will I extol you among the nations, O Lord, *
+  and sing praises to your Name.
+50 He multiplies the victories of his king; *
+  he shows loving-kindness to his anointed,
+  to David and his descendants for ever.`,
+  },
+
   19: {
     title: "Caeli enarrant",
     bcpRef: "BCP p. 606",
