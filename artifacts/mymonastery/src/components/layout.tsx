@@ -59,12 +59,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "🙏🏽", label: "Manage Prayer List", path: "/prayer-list" },
     { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
     { emoji: "👥", label: "People",      path: "/people" },
+    { divider: true },
+    // Liturgy section — book of common prayer reference content.
+    // Daily Office (Morning + Evening Prayer Rite II) is still
+    // beta-gated; lessons render as references for readers to open
+    // in their own bible.
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
-    // Daily Office (Morning + Evening Prayer Rite II) — beta-gated
-    // for now since the slideshow is still finding its rhythm. Lessons
-    // render as references; readers open scripture in their own bible.
-    ...(rawIsBeta ? [{ emoji: "🌅", label: "Daily Office", path: "/bcp/daily-office" }] : []),
+    ...(rawIsBeta ? [{ emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" }] : []),
     { divider: true },
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
