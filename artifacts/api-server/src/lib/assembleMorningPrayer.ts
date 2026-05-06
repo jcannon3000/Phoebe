@@ -15,7 +15,8 @@ import {
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getCanticles } from "./canticleSelector";
 import { getLectionaryReadings } from "./lectionary";
-import { getLesson } from "./scriptureService";
+// Lessons render as references only (e.g. "John 2:1-7") — readers
+// open scripture in their own bible/app. No scripture-text lookup.
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -297,8 +298,9 @@ export async function assembleMorningPrayer(
     ].filter(Boolean)),
   ] as string[];
 
-  // Fetch all BCP texts in two queries
-  const [bcpRows, psalmRows, lesson1Result, lesson2Result] = await Promise.all([
+  // Fetch BCP texts (collects, canticles, psalms, etc.). Lessons are
+  // rendered as references only — no Bible-text fetch here.
+  const [bcpRows, psalmRows] = await Promise.all([
     db
       .select()
       .from(bcpTextsTable)
@@ -307,8 +309,6 @@ export async function assembleMorningPrayer(
       .select()
       .from(bcpTextsTable)
       .where(inArray(bcpTextsTable.textKey, psalmKeys)),
-    getLesson(lesson1, cacheDate),
-    getLesson(lesson2, cacheDate),
   ]);
 
   // Build lookup map
