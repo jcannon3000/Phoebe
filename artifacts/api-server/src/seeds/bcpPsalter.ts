@@ -3013,4 +3013,211 @@ export const PSALTER: Record<number, PsalmEntry> = {
 24 Whoever offers me the sacrifice of thanksgiving honors me; *
   but to those who keep in my way will I show the salvation of God."`,
   },
+
+  52: {
+    title: "Quid gloriaris?",
+    bcpRef: "BCP p. 656",
+    content:
+`1 You tyrant, why do you boast of wickedness *
+  against the godly all day long?
+2 You plot ruin;
+  your tongue is like a sharpened razor, *
+  O worker of deception.
+3 You love evil more than good *
+  and lying more than speaking the truth.
+4 You love all words that hurt, *
+  O you deceitful tongue.
+5 Oh, that God would demolish you utterly, *
+  topple you, and snatch you from your dwelling,
+  and root you out of the land of the living!
+6 The righteous shall see and tremble, *
+  and they shall laugh at him, saying,
+7 "This is the one who did not take God for a refuge, *
+  but trusted in great wealth
+  and relied upon wickedness."
+8 But I am like a green olive tree in the house of God; *
+  I trust in the mercy of God for ever and ever.
+9 I will give you thanks for what you have done *
+  and declare the goodness of your Name in the presence of the godly.`,
+  },
+
+  53: {
+    title: "Dixit insipiens",
+    bcpRef: "BCP p. 657",
+    content:
+`1 The fool has said in his heart, "There is no God." *
+  All are corrupt and commit abominable acts;
+  there is none who does any good.
+2 God looks down from heaven upon us all, *
+  to see if there is any who is wise,
+  if there is one who seeks after God.
+3 Every one has proved faithless;
+  all alike have turned bad; *
+  there is none who does good; no, not one.
+4 Have they no knowledge, those evildoers *
+  who eat up my people like bread
+  and do not call upon God?
+5 See how greatly they tremble,
+  such trembling as never was; *
+  for God has scattered the bones of the enemy;
+  they are put to shame, because God has rejected them.
+6 Oh, that Israel's deliverance would come out of Zion! *
+  when God restores the fortunes of his people
+  Jacob will rejoice and Israel be glad.`,
+  },
+
+  54: {
+    title: "Deus, in nomine",
+    bcpRef: "BCP p. 658",
+    content:
+`1 Save me, O God, by your Name; *
+  in your might, defend my cause.
+2 Hear my prayer, O God; *
+  give ear to the words of my mouth.
+3 For the arrogant have risen up against me,
+  and the ruthless have sought my life, *
+  those who have no regard for God.
+4 Behold, God is my helper; *
+  it is the Lord who sustains my life.
+5 Render evil to those who spy on me; *
+  in your faithfulness, destroy them.
+6 I will offer you a freewill sacrifice *
+  and praise your Name, O Lord, for it is good.
+7 For you have rescued me from every trouble, *
+  and my eye has seen the ruin of my foes.`,
+  },
+
+  55: {
+    title: "Exaudi, Deus",
+    bcpRef: "BCP p. 659",
+    content:
+`1 Hear my prayer, O God; *
+  do not hide yourself from my petition.
+2 Listen to me and answer me; *
+  I have no peace, because of my cares.
+3 I am shaken by the noise of the enemy *
+  and by the pressure of the wicked;
+4 For they have cast an evil spell upon me *
+  and are set against me in fury.
+5 My heart quakes within me, *
+  and the terrors of death have fallen upon me.
+6 Fear and trembling have come over me, *
+  and horror overwhelms me.
+7 And I said, "Oh, that I had wings like a dove! *
+  I would fly away and be at rest.
+8 I would flee to a far-off place *
+  and make my lodging in the wilderness.
+9 I would hasten to escape *
+  from the stormy wind and tempest."
+10 Swallow them up, O Lord;
+  confound their speech; *
+  for I have seen violence and strife in the city.
+11 Day and night the watchmen make their rounds upon her walls, *
+  but trouble and misery are in the midst of her.
+12 There is corruption at her heart; *
+  her streets are never free of oppression and deceit.
+13 For had it been an adversary who taunted me,
+  then I could have borne it; *
+  or had it been an enemy who vaunted himself against me,
+  then I could have hidden from him.
+14 But it was you, a man after my own heart, *
+  my companion, my own familiar friend.
+15 We took sweet counsel together, *
+  and walked with the throng in the house of God.
+16 Let death come upon them suddenly;
+  let them go down alive to the grave; *
+  for wickedness is in their dwellings, in their very midst.
+17 But I will call upon God, *
+  and the Lord will deliver me.
+18 In the evening, in the morning, and at noonday,
+  I will complain and lament, *
+  and he will hear my voice.
+19 He will bring me safely back from the battle waged against me; *
+  for there are many who fight me.
+20 God, who is enthroned of old, will hear me and bring them down; *
+  they never change; they do not fear God.
+21 My companion stretched forth his hand against his comrade; *
+  he has broken his covenant.
+22 His speech is softer than butter, *
+  but war is in his heart.
+23 His words are smoother than oil, *
+  but they are drawn swords.
+24 Cast your burden upon the Lord,
+  and he will sustain you; *
+  he will never let the righteous stumble.
+25 For you will bring the bloodthirsty and deceitful *
+  down to the pit of destruction, O God.
+26 They shall not live out half their days, *
+  but I will put my trust in you.`,
+  },
+
+  56: {
+    title: "Miserere mei, Deus",
+    bcpRef: "BCP p. 661",
+    content:
+`1 Have mercy on me, O God,
+  for my enemies are hounding me; *
+  all day long they assault and oppress me.
+2 They hound me all the day long; *
+  truly there are many who fight against me, O Most High.
+3 Whenever I am afraid, *
+  I will put my trust in you.
+4 In God, whose word I praise,
+  in God I trust and will not be afraid, *
+  for what can flesh do to me?
+5 All day long they damage my cause; *
+  their only thought is to do me evil.
+6 They band together; they lie in wait; *
+  they spy upon my footsteps;
+  because they seek my life.
+7 Shall they escape despite their wickedness? *
+  O God, in your anger, cast down the peoples.
+8 You have noted my lamentation;
+  put my tears into your bottle; *
+  are they not recorded in your book?
+9 Whenever I call upon you, my enemies will be put to flight; *
+  this I know, for God is on my side.
+10 In God the Lord, whose word I praise,
+  in God I trust and will not be afraid, *
+  for what can mortals do to me?
+11 I am bound by the vow I made to you, O God; *
+  I will present to you thank-offerings;
+12 For you have rescued my soul from death and my feet from stumbling, *
+  that I may walk before God in the light of the living.`,
+  },
+
+  57: {
+    title: "Miserere mei, Deus",
+    bcpRef: "BCP p. 662",
+    content:
+`1 Be merciful to me, O God, be merciful,
+  for I have taken refuge in you; *
+  in the shadow of your wings will I take refuge
+  until this time of trouble has gone by.
+2 I will call upon the Most High God, *
+  the God who maintains my cause.
+3 He will send from heaven and save me;
+  he will confound those who trample upon me; *
+  God will send forth his love and his faithfulness.
+4 I lie in the midst of lions that devour the people; *
+  their teeth are spears and arrows,
+  their tongue a sharp sword.
+5 They have laid a net for my feet,
+  and I am bowed low; *
+  they have dug a pit before me,
+  but have fallen into it themselves.
+6 Exalt yourself above the heavens, O God, *
+  and your glory over all the earth.
+7 My heart is firmly fixed, O God, my heart is fixed; *
+  I will sing and make melody.
+8 Wake up, my spirit;
+  awake, lute and harp; *
+  I myself will waken the dawn.
+9 I will confess you among the peoples, O Lord; *
+  I will sing praise to you among the nations.
+10 For your loving-kindness is greater than the heavens, *
+  and your faithfulness reaches to the clouds.
+11 Exalt yourself above the heavens, O God, *
+  and your glory over all the earth.`,
+  },
 };
