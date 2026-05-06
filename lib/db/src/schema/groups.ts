@@ -27,7 +27,9 @@ export const groupsTable = pgTable("groups", {
   // Public discoverability. When true, the group surfaces in the
   // /communities/browse picker. Joining is still admin-approved via
   // group_join_requests — public means "discoverable", not "open".
-  isPublic: boolean("is_public").notNull().default(false),
+  // Default true: every new community is browseable out of the gate.
+  // Admins can flip it off later from settings to go private.
+  isPublic: boolean("is_public").notNull().default(true),
   createdByUserId: integer("created_by_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

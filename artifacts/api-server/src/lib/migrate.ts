@@ -1241,7 +1241,14 @@ export async function migrate() {
     //   • groups.is_public — public communities show in the browse picker.
     //   • group_join_requests — pending list per community; admin
     //     accepts → row decision='accepted' + group_members insert.
-    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE`);
+    // Default flipped to TRUE: every new community is browseable from
+    // /communities/browse out of the gate. The earlier ADD COLUMN that
+    // ran with default false stays compatible — we ALTER the default
+    // for new rows AND backfill any legacy rows that were created
+    // before the flip.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE`);
+    await run(client, `ALTER TABLE groups ALTER COLUMN is_public SET DEFAULT TRUE`);
+    await run(client, `UPDATE groups SET is_public = TRUE WHERE is_public = FALSE`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS group_join_requests (
         id SERIAL PRIMARY KEY,

@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { ExternalLink, Users, Plus, X, Trash2 } from "lucide-react";
+import { ExternalLink, Users, Plus, X, Trash2, UserPlus } from "lucide-react";
 import { MetricsDashboard } from "./community-metrics";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -83,6 +83,19 @@ export default function CommunitySettingsPage() {
     queryFn: () => apiRequest("GET", `/api/groups/${slug}`),
     enabled: !!user && !!slug,
   });
+
+  // Pending join-request count for this community — drives the badge
+  // on the "Join requests" settings row. /me endpoint is the cheap
+  // lookup since the user has it cached for the drawer too.
+  const { data: pendingCounts } = useQuery<{ total: number; byGroup: Record<number, number> }>({
+    queryKey: ["/api/me/pending-join-request-counts"],
+    queryFn: () => apiRequest("GET", "/api/me/pending-join-request-counts"),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const pendingForThis = groupData?.group
+    ? pendingCounts?.byGroup[groupData.group.id] ?? 0
+    : 0;
 
   const intentions: Intention[] = groupData?.intentions ?? [];
 
@@ -241,7 +254,7 @@ export default function CommunitySettingsPage() {
 
         <button
           onClick={() => setLocation(`/communities/${slug}?tab=members`)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-6 transition-opacity hover:opacity-90"
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-3 transition-opacity hover:opacity-90"
           style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
         >
           <span className="flex items-center gap-2.5">
@@ -249,6 +262,37 @@ export default function CommunitySettingsPage() {
             <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Edit Members</span>
           </span>
           <span className="text-sm" style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
+        </button>
+
+        {/* Join requests — links to the dedicated requests panel.
+            Renders an amber count badge when pending so the admin can
+            spot work to do without opening the drawer. */}
+        <button
+          onClick={() => setLocation(`/communities/${slug}/requests`)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-6 transition-opacity hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
+        >
+          <span className="flex items-center gap-2.5">
+            <UserPlus size={15} style={{ color: "#A8C5A0" }} />
+            <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Join requests</span>
+          </span>
+          <span className="flex items-center gap-2">
+            {pendingForThis > 0 && (
+              <span
+                className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
+                style={{
+                  background: "#C58A2A",
+                  color: "#1A1208",
+                  minWidth: 18,
+                  height: 18,
+                  padding: "0 5px",
+                }}
+              >
+                {pendingForThis}
+              </span>
+            )}
+            <span className="text-sm" style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
+          </span>
         </button>
 
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
