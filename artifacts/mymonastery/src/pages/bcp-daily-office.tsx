@@ -123,6 +123,89 @@ function parsePsalmContent(content: string): PsalmEntry[] {
   return result;
 }
 
+// Centered intercession head — avatar + name + eyebrow stacked,
+// mirroring prayer-mode.tsx's "request" slide. The office and
+// devotion intercession slots used to render with the default
+// left-aligned eyebrow + bold-title pair, which made a request from a
+// specific person ("Anabelle Helsell — please pray for…") look like a
+// liturgical heading instead of a face. This block lifts the prayer-
+// mode visual so the same prayer reads the same way no matter which
+// surface surfaces it.
+function IntercessionHead({
+  eyebrow,
+  authorName,
+  authorAvatarUrl,
+}: {
+  eyebrow: string;
+  authorName: string | null;
+  authorAvatarUrl: string | null;
+}) {
+  const initials = (authorName ?? "")
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      {(authorName || authorAvatarUrl) && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          {authorAvatarUrl ? (
+            <img
+              src={authorAvatarUrl}
+              alt={authorName ?? "Prayer author"}
+              className="prayer-avatar-pulse"
+              style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }}
+            />
+          ) : (
+            <div
+              className="prayer-avatar-pulse"
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: "#1A4A2E",
+                color: "#A8C5A0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+                fontWeight: 600,
+                fontFamily: SPACE_GROTESK,
+              }}
+            >
+              {initials}
+            </div>
+          )}
+          {authorName && (
+            <p
+              style={{
+                fontSize: 14,
+                color: "#C8D4C0",
+                fontFamily: SPACE_GROTESK,
+                margin: 0,
+              }}
+            >
+              {authorName}
+            </p>
+          )}
+        </div>
+      )}
+      <p
+        style={{
+          fontSize: 10,
+          color: "rgba(143,175,150,0.45)",
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          fontWeight: 600,
+          margin: 0,
+        }}
+      >
+        {eyebrow}
+      </p>
+    </div>
+  );
+}
+
 // Resolve mode → endpoint + title. We accept `office` as a legacy
 // shortcut and translate it into the equivalent mode here so old call
 // sites compile unchanged.
@@ -136,6 +219,15 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
 export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
+  // The Daily Devotions are explicitly the personal short forms
+  // (BCP pp. 137 / 139). The full Daily Office's missal-page layout
+  // (top-aligned, left-aligned, role-labelled) reads as overkill
+  // here — devotion mode swaps short call-and-response slides to a
+  // centered, label-less layout that feels like personal prayer
+  // rather than a corporate liturgy.
+  const isDevotion =
+    resolvedMode === "morning-devotion" ||
+    resolvedMode === "early-evening-devotion";
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
@@ -298,25 +390,62 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           // pair drift far below the header on slides with little body
           // text. Top-aligned reads as a missal page: title near the
           // top, body flowing down.
-          style={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", textAlign: "left", gap: 20 }}
+          style={(() => {
+            // Devotion mode centers short call-and-response slides
+            // (opening versicle, simple greetings) so they read as
+            // personal prayer beats rather than missal pages. The
+            // full Office still left-aligns those for the missal
+            // feel. Intercession slides on either surface stay
+            // centered to match the prayer-mode slideshow.
+            const isCenteredDevotionBeat = isDevotion && currentSlide.isCallAndResponse;
+            const centered = isCenteredDevotionBeat || currentSlide.type === "intercessions";
+            return {
+              display: "flex",
+              flexDirection: "column",
+              minHeight: "100%",
+              justifyContent: isCenteredDevotionBeat ? "center" : "flex-start",
+              textAlign: centered ? ("center" as const) : ("left" as const),
+              alignItems: centered ? "center" : undefined,
+              gap: 20,
+            };
+          })()}
         >
-          {/* Section eyebrow — moved here from the top-right corner of
-              the fixed header. Sits above the title so the user can
-              tell at a glance which part of the office they're in
-              without glancing up at the corner. */}
-          <p
-            style={{
-              color: FAINT_GREEN,
-              fontSize: 10,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              margin: 0,
-              fontWeight: 600,
-            }}
-          >
-            {currentSlide.eyebrow || sectionLabel}
-          </p>
-          {currentSlide.title && (
+          {/* Intercession-mode head: avatar (when we have one) + name
+              + eyebrow, mirroring prayer-mode.tsx's "request" slide.
+              The default left-aligned eyebrow + bold-title pair
+              renders in the else branch below. */}
+          {currentSlide.type === "intercessions" ? (
+            <IntercessionHead
+              eyebrow={currentSlide.eyebrow || sectionLabel}
+              authorName={
+                (currentSlide.metadata as { authorName?: unknown } | undefined)?.authorName as string | undefined
+                ?? currentSlide.title
+                ?? null
+              }
+              authorAvatarUrl={
+                (currentSlide.metadata as { authorAvatarUrl?: unknown } | undefined)?.authorAvatarUrl as string | null | undefined
+                ?? null
+              }
+            />
+          ) : (
+            <p
+              style={{
+                color: FAINT_GREEN,
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                margin: 0,
+                fontWeight: 600,
+              }}
+            >
+              {currentSlide.eyebrow || sectionLabel}
+            </p>
+          )}
+          {/* Title slot. Intercession slides skip the bold-title
+              header because IntercessionHead already shows the name
+              right under the avatar — re-rendering it here would
+              double-print the person's name. */}
+          {currentSlide.title && currentSlide.type !== "intercessions" && (
             <h2
               style={{
                 // Psalms get italic + serif because the title slot
@@ -414,12 +543,20 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               ))}
             </div>
           ) : currentSlide.isCallAndResponse && currentSlide.callAndResponseLines ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 560 }}>
+            // The Officiant / People / All speaker labels make sense
+            // when a community prays the Office together. The Daily
+            // Devotions (BCP pp. 137 / 139) are explicitly the short
+            // forms for personal or family use, so on devotion mode we
+            // drop the role labels and read the lines as one
+            // continuous prayer.
+            <div style={{ display: "flex", flexDirection: "column", gap: isDevotion ? 10 : 14, maxWidth: 560 }}>
               {currentSlide.callAndResponseLines.map((line, i) => (
                 <div key={i}>
-                  <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginBottom: 4 }}>
-                    {line.speaker === "officiant" ? "Officiant" : line.speaker === "people" ? "People" : "All"}
-                  </p>
+                  {!isDevotion && (
+                    <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginBottom: 4 }}>
+                      {line.speaker === "officiant" ? "Officiant" : line.speaker === "people" ? "People" : "All"}
+                    </p>
+                  )}
                   <p style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}>
                     {line.text}
                   </p>
@@ -429,9 +566,14 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           ) : currentSlide.content ? (
             <p
               style={{
-                fontSize: 17,
-                lineHeight: 1.7,
-                color: WARM_TEXT,
+                // Intercession slides bump the body to 22px italic
+                // serif to match the prayer-mode slideshow's
+                // "carrying one prayer" weight; everything else stays
+                // at the missal-page 17px reading size.
+                fontSize: currentSlide.type === "intercessions" ? 22 : 17,
+                lineHeight: currentSlide.type === "intercessions" ? 1.5 : 1.7,
+                fontWeight: currentSlide.type === "intercessions" ? 500 : 400,
+                color: currentSlide.type === "intercessions" ? "#E8E4D8" : WARM_TEXT,
                 margin: 0,
                 whiteSpace: "pre-wrap",
                 fontFamily: "Georgia, 'Times New Roman', serif",
