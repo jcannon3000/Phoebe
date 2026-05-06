@@ -4603,4 +4603,41 @@ export const PSALTER: Record<number, PsalmEntry> = {
 12 Rejoice in the Lord, you righteous, *
   and give thanks to his holy Name.`,
   },
+
+  92: {
+    title: "Bonum est confiteri",
+    bcpRef: "BCP p. 719",
+    content:
+`1 It is a good thing to give thanks to the Lord, *
+  and to sing praises to your Name, O Most High;
+2 To tell of your loving-kindness early in the morning *
+  and of your faithfulness in the night season;
+3 On the psaltery, and on the lyre, *
+  and to the melody of the harp.
+4 For you have made me glad by your acts, O Lord; *
+  and I shout for joy because of the works of your hands.
+5 Lord, how great are your works! *
+  your thoughts are very deep.
+6 The dullard does not know,
+  nor does the fool understand, *
+  that though the wicked grow like weeds,
+  and all the workers of iniquity flourish,
+7 They flourish only to be destroyed for ever; *
+  but you, O Lord, are exalted for evermore.
+8 For lo, your enemies, O Lord,
+  lo, your enemies shall perish, *
+  and all the workers of iniquity shall be scattered.
+9 But my horn you have exalted like the horns of wild bulls; *
+  I am anointed with fresh oil.
+10 My eyes also gloat over my enemies, *
+  and my ears rejoice to hear the doom of the wicked who rise up against me.
+11 The righteous shall flourish like a palm tree, *
+  and shall spread abroad like a cedar of Lebanon.
+12 Those who are planted in the house of the Lord *
+  shall flourish in the courts of our God;
+13 They shall still bear fruit in old age; *
+  they shall be green and succulent;
+14 That they may show how upright the Lord is, *
+  my Rock, in whom there is no fault.`,
+  },
 };
