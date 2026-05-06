@@ -6054,4 +6054,80 @@ export const PSALTER: Record<number, PsalmEntry> = {
   "The Lord prosper you. *
   We wish you well in the Name of the Lord."`,
   },
+
+  131: {
+    title: "Domine, non est",
+    bcpRef: "BCP p. 784",
+    content:
+`1 O Lord, I am not proud; *
+  I have no haughty looks.
+2 I do not occupy myself with great matters, *
+  or with things that are too hard for me.
+3 But I still my soul and make it quiet,
+  like a child upon its mother's breast; *
+  my soul is quieted within me.
+4 O Israel, wait upon the Lord, *
+  from this time forth for evermore.`,
+  },
+
+  132: {
+    title: "Memento, Domine",
+    bcpRef: "BCP p. 784",
+    content:
+`1 Lord, remember David, *
+  and all the hardships he endured;
+2 How he swore an oath to the Lord *
+  and vowed a vow to the Mighty One of Jacob:
+3 "I will not come under the roof of my house, *
+  nor climb up into my bed;
+4 I will not allow my eyes to sleep, *
+  nor let my eyelids slumber;
+5 Until I find a place for the Lord, *
+  a dwelling for the Mighty One of Jacob."
+6 "The ark! We heard it was in Ephratah; *
+  we found it in the fields of Jearim.
+7 Let us go to God's dwelling place; *
+  let us fall upon our knees before his footstool."
+8 Arise, O Lord, into your resting-place, *
+  you and the ark of your strength.
+9 Let your priests be clothed with righteousness; *
+  let your faithful people sing with joy.
+10 For your servant David's sake, *
+  do not turn away the face of your Anointed.
+11 The Lord has sworn an oath to David; *
+  in truth, he will not break it:
+12 "A son, the fruit of your body *
+  will I set upon your throne.
+13 If your children keep my covenant
+  and my testimonies that I shall teach them, *
+  their children will sit upon your throne for evermore."
+14 For the Lord has chosen Zion; *
+  he has desired her for his habitation:
+15 "This shall be my resting-place for ever; *
+  here will I dwell, for I delight in her.
+16 I will surely bless her provisions, *
+  and satisfy her poor with bread.
+17 I will clothe her priests with salvation, *
+  and her faithful people will rejoice and sing.
+18 There will I make the horn of David flourish; *
+  I have prepared a lamp for my Anointed.
+19 As for his enemies, I will clothe them with shame; *
+  but as for him, his crown will shine."`,
+  },
+
+  133: {
+    title: "Ecce, quam bonum!",
+    bcpRef: "BCP p. 786",
+    content:
+`1 Oh, how good and pleasant it is, *
+  when brethren live together in unity!
+2 It is like fine oil upon the head *
+  that runs down upon the beard,
+3 Upon the beard of Aaron, *
+  and runs down upon the collar of his robe.
+4 It is like the dew of Hermon *
+  that falls upon the hills of Zion.
+5 For there the Lord has ordained the blessing: *
+  life for evermore.`,
+  },
 };
