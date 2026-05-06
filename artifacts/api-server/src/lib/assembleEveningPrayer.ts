@@ -438,12 +438,10 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 20. Closing
-  slides.push(
-    slide(id(), "closing", "🌙", "", "Evening Prayer", {
-      metadata: { date: date.toISOString(), office: "evening" },
-    }),
-  );
+  // (Closing slide removed — the trailing "CLOSING / Evening
+  // Prayer" beat just echoed the top bar and made the user tap
+  // one more empty card to finish. The final blessing now closes
+  // the office; the bottom pill's "Done" button signals the end.)
 
   const officeDay: OfficeDayInfo = {
     season: liturgicalDay.season,

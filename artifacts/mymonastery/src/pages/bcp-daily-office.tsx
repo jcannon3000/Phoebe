@@ -5,6 +5,8 @@ import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
 import { bibleGatewayUrl } from "@/lib/bibleGatewayUrl";
+import { apiRequest } from "@/lib/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -233,6 +235,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
   const mainRef = useRef<HTMLElement | null>(null);
+  const queryClient = useQueryClient();
 
   // Reset scroll to the top each time the slide changes — otherwise a
   // long-content slide that the reader scrolled through carries its
@@ -302,6 +305,57 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
 
   function next() { if (!atEnd) setSlideIdx(slideIdx + 1); }
   function prev() { if (!atStart) setSlideIdx(slideIdx - 1); }
+
+  // Amen flow on intercession slides — fires the right endpoint for
+  // the slide's source so the amen counts toward the recipient's
+  // metrics + the bell scheduler's "prayed today" gate. Best-effort:
+  // we never block the slide advance on the network call, and we
+  // never block the user from advancing if the call fails.
+  const isIntercessionSlide = currentSlide.type === "intercessions";
+  function fireAmenSideEffect(slide: Slide) {
+    const meta = slide.metadata as
+      | {
+          source?: unknown;
+          requestId?: unknown;
+          feedSlug?: unknown;
+          entryDate?: unknown;
+        }
+      | undefined;
+    const source = typeof meta?.source === "string" ? meta.source : null;
+    if (source === "request" && typeof meta?.requestId === "number") {
+      const rid = meta.requestId;
+      apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
+        .then(() => {
+          // Same invalidation prayer-mode does — keeps the dashboard
+          // "prayed today" state + the prayer-list amen counts in sync.
+          queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+        })
+        .catch(() => { /* best-effort */ });
+      return;
+    }
+    if (
+      source === "feed"
+      && typeof meta?.feedSlug === "string"
+      && typeof meta?.entryDate === "string"
+    ) {
+      const slug = meta.feedSlug;
+      const date = meta.entryDate;
+      apiRequest("POST", `/api/prayer-feeds/${slug}/entries/${date}/pray`)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+        })
+        .catch(() => { /* best-effort */ });
+      return;
+    }
+    // prayer-for + circle-intention: no amen endpoint exists for
+    // these surfaces yet. The Amen button still advances; we just
+    // don't log a metric until those endpoints land.
+  }
+  function amen() {
+    if (currentSlide) fireAmenSideEffect(currentSlide);
+    if (!atEnd) setSlideIdx(slideIdx + 1);
+    else onBack();
+  }
 
   return (
     <div
@@ -496,13 +550,31 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   fontWeight: 600,
                 }}
               >
-                {currentSlide.eyebrow || sectionLabel}
+                {(() => {
+                  // Lesson slides get a contextual eyebrow that
+                  // mirrors the psalm slide's "The Psalm Appointed
+                  // For This Morning" treatment. We tailor it to the
+                  // existing eyebrow value so an MP First Lesson and
+                  // an EP Gospel each read true to themselves while
+                  // staying in the same voice.
+                  if (currentSlide.type === "lesson") {
+                    const isEvening =
+                      resolvedMode === "evening" ||
+                      resolvedMode === "early-evening-devotion";
+                    const tod = isEvening ? "Evening" : "Morning";
+                    const e = (currentSlide.eyebrow ?? "").toUpperCase();
+                    if (e.includes("FIRST")) return `The First Lesson Appointed For This ${tod}`;
+                    if (e.includes("SECOND")) return `The Second Lesson Appointed For This ${tod}`;
+                    if (e.includes("GOSPEL")) return `The Gospel Appointed For This ${tod}`;
+                    return `The Lesson Appointed For This ${tod}`;
+                  }
+                  return currentSlide.eyebrow || sectionLabel;
+                })()}
               </p>
-              {/* Title slot. Intercession slides skip the bold-title
-                  header because IntercessionHead already shows the
-                  name right under the avatar — re-rendering it here
-                  would double-print the person's name. */}
-              {currentSlide.title && currentSlide.type !== "intercessions" && (
+              {/* Title slot. Intercession + psalm slides took
+                  earlier branches (above), so we know currentSlide
+                  isn't either of those here. */}
+              {currentSlide.title && (
                 <h2
                   style={{
                     fontSize: 22,
@@ -743,7 +815,19 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           </p>
           <button
             type="button"
-            onClick={atEnd ? onBack : next}
+            // Intercession slides swap "Next" for "Amen" — same button,
+            // same place, same visual weight, but the click logs the
+            // amen via the right endpoint for the slide's source so it
+            // counts toward the recipient's metrics + the bell
+            // scheduler's "prayed today" gate. Office + Devotion both
+            // route through this viewer so the wiring covers Morning
+            // Prayer, Evening Prayer, In the Morning, and In the Early
+            // Evening simultaneously.
+            onClick={
+              isIntercessionSlide
+                ? amen
+                : atEnd ? onBack : next
+            }
             className="rounded-full transition-opacity"
             style={{
               background: BUTTON_BG,
@@ -758,7 +842,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               whiteSpace: "nowrap",
             }}
           >
-            {atEnd ? "Done" : "Next"}
+            {isIntercessionSlide ? "Amen" : atEnd ? "Done" : "Next"}
           </button>
         </div>
       </nav>

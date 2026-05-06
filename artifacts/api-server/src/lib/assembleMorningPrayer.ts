@@ -655,14 +655,11 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // Closing
-  slides.push(
-    slide(id(), "closing", "🙏🏽", "", "Morning Prayer", {
-      metadata: {
-        date: date.toISOString(),
-      },
-    }),
-  );
+  // (Closing slide removed — the trailing "CLOSING / Morning
+  // Prayer" beat just echoed the top bar and made the user tap one
+  // more empty card to finish. The General Thanksgiving / final
+  // blessing now closes the office; the bottom pill's "Done" button
+  // signals the end.)
 
   // 3. Cache result — store WITHOUT the intercessions slide, since
   //    that slide is per-user. We splice the user's intercessions in

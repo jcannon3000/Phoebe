@@ -271,12 +271,11 @@ export async function assembleDevotion(
     }),
   );
 
-  // 8. Closing
-  slides.push(
-    slide(id(), "closing", isMorning ? "🌅" : "🌆", "", titleSuffix, {
-      metadata: { date: date.toISOString(), devotion: kind },
-    }),
-  );
+  // (Closing slide removed — the previous "CLOSING / Morning
+  // Devotion" beat just echoed the top bar and made the user tap
+  // through one more empty slide to finish. The Collect now closes
+  // the devotion; the bottom pill's "Done" button signals the end.)
+  void titleSuffix;
 
   // Eslint silence — the eq import is shared with the office assembler
   // pattern; not used directly here yet but kept for parity if we add
