@@ -190,6 +190,50 @@ export const PSALTER: Record<number, PsalmEntry> = {
   they shall turn back and suddenly be put to shame.`,
   },
 
+  7: {
+    title: "Domine, Deus meus",
+    bcpRef: "BCP p. 590",
+    content:
+`1 O Lord my God, I take refuge in you; *
+  save and deliver me from all who pursue me;
+2 Lest like a lion they tear me in pieces *
+  and snatch me away with none to deliver me.
+3 O Lord my God, if I have done these things: *
+  if there is any wickedness in my hands,
+4 If I have repaid my friend with evil, *
+  or plundered him who without cause is my enemy;
+5 Then let my enemy pursue and overtake me, *
+  trample my life into the ground,
+  and lay my honor in the dust.
+6 Stand up, O Lord, in your wrath; *
+  rise up against the fury of my enemies.
+7 Awake, O my God, decree justice; *
+  let the assembly of the peoples gather round you.
+8 Be seated on your lofty throne, O Most High; *
+  O Lord, judge the nations.
+9 Give judgment for me according to my righteousness, O Lord, *
+  and according to my innocence, O Most High.
+10 Let the malice of the wicked come to an end,
+  but establish the righteous; *
+  for you test the mind and heart, O righteous God.
+11 God is my shield and defense; *
+  he is the savior of the true in heart.
+12 God is a righteous judge; *
+  God sits in judgment every day.
+13 If they will not repent, God will whet his sword; *
+  he will bend his bow and make it ready.
+14 He has prepared his weapons of death; *
+  he makes his arrows shafts of fire.
+15 Look at those who are in labor with wickedness, *
+  who conceive evil, and give birth to a lie.
+16 They dig a pit and make it deep *
+  and fall into the hole that they have made.
+17 Their malice turns back upon their own head; *
+  their violence falls on their own scalp.
+18 I will bear witness that the Lord is righteous; *
+  I will praise the Name of the Lord Most High.`,
+  },
+
   8: {
     title: "Domine, Dominus noster",
     bcpRef: "BCP p. 592",
@@ -214,6 +258,54 @@ export const PSALTER: Record<number, PsalmEntry> = {
   and whatsoever walks in the paths of the sea.
 10 O Lord our Governor, *
   how exalted is your Name in all the world!`,
+  },
+
+  9: {
+    title: "Confitebor tibi",
+    bcpRef: "BCP p. 593",
+    content:
+`1 I will give thanks to you, O Lord, with my whole heart; *
+  I will tell of all your marvelous works.
+2 I will be glad and rejoice in you; *
+  I will sing to your Name, O Most High.
+3 When my enemies are driven back, *
+  they will stumble and perish at your presence.
+4 For you have maintained my right and my cause; *
+  you sit upon your throne judging right.
+5 You have rebuked the ungodly and destroyed the wicked; *
+  you have blotted out their name for ever and ever.
+6 As for the enemy, they are finished, in perpetual ruin, *
+  their cities plowed under, the memory of them perished;
+7 But the Lord is enthroned for ever; *
+  he has set up his throne for judgment.
+8 It is he who rules the world with righteousness; *
+  he judges the peoples with equity.
+9 The Lord will be a refuge for the oppressed, *
+  a refuge in time of trouble.
+10 Those who know your Name will put their trust in you, *
+  for you never forsake those who seek you, O Lord.
+11 Sing praise to the Lord who dwells in Zion; *
+  proclaim to the peoples the things he has done.
+12 The Avenger of blood will remember them; *
+  he will not forget the cry of the afflicted.
+13 Have pity on me, O Lord; *
+  see the misery I suffer from those who hate me,
+  O you who lift me up from the gate of death;
+14 So that I may tell of all your praises
+  and rejoice in your salvation *
+  in the gates of the city of Zion.
+15 The ungodly have fallen into the pit they dug, *
+  and in the snare they set is their own foot caught.
+16 The Lord is known by his acts of justice; *
+  the wicked are trapped in the works of their own hands.
+17 The wicked shall be given over to the grave, *
+  and also all the people that forget God.
+18 For the needy shall not always be forgotten, *
+  and the hope of the poor shall not perish for ever.
+19 Rise up, O Lord, let not the ungodly have the upper hand; *
+  let them be judged before you.
+20 Put fear upon them, O Lord; *
+  let the ungodly know they are but mortal.`,
   },
 
   15: {
