@@ -2542,4 +2542,224 @@ export const PSALTER: Record<number, PsalmEntry> = {
 15 Turn your gaze from me, that I may be glad again, *
   before I go my way and am no more.`,
   },
+
+  40: {
+    title: "Expectans, expectavi",
+    bcpRef: "BCP p. 639",
+    content:
+`1 I waited patiently upon the Lord; *
+  he stooped to me and heard my cry.
+2 He lifted me out of the desolate pit, out of the mire and clay; *
+  he set my feet upon a high cliff and made my footing sure.
+3 He put a new song in my mouth,
+  a song of praise to our God; *
+  many shall see, and stand in awe,
+  and put their trust in the Lord.
+4 Happy are they who trust in the Lord! *
+  they do not resort to evil spirits or turn to false gods.
+5 Great things are they that you have done, O Lord my God!
+  how great your wonders and your plans for us! *
+  there is none who can be compared with you.
+6 Oh, that I could make them known and tell them! *
+  but they are more than I can count.
+7 In sacrifice and offering you take no pleasure *
+  (you have given me ears to hear you);
+8 Burnt-offering and sin-offering you have not required, *
+  and so I said, "Behold, I come.
+9 In the roll of the book it is written concerning me: *
+  'I love to do your will, O my God;
+  your law is deep in my heart.'"
+10 I proclaimed righteousness in the great congregation; *
+  behold, I did not restrain my lips;
+  and that, O Lord, you know.
+11 Your righteousness have I not hidden in my heart;
+  I have spoken of your faithfulness and your deliverance; *
+  I have not concealed your love and faithfulness from the great congregation.
+12 You are the Lord;
+  do not withhold your compassion from me; *
+  let your love and your faithfulness keep me safe for ever,
+13 For innumerable troubles have crowded upon me;
+  my sins have overtaken me, and I cannot see; *
+  they are more in number than the hairs of my head,
+  and my heart fails me.
+14 Be pleased, O Lord, to deliver me; *
+  O Lord, make haste to help me.
+15 Let them be ashamed and altogether dismayed
+  who seek after my life to destroy it; *
+  let them draw back and be disgraced
+  who take pleasure in my misfortune.
+16 Let those who say "Aha!" and gloat over me be confounded, *
+  because they are ashamed.
+17 Let all who seek you rejoice in you and be glad; *
+  let those who love your salvation continually say,
+  "Great is the Lord!"
+18 Though I am poor and afflicted, *
+  the Lord will have regard for me.
+19 You are my helper and my deliverer; *
+  do not tarry, O my God.`,
+  },
+
+  41: {
+    title: "Beatus qui intelligit",
+    bcpRef: "BCP p. 640",
+    content:
+`1 Happy are they who consider the poor and needy! *
+  the Lord will deliver them in the time of trouble.
+2 The Lord preserves them and keeps them alive,
+  so that they may be happy in the land; *
+  he does not hand them over to the will of their enemies.
+3 The Lord sustains them on their sickbed *
+  and ministers to them in their illness.
+4 I said, "Lord, be merciful to me; *
+  heal me, for I have sinned against you."
+5 My enemies are saying wicked things about me: *
+  "When will he die, and his name perish?"
+6 Even if they come to see me, they speak empty words; *
+  their heart collects false rumors;
+  they go outside and spread them.
+7 All my enemies whisper together about me *
+  and devise evil against me.
+8 "A deadly thing," they say, "has fastened on him; *
+  he has taken to his bed and will never get up again."
+9 Even my best friend, whom I trusted,
+  who broke bread with me, *
+  has lifted up his heel and turned against me.
+10 But you, O Lord, be merciful to me and raise me up, *
+  and I shall repay them.
+11 By this I know you are pleased with me, *
+  that my enemy does not triumph over me.
+12 In my integrity you hold me fast, *
+  and shall set me before your face for ever.
+13 Blessed be the Lord God of Israel, *
+  from age to age. Amen. Amen.`,
+  },
+
+  42: {
+    title: "Quemadmodum",
+    bcpRef: "BCP p. 642",
+    content:
+`1 As the deer longs for the water-brooks, *
+  so longs my soul for you, O God.
+2 My soul is athirst for God, athirst for the living God; *
+  when shall I come to appear before the presence of God?
+3 My tears have been my food day and night, *
+  while all day long they say to me,
+  "Where now is your God?"
+4 I pour out my soul when I think on these things; *
+  how I went with the multitude and led them into the house of God,
+5 With the voice of praise and thanksgiving, *
+  among those who keep holy-day.
+6 Why are you so full of heaviness, O my soul? *
+  and why are you so disquieted within me?
+7 Put your trust in God; *
+  for I will yet give thanks to him,
+  who is the help of my countenance, and my God.
+8 My soul is heavy within me; *
+  therefore I will remember you from the land of Jordan,
+  and from the peak of Mizar among the heights of Hermon.
+9 One deep calls to another in the noise of your cataracts; *
+  all your rapids and floods have gone over me.
+10 The Lord grants his loving-kindness in the daytime; *
+  in the night season his song is with me,
+  a prayer to the God of my life.
+11 I will say to the God of my strength,
+  "Why have you forgotten me? *
+  and why do I go so heavily while the enemy oppresses me?"
+12 While my bones are being broken, *
+  my enemies mock me to my face;
+13 All day long they mock me *
+  and say to me, "Where now is your God?"
+14 Why are you so full of heaviness, O my soul? *
+  and why are you so disquieted within me?
+15 Put your trust in God; *
+  for I will yet give thanks to him,
+  who is the help of my countenance, and my God.`,
+  },
+
+  43: {
+    title: "Judica me, Deus",
+    bcpRef: "BCP p. 643",
+    content:
+`1 Give judgment for me, O God,
+  and defend my cause against an ungodly people; *
+  deliver me from the deceitful and the wicked.
+2 For you are the God of my strength;
+  why have you put me from you? *
+  and why do I go so heavily while the enemy oppresses me?
+3 Send out your light and your truth, that they may lead me, *
+  and bring me to your holy hill
+  and to your dwelling;
+4 That I may go to the altar of God,
+  to the God of my joy and gladness; *
+  and on the harp I will give thanks to you, O God my God.
+5 Why are you so full of heaviness, O my soul? *
+  and why are you so disquieted within me?
+6 Put your trust in God; *
+  for I will yet give thanks to him,
+  who is the help of my countenance, and my God.`,
+  },
+
+  44: {
+    title: "Deus, auribus",
+    bcpRef: "BCP p. 644",
+    content:
+`1 We have heard with our ears, O God,
+  our forefathers have told us, *
+  the deeds you did in their days,
+  in the days of old.
+2 How with your hand you drove the peoples out
+  and planted our forefathers in the land; *
+  how you destroyed nations and made your people flourish.
+3 For they did not take the land by their sword,
+  nor did their arm win the victory for them; *
+  but your right hand, your arm, and the light of your countenance,
+  because you favored them.
+4 You are my King and my God; *
+  you command victories for Jacob.
+5 Through you we pushed back our adversaries; *
+  through your Name we trampled on those who rose up against us.
+6 For I do not rely on my bow, *
+  and my sword does not give me the victory.
+7 Surely, you gave us victory over our adversaries *
+  and put those who hate us to shame.
+8 Every day we gloried in God, *
+  and we will praise your Name for ever.
+9 Nevertheless, you have rejected and humbled us *
+  and do not go forth with our armies.
+10 You have made us fall back before our adversary, *
+  and our enemies have plundered us.
+11 You have made us like sheep to be eaten *
+  and have scattered us among the nations.
+12 You are selling your people for a trifle *
+  and are making no profit on the sale of them.
+13 You have made us the scorn of our neighbors, *
+  a mockery and derision to those around us.
+14 You have made us a byword among the nations, *
+  a laughing-stock among the peoples.
+15 My humiliation is daily before me, *
+  and shame has covered my face;
+16 Because of the taunts of the mockers and blasphemers, *
+  because of the enemy and avenger.
+17 All this has come upon us; *
+  yet we have not forgotten you,
+  nor have we betrayed your covenant.
+18 Our heart never turned back, *
+  nor did our footsteps stray from your path;
+19 Though you thrust us down into a place of misery, *
+  and covered us over with deep darkness.
+20 If we have forgotten the Name of our God, *
+  or stretched out our hands to some strange god,
+21 Will not God find it out? *
+  for he knows the secrets of the heart.
+22 Indeed, for your sake we are killed all the day long; *
+  we are accounted as sheep for the slaughter.
+23 Awake, O Lord! why are you sleeping? *
+  Arise! do not reject us for ever.
+24 Why have you hidden your face *
+  and forgotten our affliction and oppression?
+25 We sink down into the dust; *
+  our body cleaves to the ground.
+26 Rise up, and help us, *
+  and save us, for the sake of your steadfast love.`,
+  },
 };
