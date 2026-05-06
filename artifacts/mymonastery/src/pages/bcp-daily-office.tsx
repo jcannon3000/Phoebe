@@ -290,7 +290,14 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
       >
         <div
           className="max-w-2xl w-full mx-auto"
-          style={{ minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left", gap: 20 }}
+          // Top-aligned content with breathing-room padding above the
+          // first element. Earlier this was `justifyContent: "center"`
+          // which floated short slides into the middle of the viewport
+          // — fine for a one-line slide but it made the eyebrow + title
+          // pair drift far below the header on slides with little body
+          // text. Top-aligned reads as a missal page: title near the
+          // top, body flowing down.
+          style={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", textAlign: "left", gap: 20 }}
         >
           {/* Section eyebrow — moved here from the top-right corner of
               the fixed header. Sits above the title so the user can

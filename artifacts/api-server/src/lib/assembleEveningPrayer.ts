@@ -20,7 +20,7 @@ import {
   psalmEyebrow,
 } from "./psalmRange";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
-import { buildIntercessionsSlide } from "./assembleIntercessions";
+import { buildIntercessionSlides } from "./assembleIntercessions";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -119,10 +119,6 @@ function pickSuffragesKey(weekInSeason: number): string {
   return weekInSeason % 2 === 1 ? "suffrages_a" : "suffrages_b";
 }
 
-function pickMissionPrayerKey(dayOfWeek: number): string {
-  return `prayer_mission_${(dayOfWeek % 3) + 1}`;
-}
-
 // ── Closing rubric helpers ────────────────────────────────────────────────────
 //
 // BCP EP p. 126 closes with "Let us bless the Lord. / Thanks be to
@@ -177,7 +173,6 @@ export async function assembleEveningPrayer(
 
   const openingSentenceKey = pickOpeningSentenceKey(liturgicalDay.season, date.getDate());
   const suffragesKey = pickSuffragesKey(liturgicalDay.weekInSeason);
-  const missionPrayerKey = pickMissionPrayerKey(liturgicalDay.dayOfWeek);
 
   // Parse appointed psalms — keep both the bare number (used to look
   // up the seeded psalm row) and the optional verse range so we can
@@ -403,40 +398,19 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 16. A Collect for Peace (EP)
-  const peaceData = getTextData("collect_for_peace_ep");
-  slides.push(
-    slide(id(), "collect", "☮️", "A COLLECT FOR PEACE", peaceData.content, {
-      bcpReference: peaceData.bcpReference,
-    }),
-  );
+  // 16. Per-item intercession slides — one card per request,
+  //     prayers-for, circle intention, or today's subscribed-feed
+  //     entry. Per user direction Phoebe collapses the closing-prayer
+  //     block to a single Collect of the Day (above), then fans the
+  //     intercessions out as the BCP rubric "Authorized intercessions
+  //     and thanksgivings may follow" — one slide per intercession,
+  //     mirroring the prayer-mode slideshow rhythm. The earlier
+  //     "A Collect for Peace" + "A Collect for Aid against Perils" +
+  //     "A Prayer for Mission" slides are gone.
+  const intercessionSlides = await buildIntercessionSlides(userId, startOfDay(date));
+  for (const s of intercessionSlides) slides.push(s);
 
-  // 17. A Collect for Aid against Perils (EP)
-  const aidData = getTextData("collect_for_aid_ep");
-  slides.push(
-    slide(id(), "collect", "🛡️", "A COLLECT FOR AID AGAINST PERILS", aidData.content, {
-      bcpReference: aidData.bcpReference,
-    }),
-  );
-
-  // 18. Prayer for Mission
-  const missionData = getTextData(missionPrayerKey);
-  slides.push(
-    slide(id(), "prayer_for_mission", "🌍", "A PRAYER FOR MISSION", missionData.content, {
-      bcpReference: missionData.bcpReference,
-    }),
-  );
-
-  // 18.5 Intercessions — per-user, sourced from prayer requests,
-  // prayers-for, circle intentions, and today's subscribed-feed
-  // entries. Built fresh per call (NOT cached). Skipped silently if
-  // there's nothing to surface.
-  const intercessionsSlide = await buildIntercessionsSlide(userId, startOfDay(date));
-  if (intercessionsSlide) {
-    slides.push(intercessionsSlide);
-  }
-
-  // 19. General Thanksgiving
+  // 17. General Thanksgiving
   const gtData = getTextData("general_thanksgiving");
   slides.push(
     slide(id(), "general_thanksgiving", "🌾", gtData.title.toUpperCase(), gtData.content, {
@@ -444,6 +418,36 @@ export async function assembleEveningPrayer(
       isScrollable: true,
       scrollHint: "↓ continue · tap when ready",
       metadata: { prompt: "This is often said aloud together." },
+    }),
+  );
+
+  // 18. Concluding versicle — "Let us bless the Lord. / Thanks be to
+  //     God." (with Alleluia from Easter Day through the Day of
+  //     Pentecost). BCP p. 126.
+  const concludingLines: CallAndResponseLine[] = liturgicalDay.useAlleluia
+    ? [
+        { speaker: "officiant", text: "Let us bless the Lord. Alleluia, alleluia." },
+        { speaker: "people", text: "Thanks be to God. Alleluia, alleluia." },
+      ]
+    : [
+        { speaker: "officiant", text: "Let us bless the Lord." },
+        { speaker: "people", text: "Thanks be to God." },
+      ];
+  slides.push(
+    slide(id(), "suffrages", "🔔", "LET US BLESS THE LORD", "", {
+      isCallAndResponse: true,
+      callAndResponseLines: concludingLines,
+      bcpReference: "BCP p. 126",
+    }),
+  );
+
+  // 19. Concluding blessing — one of three scriptural blessings
+  //     (BCP p. 126), rotated by date. Same rotation as MP.
+  const blessing = pickConcludingBlessing(date);
+  slides.push(
+    slide(id(), "collect", "🙏🏽", "A CONCLUDING BLESSING", blessing.text, {
+      title: blessing.ref,
+      bcpReference: "BCP p. 126",
     }),
   );
 
