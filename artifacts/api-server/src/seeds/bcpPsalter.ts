@@ -5084,4 +5084,457 @@ export const PSALTER: Record<number, PsalmEntry> = {
   and let all the people say, "Amen!"
   Hallelujah!`,
   },
+
+  107: {
+    title: "Confitemini Domino",
+    bcpRef: "BCP p. 745",
+    content:
+`1 Give thanks to the Lord, for he is good, *
+  and his mercy endures for ever.
+2 Let all those whom the Lord has redeemed proclaim *
+  that he redeemed them from the hand of the foe.
+3 He gathered them out of the lands; *
+  from the east and from the west,
+  from the north and from the south.
+4 Some wandered in desert wastes; *
+  they found no way to a city where they might dwell.
+5 They were hungry and thirsty; *
+  their spirits languished within them.
+6 Then they cried to the Lord in their trouble, *
+  and he delivered them from their distress.
+7 He put their feet on a straight path *
+  to go to a city where they might dwell.
+8 Let them give thanks to the Lord for his mercy *
+  and the wonders he does for his children.
+9 For he satisfies the thirsty *
+  and fills the hungry with good things.
+10 Some sat in darkness and deep gloom, *
+  bound fast in misery and iron;
+11 Because they rebelled against the words of God *
+  and despised the counsel of the Most High.
+12 So he humbled their spirits with hard labor; *
+  they stumbled, and there was none to help.
+13 Then they cried to the Lord in their trouble, *
+  and he delivered them from their distress.
+14 He led them out of darkness and deep gloom *
+  and broke their bonds asunder.
+15 Let them give thanks to the Lord for his mercy *
+  and the wonders he does for his children.
+16 For he shatters the doors of bronze *
+  and breaks in two the iron bars.
+17 Some were fools and took to rebellious ways; *
+  they were afflicted because of their sins.
+18 They abhorred all manner of food *
+  and drew near to death's door.
+19 Then they cried to the Lord in their trouble, *
+  and he delivered them from their distress.
+20 He sent forth his word and healed them *
+  and saved them from the grave.
+21 Let them give thanks to the Lord for his mercy *
+  and the wonders he does for his children.
+22 Let them offer a sacrifice of thanksgiving *
+  and tell of his acts with shouts of joy.
+23 Some went down to the sea in ships *
+  and plied their trade in deep waters;
+24 They beheld the works of the Lord *
+  and his wonders in the deep.
+25 Then he spoke, and a stormy wind arose, *
+  which tossed high the waves of the sea.
+26 They mounted up to the heavens and fell back to the depths; *
+  their hearts melted because of their peril.
+27 They reeled and staggered like drunkards *
+  and were at their wits' end.
+28 Then they cried to the Lord in their trouble, *
+  and he delivered them from their distress.
+29 He stilled the storm to a whisper *
+  and quieted the waves of the sea.
+30 Then were they glad because of the calm, *
+  and he brought them to the harbor they were bound for.
+31 Let them give thanks to the Lord for his mercy *
+  and the wonders he does for his children.
+32 Let them exalt him in the congregation of the people *
+  and praise him in the council of the elders.
+33 The Lord changed rivers into deserts, *
+  and water-springs into thirsty ground,
+34 A fruitful land into salt flats, *
+  because of the wickedness of those who dwell there.
+35 He changed deserts into pools of water *
+  and dry land into water-springs.
+36 He settled the hungry there, *
+  and they founded a city to dwell in.
+37 They sowed fields, and planted vineyards, *
+  and brought in a fruitful harvest.
+38 He blessed them, so that they increased greatly; *
+  he did not let their herds decrease.
+39 Yet when they were diminished and brought low, *
+  through stress of adversity and sorrow,
+40 (He pours contempt on princes *
+  and makes them wander in trackless wastes)
+41 He lifted up the poor out of misery *
+  and multiplied their families like flocks of sheep.
+42 The upright will see this and rejoice, *
+  but all wickedness will shut its mouth.
+43 Whoever is wise will ponder these things, *
+  and consider well the mercies of the Lord.`,
+  },
+
+  108: {
+    title: "Paratum cor meum",
+    bcpRef: "BCP p. 748",
+    content:
+`1 My heart is firmly fixed, O God, my heart is fixed; *
+  I will sing and make melody.
+2 Wake up, my spirit;
+  awake, lute and harp; *
+  I myself will waken the dawn.
+3 I will confess you among the peoples, O Lord; *
+  I will sing praises to you among the nations.
+4 For your loving-kindness is greater than the heavens, *
+  and your faithfulness reaches to the clouds.
+5 Exalt yourself above the heavens, O God, *
+  and your glory over all the earth.
+6 So that those who are dear to you may be delivered, *
+  save with your right hand and answer me.
+7 God spoke from his holy place and said, *
+  "I will exult and parcel out Shechem;
+  I will divide the valley of Succoth.
+8 Gilead is mine and Manasseh is mine; *
+  Ephraim is my helmet and Judah my scepter.
+9 Moab is my washbasin,
+  on Edom I throw down my sandal to claim it, *
+  and over Philistia will I shout in triumph."
+10 Who will lead me into the strong city? *
+  who will bring me into Edom?
+11 Have you not cast us off, O God? *
+  you no longer go out, O God, with our armies.
+12 Grant us your help against the enemy, *
+  for vain is the help of man.
+13 With God we will do valiant deeds, *
+  and he shall tread our enemies under foot.`,
+  },
+
+  109: {
+    title: "Deus, laudem",
+    bcpRef: "BCP p. 749",
+    content:
+`1 Hold not your tongue, O God of my praise; *
+  for the mouth of the wicked,
+  the mouth of the deceitful, is opened against me.
+2 They speak to me with a lying tongue; *
+  they encompass me with hateful words
+  and fight against me without a cause.
+3 Despite my love, they accuse me; *
+  but as for me, I pray for them.
+4 They repay evil for good, *
+  and hatred for my love.
+5 Set a wicked man against him, *
+  and let an accuser stand at his right hand.
+6 When he is judged, let him be found guilty, *
+  and let his appeal be in vain.
+7 Let his days be few, *
+  and let another take his office.
+8 Let his children be fatherless, *
+  and his wife become a widow.
+9 Let his children be waifs and beggars; *
+  let them be driven from the ruins of their homes.
+10 Let the creditor seize everything he has; *
+  let strangers plunder his gains.
+11 Let there be no one to show him kindness, *
+  and none to pity his fatherless children.
+12 Let his descendants be destroyed, *
+  and his name be blotted out in the next generation.
+13 Let the wickedness of his fathers be remembered before the Lord, *
+  and his mother's sin not be blotted out;
+14 Let their sin be always before the Lord; *
+  but let him root out their names from the earth;
+15 Because he did not remember to show mercy, *
+  but persecuted the poor and needy
+  and sought to kill the brokenhearted.
+16 He loved cursing,
+  let it come upon him; *
+  he took no delight in blessing,
+  let it depart from him.
+17 He put on cursing like a garment, *
+  let it soak into his body like water
+  and into his bones like oil;
+18 Let it be to him like the cloak which he wraps around himself, *
+  and like the belt that he wears continually.
+19 Let this be the recompense from the Lord to my accusers, *
+  and to those who speak evil against me.
+20 But you, O Lord my God,
+  oh, deal with me according to your Name; *
+  for your tender mercy's sake, deliver me.
+21 For I am poor and needy, *
+  and my heart is wounded within me.
+22 I have faded away like a shadow when it lengthens; *
+  I am shaken off like a locust.
+23 My knees are weak through fasting, *
+  and my flesh is wasted and gaunt.
+24 I have become a reproach to them; *
+  they see and shake their heads.
+25 Help me, O Lord my God; *
+  save me for your mercy's sake.
+26 Let them know that this is your hand, *
+  that you, O Lord, have done it.
+27 They may curse, but you will bless; *
+  let those who rise up against me be put to shame,
+  and your servant will rejoice.
+28 Let my accusers be clothed with disgrace *
+  and wrap themselves in their shame as in a cloak.
+29 I will give great thanks to the Lord with my mouth; *
+  in the midst of the multitude will I praise him;
+30 Because he stands at the right hand of the needy, *
+  to save his life from those who would condemn him.`,
+  },
+
+  110: {
+    title: "Dixit Dominus",
+    bcpRef: "BCP p. 752",
+    content:
+`1 The Lord said to my Lord, "Sit at my right hand, *
+  until I make your enemies your footstool."
+2 The Lord will send the scepter of your power out of Zion, *
+  saying, "Rule over your enemies round about you.
+3 Princely state has been yours from the day of your birth; *
+  in the beauty of holiness have I begotten you,
+  like dew from the womb of the morning."
+4 The Lord has sworn and he will not recant: *
+  "You are a priest for ever after the order of Melchizedek."
+5 The Lord who is at your right hand
+  will smite kings in the day of his wrath; *
+  he will rule over the nations.
+6 He will heap high the corpses; *
+  he will smash heads over the wide earth.
+7 He will drink from the brook beside the road; *
+  therefore he will lift high his head.`,
+  },
+
+  111: {
+    title: "Confitebor tibi",
+    bcpRef: "BCP p. 753",
+    content:
+`1 Hallelujah!
+  I will give thanks to the Lord with my whole heart, *
+  in the assembly of the upright, in the congregation.
+2 Great are the deeds of the Lord! *
+  they are studied by all who delight in them.
+3 His work is full of majesty and splendor, *
+  and his righteousness endures for ever.
+4 He makes his marvelous works to be remembered; *
+  the Lord is gracious and full of compassion.
+5 He gives food to those who fear him; *
+  he is ever mindful of his covenant.
+6 He has shown his people the power of his works *
+  in giving them the lands of the nations.
+7 The works of his hands are faithfulness and justice; *
+  all his commandments are sure.
+8 They stand fast for ever and ever, *
+  because they are done in truth and equity.
+9 He sent redemption to his people;
+  he commanded his covenant for ever; *
+  holy and awesome is his Name.
+10 The fear of the Lord is the beginning of wisdom; *
+  those who act accordingly have a good understanding;
+  his praise endures for ever.`,
+  },
+
+  112: {
+    title: "Beatus vir",
+    bcpRef: "BCP p. 754",
+    content:
+`1 Hallelujah!
+  Happy are they who fear the Lord *
+  and have great delight in his commandments!
+2 Their descendants will be mighty in the land; *
+  the generation of the upright will be blessed.
+3 Wealth and riches will be in their house, *
+  and their righteousness will last for ever.
+4 Light shines in the darkness for the upright; *
+  the righteous are merciful and full of compassion.
+5 It is good for them to be generous in lending *
+  and to manage their affairs with justice.
+6 For they will never be shaken; *
+  the righteous will be kept in everlasting remembrance.
+7 They will not be afraid of any evil rumors; *
+  their heart is right;
+  they put their trust in the Lord.
+8 Their heart is established and will not shrink, *
+  until they see their desire upon their enemies.
+9 They have given freely to the poor, *
+  and their righteousness stands fast for ever;
+  they will hold up their head with honor.
+10 The wicked will see it and be angry;
+  they will gnash their teeth and pine away; *
+  the desires of the wicked will perish.`,
+  },
+
+  113: {
+    title: "Laudate, pueri",
+    bcpRef: "BCP p. 755",
+    content:
+`1 Hallelujah!
+  Give praise, you servants of the Lord; *
+  praise the Name of the Lord.
+2 Let the Name of the Lord be blessed, *
+  from this time forth for evermore.
+3 From the rising of the sun to its going down *
+  let the Name of the Lord be praised.
+4 The Lord is high above all nations, *
+  and his glory above the heavens.
+5 Who is like the Lord our God, who sits enthroned on high, *
+  but stoops to behold the heavens and the earth?
+6 He takes up the weak out of the dust *
+  and lifts up the poor from the ashes.
+7 He sets them with the princes, *
+  with the princes of his people.
+8 He makes the woman of a childless house *
+  to be a joyful mother of children.`,
+  },
+
+  114: {
+    title: "In exitu Israel",
+    bcpRef: "BCP p. 755",
+    content:
+`1 Hallelujah!
+  When Israel came out of Egypt, *
+  the house of Jacob from a people of strange speech,
+2 Judah became God's sanctuary *
+  and Israel his dominion.
+3 The sea beheld it and fled; *
+  Jordan turned and went back.
+4 The mountains skipped like rams, *
+  and the little hills like young sheep.
+5 What ailed you, O sea, that you fled? *
+  O Jordan, that you turned back?
+6 You mountains, that you skipped like rams? *
+  you little hills like young sheep?
+7 Tremble, O earth, at the presence of the Lord, *
+  at the presence of the God of Jacob,
+8 Who turned the hard rock into a pool of water *
+  and flint-stone into a flowing spring.`,
+  },
+
+  115: {
+    title: "Non nobis, Domine",
+    bcpRef: "BCP p. 756",
+    content:
+`1 Not to us, O Lord, not to us,
+  but to your Name give glory; *
+  because of your love and because of your faithfulness.
+2 Why should the heathen say, *
+  "Where then is their God?"
+3 Our God is in heaven; *
+  whatever he wills to do he does.
+4 Their idols are silver and gold, *
+  the work of human hands.
+5 They have mouths, but they cannot speak; *
+  eyes have they, but they cannot see;
+6 They have ears but they cannot hear; *
+  noses, but they cannot smell;
+7 They have hands, but they cannot feel;
+  feet, but they cannot walk; *
+  they make no sound with their throat.
+8 Those who make them are like them, *
+  and so are all who put their trust in them.
+9 O Israel, trust in the Lord; *
+  he is their help and their shield.
+10 O house of Aaron, trust in the Lord; *
+  he is their help and their shield.
+11 You who fear the Lord, trust in the Lord; *
+  he is their help and their shield.
+12 The Lord has been mindful of us, and he will bless us; *
+  he will bless the house of Israel;
+  he will bless the house of Aaron;
+13 He will bless those who fear the Lord, *
+  both small and great together.
+14 May the Lord increase you more and more, *
+  you and your children after you.
+15 May you be blessed by the Lord, *
+  the maker of heaven and earth.
+16 The heaven of heavens is the Lord's, *
+  but he entrusted the earth to its peoples.
+17 The dead do not praise the Lord, *
+  nor all those who go down into silence;
+18 But we will bless the Lord, *
+  from this time forth for evermore.
+  Hallelujah!`,
+  },
+
+  117: {
+    title: "Laudate Dominum",
+    bcpRef: "BCP p. 760",
+    content:
+`1 Praise the Lord, all you nations; *
+  laud him, all you peoples.
+2 For his loving-kindness toward us is great, *
+  and the faithfulness of the Lord endures for ever.
+  Hallelujah!`,
+  },
+
+  118: {
+    title: "Confitemini Domino",
+    bcpRef: "BCP p. 760",
+    content:
+`1 Give thanks to the Lord, for he is good; *
+  his mercy endures for ever.
+2 Let Israel now proclaim, *
+  "His mercy endures for ever."
+3 Let the house of Aaron now proclaim, *
+  "His mercy endures for ever."
+4 Let those who fear the Lord now proclaim, *
+  "His mercy endures for ever."
+5 I called to the Lord in my distress; *
+  the Lord answered by setting me free.
+6 The Lord is at my side, therefore I will not fear; *
+  what can anyone do to me?
+7 The Lord is at my side to help me; *
+  I will triumph over those who hate me.
+8 It is better to rely on the Lord *
+  than to put any trust in flesh.
+9 It is better to rely on the Lord *
+  than to put any trust in rulers.
+10 All the ungodly encompass me; *
+  in the Name of the Lord I will repel them.
+11 They hem me in, they hem me in on every side; *
+  in the name of the Lord I will repel them.
+12 They swarm about me like bees;
+  they blaze like a fire of thorns; *
+  in the name of the Lord I will repel them.
+13 I was pressed so hard that I almost fell, *
+  but the Lord came to my help.
+14 The Lord is my strength and my song, *
+  and he has become my salvation.
+15 There is a sound of exultation and victory *
+  in the tents of the righteous:
+16 "The right hand of the Lord has triumphed! *
+  the right hand of the Lord is exalted!
+  the right hand of the Lord has triumphed!"
+17 I shall not die, but live, *
+  and declare the works of the Lord.
+18 The Lord has punished me sorely, *
+  but he did not hand me over to death.
+19 Open for me the gates of righteousness; *
+  I will enter them;
+  I will offer thanks to the Lord.
+20 "This is the gate of the Lord; *
+  he who is righteous may enter."
+21 I will give thanks to you, for you answered me *
+  and have become my salvation.
+22 The same stone which the builders rejected *
+  has become the chief cornerstone.
+23 This is the Lord's doing, *
+  and it is marvelous in our eyes.
+24 On this day the Lord has acted; *
+  we will rejoice and be glad in it.
+25 Hosanna, Lord, hosanna! *
+  Lord, send us now success.
+26 Blessed is he who comes in the name of the Lord; *
+  we bless you from the house of the Lord.
+27 God is the Lord; he has shined upon us; *
+  form a procession with branches up to the horns of the altar.
+28 "You are my God, and I will thank you; *
+  you are my God, and I will exalt you."
+29 Give thanks to the Lord, for he is good; *
+  his mercy endures for ever.`,
+  },
 };
