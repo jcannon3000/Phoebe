@@ -8,7 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 // Modes:
 //   signin — existing accounts log in
 //   signup — open registration. New users land on /welcome to pick
-//            their first surface (Phoebe Climate or a community).
+//            a community to join (Climate is now a prayer feed, not a
+//            separate signup path, so it's no longer offered here).
 type Mode = "signin" | "signup";
 
 export default function Onboarding() {
@@ -25,7 +26,7 @@ export default function Onboarding() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   // Tracks whether the most recent mutation was a fresh signup so we
-  // route to /welcome instead of the climate-only / dashboard default.
+  // route to /welcome instead of the dashboard default.
   const [justSignedUp, setJustSignedUp] = useState(false);
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -41,8 +42,7 @@ export default function Onboarding() {
         setLocation("/welcome");
         return;
       }
-      // Climate-only users land on /climate by default.
-      setLocation(user.climateOnly ? "/climate" : "/dashboard");
+      setLocation("/dashboard");
     }
   }, [user, isLoading, setLocation, explicitRedirect, justSignedUp]);
 
