@@ -5917,4 +5917,141 @@ export const PSALTER: Record<number, PsalmEntry> = {
 7 I am on the side of peace, *
   but when I speak of it, they are for war.`,
   },
+
+  123: {
+    title: "Ad te levavi oculos meos",
+    bcpRef: "BCP p. 779",
+    content:
+`1 To you I lift up my eyes, *
+  to you enthroned in the heavens.
+2 As the eyes of servants look to the hand of their masters, *
+  and the eyes of a maid to the hand of her mistress,
+3 So our eyes look to the Lord our God, *
+  until he show us his mercy.
+4 Have mercy upon us, O Lord, have mercy, *
+  for we have had more than enough of contempt,
+5 Too much of the scorn of the indolent rich, *
+  and of the derision of the proud.`,
+  },
+
+  124: {
+    title: "Nisi quia Dominus",
+    bcpRef: "BCP p. 780",
+    content:
+`1 If the Lord had not been on our side, *
+  let Israel now say;
+2 If the Lord had not been on our side, *
+  when enemies rose up against us;
+3 Then would they have swallowed us up alive *
+  in their fierce anger toward us;
+4 Then would the waters have overwhelmed us *
+  and the torrent gone over us;
+5 Then would the raging waters *
+  have gone right over us.
+6 Blessed be the Lord! *
+  he has not given us over to be a prey for their teeth.
+7 We have escaped like a bird from the snare of the fowler; *
+  the snare is broken, and we have escaped.
+8 Our help is in the Name of the Lord, *
+  the maker of heaven and earth.`,
+  },
+
+  125: {
+    title: "Qui confidunt",
+    bcpRef: "BCP p. 780",
+    content:
+`1 Those who trust in the Lord are like Mount Zion, *
+  which cannot be moved, but stands fast for ever.
+2 The hills stand about Jerusalem; *
+  so does the Lord stand round about his people,
+  from this time forth for evermore.
+3 The scepter of the wicked shall not hold sway over the land allotted to the just, *
+  so that the just shall not put their hands to evil.
+4 Show your goodness, O Lord, to those who are good *
+  and to those who are true of heart.
+5 As for those who turn aside to crooked ways,
+  the Lord will lead them away with the evildoers; *
+  but peace be upon Israel.`,
+  },
+
+  126: {
+    title: "In convertendo",
+    bcpRef: "BCP p. 781",
+    content:
+`1 When the Lord restored the fortunes of Zion, *
+  then were we like those who dream.
+2 Then was our mouth filled with laughter, *
+  and our tongue with shouts of joy.
+3 Then they said among the nations, *
+  "The Lord has done great things for them."
+4 The Lord has done great things for us, *
+  and we are glad indeed.
+5 Restore our fortunes, O Lord, *
+  like the watercourses of the Negev.
+6 Those who sowed with tears *
+  will reap with songs of joy.
+7 Those who go out weeping, carrying the seed, *
+  will come again with joy, shouldering their sheaves.`,
+  },
+
+  127: {
+    title: "Nisi Dominus",
+    bcpRef: "BCP p. 781",
+    content:
+`1 Unless the Lord builds the house, *
+  their labor is in vain who build it.
+2 Unless the Lord watches over the city, *
+  in vain the watchman keeps his vigil.
+3 It is in vain that you rise so early and go to bed so late; *
+  vain, too, to eat the bread of toil,
+  for he gives to his beloved sleep.
+4 Children are a heritage from the Lord, *
+  and the fruit of the womb is a gift.
+5 Like arrows in the hand of a warrior *
+  are the children of one's youth.
+6 Happy is the man who has his quiver full of them! *
+  he shall not be put to shame
+  when he contends with his enemies in the gate.`,
+  },
+
+  128: {
+    title: "Beati omnes",
+    bcpRef: "BCP p. 782",
+    content:
+`1 Happy are they all who fear the Lord, *
+  and who follow in his ways!
+2 You shall eat the fruit of your labor; *
+  happiness and prosperity shall be yours.
+3 Your wife shall be like a fruitful vine within your house, *
+  your children like olive shoots round about your table.
+4 The man who fears the Lord *
+  shall thus indeed be blessed.
+5 The Lord bless you from Zion, *
+  and may you see the prosperity of Jerusalem all the days of your life.
+6 May you live to see your children's children; *
+  may peace be upon Israel.`,
+  },
+
+  129: {
+    title: "Saepe expugnaverunt",
+    bcpRef: "BCP p. 783",
+    content:
+`1 "Greatly have they oppressed me since my youth," *
+  let Israel now say;
+2 "Greatly have they oppressed me since my youth, *
+  but they have not prevailed against me."
+3 The plowmen plowed upon my back *
+  and made their furrows long.
+4 The Lord, the Righteous One, *
+  has cut the cords of the wicked.
+5 Let them be put to shame and thrown back, *
+  all those who are enemies of Zion.
+6 Let them be like grass upon the housetops, *
+  which withers before it can be plucked;
+7 Which does not fill the hand of the reaper, *
+  nor the bosom of him who binds the sheaves;
+8 So that those who go by say not so much as,
+  "The Lord prosper you. *
+  We wish you well in the Name of the Lord."`,
+  },
 };
