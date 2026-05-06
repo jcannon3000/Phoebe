@@ -250,9 +250,12 @@ export default function BcpPsalterPage() {
               }
             `}</style>
 
-            {/* Modal header */}
+            {/* Modal header — tightened from pt-6 (24px) to pt-3 (12px)
+                so the eyebrow + title sit closer to the top edge. The
+                earlier value left a visible empty band above the
+                eyebrow on the bottom-sheet variant. */}
             <div
-              className="px-6 pt-6 pb-4 flex items-start justify-between gap-4"
+              className="px-6 pt-3 pb-4 flex items-start justify-between gap-4"
               style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}
             >
               <div>
