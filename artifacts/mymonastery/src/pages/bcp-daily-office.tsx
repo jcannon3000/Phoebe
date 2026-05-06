@@ -53,6 +53,60 @@ const SECTION_LABEL: Record<string, string> = {
   closing: "Closing",
 };
 
+// Parse a 1979 BCP Psalter content blob into a structured list for the
+// renderer. The data file (api-server/src/seeds/bcpPsalter.ts) stores
+// each psalm with:
+//   • Each verse begins with `<number><space>` at the start of a line.
+//   • The first hemistich ends with " *" before a newline.
+//   • The second hemistich follows on the next line, indented by two
+//     spaces.
+//   • A trailing Gloria Patri block is appended by the assembler,
+//     prefixed by a leading newline and beginning with "Glory to the
+//     Father" — has no verse number and shouldn't get one rendered.
+//
+// We split into "verse" entries (numbered, two lines, hemistichs) and
+// a "doxology" entry for the Gloria. The renderer visualises each.
+type PsalmLine = { text: string; indented: boolean };
+type PsalmEntry =
+  | { kind: "verse"; number: string; lines: PsalmLine[] }
+  | { kind: "doxology"; text: string };
+
+function parsePsalmContent(content: string): PsalmEntry[] {
+  const result: PsalmEntry[] = [];
+  // Split off the Gloria Patri (always preceded by a blank line +
+  // begins with "Glory to the Father"). It's the only non-numbered
+  // block we expect to see.
+  const gloriaMatch = content.match(/\n\s*\n?\s*(Glory to the Father[\s\S]+)$/);
+  const psalmBody = gloriaMatch
+    ? content.slice(0, content.length - gloriaMatch[1].length).trimEnd()
+    : content;
+  const gloria = gloriaMatch ? gloriaMatch[1].trim() : null;
+
+  // Walk the psalm body line by line. A line that starts with digits
+  // followed by a space opens a new verse; the rest of its line is
+  // the first hemistich. Subsequent indented lines (leading spaces)
+  // belong to the same verse as additional hemistichs.
+  const rawLines = psalmBody.split("\n");
+  let current: { number: string; lines: PsalmLine[] } | null = null;
+  for (const raw of rawLines) {
+    const line = raw.replace(/\s+$/, "");
+    if (line === "") continue;
+    const verseMatch = line.match(/^(\d+)\s+(.*)$/);
+    if (verseMatch) {
+      if (current) result.push({ kind: "verse", ...current });
+      current = { number: verseMatch[1], lines: [{ text: verseMatch[2], indented: false }] };
+    } else if (current) {
+      // Any continuation line — indentation in the source signals
+      // that this is the second (or third) hemistich of the verse.
+      const indented = /^\s/.test(raw);
+      current.lines.push({ text: line.trim(), indented });
+    }
+  }
+  if (current) result.push({ kind: "verse", ...current });
+  if (gloria) result.push({ kind: "doxology", text: gloria });
+  return result;
+}
+
 function OfficeViewer({ office, onBack }: OfficeViewerProps) {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
@@ -220,11 +274,103 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
             {currentSlide.eyebrow || sectionLabel}
           </p>
           {currentSlide.title && (
-            <h2 style={{ fontSize: 22, fontWeight: 600, color: WARM_TEXT, letterSpacing: "-0.01em", margin: 0 }}>
+            <h2
+              style={{
+                // Psalms get italic + serif because the title slot
+                // carries the Latin incipit ("Deus, judicium" etc.)
+                // which BCP convention italicises. Other slide types
+                // keep the bolder Space Grotesk treatment.
+                fontSize: currentSlide.type === "psalm" ? 18 : 22,
+                fontWeight: currentSlide.type === "psalm" ? 400 : 600,
+                fontStyle: currentSlide.type === "psalm" ? "italic" : "normal",
+                fontFamily: currentSlide.type === "psalm"
+                  ? "Georgia, 'Times New Roman', serif"
+                  : SPACE_GROTESK,
+                color: WARM_TEXT,
+                letterSpacing: "-0.01em",
+                margin: 0,
+              }}
+            >
               {currentSlide.title}
             </h2>
           )}
-          {currentSlide.isCallAndResponse && currentSlide.callAndResponseLines ? (
+          {/* Psalms render as a structured list of verses — verse number
+              on the left, asterisk visible at the half-verse caesura,
+              second hemistich indented, and a clear gap between
+              verses. Mirrors the 1979 BCP Psalter page format. The
+              Gloria Patri (which the assembler appends to every
+              psalm) renders as an unnumbered italic doxology at the
+              bottom. The fallback continues to use whiteSpace pre-
+              wrap for any non-psalm long-text slide.
+              The data is already in the right shape — verses begin
+              with `<digit><space>`, hemistichs are split by " *\n  "
+              — so the parser just walks line by line. */}
+          {currentSlide.type === "psalm" && currentSlide.content ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
+              {parsePsalmContent(currentSlide.content).map((v, i) => (
+                v.kind === "verse" ? (
+                  <div key={i} style={{ display: "flex", gap: 10 }}>
+                    <span
+                      style={{
+                        flex: "0 0 auto",
+                        minWidth: 22,
+                        color: FAINT_GREEN,
+                        fontSize: 13,
+                        fontFamily: SPACE_GROTESK,
+                        lineHeight: 1.6,
+                        paddingTop: 2,
+                      }}
+                    >
+                      {v.number}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      {v.lines.map((ln, li) => (
+                        <p
+                          key={li}
+                          style={{
+                            fontSize: 16,
+                            lineHeight: 1.6,
+                            color: WARM_TEXT,
+                            margin: 0,
+                            paddingLeft: ln.indented ? 24 : 0,
+                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {ln.text}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  // Gloria Patri — italic, no verse number, separated
+                  // by a hairline rule above to mark it as a doxology
+                  // not part of the numbered psalm body.
+                  <div
+                    key={i}
+                    style={{
+                      borderTop: "1px solid rgba(143,175,150,0.18)",
+                      paddingTop: 12,
+                      marginTop: 4,
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: 15,
+                        lineHeight: 1.7,
+                        color: WARM_TEXT,
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        fontStyle: "italic",
+                        margin: 0,
+                      }}
+                    >
+                      {v.text}
+                    </p>
+                  </div>
+                )
+              ))}
+            </div>
+          ) : currentSlide.isCallAndResponse && currentSlide.callAndResponseLines ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 560 }}>
               {currentSlide.callAndResponseLines.map((line, i) => (
                 <div key={i}>

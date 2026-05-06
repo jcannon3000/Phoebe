@@ -440,6 +440,12 @@ export async function assembleMorningPrayer(
 
     slides.push(
       slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", `PSALM ${psalmNum}`, content, {
+        // Latin incipit goes into title so the renderer can show it as
+        // italic above the verses, matching the 1979 BCP Psalter page
+        // layout. Falls back to null if the psalm row hasn't been seeded
+        // (in which case the slide has no Latin caption — better than
+        // showing the placeholder content as a title).
+        title: psalmData?.title ?? null,
         isScrollable: true,
         scrollHint: "↓ continue · tap when ready",
         metadata: psalmData?.metadata ?? {},
