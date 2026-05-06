@@ -803,4 +803,717 @@ export const PSALTER: Record<number, PsalmEntry> = {
   praise the Lord.
   Hallelujah!`,
   },
+
+  22: {
+    title: "Deus, Deus meus",
+    bcpRef: "BCP p. 610",
+    content:
+`1 My God, my God, why have you forsaken me? *
+  and are so far from my cry
+  and from the words of my distress?
+2 O my God, I cry in the daytime, but you do not answer; *
+  by night as well, but I find no rest.
+3 Yet you are the Holy One, *
+  enthroned upon the praises of Israel.
+4 Our forefathers put their trust in you; *
+  they trusted, and you delivered them.
+5 They cried out to you and were delivered; *
+  they trusted in you and were not put to shame.
+6 But as for me, I am a worm and no man, *
+  scorned by all and despised by the people.
+7 All who see me laugh me to scorn; *
+  they curl their lips and wag their heads, saying,
+8 "He trusted in the Lord; let him deliver him; *
+  let him rescue him, if he delights in him."
+9 Yet you are he who took me out of the womb, *
+  and kept me safe upon my mother's breast.
+10 I have been entrusted to you ever since I was born; *
+  you were my God when I was still in my mother's womb.
+11 Be not far from me, for trouble is near, *
+  and there is none to help.
+12 Many young bulls encircle me; *
+  strong bulls of Bashan surround me.
+13 They open their mouths at me, *
+  like a ravening and a roaring lion.
+14 I am poured out like water;
+  all my bones are out of joint; *
+  my heart within my breast is melting wax.
+15 My mouth is dried out like a pot-sherd;
+  my tongue sticks to the roof of my mouth; *
+  and you have laid me in the dust of the grave.
+16 Packs of dogs close me in,
+  and gangs of evildoers circle around me; *
+  they pierce my hands and my feet;
+  I can count all my bones.
+17 They stare and gloat over me; *
+  they divide my garments among them;
+  they cast lots for my clothing.
+18 Be not far away, O Lord; *
+  you are my strength; hasten to help me.
+19 Save me from the sword, *
+  my life from the power of the dog.
+20 Save me from the lion's mouth, *
+  my wretched body from the horns of wild bulls.
+21 I will declare your Name to my brethren; *
+  in the midst of the congregation I will praise you.
+22 Praise the Lord, you that fear him; *
+  stand in awe of him, O offspring of Israel;
+  all you of Jacob's line, give glory.
+23 For he does not despise nor abhor the poor in their poverty;
+  neither does he hide his face from them; *
+  but when they cry to him he hears them.
+24 My praise is of him in the great assembly; *
+  I will perform my vows in the presence of those who worship him.
+25 The poor shall eat and be satisfied,
+  and those who seek the Lord shall praise him: *
+  "May your heart live for ever!"
+26 All the ends of the earth shall remember and turn to the Lord, *
+  and all the families of the nations shall bow before him.
+27 For kingship belongs to the Lord; *
+  he rules over the nations.
+28 To him alone all who sleep in the earth bow down in worship; *
+  all who go down to the dust fall before him.
+29 My soul shall live for him;
+  my descendants shall serve him; *
+  they shall be known as the Lord's for ever.
+30 They shall come and make known to a people yet unborn *
+  the saving deeds that he has done.`,
+  },
+
+  24: {
+    title: "Domini est terra",
+    bcpRef: "BCP p. 613",
+    content:
+`1 The earth is the Lord's and all that is in it, *
+  the world and all who dwell therein.
+2 For it is he who founded it upon the seas *
+  and made it firm upon the rivers of the deep.
+3 "Who can ascend the hill of the Lord? *
+  and who can stand in his holy place?"
+4 "Those who have clean hands and a pure heart, *
+  who have not pledged themselves to falsehood,
+  nor sworn by what is a fraud.
+5 They shall receive a blessing from the Lord *
+  and a just reward from the God of their salvation."
+6 Such is the generation of those who seek him, *
+  of those who seek your face, O God of Jacob.
+7 Lift up your heads, O gates;
+  lift them high, O everlasting doors; *
+  and the King of glory shall come in.
+8 "Who is this King of glory?" *
+  "The Lord, strong and mighty,
+  the Lord, mighty in battle."
+9 Lift up your heads, O gates;
+  lift them high, O everlasting doors; *
+  and the King of glory shall come in.
+10 "Who is he, this King of glory?" *
+  "The Lord of hosts,
+  he is the King of glory."`,
+  },
+
+  25: {
+    title: "Ad te, Domine, levavi",
+    bcpRef: "BCP p. 614",
+    content:
+`1 To you, O Lord, I lift up my soul;
+  my God, I put my trust in you; *
+  let me not be humiliated,
+  nor let my enemies triumph over me.
+2 Let none who look to you be put to shame; *
+  let the treacherous be disappointed in their schemes.
+3 Show me your ways, O Lord, *
+  and teach me your paths.
+4 Lead me in your truth and teach me, *
+  for you are the God of my salvation;
+  in you have I trusted all the day long.
+5 Remember, O Lord, your compassion and love, *
+  for they are from everlasting.
+6 Remember not the sins of my youth and my transgressions; *
+  remember me according to your love
+  and for the sake of your goodness, O Lord.
+7 Gracious and upright is the Lord; *
+  therefore he teaches sinners in his way.
+8 He guides the humble in doing right *
+  and teaches his way to the lowly.
+9 All the paths of the Lord are love and faithfulness *
+  to those who keep his covenant and his testimonies.
+10 For your Name's sake, O Lord, *
+  forgive my sin, for it is great.
+11 Who are they who fear the Lord? *
+  he will teach them the way that they should choose.
+12 They shall dwell in prosperity, *
+  and their offspring shall inherit the land.
+13 The Lord is a friend to those who fear him *
+  and will show them his covenant.
+14 My eyes are ever looking to the Lord, *
+  for he shall pluck my feet out of the net.
+15 Turn to me and have pity on me, *
+  for I am left alone and in misery.
+16 The sorrows of my heart have increased; *
+  bring me out of my troubles.
+17 Look upon my adversity and misery *
+  and forgive me all my sin.
+18 Look upon my enemies, for they are many, *
+  and they bear a violent hatred against me.
+19 Protect my life and deliver me; *
+  let me not be put to shame, for I have trusted in you.
+20 Let integrity and uprightness preserve me, *
+  for my hope has been in you.
+21 Deliver Israel, O God, *
+  out of all his troubles.`,
+  },
+
+  30: {
+    title: "Exaltabo te, Domine",
+    bcpRef: "BCP p. 621",
+    content:
+`1 I will exalt you, O Lord,
+  because you have lifted me up *
+  and have not let my enemies triumph over me.
+2 O Lord my God, I cried out to you, *
+  and you restored me to health.
+3 You brought me up, O Lord, from the dead; *
+  you restored my life as I was going down to the grave.
+4 Sing to the Lord, you servants of his; *
+  give thanks for the remembrance of his holiness.
+5 For his wrath endures but the twinkling of an eye, *
+  his favor for a lifetime.
+6 Weeping may spend the night, *
+  but joy comes in the morning.
+7 While I felt secure, I said,
+  "I shall never be disturbed. *
+  You, Lord, with your favor, made me as strong as the mountains."
+8 Then you hid your face, *
+  and I was filled with fear.
+9 I cried to you, O Lord; *
+  I pleaded with the Lord, saying,
+10 "What profit is there in my blood, if I go down to the Pit? *
+  will the dust praise you or declare your faithfulness?
+11 Hear, O Lord, and have mercy upon me; *
+  O Lord, be my helper."
+12 You have turned my wailing into dancing; *
+  you have put off my sack-cloth and clothed me with joy.
+13 Therefore my heart sings to you without ceasing; *
+  O Lord my God, I will give you thanks for ever.`,
+  },
+
+  34: {
+    title: "Benedicam Dominum",
+    bcpRef: "BCP p. 627",
+    content:
+`1 I will bless the Lord at all times; *
+  his praise shall ever be in my mouth.
+2 I will glory in the Lord; *
+  let the humble hear and rejoice.
+3 Proclaim with me the greatness of the Lord; *
+  let us exalt his Name together.
+4 I sought the Lord, and he answered me *
+  and delivered me out of all my terror.
+5 Look upon him and be radiant, *
+  and let not your faces be ashamed.
+6 I called in my affliction and the Lord heard me *
+  and saved me from all my troubles.
+7 The angel of the Lord encompasses those who fear him, *
+  and he will deliver them.
+8 Taste and see that the Lord is good; *
+  happy are they who trust in him!
+9 Fear the Lord, you that are his saints, *
+  for those who fear him lack nothing.
+10 The young lions lack and suffer hunger, *
+  but those who seek the Lord lack nothing that is good.
+11 Come, children, and listen to me; *
+  I will teach you the fear of the Lord.
+12 Who among you loves life *
+  and desires long life to enjoy prosperity?
+13 Keep your tongue from evil-speaking *
+  and your lips from lying words.
+14 Turn from evil and do good; *
+  seek peace and pursue it.
+15 The eyes of the Lord are upon the righteous, *
+  and his ears are open to their cry.
+16 The face of the Lord is against those who do evil, *
+  to root out the remembrance of them from the earth.
+17 The righteous cry, and the Lord hears them *
+  and delivers them from all their troubles.
+18 The Lord is near to the brokenhearted *
+  and will save those whose spirits are crushed.
+19 Many are the troubles of the righteous, *
+  but the Lord will deliver him out of them all.
+20 He will keep safe all his bones; *
+  not one of them shall be broken.
+21 Evil shall slay the wicked, *
+  and those who hate the righteous will be punished.
+22 The Lord ransoms the life of his servants, *
+  and none will be punished who trust in him.`,
+  },
+
+  61: {
+    title: "Exaudi, Deus",
+    bcpRef: "BCP p. 668",
+    content:
+`1 Hear my cry, O God, *
+  and listen to my prayer.
+2 I call upon you from the ends of the earth with heaviness in my heart; *
+  set me upon the rock that is higher than I.
+3 For you have been my refuge, *
+  a strong tower against the enemy.
+4 I will dwell in your house for ever; *
+  I will take refuge under the cover of your wings.
+5 For you, O God, have heard my vows; *
+  you have granted me the heritage of those who fear your Name.
+6 Add length of days to the king's life; *
+  let his years extend over many generations.
+7 Let him sit enthroned before God for ever; *
+  bid love and faithfulness watch over him.
+8 So will I always sing the praise of your Name, *
+  and day by day I will fulfill my vows.`,
+  },
+
+  62: {
+    title: "Nonne Deo?",
+    bcpRef: "BCP p. 669",
+    content:
+`1 For God alone my soul in silence waits; *
+  from him comes my salvation.
+2 He alone is my rock and my salvation, *
+  my stronghold, so that I shall not be greatly shaken.
+3 How long will you assail me to crush me, all of you together, *
+  as if you were a leaning fence, a toppling wall?
+4 They seek only to bring me down from my place of honor; *
+  lies are their chief delight.
+5 They bless with their lips, *
+  but in their hearts they curse.
+6 For God alone my soul in silence waits; *
+  truly, my hope is in him.
+7 He alone is my rock and my salvation, *
+  my stronghold, so that I shall not be shaken.
+8 In God is my safety and my honor; *
+  God is my strong rock and my refuge.
+9 Put your trust in him always, O people, *
+  pour out your hearts before him, for God is our refuge.
+10 Those of high degree are but a fleeting breath, *
+  even those of low estate cannot be trusted.
+11 On the scales they are lighter than a breath, *
+  all of them together.
+12 Put no trust in extortion;
+  in robbery take no empty pride; *
+  though wealth increase, set not your heart upon it.
+13 God has spoken once, twice have I heard it, *
+  that power belongs to God.
+14 Steadfast love is yours, O Lord, *
+  for you repay everyone according to his deeds.`,
+  },
+
+  70: {
+    title: "Deus, in adjutorium",
+    bcpRef: "BCP p. 682",
+    content:
+`1 Be pleased, O God, to deliver me; *
+  O Lord, make haste to help me.
+2 Let those who seek my life be ashamed
+  and altogether dismayed; *
+  let those who take pleasure in my misfortune
+  draw back and be disgraced.
+3 Let those who say to me "Aha!" and gloat over me turn back, *
+  because they are ashamed.
+4 Let all who seek you rejoice and be glad in you; *
+  let those who love your salvation say for ever, "Great is the Lord!"
+5 But as for me, I am poor and needy; *
+  come to me speedily, O God.
+6 You are my helper and my deliverer; *
+  O Lord, do not tarry.`,
+  },
+
+  71: {
+    title: "In te, Domine, speravi",
+    bcpRef: "BCP p. 683",
+    content:
+`1 In you, O Lord, have I taken refuge; *
+  let me never be ashamed.
+2 In your righteousness, deliver me and set me free; *
+  incline your ear to me and save me.
+3 Be my strong rock, a castle to keep me safe; *
+  you are my crag and my stronghold.
+4 Deliver me, my God, from the hand of the wicked, *
+  from the clutches of the evildoer and the oppressor.
+5 For you are my hope, O Lord God, *
+  my confidence since I was young.
+6 I have been sustained by you ever since I was born;
+  from my mother's womb you have been my strength; *
+  my praise shall be always of you.
+7 I have become a portent to many; *
+  but you are my refuge and my strength.
+8 Let my mouth be full of your praise *
+  and your glory all the day long.
+9 Do not cast me off in my old age; *
+  forsake me not when my strength fails.
+10 For my enemies are talking against me, *
+  and those who lie in wait for my life take counsel together.
+11 They say, "God has forsaken him;
+  go after him and seize him; *
+  because there is none who will save."
+12 O God, be not far from me; *
+  come quickly to help me, O my God.
+13 Let those who set themselves against me be put to shame and be disgraced; *
+  let those who seek to do me evil be covered with scorn and reproach.
+14 But I shall always wait in patience, *
+  and shall praise you more and more.
+15 My mouth shall recount your mighty acts and saving deeds all day long; *
+  though I cannot know the number of them.
+16 I will begin with the mighty works of the Lord God; *
+  I will recall your righteousness, yours alone.
+17 O God, you have taught me since I was young, *
+  and to this day I tell of your wonderful works.
+18 And now that I am old and gray-headed, O God, do not forsake me, *
+  till I make known your strength to this generation
+  and your power to all who are to come.
+19 Your righteousness, O God, reaches to the heavens; *
+  you have done great things;
+  who is like you, O God?
+20 You have showed me great troubles and adversities, *
+  but you will restore my life
+  and bring me up again from the deep places of the earth.
+21 You strengthen me more and more; *
+  you enfold and comfort me,
+22 Therefore I will praise you upon the lyre for your faithfulness, O my God; *
+  I will sing to you with the harp, O Holy One of Israel.
+23 My lips will sing with joy when I play to you, *
+  and so will my soul, which you have redeemed.
+24 My tongue will proclaim your righteousness all day long, *
+  for they are ashamed and disgraced who sought to do me harm.`,
+  },
+
+  72: {
+    title: "Deus, judicium",
+    bcpRef: "BCP p. 685",
+    content:
+`1 Give the King your justice, O God, *
+  and your righteousness to the King's Son;
+2 That he may rule your people righteously *
+  and the poor with justice;
+3 That the mountains may bring prosperity to the people, *
+  and the little hills bring righteousness.
+4 He shall defend the needy among the people; *
+  he shall rescue the poor and crush the oppressor.
+5 He shall live as long as the sun and moon endure, *
+  from one generation to another.
+6 He shall come down like rain upon the mown field, *
+  like showers that water the earth.
+7 In his time shall the righteous flourish; *
+  there shall be abundance of peace till the moon shall be no more.
+8 He shall rule from sea to sea, *
+  and from the River to the ends of the earth.
+9 His foes shall bow down before him, *
+  and his enemies lick the dust.
+10 The kings of Tarshish and of the isles shall pay tribute, *
+  and the kings of Arabia and Saba offer gifts.
+11 All kings shall bow down before him, *
+  and all the nations do him service.
+12 For he shall deliver the poor who cries out in distress, *
+  and the oppressed who has no helper.
+13 He shall have pity on the lowly and poor; *
+  he shall preserve the lives of the needy.
+14 He shall redeem their lives from oppression and violence, *
+  and dear shall their blood be in his sight.
+15 Long may he live!
+  and may there be given to him gold from Arabia; *
+  may prayer be made for him always,
+  and may they bless him all the day long.
+16 May there be abundance of grain on the earth,
+  growing thick even on the hilltops; *
+  may its fruit flourish like Lebanon,
+  and its grain like grass upon the earth.
+17 May his Name remain for ever
+  and be established as long as the sun endures; *
+  may all the nations bless themselves in him
+  and call him blessed.
+18 Blessed be the Lord God, the God of Israel, *
+  who alone does wondrous deeds!
+19 And blessed be his glorious Name for ever! *
+  and may all the earth be filled with his glory.
+  Amen. Amen.`,
+  },
+
+  84: {
+    title: "Quam dilecta!",
+    bcpRef: "BCP p. 707",
+    content:
+`1 How dear to me is your dwelling, O Lord of hosts! *
+  My soul has a desire and longing for the courts of the Lord;
+  my heart and my flesh rejoice in the living God.
+2 The sparrow has found her a house
+  and the swallow a nest where she may lay her young; *
+  by the side of your altars, O Lord of hosts,
+  my King and my God.
+3 Happy are they who dwell in your house! *
+  they will always be praising you.
+4 Happy are the people whose strength is in you! *
+  whose hearts are set on the pilgrims' way.
+5 Those who go through the desolate valley will find it a place of springs, *
+  for the early rains have covered it with pools of water.
+6 They will climb from height to height, *
+  and the God of gods will reveal himself in Zion.
+7 Lord God of hosts, hear my prayer; *
+  hearken, O God of Jacob.
+8 Behold our defender, O God; *
+  and look upon the face of your Anointed.
+9 For one day in your courts is better than a thousand in my own room, *
+  and to stand at the threshold of the house of my God
+  than to dwell in the tents of the wicked.
+10 For the Lord God is both sun and shield; *
+  he will give grace and glory;
+11 No good thing will the Lord withhold *
+  from those who walk with integrity.
+12 O Lord of hosts, *
+  happy are they who put their trust in you!`,
+  },
+
+  91: {
+    title: "Qui habitat",
+    bcpRef: "BCP p. 719",
+    content:
+`1 He who dwells in the shelter of the Most High, *
+  abides under the shadow of the Almighty.
+2 He shall say to the Lord,
+  "You are my refuge and my stronghold, *
+  my God in whom I put my trust."
+3 He shall deliver you from the snare of the hunter *
+  and from the deadly pestilence.
+4 He shall cover you with his pinions,
+  and you shall find refuge under his wings; *
+  his faithfulness shall be a shield and buckler.
+5 You shall not be afraid of any terror by night, *
+  nor of the arrow that flies by day;
+6 Of the plague that stalks in the darkness, *
+  nor of the sickness that lays waste at mid-day.
+7 A thousand shall fall at your side
+  and ten thousand at your right hand, *
+  but it shall not come near you.
+8 Your eyes have only to behold *
+  to see the reward of the wicked.
+9 Because you have made the Lord your refuge, *
+  and the Most High your habitation,
+10 There shall no evil happen to you, *
+  neither shall any plague come near your dwelling.
+11 For he shall give his angels charge over you, *
+  to keep you in all your ways.
+12 They shall bear you in their hands, *
+  lest you dash your foot against a stone.
+13 You shall tread upon the lion and adder; *
+  you shall trample the young lion and the serpent under your feet.
+14 Because he is bound to me in love,
+  therefore will I deliver him; *
+  I will protect him, because he knows my Name.
+15 He shall call upon me, and I will answer him; *
+  I am with him in trouble;
+  I will rescue him and bring him to honor.
+16 With long life will I satisfy him, *
+  and show him my salvation.`,
+  },
+
+  103: {
+    title: "Benedic, anima mea",
+    bcpRef: "BCP p. 733",
+    content:
+`1 Bless the Lord, O my soul, *
+  and all that is within me, bless his holy Name.
+2 Bless the Lord, O my soul, *
+  and forget not all his benefits.
+3 He forgives all your sins *
+  and heals all your infirmities;
+4 He redeems your life from the grave *
+  and crowns you with mercy and loving-kindness;
+5 He satisfies you with good things, *
+  and your youth is renewed like an eagle's.
+6 The Lord executes righteousness *
+  and judgment for all who are oppressed.
+7 He made his ways known to Moses *
+  and his works to the children of Israel.
+8 The Lord is full of compassion and mercy, *
+  slow to anger and of great kindness.
+9 He will not always accuse us, *
+  nor will he keep his anger for ever.
+10 He has not dealt with us according to our sins, *
+  nor rewarded us according to our wickedness.
+11 For as the heavens are high above the earth, *
+  so is his mercy great upon those who fear him.
+12 As far as the east is from the west, *
+  so far has he removed our sins from us.
+13 As a father cares for his children, *
+  so does the Lord care for those who fear him.
+14 For he himself knows whereof we are made; *
+  he remembers that we are but dust.
+15 Our days are like the grass; *
+  we flourish like a flower of the field;
+16 When the wind goes over it, it is gone, *
+  and its place shall know it no more.
+17 But the merciful goodness of the Lord endures for ever
+  on those who fear him, *
+  and his righteousness on children's children;
+18 On those who keep his covenant *
+  and remember his commandments and do them.
+19 The Lord has set his throne in heaven, *
+  and his kingship has dominion over all.
+20 Bless the Lord, you angels of his,
+  you mighty ones who do his bidding, *
+  and hearken to the voice of his word.
+21 Bless the Lord, all you his hosts, *
+  you ministers of his who do his will.
+22 Bless the Lord, all you works of his,
+  in all places of his dominion; *
+  bless the Lord, O my soul.`,
+  },
+
+  116: {
+    title: "Dilexi, quoniam",
+    bcpRef: "BCP p. 759",
+    content:
+`1 I love the Lord, because he has heard the voice of my supplication, *
+  because he has inclined his ear to me whenever I called upon him.
+2 The cords of death entangled me;
+  the grip of the grave took hold of me; *
+  I came to grief and sorrow.
+3 Then I called upon the Name of the Lord: *
+  "O Lord, I pray you, save my life."
+4 Gracious is the Lord and righteous; *
+  our God is full of compassion.
+5 The Lord watches over the innocent; *
+  I was brought very low, and he helped me.
+6 Turn again to your rest, O my soul, *
+  for the Lord has treated you well.
+7 For you have rescued my life from death, *
+  my eyes from tears, and my feet from stumbling.
+8 I will walk in the presence of the Lord *
+  in the land of the living.
+9 I believed, even when I said, "I have been brought very low." *
+  In my distress I said, "No one can be trusted."
+10 How shall I repay the Lord *
+  for all the good things he has done for me?
+11 I will lift up the cup of salvation *
+  and call upon the Name of the Lord.
+12 I will fulfill my vows to the Lord *
+  in the presence of all his people.
+13 Precious in the sight of the Lord *
+  is the death of his servants.
+14 O Lord, I am your servant; *
+  I am your servant and the child of your handmaid;
+  you have freed me from my bonds.
+15 I will offer you the sacrifice of thanksgiving *
+  and call upon the Name of the Lord.
+16 I will fulfill my vows to the Lord *
+  in the presence of all his people,
+17 In the courts of the Lord's house, *
+  in the midst of you, O Jerusalem.
+  Hallelujah!`,
+  },
+
+  122: {
+    title: "Laetatus sum",
+    bcpRef: "BCP p. 779",
+    content:
+`1 I was glad when they said to me, *
+  "Let us go to the house of the Lord."
+2 Now our feet are standing *
+  within your gates, O Jerusalem.
+3 Jerusalem is built as a city *
+  that is at unity with itself;
+4 To which the tribes go up,
+  the tribes of the Lord, *
+  the assembly of Israel,
+  to praise the Name of the Lord.
+5 For there are the thrones of judgment, *
+  the thrones of the house of David.
+6 Pray for the peace of Jerusalem: *
+  "May they prosper who love you.
+7 Peace be within your walls *
+  and quietness within your towers.
+8 For my brethren and companions' sake, *
+  I pray for your prosperity.
+9 Because of the house of the Lord our God, *
+  I will seek to do you good."`,
+  },
+
+  138: {
+    title: "Confitebor tibi",
+    bcpRef: "BCP p. 793",
+    content:
+`1 I will give thanks to you, O Lord, with my whole heart; *
+  before the gods I will sing your praise.
+2 I will bow down toward your holy temple
+  and praise your Name, *
+  because of your love and faithfulness;
+3 For you have glorified your Name *
+  and your word above all things.
+4 When I called, you answered me; *
+  you increased my strength within me.
+5 All the kings of the earth will praise you, O Lord, *
+  when they have heard the words of your mouth.
+6 They will sing of the ways of the Lord, *
+  that great is the glory of the Lord.
+7 Though the Lord be high, he cares for the lowly; *
+  he perceives the haughty from afar.
+8 Though I walk in the midst of trouble, you keep me safe; *
+  you stretch forth your hand against the fury of my enemies;
+  your right hand shall save me.
+9 The Lord will make good his purpose for me; *
+  O Lord, your love endures for ever;
+  do not abandon the works of your hands.`,
+  },
+
+  139: {
+    title: "Domine, probasti",
+    bcpRef: "BCP p. 794",
+    content:
+`1 Lord, you have searched me out and known me; *
+  you know my sitting down and my rising up;
+  you discern my thoughts from afar.
+2 You trace my journeys and my resting-places *
+  and are acquainted with all my ways.
+3 Indeed, there is not a word on my lips, *
+  but you, O Lord, know it altogether.
+4 You press upon me behind and before *
+  and lay your hand upon me.
+5 Such knowledge is too wonderful for me; *
+  it is so high that I cannot attain to it.
+6 Where can I go then from your Spirit? *
+  where can I flee from your presence?
+7 If I climb up to heaven, you are there; *
+  if I make the grave my bed, you are there also.
+8 If I take the wings of the morning *
+  and dwell in the uttermost parts of the sea,
+9 Even there your hand will lead me *
+  and your right hand hold me fast.
+10 If I say, "Surely the darkness will cover me, *
+  and the light around me turn to night,"
+11 Darkness is not dark to you;
+  the night is as bright as the day; *
+  darkness and light to you are both alike.
+12 For you yourself created my inmost parts; *
+  you knit me together in my mother's womb.
+13 I will thank you because I am marvelously made; *
+  your works are wonderful, and I know it well.
+14 My body was not hidden from you, *
+  while I was being made in secret
+  and woven in the depths of the earth.
+15 Your eyes beheld my limbs, yet unfinished in the womb;
+  all of them were written in your book; *
+  they were fashioned day by day,
+  when as yet there was none of them.
+16 How deep I find your thoughts, O God! *
+  how great is the sum of them!
+17 If I were to count them, they would be more in number than the sand; *
+  to count them all, my life span would need to be like yours.
+18 Oh, that you would slay the wicked, O God! *
+  You that thirst for blood, depart from me.
+19 They speak despitefully against you; *
+  your enemies take your Name in vain.
+20 Do I not hate those, O Lord, who hate you? *
+  and do I not loathe those who rise up against you?
+21 I hate them with a perfect hatred; *
+  they have become my own enemies.
+22 Search me out, O God, and know my heart; *
+  try me and know my restless thoughts.
+23 Look well whether there be any wickedness in me *
+  and lead me in the way that is everlasting.`,
+  },
 };
