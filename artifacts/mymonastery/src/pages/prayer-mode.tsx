@@ -481,7 +481,15 @@ function NotTodayLink({ slideKey, onSkip }: { slideKey: string | number; onSkip:
     return () => window.clearTimeout(t);
   }, [slideKey]);
   return (
-    <div className="absolute left-0 right-0 flex justify-center pointer-events-none" style={{ bottom: 56 }}>
+    // Anchor above the home-indicator safe area; the slide counter
+    // sits at `safe + 16`, so we sit at `safe + 56` to leave a
+    // breathable gap. Hard-coded pixel offsets (the previous bottom: 56)
+    // don't account for the device gutter and got partially cut off on
+    // iPhones with a home indicator.
+    <div
+      className="absolute left-0 right-0 flex justify-center pointer-events-none"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 56px)" }}
+    >
       <button
         type="button"
         onClick={() => { if (ready) onSkip(); }}
@@ -2373,9 +2381,14 @@ export default function PrayerModePage() {
         <NotTodayLink slideKey={index} onSkip={skipToNext} />
       )}
 
-      {/* Progress */}
+      {/* Progress — sits just above the home-indicator gutter. The
+          old `bottom-8` (32px) overlapped the gutter on iPhones with
+          safe-area inset. */}
       {phase === "prayer" && displaySlides.length > 0 && (
-        <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none">
+        <div
+          className="absolute left-0 right-0 flex justify-center pointer-events-none"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+        >
           <p className="text-xs" style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em" }}>
             {index + 1} of {displaySlides.length}
           </p>
