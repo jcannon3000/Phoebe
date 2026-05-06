@@ -30,6 +30,17 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     enabled: !!user,
   });
 
+  // Pending join-request counts per community the caller admins.
+  // Drives a small badge next to the community name in the drawer
+  // so an admin sees at a glance which communities have someone
+  // waiting at the door, even before they tap the push notification.
+  const { data: pendingCounts } = useQuery<{ total: number; byGroup: Record<number, number> }>({
+    queryKey: ["/api/me/pending-join-request-counts"],
+    queryFn: () => apiRequest("GET", "/api/me/pending-join-request-counts"),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
   function navigate(path: string) {
     onClose();
     setLocation(path);
@@ -181,24 +192,51 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </p>
                 {(groupsData?.groups ?? []).length > 0 ? (
                   <div className="space-y-1.5">
-                    {groupsData!.groups.map((g) => (
-                      <button
-                        key={g.slug}
-                        onClick={() => navigate(`/communities/${g.slug}`)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
-                        onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                        onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
-                          <div className="text-left">
-                            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
-                            <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</p>
+                    {groupsData!.groups.map((g) => {
+                      const pendingCount = pendingCounts?.byGroup[g.id] ?? 0;
+                      const isAdminOfThis = g.myRole === "admin" || g.myRole === "hidden_admin";
+                      return (
+                        <button
+                          key={g.slug}
+                          // Tap straight into the requests panel when there are
+                          // pending join requests waiting on this admin —
+                          // saves them a hop through community detail.
+                          onClick={() => navigate(
+                            isAdminOfThis && pendingCount > 0
+                              ? `/communities/${g.slug}/requests`
+                              : `/communities/${g.slug}`,
+                          )}
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
+                          onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                          onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
+                            <div className="text-left">
+                              <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
+                              <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</p>
+                            </div>
                           </div>
-                        </div>
-                        <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
-                      </button>
-                    ))}
+                          <div className="flex items-center gap-2">
+                            {isAdminOfThis && pendingCount > 0 && (
+                              <span
+                                className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
+                                style={{
+                                  background: "#C58A2A",
+                                  color: "#1A1208",
+                                  minWidth: 18,
+                                  height: 18,
+                                  padding: "0 5px",
+                                }}
+                              >
+                                {pendingCount}
+                              </span>
+                            )}
+                            <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
