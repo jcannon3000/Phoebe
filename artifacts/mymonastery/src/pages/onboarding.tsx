@@ -1,32 +1,57 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+
+// Modes:
+//   signin — existing accounts log in
+//   signup — open registration. New users land on /welcome to pick
+//            their first surface (Phoebe Climate or a community).
+type Mode = "signin" | "signup";
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
 
+  const [mode, setMode] = useState<Mode>("signin");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [website, setWebsite] = useState(""); // honeypot
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // Tracks whether the most recent mutation was a fresh signup so we
+  // route to /welcome instead of the climate-only / dashboard default.
+  const [justSignedUp, setJustSignedUp] = useState(false);
 
   const searchParams = new URLSearchParams(window.location.search);
   const explicitRedirect = searchParams.get("redirect");
 
   useEffect(() => {
     if (!isLoading && user) {
-      // Climate-only users land on /climate by default, not the
-      // dashboard — they have no prayer list, no letters, etc.
-      const dest = explicitRedirect ?? (user.climateOnly ? "/climate" : "/dashboard");
-      setLocation(dest);
+      if (explicitRedirect) {
+        setLocation(explicitRedirect);
+        return;
+      }
+      if (justSignedUp) {
+        setLocation("/welcome");
+        return;
+      }
+      // Climate-only users land on /climate by default.
+      setLocation(user.climateOnly ? "/climate" : "/dashboard");
     }
-  }, [user, isLoading, setLocation, explicitRedirect]);
+  }, [user, isLoading, setLocation, explicitRedirect, justSignedUp]);
+
+  function switchMode(m: Mode) {
+    setMode(m);
+    setError("");
+    setPassword("");
+    setJustSignedUp(false);
+  }
 
   async function handleSignin(e: React.FormEvent) {
     e.preventDefault();
@@ -46,22 +71,58 @@ export default function Onboarding() {
       });
       const data = await res.json();
       if (data.ok) {
-        // Dismiss the iOS keyboard and reset scroll before navigating.
-        // Without this, the WebView stays scrolled up to where it had
-        // pushed the focused input above the keyboard, leaving the
-        // dashboard's top bar clipped off-screen on Capacitor builds
-        // (the keyboard plugin's `resize: None` mode keeps the WebView
-        // size fixed but doesn't snap the scroll back). Blurring the
-        // active input first triggers iOS to retract the keyboard;
-        // scrolling the window to (0, 0) realigns the page.
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
         window.scrollTo(0, 0);
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-        // The useEffect above re-runs as soon as /api/auth/me reloads
-        // and routes the user to the right destination based on their
-        // climate_only flag — no need to compute the dest twice here.
+      } else {
+        setError(data.error ?? "Something went wrong. Please try again.");
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (website.trim().length > 0) {
+      // Honeypot trip — silently fail with a generic message.
+      setError("Something went wrong. Please try again.");
+      return;
+    }
+    if (!name.trim()) {
+      setError("Your name is required."); return;
+    }
+    if (!email.trim() || !email.includes("@")) {
+      setError("Enter a valid email address."); return;
+    }
+    if (!password || password.length < 6) {
+      setError("Password must be at least 6 characters."); return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          website,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        window.scrollTo(0, 0);
+        setJustSignedUp(true);
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       } else {
         setError(data.error ?? "Something went wrong. Please try again.");
       }
@@ -82,7 +143,6 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#091A10", fontFamily: "'Space Grotesk', sans-serif" }}>
-      {/* Header */}
       <header className="px-6 py-6 flex items-center">
         <span className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe
@@ -91,8 +151,6 @@ export default function Onboarding() {
 
       <main className="flex-1 flex flex-col items-center justify-start px-4 pb-12 pt-16">
         <div className="w-full max-w-sm mx-auto">
-
-          {/* Hero */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -108,94 +166,174 @@ export default function Onboarding() {
             </p>
           </motion.div>
 
-          {/* Sign-in form. The waitlist tab was removed — Phoebe is by
-              group invite, so unauthenticated visitors who don't have a
-              link are pointed at their group leader rather than parked
-              on a list. The /climate signup is its own surface and is
-              not gated by group invite. */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
           >
-            <form
-              onSubmit={handleSignin}
-              className="flex flex-col gap-3"
-            >
-              <input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError(""); }}
-                className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none transition-colors animate-input-pulse"
-                style={{ background: "#091A10", color: "#F0EDE6" }}
-                autoComplete="email"
-                disabled={submitting}
-              />
-
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
-                  value={password}
-                  onChange={e => { setPassword(e.target.value); setError(""); }}
-                  className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none transition-colors animate-input-pulse"
-                  style={{ background: "#091A10", color: "#F0EDE6" }}
-                  autoComplete="current-password"
-                  disabled={submitting}
-                />
+            {/* Mode toggle */}
+            <div className="flex rounded-xl p-1 mb-4" style={{ background: "#0F2818" }}>
+              {(["signin", "signup"] as Mode[]).map((m) => (
                 <button
+                  key={m}
                   type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                  style={{ color: "#8FAF96" }}
-                  tabIndex={-1}
+                  onClick={() => switchMode(m)}
+                  className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    background: mode === m ? "#1A3D2B" : "transparent",
+                    color: mode === m ? "#F0EDE6" : "#8FAF96",
+                    boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
+                  }}
                 >
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {m === "signin" ? "Sign in" : "Sign up"}
                 </button>
-              </div>
+              ))}
+            </div>
 
-              {error && (
-                <div>
-                  <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>
-                  <div className="text-right mt-1">
+            <AnimatePresence mode="wait">
+              {mode === "signin" && (
+                <motion.form
+                  key="signin"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
+                  onSubmit={handleSignin}
+                  className="flex flex-col gap-3"
+                >
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setError(""); }}
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    autoComplete="email"
+                    disabled={submitting}
+                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={password}
+                      onChange={e => { setPassword(e.target.value); setError(""); }}
+                      className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                      style={{ background: "#091A10", color: "#F0EDE6" }}
+                      autoComplete="current-password"
+                      disabled={submitting}
+                    />
                     <button
                       type="button"
-                      onClick={() => setLocation("/forgot-password")}
-                      className="text-xs"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
                       style={{ color: "#8FAF96" }}
+                      tabIndex={-1}
                     >
-                      Forgot password?
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
-                </div>
+                  {error && (
+                    <div>
+                      <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>
+                      <div className="text-right mt-1">
+                        <button
+                          type="button"
+                          onClick={() => setLocation("/forgot-password")}
+                          className="text-xs"
+                          style={{ color: "#8FAF96" }}
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 btn-sage"
+                  >
+                    {submitting ? (
+                      <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
+                    ) : "Sign in"}
+                  </button>
+                </motion.form>
               )}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 btn-sage"
-              >
-                {submitting ? (
-                  <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
-                ) : "Sign in"}
-              </button>
-            </form>
-
-            {/* By-group-invite note */}
-            <div
-              className="mt-6 rounded-xl px-4 py-4"
-              style={{
-                background: "rgba(46,107,64,0.08)",
-                border: "1px solid rgba(46,107,64,0.18)",
-              }}
-            >
-              <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                Phoebe is by group invite. If your group is on Phoebe, ask your
-                group leader to send you a link, and you'll be able to sign up
-                from there.
-              </p>
-            </div>
+              {mode === "signup" && (
+                <motion.form
+                  key="signup"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
+                  onSubmit={handleSignup}
+                  className="flex flex-col gap-3"
+                >
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={e => { setName(e.target.value); setError(""); }}
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    autoComplete="name"
+                    disabled={submitting}
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setError(""); }}
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    autoComplete="email"
+                    disabled={submitting}
+                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password (6+ characters)"
+                      value={password}
+                      onChange={e => { setPassword(e.target.value); setError(""); }}
+                      className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                      style={{ background: "#091A10", color: "#F0EDE6" }}
+                      autoComplete="new-password"
+                      disabled={submitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
+                      style={{ color: "#8FAF96" }}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  {/* Honeypot */}
+                  <input
+                    type="text"
+                    name="website"
+                    value={website}
+                    onChange={e => setWebsite(e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+                  />
+                  {error && <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 btn-sage"
+                  >
+                    {submitting ? (
+                      <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
+                    ) : "Create account"}
+                  </button>
+                </motion.form>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           <p className="text-center text-xs mt-8 mb-4 tracking-wide" style={{ color: "rgba(143,175,150,0.5)" }}>

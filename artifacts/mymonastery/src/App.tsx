@@ -110,6 +110,8 @@ import BcpPage from "./pages/bcp";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
 import BcpDailyOfficePage from "./pages/bcp-daily-office";
 import CommunitiesPage from "./pages/communities";
+import CommunitiesBrowsePage from "./pages/communities-browse";
+import WelcomePage from "./pages/welcome";
 import CommunityNewPage from "./pages/community-new";
 import CommunityDetailPage from "./pages/community-detail";
 import CommunitySettingsPage from "./pages/community-settings";
@@ -242,8 +244,10 @@ function Router() {
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
       <Route path="/bcp/daily-office" component={BcpDailyOfficePage} />
       <Route path="/communities" component={CommunitiesPage} />
+      <Route path="/communities/browse" component={CommunitiesBrowsePage} />
       <Route path="/communities/new" component={CommunityNewPage} />
       <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
+      <Route path="/welcome" component={WelcomePage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
       {/* /metrics and /settings both land on CommunitySettingsPage; the
           page reads the URL and pre-selects the correct tab. The standalone
