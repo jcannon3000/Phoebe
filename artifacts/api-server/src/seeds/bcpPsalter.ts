@@ -4458,4 +4458,149 @@ export const PSALTER: Record<number, PsalmEntry> = {
 52 Blessed be the Lord for evermore! *
   Amen, I say, Amen.`,
   },
+
+  93: {
+    title: "Dominus regnavit",
+    bcpRef: "BCP p. 721",
+    content:
+`1 The Lord is King;
+  he has put on splendid apparel; *
+  the Lord has put on his apparel
+  and girded himself with strength.
+2 He has made the whole world so sure *
+  that it cannot be moved;
+3 Ever since the world began, your throne has been established; *
+  you are from everlasting.
+4 The waters have lifted up, O Lord,
+  the waters have lifted up their voice; *
+  the waters have lifted up their pounding waves.
+5 Mightier than the sound of many waters,
+  mightier than the breakers of the sea, *
+  mightier is the Lord who dwells on high.
+6 Your testimonies are very sure, *
+  and holiness adorns your house, O Lord,
+  for ever and for evermore.`,
+  },
+
+  94: {
+    title: "Deus ultionum",
+    bcpRef: "BCP p. 721",
+    content:
+`1 O Lord God of vengeance, *
+  O God of vengeance, show yourself.
+2 Rise up, O Judge of the world; *
+  give the arrogant their just deserts.
+3 How long shall the wicked, O Lord, *
+  how long shall the wicked triumph?
+4 They bluster in their insolence; *
+  all evildoers are full of boasting.
+5 They crush your people, O Lord, *
+  and afflict your chosen nation.
+6 They murder the widow and the stranger *
+  and put the orphans to death.
+7 Yet they say, "The Lord does not see, *
+  the God of Jacob takes no notice."
+8 Consider well, you dullards among the people; *
+  when will you fools understand?
+9 He that planted the ear, does he not hear? *
+  he that formed the eye, does he not see?
+10 He who admonishes the nations, will he not punish? *
+  he who teaches all the world, has he no knowledge?
+11 The Lord knows our human thoughts; *
+  how like a puff of wind they are.
+12 Happy are they whom you instruct, O Lord! *
+  whom you teach out of your law;
+13 To give them rest in evil days, *
+  until a pit is dug for the wicked.
+14 For the Lord will not abandon his people, *
+  nor will he forsake his own.
+15 For judgment will again be just, *
+  and all the true of heart will follow it.
+16 Who rose up for me against the wicked? *
+  who took my part against the evildoers?
+17 If the Lord had not come to my help, *
+  I should soon have dwelt in the land of silence.
+18 As often as I said, "My foot has slipped," *
+  your love, O Lord, upheld me.
+19 When many cares fill my mind, *
+  your consolations cheer my soul.
+20 Can a corrupt tribunal have any part with you, *
+  one which frames evil into law?
+21 They conspire against the life of the just *
+  and condemn the innocent to death.
+22 But the Lord has become my stronghold, *
+  and my God the rock of my trust.
+23 He will turn their wickedness back upon them
+  and destroy them in their own malice; *
+  the Lord our God will destroy them.`,
+  },
+
+  96: {
+    title: "Cantate Domino",
+    bcpRef: "BCP p. 725",
+    content:
+`1 Sing to the Lord a new song; *
+  sing to the Lord, all the whole earth.
+2 Sing to the Lord and bless his Name; *
+  proclaim the good news of his salvation from day to day.
+3 Declare his glory among the nations *
+  and his wonders among all peoples.
+4 For great is the Lord and greatly to be praised; *
+  he is more to be feared than all gods.
+5 As for all the gods of the nations, they are but idols; *
+  but it is the Lord who made the heavens.
+6 Oh, the majesty and magnificence of his presence! *
+  Oh, the power and the splendor of his sanctuary!
+7 Ascribe to the Lord, you families of the peoples; *
+  ascribe to the Lord honor and power.
+8 Ascribe to the Lord the honor due his Name; *
+  bring offerings and come into his courts.
+9 Worship the Lord in the beauty of holiness; *
+  let the whole earth tremble before him.
+10 Tell it out among the nations: "The Lord is King! *
+  he has made the world so firm that it cannot be moved;
+  he will judge the peoples with equity."
+11 Let the heavens rejoice, and let the earth be glad;
+  let the sea thunder and all that is in it; *
+  let the field be joyful and all that is therein.
+12 Then shall all the trees of the wood shout for joy
+  before the Lord when he comes, *
+  when he comes to judge the earth.
+13 He will judge the world with righteousness *
+  and the peoples with his truth.`,
+  },
+
+  97: {
+    title: "Dominus regnavit",
+    bcpRef: "BCP p. 726",
+    content:
+`1 The Lord is King;
+  let the earth rejoice; *
+  let the multitude of the isles be glad.
+2 Clouds and darkness are round about him, *
+  righteousness and justice are the foundations of his throne.
+3 A fire goes before him *
+  and burns up his enemies on every side.
+4 His lightnings light up the world; *
+  the earth sees it and is afraid.
+5 The mountains melt like wax at the presence of the Lord, *
+  at the presence of the Lord of the whole earth.
+6 The heavens declare his righteousness, *
+  and all the peoples see his glory.
+7 Confounded be all who worship carved images
+  and delight in false gods! *
+  Bow down before him, all you gods.
+8 Zion hears and is glad, and the cities of Judah rejoice, *
+  because of your judgments, O Lord.
+9 For you are the Lord,
+  most high over all the earth; *
+  you are exalted far above all gods.
+10 The Lord loves those who hate evil; *
+  he preserves the lives of his saints
+  and delivers them from the hand of the wicked.
+11 Light has sprung up for the righteous, *
+  and joyful gladness for those who are truehearted.
+12 Rejoice in the Lord, you righteous, *
+  and give thanks to his holy Name.`,
+  },
 };
