@@ -217,24 +217,11 @@ export async function assembleEveningPrayer(
   let idx = 0;
   const id = () => `ep_slide_${idx++}`;
 
-  // 1. Opening
-  slides.push(
-    slide(id(), "opening", "🌙", "", liturgicalDay.weekdayLabel, {
-      metadata: {
-        season: liturgicalDay.season,
-        seasonLabel: SEASON_LABELS[liturgicalDay.season] ?? liturgicalDay.season,
-        liturgicalYear: liturgicalDay.liturgicalYear,
-        date: date.toISOString(),
-        sundayLabel: liturgicalDay.sundayLabel,
-        weekdayLabel: liturgicalDay.weekdayLabel,
-        isMajorFeast: liturgicalDay.isMajorFeast,
-        useAlleluia: liturgicalDay.useAlleluia,
-        office: "evening",
-      },
-    }),
-  );
-
-  // 2. Opening Sentence
+  // 1. Opening Sentence (the Opening Acclamation slot per user
+  //    direction). The earlier first slide was a Phoebe-specific
+  //    date label — that information already lives in the chrome's
+  //    reference label, so EP begins with the BCP's actual first
+  //    element: the seasonal Opening Sentence.
   slides.push(
     slide(id(), "opening_sentence", "📖", "OPENING SENTENCE", getText(openingSentenceKey), {
       bcpReference: "BCP p. 115",

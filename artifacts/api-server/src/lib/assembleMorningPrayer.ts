@@ -274,15 +274,21 @@ export async function assembleMorningPrayer(
     // thanksgiving — the cached slides don't include it (caching it
     // would cross-contaminate users with each other's prayer lists).
     const slides = await injectIntercessions(cachedSlides, userId, cacheDate);
+    // Derive officeDay fresh from the date instead of fishing fields
+    // out of slide[0]'s metadata. The cached opening slide is gone now
+    // (the office begins with the Opening Sentence), so the metadata
+    // carrier is gone too — but `getOfficeDay(date)` is deterministic
+    // and cheap, so we just recompute on every cache hit and trust it.
+    const liturgicalDay = getOfficeDay(date);
     const officeDay: OfficeDayInfo = {
-      season: row.liturgicalSeason,
-      liturgicalYear: row.liturgicalYear,
-      sundayLabel: (cachedSlides[0]?.metadata?.sundayLabel as string) ?? "",
-      weekdayLabel: cachedSlides[0]?.content ?? "",
-      properNumber: row.properNumber ?? null,
-      feastName: row.feastName ?? null,
-      isMajorFeast: !!(cachedSlides[0]?.metadata?.isMajorFeast),
-      useAlleluia: !!(cachedSlides[0]?.metadata?.useAlleluia),
+      season: liturgicalDay.season,
+      liturgicalYear: liturgicalDay.liturgicalYear,
+      sundayLabel: liturgicalDay.sundayLabel,
+      weekdayLabel: liturgicalDay.weekdayLabel,
+      properNumber: liturgicalDay.properNumber,
+      feastName: liturgicalDay.feastName,
+      isMajorFeast: liturgicalDay.isMajorFeast,
+      useAlleluia: liturgicalDay.useAlleluia,
       totalSlides: slides.length,
     };
     return { slides, officeDay, fromCache: true };
@@ -380,23 +386,11 @@ export async function assembleMorningPrayer(
   let idx = 0;
   const id = () => `slide_${idx++}`;
 
-  // SLIDE 1: Opening
-  slides.push(
-    slide(id(), "opening", "✨", "", liturgicalDay.weekdayLabel, {
-      metadata: {
-        season: liturgicalDay.season,
-        seasonLabel: SEASON_LABELS[liturgicalDay.season] ?? liturgicalDay.season,
-        liturgicalYear: liturgicalDay.liturgicalYear,
-        date: date.toISOString(),
-        sundayLabel: liturgicalDay.sundayLabel,
-        weekdayLabel: liturgicalDay.weekdayLabel,
-        isMajorFeast: liturgicalDay.isMajorFeast,
-        useAlleluia: liturgicalDay.useAlleluia,
-      },
-    }),
-  );
-
-  // SLIDE 2: Opening Sentence
+  // SLIDE 1: Opening Sentence (the Opening Acclamation slot per user
+  // direction). The earlier first slide was a Phoebe-specific date
+  // label ("Wednesday in 4 Easter") — that information already lives
+  // in the chrome's reference label, so the office begins with the
+  // BCP's actual first element: the seasonal Opening Sentence.
   slides.push(
     slide(id(), "opening_sentence", "📖", "OPENING SENTENCE", getText(openingSentenceKey), {
       bcpReference: "BCP p. 75",
@@ -439,17 +433,12 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // Seasonal antiphon (if applicable)
-  const antiphonText = getText(liturgicalDay.antiphonKey);
-  if (antiphonText && !antiphonText.startsWith("[")) {
-    slides.push(
-      slide(id(), "invitatory", "🕊️", "ANTIPHON", antiphonText, {
-        bcpReference: "BCP p. 80",
-      }),
-    );
-  }
-
-  // SLIDE 6: Invitatory Psalm
+  // SLIDE 6: Invitatory Psalm (with seasonal antiphon bookending it
+  // when present). Per user direction the antiphon no longer gets its
+  // own slide; instead it appears at the top of the invitatory psalm
+  // slide (said before the psalm) and again at the bottom (said
+  // after), matching the BCP rubric on p. 80 ("the Antiphon may be
+  // sung or said before, and after, the Invitatory Psalm").
   const invitPsalmTitles: Record<string, string> = {
     venite: "VENITE · PSALM 95",
     jubilate: "JUBILATE · PSALM 100",
@@ -461,8 +450,17 @@ export async function assembleMorningPrayer(
     pascha_nostrum: "BCP p. 83",
   };
 
+  // antiphon_none seeds an empty content; the placeholder check also
+  // catches missed-seed cases ("[antiphon_xxx — see BCP]").
+  const antiphonText = getText(liturgicalDay.antiphonKey);
+  const hasAntiphon = !!antiphonText && antiphonText.trim().length > 0 && !antiphonText.startsWith("[");
+  const psalmBody = getText(invitPsalmKey);
+  const invitPsalmContent = hasAntiphon
+    ? `${antiphonText}\n\n${psalmBody}\n\n${antiphonText}`
+    : psalmBody;
+
   slides.push(
-    slide(id(), "invitatory_psalm", "🎶", invitPsalmTitles[invitPsalmKey] ?? "VENITE", getText(invitPsalmKey), {
+    slide(id(), "invitatory_psalm", "🎶", invitPsalmTitles[invitPsalmKey] ?? "VENITE", invitPsalmContent, {
       bcpReference: invitPsalmRefs[invitPsalmKey] ?? "BCP p. 82",
       isScrollable: true,
       scrollHint: "↓ continue · tap when ready",
