@@ -3624,4 +3624,396 @@ export const PSALTER: Record<number, PsalmEntry> = {
 38 The children of his servants will inherit it, *
   and those who love his Name will dwell therein.`,
   },
+
+  73: {
+    title: "Quam bonus Israel!",
+    bcpRef: "BCP p. 686",
+    content:
+`1 Truly, God is good to Israel, *
+  to those who are pure in heart.
+2 But as for me, my feet had nearly slipped; *
+  I had almost tripped and fallen;
+3 Because I envied the proud *
+  and saw the prosperity of the wicked:
+4 For they suffer no pain, *
+  and their bodies are sleek and sound;
+5 In the misfortunes of others they have no share; *
+  they are not afflicted as others are;
+6 Therefore they wear their pride like a necklace *
+  and wrap their violence about them like a cloak.
+7 Their iniquity comes from gross minds, *
+  and their hearts overflow with wicked thoughts.
+8 They scoff and speak maliciously; *
+  out of their haughtiness they plan oppression.
+9 They set their mouths against the heavens, *
+  and their evil speech runs through the world.
+10 And so the people turn to them *
+  and find in them no fault.
+11 They say, "How should God know? *
+  is there knowledge in the Most High?"
+12 So then, these are the wicked; *
+  always at ease, they increase their wealth.
+13 In vain have I kept my heart clean, *
+  and washed my hands in innocence.
+14 I have been afflicted all day long, *
+  and punished every morning.
+15 Had I gone on speaking this way, *
+  I should have betrayed the generation of your children.
+16 When I tried to understand these things, *
+  it was too hard for me;
+17 Until I entered the sanctuary of God *
+  and discerned the end of the wicked.
+18 Surely, you set them in slippery places; *
+  you cast them down in ruin.
+19 Oh, how suddenly do they come to destruction, *
+  come to an end, and perish from terror!
+20 Like a dream when one awakens, O Lord, *
+  when you arise you will make their image vanish.
+21 When my mind became embittered, *
+  I was sorely wounded in my heart.
+22 I was stupid and had no understanding; *
+  I was like a brute beast in your presence.
+23 Yet I am always with you; *
+  you hold me by my right hand.
+24 You will guide me by your counsel, *
+  and afterwards receive me with glory.
+25 Whom have I in heaven but you? *
+  and having you I desire nothing upon earth.
+26 Though my flesh and my heart should waste away, *
+  God is the strength of my heart and my portion for ever.
+27 Truly, those who forsake you will perish; *
+  you destroy all who are unfaithful.
+28 But it is good for me to be near God; *
+  I have made the Lord God my refuge.
+29 I will speak of all your works *
+  in the gates of the city of Zion.`,
+  },
+
+  74: {
+    title: "Ut quid, Deus?",
+    bcpRef: "BCP p. 688",
+    content:
+`1 O God, why have you utterly cast us off? *
+  why is your wrath so hot against the sheep of your pasture?
+2 Remember your congregation that you purchased long ago, *
+  the tribe you redeemed to be your inheritance,
+  and Mount Zion where you dwell.
+3 Turn your steps toward the endless ruins; *
+  the enemy has laid waste everything in your sanctuary.
+4 Your adversaries roared in your holy place; *
+  they set up their banners as tokens of victory.
+5 They were like men coming up with axes to a grove of trees; *
+  they broke down all your carved work with hatchets and hammers.
+6 They set fire to your holy place; *
+  they defiled the dwelling-place of your Name
+  and razed it to the ground.
+7 They said to themselves, "Let us destroy them altogether." *
+  They burned down all the meeting-places of God in the land.
+8 There are no signs for us to see;
+  there is no prophet left; *
+  there is not one among us who knows how long.
+9 How long, O God, will the adversary scoff? *
+  will the enemy blaspheme your Name for ever?
+10 Why do you draw back your hand? *
+  why is your right hand hidden in your bosom?
+11 Yet God is my King from ancient times, *
+  victorious in the midst of the earth.
+12 You divided the sea by your might *
+  and shattered the heads of the dragons upon the waters;
+13 You crushed the heads of Leviathan *
+  and gave him to the people of the desert for food.
+14 You split open spring and torrent; *
+  you dried up ever-flowing rivers.
+15 Yours is the day, yours also the night; *
+  you established the moon and the sun.
+16 You fixed all the boundaries of the earth; *
+  you made both summer and winter.
+17 Remember, O Lord, how the enemy scoffed, *
+  how a foolish people despised your Name.
+18 Do not hand over the life of your dove to wild beasts; *
+  never forget the lives of your poor.
+19 Look upon your covenant; *
+  the dark places of the earth are haunts of violence.
+20 Let not the oppressed turn away ashamed; *
+  let the poor and needy praise your Name.
+21 Arise, O God, maintain your cause; *
+  remember how fools revile you all day long.
+22 Forget not the clamor of your adversaries, *
+  the unending tumult of those who rise up against you.`,
+  },
+
+  75: {
+    title: "Confitebimur tibi",
+    bcpRef: "BCP p. 689",
+    content:
+`1 We give you thanks, O God, we give you thanks, *
+  calling upon your Name and declaring all your wonderful deeds.
+2 "I will appoint a time," says God; *
+  "I will judge with equity.
+3 Though the earth and all its inhabitants are quaking, *
+  I will make its pillars fast.
+4 I will say to the boasters, 'Boast no more,' *
+  and to the wicked, 'Do not toss your horns;
+5 Do not toss your horns so high, *
+  nor speak with a proud neck.'"
+6 For judgment is neither from the east nor from the west, *
+  nor yet from the wilderness or the mountains.
+7 It is God who judges; *
+  he puts down one and lifts up another.
+8 For in the Lord's hand there is a cup,
+  full of spiced and foaming wine, which he pours out, *
+  and all the wicked of the earth shall drink and drain the dregs.
+9 But I will rejoice for ever; *
+  I will sing praises to the God of Jacob.
+10 He shall break off all the horns of the wicked; *
+  but the horns of the righteous shall be exalted.`,
+  },
+
+  76: {
+    title: "Notus in Judaea",
+    bcpRef: "BCP p. 690",
+    content:
+`1 In Judah is God known; *
+  his Name is great in Israel.
+2 At Salem is his tabernacle, *
+  and his dwelling is in Zion.
+3 There he broke the flashing arrows, *
+  the shield, the sword, and the weapons of battle.
+4 How glorious you are! *
+  more splendid than the everlasting mountains!
+5 The strong of heart have been despoiled;
+  they sink into sleep; *
+  none of the warriors can lift a hand.
+6 At your rebuke, O God of Jacob, *
+  both horse and rider lie stunned.
+7 What terror you inspire! *
+  who can stand before you when you are angry?
+8 From heaven you pronounced judgment; *
+  the earth was afraid and was still;
+9 When God rose up to judgment *
+  and to save all the oppressed of the earth.
+10 Truly, wrathful Edom will give you thanks, *
+  and the remnant of Hamath will keep your feasts.
+11 Make a vow to the Lord your God and keep it; *
+  let all around him bring gifts to him who is worthy to be feared.
+12 He breaks the spirit of princes, *
+  and strikes terror in the kings of the earth.`,
+  },
+
+  77: {
+    title: "Voce mea ad Dominum",
+    bcpRef: "BCP p. 691",
+    content:
+`1 I will cry aloud to God; *
+  I will cry aloud, and he will hear me.
+2 In the day of my trouble I sought the Lord; *
+  my hands were stretched out by night and did not tire;
+  I refused to be comforted.
+3 I think of God, I am restless, *
+  I ponder, and my spirit faints.
+4 You will not let my eyelids close; *
+  I am troubled and I cannot speak.
+5 I consider the days of old; *
+  I remember the years long past;
+6 I commune with my heart in the night; *
+  I ponder and search my mind.
+7 Will the Lord cast me off for ever? *
+  will he no more show his favor?
+8 Has his loving-kindness come to an end for ever? *
+  has his promise failed for evermore?
+9 Has God forgotten to be gracious? *
+  has he, in his anger, withheld his compassion?
+10 And I said, "My grief is this: *
+  the right hand of the Most High has lost its power."
+11 I will remember the works of the Lord, *
+  and call to mind your wonders of old time.
+12 I will meditate on all your acts *
+  and ponder your mighty deeds.
+13 Your way, O God, is holy; *
+  who is so great a god as our God?
+14 You are the God who works wonders *
+  and have declared your power among the peoples.
+15 By your strength you have redeemed your people, *
+  the children of Jacob and Joseph.
+16 The waters saw you, O God;
+  the waters saw you and trembled; *
+  the very depths were shaken.
+17 The clouds poured out water;
+  the skies thundered; *
+  your arrows flashed to and fro;
+18 The sound of your thunder was in the whirlwind;
+  your lightnings lit up the world; *
+  the earth trembled and shook.
+19 Your way was in the sea,
+  and your paths in the great waters, *
+  yet your footsteps were not seen.
+20 You led your people like a flock *
+  by the hand of Moses and Aaron.`,
+  },
+
+  78: {
+    title: "Attendite, popule",
+    bcpRef: "BCP p. 693",
+    content:
+`1 Hear my teaching, O my people; *
+  incline your ears to the words of my mouth.
+2 I will open my mouth in a parable; *
+  I will declare the mysteries of ancient times.
+3 That which we have heard and known,
+  and what our forefathers have told us, *
+  we will not hide from their children.
+4 We will recount to generations to come
+  the praiseworthy deeds and the power of the Lord, *
+  and the wonderful works he has done.
+5 He gave his decrees to Jacob
+  and established a law for Israel, *
+  which he commanded them to teach their children;
+6 That the generations to come might know,
+  and the children yet unborn; *
+  that they in their turn might tell it to their children;
+7 So that they might put their trust in God, *
+  and not forget the deeds of God,
+  but keep his commandments;
+8 And not be like their forefathers,
+  a stubborn and rebellious generation, *
+  a generation whose heart was not steadfast,
+  and whose spirit was not faithful to God.
+9 The people of Ephraim, armed with the bow, *
+  turned back in the day of battle;
+10 They did not keep the covenant of God, *
+  and refused to walk in his law;
+11 They forgot what he had done, *
+  and the wonders he had shown them.
+12 He worked marvels in the sight of their forefathers, *
+  in the land of Egypt, in the field of Zoan.
+13 He split open the sea and let them pass through; *
+  he made the waters stand up like walls.
+14 He led them with a cloud by day, *
+  and all the night through with a glow of fire.
+15 He split the hard rocks in the wilderness *
+  and gave them drink as from the great deep.
+16 He brought streams out of the cliff, *
+  and the waters gushed out like rivers.
+17 But they went on sinning against him, *
+  rebelling in the desert against the Most High.
+18 They tested God in their hearts, *
+  demanding food for their craving.
+19 They railed against God and said, *
+  "Can God set a table in the wilderness?
+20 True, he struck the rock, the waters gushed out, and the gullies overflowed; *
+  but is he able to give bread
+  or to provide meat for his people?"
+21 When the Lord heard this, he was full of wrath; *
+  a fire was kindled against Jacob,
+  and his anger mounted against Israel;
+22 For they had no faith in God, *
+  nor did they put their trust in his saving power.
+23 So he commanded the clouds above *
+  and opened the doors of heaven.
+24 He rained down manna upon them to eat *
+  and gave them grain from heaven.
+25 So mortals ate the bread of angels; *
+  he provided for them food enough.
+26 He caused the east wind to blow in the heavens *
+  and led out the south wind by his might.
+27 He rained down flesh upon them like dust *
+  and wingèd birds like the sand of the sea.
+28 He let it fall in the midst of their camp *
+  and round about their dwellings.
+29 So they ate and were well filled, *
+  for he gave them what they craved.
+30 But they did not stop their craving, *
+  though the food was still in their mouths.
+31 So God's anger mounted against them; *
+  he slew their strongest men
+  and laid low the youth of Israel.
+32 In spite of all this, they went on sinning *
+  and had no faith in his wonderful works.
+33 So he brought their days to an end like a breath *
+  and their years in sudden terror.
+34 Whenever he slew them, they would seek him, *
+  and repent, and diligently search for God.
+35 They would remember that God was their rock, *
+  and the Most High God their redeemer.
+36 But they flattered him with their mouths *
+  and lied to him with their tongues.
+37 Their heart was not steadfast toward him, *
+  and they were not faithful to his covenant.
+38 But he was so merciful that he forgave their sins
+  and did not destroy them; *
+  many times he held back his anger
+  and did not permit his wrath to be roused.
+39 For he remembered that they were but flesh, *
+  a breath that goes forth and does not return.
+40 How often the people disobeyed him in the wilderness *
+  and offended him in the desert!
+41 Again and again they tempted God *
+  and provoked the Holy One of Israel.
+42 They did not remember his power *
+  in the day when he ransomed them from the enemy;
+43 How he wrought his signs in Egypt *
+  and his omens in the field of Zoan.
+44 He turned their rivers into blood, *
+  so that they could not drink of their streams.
+45 He sent swarms of flies among them, which ate them up, *
+  and frogs, which destroyed them.
+46 He gave their crops to the caterpillar, *
+  the fruit of their toil to the locust.
+47 He killed their vines with hail *
+  and their sycamores with frost.
+48 He delivered their cattle to hailstones *
+  and their livestock to hot thunderbolts.
+49 He poured out upon them his blazing anger: *
+  fury, indignation, and distress,
+  a troop of destroying angels.
+50 He gave full rein to his anger;
+  he did not spare their souls from death; *
+  but delivered their lives to the plague.
+51 He struck down all the firstborn of Egypt, *
+  the flower of manhood in the dwellings of Ham.
+52 He led out his people like sheep *
+  and guided them in the wilderness like a flock.
+53 He led them to safety, and they were not afraid; *
+  but the sea overwhelmed their enemies.
+54 He brought them to his holy land, *
+  the mountain his right hand had won.
+55 He drove out the Canaanites before them
+  and apportioned an inheritance to them by lot; *
+  he made the tribes of Israel to dwell in their tents.
+56 But they tested the Most High God, and defied him, *
+  and did not keep his commandments.
+57 They turned away and were disloyal like their fathers; *
+  they were undependable like a warped bow.
+58 They grieved him with their hill-altars *
+  they provoked his displeasure with their idols.
+59 When God heard this, he was angry *
+  and utterly rejected Israel.
+60 He forsook the shrine at Shiloh, *
+  the tabernacle where he had lived among his people.
+61 He delivered the ark into captivity, *
+  his glory into the adversary's hand.
+62 He gave his people to the sword *
+  and was angered against his inheritance.
+63 The fire consumed their young men; *
+  there were no wedding songs for their maidens.
+64 Their priests fell by the sword, *
+  and their widows made no lamentation.
+65 Then the Lord woke as though from sleep, *
+  like a warrior refreshed with wine.
+66 He struck his enemies on the backside *
+  and put them to perpetual shame.
+67 He rejected the tent of Joseph *
+  and did not choose the tribe of Ephraim;
+68 He chose instead the tribe of Judah *
+  and Mount Zion, which he loved.
+69 He built his sanctuary like the heights of heaven, *
+  like the earth which he founded for ever.
+70 He chose David his servant, *
+  and took him away from the sheepfolds.
+71 He brought him from following the ewes, *
+  to be a shepherd over Jacob his people
+  and over Israel his inheritance.
+72 So he shepherded them with a faithful and true heart *
+  and guided them with the skillfulness of his hands.`,
+  },
 };
