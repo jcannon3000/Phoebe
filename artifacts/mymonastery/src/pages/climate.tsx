@@ -5,7 +5,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { ClimateSignup } from "@/components/ClimateSignup";
 import { ClimateOnboarding } from "@/components/ClimateOnboarding";
-import { openExternal } from "@/lib/openExternal";
 
 // /climate dispatcher:
 //   • Unauthenticated → ClimateSignup
@@ -94,7 +93,7 @@ function ClimateHub() {
           Phoebe Climate
         </h1>
         <p className="text-sm" style={{ color: "#8FAF96" }}>
-          Daily prayer for the climate, with everyone subscribed.
+          Daily prayer for the climate.
         </p>
       </div>
 
@@ -113,15 +112,16 @@ function ClimateHub() {
         Pray now →
       </Link>
 
-      {/* Active intercessions — full prayer cards, one per active
-          intercession on the climate feed. Tap reveals the moment
-          detail page (/moments/:id) where members + posts live. */}
-      <div className="flex flex-col gap-3">
+      {/* Community intercessions — compact bar cards mirroring the
+          /prayer-list layout. Tap → /moments/:id for the prayer body
+          + Read more link, both of which live on the moment detail
+          page now rather than competing for space here. */}
+      <div className="flex flex-col gap-2">
         <p
-          className="text-[10px] font-semibold uppercase tracking-widest"
-          style={{ color: "rgba(200,212,192,0.4)" }}
+          className="text-[10px] font-semibold uppercase tracking-widest mb-1"
+          style={{ color: "rgba(200,212,192,0.5)" }}
         >
-          Praying for
+          Community intercessions
         </p>
         {intLoading ? (
           <p className="text-sm" style={{ color: "rgba(143,175,150,0.5)" }}>
@@ -129,7 +129,7 @@ function ClimateHub() {
           </p>
         ) : intercessions.length === 0 ? (
           <div
-            className="rounded-2xl px-5 py-8 text-center"
+            className="rounded-xl px-5 py-6 text-center"
             style={{
               background: "rgba(200,212,192,0.04)",
               border: "1px dashed rgba(46,107,64,0.2)",
@@ -144,62 +144,37 @@ function ClimateHub() {
           intercessions.map((i) => {
             const title = i.intercessionTopic ?? i.name ?? "Intercession";
             return (
-              <Link
-                key={i.id}
-                href={`/moments/${i.id}`}
-                className="block rounded-2xl px-5 py-5 transition-opacity hover:opacity-90"
-                style={{
-                  background: "rgba(46,107,64,0.12)",
-                  border: "1px solid rgba(46,107,64,0.2)",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
-                    style={{
-                      background: "rgba(46,107,64,0.22)",
-                      color: "#A8C5A0",
-                      border: "1px solid rgba(46,107,64,0.4)",
-                      fontFamily: "'Space Grotesk', sans-serif",
-                    }}
-                  >
-                    🌿 Climate Justice
-                  </span>
-                </div>
-                <h3
-                  className="text-base font-semibold leading-snug mb-2"
+              <Link key={i.id} href={`/moments/${i.id}`} className="block">
+                <div
+                  className="relative flex rounded-xl overflow-hidden"
                   style={{
-                    color: "#F0EDE6",
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    letterSpacing: "-0.01em",
+                    background: "rgba(46,107,64,0.15)",
+                    border: "1px solid rgba(46,107,64,0.28)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                   }}
                 >
-                  {title}
-                </h3>
-                {i.intercessionFullText && (
-                  <p
-                    className="text-sm leading-relaxed italic line-clamp-4"
-                    style={{
-                      color: "#C8D4C0",
-                      fontFamily: "Georgia, 'Times New Roman', serif",
-                    }}
-                  >
-                    {i.intercessionFullText}
-                  </p>
-                )}
-                {i.learnMoreUrl && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      openExternal(i.learnMoreUrl!);
-                    }}
-                    className="text-xs underline decoration-dotted underline-offset-4 mt-3 inline-block bg-transparent border-0 p-0"
-                    style={{ color: "rgba(168,197,160,0.75)" }}
-                  >
-                    Read more →
-                  </button>
-                )}
+                  <div className="w-1 flex-shrink-0" style={{ background: "#2E6B40" }} />
+                  <div className="flex-1 px-4 pt-3 pb-3">
+                    <div className="relative pr-16">
+                      <span className="text-sm font-semibold truncate block" style={{ color: "#F0EDE6" }}>
+                        🙏🏽 {title}
+                      </span>
+                      <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>
+                        🌿 Phoebe Climate
+                      </p>
+                      <span
+                        className="absolute bottom-0 right-0 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
+                        style={{
+                          background: "rgba(46,107,64,0.35)",
+                          color: "#C8D4C0",
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        View
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </Link>
             );
           })
