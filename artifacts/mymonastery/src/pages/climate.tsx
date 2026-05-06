@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { ClimateSignup } from "@/components/ClimateSignup";
 import { ClimateOnboarding } from "@/components/ClimateOnboarding";
+import { openExternal } from "@/lib/openExternal";
 
 // /climate dispatcher:
 //   • Unauthenticated → ClimateSignup
@@ -187,16 +188,17 @@ function ClimateHub() {
                   </p>
                 )}
                 {i.learnMoreUrl && (
-                  <a
-                    href={i.learnMoreUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-xs underline decoration-dotted underline-offset-4 mt-3 inline-block"
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openExternal(i.learnMoreUrl!);
+                    }}
+                    className="text-xs underline decoration-dotted underline-offset-4 mt-3 inline-block bg-transparent border-0 p-0"
                     style={{ color: "rgba(168,197,160,0.75)" }}
                   >
                     Read more →
-                  </a>
+                  </button>
                 )}
               </Link>
             );

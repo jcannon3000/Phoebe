@@ -25,6 +25,7 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { PushNotifications, type Token } from "@capacitor/push-notifications";
 import { Share } from "@capacitor/share";
+import { Browser } from "@capacitor/browser";
 import { Preferences } from "@capacitor/preferences";
 import { Contacts } from "@capacitor-community/contacts";
 import { SignInWithApple, type SignInWithAppleResponse } from "@capacitor-community/apple-sign-in";
@@ -362,6 +363,25 @@ function wireNativeShare() {
       });
     } catch {
       // User cancelled or share unavailable — no action needed.
+    }
+  });
+}
+
+// ─── In-app browser (native) ───────────────────────────────────────────────
+// Opens an external URL in SFSafariViewController on iOS — keeps the user
+// inside Phoebe (back button slides them back to the slideshow rather
+// than booting them out to Safari). Web build dispatches the same event
+// but its own openExternalLink helper falls back to window.open since
+// no listener is attached there.
+function wireNativeOpenUrl() {
+  window.addEventListener("phoebe:open-url", async e => {
+    const detail = (e as CustomEvent).detail as { url?: string } | undefined;
+    if (!detail?.url) return;
+    try {
+      await Browser.open({ url: detail.url });
+    } catch {
+      // Fall back to a normal navigation if the native sheet fails.
+      window.open(detail.url, "_blank");
     }
   });
 }
@@ -1040,6 +1060,7 @@ function exposePublicApi() {
   registerForPushIfRequested();
   wireClearNotifications();
   wireNativeShare();
+  wireNativeOpenUrl();
   wireHaptics();
   wireContacts();
   wireAppleSignIn();

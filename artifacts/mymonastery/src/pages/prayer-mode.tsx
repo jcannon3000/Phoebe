@@ -7,6 +7,7 @@ import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { openExternal } from "@/lib/openExternal";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 
@@ -1130,20 +1131,18 @@ function SlideContent({
       )}
 
       {/* Optional "Read more" link — surfaces an article or background
-          piece the admin attached when authoring the intercession.
-          Opens in a new tab so the user doesn't lose their slideshow
-          state mid-prayer. Subtle visual weight so it doesn't compete
-          with the Amen button below. */}
+          piece the admin attached when authoring the intercession. On
+          the iOS shell openExternal routes through SFSafariViewController
+          so the user stays inside Phoebe; on web it opens a new tab.
+          Either way the slideshow state is preserved. */}
       {slide.kind === "intercession" && slide.learnMoreUrl && (
-        <a
-          href={slide.learnMoreUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs underline decoration-dotted underline-offset-4 mt-1"
+        <button
+          onClick={() => openExternal(slide.learnMoreUrl!)}
+          className="text-xs underline decoration-dotted underline-offset-4 mt-1 bg-transparent border-0 p-0"
           style={{ color: "rgba(168,197,160,0.75)" }}
         >
           Read more →
-        </a>
+        </button>
       )}
 
       <div className="mt-4">

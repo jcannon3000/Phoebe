@@ -25,6 +25,7 @@
     "@capacitor-community/apple-sign-in": "^6.0.0",
     "@capacitor-community/contacts": "^6.0.0",
     "@capacitor/app": "^6.0.0",
+    "@capacitor/browser": "^6.0.0",
     "@capacitor/core": "^6.2.0",
     "@capacitor/haptics": "^6.0.0",
     "@capacitor/ios": "^6.2.0",
