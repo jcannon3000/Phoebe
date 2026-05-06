@@ -6269,4 +6269,127 @@ export const PSALTER: Record<number, PsalmEntry> = {
 9 Happy shall he be who takes your little ones, *
   and dashes them against the rock!`,
   },
+
+  140: {
+    title: "Eripe me, Domine",
+    bcpRef: "BCP p. 795",
+    content:
+`1 Deliver me, O Lord, from evildoers; *
+  protect me from the violent,
+2 Who devise evil in their hearts *
+  and stir up strife all day long.
+3 They have sharpened their tongues like a serpent; *
+  adder's poison is under their lips.
+4 Keep me, O Lord, from the hands of the wicked; *
+  protect me from the violent,
+  who are determined to trip me up.
+5 The proud have hidden a snare for me
+  and stretched out a net of cords; *
+  they have set traps for me along the path.
+6 I have said to the Lord, "You are my God; *
+  listen, O Lord, to my supplication.
+7 O Lord God, the strength of my salvation, *
+  you have covered my head in the day of battle.
+8 Do not grant the desires of the wicked, O Lord, *
+  nor let their evil plans prosper.
+9 Let not those who surround me lift up their heads; *
+  let the evil of their lips overwhelm them.
+10 Let hot burning coals fall upon them; *
+  let them be cast into the mire, never to rise up again."
+11 A slanderer shall not be established on the earth, *
+  and evil shall hunt down the lawless.
+12 I know that the Lord will maintain the cause of the poor *
+  and render justice to the needy.
+13 Surely, the righteous will give thanks to your Name, *
+  and the upright shall continue in your sight.`,
+  },
+
+  141: {
+    title: "Domine, clamavi",
+    bcpRef: "BCP p. 796",
+    content:
+`1 O Lord, I call to you; come to me quickly; *
+  hear my voice when I cry to you.
+2 Let my prayer be set forth in your sight as incense, *
+  the lifting up of my hands as the evening sacrifice.
+3 Set a watch before my mouth, O Lord,
+  and guard the door of my lips; *
+  let not my heart incline to any evil thing.
+4 Let me not be occupied in wickedness with evildoers, *
+  nor eat of their choice foods.
+5 Let the righteous smite me in friendly rebuke;
+  let not the oil of the unrighteous anoint my head; *
+  for my prayer is continually against their wicked deeds.
+6 Let their rulers be overthrown in stony places, *
+  that they may know my words are true.
+7 As when a plowman turns over the earth in furrows, *
+  let their bones be scattered at the mouth of the grave.
+8 But my eyes are turned to you, Lord God; *
+  in you I take refuge;
+  do not strip me of my life.
+9 Protect me from the snare which they have laid for me *
+  and from the traps of the evildoers.
+10 Let the wicked fall into their own nets, *
+  while I myself escape.`,
+  },
+
+  142: {
+    title: "Voce mea ad Dominum",
+    bcpRef: "BCP p. 797",
+    content:
+`1 I cry to the Lord with my voice; *
+  to the Lord I make loud supplication.
+2 I pour out my complaint before him *
+  and tell him all my trouble.
+3 When my spirit languishes within me, you know my path; *
+  in the way wherein I walk they have hidden a trap for me.
+4 I look to my right hand and find no one who knows me; *
+  I have no place to flee to, and no one cares for me.
+5 I cry out to you, O Lord; *
+  I say, "You are my refuge,
+  my portion in the land of the living."
+6 Listen to my cry for help, for I have been brought very low; *
+  save me from those who pursue me,
+  for they are too strong for me.
+7 Bring me out of prison, that I may give thanks to your Name; *
+  when you have dealt bountifully with me,
+  the righteous will gather around me.`,
+  },
+
+  143: {
+    title: "Domine, exaudi",
+    bcpRef: "BCP p. 797",
+    content:
+`1 Lord, hear my prayer,
+  and in your faithfulness heed my supplications; *
+  answer me in your righteousness.
+2 Enter not into judgment with your servant, *
+  for in your sight shall no one living be justified.
+3 For my enemy has sought my life;
+  he has crushed me to the ground; *
+  he has made me live in dark places like those who are long dead.
+4 My spirit faints within me; *
+  my heart within me is desolate.
+5 I remember the time past;
+  I muse upon all your deeds; *
+  I consider the works of your hands.
+6 I spread out my hands to you; *
+  my soul gasps to you like a thirsty land.
+7 O Lord, make haste to answer me; my spirit fails me; *
+  do not hide your face from me
+  or I shall be like those who go down to the Pit.
+8 Let me hear of your loving-kindness in the morning,
+  for I put my trust in you; *
+  show me the road that I must walk,
+  for I lift up my soul to you.
+9 Deliver me from my enemies, O Lord, *
+  for I flee to you for refuge.
+10 Teach me to do what pleases you, for you are my God; *
+  let your good Spirit lead me on level ground.
+11 Revive me, O Lord, for your Name's sake; *
+  for your righteousness' sake, bring me out of trouble.
+12 Of your goodness, destroy my enemies
+  and bring all my foes to naught, *
+  for truly I am your servant.`,
+  },
 };
