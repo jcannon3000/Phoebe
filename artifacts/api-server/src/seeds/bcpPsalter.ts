@@ -4202,4 +4202,260 @@ export const PSALTER: Record<number, PsalmEntry> = {
 18 Let them know that you, whose Name is Yahweh, *
   you alone are the Most High over all the earth.`,
   },
+
+  85: {
+    title: "Benedixisti, Domine",
+    bcpRef: "BCP p. 707",
+    content:
+`1 You have been gracious to your land, O Lord, *
+  you have restored the good fortune of Jacob.
+2 You have forgiven the iniquity of your people *
+  and blotted out all their sins.
+3 You have withdrawn all your fury *
+  and turned yourself from your wrathful indignation.
+4 Restore us then, O God our Savior; *
+  let your anger depart from us.
+5 Will you be displeased with us for ever? *
+  will you prolong your anger from age to age?
+6 Will you not give us life again, *
+  that your people may rejoice in you?
+7 Show us your mercy, O Lord, *
+  and grant us your salvation.
+8 I will listen to what the Lord God is saying, *
+  for he is speaking peace to his faithful people
+  and to those who turn their hearts to him.
+9 Truly, his salvation is very near to those who fear him, *
+  that his glory may dwell in our land.
+10 Mercy and truth have met together; *
+  righteousness and peace have kissed each other.
+11 Truth shall spring up from the earth, *
+  and righteousness shall look down from heaven.
+12 The Lord will indeed grant prosperity, *
+  and our land will yield its increase.
+13 Righteousness shall go before him, *
+  and peace shall be a pathway for his feet.`,
+  },
+
+  86: {
+    title: "Inclina, Domine",
+    bcpRef: "BCP p. 708",
+    content:
+`1 Bow down your ear, O Lord, and answer me, *
+  for I am poor and in misery.
+2 Keep watch over my life, for I am faithful; *
+  save your servant who puts his trust in you.
+3 Be merciful to me, O Lord, for you are my God; *
+  I call upon you all the day long.
+4 Gladden the soul of your servant, *
+  for to you, O Lord, I lift up my soul.
+5 For you, O Lord, are good and forgiving, *
+  and great is your love toward all who call upon you.
+6 Give ear, O Lord, to my prayer, *
+  and attend to the voice of my supplications.
+7 In the time of my trouble I will call upon you, *
+  for you will answer me.
+8 Among the gods there is none like you, O Lord, *
+  nor anything like your works.
+9 All the nations you have made will come and worship you, O Lord, *
+  and glorify your Name.
+10 For you are great;
+  you do wondrous things; *
+  and you alone are God.
+11 Teach me your way, O Lord,
+  and I will walk in your truth; *
+  knit my heart to you that I may fear your Name.
+12 I will thank you, O Lord my God, with all my heart, *
+  and glorify your Name for evermore.
+13 For great is your love toward me; *
+  you have delivered me from the nethermost Pit.
+14 The arrogant rise up against me, O God,
+  and a band of violent men seeks my life; *
+  they have not set you before their eyes.
+15 But you, O Lord, are gracious and full of compassion, *
+  slow to anger, and full of kindness and truth.
+16 Turn to me and have mercy upon me; *
+  give your strength to your servant;
+  and save the child of your handmaid.
+17 Show me a sign of your favor,
+  so that those who hate me may see it and be ashamed; *
+  because you, O Lord, have helped me and comforted me.`,
+  },
+
+  87: {
+    title: "Fundamenta ejus",
+    bcpRef: "BCP p. 710",
+    content:
+`1 On the holy mountain stands the city he has founded; *
+  the Lord loves the gates of Zion
+  more than all the dwellings of Jacob.
+2 Glorious things are spoken of you, *
+  O city of our God.
+3 I count Egypt and Babylon among those who know me; *
+  behold Philistia, Tyre, and Ethiopia:
+  in Zion were they born.
+4 Of Zion it shall be said, "Everyone was born in her, *
+  and the Most High himself shall sustain her."
+5 The Lord will record as he enrolls the peoples, *
+  "These also were born there."
+6 The singers and the dancers will say, *
+  "All my fresh springs are in you."`,
+  },
+
+  88: {
+    title: "Domine, Deus",
+    bcpRef: "BCP p. 711",
+    content:
+`1 O Lord, my God, my Savior, *
+  by day and night I cry to you.
+2 Let my prayer enter into your presence; *
+  incline your ear to my lamentation.
+3 For I am full of trouble; *
+  my life is at the brink of the grave.
+4 I am counted among those who go down to the Pit; *
+  I have become like one who has no strength;
+5 Lost among the dead, *
+  like the slain who lie in the grave,
+6 Whom you remember no more, *
+  for they are cut off from your hand.
+7 You have laid me in the depths of the Pit, *
+  in dark places, and in the abyss.
+8 Your anger weighs upon me heavily, *
+  and all your great waves overwhelm me.
+9 You have put my friends far from me;
+  you have made me to be abhorred by them; *
+  I am in prison and cannot get free.
+10 My sight has failed me because of trouble; *
+  Lord, I have called upon you daily;
+  I have stretched out my hands to you.
+11 Do you work wonders for the dead? *
+  will those who have died stand up and give you thanks?
+12 Will your loving-kindness be declared in the grave? *
+  your faithfulness in the land of destruction?
+13 Will your wonders be known in the dark? *
+  or your righteousness in the country where all is forgotten?
+14 But as for me, O Lord, I cry to you for help; *
+  in the morning my prayer comes before you.
+15 Lord, why have you rejected me? *
+  why have you hidden your face from me?
+16 Ever since my youth, I have been wretched and at the point of death; *
+  I have borne your terrors with a troubled mind.
+17 Your blazing anger has swept over me; *
+  your terrors have destroyed me;
+18 They surround me all day long like a flood; *
+  they encompass me on every side.
+19 My friend and my neighbor you have put away from me, *
+  and darkness is my only companion.`,
+  },
+
+  89: {
+    title: "Misericordias Domini",
+    bcpRef: "BCP p. 713",
+    content:
+`1 Your love, O Lord, for ever will I sing; *
+  from age to age my mouth will proclaim your faithfulness.
+2 For I am persuaded that your love is established for ever; *
+  you have set your faithfulness firmly in the heavens.
+3 "I have made a covenant with my chosen one; *
+  I have sworn an oath to David my servant:
+4 'I will establish your line for ever, *
+  and preserve your throne for all generations.'"
+5 The heavens bear witness to your wonders, O Lord, *
+  and to your faithfulness in the assembly of the holy ones;
+6 For who in the skies can be compared to the Lord? *
+  who is like the Lord among the gods?
+7 God is much to be feared in the council of the holy ones, *
+  great and terrible to all those round about him.
+8 Who is like you, Lord God of hosts? *
+  O mighty Lord, your faithfulness is all around you.
+9 You rule the raging of the sea *
+  and still the surging of its waves.
+10 You have crushed Rahab of the deep with a deadly wound; *
+  you have scattered your enemies with your mighty arm.
+11 Yours are the heavens; the earth also is yours; *
+  you laid the foundations of the world and all that is in it.
+12 You have made the north and the south; *
+  Tabor and Hermon rejoice in your Name.
+13 You have a mighty arm; *
+  strong is your hand and high is your right hand.
+14 Righteousness and justice are the foundations of your throne; *
+  love and truth go before your face.
+15 Happy are the people who know the festal shout! *
+  they walk, O Lord, in the light of your presence.
+16 They rejoice daily in your Name; *
+  they are jubilant in your righteousness.
+17 For you are the glory of their strength, *
+  and by your favor our might is exalted.
+18 Truly, the Lord is our ruler; *
+  The Holy One of Israel is our King.
+19 You spoke once in a vision and said to your faithful people: *
+  "I have set the crown upon a warrior
+  and have exalted one chosen out of the people.
+20 I have found David my servant; *
+  with my holy oil have I anointed him.
+21 My hand will hold him fast *
+  and my arm will make him strong.
+22 No enemy shall deceive him, *
+  nor any wicked man bring him down.
+23 I will crush his foes before him *
+  and strike down those who hate him.
+24 My faithfulness and love shall be with him, *
+  and he shall be victorious through my Name.
+25 I shall make his dominion extend *
+  from the Great Sea to the River.
+26 He will say to me, 'You are my Father, *
+  my God, and the rock of my salvation.'
+27 I will make him my firstborn *
+  and higher than the kings of the earth.
+28 I will keep my love for him for ever, *
+  and my covenant will stand firm for him.
+29 I will establish his line for ever *
+  and his throne as the days of heaven."
+30 "If his children forsake my law *
+  and do not walk according to my judgments;
+31 If they break my statutes *
+  and do not keep my commandments;
+32 I will punish their transgressions with a rod *
+  and their iniquities with the lash;
+33 But I will not take my love from him, *
+  nor let my faithfulness prove false.
+34 I will not break my covenant, *
+  nor change what has gone out of my lips.
+35 Once for all I have sworn by my holiness: *
+  'I will not lie to David.
+36 His line shall endure for ever *
+  and his throne as the sun before me;
+37 It shall stand fast for evermore like the moon, *
+  the abiding witness in the sky.'"
+38 But you have cast off and rejected your anointed; *
+  you have become enraged at him.
+39 You have broken your covenant with your servant, *
+  defiled his crown, and hurled it to the ground.
+40 You have breached all his walls *
+  and laid his strongholds in ruins.
+41 All who pass by despoil him; *
+  he has become the scorn of his neighbors.
+42 You have exalted the right hand of his foes *
+  and made all his enemies rejoice.
+43 You have turned back the edge of his sword *
+  and have not sustained him in battle.
+44 You have put an end to his splendor *
+  and cast his throne to the ground.
+45 You have cut short the days of his youth *
+  and have covered him with shame.
+46 How long will you hide yourself, O Lord?
+  will you hide yourself for ever? *
+  how long will your anger burn like fire?
+47 Remember, Lord, how short life is, *
+  how frail you have made all flesh.
+48 Who can live and not see death? *
+  who can save himself from the power of the grave?
+49 Where, Lord, are your loving-kindnesses of old, *
+  which you promised David in your faithfulness?
+50 Remember, Lord, how your servant is mocked, *
+  how I carry in my bosom the taunts of many peoples,
+51 The taunts your enemies have hurled, O Lord, *
+  which they hurled at the heels of your anointed.
+52 Blessed be the Lord for evermore! *
+  Amen, I say, Amen.`,
+  },
 };
