@@ -148,23 +148,14 @@ export async function assembleDevotion(
   const isMorning = kind === "morning";
   const titleSuffix = isMorning ? "Morning Devotion" : "Early Evening Devotion";
 
-  // 1. Opening — date label, mirrors the office's first slide
-  slides.push(
-    slide(id(), "opening", isMorning ? "🌅" : "🌆", "", liturgicalDay.weekdayLabel, {
-      metadata: {
-        season: liturgicalDay.season,
-        liturgicalYear: liturgicalDay.liturgicalYear,
-        date: date.toISOString(),
-        sundayLabel: liturgicalDay.sundayLabel,
-        weekdayLabel: liturgicalDay.weekdayLabel,
-        isMajorFeast: liturgicalDay.isMajorFeast,
-        useAlleluia: liturgicalDay.useAlleluia,
-        devotion: kind,
-      },
-    }),
-  );
+  // The Daily Devotions used to start with a date-label slide (the
+  // weekday label as italic body text), but the top bar already
+  // shows the office name and the day, so the slide read as a
+  // mostly-empty "OPENING — Wednesday in the 5th Week of Easter"
+  // intro that the user had to tap past. Removed; the devotion now
+  // opens directly on the versicle.
 
-  // 2. Opening versicle. Morning uses the canonical "make speed /
+  // 1. Opening versicle. Morning uses the canonical "make speed /
   //    make haste" pair; early-evening uses the shorter "Light and
   //    peace" greeting from BCP p. 139. Both add the Gloria Patri.
   if (isMorning) {
