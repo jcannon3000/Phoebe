@@ -2762,4 +2762,255 @@ export const PSALTER: Record<number, PsalmEntry> = {
 26 Rise up, and help us, *
   and save us, for the sake of your steadfast love.`,
   },
+
+  45: {
+    title: "Eructavit cor meum",
+    bcpRef: "BCP p. 646",
+    content:
+`1 My heart is stirring with a noble song;
+  let me recite what I have fashioned for the king; *
+  my tongue shall be the pen of a skilled writer.
+2 You are the fairest of men; *
+  grace flows from your lips,
+  because God has blessed you for ever.
+3 Strap your sword upon your thigh, O mighty warrior, *
+  in your pride and in your majesty.
+4 Ride out and conquer in the cause of truth *
+  and for the sake of justice.
+5 Your right hand will show you marvelous things; *
+  your arrows are very sharp, O mighty warrior.
+6 The peoples are falling at your feet, *
+  and the king's enemies are losing heart.
+7 Your throne, O God, endures for ever and ever, *
+  a scepter of righteousness is the scepter of your kingdom;
+  you love righteousness and hate iniquity.
+8 Therefore God, your God, has anointed you *
+  with the oil of gladness above your fellows.
+9 All your garments are fragrant with myrrh, aloes, and cassia, *
+  and the music of strings from ivory palaces makes you glad.
+10 Kings' daughters stand among the ladies of the court; *
+  on your right hand is the queen,
+  adorned with the gold of Ophir.
+11 "Hear, O daughter; consider and listen closely; *
+  forget your people and your father's house.
+12 The king will have pleasure in your beauty; *
+  he is your master; therefore do him honor.
+13 The people of Tyre are here with a gift; *
+  the rich among the people seek your favor."
+14 All glorious is the princess as she enters; *
+  her gown is cloth-of-gold.
+15 In embroidered apparel she is brought to the king; *
+  after her the bridesmaids follow in procession.
+16 With joy and gladness they are brought, *
+  and enter into the palace of the king.
+17 "In place of fathers, O king, you shall have sons; *
+  you shall make them princes over all the earth.
+18 I will make your name to be remembered
+  from one generation to another; *
+  therefore nations will praise you for ever and ever."`,
+  },
+
+  46: {
+    title: "Deus noster refugium",
+    bcpRef: "BCP p. 648",
+    content:
+`1 God is our refuge and strength, *
+  a very present help in trouble.
+2 Therefore we will not fear, though the earth be moved, *
+  and though the mountains be toppled into the depths of the sea;
+3 Though its waters rage and foam, *
+  and though the mountains tremble at its tumult.
+4 The Lord of hosts is with us; *
+  the God of Jacob is our stronghold.
+5 There is a river whose streams make glad the city of God, *
+  the holy habitation of the Most High.
+6 God is in the midst of her;
+  she shall not be overthrown; *
+  God shall help her at the break of day.
+7 The nations make much ado, and the kingdoms are shaken; *
+  God has spoken, and the earth shall melt away.
+8 The Lord of hosts is with us; *
+  the God of Jacob is our stronghold.
+9 Come now and look upon the works of the Lord, *
+  what awesome things he has done on earth.
+10 It is he who makes war to cease in all the world; *
+  he breaks the bow, and shatters the spear,
+  and burns the shields with fire.
+11 "Be still, then, and know that I am God; *
+  I will be exalted among the nations;
+  I will be exalted in the earth."
+12 The Lord of hosts is with us; *
+  the God of Jacob is our stronghold.`,
+  },
+
+  47: {
+    title: "Omnes gentes, plaudite",
+    bcpRef: "BCP p. 649",
+    content:
+`1 Clap your hands, all you peoples; *
+  shout to God with a cry of joy.
+2 For the Lord Most High is to be feared; *
+  he is the great King over all the earth.
+3 He subdues the peoples under us, *
+  and the nations under our feet.
+4 He chooses our inheritance for us, *
+  the pride of Jacob whom he loves.
+5 God has gone up with a shout, *
+  the Lord with the sound of the ram's-horn.
+6 Sing praises to God, sing praises; *
+  sing praises to our King, sing praises.
+7 For God is King of all the earth; *
+  sing praises with all your skill.
+8 God reigns over the nations; *
+  God sits upon his holy throne.
+9 The nobles of the peoples have gathered together *
+  with the people of the God of Abraham.
+10 The rulers of the earth belong to God, *
+  and he is highly exalted.`,
+  },
+
+  48: {
+    title: "Magnus Dominus",
+    bcpRef: "BCP p. 650",
+    content:
+`1 Great is the Lord, and highly to be praised; *
+  in the city of our God is his holy hill.
+2 Beautiful and lofty, the joy of all the earth, is the hill of Zion, *
+  the very center of the world and the city of the great King.
+3 God is in her citadels; *
+  he is known to be her sure refuge.
+4 Behold, the kings of the earth assembled *
+  and marched forward together.
+5 They looked and were astounded; *
+  they retreated and fled in terror.
+6 Trembling seized them there; *
+  they writhed like a woman in childbirth,
+  like ships of the sea when the east wind shatters them.
+7 As we have heard, so have we seen,
+  in the city of the Lord of hosts, in the city of our God; *
+  God has established her for ever.
+8 We have waited in silence on your loving-kindness, O God, *
+  in the midst of your temple.
+9 Your praise, like your Name, O God, reaches to the world's end; *
+  your right hand is full of justice.
+10 Let Mount Zion be glad
+  and the cities of Judah rejoice, *
+  because of your judgments.
+11 Make the circuit of Zion;
+  walk round about her; *
+  count the number of her towers.
+12 Consider well her bulwarks;
+  examine her strongholds; *
+  that you may tell those who come after.
+13 This God is our God for ever and ever; *
+  he shall be our guide for evermore.`,
+  },
+
+  49: {
+    title: "Audite haec, omnes",
+    bcpRef: "BCP p. 651",
+    content:
+`1 Hear this, all you peoples;
+  hearken, all you who dwell in the world, *
+  you of high degree and low, rich and poor together.
+2 My mouth shall speak of wisdom, *
+  and my heart shall meditate on understanding.
+3 I will incline my ear to a proverb *
+  and set forth my riddle upon the harp.
+4 Why should I be afraid in evil days, *
+  when the wickedness of those at my heels surrounds me,
+5 The wickedness of those who put their trust in their goods, *
+  and boast of their great riches?
+6 We can never ransom ourselves, *
+  or deliver to God the price of our life;
+7 For the ransom of our life is so great, *
+  that we should never have enough to pay it,
+8 In order to live for ever and ever, *
+  and never see the grave.
+9 For we see that the wise die also;
+  like the dull and stupid they perish *
+  and leave their wealth to those who come after them.
+10 Their graves shall be their homes for ever,
+  their dwelling places from generation to generation, *
+  though they call the lands after their own names.
+11 Even though honored, they cannot live for ever; *
+  they are like the beasts that perish.
+12 Such is the way of those who foolishly trust in themselves, *
+  and the end of those who delight in their own words.
+13 Like a flock of sheep they are destined to die;
+  Death is their shepherd; *
+  they go down straightway to the grave.
+14 Their form shall waste away, *
+  and the land of the dead shall be their home.
+15 But God will ransom my life; *
+  he will snatch me from the grasp of death.
+16 Do not be envious when some become rich, *
+  or when the grandeur of their house increases;
+17 For they will carry nothing away at their death, *
+  nor will their grandeur follow them.
+18 Though they thought highly of themselves while they lived, *
+  and were praised for their success,
+19 They shall join the company of their forebears, *
+  who will never see the light again.
+20 Those who are honored, but have no understanding, *
+  are like the beasts that perish.`,
+  },
+
+  50: {
+    title: "Deus deorum",
+    bcpRef: "BCP p. 654",
+    content:
+`1 The Lord, the God of gods, has spoken; *
+  he has called the earth from the rising of the sun to its setting.
+2 Out of Zion, perfect in its beauty, *
+  God reveals himself in glory.
+3 Our God will come and will not keep silence; *
+  before him there is a consuming flame,
+  and round about him a raging storm.
+4 He calls the heavens and the earth from above *
+  to witness the judgment of his people.
+5 "Gather before me my loyal followers, *
+  those who have made a covenant with me
+  and sealed it with sacrifice."
+6 Let the heavens declare the rightness of his cause; *
+  for God himself is judge.
+7 Hear, O my people, and I will speak:
+  "O Israel, I will bear witness against you; *
+  for I am God, your God.
+8 I do not accuse you because of your sacrifices; *
+  your offerings are always before me.
+9 I will take no bull-calf from your stalls, *
+  nor he-goats out of your pens;
+10 For all the beasts of the forest are mine, *
+  the herds in their thousands upon the hills.
+11 I know every bird in the sky, *
+  and the creatures of the fields are in my sight.
+12 If I were hungry, I would not tell you, *
+  for the whole world is mine and all that is in it.
+13 Do you think I eat the flesh of bulls, *
+  or drink the blood of goats?
+14 Offer to God a sacrifice of thanksgiving *
+  and make good your vows to the Most High.
+15 Call upon me in the day of trouble; *
+  I will deliver you, and you shall honor me."
+16 But to the wicked God says: *
+  "Why do you recite my statutes,
+  and take my covenant upon your lips;
+17 Since you refuse discipline, *
+  and toss my words behind your back?
+18 When you see a thief, you make him your friend, *
+  and you cast in your lot with adulterers.
+19 You have loosed your lips for evil, *
+  and harnessed your tongue to a lie.
+20 You are always speaking evil of your brother *
+  and slandering your own mother's son.
+21 These things you have done, and I kept still, *
+  and you thought that I am like you."
+22 "I have made my accusation; *
+  I have put my case in order before your eyes.
+23 Consider this well, you who forget God, *
+  lest I rend you and there be none to deliver you.
+24 Whoever offers me the sacrifice of thanksgiving honors me; *
+  but to those who keep in my way will I show the salvation of God."`,
+  },
 };
