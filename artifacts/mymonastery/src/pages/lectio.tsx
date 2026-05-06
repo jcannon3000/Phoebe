@@ -603,11 +603,19 @@ export default function LectioPage() {
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
           // Header is position:fixed at the top with its own safe-area
-          // padding; we just need enough top padding to clear it. The
-          // earlier 56px left a wide gap between the bar and the slide
-          // headline on every stage; 32px lands the content directly
-          // under the bar without overlap.
-          paddingTop: "calc(env(safe-area-inset-top) + 32px)",
+          // padding; this main needs to clear the bar's full height on
+          // BOTH platforms.
+          //
+          // Bar height ≈ pad-top (max(24, safe+8)) + content row (~28)
+          // + pad-bottom (8) = max(60, safe+44).
+          //   web (safe=0): 60px
+          //   iOS notched (safe≈47): 91px
+          //
+          // Earlier `safe+32` only gave 32px on web — content slid
+          // under the bar by ~28px (the user reported it as "too high
+          // on web"). At the same time `safe+56` gave too much breathing
+          // on iOS. The fix is a max() that clears the bar on both.
+          paddingTop: "max(72px, calc(env(safe-area-inset-top) + 52px))",
           // Bottom nav is position:fixed with safe-area-bottom + 16 + ~50
           // pill height. Pad enough to clear it plus keyboard inset when
           // the textarea is focused.
