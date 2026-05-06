@@ -343,6 +343,8 @@ export async function buildIntercessionSlides(
           title: prayerFeedEntriesTable.title,
           body: prayerFeedEntriesTable.body,
           feedTitle: prayerFeedsTable.title,
+          feedSlug: prayerFeedsTable.slug,
+          entryDate: prayerFeedEntriesTable.entryDate,
         })
         .from(prayerFeedEntriesTable)
         .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedEntriesTable.feedId))
@@ -457,7 +459,18 @@ export async function buildIntercessionSlides(
       bcpReference: null,
       isScrollable: body.length > 280,
       scrollHint: body.length > 280 ? "↓ continue · tap when ready" : null,
-      metadata: { source: "feed", feedEntryId: f.id, feedTitle: f.feedTitle ?? null },
+      metadata: {
+        source: "feed",
+        feedEntryId: f.id,
+        feedTitle: f.feedTitle ?? null,
+        // Slug + entry date are what the prayer-feed amen endpoint
+        // wants in the path: POST /api/prayer-feeds/:slug/entries/:date/pray.
+        // Surfacing both here means the renderer's Amen button on
+        // intercession slides can wire straight to the endpoint
+        // without a follow-up lookup.
+        feedSlug: f.feedSlug ?? null,
+        entryDate: f.entryDate,
+      },
     });
   }
 
