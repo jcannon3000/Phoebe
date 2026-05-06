@@ -113,8 +113,54 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
     >
       <ProgressBar current={currentIndex} total={slides.length} currentType={currentSlide.type} />
 
+      {/* Close button — top-right, persistent across all slides so the
+          user can leave the office mid-prayer without hunting for an
+          out. Stop click propagation so we don't also advance the slide. */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onBack(); }}
+        aria-label="Close"
+        style={{
+          position: "fixed",
+          top: "max(12px, calc(env(safe-area-inset-top) + 8px))",
+          right: 16,
+          width: 36,
+          height: 36,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(255,255,255,0.06)",
+          border: `1px solid ${labels.accent}33`,
+          borderRadius: 999,
+          color: `${labels.accent}cc`,
+          fontSize: 18,
+          fontFamily: "Space Grotesk, sans-serif",
+          cursor: "pointer",
+          zIndex: 100,
+          padding: 0,
+          lineHeight: 1,
+        }}
+      >
+        ×
+      </button>
+
+      {/* Slide counter at the bottom, above the home-indicator safe area
+          so it never overlaps the device chrome. Hidden on opening +
+          closing slides so the chrome doesn't compete with the framing. */}
       {currentSlide.type !== "opening" && currentSlide.type !== "closing" && (
-        <div style={{ position: "fixed", top: 12, right: 16, fontSize: 12, color: `${labels.accent}66`, fontFamily: "Space Grotesk, sans-serif", zIndex: 90, pointerEvents: "none" }}>
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: "max(16px, calc(env(safe-area-inset-bottom) + 8px))",
+            textAlign: "center",
+            fontSize: 12,
+            color: `${labels.accent}88`,
+            fontFamily: "Space Grotesk, sans-serif",
+            zIndex: 90,
+            pointerEvents: "none",
+          }}
+        >
           {currentIndex + 1} of {slides.length}
         </div>
       )}

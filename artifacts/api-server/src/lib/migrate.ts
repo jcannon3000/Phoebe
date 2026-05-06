@@ -1237,6 +1237,21 @@ export async function migrate() {
       WHERE slug = 'phoebe-climate'
     `);
 
+    // BCP Daily Office texts (confession, absolution, opening sentences,
+    // canticles, Pascha Nostrum, etc.) live in bcp_texts. The seed is
+    // upsert-safe — runs on every boot so a fresh DB or a missed seed
+    // step doesn't leave the office showing "[key — see BCP]" placeholders.
+    // morning_prayer_cache is wiped here too so any cached row that was
+    // assembled BEFORE the seed completed re-assembles with real text.
+    try {
+      await run(client, `TRUNCATE TABLE morning_prayer_cache`);
+      const { seedBcpTexts } = await import("../seeds/bcpTexts");
+      await seedBcpTexts();
+      logger.info("BCP texts seeded + morning_prayer_cache cleared");
+    } catch (err) {
+      logger.error({ err }, "BCP text seed failed (non-fatal — server still starts)");
+    }
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
