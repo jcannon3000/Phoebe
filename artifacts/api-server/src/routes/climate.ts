@@ -484,6 +484,38 @@ router.delete("/climate/admin/walks/:id", requireClimateAdmin, async (req, res):
   }
 });
 
+// GET /api/climate/intercessions — public list of active feed intercessions
+// for /climate hub display. Subscribers see them all as cards. Returns
+// the same shape as the admin variant minus draft/archived rows.
+router.get("/climate/intercessions", requireClimate, async (_req, res): Promise<void> => {
+  try {
+    const feed = await getClimateFeed();
+    if (!feed) {
+      res.status(404).json({ error: "Climate feed not found" }); return;
+    }
+    const rows = await db
+      .select({
+        id: sharedMomentsTable.id,
+        name: sharedMomentsTable.name,
+        intercessionTopic: sharedMomentsTable.intercessionTopic,
+        intercessionFullText: sharedMomentsTable.intercessionFullText,
+        learnMoreUrl: sharedMomentsTable.learnMoreUrl,
+        createdAt: sharedMomentsTable.createdAt,
+      })
+      .from(sharedMomentsTable)
+      .where(
+        and(
+          eq(sharedMomentsTable.prayerFeedId, feed.id),
+          eq(sharedMomentsTable.state, "active"),
+        ),
+      )
+      .orderBy(desc(sharedMomentsTable.createdAt));
+    res.json({ intercessions: rows });
+  } catch {
+    res.status(500).json({ error: "Failed to load intercessions" });
+  }
+});
+
 // ─── Climate admin: feed intercession curation ─────────────────────────────
 // Authoring is on community intercessions (shared_moments) scoped to the
 // phoebe-climate feed. Subscribers get tokens via reconcileFeedPracticeMembers

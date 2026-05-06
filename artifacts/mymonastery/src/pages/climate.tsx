@@ -52,17 +52,35 @@ interface WalksResponse {
   walks: Walk[];
 }
 
+interface ClimateIntercession {
+  id: number;
+  name: string;
+  intercessionTopic: string | null;
+  intercessionFullText: string | null;
+  learnMoreUrl: string | null;
+  createdAt: string;
+}
+
+interface IntercessionsResponse {
+  intercessions: ClimateIntercession[];
+}
+
 function ClimateHub() {
-  const { data } = useQuery<WalksResponse>({
+  const { data: walksData } = useQuery<WalksResponse>({
     queryKey: ["/api/climate/walks"],
     queryFn: () => apiRequest("GET", "/api/climate/walks"),
   });
-  const walks = data?.walks ?? [];
+  const { data: intData, isLoading: intLoading } = useQuery<IntercessionsResponse>({
+    queryKey: ["/api/climate/intercessions"],
+    queryFn: () => apiRequest("GET", "/api/climate/intercessions"),
+  });
+  const walks = walksData?.walks ?? [];
+  const intercessions = intData?.intercessions ?? [];
 
   return (
-    <div className="flex flex-col gap-6 pt-2 max-w-md mx-auto w-full">
+    <div className="flex flex-col gap-6 pt-2 max-w-2xl mx-auto w-full">
       {/* Header */}
-      <div className="flex flex-col gap-1 text-center">
+      <div className="flex flex-col gap-1">
         <div className="text-4xl">🌿</div>
         <h1
           className="text-2xl font-bold"
@@ -79,11 +97,11 @@ function ClimateHub() {
         </p>
       </div>
 
-      {/* Pray now → goes to the regular dashboard where today's
-          intercessions live. The climate prayer experience is on
-          /dashboard + /prayer-mode, same as for any Phoebe user. */}
+      {/* Pray now → opens the slideshow with today's prayer list,
+          which includes every climate intercession plus anything else
+          the user has on their list. */}
       <Link
-        href="/dashboard"
+        href="/prayer-mode"
         className="w-full py-3.5 rounded-full text-sm font-semibold tracking-wide text-center transition-opacity hover:opacity-80 active:scale-[0.99]"
         style={{
           background: "#2D5E3F",
@@ -94,29 +112,108 @@ function ClimateHub() {
         Pray now →
       </Link>
 
-      {/* Upcoming prayer walks */}
-      <div className="flex flex-col gap-2.5">
+      {/* Active intercessions — full prayer cards, one per active
+          intercession on the climate feed. Tap reveals the moment
+          detail page (/moments/:id) where members + posts live. */}
+      <div className="flex flex-col gap-3">
         <p
           className="text-[10px] font-semibold uppercase tracking-widest"
           style={{ color: "rgba(200,212,192,0.4)" }}
         >
-          Upcoming prayer walks
+          Praying for
         </p>
-        {walks.length === 0 ? (
+        {intLoading ? (
+          <p className="text-sm" style={{ color: "rgba(143,175,150,0.5)" }}>
+            Loading…
+          </p>
+        ) : intercessions.length === 0 ? (
           <div
-            className="rounded-2xl px-5 py-6 text-center"
+            className="rounded-2xl px-5 py-8 text-center"
             style={{
               background: "rgba(200,212,192,0.04)",
               border: "1px dashed rgba(46,107,64,0.2)",
             }}
           >
-            <p className="text-sm" style={{ color: "#8FAF96" }}>No walks scheduled.</p>
+            <p className="text-sm" style={{ color: "#8FAF96" }}>No intercessions yet.</p>
             <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>
               Check back soon.
             </p>
           </div>
         ) : (
-          walks.map((w) => (
+          intercessions.map((i) => {
+            const title = i.intercessionTopic ?? i.name ?? "Intercession";
+            return (
+              <Link
+                key={i.id}
+                href={`/moments/${i.id}`}
+                className="block rounded-2xl px-5 py-5 transition-opacity hover:opacity-90"
+                style={{
+                  background: "rgba(46,107,64,0.12)",
+                  border: "1px solid rgba(46,107,64,0.2)",
+                }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
+                    style={{
+                      background: "rgba(46,107,64,0.22)",
+                      color: "#A8C5A0",
+                      border: "1px solid rgba(46,107,64,0.4)",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                    }}
+                  >
+                    🌿 Climate Justice
+                  </span>
+                </div>
+                <h3
+                  className="text-base font-semibold leading-snug mb-2"
+                  style={{
+                    color: "#F0EDE6",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {title}
+                </h3>
+                {i.intercessionFullText && (
+                  <p
+                    className="text-sm leading-relaxed italic line-clamp-4"
+                    style={{
+                      color: "#C8D4C0",
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                    }}
+                  >
+                    {i.intercessionFullText}
+                  </p>
+                )}
+                {i.learnMoreUrl && (
+                  <a
+                    href={i.learnMoreUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs underline decoration-dotted underline-offset-4 mt-3 inline-block"
+                    style={{ color: "rgba(168,197,160,0.75)" }}
+                  >
+                    Read more →
+                  </a>
+                )}
+              </Link>
+            );
+          })
+        )}
+      </div>
+
+      {/* Upcoming prayer walks */}
+      {walks.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: "rgba(200,212,192,0.4)" }}
+          >
+            Upcoming prayer walks
+          </p>
+          {walks.map((w) => (
             <div
               key={w.id}
               className="rounded-2xl px-4 py-3.5"
@@ -164,9 +261,9 @@ function ClimateHub() {
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
