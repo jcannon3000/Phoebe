@@ -125,7 +125,11 @@ export async function assembleEveningPrayer(
 }> {
   const liturgicalDay = getOfficeDay(date);
   const readings = getLectionaryReadings(liturgicalDay, "evening");
-  const { afterOT, afterNT } = getEveningCanticles(liturgicalDay);
+  // EP only renders one lesson now (the Gospel — see lesson3 below),
+  // so the post-OT canticle slot is unused. Keep destructuring for
+  // forward-compat but mark afterOT as deliberately ignored.
+  const { afterOT: _afterOT, afterNT } = getEveningCanticles(liturgicalDay);
+  void _afterOT;
 
   const openingSentenceKey = pickOpeningSentenceKey(liturgicalDay.season, date.getDate());
   const suffragesKey = pickSuffragesKey(liturgicalDay.weekInSeason);
@@ -233,45 +237,30 @@ export async function assembleEveningPrayer(
     );
   }
 
-  // 8. First Lesson — reference only
-  const lesson1 = readings.lesson1;
+  // 8. The Gospel — reference only.
+  //
+  // BCP Daily Office Lectionary appoints THREE readings per day per
+  // year (OT, Epistle, Gospel). Per user direction the distribution
+  // is "two readings at MP, the third at EP" regardless of the
+  // year's Gospel-placement convention. So MP shows lesson1 (OT) +
+  // lesson2 (Epistle), and EP shows lesson3 (Gospel) only — no
+  // duplication of MP's lessons here. Earlier the server emitted
+  // lesson1+lesson2 in EP too, which mirrored MP and read as a bug.
+  const lesson3 = readings.lesson3;
   slides.push(
-    slide(id(), "lesson", "📜", "THE FIRST LESSON", lesson1, {
-      title: lesson1,
+    slide(id(), "lesson", "✝️", "THE GOSPEL", lesson3, {
+      title: lesson3,
       metadata: {
-        reference: lesson1,
-        readingNote: "Read this lesson in your own Bible or preferred translation.",
+        reference: lesson3,
+        readingNote: "Read the Gospel in your own Bible or preferred translation.",
       },
     }),
   );
 
-  // 9. Canticle after OT lesson
-  const afterOTData = getTextData(afterOT);
-  slides.push(
-    slide(id(), "canticle", CANTICLE_EMOJI[afterOT] ?? "🌟",
-      afterOTData.title.toUpperCase(),
-      afterOTData.content,
-      {
-        bcpReference: afterOTData.bcpReference,
-        isScrollable: true,
-        scrollHint: "↓ continue · tap when ready",
-      },
-    ),
-  );
-
-  // 10. Second Lesson — reference only
-  const lesson2 = readings.lesson2;
-  slides.push(
-    slide(id(), "lesson", "✉️", "THE SECOND LESSON", lesson2, {
-      title: lesson2,
-      metadata: {
-        reference: lesson2,
-        readingNote: "Read this lesson in your own Bible or preferred translation.",
-      },
-    }),
-  );
-
-  // 11. Canticle after NT lesson
+  // 9. Canticle after the Gospel — Magnificat or Nunc Dimittis depending
+  // on day; we use the canticle the season selector returns for the
+  // post-NT slot. The two-canticle pattern at EP (one between lessons,
+  // one after the second) collapses to one when there's only one lesson.
   const afterNTData = getTextData(afterNT);
   slides.push(
     slide(id(), "canticle", CANTICLE_EMOJI[afterNT] ?? "🌟",

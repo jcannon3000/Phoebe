@@ -453,17 +453,27 @@ export async function assembleMorningPrayer(
     );
   }
 
-  // First Lesson
-  slides.push(
-    slide(id(), "lesson", "📜", "FIRST LESSON", lesson1, {
-      title: lesson1,
-      isScrollable: false,
-      scrollHint: null,
-      metadata: { reference: lesson1 },
-    }),
-  );
+  // BCP marks empty lesson slots with dashes ("----------") on major
+  // feasts where only some readings are appointed (e.g. Easter Day
+  // Y2 has the OT + Gospel but no Epistle). Treat dashes / blanks as
+  // "no lesson today" and skip the slide rather than rendering a
+  // broken "SECOND LESSON" titled "----------".
+  const isLessonPresent = (l: string | null | undefined): boolean =>
+    !!l && l.trim().length > 0 && !/^-+$/.test(l.trim());
 
-  // Canticle after OT
+  // First Lesson — OT.
+  if (isLessonPresent(lesson1)) {
+    slides.push(
+      slide(id(), "lesson", "📜", "FIRST LESSON", lesson1, {
+        title: lesson1,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: { reference: lesson1 },
+      }),
+    );
+  }
+
+  // Canticle after OT.
   const afterOTData = texts[afterOT];
   slides.push(
     slide(
@@ -478,15 +488,19 @@ export async function assembleMorningPrayer(
     ),
   );
 
-  // Second Lesson
-  slides.push(
-    slide(id(), "lesson", "✉️", "SECOND LESSON", lesson2, {
-      title: lesson2,
-      isScrollable: false,
-      scrollHint: null,
-      metadata: { reference: lesson2 },
-    }),
-  );
+  // Second Lesson — Epistle (the new layout: MP shows OT + Epistle,
+  // EP shows Gospel only). Skipped on feast days where the BCP
+  // appoints no Epistle at MP.
+  if (isLessonPresent(lesson2)) {
+    slides.push(
+      slide(id(), "lesson", "✉️", "SECOND LESSON", lesson2, {
+        title: lesson2,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: { reference: lesson2 },
+      }),
+    );
+  }
 
   // Canticle after NT
   const afterNTData = texts[afterNT];
