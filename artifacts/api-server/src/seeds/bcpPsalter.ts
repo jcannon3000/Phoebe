@@ -350,4 +350,457 @@ export const PSALTER: Record<number, PsalmEntry> = {
   be strong, and he shall comfort your heart; *
   wait patiently for the Lord.`,
   },
+
+  51: {
+    title: "Miserere mei, Deus",
+    bcpRef: "BCP p. 656",
+    content:
+`1 Have mercy on me, O God, according to your loving-kindness; *
+  in your great compassion blot out my offenses.
+2 Wash me through and through from my wickedness *
+  and cleanse me from my sin.
+3 For I know my transgressions, *
+  and my sin is ever before me.
+4 Against you only have I sinned *
+  and done what is evil in your sight.
+5 And so you are justified when you speak *
+  and upright in your judgment.
+6 Indeed, I have been wicked from my birth, *
+  a sinner from my mother's womb.
+7 For behold, you look for truth deep within me, *
+  and will make me understand wisdom secretly.
+8 Purge me from my sin, and I shall be pure; *
+  wash me, and I shall be clean indeed.
+9 Make me hear of joy and gladness, *
+  that the body you have broken may rejoice.
+10 Hide your face from my sins *
+  and blot out all my iniquities.
+11 Create in me a clean heart, O God, *
+  and renew a right spirit within me.
+12 Cast me not away from your presence *
+  and take not your holy Spirit from me.
+13 Give me the joy of your saving help again *
+  and sustain me with your bountiful Spirit.
+14 I shall teach your ways to the wicked, *
+  and sinners shall return to you.
+15 Deliver me from death, O God, *
+  and my tongue shall sing of your righteousness,
+  O God of my salvation.
+16 Open my lips, O Lord, *
+  and my mouth shall proclaim your praise.
+17 Had you desired it, I would have offered sacrifice, *
+  but you take no delight in burnt-offerings.
+18 The sacrifice of God is a troubled spirit; *
+  a broken and contrite heart, O God, you will not despise.
+19 Be favorable and gracious to Zion, *
+  and rebuild the walls of Jerusalem.
+20 Then you will be pleased with the appointed sacrifices,
+  with burnt-offerings and oblations; *
+  then shall they offer young bullocks upon your altar.`,
+  },
+
+  63: {
+    title: "Deus, Deus meus",
+    bcpRef: "BCP p. 670",
+    content:
+`1 O God, you are my God; eagerly I seek you; *
+  my soul thirsts for you, my flesh faints for you,
+  as in a barren and dry land where there is no water.
+2 Therefore I have gazed upon you in your holy place, *
+  that I might behold your power and your glory.
+3 For your loving-kindness is better than life itself; *
+  my lips shall give you praise.
+4 So will I bless you as long as I live *
+  and lift up my hands in your Name.
+5 My soul is content, as with marrow and fatness, *
+  and my mouth praises you with joyful lips,
+6 When I remember you upon my bed, *
+  and meditate on you in the night watches.
+7 For you have been my helper, *
+  and under the shadow of your wings I will rejoice.
+8 My soul clings to you; *
+  your right hand holds me fast.`,
+  },
+
+  67: {
+    title: "Deus misereatur",
+    bcpRef: "BCP p. 675",
+    content:
+`1 May God be merciful to us and bless us, *
+  show us the light of his countenance and come to us.
+2 Let your ways be known upon earth, *
+  your saving health among all nations.
+3 Let the peoples praise you, O God; *
+  let all the peoples praise you.
+4 Let the nations be glad and sing for joy, *
+  for you judge the peoples with equity
+  and guide all the nations upon earth.
+5 Let the peoples praise you, O God; *
+  let all the peoples praise you.
+6 The earth has brought forth her increase; *
+  may God, our own God, give us his blessing.
+7 May God give us his blessing, *
+  and may all the ends of the earth stand in awe of him.`,
+  },
+
+  90: {
+    title: "Domine, refugium",
+    bcpRef: "BCP p. 717",
+    content:
+`1 Lord, you have been our refuge *
+  from one generation to another.
+2 Before the mountains were brought forth,
+  or the land and the earth were born, *
+  from age to age you are God.
+3 You turn us back to the dust and say, *
+  "Go back, O child of earth."
+4 For a thousand years in your sight are like yesterday when it is past *
+  and like a watch in the night.
+5 You sweep us away like a dream; *
+  we fade away suddenly like the grass.
+6 In the morning it is green and flourishes; *
+  in the evening it is dried up and withered.
+7 For we consume away in your displeasure; *
+  we are afraid because of your wrathful indignation.
+8 Our iniquities you have set before you, *
+  and our secret sins in the light of your countenance.
+9 When you are angry, all our days are gone; *
+  we bring our years to an end like a sigh.
+10 The span of our life is seventy years,
+  perhaps in strength even eighty; *
+  yet the sum of them is but labor and sorrow,
+  for they pass away quickly and we are gone.
+11 Who regards the power of your wrath? *
+  who rightly fears your indignation?
+12 So teach us to number our days *
+  that we may apply our hearts to wisdom.
+13 Return, O Lord; how long will you tarry? *
+  be gracious to your servants.
+14 Satisfy us by your loving-kindness in the morning; *
+  so shall we rejoice and be glad all the days of our life.
+15 Make us glad by the measure of the days that you afflicted us *
+  and the years in which we suffered adversity.
+16 Show your servants your works *
+  and your splendor to their children.
+17 May the graciousness of the Lord our God be upon us; *
+  prosper the work of our hands;
+  prosper our handiwork.`,
+  },
+
+  95: {
+    title: "Venite, exultemus",
+    bcpRef: "BCP p. 724",
+    content:
+`1 Come, let us sing to the Lord; *
+  let us shout for joy to the Rock of our salvation.
+2 Let us come before his presence with thanksgiving *
+  and raise a loud shout to him with psalms.
+3 For the Lord is a great God, *
+  and a great King above all gods.
+4 In his hand are the caverns of the earth, *
+  and the heights of the hills are his also.
+5 The sea is his, for he made it, *
+  and his hands have molded the dry land.
+6 Come, let us bow down, and bend the knee, *
+  and kneel before the Lord our Maker.
+7 For he is our God,
+  and we are the people of his pasture and the sheep of his hand. *
+  Oh, that today you would hearken to his voice!
+8 Harden not your hearts,
+  as your forebears did in the wilderness, *
+  at Meribah, and on that day at Massah, when they tempted me.
+9 They put me to the test, *
+  though they had seen my works.
+10 Forty years long I detested that generation and said, *
+  "This people are wayward in their hearts;
+  they do not know my ways."
+11 So I swore in my wrath, *
+  "They shall not enter into my rest."`,
+  },
+
+  100: {
+    title: "Jubilate Deo",
+    bcpRef: "BCP p. 729",
+    content:
+`1 Be joyful in the Lord, all you lands; *
+  serve the Lord with gladness
+  and come before his presence with a song.
+2 Know this: The Lord himself is God; *
+  he himself has made us, and we are his;
+  we are his people and the sheep of his pasture.
+3 Enter his gates with thanksgiving;
+  go into his courts with praise; *
+  give thanks to him and call upon his Name.
+4 For the Lord is good;
+  his mercy is everlasting; *
+  and his faithfulness endures from age to age.`,
+  },
+
+  121: {
+    title: "Levavi oculos",
+    bcpRef: "BCP p. 779",
+    content:
+`1 I lift up my eyes to the hills; *
+  from where is my help to come?
+2 My help comes from the Lord, *
+  the maker of heaven and earth.
+3 He will not let your foot be moved *
+  and he who watches over you will not fall asleep.
+4 Behold, he who keeps watch over Israel *
+  shall neither slumber nor sleep;
+5 The Lord himself watches over you; *
+  the Lord is your shade at your right hand,
+6 So that the sun shall not strike you by day, *
+  nor the moon by night.
+7 The Lord shall preserve you from all evil; *
+  it is he who shall keep you safe.
+8 The Lord shall watch over your going out and your coming in, *
+  from this time forth for evermore.`,
+  },
+
+  130: {
+    title: "De profundis",
+    bcpRef: "BCP p. 784",
+    content:
+`1 Out of the depths have I called to you, O Lord;
+  Lord, hear my voice; *
+  let your ears consider well the voice of my supplication.
+2 If you, Lord, were to note what is done amiss, *
+  O Lord, who could stand?
+3 For there is forgiveness with you; *
+  therefore you shall be feared.
+4 I wait for the Lord; my soul waits for him; *
+  in his word is my hope.
+5 My soul waits for the Lord,
+  more than watchmen for the morning, *
+  more than watchmen for the morning.
+6 O Israel, wait for the Lord, *
+  for with the Lord there is mercy;
+7 With him there is plenteous redemption, *
+  and he shall redeem Israel from all their sins.`,
+  },
+
+  134: {
+    title: "Ecce nunc",
+    bcpRef: "BCP p. 787",
+    content:
+`1 Behold now, bless the Lord, all you servants of the Lord, *
+  you that stand by night in the house of the Lord.
+2 Lift up your hands in the holy place and bless the Lord; *
+  the Lord who made heaven and earth bless you out of Zion.`,
+  },
+
+  145: {
+    title: "Exaltabo te, Deus",
+    bcpRef: "BCP p. 801",
+    content:
+`1 I will exalt you, O God my King, *
+  and bless your Name for ever and ever.
+2 Every day will I bless you *
+  and praise your Name for ever and ever.
+3 Great is the Lord and greatly to be praised; *
+  there is no end to his greatness.
+4 One generation shall praise your works to another *
+  and shall declare your power.
+5 I will ponder the glorious splendor of your majesty *
+  and all your marvelous works.
+6 They shall speak of the might of your wondrous acts, *
+  and I will tell of your greatness.
+7 They shall publish the remembrance of your great goodness; *
+  they shall sing of your righteous deeds.
+8 The Lord is gracious and full of compassion, *
+  slow to anger and of great kindness.
+9 The Lord is loving to everyone *
+  and his compassion is over all his works.
+10 All your works praise you, O Lord, *
+  and your faithful servants bless you.
+11 They make known the glory of your kingdom *
+  and speak of your power;
+12 That the peoples may know of your power *
+  and the glorious splendor of your kingdom.
+13 Your kingdom is an everlasting kingdom; *
+  your dominion endures throughout all ages.
+14 The Lord is faithful in all his words *
+  and merciful in all his deeds.
+15 The Lord upholds all those who fall; *
+  he lifts up those who are bowed down.
+16 The eyes of all wait upon you, O Lord, *
+  and you give them their food in due season.
+17 You open wide your hand *
+  and satisfy the needs of every living creature.
+18 The Lord is righteous in all his ways *
+  and loving in all his works.
+19 The Lord is near to those who call upon him, *
+  to all who call upon him faithfully.
+20 He fulfills the desire of those who fear him; *
+  he hears their cry and helps them.
+21 The Lord preserves all those who love him, *
+  but he destroys all the wicked.
+22 My mouth shall speak the praise of the Lord; *
+  let all flesh bless his holy Name for ever and ever.`,
+  },
+
+  146: {
+    title: "Lauda, anima mea",
+    bcpRef: "BCP p. 803",
+    content:
+`1 Hallelujah!
+  Praise the Lord, O my soul! *
+  I will praise the Lord as long as I live;
+  I will sing praises to my God while I have my being.
+2 Put not your trust in rulers, nor in any child of earth, *
+  for there is no help in them.
+3 When they breathe their last, they return to earth, *
+  and in that day their thoughts perish.
+4 Happy are they who have the God of Jacob for their help! *
+  whose hope is in the Lord their God;
+5 Who made heaven and earth, the seas, and all that is in them; *
+  who keeps his promise for ever;
+6 Who gives justice to those who are oppressed, *
+  and food to those who hunger.
+7 The Lord sets the prisoners free;
+  the Lord opens the eyes of the blind; *
+  the Lord lifts up those who are bowed down;
+8 The Lord loves the righteous;
+  the Lord cares for the stranger; *
+  he sustains the orphan and widow,
+  but frustrates the way of the wicked.
+9 The Lord shall reign for ever, *
+  your God, O Zion, throughout all generations.
+  Hallelujah!`,
+  },
+
+  147: {
+    title: "Laudate Dominum",
+    bcpRef: "BCP p. 804",
+    content:
+`1 Hallelujah!
+  How good it is to sing praises to our God! *
+  how pleasant it is to honor him with praise!
+2 The Lord rebuilds Jerusalem; *
+  he gathers the exiles of Israel.
+3 He heals the brokenhearted *
+  and binds up their wounds.
+4 He counts the number of the stars *
+  and calls them all by their names.
+5 Great is our Lord and mighty in power; *
+  there is no limit to his wisdom.
+6 The Lord lifts up the lowly, *
+  but casts the wicked to the ground.
+7 Sing to the Lord with thanksgiving; *
+  make music to our God upon the harp.
+8 He covers the heavens with clouds *
+  and prepares rain for the earth;
+9 He makes grass to grow upon the mountains *
+  and green plants to serve mankind.
+10 He provides food for flocks and herds *
+  and for the young ravens when they cry.
+11 He is not impressed by the might of a horse; *
+  he has no pleasure in the strength of a man;
+12 But the Lord has pleasure in those who fear him, *
+  in those who await his gracious favor.
+13 Worship the Lord, O Jerusalem; *
+  praise your God, O Zion;
+14 For he has strengthened the bars of your gates; *
+  he has blessed your children within you.
+15 He has established peace on your borders; *
+  he satisfies you with the finest wheat.
+16 He sends out his command to the earth, *
+  and his word runs very swiftly.
+17 He gives snow like wool; *
+  he scatters hoarfrost like ashes.
+18 He scatters his hail like bread crumbs; *
+  who can stand against his cold?
+19 He sends forth his word and melts them; *
+  he blows with his wind, and the waters flow.
+20 He declares his word to Jacob, *
+  his statutes and his judgments to Israel.
+21 He has not done so to any other nation; *
+  to them he has not revealed his judgments.
+  Hallelujah!`,
+  },
+
+  148: {
+    title: "Laudate Dominum",
+    bcpRef: "BCP p. 805",
+    content:
+`1 Hallelujah!
+  Praise the Lord from the heavens; *
+  praise him in the heights.
+2 Praise him, all you angels of his; *
+  praise him, all his host.
+3 Praise him, sun and moon; *
+  praise him, all you shining stars.
+4 Praise him, heaven of heavens, *
+  and you waters above the heavens.
+5 Let them praise the Name of the Lord; *
+  for he commanded, and they were created.
+6 He made them stand fast for ever and ever; *
+  he gave them a law which shall not pass away.
+7 Praise the Lord from the earth, *
+  you sea-monsters and all deeps;
+8 Fire and hail, snow and fog, *
+  tempestuous wind, doing his will;
+9 Mountains and all hills, *
+  fruit trees and all cedars;
+10 Wild beasts and all cattle, *
+  creeping things and winged birds;
+11 Kings of the earth and all peoples, *
+  princes and all rulers of the world;
+12 Young men and maidens, *
+  old and young together.
+13 Let them praise the Name of the Lord, *
+  for his Name only is exalted,
+  his splendor is over earth and heaven.
+14 He has raised up strength for his people
+  and praise for all his loyal servants, *
+  the children of Israel, a people who are near him.
+  Hallelujah!`,
+  },
+
+  149: {
+    title: "Cantate Domino",
+    bcpRef: "BCP p. 807",
+    content:
+`1 Hallelujah!
+  Sing to the Lord a new song; *
+  sing his praise in the congregation of the faithful.
+2 Let Israel rejoice in his Maker; *
+  let the children of Zion be joyful in their King.
+3 Let them praise his Name in the dance; *
+  let them sing praise to him with timbrel and harp.
+4 For the Lord takes pleasure in his people *
+  and adorns the poor with victory.
+5 Let the faithful rejoice in triumph; *
+  let them be joyful on their beds.
+6 Let the praises of God be in their throat *
+  and a two-edged sword in their hand;
+7 To wreak vengeance on the nations *
+  and punishment on the peoples;
+8 To bind their kings in chains *
+  and their nobles with links of iron;
+9 To inflict on them the judgment decreed; *
+  this is glory for all his faithful people.
+  Hallelujah!`,
+  },
+
+  150: {
+    title: "Laudate Dominum",
+    bcpRef: "BCP p. 807",
+    content:
+`1 Hallelujah!
+  Praise God in his holy temple; *
+  praise him in the firmament of his power.
+2 Praise him for his mighty acts; *
+  praise him for his excellent greatness.
+3 Praise him with the blast of the ram's-horn; *
+  praise him with lyre and harp.
+4 Praise him with timbrel and dance; *
+  praise him with strings and pipe.
+5 Praise him with resounding cymbals; *
+  praise him with loud-clanging cymbals.
+6 Let everything that has breath *
+  praise the Lord.
+  Hallelujah!`,
+  },
 };
