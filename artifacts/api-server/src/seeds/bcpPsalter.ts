@@ -4016,4 +4016,190 @@ export const PSALTER: Record<number, PsalmEntry> = {
 72 So he shepherded them with a faithful and true heart *
   and guided them with the skillfulness of his hands.`,
   },
+
+  79: {
+    title: "Deus, venerunt",
+    bcpRef: "BCP p. 700",
+    content:
+`1 O God, the heathen have come into your inheritance;
+  they have profaned your holy temple; *
+  they have made Jerusalem a heap of rubble.
+2 They have given the bodies of your servants as food for the birds of the air, *
+  and the flesh of your faithful ones to the beasts of the field.
+3 They have shed their blood like water on every side of Jerusalem, *
+  and there was no one to bury them.
+4 We have become a reproach to our neighbors, *
+  an object of scorn and derision to those around us.
+5 How long will you be angry, O Lord? *
+  will your fury blaze like fire for ever?
+6 Pour out your wrath upon the heathen who have not known you *
+  and upon the kingdoms that have not called upon your Name.
+7 For they have devoured Jacob *
+  and made his dwelling a ruin.
+8 Remember not our past sins;
+  let your compassion be swift to meet us; *
+  for we have been brought very low.
+9 Help us, O God our Savior, for the glory of your Name; *
+  deliver us and forgive us our sins, for your Name's sake.
+10 Why should the heathen say, "Where is their God?" *
+  Let it be known among the heathen and in our sight
+  that you avenge the shedding of your servants' blood.
+11 Let the sorrowful sighing of the prisoners come before you, *
+  and by your great might spare those who are condemned to die.
+12 May the revilings with which they reviled you, O Lord, *
+  return seven-fold into their bosoms.
+13 For we are your people and the sheep of your pasture; *
+  we will give you thanks for ever
+  and show forth your praise from age to age.`,
+  },
+
+  80: {
+    title: "Qui regis Israel",
+    bcpRef: "BCP p. 701",
+    content:
+`1 Hear, O Shepherd of Israel, leading Joseph like a flock; *
+  shine forth, you that are enthroned upon the cherubim.
+2 In the presence of Ephraim, Benjamin, and Manasseh, *
+  stir up your strength and come to help us.
+3 Restore us, O God of hosts; *
+  show the light of your countenance, and we shall be saved.
+4 O Lord God of hosts, *
+  how long will you be angered
+  despite the prayers of your people?
+5 You have fed them with the bread of tears; *
+  you have given them bowls of tears to drink.
+6 You have made us the derision of our neighbors, *
+  and our enemies laugh us to scorn.
+7 Restore us, O God of hosts; *
+  show the light of your countenance, and we shall be saved.
+8 You have brought a vine out of Egypt; *
+  you cast out the nations and planted it.
+9 You prepared the ground for it; *
+  it took root and filled the land.
+10 The mountains were covered by its shadow *
+  and the towering cedar trees by its boughs.
+11 You stretched out its tendrils to the Sea *
+  and its branches to the River.
+12 Why have you broken down its wall, *
+  so that all who pass by pluck off its grapes?
+13 The wild boar of the forest has ravaged it, *
+  and the beasts of the field have grazed upon it.
+14 Turn now, O God of hosts, look down from heaven;
+  behold and tend this vine; *
+  preserve what your right hand has planted.
+15 They burn it with fire like rubbish; *
+  at the rebuke of your countenance let them perish.
+16 Let your hand be upon the man of your right hand, *
+  the son of man you have made so strong for yourself.
+17 And so will we never turn away from you; *
+  give us life, that we may call upon your Name.
+18 Restore us, O Lord God of hosts; *
+  show the light of your countenance, and we shall be saved.`,
+  },
+
+  81: {
+    title: "Exultate Deo",
+    bcpRef: "BCP p. 702",
+    content:
+`1 Sing with joy to God our strength *
+  and raise a loud shout to the God of Jacob.
+2 Raise a song and sound the timbrel, *
+  the merry harp, and the lyre.
+3 Blow the ram's-horn at the new moon, *
+  and at the full moon, the day of our feast.
+4 For this is a statute for Israel, *
+  a law of the God of Jacob.
+5 He laid it as a solemn charge upon Joseph, *
+  when he came out of the land of Egypt.
+6 I heard an unfamiliar voice saying, *
+  "I eased his shoulder from the burden;
+  his hands were set free from bearing the load."
+7 You called on me in trouble, and I saved you; *
+  I answered you from the secret place of thunder
+  and tested you at the waters of Meribah.
+8 Hear, O my people, and I will admonish you: *
+  O Israel, if you would but listen to me!
+9 There shall be no strange god among you; *
+  you shall not worship a foreign god.
+10 I am the Lord your God,
+  who brought you out of the land of Egypt and said, *
+  "Open your mouth wide, and I will fill it."
+11 And yet my people did not hear my voice, *
+  and Israel would not obey me.
+12 So I gave them over to the stubbornness of their hearts, *
+  to follow their own devices.
+13 Oh, that my people would listen to me! *
+  that Israel would walk in my ways!
+14 I should soon subdue their enemies *
+  and turn my hand against their foes.
+15 Those who hate the Lord would cringe before him, *
+  and their punishment would last for ever.
+16 But Israel would I feed with the finest wheat *
+  and satisfy him with honey from the rock.`,
+  },
+
+  82: {
+    title: "Deus stetit",
+    bcpRef: "BCP p. 704",
+    content:
+`1 God takes his stand in the council of heaven; *
+  he gives judgment in the midst of the gods:
+2 "How long will you judge unjustly, *
+  and show favor to the wicked?
+3 Save the weak and the orphan; *
+  defend the humble and needy;
+4 Rescue the weak and the poor; *
+  deliver them from the power of the wicked.
+5 They do not know, neither do they understand;
+  they go about in darkness; *
+  all the foundations of the earth are shaken.
+6 Now I say to you, 'You are gods, *
+  and all of you children of the Most High;
+7 Nevertheless, you shall die like mortals, *
+  and fall like any prince.'"
+8 Arise, O God, and rule the earth, *
+  for you shall take all nations for your own.`,
+  },
+
+  83: {
+    title: "Deus, quis similis?",
+    bcpRef: "BCP p. 705",
+    content:
+`1 O God, do not be silent; *
+  do not keep still nor hold your peace, O God;
+2 For your enemies are in tumult, *
+  and those who hate you have lifted up their heads.
+3 They take secret counsel against your people *
+  and plot against those whom you protect.
+4 They have said, "Come, let us wipe them out from among the nations; *
+  let the name of Israel be remembered no more."
+5 They have conspired together; *
+  they have made an alliance against you:
+6 The tents of Edom and the Ishmaelites; *
+  the Moabites and the Hagarenes;
+7 Gebal, and Ammon, and Amalek; *
+  the Philistines and those who dwell in Tyre.
+8 The Assyrians also have joined them, *
+  and have come to help the people of Lot.
+9 Do to them as you did to Midian, *
+  to Sisera, and to Jabin at the river of Kishon:
+10 They were destroyed at Endor; *
+  they became like dung upon the ground.
+11 Make their leaders like Oreb and Zeëb, *
+  and all their commanders like Zebah and Zalmunna,
+12 Who said, "Let us take for ourselves *
+  the fields of God as our possession."
+13 O my God, make them like whirling dust *
+  and like chaff before the wind;
+14 Like fire that burns down a forest, *
+  like the flame that sets mountains ablaze.
+15 Drive them with your tempest *
+  and terrify them with your storm;
+16 Cover their faces with shame, O Lord, *
+  that they may seek your Name.
+17 Let them be disgraced and terrified for ever; *
+  let them be put to confusion and perish.
+18 Let them know that you, whose Name is Yahweh, *
+  you alone are the Most High over all the earth.`,
+  },
 };
