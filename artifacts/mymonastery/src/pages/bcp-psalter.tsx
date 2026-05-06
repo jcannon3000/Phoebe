@@ -38,6 +38,25 @@ function parsePsalmContent(content: string): PsalmEntry[] {
   return result;
 }
 
+// First verse as a one-line teaser for the list rows. Takes everything
+// before the "2 " verse marker, strips the leading "1 ", drops the
+// caesura asterisk, and collapses whitespace so it lays out cleanly
+// when line-clamped.
+function firstVerseTeaser(content: string): string {
+  const lines = content.split("\n");
+  const collected: string[] = [];
+  for (const line of lines) {
+    if (collected.length > 0 && /^\d+\s/.test(line)) break;
+    collected.push(line);
+  }
+  return collected
+    .join(" ")
+    .replace(/^\s*\d+\s+/, "")
+    .replace(/\s*\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export default function BcpPsalterPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -174,21 +193,23 @@ export default function BcpPsalterPage() {
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex items-baseline gap-3">
-                        <span
-                          className="text-xs font-semibold shrink-0"
-                          style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", minWidth: 28 }}
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-sm font-semibold"
+                          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
                         >
-                          {psalm.number}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>
-                            {psalm.title}
-                          </p>
-                          <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>
-                            {psalm.bcpRef}
-                          </p>
-                        </div>
+                          Psalm {psalm.number}
+                        </p>
+                        <p
+                          className="text-[13px] mt-1 line-clamp-2 italic"
+                          style={{
+                            color: "rgba(200,212,192,0.75)",
+                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          {firstVerseTeaser(psalm.content)}
+                        </p>
                       </div>
                       <span className="text-xs shrink-0 mt-0.5" style={{ color: "#8FAF96" }}>
                         ›
@@ -257,8 +278,16 @@ export default function BcpPsalterPage() {
               </button>
             </div>
 
-            {/* Psalm body — verses with caesura indent */}
-            <div className="px-6 py-6 overflow-y-auto" style={{ maxHeight: "calc(85vh - 120px)" }}>
+            {/* Psalm body — verses with caesura indent. Bottom padding
+                respects the iOS home-indicator safe area and adds a
+                comfortable runway below the closing attribution. */}
+            <div
+              className="px-6 pt-6 overflow-y-auto"
+              style={{
+                maxHeight: "calc(85vh - 120px)",
+                paddingBottom: "calc(env(safe-area-inset-bottom) + 32px)",
+              }}
+            >
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {parsePsalmContent(selectedPsalm.content).map((v, i) => (
                   <div key={i} style={{ display: "flex", gap: 10 }}>
