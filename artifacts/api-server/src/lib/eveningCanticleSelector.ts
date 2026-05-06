@@ -30,8 +30,17 @@ const EP_CANTICLE_TABLE: Record<
       easter: "canticle_17",
     },
   },
+  // Per BCP p. 145 "Suggested Canticles at Evening Prayer" (Rite II,
+  // taking the higher number where the table lists "X or Y"). The
+  // earlier shape of this table had several drift errors (Wed/Thu/
+  // Fri/Sat afterOT were on the wrong rows, plus extra Lent
+  // overrides on Wed and Fri that the BCP doesn't list); fixed to
+  // match the canonical table at bcponline.org/DailyOffice/canticle.html.
   monday: {
-    afterOT: { default: "canticle_8" },  // Cantemus Domino
+    afterOT: {
+      default: "canticle_8",  // Cantemus Domino
+      lent: "canticle_14",    // Kyrie Pantokrator (BCP appoints this on Mon in Lent)
+    },
     afterNT: { default: "canticle_17" }, // Nunc dimittis
   },
   tuesday: {
@@ -39,25 +48,19 @@ const EP_CANTICLE_TABLE: Record<
     afterNT: { default: "canticle_15" }, // Magnificat
   },
   wednesday: {
-    afterOT: {
-      default: "canticle_13", // Benedictus es
-      lent: "canticle_14",   // Kyrie Pantokrator
-    },
+    afterOT: { default: "canticle_12" }, // Benedicite, omnia opera Domini
     afterNT: { default: "canticle_17" }, // Nunc dimittis
   },
   thursday: {
-    afterOT: { default: "canticle_9" },  // Ecce, Deus
+    afterOT: { default: "canticle_11" }, // Surge, illuminare
     afterNT: { default: "canticle_15" }, // Magnificat
   },
   friday: {
-    afterOT: {
-      default: "canticle_11", // Surge, illuminare
-      lent: "canticle_14",   // Kyrie Pantokrator
-    },
+    afterOT: { default: "canticle_13" }, // Benedictus es
     afterNT: { default: "canticle_17" }, // Nunc dimittis
   },
   saturday: {
-    afterOT: { default: "canticle_19" }, // Magna et mirabilia
+    afterOT: { default: "canticle_9" },  // Ecce, Deus
     afterNT: { default: "canticle_15" }, // Magnificat
   },
 };
