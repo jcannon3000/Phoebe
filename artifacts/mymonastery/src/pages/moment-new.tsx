@@ -2265,9 +2265,18 @@ export default function MomentNew() {
           </AnimatePresence>
           </div>
 
-          {/* ── Next button (sticky at bottom, not shown for template, daily-office-choice, intercession main, bcp-commitment, or contemplative-duration) ── */}
+          {/* ── Next button (sticky at bottom, not shown for template, daily-office-choice, intercession main, bcp-commitment, or contemplative-duration) ──
+              The step container is sized at `100dvh - 160px`, but on
+              iPhones with a home indicator `100dvh` extends into the
+              gutter and clipped the bottom of the Next button. Pad the
+              button container above env(safe-area-inset-bottom) so it
+              always sits above the gutter without changing the layout
+              on devices that don't have one. */}
           {step !== "template" && step !== "daily-office-choice" && step !== "intercession" && step !== "bcp-commitment" && step !== "contemplative-duration" && step !== "fasting-type" && (
-            <div className="mt-4 pt-4 border-t border-border/30 shrink-0">
+            <div
+              className="mt-4 pt-4 border-t border-border/30 shrink-0"
+              style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+            >
               {/* Disabled inline message for invite step */}
               {step === "invite" && showInviteDisabledMsg && invitedPeople.length === 0 && (
                 <div className="mb-3 px-4 py-3 rounded-2xl bg-[#5C7A5F]/8 border border-[#5C7A5F]/20 text-center">
