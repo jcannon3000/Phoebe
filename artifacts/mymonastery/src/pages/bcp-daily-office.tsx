@@ -427,44 +427,96 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 ?? null
               }
             />
+          ) : currentSlide.type === "psalm" ? (
+            // Psalm slide header has three stacked labels per the
+            // BCP missal idiom + user direction:
+            //   1) Contextual eyebrow ("The Psalm Appointed For This
+            //      Morning / Evening") — orients the reader.
+            //   2) The big psalm reference ("Psalm 72" or
+            //      "Psalm 119:73-96") as the slide title.
+            //   3) The Latin incipit ("Deus, judicium") as a small
+            //      italic subtitle below the title, the way it sits
+            //      on a printed BCP page.
+            <>
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                  fontWeight: 600,
+                }}
+              >
+                {resolvedMode === "evening" || resolvedMode === "early-evening-devotion"
+                  ? "The Psalm Appointed For This Evening"
+                  : "The Psalm Appointed For This Morning"}
+              </p>
+              {currentSlide.eyebrow && (
+                <h2
+                  style={{
+                    // Convert the eyebrow's all-caps "PSALM 72" into
+                    // a normal-case "Psalm 72" header. Range form
+                    // ("PSALM 119:73-96") survives the transform —
+                    // only the leading word gets re-cased.
+                    fontSize: 28,
+                    fontWeight: 700,
+                    fontFamily: SPACE_GROTESK,
+                    color: WARM_TEXT,
+                    letterSpacing: "-0.01em",
+                    margin: 0,
+                  }}
+                >
+                  {currentSlide.eyebrow.replace(/^PSALM\b/, "Psalm")}
+                </h2>
+              )}
+              {currentSlide.title && (
+                <p
+                  style={{
+                    fontSize: 16,
+                    fontStyle: "italic",
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    color: "rgba(200,212,192,0.75)",
+                    margin: 0,
+                  }}
+                >
+                  {currentSlide.title}
+                </p>
+              )}
+            </>
           ) : (
-            <p
-              style={{
-                color: FAINT_GREEN,
-                fontSize: 10,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                margin: 0,
-                fontWeight: 600,
-              }}
-            >
-              {currentSlide.eyebrow || sectionLabel}
-            </p>
-          )}
-          {/* Title slot. Intercession slides skip the bold-title
-              header because IntercessionHead already shows the name
-              right under the avatar — re-rendering it here would
-              double-print the person's name. */}
-          {currentSlide.title && currentSlide.type !== "intercessions" && (
-            <h2
-              style={{
-                // Psalms get italic + serif because the title slot
-                // carries the Latin incipit ("Deus, judicium" etc.)
-                // which BCP convention italicises. Other slide types
-                // keep the bolder Space Grotesk treatment.
-                fontSize: currentSlide.type === "psalm" ? 18 : 22,
-                fontWeight: currentSlide.type === "psalm" ? 400 : 600,
-                fontStyle: currentSlide.type === "psalm" ? "italic" : "normal",
-                fontFamily: currentSlide.type === "psalm"
-                  ? "Georgia, 'Times New Roman', serif"
-                  : SPACE_GROTESK,
-                color: WARM_TEXT,
-                letterSpacing: "-0.01em",
-                margin: 0,
-              }}
-            >
-              {currentSlide.title}
-            </h2>
+            <>
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                  fontWeight: 600,
+                }}
+              >
+                {currentSlide.eyebrow || sectionLabel}
+              </p>
+              {/* Title slot. Intercession slides skip the bold-title
+                  header because IntercessionHead already shows the
+                  name right under the avatar — re-rendering it here
+                  would double-print the person's name. */}
+              {currentSlide.title && currentSlide.type !== "intercessions" && (
+                <h2
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 600,
+                    fontFamily: SPACE_GROTESK,
+                    color: WARM_TEXT,
+                    letterSpacing: "-0.01em",
+                    margin: 0,
+                  }}
+                >
+                  {currentSlide.title}
+                </h2>
+              )}
+            </>
           )}
           {/* Psalms render as a structured list of verses — verse number
               on the left, asterisk visible at the half-verse caesura,
