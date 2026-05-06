@@ -642,95 +642,33 @@ async function seedStaticTexts() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Collect of the Day stubs — one per Sunday + season                 */
+/*  Collects of the Day — full 1979 BCP set, scraped from bcponline.org */
 /* ------------------------------------------------------------------ */
+//
+// The collect text + page references live in seeds/bcpCollects.ts —
+// auto-generated from /tmp/collect-scrape/. We upsert them here so the
+// office assembler always finds a real collect for the day's
+// `collectKey` and never falls back to the "[collect_x — see BCP]"
+// placeholder. (The 8 hand-typed stubs that lived here got replaced
+// when the full scrape landed; if a future re-scrape adds rows, this
+// loop just picks them up.)
 
-async function seedCollectStubs() {
-  console.log("Seeding collect stubs...");
-
-  // These are placeholder collects. A full seed would fetch from bcponline.org.
-  // For now we provide the most-used collects inline; the rest fall back to
-  // "see BCP" in the UI.
-  const collects: Array<Parameters<typeof upsert>[0]> = [
-    {
-      textKey: "collect_advent_1",
-      category: "collect",
-      title: "First Sunday of Advent",
-      bcpReference: "BCP p. 211",
-      seasonRestriction: "advent",
-      content:
-        "Almighty God, give us grace to cast away the works of darkness, and put on the armor of light, now in the time of this mortal life in which your Son Jesus Christ came to visit us in great humility; that in the last day, when he shall come again in his glorious majesty to judge both the living and the dead, we may rise to the life immortal; through him who lives and reigns with you and the Holy Spirit, one God, now and for ever. Amen.",
-    },
-    {
-      textKey: "collect_advent_2",
-      category: "collect",
-      title: "Second Sunday of Advent",
-      bcpReference: "BCP p. 211",
-      seasonRestriction: "advent",
-      content:
-        "Merciful God, who sent your messengers the prophets to preach repentance and prepare the way for our salvation: Give us grace to heed their warnings and forsake our sins, that we may greet with joy the coming of Jesus Christ our Redeemer; who lives and reigns with you and the Holy Spirit, one God, now and for ever. Amen.",
-    },
-    {
-      textKey: "collect_advent_3",
-      category: "collect",
-      title: "Third Sunday of Advent",
-      bcpReference: "BCP p. 212",
-      seasonRestriction: "advent",
-      content:
-        "Stir up your power, O Lord, and with great might come among us; and, because we are sorely hindered by our sins, let your bountiful grace and mercy speedily help and deliver us; through Jesus Christ our Lord, to whom, with you and the Holy Spirit, be honor and glory, now and for ever. Amen.",
-    },
-    {
-      textKey: "collect_advent_4",
-      category: "collect",
-      title: "Fourth Sunday of Advent",
-      bcpReference: "BCP p. 212",
-      seasonRestriction: "advent",
-      content:
-        "Purify our conscience, Almighty God, by your daily visitation, that your Son Jesus Christ, at his coming, may find in us a mansion prepared for himself; who lives and reigns with you, in the unity of the Holy Spirit, one God, now and for ever. Amen.",
-    },
-    {
-      textKey: "collect_christmas_1",
-      category: "collect",
-      title: "The Nativity of Our Lord: Christmas Day",
-      bcpReference: "BCP p. 212",
-      seasonRestriction: "christmas",
-      content:
-        "O God, you have caused this holy night to shine with the brightness of the true Light: Grant that we, who have known the mystery of that Light on earth, may also enjoy him perfectly in heaven; where with you and the Holy Spirit he lives and reigns, one God, in glory everlasting. Amen.",
-    },
-    {
-      textKey: "collect_easter_day",
-      category: "collect",
-      title: "Easter Day",
-      bcpReference: "BCP p. 222",
-      seasonRestriction: "easter",
-      content:
-        "Almighty God, who through your only-begotten Son Jesus Christ overcame death and opened to us the gate of everlasting life: Grant that we, who celebrate with joy the day of the Lord's resurrection, may be raised from the death of sin by your life-giving Spirit; through Jesus Christ our Lord, who lives and reigns with you and the Holy Spirit, one God, now and for ever. Amen.",
-    },
-    {
-      textKey: "collect_pentecost",
-      category: "collect",
-      title: "Day of Pentecost",
-      bcpReference: "BCP p. 227",
-      seasonRestriction: "easter",
-      content:
-        "Almighty God, on this day you opened the way of eternal life to every race and nation by the promised gift of your Holy Spirit: Shed abroad this gift throughout the world by the preaching of the Gospel, that it may reach to the ends of the earth; through Jesus Christ our Lord, who lives and reigns with you, in the unity of the Holy Spirit, one God, for ever and ever. Amen.",
-    },
-    {
-      textKey: "collect_trinity",
-      category: "collect",
-      title: "Trinity Sunday",
-      bcpReference: "BCP p. 228",
-      content:
-        "Almighty and everlasting God, you have given to us your servants grace, by the confession of a true faith, to acknowledge the glory of the eternal Trinity, and in the power of your divine Majesty to worship the Unity: Keep us steadfast in this faith and worship, and bring us at last to see you in your one and eternal glory, O Father; who with the Son and the Holy Spirit live and reign, one God, for ever and ever. Amen.",
-    },
-  ];
+async function seedCollectsFromScrape() {
+  console.log("Seeding Collects of the Day from bcpCollects.ts...");
+  const { BCP_COLLECTS } = await import("./bcpCollects");
 
   let count = 0;
-  for (const row of collects) {
-    await upsert(row);
+  for (const c of BCP_COLLECTS) {
+    await upsert({
+      textKey: c.collectKey,
+      category: "collect",
+      title: c.title,
+      bcpReference: c.bcpReference,
+      content: c.content,
+    });
     count++;
   }
-  console.log(`  ✓ ${count} collect stubs seeded`);
+  console.log(`  ✓ ${count} collects seeded`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -767,7 +705,7 @@ export async function seedBcpTexts(): Promise<{ inserted: number; skipped: numbe
   console.log("=== BCP Texts Seed Script ===\n");
   await seedStaticTexts();
   await sleep(DELAY_MS);
-  await seedCollectStubs();
+  await seedCollectsFromScrape();
   await sleep(DELAY_MS);
   await seedPsalter();
   console.log("\n✓ BCP texts seed complete.");
