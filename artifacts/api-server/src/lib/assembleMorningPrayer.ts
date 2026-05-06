@@ -124,6 +124,11 @@ THANKSGIVING_PSALMS.forEach((n) => (PSALM_EMOJI[n] = "🌾"));
 ROYAL_PSALMS.forEach((n) => (PSALM_EMOJI[n] = "👑"));
 WISDOM_PSALMS.forEach((n) => (PSALM_EMOJI[n] = "🌿"));
 
+// Body shown on lesson slides. The title carries the reference
+// ("1 Thess. 5:12-28"); the body would otherwise repeat that same
+// reference, which read as a placeholder. Soft prompt instead.
+const LESSON_PROMPT = "Open your Bible, or read this passage online.";
+
 const CANTICLE_EMOJI: Record<string, string> = {
   canticle_8: "🌊",
   canticle_9: "💧",
@@ -461,10 +466,13 @@ export async function assembleMorningPrayer(
   const isLessonPresent = (l: string | null | undefined): boolean =>
     !!l && l.trim().length > 0 && !/^-+$/.test(l.trim());
 
-  // First Lesson — OT.
+  // First Lesson — OT. Title is the reference (e.g. "Isa. 55:1-11");
+  // body is a soft prompt to open the passage rather than echoing
+  // the same reference again. Phoebe doesn't ship scripture text —
+  // readers go to their own bible/app.
   if (isLessonPresent(lesson1)) {
     slides.push(
-      slide(id(), "lesson", "📜", "FIRST LESSON", lesson1, {
+      slide(id(), "lesson", "📜", "FIRST LESSON", LESSON_PROMPT, {
         title: lesson1,
         isScrollable: false,
         scrollHint: null,
@@ -493,7 +501,7 @@ export async function assembleMorningPrayer(
   // appoints no Epistle at MP.
   if (isLessonPresent(lesson2)) {
     slides.push(
-      slide(id(), "lesson", "✉️", "SECOND LESSON", lesson2, {
+      slide(id(), "lesson", "✉️", "SECOND LESSON", LESSON_PROMPT, {
         title: lesson2,
         isScrollable: false,
         scrollHint: null,

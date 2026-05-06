@@ -56,6 +56,10 @@ LAMENT_PSALMS.forEach(n => (PSALM_EMOJI[n] = "💧"));
 CONFIDENCE_PSALMS.forEach(n => (PSALM_EMOJI[n] = "🏔️"));
 THANKSGIVING_PSALMS.forEach(n => (PSALM_EMOJI[n] = "🌾"));
 
+// Body shown on lesson slides. Title carries the reference; body
+// is a soft prompt to open the passage in your own bible.
+const LESSON_PROMPT = "Open your Bible, or read this passage online.";
+
 const CANTICLE_EMOJI: Record<string, string> = {
   canticle_8: "🌊", canticle_9: "💧", canticle_10: "🔍",
   canticle_11: "✨", canticle_12: "🌍", canticle_13: "🌟",
@@ -248,7 +252,7 @@ export async function assembleEveningPrayer(
   // lesson1+lesson2 in EP too, which mirrored MP and read as a bug.
   const lesson3 = readings.lesson3;
   slides.push(
-    slide(id(), "lesson", "✝️", "THE GOSPEL", lesson3, {
+    slide(id(), "lesson", "✝️", "THE GOSPEL", LESSON_PROMPT, {
       title: lesson3,
       metadata: {
         reference: lesson3,
