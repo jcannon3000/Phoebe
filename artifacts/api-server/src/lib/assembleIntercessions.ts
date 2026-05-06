@@ -229,3 +229,217 @@ export async function buildIntercessionsSlide(
     metadata: {},
   };
 }
+
+// Per-item variant of the intercessions surface — used by the Daily
+// Devotion assembler. Returns one Slide per prayer item (request,
+// prayers-for, circle intention, feed entry) so the devotion's prayer
+// space mirrors the prayer-mode slideshow's "carry one prayer at a
+// time" rhythm. The Daily Office still uses buildIntercessionsSlide
+// (the single scrollable slide) — that surface is meant to read as a
+// liturgical paragraph, not as a deck-within-a-deck.
+//
+// Slide ordering mirrors the source query order: requests first
+// (community-named asks), then prayers-for (the user's private
+// commitments), then circle intentions (group-level), then today's
+// published feed entries. Within each group, server query order is
+// preserved so the user's deck feels stable across reloads.
+export async function buildIntercessionSlides(
+  userId: number,
+  cacheDate: Date,
+): Promise<Slide[]> {
+  if (!userId || userId <= 0) return [];
+
+  // ── Same source queries as buildIntercessionsSlide. We deliberately
+  // duplicate the query logic rather than refactoring shared helpers
+  // out — the two callers want subtly different shaping (single
+  // collapsed body vs. per-item slides), and a shared query layer
+  // would force both consumers through one transformation. The query
+  // text is identical though, so any future change should land here
+  // and in the slide builder above.
+  const gardenIds = await getGardenUserIds(userId);
+  const visibleOwnerIds = [userId, ...gardenIds];
+
+  const requestRows = visibleOwnerIds.length > 0
+    ? await db
+        .select({
+          id: prayerRequestsTable.id,
+          body: prayerRequestsTable.body,
+          ownerId: prayerRequestsTable.ownerId,
+          isAnonymous: prayerRequestsTable.isAnonymous,
+          ownerName: usersTable.name,
+        })
+        .from(prayerRequestsTable)
+        .leftJoin(usersTable, eq(usersTable.id, prayerRequestsTable.ownerId))
+        .where(
+          and(
+            inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
+            eq(prayerRequestsTable.isAnswered, false),
+            isNull(prayerRequestsTable.closedAt),
+            or(
+              isNull(prayerRequestsTable.expiresAt),
+              gt(prayerRequestsTable.expiresAt, new Date()),
+            ),
+          ),
+        )
+        .limit(20)
+    : [];
+
+  const prayersForRows = await db
+    .select({
+      id: prayersForTable.id,
+      prayerText: prayersForTable.prayerText,
+      recipientUserId: prayersForTable.recipientUserId,
+      expiresAt: prayersForTable.expiresAt,
+      recipientName: usersTable.name,
+    })
+    .from(prayersForTable)
+    .leftJoin(usersTable, eq(usersTable.id, prayersForTable.recipientUserId))
+    .where(
+      and(
+        eq(prayersForTable.prayerUserId, userId),
+        gt(prayersForTable.expiresAt, new Date()),
+        isNull(prayersForTable.acknowledgedAt),
+      ),
+    )
+    .limit(10);
+
+  const myGroupIds = (
+    await db
+      .select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(eq(groupMembersTable.userId, userId))
+  ).map((r) => r.groupId);
+
+  const circleRows = myGroupIds.length > 0
+    ? await db
+        .select({
+          id: circleIntentionsTable.id,
+          title: circleIntentionsTable.title,
+          groupName: groupsTable.name,
+        })
+        .from(circleIntentionsTable)
+        .leftJoin(groupsTable, eq(groupsTable.id, circleIntentionsTable.groupId))
+        .where(
+          and(
+            inArray(circleIntentionsTable.groupId, myGroupIds),
+            isNull(circleIntentionsTable.archivedAt),
+          ),
+        )
+        .limit(15)
+    : [];
+
+  const todayStr = cacheDate.toISOString().slice(0, 10);
+  const feedSubs = await db
+    .select({ feedId: prayerFeedSubscriptionsTable.feedId })
+    .from(prayerFeedSubscriptionsTable)
+    .where(eq(prayerFeedSubscriptionsTable.userId, userId));
+  const subscribedFeedIds = feedSubs.map((s) => s.feedId);
+  const feedRows = subscribedFeedIds.length > 0
+    ? await db
+        .select({
+          id: prayerFeedEntriesTable.id,
+          title: prayerFeedEntriesTable.title,
+          body: prayerFeedEntriesTable.body,
+          feedTitle: prayerFeedsTable.title,
+        })
+        .from(prayerFeedEntriesTable)
+        .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedEntriesTable.feedId))
+        .where(
+          and(
+            inArray(prayerFeedEntriesTable.feedId, subscribedFeedIds),
+            eq(prayerFeedEntriesTable.entryDate, todayStr),
+            eq(prayerFeedEntriesTable.state, "published"),
+          ),
+        )
+    : [];
+
+  const slides: Slide[] = [];
+  const dayKey = cacheDate.toISOString().slice(0, 10);
+
+  // 1. Prayer requests — one slide each. Eyebrow names the source so
+  //    the viewer knows whose ask this is; body holds the request
+  //    text verbatim. We don't truncate here (these are read in a
+  //    devotion context, not on a feed card).
+  for (const r of requestRows) {
+    if (!r.body) continue;
+    const who = r.isAnonymous ? "Someone" : (r.ownerName ?? "Someone");
+    slides.push({
+      id: `dev-req-${r.id}-${dayKey}`,
+      type: "intercessions",
+      emoji: "🙏🏽",
+      eyebrow: "A PRAYER REQUEST",
+      title: who,
+      content: r.body,
+      isCallAndResponse: false,
+      callAndResponseLines: null,
+      bcpReference: null,
+      isScrollable: r.body.length > 280,
+      scrollHint: r.body.length > 280 ? "↓ continue · tap when ready" : null,
+      metadata: { source: "request", requestId: r.id, isAnonymous: r.isAnonymous },
+    });
+  }
+
+  // 2. Prayers-for — the user's private "I am holding X" commitments.
+  //    Title carries the recipient name so the viewer remembers who
+  //    they're carrying.
+  for (const p of prayersForRows) {
+    if (!p.prayerText) continue;
+    const who = p.recipientName ?? "Someone";
+    slides.push({
+      id: `dev-prayer-for-${p.id}-${dayKey}`,
+      type: "intercessions",
+      emoji: "🌿",
+      eyebrow: "I AM HOLDING",
+      title: who,
+      content: p.prayerText,
+      isCallAndResponse: false,
+      callAndResponseLines: null,
+      bcpReference: null,
+      isScrollable: p.prayerText.length > 280,
+      scrollHint: p.prayerText.length > 280 ? "↓ continue · tap when ready" : null,
+      metadata: { source: "prayer-for", prayerForId: p.id },
+    });
+  }
+
+  // 3. Circle intentions — a group's named, ongoing prayer focus.
+  for (const c of circleRows) {
+    slides.push({
+      id: `dev-circle-${c.id}-${dayKey}`,
+      type: "intercessions",
+      emoji: "🤝🏽",
+      eyebrow: "A CIRCLE INTENTION",
+      title: c.groupName ?? "Our circle",
+      content: c.title,
+      isCallAndResponse: false,
+      callAndResponseLines: null,
+      bcpReference: null,
+      isScrollable: false,
+      scrollHint: null,
+      metadata: { source: "circle-intention", circleIntentionId: c.id },
+    });
+  }
+
+  // 4. Today's feed entries — the platform-wide intentions the user
+  //    is subscribed to (e.g. phoebe-climate). Body is included if
+  //    the publisher wrote one; otherwise just the title carries the
+  //    prayer.
+  for (const f of feedRows) {
+    const body = (f.body ?? "").trim();
+    slides.push({
+      id: `dev-feed-${f.id}-${dayKey}`,
+      type: "intercessions",
+      emoji: "📡",
+      eyebrow: f.feedTitle ? `TODAY ON ${f.feedTitle.toUpperCase()}` : "TODAY'S FEED",
+      title: f.title,
+      content: body.length > 0 ? body : f.title,
+      isCallAndResponse: false,
+      callAndResponseLines: null,
+      bcpReference: null,
+      isScrollable: body.length > 280,
+      scrollHint: body.length > 280 ? "↓ continue · tap when ready" : null,
+      metadata: { source: "feed", feedEntryId: f.id, feedTitle: f.feedTitle ?? null },
+    });
+  }
+
+  return slides;
+}

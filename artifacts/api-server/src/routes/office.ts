@@ -8,6 +8,7 @@
 import { Router } from "express";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
+import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { seedBcpTexts } from "../seeds/bcpTexts";
 import { PSALTER } from "../seeds/bcpPsalter";
@@ -245,6 +246,44 @@ router.post("/office/seed", async (req, res) => {
   } catch (err) {
     console.error("BCP seed failed:", err);
     return res.status(500).json({ error: "Seed failed", detail: String(err) });
+  }
+});
+
+// GET /devotion/:kind — Daily Devotions for Individuals and Families
+// (1979 BCP pp. 137 / 139). Phoebe surfaces two of the four — In the
+// Morning and In the Early Evening — per user direction. The psalm is
+// the appointed lectionary psalm for the day; everything else is the
+// short BCP devotion text. No cache: the assembly is cheap (one psalm
+// lookup + the per-user intercessions queries).
+router.get("/devotion/:kind", async (req, res) => {
+  const kindParam = String(req.params.kind ?? "");
+  const kind: DevotionKind | null =
+    kindParam === "morning" ? "morning"
+      : kindParam === "early-evening" ? "early-evening"
+      : null;
+  if (!kind) {
+    return res.status(400).json({ error: "Unknown devotion. Use 'morning' or 'early-evening'." });
+  }
+
+  let date: Date;
+  try {
+    date = req.query.date ? new Date(req.query.date as string) : new Date();
+    if (isNaN(date.getTime())) throw new Error("Invalid date");
+  } catch {
+    date = new Date();
+  }
+
+  try {
+    const userId = (req.user as { id: number } | undefined)?.id ?? 0;
+    const { slides, officeDay } = await assembleDevotion(date, userId, kind);
+    return res.json({
+      slides,
+      officeDay: { ...officeDay, totalSlides: slides.length },
+      cacheDate: date.toISOString().slice(0, 10),
+    });
+  } catch (err) {
+    console.error(`Devotion assembly failed (${kind}):`, err);
+    return res.status(500).json({ error: "Failed to assemble devotion" });
   }
 });
 

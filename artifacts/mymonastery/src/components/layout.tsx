@@ -67,6 +67,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
     ...(rawIsBeta ? [{ emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" }] : []),
+    // Daily Devotions (BCP pp. 137 + 139) — abbreviated morning +
+    // early-evening forms. Same beta gate as the full Office until
+    // the surface settles. Psalm slot uses the day's lectionary
+    // psalm so the rhythm tracks with the Office.
+    ...(rawIsBeta ? [{ emoji: "🌿", label: "Daily Devotions", path: "/bcp/daily-devotions" }] : []),
     { divider: true },
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },

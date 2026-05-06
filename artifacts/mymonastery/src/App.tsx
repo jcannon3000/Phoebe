@@ -109,6 +109,7 @@ import InvitationsPage from "./pages/invitations";
 import BcpPage from "./pages/bcp";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
 import BcpDailyOfficePage from "./pages/bcp-daily-office";
+import BcpDailyDevotionPage from "./pages/bcp-daily-devotion";
 import BcpPsalterPage from "./pages/bcp-psalter";
 import CommunitiesPage from "./pages/communities";
 import CommunitiesBrowsePage from "./pages/communities-browse";
@@ -252,6 +253,7 @@ function Router() {
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
       <Route path="/bcp/daily-office" component={BcpDailyOfficePage} />
+      <Route path="/bcp/daily-devotions" component={BcpDailyDevotionPage} />
       <Route path="/bcp/psalter" component={BcpPsalterPage} />
       <Route path="/communities" component={CommunitiesPage} />
       <Route path="/communities/browse" component={CommunitiesBrowsePage} />

@@ -19,8 +19,22 @@ const BORDER = "rgba(200,212,192,0.15)";
 const BUTTON_BG = "#2D5E3F";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
+// Mode covers the four liturgies this viewer can render. The Daily
+// Office's full Morning / Evening Prayer come from /api/office/* and
+// the abbreviated Daily Devotions (BCP pp. 137 / 139) come from
+// /api/devotion/* — both use the same Slide schema, so the renderer
+// is identical apart from the title and endpoint.
+export type LiturgyMode =
+  | "morning"
+  | "evening"
+  | "morning-devotion"
+  | "early-evening-devotion";
+
 interface OfficeViewerProps {
-  office: "morning" | "evening";
+  // Backward-compat: callers that already passed `office` keep working.
+  // New callers (Daily Devotions) pass `mode`.
+  office?: "morning" | "evening";
+  mode?: LiturgyMode;
   onBack: () => void;
 }
 
@@ -107,14 +121,25 @@ function parsePsalmContent(content: string): PsalmEntry[] {
   return result;
 }
 
-function OfficeViewer({ office, onBack }: OfficeViewerProps) {
+// Resolve mode → endpoint + title. We accept `office` as a legacy
+// shortcut and translate it into the equivalent mode here so old call
+// sites compile unchanged.
+const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
+  morning: { endpoint: "/api/office/morning", title: "Morning Prayer" },
+  evening: { endpoint: "/api/office/evening", title: "Evening Prayer" },
+  "morning-devotion": { endpoint: "/api/devotion/morning", title: "Morning Devotion" },
+  "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
+};
+
+export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
+  const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
+  const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
+
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const officeTitle = office === "morning" ? "Morning Prayer" : "Evening Prayer";
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +147,7 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`/api/office/${office}`);
+        const res = await fetch(endpoint);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
@@ -134,7 +159,7 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
       } catch (err) {
         if (!cancelled) {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error(`Failed to load ${office} prayer:`, err);
+          console.error(`Failed to load ${resolvedMode}:`, err);
           setError(`${officeTitle} couldn't load (${msg}).`);
         }
       } finally {
@@ -143,7 +168,7 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
     }
     load();
     return () => { cancelled = true; };
-  }, [office, officeTitle]);
+  }, [endpoint, officeTitle, resolvedMode]);
 
   if (loading) {
     return (
