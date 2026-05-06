@@ -21,13 +21,18 @@ import {
   ritualsTable,
   meetupsTable,
   prayerFeedSubscriptionsTable,
+  groupJoinRequestsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
-import { sendPushToUsers } from "../lib/pushSender";
+import {
+  sendPushToUsers,
+  sendCommunityJoinRequestPush,
+  sendCommunityJoinAcceptedPush,
+} from "../lib/pushSender";
 import { pool } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 
@@ -3833,6 +3838,353 @@ router.get("/me/service-schedules", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("GET /api/me/service-schedules error:", err);
     res.json({ schedules: [] });
+  }
+});
+
+// ─── Public communities + join-request workflow ────────────────────────────
+// Open-signup users land on /communities/browse where they can request
+// to join any group with is_public = true. The request waits in
+// group_join_requests until an admin accepts/declines.
+
+// GET /api/groups/public — every public group, annotated with the
+// caller's relationship: already a member, has pending request, or
+// neither. Ordered by recency for now; can swap to popularity later.
+router.get("/groups/public", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const rows = await db
+      .select({
+        id: groupsTable.id,
+        name: groupsTable.name,
+        description: groupsTable.description,
+        slug: groupsTable.slug,
+        emoji: groupsTable.emoji,
+        isPrayerCircle: groupsTable.isPrayerCircle,
+        createdAt: groupsTable.createdAt,
+      })
+      .from(groupsTable)
+      .where(eq(groupsTable.isPublic, true))
+      .orderBy(desc(groupsTable.createdAt));
+
+    if (rows.length === 0) { res.json({ groups: [] }); return; }
+    const groupIds = rows.map(g => g.id);
+
+    // Caller's existing membership rows across these groups.
+    const myMembers = await db
+      .select({ groupId: groupMembersTable.groupId, role: groupMembersTable.role })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.userId, user.id),
+        inArray(groupMembersTable.groupId, groupIds),
+      ));
+    const memberSet = new Set(myMembers.map(m => m.groupId));
+
+    // Caller's pending requests across these groups.
+    const myPending = await db
+      .select({ groupId: groupJoinRequestsTable.groupId })
+      .from(groupJoinRequestsTable)
+      .where(and(
+        eq(groupJoinRequestsTable.userId, user.id),
+        isNull(groupJoinRequestsTable.decision),
+        inArray(groupJoinRequestsTable.groupId, groupIds),
+      ));
+    const pendingSet = new Set(myPending.map(p => p.groupId));
+
+    // Public-facing member counts so each card can hint at scale.
+    const memberCounts = await db
+      .select({
+        groupId: groupMembersTable.groupId,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(groupMembersTable)
+      .where(and(
+        inArray(groupMembersTable.groupId, groupIds),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ))
+      .groupBy(groupMembersTable.groupId);
+    const countByGroup = new Map(memberCounts.map(c => [c.groupId, Number(c.count) || 0]));
+
+    res.json({
+      groups: rows.map(g => ({
+        ...g,
+        memberCount: countByGroup.get(g.id) ?? 0,
+        myStatus: memberSet.has(g.id)
+          ? "member"
+          : pendingSet.has(g.id)
+            ? "pending"
+            : "none",
+      })),
+    });
+  } catch (err) {
+    console.error("GET /api/groups/public error:", err);
+    res.status(500).json({ error: "Failed to load communities" });
+  }
+});
+
+// POST /api/groups/:slug/request-join — submit a request to join a
+// public community. Idempotent on (group_id, user_id) — re-tapping
+// doesn't create duplicates. Pushes every admin of the group.
+router.post("/groups/:slug/request-join", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const slug = String(req.params.slug ?? "");
+    const [group] = await db
+      .select({ id: groupsTable.id, name: groupsTable.name, slug: groupsTable.slug, isPublic: groupsTable.isPublic })
+      .from(groupsTable)
+      .where(eq(groupsTable.slug, slug));
+    if (!group) { res.status(404).json({ error: "Community not found" }); return; }
+    if (!group.isPublic) {
+      res.status(403).json({ error: "This community isn't accepting requests right now." });
+      return;
+    }
+
+    // Already a member? Don't queue a request — return early so the UI
+    // can route the user straight into the group.
+    const [existingMember] = await db
+      .select({ id: groupMembersTable.id })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, group.id),
+        eq(groupMembersTable.userId, user.id),
+      ));
+    if (existingMember) {
+      res.json({ ok: true, status: "already_member", groupSlug: group.slug });
+      return;
+    }
+
+    // Insert the request — idempotent on the unique (group_id, user_id)
+    // index. If a row already exists we just leave it; if the existing
+    // decision was "rejected" we reset it to pending so the user can try
+    // again after the admin clears.
+    await db
+      .insert(groupJoinRequestsTable)
+      .values({ groupId: group.id, userId: user.id })
+      .onConflictDoUpdate({
+        target: [groupJoinRequestsTable.groupId, groupJoinRequestsTable.userId],
+        set: {
+          requestedAt: new Date(),
+          decidedAt: null,
+          decision: null,
+          decidedByUserId: null,
+        },
+      });
+
+    // Push every admin so they can act on it from anywhere.
+    const adminMembers = await db
+      .select({ userId: groupMembersTable.userId })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, group.id),
+        inArray(groupMembersTable.role, ["admin", "hidden_admin"]),
+      ));
+    const adminUserIds = adminMembers
+      .map(a => a.userId)
+      .filter((id): id is number => id != null);
+    const requesterName = (req.user as { name: string } | undefined)?.name ?? "Someone";
+    await Promise.all(adminUserIds.map(adminId =>
+      sendCommunityJoinRequestPush(adminId, {
+        groupSlug: group.slug,
+        groupName: group.name,
+        requesterName,
+      }).catch(err => console.error("[join-request] admin push failed:", err)),
+    ));
+
+    res.json({ ok: true, status: "pending", groupSlug: group.slug });
+  } catch (err) {
+    console.error("POST /api/groups/:slug/request-join error:", err);
+    res.status(500).json({ error: "Failed to submit request" });
+  }
+});
+
+// GET /api/groups/:slug/join-requests — admin only. Returns pending
+// requests with requester name + email + avatar.
+router.get("/groups/:slug/join-requests", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const result = await requireAdmin(req.params.slug, user.id);
+    if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+
+    const rows = await db
+      .select({
+        id: groupJoinRequestsTable.id,
+        userId: groupJoinRequestsTable.userId,
+        userName: usersTable.name,
+        userEmail: usersTable.email,
+        userAvatarUrl: usersTable.avatarUrl,
+        requestedAt: groupJoinRequestsTable.requestedAt,
+      })
+      .from(groupJoinRequestsTable)
+      .innerJoin(usersTable, eq(usersTable.id, groupJoinRequestsTable.userId))
+      .where(and(
+        eq(groupJoinRequestsTable.groupId, result.group.id),
+        isNull(groupJoinRequestsTable.decision),
+      ))
+      .orderBy(asc(groupJoinRequestsTable.requestedAt));
+
+    res.json({ requests: rows });
+  } catch (err) {
+    console.error("GET /api/groups/:slug/join-requests error:", err);
+    res.status(500).json({ error: "Failed to load requests" });
+  }
+});
+
+// POST /api/groups/:slug/join-requests/:id/accept — admin accepts.
+// Inserts the group_members row, stamps the request, pushes the user.
+router.post("/groups/:slug/join-requests/:id/accept", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const result = await requireAdmin(req.params.slug, user.id);
+    if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+
+    const requestId = Number(req.params.id);
+    if (!Number.isFinite(requestId)) {
+      res.status(400).json({ error: "Invalid request id" }); return;
+    }
+
+    const [reqRow] = await db
+      .select()
+      .from(groupJoinRequestsTable)
+      .where(and(
+        eq(groupJoinRequestsTable.id, requestId),
+        eq(groupJoinRequestsTable.groupId, result.group.id),
+      ));
+    if (!reqRow) { res.status(404).json({ error: "Request not found" }); return; }
+    if (reqRow.decision !== null) {
+      res.status(400).json({ error: "Request already decided" }); return;
+    }
+
+    const [requester] = await db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, reqRow.userId));
+    if (!requester) { res.status(404).json({ error: "User not found" }); return; }
+
+    // Mint the membership (or reactivate a stale row if one exists).
+    await db
+      .insert(groupMembersTable)
+      .values({
+        groupId: result.group.id,
+        userId: requester.id,
+        email: requester.email.toLowerCase(),
+        name: requester.name,
+        role: "member",
+        inviteToken: crypto.randomBytes(16).toString("hex"),
+        joinedAt: new Date(),
+      })
+      .onConflictDoNothing();
+
+    // Stamp the request as accepted.
+    await db
+      .update(groupJoinRequestsTable)
+      .set({
+        decision: "accepted",
+        decidedAt: new Date(),
+        decidedByUserId: user.id,
+      })
+      .where(eq(groupJoinRequestsTable.id, requestId));
+
+    // Reconcile group practices so the new member picks up tokens for
+    // every group-scoped intercession.
+    try { await reconcileAllPracticesForGroup(result.group.id); } catch { /* non-fatal */ }
+
+    // Push the requester so they know they're in.
+    await sendCommunityJoinAcceptedPush(requester.id, {
+      groupSlug: result.group.slug,
+      groupName: result.group.name,
+    }).catch(err => console.error("[join-accept] requester push failed:", err));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /api/groups/:slug/join-requests/:id/accept error:", err);
+    res.status(500).json({ error: "Failed to accept request" });
+  }
+});
+
+// POST /api/groups/:slug/join-requests/:id/reject — admin declines.
+// Stamps the request; no membership row, no push to the user.
+router.post("/groups/:slug/join-requests/:id/reject", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const result = await requireAdmin(req.params.slug, user.id);
+    if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+
+    const requestId = Number(req.params.id);
+    if (!Number.isFinite(requestId)) {
+      res.status(400).json({ error: "Invalid request id" }); return;
+    }
+
+    const [reqRow] = await db
+      .select()
+      .from(groupJoinRequestsTable)
+      .where(and(
+        eq(groupJoinRequestsTable.id, requestId),
+        eq(groupJoinRequestsTable.groupId, result.group.id),
+      ));
+    if (!reqRow) { res.status(404).json({ error: "Request not found" }); return; }
+    if (reqRow.decision !== null) {
+      res.status(400).json({ error: "Request already decided" }); return;
+    }
+
+    await db
+      .update(groupJoinRequestsTable)
+      .set({
+        decision: "rejected",
+        decidedAt: new Date(),
+        decidedByUserId: user.id,
+      })
+      .where(eq(groupJoinRequestsTable.id, requestId));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /api/groups/:slug/join-requests/:id/reject error:", err);
+    res.status(500).json({ error: "Failed to reject request" });
+  }
+});
+
+// GET /api/me/pending-join-request-counts — for the drawer badge.
+// Returns total pending requests across communities the caller admins.
+router.get("/me/pending-join-request-counts", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const myAdminGroups = await db
+      .select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.userId, user.id),
+        inArray(groupMembersTable.role, ["admin", "hidden_admin"]),
+      ));
+    const groupIds = myAdminGroups.map(g => g.groupId);
+    if (groupIds.length === 0) { res.json({ total: 0, byGroup: {} }); return; }
+
+    const counts = await db
+      .select({
+        groupId: groupJoinRequestsTable.groupId,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(groupJoinRequestsTable)
+      .where(and(
+        inArray(groupJoinRequestsTable.groupId, groupIds),
+        isNull(groupJoinRequestsTable.decision),
+      ))
+      .groupBy(groupJoinRequestsTable.groupId);
+
+    const byGroup: Record<number, number> = {};
+    let total = 0;
+    for (const c of counts) {
+      const n = Number(c.count) || 0;
+      byGroup[c.groupId] = n;
+      total += n;
+    }
+    res.json({ total, byGroup });
+  } catch (err) {
+    console.error("GET /api/me/pending-join-request-counts error:", err);
+    res.json({ total: 0, byGroup: {} });
   }
 });
 

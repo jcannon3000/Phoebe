@@ -503,6 +503,37 @@ export function sendPrayerWordPush(
   });
 }
 
+// Fires for each admin of a community when someone taps "Request to
+// join" on /communities/browse. Deep-links to the requests management
+// panel so the admin can accept or decline in two taps.
+export function sendCommunityJoinRequestPush(
+  adminUserId: number,
+  opts: { groupSlug: string; groupName: string; requesterName: string }
+) {
+  return sendPushToUser(adminUserId, {
+    title: opts.groupName || "Phoebe",
+    body: `${opts.requesterName} would like to join.`,
+    path: `/communities/${opts.groupSlug}/requests`,
+    threadId: `join-requests-${opts.groupSlug}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
+// Fires for the requester when an admin accepts. Deep-links to the
+// community detail page so they land where they belong.
+export function sendCommunityJoinAcceptedPush(
+  userId: number,
+  opts: { groupSlug: string; groupName: string }
+) {
+  return sendPushToUser(userId, {
+    title: opts.groupName || "Phoebe",
+    body: `You're in. Welcome to ${opts.groupName}.`,
+    path: `/communities/${opts.groupSlug}`,
+    threadId: `community-${opts.groupSlug}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Fires for all group members except the creator. Copy branches by
 // templateType so a new intercession reads differently from a new
 // lectio-divina practice.

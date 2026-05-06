@@ -24,9 +24,39 @@ export const groupsTable = pgTable("groups", {
   isPrayerCircle: boolean("is_prayer_circle").notNull().default(false),
   intention: text("intention"),
   circleDescription: text("circle_description"),
+  // Public discoverability. When true, the group surfaces in the
+  // /communities/browse picker. Joining is still admin-approved via
+  // group_join_requests — public means "discoverable", not "open".
+  isPublic: boolean("is_public").notNull().default(false),
   createdByUserId: integer("created_by_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ── Group join requests ────────────────────────────────────────────────────
+// User-initiated request to join a community (distinct from invite-token
+// joins, which are pre-approved). Workflow:
+//   1. User taps a community on /communities/browse → INSERT row, decision
+//      stays null (pending). Admins receive a push notification.
+//   2. Admin opens /communities/:slug/requests → sees pending requests.
+//   3. Admin accepts → decision='accepted', decided_at + decided_by stamp,
+//      group_members row inserted, requester pushed "you're in".
+//   4. Admin declines → decision='rejected', no group_members row, no
+//      push (silent).
+// Unique on (group_id, user_id) so re-tapping doesn't create duplicates;
+// re-requesting after a decline can be supported later by clearing the
+// row in a follow-up.
+export const groupJoinRequestsTable = pgTable("group_join_requests", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull()
+    .references(() => groupsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  decision: text("decision"), // null (pending) | "accepted" | "rejected"
+  decidedByUserId: integer("decided_by_user_id")
+    .references(() => usersTable.id, { onDelete: "set null" }),
 });
 
 // ── Prayer Circle: daily focus ─────────────────────────────────────────────

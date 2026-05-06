@@ -195,6 +195,7 @@ router.get("/auth/me", (req, res) => {
     climateOnly: boolean;
     parishId: number | null;
     bellEnabled: boolean;
+    locale: string | null;
   };
   res.json({
     id: u.id,
@@ -221,6 +222,7 @@ router.get("/auth/me", (req, res) => {
     climateOnly: u.climateOnly ?? false,
     parishId: u.parishId ?? null,
     bellEnabled: u.bellEnabled ?? false,
+    locale: u.locale ?? "en",
   });
 });
 
@@ -283,6 +285,23 @@ router.patch("/auth/me/bell-enabled", async (req, res): Promise<void> => {
     (req.user as Record<string, unknown>).bellEnabled = bellEnabled;
   }
   res.json({ bellEnabled });
+});
+
+// PATCH /auth/me/locale — switch the user's UI language. Currently
+// only "en" and "es" are accepted; "es" is beta-gated client-side
+// (the settings toggle is hidden unless useBetaStatus().rawIsBeta is
+// true). The API itself is permissive — it'll accept "es" from any
+// signed-in user — so a future rollout doesn't need a server change.
+router.patch("/auth/me/locale", async (req, res): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = (req.user as { id: number }).id;
+  const { locale } = req.body as { locale?: unknown };
+  if (typeof locale !== "string" || (locale !== "en" && locale !== "es")) {
+    res.status(400).json({ error: "locale must be 'en' or 'es'" });
+    return;
+  }
+  await db.update(usersTable).set({ locale } as Record<string, unknown>).where(eq(usersTable.id, userId));
+  res.json({ locale });
 });
 
 // PATCH /auth/me/prayer-invite-shown — record that the daily prayer-list
@@ -470,26 +489,17 @@ router.post(
     res.status(400).json({ error: "An account with that email already exists." }); return;
   }
 
-  // ── Eligibility check ──────────────────────────────────────────────────
-  // Pilot/beta path
-  let allowed = false;
+  // ── Eligibility ────────────────────────────────────────────────────────
+  // Open signup. Anyone can create an account; the post-signup welcome
+  // flow funnels them to climate (one-tap) or community discovery
+  // (admin-approved request). The legacy beta_users / invite-token gate
+  // is preserved here only for its side effect of auto-joining the
+  // group at registration time when an invite link IS used. That branch
+  // still works, but no longer GATES signup.
   let inviteMember: { id: number; groupId: number; email: string } | null = null;
   let inviteGroupSlug: string | null = null;
-  try {
-    const [beta] = await db.select({ email: betaUsersTable.email })
-      .from(betaUsersTable).where(eq(betaUsersTable.email, normalizedEmail));
-    if (beta) allowed = true;
-  } catch {
-    // beta_users table missing — fall through to invite check
-  }
-
-  // Community-invite path — two flavors:
-  //   A. Community-wide token (new primary): group.invite_token matches.
-  //      No email-match check; anyone with the link can sign up.
-  //   B. Per-member token (legacy): group_members.invite_token matches AND
-  //      the invitee email matches the email being registered.
   let communityWideGroupId: number | null = null;
-  if (!allowed && groupSlug && groupInviteToken) {
+  if (groupSlug && groupInviteToken) {
     const [group] = await db.select({
       id: groupsTable.id,
       slug: groupsTable.slug,
@@ -498,7 +508,6 @@ router.post(
     if (group) {
       // A. Community-wide token
       if (group.inviteToken && group.inviteToken === groupInviteToken) {
-        allowed = true;
         communityWideGroupId = group.id;
         inviteGroupSlug = group.slug;
       } else {
@@ -512,19 +521,11 @@ router.post(
             eq(groupMembersTable.inviteToken, groupInviteToken),
           ));
         if (member && member.email.toLowerCase() === normalizedEmail) {
-          allowed = true;
           inviteMember = member;
           inviteGroupSlug = group.slug;
         }
       }
     }
-  }
-
-  if (!allowed) {
-    res.status(403).json({
-      error: "Phoebe is invite-only right now. Join the waitlist and we'll be in touch as we open seats.",
-    });
-    return;
   }
 
   // ── Create the user ────────────────────────────────────────────────────

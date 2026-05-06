@@ -1237,6 +1237,25 @@ export async function migrate() {
       WHERE slug = 'phoebe-climate'
     `);
 
+    // Communities discovery + admin-approved join requests.
+    //   • groups.is_public — public communities show in the browse picker.
+    //   • group_join_requests — pending list per community; admin
+    //     accepts → row decision='accepted' + group_members insert.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_join_requests (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        decided_at TIMESTAMPTZ,
+        decision TEXT,
+        decided_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        UNIQUE (group_id, user_id)
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_group_join_requests_pending ON group_join_requests (group_id) WHERE decision IS NULL`);
+
     // BCP Daily Office texts (confession, absolution, opening sentences,
     // canticles, Pascha Nostrum, etc.) live in bcp_texts. The seed is
     // upsert-safe — runs on every boot so a fresh DB or a missed seed
