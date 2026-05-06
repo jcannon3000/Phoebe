@@ -32,6 +32,7 @@ import {
   sendPushToUsers,
   sendCommunityJoinRequestPush,
   sendCommunityJoinAcceptedPush,
+  sendNewPrayerRequestPush,
 } from "../lib/pushSender";
 import { pool } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
@@ -1941,10 +1942,36 @@ router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => 
   // stays defined so we can re-enable it with narrower logic (e.g.
   // daily digest, or only for prayer circles the admin leads).
 
-  // Community-wide "New prayer request" push is disabled — requesters
-  // didn't want to ping every member on every new request. The request
-  // still appears on the community home and in each member's prayer
-  // list / slideshow; we just don't pre-empt their lock screen.
+  // Community-wide push: every JOINED member except the author gets
+  // a "{Name} is asking for your prayers" lock-screen ping that deep-
+  // links to the prayer's slide page. Pending invitees stay quiet
+  // (they aren't members yet); anonymous requests collapse the title
+  // to "Someone …". Fire-and-forget so a slow APNs round-trip can't
+  // delay the HTTP response.
+  (async () => {
+    try {
+      const memberRows = await db.select({
+        userId: groupMembersTable.userId,
+        joinedAt: groupMembersTable.joinedAt,
+      })
+        .from(groupMembersTable)
+        .where(eq(groupMembersTable.groupId, group.id));
+      const recipientIds = memberRows
+        .filter(r => r.joinedAt && r.userId != null && r.userId !== user.id)
+        .map(r => r.userId as number);
+      if (recipientIds.length === 0) return;
+      const authorName = member.name ?? user.name ?? "Someone";
+      await Promise.all(recipientIds.map(rid =>
+        sendNewPrayerRequestPush(rid, {
+          authorName,
+          isAnonymous: parsed.data.isAnonymous ?? false,
+          prayerRequestId: inserted.id,
+        }).catch(err => console.warn("[groups] new-prayer-request push failed:", err))
+      ));
+    } catch (err) {
+      console.warn("[groups] new-prayer-request push fan-out failed:", err);
+    }
+  })();
 
   res.json({ ok: true, id: inserted.id });
 });

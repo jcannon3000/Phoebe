@@ -2053,38 +2053,54 @@ function PrayerListCard({
             )}
           </div>
 
-          {/* Line 3: two equal-width pills side by side.
-                - Left  → "Pray" / "Continue praying" / "Pray again"
-                  (the existing CTA — routes to /prayer-mode via the
-                  wrapping Link, no separate handler needed).
-                - Right → "View list" — diverts to /prayer-list. Carries
-                  a red dot in the top-right corner when there is at
-                  least one open request from someone else the viewer
-                  hasn't yet amened today (newPrayersCount > 0). The
-                  dot is the at-a-glance signal that the list has
-                  something fresh to engage with — replaces the role
-                  the bottom-of-page Prayer Requests section used to
-                  play before it was removed.
-              flex with `flex-1` on each pill makes both pills equal
-              width regardless of label length. */}
-          {!muted && (
+          {/* Line 3 — CTA strip.
+                Not yet started or partial: a single full-width primary
+                  pill ("Pray for your community" / "Continue"). The
+                  view-list secondary button is suppressed in this state
+                  because the user's job-to-be-done is just "go pray";
+                  giving them a sibling action splits attention.
+                Done a full pass today (prayedToday): two equal pills
+                  side-by-side (Pray again + View list). View list
+                  carries the red-dot signal for new requests that
+                  haven't been amened yet, since by the time the user
+                  has cleared today's pass the surfacing job shifts
+                  from "do the thing" to "see what's happening". */}
+          {!muted && !prayedToday && (
+            <div className="mt-3 w-full">
+              <div
+                className="w-full rounded-xl text-center"
+                style={{
+                  background: "#4A7A5B",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  letterSpacing: "-0.01em",
+                  padding: "9px 12px",
+                  border: "1px solid rgba(111,175,133,0.45)",
+                }}
+              >
+                {isPartial ? "Continue" : "Pray for your community"}
+                <span aria-hidden> →</span>
+              </div>
+            </div>
+          )}
+          {!muted && prayedToday && (
             <div className="mt-3 w-full flex gap-2">
               <div
                 className="flex-1 rounded-xl text-center"
                 style={{
-                  background: prayedToday ? "rgba(111,175,133,0.22)" : "#4A7A5B",
+                  background: "rgba(111,175,133,0.22)",
                   color: "#F0EDE6",
                   fontFamily: "'Space Grotesk', sans-serif",
                   fontSize: 14,
                   fontWeight: 500,
                   letterSpacing: "-0.01em",
                   padding: "7px 12px",
-                  border: prayedToday
-                    ? "1px solid rgba(111,175,133,0.35)"
-                    : "1px solid rgba(111,175,133,0.45)",
+                  border: "1px solid rgba(111,175,133,0.35)",
                 }}
               >
-                {isPartial ? "Continue praying" : prayedToday ? "Pray again" : "Pray"}
+                Pray again
                 <span aria-hidden> →</span>
               </div>
               <Link

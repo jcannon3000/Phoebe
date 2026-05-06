@@ -503,6 +503,36 @@ export function sendPrayerWordPush(
   });
 }
 
+// Fires for every joined member of a group EXCEPT the requester
+// when a new community prayer request is posted. The previous design
+// suppressed this entirely ("noise"); product direction reversed for
+// per-group requests because the request is the whole point of being
+// in a community — silently sliding it onto a feed nobody opens
+// regularly defeated the purpose. Push is community-scoped (only
+// fires for `groupId`-bound requests), still gated to "joined" rows
+// (pending invitees stay quiet), and the collapse-id makes the
+// fan-out idempotent against any retry.
+//
+// Tap deep-links to the request's slide page (/prayer-requests/:id)
+// where the recipient sees the prayer body, can leave a word of
+// comfort, and can amen.
+export function sendNewPrayerRequestPush(
+  recipientUserId: number,
+  opts: { authorName: string; isAnonymous: boolean; prayerRequestId: number },
+) {
+  const display = opts.isAnonymous
+    ? "Someone"
+    : ((opts.authorName || "Someone").split(/\s+/)[0] || "Someone");
+  return sendPushToUser(recipientUserId, {
+    title: `${display} is asking for your prayers`,
+    body: "Open Phoebe to pray for them.",
+    path: `/prayer-requests/${opts.prayerRequestId}`,
+    threadId: `prayer-request-${opts.prayerRequestId}`,
+    collapseId: `new-prayer-request-${opts.prayerRequestId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Fires for each admin of a community when someone taps "Request to
 // join" on /communities/browse. Deep-links to the requests management
 // panel so the admin can accept or decline in two taps.

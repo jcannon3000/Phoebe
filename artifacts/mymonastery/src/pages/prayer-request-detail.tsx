@@ -172,6 +172,23 @@ export default function PrayerRequestDetailPage() {
     enabled: Number.isFinite(id),
   });
 
+  // One-tap amen for the viewer who arrived via the
+  // "{Name} is asking for your prayers" push. Same endpoint the
+  // slideshow uses, same per-day throttle on the server side. After a
+  // successful tap we flip a local `amened` flag so the button shows
+  // a quiet acknowledgement instead of inviting another tap. We also
+  // refresh the detail query so the owner-side count stays current
+  // when they navigate here next.
+  const [amened, setAmened] = useState(false);
+  const amenMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/prayer-requests/${id}/amen`),
+    onSuccess: () => {
+      triggerSubmitFeedback();
+      setAmened(true);
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+    },
+  });
+
   const renewMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
     onSuccess: () => {
@@ -300,7 +317,34 @@ export default function PrayerRequestDetailPage() {
             </p>
 
             {!data.viewerIsOwner && (
-              <RequestWordField requestId={data.id} />
+              <>
+                {/* Amen — primary action for the viewer who arrived from
+                    the "{Name} is asking for your prayers" push. Single
+                    tap; the server throttles to once-per-day per
+                    (user, request). After a successful tap the button
+                    holds a quiet "✓ Amen sent" state instead of
+                    inviting another tap. */}
+                <button
+                  type="button"
+                  onClick={() => { if (!amened && !amenMutation.isPending) amenMutation.mutate(); }}
+                  disabled={amened || amenMutation.isPending}
+                  className="px-10 py-3.5 rounded-full text-sm font-semibold transition-opacity disabled:cursor-default"
+                  style={{
+                    background: amened ? "rgba(46,107,64,0.18)" : "#2D5E3F",
+                    color: amened ? "#A8C5A0" : "#F0EDE6",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    minWidth: 220,
+                    border: amened ? "1px solid rgba(46,107,64,0.45)" : "none",
+                  }}
+                >
+                  {amenMutation.isPending
+                    ? "…"
+                    : amened
+                      ? "✓ Amen sent"
+                      : `Amen — pray for ${(data.ownerName ?? "this person").split(/\s+/)[0]}`}
+                </button>
+                <RequestWordField requestId={data.id} />
+              </>
             )}
 
             {/* ── Owner view: who is praying + how many + every word ── */}
