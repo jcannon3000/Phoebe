@@ -416,6 +416,34 @@ textarea:focus {
   animation: glow-breathe-amber 4s ease-in-out infinite;
 }
 
+/* ── Title text glow ─────────────────────────────────────────────────
+   Big chapter-title treatment used by the Daily Office's
+   intercessions-portal intro slide ("Intercessions"). The text
+   itself fades up while a soft sage halo pulses around the
+   letterforms — gives the slide a "you are crossing into
+   something" feel before the auto-handoff to /prayer-mode. */
+@keyframes title-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 24px rgba(168, 197, 160, 0.30),
+      0 0 60px rgba(46, 107, 64, 0.18);
+  }
+  50% {
+    text-shadow:
+      0 0 36px rgba(168, 197, 160, 0.55),
+      0 0 90px rgba(46, 107, 64, 0.32);
+  }
+}
+@keyframes title-glow-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.title-glow-breathe {
+  animation:
+    title-glow-fade-in 0.7s ease-out both,
+    title-glow 3.6s ease-in-out 0.7s infinite;
+}
+
 /* ── Hide scrollbars on horizontal scroll strips ─────────────────── */
 .no-scrollbar {
   -ms-overflow-style: none;

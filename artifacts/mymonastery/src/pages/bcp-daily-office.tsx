@@ -282,7 +282,10 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
         // Allow returning into the office mid-flow — when the
         // /prayer-mode redirect comes back here it appends ?slide=N
         // to the URL so we land at the slide right after the
-        // intercessions portal instead of restarting at 0.
+        // intercessions portal instead of restarting at 0. Clear
+        // the params after consuming them so a later X-out plus
+        // re-entry into the same office doesn't accidentally re-
+        // resume at the saved slide index.
         const search = new URLSearchParams(window.location.search);
         const slideParam = parseInt(search.get("slide") ?? "", 10);
         const initialIdx =
@@ -290,6 +293,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             ? slideParam
             : 0;
         setSlideIdx(initialIdx);
+        if (search.has("slide") || search.has("mode") || search.has("returnTo")) {
+          try {
+            window.history.replaceState(null, "", window.location.pathname);
+          } catch { /* non-fatal */ }
+        }
       } catch (err) {
         if (!cancelled) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -325,7 +333,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     const basePath = isDevotion ? "/bcp/daily-devotions" : "/bcp/daily-office";
     const returnTo = `${basePath}?mode=${encodeURIComponent(resolvedMode)}&slide=${nextOfficeIdx}`;
     const url = `/prayer-mode?returnTo=${encodeURIComponent(returnTo)}&seamless=1`;
-    setViewerLocation(url);
+    // Hold the glowing "Intercessions" title for a beat so the
+    // handoff reads as a deliberate transition into prayer-mode
+    // rather than a flash of an empty slide. 2.4s lines up with
+    // one full breath of the title-glow keyframe.
+    const t = window.setTimeout(() => setViewerLocation(url), 2400);
+    return () => window.clearTimeout(t);
   }, [slides, slideIdx, resolvedMode, isDevotion, setViewerLocation]);
 
   if (loading) {
@@ -528,19 +541,40 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           // text. Top-aligned reads as a missal page: title near the
           // top, body flowing down.
           style={(() => {
-            // Devotion mode centers short call-and-response slides
-            // (opening versicle, simple greetings) so they read as
-            // personal prayer beats rather than missal pages. The
-            // full Office still left-aligns those for the missal
-            // feel. Intercession slides on either surface stay
-            // centered to match the prayer-mode slideshow.
-            const isCenteredDevotionBeat = isDevotion && currentSlide.isCallAndResponse;
-            const centered = isCenteredDevotionBeat || currentSlide.type === "intercessions";
+            // Centered, vertically-balanced layout for short slides —
+            // matches how the opening acclamation
+            // ("Light and peace, in Jesus Christ our Lord. /
+            //  Thanks be to God.") sits on the page. Long slides
+            // (psalm, lesson reference, canticle, creed, suffrages,
+            // general thanksgiving) stay top-aligned so the reading
+            // flows like a missal page; everything else — opening
+            // sentence, confession, absolution, collect, prayer for
+            // mission, lord's prayer, closing — gets the centered
+            // treatment as long as the body is short enough that
+            // it actually fits comfortably in the middle of the
+            // viewport. Applies equally to the full Daily Office
+            // and the abbreviated Daily Devotions.
+            const longTypes = new Set<string>([
+              "psalm",
+              "canticle",
+              "creed",
+              "general_thanksgiving",
+              "suffrages",
+            ]);
+            const isLongType = longTypes.has(currentSlide.type);
+            const bodyLength =
+              (currentSlide.content?.length ?? 0)
+              + (currentSlide.callAndResponseLines?.reduce((acc, l) => acc + l.text.length, 0) ?? 0);
+            const isShortEnough = bodyLength <= 320;
+            const centered =
+              currentSlide.type === "intercessions"
+              || currentSlide.type === "intercessions_portal"
+              || (!isLongType && isShortEnough);
             return {
               display: "flex",
               flexDirection: "column",
               minHeight: "100%",
-              justifyContent: isCenteredDevotionBeat ? "center" : "flex-start",
+              justifyContent: centered ? "center" : "flex-start",
               textAlign: centered ? ("center" as const) : ("left" as const),
               alignItems: centered ? "center" : undefined,
               gap: 20,
@@ -551,7 +585,42 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               + eyebrow, mirroring prayer-mode.tsx's "request" slide.
               The default left-aligned eyebrow + bold-title pair
               renders in the else branch below. */}
-          {currentSlide.type === "intercessions" ? (
+          {currentSlide.type === "intercessions_portal" ? (
+            // Intro chord for the prayer-mode handoff. The title
+            // breathes for ~2.5 seconds (see the delayed auto-jump
+            // effect above) before the office redirects into
+            // /prayer-mode. CSS animation .title-glow-breathe pairs
+            // a soft sage halo with the fade-up so the slide reads
+            // as "you are crossing into something" rather than a
+            // navigation glitch.
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                minHeight: 240,
+                textAlign: "center",
+                gap: 16,
+              }}
+            >
+              <h1
+                className="title-glow-breathe"
+                style={{
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: "clamp(48px, 9vw, 88px)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  color: WARM_TEXT,
+                  margin: 0,
+                  lineHeight: 1.0,
+                }}
+              >
+                Intercessions
+              </h1>
+            </div>
+          ) : currentSlide.type === "intercessions" ? (
             (() => {
               const meta = currentSlide.metadata as
                 | { source?: unknown; authorName?: unknown; authorAvatarUrl?: unknown }

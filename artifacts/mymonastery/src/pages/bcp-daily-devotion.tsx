@@ -25,8 +25,8 @@ export default function BcpDailyDevotionPage() {
 
   // Auto-resume the devotion viewer when /prayer-mode hands the
   // user back here with ?mode=morning-devotion|early-evening-devotion.
-  // Without this the picker would always show first, breaking the
-  // seamless intercessions-portal handoff back from prayer-mode.
+  // The URL is cleaned up inside the viewer once it reads its
+  // ?slide=N param, so a later X-out + re-entry doesn't re-resume.
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
     const mode = search.get("mode");

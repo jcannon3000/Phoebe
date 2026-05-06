@@ -1,92 +1,98 @@
 /**
- * Bible.com (YouVersion) URL builder — client-side mirror of the
- * api-server's helper. Produces a NRSVUE deep link from a BCP-style
- * reference. Used by the lesson-slide button on /bcp/daily-office,
- * which can't depend on the server having pre-built metadata.readUrl
- * for cached slides.
+ * Bible.com (YouVersion) URL builder — client-side mirror of
+ * api-server/src/lib/bibleGatewayUrl.ts. Each pattern accepts both
+ * the BCP-style abbreviation ("2 Cor.") and the full book name
+ * ("2 Corinthians") so devotion-style hardcoded references resolve
+ * the same way Daily Office lectionary references do.
  */
 
 const BOOK_USFM: Array<[RegExp, string]> = [
-  [/^Gen\.?$/i, "GEN"],
-  [/^Ex(od)?\.?$/i, "EXO"],
-  [/^Lev\.?$/i, "LEV"],
-  [/^Num\.?$/i, "NUM"],
-  [/^Deut\.?$/i, "DEU"],
-  [/^Josh\.?$/i, "JOS"],
-  [/^Judg\.?$/i, "JDG"],
+  [/^Gen(esis)?\.?$/i, "GEN"],
+  [/^Ex(od|odus)?\.?$/i, "EXO"],
+  [/^Lev(iticus)?\.?$/i, "LEV"],
+  [/^Num(bers)?\.?$/i, "NUM"],
+  [/^Deut(eronomy)?\.?$/i, "DEU"],
+  [/^Josh(ua)?\.?$/i, "JOS"],
+  [/^Judg(es)?\.?$/i, "JDG"],
   [/^Ruth$/i, "RUT"],
-  [/^1\s*Sam\.?$/i, "1SA"],
-  [/^2\s*Sam\.?$/i, "2SA"],
+  [/^1\s*Sam(uel)?\.?$/i, "1SA"],
+  [/^2\s*Sam(uel)?\.?$/i, "2SA"],
   [/^1\s*K(in)?gs\.?$/i, "1KI"],
+  [/^1\s*Kings$/i, "1KI"],
   [/^2\s*K(in)?gs\.?$/i, "2KI"],
-  [/^1\s*Chr(on)?\.?$/i, "1CH"],
-  [/^2\s*Chr(on)?\.?$/i, "2CH"],
+  [/^2\s*Kings$/i, "2KI"],
+  [/^1\s*Chr(on(icles)?)?\.?$/i, "1CH"],
+  [/^2\s*Chr(on(icles)?)?\.?$/i, "2CH"],
   [/^Ezra$/i, "EZR"],
-  [/^Neh\.?$/i, "NEH"],
-  [/^Esth\.?$/i, "EST"],
+  [/^Neh(emiah)?\.?$/i, "NEH"],
+  [/^Esth(er)?\.?$/i, "EST"],
   [/^Job$/i, "JOB"],
   [/^Ps(alm)?\.?$/i, "PSA"],
   [/^Pss\.?$/i, "PSA"],
-  [/^Prov\.?$/i, "PRO"],
-  [/^Eccl(es)?\.?$/i, "ECC"],
+  [/^Psalms$/i, "PSA"],
+  [/^Prov(erbs)?\.?$/i, "PRO"],
+  [/^Eccl(es(iastes)?)?\.?$/i, "ECC"],
   [/^S(ong\s+of\s+)?Sol(omon)?\.?$/i, "SNG"],
+  [/^Song\s+of\s+Songs$/i, "SNG"],
   [/^Cant(icles)?\.?$/i, "SNG"],
-  [/^Isa\.?$/i, "ISA"],
-  [/^Jer\.?$/i, "JER"],
-  [/^Lam\.?$/i, "LAM"],
-  [/^Ezek\.?$/i, "EZK"],
-  [/^Dan\.?$/i, "DAN"],
-  [/^Hos\.?$/i, "HOS"],
+  [/^Isa(iah)?\.?$/i, "ISA"],
+  [/^Jer(emiah)?\.?$/i, "JER"],
+  [/^Lam(entations)?\.?$/i, "LAM"],
+  [/^Ezek(iel)?\.?$/i, "EZK"],
+  [/^Dan(iel)?\.?$/i, "DAN"],
+  [/^Hos(ea)?\.?$/i, "HOS"],
   [/^Joel$/i, "JOL"],
   [/^Amos$/i, "AMO"],
-  [/^Obad\.?$/i, "OBA"],
+  [/^Obad(iah)?\.?$/i, "OBA"],
   [/^Jonah$/i, "JON"],
-  [/^Mic\.?$/i, "MIC"],
+  [/^Mic(ah)?\.?$/i, "MIC"],
   [/^Nah(um)?\.?$/i, "NAM"],
-  [/^Hab\.?$/i, "HAB"],
-  [/^Zeph\.?$/i, "ZEP"],
-  [/^Hag(g)?\.?$/i, "HAG"],
-  [/^Zech\.?$/i, "ZEC"],
-  [/^Mal\.?$/i, "MAL"],
+  [/^Hab(akkuk)?\.?$/i, "HAB"],
+  [/^Zeph(aniah)?\.?$/i, "ZEP"],
+  [/^Hag(g(ai)?)?\.?$/i, "HAG"],
+  [/^Zech(ariah)?\.?$/i, "ZEC"],
+  [/^Mal(achi)?\.?$/i, "MAL"],
 
   [/^Tob(it)?\.?$/i, "TOB"],
   [/^Jdth\.?$/i, "JDT"],
-  [/^Wis(d)?\.?$/i, "WIS"],
+  [/^Judith$/i, "JDT"],
+  [/^Wis(d(om)?)?\.?$/i, "WIS"],
+  [/^Wisdom\s+of\s+Solomon$/i, "WIS"],
   [/^Ecclus\.?$/i, "SIR"],
   [/^Sir(ach)?\.?$/i, "SIR"],
   [/^Bar(uch)?\.?$/i, "BAR"],
-  [/^1\s*Macc?\.?$/i, "1MA"],
-  [/^2\s*Macc?\.?$/i, "2MA"],
+  [/^1\s*Macc?(abees)?\.?$/i, "1MA"],
+  [/^2\s*Macc?(abees)?\.?$/i, "2MA"],
 
-  [/^Matt\.?$/i, "MAT"],
+  [/^Matt(hew)?\.?$/i, "MAT"],
   [/^Mark$/i, "MRK"],
   [/^Luke$/i, "LUK"],
   [/^John$/i, "JHN"],
   [/^Acts$/i, "ACT"],
-  [/^Rom\.?$/i, "ROM"],
-  [/^1\s*Cor\.?$/i, "1CO"],
-  [/^2\s*Cor\.?$/i, "2CO"],
-  [/^Gal\.?$/i, "GAL"],
-  [/^Eph\.?$/i, "EPH"],
-  [/^Phil\.?$/i, "PHP"],
-  [/^Col\.?$/i, "COL"],
-  [/^1\s*Thess?\.?$/i, "1TH"],
-  [/^2\s*Thess?\.?$/i, "2TH"],
-  [/^1\s*Tim\.?$/i, "1TI"],
-  [/^2\s*Tim\.?$/i, "2TI"],
+  [/^Rom(ans)?\.?$/i, "ROM"],
+  [/^1\s*Cor(inthians)?\.?$/i, "1CO"],
+  [/^2\s*Cor(inthians)?\.?$/i, "2CO"],
+  [/^Gal(atians)?\.?$/i, "GAL"],
+  [/^Eph(esians)?\.?$/i, "EPH"],
+  [/^Phil(ippians)?\.?$/i, "PHP"],
+  [/^Col(ossians)?\.?$/i, "COL"],
+  [/^1\s*Thess(alonians)?\.?$/i, "1TH"],
+  [/^2\s*Thess(alonians)?\.?$/i, "2TH"],
+  [/^1\s*Tim(othy)?\.?$/i, "1TI"],
+  [/^2\s*Tim(othy)?\.?$/i, "2TI"],
   [/^Titus$/i, "TIT"],
   [/^Phlm\.?$/i, "PHM"],
   [/^Phile?(mon)?\.?$/i, "PHM"],
-  [/^Heb\.?$/i, "HEB"],
+  [/^Heb(rews)?\.?$/i, "HEB"],
   [/^Jas\.?$/i, "JAS"],
   [/^James$/i, "JAS"],
-  [/^1\s*Pet\.?$/i, "1PE"],
-  [/^2\s*Pet\.?$/i, "2PE"],
+  [/^1\s*Pet(er)?\.?$/i, "1PE"],
+  [/^2\s*Pet(er)?\.?$/i, "2PE"],
   [/^1\s*John$/i, "1JN"],
   [/^2\s*John$/i, "2JN"],
   [/^3\s*John$/i, "3JN"],
   [/^Jude$/i, "JUD"],
-  [/^Rev\.?$/i, "REV"],
+  [/^Rev(elation)?\.?$/i, "REV"],
 ];
 
 const NRSVUE_VERSION_ID = 3523;
@@ -96,7 +102,7 @@ export function bibleUrl(reference: string): string | null {
   const trimmed = reference.trim();
   if (!trimmed) return null;
 
-  const noParens = trimmed.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
+  const noParens = trimmed.replace(/\([^)]*\)/g, ",").replace(/\s+/g, " ").trim();
   const cleaned = noParens.replace(/--/g, "-").replace(/[–—]/g, "-");
 
   const m = cleaned.match(/^([\dA-Za-z.\s]+?)\s+(\d.*)$/);
@@ -126,6 +132,4 @@ function lookupUsfm(raw: string): string | null {
   return null;
 }
 
-// Existing call sites still import `bibleGatewayUrl`. Alias keeps
-// them building during the rename.
 export const bibleGatewayUrl = bibleUrl;
