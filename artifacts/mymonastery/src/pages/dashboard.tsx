@@ -3191,18 +3191,19 @@ export default function Dashboard() {
       const isIntercession = m.templateType === "intercession";
       const isFasting = m.templateType === "fasting";
 
-      // Intercessions normally don't appear as individual cards on the
-      // home dashboard — they live inside the prayer list (slideshow).
-      // The PrayerListCard surfaces the aggregated count of prayers
-      // waiting, so the user taps once to move through them all.
+      // Intercessions never appear as individual cards on the home
+      // dashboard — they live inside the prayer list (slideshow). The
+      // PrayerListCard surfaces the aggregated count, so a tap moves
+      // through them all together.
       //
-      // Exception: feed-scoped intercessions DO surface as cards. Group
-      // intercessions are high-volume rhythm content (one per group,
-      // many groups) and would clutter the dashboard. Feed intercessions
-      // are deliberately curated content (a small list, admin-authored)
-      // and benefit from being visible — especially on a climate-only
-      // dashboard where they're the primary signal.
-      if (isIntercession && !m.prayerFeedId) continue;
+      // This applies to feed-scoped intercessions too: climate users
+      // see "Phoebe Climate" content via the drawer + /climate hub
+      // (which lists every active feed intercession as a card) and via
+      // the prayer-list slideshow on /prayer-mode. Surfacing them
+      // again as individual dashboard cards was duplicating signal —
+      // the same intercession would get counted in the Daily Prayer
+      // List AND show as its own card.
+      if (isIntercession) continue;
 
       const userDone = isLectio ? !!m.lectioMyStageDone : m.todayPostCount > 0;
 
