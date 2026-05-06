@@ -303,6 +303,30 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     return () => { cancelled = true; };
   }, [endpoint, officeTitle, resolvedMode]);
 
+  // Auto-jump to /prayer-mode when the user lands on the
+  // intercessions portal. Has to live ABOVE the loading / error
+  // early returns so the hook count stays stable across renders
+  // (otherwise React #310). We bail inside the effect when the
+  // slides aren't ready yet, when the slide isn't a portal, or
+  // when we already handed off this session.
+  useEffect(() => {
+    if (slides.length === 0) return;
+    const slide = slides[slideIdx];
+    if (!slide) return;
+    if (slide.type !== "intercessions_portal") return;
+    if (portalHandedOffRef.current) return;
+    portalHandedOffRef.current = true;
+    const nextOfficeIdx = Math.min(slideIdx + 1, slides.length - 1);
+    // Devotions live at /bcp/daily-devotions; the full Office at
+    // /bcp/daily-office. Each picker page has a useEffect that
+    // reads ?mode=… on mount so the viewer auto-resumes instead
+    // of dropping back onto the picker.
+    const basePath = isDevotion ? "/bcp/daily-devotions" : "/bcp/daily-office";
+    const returnTo = `${basePath}?mode=${encodeURIComponent(resolvedMode)}&slide=${nextOfficeIdx}`;
+    const url = `/prayer-mode?returnTo=${encodeURIComponent(returnTo)}&seamless=1`;
+    setViewerLocation(url);
+  }, [slides, slideIdx, resolvedMode, isDevotion, setViewerLocation]);
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: BG, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SPACE_GROTESK }}>
@@ -357,26 +381,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     setSlideIdx(prevIdx);
   }
 
-  // Auto-jump to /prayer-mode when the user lands on the
-  // intercessions portal. We pass a returnTo so prayer-mode brings
-  // them back to the office at the slide right after the portal,
-  // and a `seamless` flag so it skips its closing summary slide
-  // (the office handles the closing beats itself).
-  useEffect(() => {
-    if (!currentSlide) return;
-    if (currentSlide.type !== "intercessions_portal") return;
-    if (portalHandedOffRef.current) return;
-    portalHandedOffRef.current = true;
-    const nextOfficeIdx = Math.min(slideIdx + 1, slides.length - 1);
-    // Devotions live at /bcp/daily-devotions; the full Office at
-    // /bcp/daily-office. Each picker page has a useEffect that
-    // reads ?mode=… on mount so the Viewer auto-resumes instead
-    // of dropping back onto the picker.
-    const basePath = isDevotion ? "/bcp/daily-devotions" : "/bcp/daily-office";
-    const returnTo = `${basePath}?mode=${encodeURIComponent(resolvedMode)}&slide=${nextOfficeIdx}`;
-    const url = `/prayer-mode?returnTo=${encodeURIComponent(returnTo)}&seamless=1`;
-    setViewerLocation(url);
-  }, [currentSlide, slideIdx, slides.length, resolvedMode, setViewerLocation]);
 
   // Amen flow on intercession slides — fires the right endpoint for
   // the slide's source so the amen counts toward the recipient's
