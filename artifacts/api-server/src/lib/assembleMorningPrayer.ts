@@ -15,6 +15,7 @@ import {
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getCanticles } from "./canticleSelector";
 import { getLectionaryReadings } from "./lectionary";
+import { buildIntercessionsSlide } from "./assembleIntercessions";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
 // open scripture in their own bible/app. No scripture-text lookup.
 
@@ -35,6 +36,7 @@ export type SlideType =
   | "suffrages"
   | "collect"
   | "prayer_for_mission"
+  | "intercessions"
   | "general_thanksgiving"
   | "closing";
 
@@ -221,16 +223,20 @@ export async function assembleMorningPrayer(
 
   if (cached.length > 0) {
     const row = cached[0];
-    const slides = row.slidesJson as Slide[];
+    const cachedSlides = row.slidesJson as Slide[];
+    // Splice the per-user intercessions slide in BEFORE general
+    // thanksgiving — the cached slides don't include it (caching it
+    // would cross-contaminate users with each other's prayer lists).
+    const slides = await injectIntercessions(cachedSlides, userId, cacheDate);
     const officeDay: OfficeDayInfo = {
       season: row.liturgicalSeason,
       liturgicalYear: row.liturgicalYear,
-      sundayLabel: (slides[0]?.metadata?.sundayLabel as string) ?? "",
-      weekdayLabel: slides[0]?.content ?? "",
+      sundayLabel: (cachedSlides[0]?.metadata?.sundayLabel as string) ?? "",
+      weekdayLabel: cachedSlides[0]?.content ?? "",
       properNumber: row.properNumber ?? null,
       feastName: row.feastName ?? null,
-      isMajorFeast: !!(slides[0]?.metadata?.isMajorFeast),
-      useAlleluia: !!(slides[0]?.metadata?.useAlleluia),
+      isMajorFeast: !!(cachedSlides[0]?.metadata?.isMajorFeast),
+      useAlleluia: !!(cachedSlides[0]?.metadata?.useAlleluia),
       totalSlides: slides.length,
     };
     return { slides, officeDay, fromCache: true };
@@ -557,7 +563,10 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // 3. Cache result
+  // 3. Cache result — store WITHOUT the intercessions slide, since
+  //    that slide is per-user. We splice the user's intercessions in
+  //    after caching, so cache hits and cache misses both end up with
+  //    the canonical liturgy + the requesting user's named asks.
   try {
     await db
       .insert(morningPrayerCacheTable)
@@ -575,6 +584,9 @@ export async function assembleMorningPrayer(
     console.error("Failed to cache morning prayer:", err);
   }
 
+  // Per-user intercessions slide — built fresh, never cached.
+  const slidesWithIntercessions = await injectIntercessions(slides, userId, cacheDate);
+
   const officeDay: OfficeDayInfo = {
     season: liturgicalDay.season,
     liturgicalYear: liturgicalDay.liturgicalYear,
@@ -584,8 +596,33 @@ export async function assembleMorningPrayer(
     feastName: liturgicalDay.feastName,
     isMajorFeast: liturgicalDay.isMajorFeast,
     useAlleluia: liturgicalDay.useAlleluia,
-    totalSlides: slides.length,
+    totalSlides: slidesWithIntercessions.length,
   };
 
-  return { slides, officeDay, fromCache: false };
+  return { slides: slidesWithIntercessions, officeDay, fromCache: false };
+}
+
+// Inject the intercessions slide into a slide array between Prayer for
+// Mission and General Thanksgiving. Used by both the cache-hit path
+// and the post-assembly path so callers don't have to think about
+// where to splice. If the helper returns null (no intercessions to
+// surface for this user) the original array is returned unchanged.
+async function injectIntercessions(
+  slides: Slide[],
+  userId: number,
+  cacheDate: Date,
+): Promise<Slide[]> {
+  const intercessionsSlide = await buildIntercessionsSlide(userId, cacheDate);
+  if (!intercessionsSlide) return slides;
+  // Splice immediately before the first general_thanksgiving slide,
+  // matching the BCP rubric ("Authorized intercessions and
+  // thanksgivings may follow" before the General Thanksgiving). If
+  // for any reason general_thanksgiving is missing (older cached
+  // shape, future variant), append before "closing" instead. If even
+  // that is missing, append at the end.
+  const insertBefore = slides.findIndex(s =>
+    s.type === "general_thanksgiving" || s.type === "closing"
+  );
+  if (insertBefore === -1) return [...slides, intercessionsSlide];
+  return [...slides.slice(0, insertBefore), intercessionsSlide, ...slides.slice(insertBefore)];
 }

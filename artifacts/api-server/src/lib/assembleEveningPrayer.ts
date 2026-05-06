@@ -12,6 +12,7 @@ import { getOfficeDay } from "./liturgicalCalendar";
 import { getEveningCanticles } from "./eveningCanticleSelector";
 import { getLectionaryReadings } from "./lectionary";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
+import { buildIntercessionsSlide } from "./assembleIntercessions";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -116,7 +117,7 @@ function pickSuffragesKey(weekInSeason: number): string {
 
 export async function assembleEveningPrayer(
   date: Date,
-  _userId: number,
+  userId: number,
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -345,6 +346,15 @@ export async function assembleEveningPrayer(
       bcpReference: missionData.bcpReference,
     }),
   );
+
+  // 18.5 Intercessions — per-user, sourced from prayer requests,
+  // prayers-for, circle intentions, and today's subscribed-feed
+  // entries. Built fresh per call (NOT cached). Skipped silently if
+  // there's nothing to surface.
+  const intercessionsSlide = await buildIntercessionsSlide(userId, startOfDay(date));
+  if (intercessionsSlide) {
+    slides.push(intercessionsSlide);
+  }
 
   // 19. General Thanksgiving
   const gtData = getTextData("general_thanksgiving");
