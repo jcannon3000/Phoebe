@@ -6130,4 +6130,143 @@ export const PSALTER: Record<number, PsalmEntry> = {
 5 For there the Lord has ordained the blessing: *
   life for evermore.`,
   },
+
+  135: {
+    title: "Laudate nomen",
+    bcpRef: "BCP p. 787",
+    content:
+`1 Hallelujah!
+  Praise the Name of the Lord; *
+  give praise, you servants of the Lord.
+2 You who stand in the house of the Lord, *
+  in the courts of the house of our God.
+3 Praise the Lord, for the Lord is good; *
+  sing praises to his Name, for it is lovely.
+4 For the Lord has chosen Jacob for himself *
+  and Israel for his own possession.
+5 For I know that the Lord is great, *
+  and that our Lord is above all gods.
+6 The Lord does whatever pleases him, in heaven and on earth, *
+  in the seas and all the deeps.
+7 He brings up rain clouds from the ends of the earth; *
+  he sends out lightning with the rain,
+  and brings the winds out of his storehouse.
+8 It was he who struck down the firstborn of Egypt, *
+  the firstborn both of man and beast.
+9 He sent signs and wonders into the midst of you, O Egypt, *
+  against Pharaoh and all his servants.
+10 He overthrew many nations *
+  and put mighty kings to death:
+11 Sihon, king of the Amorites,
+  and Og, the king of Bashan, *
+  and all the kingdoms of Canaan.
+12 He gave their land to be an inheritance, *
+  an inheritance for Israel his people.
+13 O Lord, your Name is everlasting; *
+  your renown, O Lord, endures from age to age.
+14 For the Lord gives his people justice *
+  and shows compassion to his servants.
+15 The idols of the heathen are silver and gold, *
+  the work of human hands.
+16 They have mouths, but they cannot speak; *
+  eyes have they, but they cannot see.
+17 They have ears, but they cannot hear; *
+  neither is there any breath in their mouth.
+18 Those who make them are like them, *
+  and so are all who put their trust in them.
+19 Bless the Lord, O house of Israel; *
+  O house of Aaron, bless the Lord.
+20 Bless the Lord, O house of Levi; *
+  you who fear the Lord, bless the Lord.
+21 Blessed be the Lord out of Zion, *
+  who dwells in Jerusalem.
+  Hallelujah!`,
+  },
+
+  136: {
+    title: "Confitemini",
+    bcpRef: "BCP p. 789",
+    content:
+`1 Give thanks to the Lord, for he is good, *
+  for his mercy endures for ever.
+2 Give thanks to the God of gods, *
+  for his mercy endures for ever.
+3 Give thanks to the Lord of lords, *
+  for his mercy endures for ever.
+4 Who only does great wonders, *
+  for his mercy endures for ever;
+5 Who by wisdom made the heavens, *
+  for his mercy endures for ever;
+6 Who spread out the earth upon the waters, *
+  for his mercy endures for ever;
+7 Who created great lights, *
+  for his mercy endures for ever;
+8 The sun to rule the day, *
+  for his mercy endures for ever;
+9 The moon and the stars to govern the night, *
+  for his mercy endures for ever.
+10 Who struck down the firstborn of Egypt, *
+  for his mercy endures for ever;
+11 And brought out Israel from among them, *
+  for his mercy endures for ever;
+12 With a mighty hand and a stretched-out arm, *
+  for his mercy endures for ever;
+13 Who divided the Red Sea in two, *
+  for his mercy endures for ever;
+14 And made Israel to pass through the midst of it, *
+  for his mercy endures for ever;
+15 But swept Pharaoh and his army into the Red Sea, *
+  for his mercy endures for ever;
+16 Who led his people through the wilderness, *
+  for his mercy endures for ever.
+17 Who struck down great kings, *
+  for his mercy endures for ever;
+18 And slew mighty kings, *
+  for his mercy endures for ever;
+19 Sihon, king of the Amorites, *
+  for his mercy endures for ever;
+20 And Og, the king of Bashan, *
+  for his mercy endures for ever;
+21 And gave away their lands for an inheritance, *
+  for his mercy endures for ever;
+22 An inheritance for Israel his servant, *
+  for his mercy endures for ever.
+23 Who remembered us in our low estate, *
+  for his mercy endures for ever;
+24 And delivered us from our enemies, *
+  for his mercy endures for ever;
+25 Who gives food to all creatures, *
+  for his mercy endures for ever.
+26 Give thanks to the God of heaven, *
+  for his mercy endures for ever.`,
+  },
+
+  137: {
+    title: "Super flumina",
+    bcpRef: "BCP p. 791",
+    content:
+`1 By the waters of Babylon we sat down and wept, *
+  when we remembered you, O Zion.
+2 As for our harps, we hung them up *
+  on the trees in the midst of that land.
+3 For those who led us away captive asked us for a song,
+  and our oppressors called for mirth: *
+  "Sing us one of the songs of Zion."
+4 How shall we sing the Lord's song *
+  upon an alien soil?
+5 If I forget you, O Jerusalem, *
+  let my right hand forget its skill.
+6 Let my tongue cleave to the roof of my mouth
+  if I do not remember you, *
+  if I do not set Jerusalem above my highest joy.
+7 Remember the day of Jerusalem, O Lord,
+  against the people of Edom, *
+  who said, "Down with it! down with it!
+  even to the ground!"
+8 O Daughter of Babylon, doomed to destruction, *
+  happy the one who pays you back
+  for what you have done to us!
+9 Happy shall he be who takes your little ones, *
+  and dashes them against the rock!`,
+  },
 };
