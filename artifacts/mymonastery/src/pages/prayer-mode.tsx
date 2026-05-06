@@ -1240,6 +1240,25 @@ export default function PrayerModePage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
+  // When prayer-mode is opened as the intercessions handoff from the
+  // Daily Office or a Devotion, the office tacks ?returnTo=<office url>
+  // and ?seamless=1 onto the URL. We honor both: handleDone /
+  // handleExit route to returnTo instead of /dashboard, and seamless=1
+  // skips the closing summary slide entirely so the office's
+  // General Thanksgiving + final blessing read as one continuous
+  // beat with the prayer-mode rotation.
+  const returnToHref = (() => {
+    if (typeof window === "undefined") return null;
+    const search = new URLSearchParams(window.location.search);
+    const v = search.get("returnTo");
+    return v && v.length > 0 ? v : null;
+  })();
+  const seamlessFlow = (() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("seamless") === "1";
+  })();
+  const finishHref = returnToHref ?? "/dashboard";
+
   const momentsQuery = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
@@ -1841,7 +1860,17 @@ export default function PrayerModePage() {
         try {
           localStorage.removeItem(progressStorageKey);
         } catch { /* non-fatal */ }
-        setPhase("closing");
+        // Seamless mode (intercessions handoff from the Daily
+        // Office / Devotion): skip the closing summary entirely
+        // and hand the user back to the office for its General
+        // Thanksgiving + final blessing. Otherwise show the
+        // streak / "you've prayed for X people" closing as
+        // usual.
+        if (seamlessFlow) {
+          setLocation(finishHref);
+        } else {
+          setPhase("closing");
+        }
       }
       setSlideVisible(true);
     }, 220);
@@ -1953,7 +1982,7 @@ export default function PrayerModePage() {
       }
     } catch { /* non-fatal */ }
     queryClient.invalidateQueries();
-    setLocation("/dashboard");
+    setLocation(finishHref);
   };
 
   const handleDone = async () => {
@@ -2016,7 +2045,7 @@ export default function PrayerModePage() {
     setSlideVisible(false);
     setTimeout(() => {
       setVisible(false);
-      setTimeout(() => setLocation("/dashboard"), 500);
+      setTimeout(() => setLocation(finishHref), 500);
     }, 300);
   };
 

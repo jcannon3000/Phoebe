@@ -43,6 +43,7 @@ export type SlideType =
   | "collect"
   | "prayer_for_mission"
   | "intercessions"
+  | "intercessions_portal"
   | "general_thanksgiving"
   | "closing";
 
@@ -710,26 +711,44 @@ async function injectIntercessions(
   userId: number,
   cacheDate: Date,
 ): Promise<Slide[]> {
-  // Per-item intercession slides — one card per prayer request,
-  // prayers-for, circle intention, or feed entry. Earlier the office
-  // used a single combined slide; the per-item shape mirrors the
-  // prayer-mode slideshow's "carry one prayer at a time" rhythm so
-  // the office's intercessions land with the same weight.
+  // The office no longer renders per-person intercession slides
+  // inline. When the user reaches this point, we hand off to the
+  // /prayer-mode slideshow (so Daily Office and personal prayer
+  // share one rhythm) and return to the office for the General
+  // Thanksgiving + final blessing afterward. The handoff is driven
+  // by a single placeholder slide (type "intercessions_portal");
+  // the client redirects when it lands on that slide. We still
+  // build the intercession list to know whether there's anything
+  // to pray for — if not, we skip the portal entirely so an empty
+  // prayer-mode session doesn't pop up.
   const intercessionSlides = await buildIntercessionSlides(userId, cacheDate);
   if (intercessionSlides.length === 0) return slides;
-  // Splice immediately before the first general_thanksgiving slide,
-  // matching the BCP rubric ("Authorized intercessions and
+  const portalSlide: Slide = {
+    id: "intercessions_portal",
+    type: "intercessions_portal",
+    emoji: "🙏🏽",
+    eyebrow: "INTERCESSIONS",
+    title: null,
+    content: "Praying with your community…",
+    isCallAndResponse: false,
+    callAndResponseLines: null,
+    bcpReference: null,
+    isScrollable: false,
+    scrollHint: null,
+    metadata: { intercessionCount: intercessionSlides.length },
+  };
+  // Splice immediately before the first general_thanksgiving slide.
+  // Mirrors the original BCP rubric ("Authorized intercessions and
   // thanksgivings may follow" before the General Thanksgiving). If
-  // for any reason general_thanksgiving is missing (older cached
-  // shape, future variant), append before "closing" instead. If even
-  // that is missing, append at the end.
+  // general_thanksgiving is missing, append before "closing"; if
+  // both are missing, append at the end.
   const insertBefore = slides.findIndex(s =>
     s.type === "general_thanksgiving" || s.type === "closing"
   );
-  if (insertBefore === -1) return [...slides, ...intercessionSlides];
+  if (insertBefore === -1) return [...slides, portalSlide];
   return [
     ...slides.slice(0, insertBefore),
-    ...intercessionSlides,
+    portalSlide,
     ...slides.slice(insertBefore),
   ];
 }

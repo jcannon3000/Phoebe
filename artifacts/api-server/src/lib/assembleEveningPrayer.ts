@@ -385,17 +385,31 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 16. Per-item intercession slides — one card per request,
-  //     prayers-for, circle intention, or today's subscribed-feed
-  //     entry. Per user direction Phoebe collapses the closing-prayer
-  //     block to a single Collect of the Day (above), then fans the
-  //     intercessions out as the BCP rubric "Authorized intercessions
-  //     and thanksgivings may follow" — one slide per intercession,
-  //     mirroring the prayer-mode slideshow rhythm. The earlier
-  //     "A Collect for Peace" + "A Collect for Aid against Perils" +
-  //     "A Prayer for Mission" slides are gone.
-  const intercessionSlides = await buildIntercessionSlides(userId, startOfDay(date));
-  for (const s of intercessionSlides) slides.push(s);
+  // 16. Intercessions handoff — the office no longer renders per-
+  //     person intercession slides inline. Instead it emits a single
+  //     "intercessions_portal" placeholder; the client recognises it
+  //     and seamlessly transitions into /prayer-mode. The user prays
+  //     through the same slideshow they get from the home screen and
+  //     is returned here for the General Thanksgiving + final
+  //     blessing. We only emit the portal if there's actually
+  //     something to pray for.
+  const epIntercessionSlides = await buildIntercessionSlides(userId, startOfDay(date));
+  if (epIntercessionSlides.length > 0) {
+    slides.push({
+      id: id(),
+      type: "intercessions_portal",
+      emoji: "🙏🏽",
+      eyebrow: "INTERCESSIONS",
+      title: null,
+      content: "Praying with your community…",
+      isCallAndResponse: false,
+      callAndResponseLines: null,
+      bcpReference: null,
+      isScrollable: false,
+      scrollHint: null,
+      metadata: { intercessionCount: epIntercessionSlides.length },
+    });
+  }
 
   // 17. General Thanksgiving
   const gtData = getTextData("general_thanksgiving");

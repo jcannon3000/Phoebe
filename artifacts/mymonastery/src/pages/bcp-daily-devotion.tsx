@@ -23,6 +23,18 @@ export default function BcpDailyDevotionPage() {
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
+  // Auto-resume the devotion viewer when /prayer-mode hands the
+  // user back here with ?mode=morning-devotion|early-evening-devotion.
+  // Without this the picker would always show first, breaking the
+  // seamless intercessions-portal handoff back from prayer-mode.
+  useEffect(() => {
+    const search = new URLSearchParams(window.location.search);
+    const mode = search.get("mode");
+    if (mode === "morning-devotion" || mode === "early-evening-devotion") {
+      setShowMode(mode);
+    }
+  }, []);
+
   if (isLoading || !user) return null;
 
   if (showMode === "morning-devotion" || showMode === "early-evening-devotion") {

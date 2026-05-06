@@ -19,6 +19,11 @@ export type SlideType =
   // style centered avatar + name + eyebrow + italic body, instead of
   // the default left-aligned missal layout.
   | "intercessions"
+  // Marker slide that signals "hand off to /prayer-mode here." The
+  // office viewer detects this type, navigates to /prayer-mode with
+  // a returnTo, and treats the slide as transparent for back/next
+  // navigation thereafter.
+  | "intercessions_portal"
   | "general_thanksgiving"
   | "closing";
 

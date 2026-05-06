@@ -245,6 +245,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const [slideIdx, setSlideIdx] = useState(0);
   const mainRef = useRef<HTMLElement | null>(null);
   const queryClient = useQueryClient();
+  const [, setViewerLocation] = useLocation();
+  // Once-per-mount guard so a user who navigates BACK to the
+  // intercessions portal doesn't get instantly bounced into prayer
+  // mode again — once we've handed off, we treat the portal as a
+  // transparent slide for the rest of the session.
+  const portalHandedOffRef = useRef(false);
 
   // Reset scroll to the top each time the slide changes — otherwise a
   // long-content slide that the reader scrolled through carries its
@@ -272,7 +278,17 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
         if (fetched.length === 0) throw new Error("No slides returned");
         setSlides(fetched);
         setOfficeDay(data.officeDay ?? null);
-        setSlideIdx(0);
+        // Allow returning into the office mid-flow — when the
+        // /prayer-mode redirect comes back here it appends ?slide=N
+        // to the URL so we land at the slide right after the
+        // intercessions portal instead of restarting at 0.
+        const search = new URLSearchParams(window.location.search);
+        const slideParam = parseInt(search.get("slide") ?? "", 10);
+        const initialIdx =
+          Number.isFinite(slideParam) && slideParam >= 0 && slideParam < fetched.length
+            ? slideParam
+            : 0;
+        setSlideIdx(initialIdx);
       } catch (err) {
         if (!cancelled) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -312,8 +328,55 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const sectionLabel = SECTION_LABEL[currentSlide.type] ?? currentSlide.type.toUpperCase();
   const refLabel = officeDay?.feastName ?? officeDay?.weekdayLabel ?? officeDay?.sundayLabel ?? "";
 
-  function next() { if (!atEnd) setSlideIdx(slideIdx + 1); }
-  function prev() { if (!atStart) setSlideIdx(slideIdx - 1); }
+  function next() {
+    if (atEnd) return;
+    // Skip portal slides — the viewer auto-jumps to prayer-mode on
+    // first arrival, but on a subsequent visit (back-navigation
+    // within this session) we want the slide to behave as a no-op
+    // step rather than pulling the user back into prayer-mode.
+    let nextIdx = slideIdx + 1;
+    while (
+      nextIdx < slides.length - 1 &&
+      slides[nextIdx]?.type === "intercessions_portal" &&
+      portalHandedOffRef.current
+    ) {
+      nextIdx += 1;
+    }
+    setSlideIdx(nextIdx);
+  }
+  function prev() {
+    if (atStart) return;
+    let prevIdx = slideIdx - 1;
+    while (
+      prevIdx > 0 &&
+      slides[prevIdx]?.type === "intercessions_portal" &&
+      portalHandedOffRef.current
+    ) {
+      prevIdx -= 1;
+    }
+    setSlideIdx(prevIdx);
+  }
+
+  // Auto-jump to /prayer-mode when the user lands on the
+  // intercessions portal. We pass a returnTo so prayer-mode brings
+  // them back to the office at the slide right after the portal,
+  // and a `seamless` flag so it skips its closing summary slide
+  // (the office handles the closing beats itself).
+  useEffect(() => {
+    if (!currentSlide) return;
+    if (currentSlide.type !== "intercessions_portal") return;
+    if (portalHandedOffRef.current) return;
+    portalHandedOffRef.current = true;
+    const nextOfficeIdx = Math.min(slideIdx + 1, slides.length - 1);
+    // Devotions live at /bcp/daily-devotions; the full Office at
+    // /bcp/daily-office. Each picker page has a useEffect that
+    // reads ?mode=… on mount so the Viewer auto-resumes instead
+    // of dropping back onto the picker.
+    const basePath = isDevotion ? "/bcp/daily-devotions" : "/bcp/daily-office";
+    const returnTo = `${basePath}?mode=${encodeURIComponent(resolvedMode)}&slide=${nextOfficeIdx}`;
+    const url = `/prayer-mode?returnTo=${encodeURIComponent(returnTo)}&seamless=1`;
+    setViewerLocation(url);
+  }, [currentSlide, slideIdx, slides.length, resolvedMode, setViewerLocation]);
 
   // Amen flow on intercession slides — fires the right endpoint for
   // the slide's source so the amen counts toward the recipient's
@@ -905,6 +968,16 @@ export default function BcpDailyOfficePage() {
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
+
+  // Auto-resume the office viewer when /prayer-mode hands the user
+  // back here with ?mode=morning|evening — this keeps the
+  // intercessions handoff seamless instead of dumping the user on
+  // the picker mid-liturgy.
+  useEffect(() => {
+    const search = new URLSearchParams(window.location.search);
+    const mode = search.get("mode");
+    if (mode === "morning" || mode === "evening") setShowOffice(mode);
+  }, []);
 
   if (isLoading || !user) return null;
 

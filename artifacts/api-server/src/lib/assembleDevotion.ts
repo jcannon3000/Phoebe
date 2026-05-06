@@ -243,18 +243,28 @@ export async function assembleDevotion(
     }),
   );
 
-  // 5. Per-item intercession slides. The BCP rubric in both devotions
-  //    reads "Prayers may be offered for ourselves and others"; per
-  //    user direction we expand this slot into the prayer-mode-style
-  //    deck — one slide per prayer item (request / prayers-for /
-  //    circle intention / today's feed entry) — so the devotion's
-  //    prayer space mirrors the slideshow rhythm rather than
-  //    collapsing everything into a single scroll. The Daily Office
-  //    keeps its single combined intercession slide; only this
-  //    surface fans out.
-  const intercessionSlides = await buildIntercessionSlides(userId, date);
-  for (const s of intercessionSlides) {
-    slides.push(s);
+  // 5. Intercessions handoff. The BCP rubric "Prayers may be
+  //    offered for ourselves and others" maps to a single
+  //    intercessions_portal placeholder; the client recognises it
+  //    and seamlessly transitions into /prayer-mode, then returns
+  //    here for the Lord's Prayer + Collect. We skip the portal
+  //    entirely if there's nothing to pray for.
+  const devotionIntercessionSlides = await buildIntercessionSlides(userId, date);
+  if (devotionIntercessionSlides.length > 0) {
+    slides.push({
+      id: id(),
+      type: "intercessions_portal",
+      emoji: "🙏🏽",
+      eyebrow: "INTERCESSIONS",
+      title: null,
+      content: "Praying with your community…",
+      isCallAndResponse: false,
+      callAndResponseLines: null,
+      bcpReference: null,
+      isScrollable: false,
+      scrollHint: null,
+      metadata: { intercessionCount: devotionIntercessionSlides.length },
+    });
   }
 
   // 6. Lord's Prayer
