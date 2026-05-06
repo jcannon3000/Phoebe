@@ -1,121 +1,131 @@
 /**
- * BibleGateway URL builder (client-side mirror of api-server's
- * src/lib/bibleGatewayUrl.ts). Kept in sync so the office viewer can
- * compute a deep link from the lesson's reference even if the server's
- * pre-built `metadata.readUrl` is missing — which happens when the
- * Morning Prayer cache holds a slide that was assembled before the
- * server-side change shipped.
+ * Bible.com (YouVersion) URL builder — client-side mirror of the
+ * api-server's helper. Produces a NRSVUE deep link from a BCP-style
+ * reference. Used by the lesson-slide button on /bcp/daily-office,
+ * which can't depend on the server having pre-built metadata.readUrl
+ * for cached slides.
  */
 
-const BOOK_EXPANSIONS: Array<[RegExp, string]> = [
-  // Old Testament
-  [/^Gen\.?$/i, "Genesis"],
-  [/^Ex(od)?\.?$/i, "Exodus"],
-  [/^Lev\.?$/i, "Leviticus"],
-  [/^Num\.?$/i, "Numbers"],
-  [/^Deut\.?$/i, "Deuteronomy"],
-  [/^Josh\.?$/i, "Joshua"],
-  [/^Judg\.?$/i, "Judges"],
-  [/^Ruth$/i, "Ruth"],
-  [/^1\s*Sam\.?$/i, "1 Samuel"],
-  [/^2\s*Sam\.?$/i, "2 Samuel"],
-  [/^1\s*K(in)?gs\.?$/i, "1 Kings"],
-  [/^2\s*K(in)?gs\.?$/i, "2 Kings"],
-  [/^1\s*Chr(on)?\.?$/i, "1 Chronicles"],
-  [/^2\s*Chr(on)?\.?$/i, "2 Chronicles"],
-  [/^Ezra$/i, "Ezra"],
-  [/^Neh\.?$/i, "Nehemiah"],
-  [/^Esth\.?$/i, "Esther"],
-  [/^Job$/i, "Job"],
-  [/^Ps(alm)?\.?$/i, "Psalm"],
-  [/^Pss\.?$/i, "Psalm"],
-  [/^Prov\.?$/i, "Proverbs"],
-  [/^Eccl(es)?\.?$/i, "Ecclesiastes"],
-  [/^S(ong\s+of\s+)?Sol(omon)?\.?$/i, "Song of Solomon"],
-  [/^Cant(icles)?\.?$/i, "Song of Solomon"],
-  [/^Isa\.?$/i, "Isaiah"],
-  [/^Jer\.?$/i, "Jeremiah"],
-  [/^Lam\.?$/i, "Lamentations"],
-  [/^Ezek\.?$/i, "Ezekiel"],
-  [/^Dan\.?$/i, "Daniel"],
-  [/^Hos\.?$/i, "Hosea"],
-  [/^Joel$/i, "Joel"],
-  [/^Amos$/i, "Amos"],
-  [/^Obad\.?$/i, "Obadiah"],
-  [/^Jonah$/i, "Jonah"],
-  [/^Mic\.?$/i, "Micah"],
-  [/^Nah(um)?\.?$/i, "Nahum"],
-  [/^Hab\.?$/i, "Habakkuk"],
-  [/^Zeph\.?$/i, "Zephaniah"],
-  [/^Hag(g)?\.?$/i, "Haggai"],
-  [/^Zech\.?$/i, "Zechariah"],
-  [/^Mal\.?$/i, "Malachi"],
+const BOOK_USFM: Array<[RegExp, string]> = [
+  [/^Gen\.?$/i, "GEN"],
+  [/^Ex(od)?\.?$/i, "EXO"],
+  [/^Lev\.?$/i, "LEV"],
+  [/^Num\.?$/i, "NUM"],
+  [/^Deut\.?$/i, "DEU"],
+  [/^Josh\.?$/i, "JOS"],
+  [/^Judg\.?$/i, "JDG"],
+  [/^Ruth$/i, "RUT"],
+  [/^1\s*Sam\.?$/i, "1SA"],
+  [/^2\s*Sam\.?$/i, "2SA"],
+  [/^1\s*K(in)?gs\.?$/i, "1KI"],
+  [/^2\s*K(in)?gs\.?$/i, "2KI"],
+  [/^1\s*Chr(on)?\.?$/i, "1CH"],
+  [/^2\s*Chr(on)?\.?$/i, "2CH"],
+  [/^Ezra$/i, "EZR"],
+  [/^Neh\.?$/i, "NEH"],
+  [/^Esth\.?$/i, "EST"],
+  [/^Job$/i, "JOB"],
+  [/^Ps(alm)?\.?$/i, "PSA"],
+  [/^Pss\.?$/i, "PSA"],
+  [/^Prov\.?$/i, "PRO"],
+  [/^Eccl(es)?\.?$/i, "ECC"],
+  [/^S(ong\s+of\s+)?Sol(omon)?\.?$/i, "SNG"],
+  [/^Cant(icles)?\.?$/i, "SNG"],
+  [/^Isa\.?$/i, "ISA"],
+  [/^Jer\.?$/i, "JER"],
+  [/^Lam\.?$/i, "LAM"],
+  [/^Ezek\.?$/i, "EZK"],
+  [/^Dan\.?$/i, "DAN"],
+  [/^Hos\.?$/i, "HOS"],
+  [/^Joel$/i, "JOL"],
+  [/^Amos$/i, "AMO"],
+  [/^Obad\.?$/i, "OBA"],
+  [/^Jonah$/i, "JON"],
+  [/^Mic\.?$/i, "MIC"],
+  [/^Nah(um)?\.?$/i, "NAM"],
+  [/^Hab\.?$/i, "HAB"],
+  [/^Zeph\.?$/i, "ZEP"],
+  [/^Hag(g)?\.?$/i, "HAG"],
+  [/^Zech\.?$/i, "ZEC"],
+  [/^Mal\.?$/i, "MAL"],
 
-  // Apocrypha
-  [/^Tob(it)?\.?$/i, "Tobit"],
-  [/^Jdth\.?$/i, "Judith"],
-  [/^Wis(d)?\.?$/i, "Wisdom of Solomon"],
-  [/^Ecclus\.?$/i, "Sirach"],
-  [/^Sir(ach)?\.?$/i, "Sirach"],
-  [/^Bar(uch)?\.?$/i, "Baruch"],
-  [/^1\s*Macc?\.?$/i, "1 Maccabees"],
-  [/^2\s*Macc?\.?$/i, "2 Maccabees"],
+  [/^Tob(it)?\.?$/i, "TOB"],
+  [/^Jdth\.?$/i, "JDT"],
+  [/^Wis(d)?\.?$/i, "WIS"],
+  [/^Ecclus\.?$/i, "SIR"],
+  [/^Sir(ach)?\.?$/i, "SIR"],
+  [/^Bar(uch)?\.?$/i, "BAR"],
+  [/^1\s*Macc?\.?$/i, "1MA"],
+  [/^2\s*Macc?\.?$/i, "2MA"],
 
-  // New Testament
-  [/^Matt\.?$/i, "Matthew"],
-  [/^Mark$/i, "Mark"],
-  [/^Luke$/i, "Luke"],
-  [/^John$/i, "John"],
-  [/^Acts$/i, "Acts"],
-  [/^Rom\.?$/i, "Romans"],
-  [/^1\s*Cor\.?$/i, "1 Corinthians"],
-  [/^2\s*Cor\.?$/i, "2 Corinthians"],
-  [/^Gal\.?$/i, "Galatians"],
-  [/^Eph\.?$/i, "Ephesians"],
-  [/^Phil\.?$/i, "Philippians"],
-  [/^Col\.?$/i, "Colossians"],
-  [/^1\s*Thess?\.?$/i, "1 Thessalonians"],
-  [/^2\s*Thess?\.?$/i, "2 Thessalonians"],
-  [/^1\s*Tim\.?$/i, "1 Timothy"],
-  [/^2\s*Tim\.?$/i, "2 Timothy"],
-  [/^Titus$/i, "Titus"],
-  [/^Phlm\.?$/i, "Philemon"],
-  [/^Phile?(mon)?\.?$/i, "Philemon"],
-  [/^Heb\.?$/i, "Hebrews"],
-  [/^Jas\.?$/i, "James"],
-  [/^James$/i, "James"],
-  [/^1\s*Pet\.?$/i, "1 Peter"],
-  [/^2\s*Pet\.?$/i, "2 Peter"],
-  [/^1\s*John$/i, "1 John"],
-  [/^2\s*John$/i, "2 John"],
-  [/^3\s*John$/i, "3 John"],
-  [/^Jude$/i, "Jude"],
-  [/^Rev\.?$/i, "Revelation"],
+  [/^Matt\.?$/i, "MAT"],
+  [/^Mark$/i, "MRK"],
+  [/^Luke$/i, "LUK"],
+  [/^John$/i, "JHN"],
+  [/^Acts$/i, "ACT"],
+  [/^Rom\.?$/i, "ROM"],
+  [/^1\s*Cor\.?$/i, "1CO"],
+  [/^2\s*Cor\.?$/i, "2CO"],
+  [/^Gal\.?$/i, "GAL"],
+  [/^Eph\.?$/i, "EPH"],
+  [/^Phil\.?$/i, "PHP"],
+  [/^Col\.?$/i, "COL"],
+  [/^1\s*Thess?\.?$/i, "1TH"],
+  [/^2\s*Thess?\.?$/i, "2TH"],
+  [/^1\s*Tim\.?$/i, "1TI"],
+  [/^2\s*Tim\.?$/i, "2TI"],
+  [/^Titus$/i, "TIT"],
+  [/^Phlm\.?$/i, "PHM"],
+  [/^Phile?(mon)?\.?$/i, "PHM"],
+  [/^Heb\.?$/i, "HEB"],
+  [/^Jas\.?$/i, "JAS"],
+  [/^James$/i, "JAS"],
+  [/^1\s*Pet\.?$/i, "1PE"],
+  [/^2\s*Pet\.?$/i, "2PE"],
+  [/^1\s*John$/i, "1JN"],
+  [/^2\s*John$/i, "2JN"],
+  [/^3\s*John$/i, "3JN"],
+  [/^Jude$/i, "JUD"],
+  [/^Rev\.?$/i, "REV"],
 ];
 
-export function bibleGatewayUrl(reference: string): string | null {
+const NRSVUE_VERSION_ID = 3523;
+
+export function bibleUrl(reference: string): string | null {
   if (!reference) return null;
   const trimmed = reference.trim();
   if (!trimmed) return null;
 
-  const noParens = trimmed.replace(/\([^)]*\)/g, ",").replace(/\s+/g, " ").trim();
+  const noParens = trimmed.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
   const cleaned = noParens.replace(/--/g, "-").replace(/[–—]/g, "-");
 
   const m = cleaned.match(/^([\dA-Za-z.\s]+?)\s+(\d.*)$/);
   if (!m) return null;
   const rawBook = m[1].trim();
-  const range = m[2].trim();
+  const rest = m[2].trim();
 
-  const expanded = expandBook(rawBook) ?? rawBook;
-  const search = `${expanded} ${range}`;
-  return `https://www.biblegateway.com/passage/?search=${encodeURIComponent(
-    search,
-  )}&version=NRSVUE`;
+  const usfm = lookupUsfm(rawBook);
+  if (!usfm) return null;
+
+  const dotted = rest.replace(/:/g, ".");
+  const firstSegment = dotted.split(/[,;]/)[0].trim();
+
+  if (!/^\d+(\.\d+(-\d+(\.\d+)?)?)?$/.test(firstSegment)) {
+    const chapterMatch = firstSegment.match(/^(\d+)/);
+    if (!chapterMatch) return null;
+    return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${chapterMatch[1]}.NRSVUE`;
+  }
+
+  return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${firstSegment}.NRSVUE`;
 }
 
-function expandBook(raw: string): string | null {
-  for (const [pattern, full] of BOOK_EXPANSIONS) {
-    if (pattern.test(raw)) return full;
+function lookupUsfm(raw: string): string | null {
+  for (const [pattern, code] of BOOK_USFM) {
+    if (pattern.test(raw)) return code;
   }
   return null;
 }
+
+// Existing call sites still import `bibleGatewayUrl`. Alias keeps
+// them building during the rename.
+export const bibleGatewayUrl = bibleUrl;

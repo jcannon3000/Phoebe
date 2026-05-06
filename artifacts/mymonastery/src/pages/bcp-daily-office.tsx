@@ -7,6 +7,7 @@ import { openExternal } from "@/lib/openExternal";
 import { bibleGatewayUrl } from "@/lib/bibleGatewayUrl";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
+import { RequestWordField } from "@/components/RequestWordField";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -125,22 +126,30 @@ function parsePsalmContent(content: string): PsalmEntry[] {
   return result;
 }
 
-// Centered intercession head — avatar + name + eyebrow stacked,
-// mirroring prayer-mode.tsx's "request" slide. The office and
-// devotion intercession slots used to render with the default
-// left-aligned eyebrow + bold-title pair, which made a request from a
-// specific person ("Anabelle Helsell — please pray for…") look like a
-// liturgical heading instead of a face. This block lifts the prayer-
-// mode visual so the same prayer reads the same way no matter which
-// surface surfaces it.
+// Centered intercession head — eyebrow + (optionally) avatar + name
+// stacked, matching prayer-mode.tsx's per-kind layout exactly:
+//
+//   • request / prayer-for → avatar + name + eyebrow ("Prayer Request"
+//     / "I am holding"). The slide is anchored to a specific person.
+//   • intercession (community / today's feed) → eyebrow only ("Today
+//     on Phoebe Climate", etc.) — no avatar, since the slide is about
+//     a topic, not a person.
+//   • circle-intention → eyebrow only ("Circle Intention"). Group
+//     name flows in as attribution after the body.
+//
+// The earlier shape printed an avatar + name on every intercession
+// slide regardless of source, which made community / feed prayers
+// read as if they came from a person.
 function IntercessionHead({
   eyebrow,
   authorName,
   authorAvatarUrl,
+  showFace,
 }: {
   eyebrow: string;
   authorName: string | null;
   authorAvatarUrl: string | null;
+  showFace: boolean;
 }) {
   const initials = (authorName ?? "")
     .split(/\s+/)
@@ -149,7 +158,7 @@ function IntercessionHead({
     .join("");
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-      {(authorName || authorAvatarUrl) && (
+      {showFace && (authorName || authorAvatarUrl) && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           {authorAvatarUrl ? (
             <img
@@ -469,18 +478,34 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               The default left-aligned eyebrow + bold-title pair
               renders in the else branch below. */}
           {currentSlide.type === "intercessions" ? (
-            <IntercessionHead
-              eyebrow={currentSlide.eyebrow || sectionLabel}
-              authorName={
-                (currentSlide.metadata as { authorName?: unknown } | undefined)?.authorName as string | undefined
-                ?? currentSlide.title
-                ?? null
-              }
-              authorAvatarUrl={
-                (currentSlide.metadata as { authorAvatarUrl?: unknown } | undefined)?.authorAvatarUrl as string | null | undefined
-                ?? null
-              }
-            />
+            (() => {
+              const meta = currentSlide.metadata as
+                | { source?: unknown; authorName?: unknown; authorAvatarUrl?: unknown }
+                | undefined;
+              const source = typeof meta?.source === "string" ? meta.source : null;
+              // The face-pair (avatar + name) only renders when the
+              // slide is anchored to a specific person — request
+              // (the requester) or prayer-for (the recipient the
+              // viewer is holding). Community feed entries and
+              // circle intentions skip it; the body carries the
+              // prayer on its own.
+              const showFace = source === "request" || source === "prayer-for";
+              return (
+                <IntercessionHead
+                  eyebrow={currentSlide.eyebrow || sectionLabel}
+                  authorName={
+                    (meta?.authorName as string | undefined)
+                    ?? currentSlide.title
+                    ?? null
+                  }
+                  authorAvatarUrl={
+                    (meta?.authorAvatarUrl as string | null | undefined)
+                    ?? null
+                  }
+                  showFace={showFace}
+                />
+              );
+            })()
           ) : currentSlide.type === "psalm" ? (
             // Psalm slide header has three stacked labels per the
             // BCP missal idiom + user direction:
@@ -708,14 +733,34 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               {currentSlide.content}
             </p>
           ) : null}
-          {/* On lesson slides we link out to BibleGateway for the
-              appointed passage. The URL is computed client-side from
-              the slide title (the reference) so it works even when
-              the server-cached slide pre-dates the metadata.readUrl
-              field. We render an actual <a> with href so iOS won't
-              swallow the click — onClick still goes through
-              openExternal so the iOS shell shows SFSafariViewController
-              instead of bouncing the user out to mobile Safari. */}
+          {/* Word-of-comfort field — only for prayer-request slides
+              (other intercession sources don't have a /word endpoint).
+              Renders the same RequestWordField the prayer-mode
+              slideshow uses, so the comment composer is identical
+              between the two surfaces. */}
+          {currentSlide.type === "intercessions" && (() => {
+            const meta = currentSlide.metadata as
+              | { source?: unknown; requestId?: unknown }
+              | undefined;
+            if (meta?.source !== "request" || typeof meta?.requestId !== "number") {
+              return null;
+            }
+            return (
+              <RequestWordField
+                requestId={meta.requestId}
+                initialWord={null}
+              />
+            );
+          })()}
+          {/* On lesson slides we link out to YouVersion (bible.com)
+              for the appointed passage in NRSVUE. The URL is
+              computed client-side from the slide title (the
+              reference) so it works even when the server-cached
+              slide pre-dates the metadata.readUrl field. We render
+              an actual <a> with href so iOS won't swallow the
+              click — onClick still goes through openExternal so the
+              iOS shell shows SFSafariViewController instead of
+              bouncing the user out to mobile Safari. */}
           {currentSlide.type === "lesson" && (() => {
             const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
             const serverUrl = typeof meta?.readUrl === "string" ? meta.readUrl : null;
@@ -750,7 +795,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   display: "inline-block",
                 }}
               >
-                Read on BibleGateway →
+                Read on Bible.com →
               </a>
             );
           })()}

@@ -1,148 +1,166 @@
 /**
- * BibleGateway URL builder
+ * Bible.com (YouVersion) URL builder
  *
- * Turns a BCP-style scripture reference like "1 Thess. 5:12-28" or
- * "Hab. 3:1-10(11-15)16-18" into a deep link that opens the passage
- * on BibleGateway in the NRSVUE translation.
+ * Per user direction we link out to YouVersion's NRSVUE rather than
+ * BibleGateway. The URL shape is:
  *
- * BibleGateway's `?search=` query is forgiving — it accepts both
- * abbreviated and full book names — but we expand the BCP
- * abbreviations anyway so the URL is human-readable when copied.
+ *   https://www.bible.com/bible/3523/<USFM>.<chapter>[.<verseRange>].NRSVUE
+ *
+ * where 3523 is YouVersion's NRSVUE version id and <USFM> is the
+ * three-letter Paratext / USFM book code (JHN, 1TH, GEN, …). Verse
+ * ranges use a hyphen ("5.12-28"); single verses drop the hyphen
+ * ("1.3"). The function name and file name are historical — the
+ * Daily Office assemblers and the lesson-slide button both call
+ * bibleUrl(reference) regardless of which Bible site we route to.
  */
 
-const BOOK_EXPANSIONS: Array<[RegExp, string]> = [
+const BOOK_USFM: Array<[RegExp, string]> = [
   // Old Testament
-  [/^Gen\.?$/i, "Genesis"],
-  [/^Ex(od)?\.?$/i, "Exodus"],
-  [/^Lev\.?$/i, "Leviticus"],
-  [/^Num\.?$/i, "Numbers"],
-  [/^Deut\.?$/i, "Deuteronomy"],
-  [/^Josh\.?$/i, "Joshua"],
-  [/^Judg\.?$/i, "Judges"],
-  [/^Ruth$/i, "Ruth"],
-  [/^1\s*Sam\.?$/i, "1 Samuel"],
-  [/^2\s*Sam\.?$/i, "2 Samuel"],
-  [/^1\s*K(in)?gs\.?$/i, "1 Kings"],
-  [/^2\s*K(in)?gs\.?$/i, "2 Kings"],
-  [/^1\s*Chr(on)?\.?$/i, "1 Chronicles"],
-  [/^2\s*Chr(on)?\.?$/i, "2 Chronicles"],
-  [/^Ezra$/i, "Ezra"],
-  [/^Neh\.?$/i, "Nehemiah"],
-  [/^Esth\.?$/i, "Esther"],
-  [/^Job$/i, "Job"],
-  [/^Ps(alm)?\.?$/i, "Psalm"],
-  [/^Pss\.?$/i, "Psalm"],
-  [/^Prov\.?$/i, "Proverbs"],
-  [/^Eccl(es)?\.?$/i, "Ecclesiastes"],
-  [/^S(ong\s+of\s+)?Sol(omon)?\.?$/i, "Song of Solomon"],
-  [/^Cant(icles)?\.?$/i, "Song of Solomon"],
-  [/^Isa\.?$/i, "Isaiah"],
-  [/^Jer\.?$/i, "Jeremiah"],
-  [/^Lam\.?$/i, "Lamentations"],
-  [/^Ezek\.?$/i, "Ezekiel"],
-  [/^Dan\.?$/i, "Daniel"],
-  [/^Hos\.?$/i, "Hosea"],
-  [/^Joel$/i, "Joel"],
-  [/^Amos$/i, "Amos"],
-  [/^Obad\.?$/i, "Obadiah"],
-  [/^Jonah$/i, "Jonah"],
-  [/^Mic\.?$/i, "Micah"],
-  [/^Nah(um)?\.?$/i, "Nahum"],
-  [/^Hab\.?$/i, "Habakkuk"],
-  [/^Zeph\.?$/i, "Zephaniah"],
-  [/^Hag(g)?\.?$/i, "Haggai"],
-  [/^Zech\.?$/i, "Zechariah"],
-  [/^Mal\.?$/i, "Malachi"],
+  [/^Gen\.?$/i, "GEN"],
+  [/^Ex(od)?\.?$/i, "EXO"],
+  [/^Lev\.?$/i, "LEV"],
+  [/^Num\.?$/i, "NUM"],
+  [/^Deut\.?$/i, "DEU"],
+  [/^Josh\.?$/i, "JOS"],
+  [/^Judg\.?$/i, "JDG"],
+  [/^Ruth$/i, "RUT"],
+  [/^1\s*Sam\.?$/i, "1SA"],
+  [/^2\s*Sam\.?$/i, "2SA"],
+  [/^1\s*K(in)?gs\.?$/i, "1KI"],
+  [/^2\s*K(in)?gs\.?$/i, "2KI"],
+  [/^1\s*Chr(on)?\.?$/i, "1CH"],
+  [/^2\s*Chr(on)?\.?$/i, "2CH"],
+  [/^Ezra$/i, "EZR"],
+  [/^Neh\.?$/i, "NEH"],
+  [/^Esth\.?$/i, "EST"],
+  [/^Job$/i, "JOB"],
+  [/^Ps(alm)?\.?$/i, "PSA"],
+  [/^Pss\.?$/i, "PSA"],
+  [/^Prov\.?$/i, "PRO"],
+  [/^Eccl(es)?\.?$/i, "ECC"],
+  [/^S(ong\s+of\s+)?Sol(omon)?\.?$/i, "SNG"],
+  [/^Cant(icles)?\.?$/i, "SNG"],
+  [/^Isa\.?$/i, "ISA"],
+  [/^Jer\.?$/i, "JER"],
+  [/^Lam\.?$/i, "LAM"],
+  [/^Ezek\.?$/i, "EZK"],
+  [/^Dan\.?$/i, "DAN"],
+  [/^Hos\.?$/i, "HOS"],
+  [/^Joel$/i, "JOL"],
+  [/^Amos$/i, "AMO"],
+  [/^Obad\.?$/i, "OBA"],
+  [/^Jonah$/i, "JON"],
+  [/^Mic\.?$/i, "MIC"],
+  [/^Nah(um)?\.?$/i, "NAM"],
+  [/^Hab\.?$/i, "HAB"],
+  [/^Zeph\.?$/i, "ZEP"],
+  [/^Hag(g)?\.?$/i, "HAG"],
+  [/^Zech\.?$/i, "ZEC"],
+  [/^Mal\.?$/i, "MAL"],
 
-  // Apocrypha (BCP Daily Office Lectionary uses these)
-  [/^Tob(it)?\.?$/i, "Tobit"],
-  [/^Jdth\.?$/i, "Judith"],
-  [/^Wis(d)?\.?$/i, "Wisdom of Solomon"],
-  [/^Ecclus\.?$/i, "Sirach"],
-  [/^Sir(ach)?\.?$/i, "Sirach"],
-  [/^Bar(uch)?\.?$/i, "Baruch"],
-  [/^1\s*Macc?\.?$/i, "1 Maccabees"],
-  [/^2\s*Macc?\.?$/i, "2 Maccabees"],
+  // Apocrypha (BCP Daily Office uses these — YouVersion's NRSVUE
+  // includes them all)
+  [/^Tob(it)?\.?$/i, "TOB"],
+  [/^Jdth\.?$/i, "JDT"],
+  [/^Wis(d)?\.?$/i, "WIS"],
+  [/^Ecclus\.?$/i, "SIR"],
+  [/^Sir(ach)?\.?$/i, "SIR"],
+  [/^Bar(uch)?\.?$/i, "BAR"],
+  [/^1\s*Macc?\.?$/i, "1MA"],
+  [/^2\s*Macc?\.?$/i, "2MA"],
 
   // New Testament
-  [/^Matt\.?$/i, "Matthew"],
-  [/^Mark$/i, "Mark"],
-  [/^Luke$/i, "Luke"],
-  [/^John$/i, "John"],
-  [/^Acts$/i, "Acts"],
-  [/^Rom\.?$/i, "Romans"],
-  [/^1\s*Cor\.?$/i, "1 Corinthians"],
-  [/^2\s*Cor\.?$/i, "2 Corinthians"],
-  [/^Gal\.?$/i, "Galatians"],
-  [/^Eph\.?$/i, "Ephesians"],
-  [/^Phil\.?$/i, "Philippians"],
-  [/^Col\.?$/i, "Colossians"],
-  [/^1\s*Thess?\.?$/i, "1 Thessalonians"],
-  [/^2\s*Thess?\.?$/i, "2 Thessalonians"],
-  [/^1\s*Tim\.?$/i, "1 Timothy"],
-  [/^2\s*Tim\.?$/i, "2 Timothy"],
-  [/^Titus$/i, "Titus"],
-  [/^Phlm\.?$/i, "Philemon"],
-  [/^Phile?(mon)?\.?$/i, "Philemon"],
-  [/^Heb\.?$/i, "Hebrews"],
-  [/^Jas\.?$/i, "James"],
-  [/^James$/i, "James"],
-  [/^1\s*Pet\.?$/i, "1 Peter"],
-  [/^2\s*Pet\.?$/i, "2 Peter"],
-  [/^1\s*John$/i, "1 John"],
-  [/^2\s*John$/i, "2 John"],
-  [/^3\s*John$/i, "3 John"],
-  [/^Jude$/i, "Jude"],
-  [/^Rev\.?$/i, "Revelation"],
+  [/^Matt\.?$/i, "MAT"],
+  [/^Mark$/i, "MRK"],
+  [/^Luke$/i, "LUK"],
+  [/^John$/i, "JHN"],
+  [/^Acts$/i, "ACT"],
+  [/^Rom\.?$/i, "ROM"],
+  [/^1\s*Cor\.?$/i, "1CO"],
+  [/^2\s*Cor\.?$/i, "2CO"],
+  [/^Gal\.?$/i, "GAL"],
+  [/^Eph\.?$/i, "EPH"],
+  [/^Phil\.?$/i, "PHP"],
+  [/^Col\.?$/i, "COL"],
+  [/^1\s*Thess?\.?$/i, "1TH"],
+  [/^2\s*Thess?\.?$/i, "2TH"],
+  [/^1\s*Tim\.?$/i, "1TI"],
+  [/^2\s*Tim\.?$/i, "2TI"],
+  [/^Titus$/i, "TIT"],
+  [/^Phlm\.?$/i, "PHM"],
+  [/^Phile?(mon)?\.?$/i, "PHM"],
+  [/^Heb\.?$/i, "HEB"],
+  [/^Jas\.?$/i, "JAS"],
+  [/^James$/i, "JAS"],
+  [/^1\s*Pet\.?$/i, "1PE"],
+  [/^2\s*Pet\.?$/i, "2PE"],
+  [/^1\s*John$/i, "1JN"],
+  [/^2\s*John$/i, "2JN"],
+  [/^3\s*John$/i, "3JN"],
+  [/^Jude$/i, "JUD"],
+  [/^Rev\.?$/i, "REV"],
 ];
 
+const NRSVUE_VERSION_ID = 3523;
+
 /**
- * Pull the book name and verse range out of a reference string.
- * The 1979 BCP daily office references can include parenthetical
- * optional verses ("Hab. 3:1-10(11-15)16-18") and double dashes for
- * range crossings ("Amos 1:1-5, 13--2:8"). We strip the parentheses
- * (the optional verses are still inside the larger range) and
- * normalise the en-dash variant so BibleGateway sees a clean
- * "<book> <range>".
+ * Build a YouVersion deep link for a BCP-style reference. Returns
+ * null if we can't recognize the book name (so the caller can hide
+ * the button rather than route to a broken page).
  */
-export function bibleGatewayUrl(reference: string): string | null {
+export function bibleUrl(reference: string): string | null {
   if (!reference) return null;
   const trimmed = reference.trim();
   if (!trimmed) return null;
 
   // Drop parenthetical optional verses, joining the surrounding
-  // fragments with a comma so a reference like
-  // "Hab. 3:1-10(11-15)16-18" becomes "Hab. 3:1-10,16-18" — a
-  // BibleGateway-parseable two-range query rather than the smooshed
-  // "1-1016-18".
-  const noParens = trimmed.replace(/\([^)]*\)/g, ",").replace(/\s+/g, " ").trim();
-  // Collapse "1-10--2:8" / "1:1--3:5" to a clean "1-10-2:8" so the
-  // search query parses as one continuous range, and normalize
-  // typographic en/em-dashes (4:5–6, 4:5—6) to plain hyphens since
-  // BibleGateway only parses ASCII hyphens.
+  // fragments so a reference like "Hab. 3:1-10(11-15)16-18" still
+  // points at the chapter as a whole. The path-segment URL doesn't
+  // accept comma-separated ranges, so we collapse to the outer
+  // bound.
+  const noParens = trimmed.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
+  // Normalise typographic dashes to plain hyphens.
   const cleaned = noParens
     .replace(/--/g, "-")
     .replace(/[–—]/g, "-");
 
-  // Split book name from chapter:verse range. Book names can have a
-  // leading numeral ("1 Cor.") so the regex captures up to the LAST
-  // run of letters before whitespace + chapter digit.
+  // Pull the leading book name + the chapter:verse tail.
   const m = cleaned.match(/^([\dA-Za-z.\s]+?)\s+(\d.*)$/);
   if (!m) return null;
   const rawBook = m[1].trim();
-  const range = m[2].trim();
+  const rest = m[2].trim();
 
-  const expanded = expandBook(rawBook) ?? rawBook;
-  const search = `${expanded} ${range}`;
-  const url = `https://www.biblegateway.com/passage/?search=${encodeURIComponent(
-    search,
-  )}&version=NRSVUE`;
-  return url;
+  const usfm = lookupUsfm(rawBook);
+  if (!usfm) return null;
+
+  // Convert "5:12-28" → "5.12-28", "1:3" → "1.3", "5" → "5". Also
+  // handle the rare cross-chapter range "1:1-2:8" → "1.1-2.8" by
+  // replacing each colon with a dot. Strip any trailing comma list
+  // (we already dropped the parenthetical optional verses; if a
+  // reference has a comma like "1:1-5, 13-17" we keep the first
+  // range only).
+  const dotted = rest.replace(/:/g, ".");
+  const firstSegment = dotted.split(/[,;]/)[0].trim();
+
+  // Validate shape: chapter or chapter.verse[-verse[.chapter.verse]]
+  if (!/^\d+(\.\d+(-\d+(\.\d+)?)?)?$/.test(firstSegment)) {
+    // Falls back to a chapter-only link if the tail is unparseable.
+    const chapterMatch = firstSegment.match(/^(\d+)/);
+    if (!chapterMatch) return null;
+    return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${chapterMatch[1]}.NRSVUE`;
+  }
+
+  return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${firstSegment}.NRSVUE`;
 }
 
-function expandBook(raw: string): string | null {
-  for (const [pattern, full] of BOOK_EXPANSIONS) {
-    if (pattern.test(raw)) return full;
+function lookupUsfm(raw: string): string | null {
+  for (const [pattern, code] of BOOK_USFM) {
+    if (pattern.test(raw)) return code;
   }
   return null;
 }
+
+// Backwards-compat: existing call sites still import bibleGatewayUrl.
+// Re-export under the old name so no caller has to change. Will rename
+// after this lands.
+export const bibleGatewayUrl = bibleUrl;
