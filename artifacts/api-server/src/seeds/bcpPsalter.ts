@@ -3450,4 +3450,178 @@ export const PSALTER: Record<number, PsalmEntry> = {
 18 Blessed be God, who has not rejected my prayer, *
   nor withheld his love from me.`,
   },
+
+  68: {
+    title: "Exsurgat Deus",
+    bcpRef: "BCP p. 675",
+    content:
+`1 Let God arise, and let his enemies be scattered; *
+  let those who hate him flee before him.
+2 Let them vanish like smoke when the wind drives it away; *
+  as the wax melts at the fire, so let the wicked perish at the presence of God.
+3 But let the righteous be glad and rejoice before God; *
+  let them also be merry and joyful.
+4 Sing to God, sing praises to his Name;
+  exalt him who rides upon the heavens; *
+  Yahweh is his Name, rejoice before him!
+5 Father of orphans, defender of widows, *
+  God in his holy habitation!
+6 God gives the solitary a home and brings forth prisoners into freedom; *
+  but the rebels shall live in dry places.
+7 O God, when you went forth before your people, *
+  when you marched through the wilderness,
+8 The earth shook, and the skies poured down rain,
+  at the presence of God, the God of Sinai, *
+  at the presence of God, the God of Israel.
+9 You sent a gracious rain, O God, upon your inheritance; *
+  you refreshed the land when it was weary.
+10 Your people found their home in it; *
+  in your goodness, O God, you have made provision for the poor.
+11 The Lord gave the word; *
+  great was the company of women who bore the tidings:
+12 "Kings with their armies are fleeing away; *
+  the women at home are dividing the spoils."
+13 Though you lingered among the sheepfolds, *
+  you shall be like a dove whose wings are covered with silver,
+  whose feathers are like green gold.
+14 When the Almighty scattered kings, *
+  it was like snow falling in Zalmon.
+15 O mighty mountain, O hill of Bashan! *
+  O rugged mountain, O hill of Bashan!
+16 Why do you look with envy, O rugged mountain,
+  at the hill which God chose for his resting place? *
+  truly, the Lord will dwell there for ever.
+17 The chariots of God are twenty thousand,
+  even thousands of thousands; *
+  the Lord comes in holiness from Sinai.
+18 You have gone up on high and led captivity captive;
+  you have received gifts even from your enemies, *
+  that the Lord God might dwell among them.
+19 Blessed be the Lord day by day, *
+  the God of our salvation, who bears our burdens.
+20 He is our God, the God of our salvation; *
+  God is the Lord, by whom we escape death.
+21 God shall crush the heads of his enemies, *
+  and the hairy scalp of those who go on still in their wickedness.
+22 The Lord has said, "I will bring them back from Bashan; *
+  I will bring them back from the depths of the sea;
+23 That your foot may be dipped in blood, *
+  the tongues of your dogs in the blood of your enemies."
+24 They see your procession, O God, *
+  your procession into the sanctuary, my God and my King.
+25 The singers go before, musicians follow after, *
+  in the midst of maidens playing upon the hand-drums.
+26 Bless God in the congregation; *
+  bless the Lord, you that are of the fountain of Israel.
+27 There is Benjamin, least of the tribes, at the head;
+  the princes of Judah in a company; *
+  and the princes of Zebulon and Naphtali.
+28 Send forth your strength, O God; *
+  establish, O God, what you have wrought for us.
+29 Kings shall bring gifts to you, *
+  for your temple's sake at Jerusalem.
+30 Rebuke the wild beast of the reeds, *
+  and the peoples, a herd of wild bulls with its calves.
+31 Trample down those who lust after silver; *
+  scatter the peoples that delight in war.
+32 Let tribute be brought out of Egypt; *
+  let Ethiopia stretch out her hands to God.
+33 Sing to God, O kingdoms of the earth; *
+  sing praises to the Lord.
+34 He rides in the heavens, the ancient heavens; *
+  he sends forth his voice, his mighty voice.
+35 Ascribe power to God; *
+  his majesty is over Israel;
+  his strength is in the skies.
+36 How wonderful is God in his holy places! *
+  the God of Israel giving strength and power to his people!
+  Blessed be God!`,
+  },
+
+  69: {
+    title: "Salvum me fac",
+    bcpRef: "BCP p. 678",
+    content:
+`1 Save me, O God, *
+  for the waters have risen up to my neck.
+2 I am sinking in deep mire, *
+  and there is no firm ground for my feet.
+3 I have come into deep waters, *
+  and the torrent washes over me.
+4 I have grown weary with my crying;
+  my throat is inflamed; *
+  my eyes have failed from looking for my God.
+5 Those who hate me without a cause are more than the hairs of my head;
+  my lying foes who would destroy me are mighty. *
+  Must I then give back what I never stole?
+6 O God, you know my foolishness, *
+  and my faults are not hidden from you.
+7 Let not those who hope in you be put to shame through me, Lord God of hosts; *
+  let not those who seek you be disgraced because of me, O God of Israel.
+8 Surely, for your sake have I suffered reproach, *
+  and shame has covered my face.
+9 I have become a stranger to my own kindred, *
+  an alien to my mother's children.
+10 Zeal for your house has eaten me up; *
+  the scorn of those who scorn you has fallen upon me.
+11 I humbled myself with fasting, *
+  but that was turned to my reproach.
+12 I put on sack-cloth also, *
+  and became a byword among them.
+13 Those who sit at the gate murmur against me, *
+  and the drunkards make songs about me.
+14 But as for me, this is my prayer to you, *
+  at the time you have set, O Lord:
+15 "In your great mercy, O God, *
+  answer me with your unfailing help.
+16 Save me from the mire; do not let me sink; *
+  let me be rescued from those who hate me
+  and out of the deep waters.
+17 Let not the torrent of waters wash over me,
+  neither let the deep swallow me up; *
+  do not let the Pit shut its mouth upon me.
+18 Answer me, O Lord, for your love is kind; *
+  in your great compassion, turn to me."
+19 "Hide not your face from your servant; *
+  be swift and answer me, for I am in distress.
+20 Draw near to me and redeem me; *
+  because of my enemies deliver me.
+21 You know my reproach, my shame, and my dishonor; *
+  my adversaries are all in your sight."
+22 Reproach has broken my heart, and it cannot be healed; *
+  I looked for sympathy, but there was none,
+  for comforters, but I could find no one.
+23 They gave me gall to eat, *
+  and when I was thirsty, they gave me vinegar to drink.
+24 Let the table before them be a trap *
+  and their sacred feasts a snare.
+25 Let their eyes be darkened, that they may not see, *
+  and give them continual trembling in their loins.
+26 Pour out your indignation upon them, *
+  and let the fierceness of your anger overtake them.
+27 Let their camp be desolate, *
+  and let there be none to dwell in their tents.
+28 For they persecute him whom you have stricken *
+  and add to the pain of those whom you have pierced.
+29 Lay to their charge guilt upon guilt, *
+  and let them not receive your vindication.
+30 Let them be wiped out of the book of the living *
+  and not be written among the righteous.
+31 As for me, I am afflicted and in pain; *
+  your help, O God, will lift me up on high.
+32 I will praise the Name of God in song; *
+  I will proclaim his greatness with thanksgiving.
+33 This will please the Lord more than an offering of oxen, *
+  more than bullocks with horns and hoofs.
+34 The afflicted shall see and be glad; *
+  you who seek God, your heart shall live.
+35 For the Lord listens to the needy, *
+  and his prisoners he does not despise.
+36 Let the heavens and the earth praise him, *
+  the seas and all that moves in them;
+37 For God will save Zion and rebuild the cities of Judah; *
+  they shall live there and have it in possession.
+38 The children of his servants will inherit it, *
+  and those who love his Name will dwell therein.`,
+  },
 };
