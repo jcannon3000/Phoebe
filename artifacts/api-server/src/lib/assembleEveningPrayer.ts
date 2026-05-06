@@ -119,6 +119,10 @@ function pickSuffragesKey(weekInSeason: number): string {
   return weekInSeason % 2 === 1 ? "suffrages_a" : "suffrages_b";
 }
 
+function pickMissionPrayerKey(dayOfWeek: number): string {
+  return `prayer_mission_${(dayOfWeek % 3) + 1}`;
+}
+
 // ── Closing rubric helpers ────────────────────────────────────────────────────
 //
 // BCP EP p. 126 closes with "Let us bless the Lord. / Thanks be to
