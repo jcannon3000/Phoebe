@@ -7,7 +7,7 @@ import {
   sharedMomentsTable, momentUserTokensTable, momentPostsTable, momentWindowsTable,
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
   lectioReflectionsTable, groupsTable, groupMembersTable, momentGroupsTable,
-  prayerFeedSubscriptionsTable,
+  prayerFeedSubscriptionsTable, prayerFeedsTable, betaUsersTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
@@ -1276,6 +1276,153 @@ router.post("/moments", async (req, res): Promise<void> => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("POST /api/moments error:", msg);
     if (!res.headersSent) res.status(500).json({ error: msg });
+  }
+});
+
+// ─── GET /api/moments/past-intercessions ─────────────────────────────────────
+//
+// Returns the backlog of community intercessions the viewer once had a hand
+// in but that have since been retired (state = "archived"). Surfaces only
+// to admins:
+//   • Group-scoped intercessions: viewer must be an admin of the owning
+//     group (group_members.role === "admin").
+//   • Feed-scoped intercessions: limited to platform-owned feeds whose
+//     admin gate is the beta_users.is_admin flag (currently just the
+//     phoebe-climate feed). User-created feeds aren't admin-gated yet so
+//     they don't surface here either way.
+//
+// Mirrors the "past prayers received" pattern on the prayer-list page —
+// read-only, faded card treatment on the client. We don't include posts,
+// streak data, or token rows; consumers just need enough to render the
+// card and remember what the community used to be praying for.
+router.get("/moments/past-intercessions", async (req, res): Promise<void> => {
+  try {
+    const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+    if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const [me] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+    if (!me) { res.status(404).json({ error: "User not found" }); return; }
+
+    // Groups where I'm an admin → I can see those groups' archived
+    // intercessions.
+    const adminGroupRows = await db
+      .select({ groupId: groupMembersTable.groupId })
+      .from(groupMembersTable)
+      .where(
+        and(
+          eq(groupMembersTable.userId, sessionUserId),
+          eq(groupMembersTable.role, "admin"),
+        ),
+      );
+    const adminGroupIds = [...new Set(adminGroupRows.map((r) => r.groupId))];
+
+    // Beta admin → I can see archived feed-scoped intercessions for
+    // platform-owned feeds.
+    const [betaRow] = await db
+      .select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, (me.email ?? "").toLowerCase()));
+    const isBetaAdmin = !!betaRow?.isAdmin;
+
+    if (adminGroupIds.length === 0 && !isBetaAdmin) {
+      res.json({ intercessions: [] });
+      return;
+    }
+
+    // Pull every archived intercession in scope. We collect the
+    // candidate set in two queries (group-owned + feed-owned) and
+    // filter further if needed.
+    const candidateRows: Array<typeof sharedMomentsTable.$inferSelect> = [];
+    if (adminGroupIds.length > 0) {
+      const rows = await db
+        .select()
+        .from(sharedMomentsTable)
+        .where(
+          and(
+            eq(sharedMomentsTable.templateType, "intercession"),
+            eq(sharedMomentsTable.state, "archived"),
+            inArray(sharedMomentsTable.groupId, adminGroupIds),
+          ),
+        );
+      candidateRows.push(...rows);
+    }
+    if (isBetaAdmin) {
+      // Platform-owned feeds (creatorUserId = null) — currently just
+      // phoebe-climate. Limit to those so a beta admin can't snoop on
+      // a user-owned feed they don't actually administer.
+      const platformFeeds = await db
+        .select({ id: prayerFeedsTable.id })
+        .from(prayerFeedsTable)
+        .where(sql`${prayerFeedsTable.creatorUserId} IS NULL`);
+      const platformFeedIds = platformFeeds.map((f) => f.id);
+      if (platformFeedIds.length > 0) {
+        const rows = await db
+          .select()
+          .from(sharedMomentsTable)
+          .where(
+            and(
+              eq(sharedMomentsTable.templateType, "intercession"),
+              eq(sharedMomentsTable.state, "archived"),
+              inArray(sharedMomentsTable.prayerFeedId, platformFeedIds),
+            ),
+          );
+        candidateRows.push(...rows);
+      }
+    }
+
+    // Resolve the owning group / feed so the card can show "where" the
+    // intercession lived (e.g. "Vine Community" or "Phoebe Climate").
+    const groupIds = [...new Set(candidateRows.map((m) => m.groupId).filter((g): g is number => g != null))];
+    const feedIds = [...new Set(candidateRows.map((m) => m.prayerFeedId).filter((f): f is number => f != null))];
+    const groupRows = groupIds.length > 0
+      ? await db.select({ id: groupsTable.id, name: groupsTable.name, slug: groupsTable.slug })
+          .from(groupsTable)
+          .where(inArray(groupsTable.id, groupIds))
+      : [];
+    const feedRows = feedIds.length > 0
+      ? await db.select({ id: prayerFeedsTable.id, slug: prayerFeedsTable.slug, title: prayerFeedsTable.title })
+          .from(prayerFeedsTable)
+          .where(inArray(prayerFeedsTable.id, feedIds))
+      : [];
+    const groupById = new Map(groupRows.map((g) => [g.id, g]));
+    const feedById = new Map(feedRows.map((f) => [f.id, f]));
+
+    // De-dupe (a moment shouldn't appear in both sets, but defensive)
+    // and sort newest-first by createdAt.
+    const seen = new Set<number>();
+    const unique = candidateRows.filter((m) => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+    unique.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    res.json({
+      intercessions: unique.map((m) => ({
+        id: m.id,
+        name: m.name,
+        intention: m.intention,
+        intercessionTopic: m.intercessionTopic,
+        intercessionFullText: m.intercessionFullText,
+        intercessionSource: m.intercessionSource,
+        learnMoreUrl: m.learnMoreUrl,
+        customEmoji: m.customEmoji,
+        createdAt: m.createdAt.toISOString(),
+        group: m.groupId
+          ? (groupById.get(m.groupId)
+              ? { id: m.groupId, name: groupById.get(m.groupId)!.name, slug: groupById.get(m.groupId)!.slug }
+              : null)
+          : null,
+        feed: m.prayerFeedId
+          ? (feedById.get(m.prayerFeedId)
+              ? { id: m.prayerFeedId, title: feedById.get(m.prayerFeedId)!.title, slug: feedById.get(m.prayerFeedId)!.slug }
+              : null)
+          : null,
+      })),
+    });
+  } catch (err) {
+    console.error("[GET /api/moments/past-intercessions]", err);
+    res.status(500).json({ error: "Failed to load past intercessions" });
   }
 });
 

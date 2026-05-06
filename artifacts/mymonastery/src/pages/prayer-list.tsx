@@ -135,7 +135,26 @@ function initials(name: string): string {
 // back button). When unfocused, the card list is clamped to ~3.5 cards
 // tall with a fade-out gradient so overflow is obviously scrollable. When
 // focused, the clamp + fade lift and every card is shown at full height.
-type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from";
+type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from" | "past-intercessions";
+
+// Backlog row from GET /api/moments/past-intercessions — community
+// intercessions the viewer admins that have been retired (state =
+// "archived" on the server). Shape is the minimal subset the past-
+// intercession card needs to render — see api-server/src/routes/
+// moments.ts for the source of truth.
+type PastIntercession = {
+  id: number;
+  name: string;
+  intention: string;
+  intercessionTopic: string | null;
+  intercessionFullText: string | null;
+  intercessionSource: string | null;
+  learnMoreUrl: string | null;
+  customEmoji: string | null;
+  createdAt: string;
+  group: { id: number; name: string; slug: string } | null;
+  feed: { id: number; title: string; slug: string } | null;
+};
 
 // Backlog row from GET /api/prayers-for/for-me/history. Same shape as
 // `PrayerForMe` but with the additional active/expired/acknowledged flags
@@ -316,6 +335,45 @@ function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail
           style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", letterSpacing: "0.06em" }}
         >
           View
+        </span>
+      </div>
+    </BarCard>
+  );
+}
+
+// Faded card for an archived (retired) community intercession — only
+// surfaces to admins of the owning group/feed. Mirrors the past-
+// prayers-received treatment: dimmed border, dimmed text, no CTA pill,
+// and a tap routes to the moment page so the admin can reopen the
+// archived practice if they want.
+function PastIntercessionCard({ p }: { p: PastIntercession }) {
+  const groupLabel = p.group
+    ? `🏘️ ${p.group.name}`
+    : p.feed
+      ? `📡 ${p.feed.title}`
+      : null;
+  const cardTitle = stripEmoji(p.intercessionTopic || p.intention || p.name);
+  return (
+    <BarCard
+      href={`/moments/${p.id}`}
+      accent="rgba(46,107,64,0.45)"
+      bg="rgba(46,107,64,0.04)"
+      border="rgba(46,107,64,0.15)"
+    >
+      <div className="relative pr-12" style={{ opacity: 0.78 }}>
+        <span className="text-sm font-semibold truncate block" style={{ color: "rgba(240,237,230,0.7)" }}>
+          🙏🏽 {cardTitle}
+        </span>
+        {groupLabel && (
+          <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.6)" }}>
+            {groupLabel}
+          </p>
+        )}
+        <span
+          className="absolute bottom-0 right-0 text-[10px] font-semibold uppercase"
+          style={{ color: "rgba(143,175,150,0.45)", letterSpacing: "0.12em" }}
+        >
+          Past
         </span>
       </div>
     </BarCard>
@@ -1034,6 +1092,18 @@ export default function PrayerListPage() {
     enabled: !!user,
   });
 
+  // Backlog of community intercessions the viewer once helped lead
+  // but has since archived. Endpoint is admin-gated server-side, so
+  // for non-admins this just returns []. We feed it through into the
+  // section render unconditionally; the section hides itself when
+  // the array is empty so we don't show a mostly-empty heading.
+  const { data: pastIntercessionsData } = useQuery<{ intercessions: PastIntercession[] }>({
+    queryKey: ["/api/moments/past-intercessions"],
+    queryFn: () => apiRequest("GET", "/api/moments/past-intercessions"),
+    enabled: !!user,
+  });
+  const pastIntercessions = pastIntercessionsData?.intercessions ?? [];
+
   // Released-unread popup (kept unchanged — it's a separate closing-ritual
   // surface that doesn't fit inside the card grid).
   const { data: releasedData } = useQuery<{ requests: ReleasedRequest[] }>({
@@ -1269,6 +1339,26 @@ export default function PrayerListPage() {
           >
             {intercessionsSorted.map((m) => (
               <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
+            ))}
+          </SectionShell>
+        )}
+
+        {/* Past community intercessions — admin-only backlog of
+            archived intercessions, surfaced faded so an admin can
+            see the history of what their community has been
+            carrying without those moments cluttering the active
+            list. The endpoint returns [] for non-admins, so the
+            section auto-hides for everyone else. */}
+        {pastIntercessions.length > 0 && (focused === null || focused === "past-intercessions") && (
+          <SectionShell
+            id="past-intercessions"
+            label="Past community intercessions"
+            count={pastIntercessions.length}
+            focused={focused}
+            onFocus={setFocused}
+          >
+            {pastIntercessions.map((p) => (
+              <PastIntercessionCard key={p.id} p={p} />
             ))}
           </SectionShell>
         )}
