@@ -380,3 +380,85 @@ export function playOpeningSwell(octaveStep: number = 0) {
     // Audio blocked / unsupported — silent fallback.
   }
 }
+
+/**
+ * Office slide chime — a softer, shorter cousin of playOpeningSwell
+ * fired on every slide advance / retreat in the Daily Office and
+ * Daily Devotion viewer. Distinct from the prayer-mode swell so the
+ * two surfaces have their own sonic identity:
+ *
+ *   • Root pitched a perfect fourth above prayer-mode (D vs A)
+ *   • Major-second voicing (root + 5th) instead of open fifth
+ *   • Total length ~2.5s vs 7s — slide turns happen every few
+ *     seconds in a Daily Office reading, so a long pad would
+ *     pile on top of itself
+ *   • Lower master gain so it sits under the reading voice
+ *
+ * Same Web Audio plumbing as playOpeningSwell — autoplay-policy
+ * unlock, queue-and-drain, visibility resume on backgrounding —
+ * just with a different envelope and chord. Call fire-and-forget
+ * from a click handler.
+ */
+export function playOfficeChime() {
+  try {
+    type WindowWithWebkitAudio = Window &
+      typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+    const w = window as WindowWithWebkitAudio;
+    const Ctx = w.AudioContext || w.webkitAudioContext;
+    if (!Ctx) return;
+    if (!_audioCtx) _audioCtx = new Ctx();
+    ensureAudioUnlock();
+    ensureVisibilityResume();
+    if (isAudioStillLocked()) {
+      void _audioCtx.resume().catch(() => { /* ignore */ });
+      _pendingAudio.push(() => playOfficeChime());
+      return;
+    }
+    const ctx = _audioCtx;
+    if (ctx.state === "suspended") void ctx.resume();
+
+    const now = ctx.currentTime;
+    // Compact envelope — a soft inhale and quick release. We never
+    // want the chime to outlast the reader's eyes settling on the
+    // new slide.
+    const SWELL_IN = 0.35;
+    const HOLD     = 0.15;
+    const FADE_OUT = 1.0;
+    const TOTAL    = SWELL_IN + HOLD + FADE_OUT;
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0, now);
+    master.gain.linearRampToValueAtTime(0.10, now + SWELL_IN);
+    master.gain.setValueAtTime(0.10, now + SWELL_IN + HOLD);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + TOTAL);
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.Q.value = 0.6;
+    lp.frequency.setValueAtTime(900, now);
+    lp.frequency.linearRampToValueAtTime(2200, now + SWELL_IN);
+    lp.frequency.linearRampToValueAtTime(1400, now + TOTAL);
+    lp.connect(master).connect(ctx.destination);
+
+    // D4 + A4 — a quiet open fifth a fourth above the prayer-mode
+    // root. Two voices instead of three so the chime is lighter
+    // than the slideshow swell.
+    const voices: Array<{ freq: number; type: OscillatorType; gain: number }> = [
+      { freq: 293.66, type: "sine",     gain: 0.55 },
+      { freq: 440.00, type: "triangle", gain: 0.30 },
+    ];
+
+    for (const v of voices) {
+      const osc = ctx.createOscillator();
+      osc.type = v.type;
+      osc.frequency.setValueAtTime(v.freq, now);
+      const vg = ctx.createGain();
+      vg.gain.value = v.gain;
+      osc.connect(vg).connect(lp);
+      osc.start(now);
+      osc.stop(now + TOTAL + 0.1);
+    }
+  } catch {
+    /* silent fallback */
+  }
+}

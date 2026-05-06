@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
 import { bibleGatewayUrl } from "@/lib/bibleGatewayUrl";
+import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
@@ -366,6 +367,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     ) {
       nextIdx += 1;
     }
+    playOfficeChime();
     setSlideIdx(nextIdx);
   }
   function prev() {
@@ -378,6 +380,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     ) {
       prevIdx -= 1;
     }
+    playOfficeChime();
     setSlideIdx(prevIdx);
   }
 
