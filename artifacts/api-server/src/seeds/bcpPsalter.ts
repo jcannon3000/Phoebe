@@ -4640,4 +4640,448 @@ export const PSALTER: Record<number, PsalmEntry> = {
 14 That they may show how upright the Lord is, *
   my Rock, in whom there is no fault.`,
   },
+
+  98: {
+    title: "Cantate Domino",
+    bcpRef: "BCP p. 727",
+    content:
+`1 Sing to the Lord a new song, *
+  for he has done marvelous things.
+2 With his right hand and his holy arm *
+  has he won for himself the victory.
+3 The Lord has made known his victory; *
+  his righteousness has he openly shown in the sight of the nations.
+4 He remembers his mercy and faithfulness to the house of Israel, *
+  and all the ends of the earth have seen the victory of our God.
+5 Shout with joy to the Lord, all you lands; *
+  lift up your voice, rejoice, and sing.
+6 Sing to the Lord with the harp, *
+  with the harp and the voice of song.
+7 With trumpets and the sound of the horn *
+  shout with joy before the King, the Lord.
+8 Let the sea make a noise and all that is in it, *
+  the lands and those who dwell therein.
+9 Let the rivers clap their hands, *
+  and let the hills ring out with joy before the Lord,
+  when he comes to judge the earth.
+10 In righteousness shall he judge the world *
+  and the peoples with equity.`,
+  },
+
+  99: {
+    title: "Dominus regnavit",
+    bcpRef: "BCP p. 728",
+    content:
+`1 The Lord is King;
+  let the people tremble; *
+  he is enthroned upon the cherubim;
+  let the earth shake.
+2 The Lord is great in Zion; *
+  he is high above all peoples.
+3 Let them confess his Name, which is great and awesome; *
+  he is the Holy One.
+4 "O mighty King, lover of justice,
+  you have established equity; *
+  you have executed justice and righteousness in Jacob."
+5 Proclaim the greatness of the Lord our God
+  and fall down before his footstool; *
+  he is the Holy One.
+6 Moses and Aaron among his priests,
+  and Samuel among those who call upon his Name, *
+  they called upon the Lord, and he answered them.
+7 He spoke to them out of the pillar of cloud; *
+  they kept his testimonies and the decree that he gave them.
+8 "O Lord our God, you answered them indeed; *
+  you were a God who forgave them,
+  yet punished them for their evil deeds."
+9 Proclaim the greatness of the Lord our God
+  and worship him upon his holy hill; *
+  for the Lord our God is the Holy One.`,
+  },
+
+  101: {
+    title: "Misericordiam et judicium",
+    bcpRef: "BCP p. 729",
+    content:
+`1 I will sing of mercy and justice; *
+  to you, O Lord, will I sing praises.
+2 I will strive to follow a blameless course;
+  oh, when will you come to me? *
+  I will walk with sincerity of heart within my house.
+3 I will set no worthless thing before my eyes; *
+  I hate the doers of evil deeds;
+  they shall not remain with me.
+4 A crooked heart shall be far from me; *
+  I will not know evil.
+5 Those who in secret slander their neighbors I will destroy; *
+  those who have a haughty look and a proud heart I cannot abide.
+6 My eyes are upon the faithful in the land, that they may dwell with me, *
+  and only those who lead a blameless life shall be my servants.
+7 Those who act deceitfully shall not dwell in my house, *
+  and those who tell lies shall not continue in my sight.
+8 I will soon destroy all the wicked in the land, *
+  that I may root out all evildoers from the city of the Lord.`,
+  },
+
+  102: {
+    title: "Domine, exaudi",
+    bcpRef: "BCP p. 730",
+    content:
+`1 Lord, hear my prayer, and let my cry come before you; *
+  hide not your face from me in the day of my trouble.
+2 Incline your ear to me; *
+  when I call, make haste to answer me,
+3 For my days drift away like smoke, *
+  and my bones are hot as burning coals.
+4 My heart is smitten like grass and withered, *
+  so that I forget to eat my bread.
+5 Because of the voice of my groaning *
+  I am but skin and bones.
+6 I have become like a vulture in the wilderness, *
+  like an owl among the ruins.
+7 I lie awake and groan; *
+  I am like a sparrow, lonely on a house-top.
+8 My enemies revile me all day long, *
+  and those who scoff at me have taken an oath against me.
+9 For I have eaten ashes for bread *
+  and mingled my drink with weeping.
+10 Because of your indignation and wrath *
+  you have lifted me up and thrown me away.
+11 My days pass away like a shadow, *
+  and I wither like the grass.
+12 But you, O Lord, endure for ever, *
+  and your Name from age to age.
+13 You will arise and have compassion on Zion,
+  for it is time to have mercy upon her; *
+  indeed, the appointed time has come.
+14 For your servants love her very rubble, *
+  and are moved to pity even for her dust.
+15 The nations shall fear your Name, O Lord, *
+  and all the kings of the earth your glory.
+16 For the Lord will build up Zion, *
+  and his glory will appear.
+17 He will look with favor on the prayer of the homeless; *
+  he will not despise their plea.
+18 Let this be written for a future generation, *
+  so that a people yet unborn may praise the Lord.
+19 For the Lord looked down from his holy place on high; *
+  from the heavens he beheld the earth;
+20 That he might hear the groan of the captive *
+  and set free those condemned to die;
+21 That they may declare in Zion the Name of the Lord, *
+  and his praise in Jerusalem;
+22 When the peoples are gathered together, *
+  and the kingdoms also, to serve the Lord.
+23 He has brought down my strength before my time; *
+  he has shortened the number of my days;
+24 And I said, "O my God,
+  do not take me away in the midst of my days; *
+  your years endure throughout all generations.
+25 In the beginning, O Lord, you laid the foundations of the earth, *
+  and the heavens are the work of your hands;
+26 They shall perish, but you will endure;
+  they all shall wear out like a garment; *
+  as clothing you will change them,
+  and they shall be changed;
+27 But you are always the same, *
+  and your years will never end.
+28 The children of your servants shall continue, *
+  and their offspring shall stand fast in your sight."`,
+  },
+
+  104: {
+    title: "Benedic, anima mea",
+    bcpRef: "BCP p. 734",
+    content:
+`1 Bless the Lord, O my soul; *
+  O Lord my God, how excellent is your greatness!
+  you are clothed with majesty and splendor.
+2 You wrap yourself with light as with a cloak *
+  and spread out the heavens like a curtain.
+3 You lay the beams of your chambers in the waters above; *
+  you make the clouds your chariot;
+  you ride on the wings of the wind.
+4 You make the winds your messengers *
+  and flames of fire your servants.
+5 You have set the earth upon its foundations, *
+  so that it never shall move at any time.
+6 You covered it with the Deep as with a mantle; *
+  the waters stood higher than the mountains.
+7 At your rebuke they fled; *
+  at the voice of your thunder they hastened away.
+8 They went up into the hills and down to the valleys beneath, *
+  to the places you had appointed for them.
+9 You set the limits that they should not pass; *
+  they shall not again cover the earth.
+10 You send the springs into the valleys; *
+  they flow between the mountains.
+11 All the beasts of the field drink their fill from them, *
+  and the wild asses quench their thirst.
+12 Beside them the birds of the air make their nests *
+  and sing among the branches.
+13 You water the mountains from your dwelling on high; *
+  the earth is fully satisfied by the fruit of your works.
+14 You make grass grow for flocks and herds *
+  and plants to serve mankind;
+15 That they may bring forth food from the earth, *
+  and wine to gladden our hearts,
+16 Oil to make a cheerful countenance, *
+  and bread to strengthen the heart.
+17 The trees of the Lord are full of sap, *
+  the cedars of Lebanon which he planted,
+18 In which the birds build their nests, *
+  and in whose tops the stork makes his dwelling.
+19 The high hills are a refuge for the mountain goats, *
+  and the stony cliffs for the rock badgers.
+20 You appointed the moon to mark the seasons, *
+  and the sun knows the time of its setting.
+21 You make darkness that it may be night, *
+  in which all the beasts of the forest prowl.
+22 The lions roar after their prey *
+  and seek their food from God.
+23 The sun rises, and they slip away *
+  and lay themselves down in their dens.
+24 Man goes forth to his work *
+  and to his labor until the evening.
+25 O Lord, how manifold are your works! *
+  in wisdom you have made them all;
+  the earth is full of your creatures.
+26 Yonder is the great and wide sea
+  with its living things too many to number, *
+  creatures both small and great.
+27 There move the ships,
+  and there is that Leviathan, *
+  which you have made for the sport of it.
+28 All of them look to you *
+  to give them their food in due season.
+29 You give it to them; they gather it; *
+  you open your hand, and they are filled with good things.
+30 You hide your face, and they are terrified; *
+  you take away their breath,
+  and they die and return to their dust.
+31 You send forth your Spirit, and they are created; *
+  and so you renew the face of the earth.
+32 May the glory of the Lord endure for ever; *
+  may the Lord rejoice in all his works.
+33 He looks at the earth and it trembles; *
+  he touches the mountains and they smoke.
+34 I will sing to the Lord as long as I live; *
+  I will praise my God while I have my being.
+35 May these words of mine please him; *
+  I will rejoice in the Lord.
+36 Let sinners be consumed out of the earth, *
+  and the wicked be no more.
+37 Bless the Lord, O my soul. *
+  Hallelujah!`,
+  },
+
+  105: {
+    title: "Confitemini Domino",
+    bcpRef: "BCP p. 738",
+    content:
+`1 Give thanks to the Lord and call upon his Name; *
+  make known his deeds among the peoples.
+2 Sing to him, sing praises to him, *
+  and speak of all his marvelous works.
+3 Glory in his holy Name; *
+  let the hearts of those who seek the Lord rejoice.
+4 Search for the Lord and his strength; *
+  continually seek his face.
+5 Remember the marvels he has done, *
+  his wonders and the judgments of his mouth,
+6 O offspring of Abraham his servant, *
+  O children of Jacob his chosen.
+7 He is the Lord our God; *
+  his judgments prevail in all the world.
+8 He has always been mindful of his covenant, *
+  the promise he made for a thousand generations:
+9 The covenant he made with Abraham, *
+  the oath that he swore to Isaac,
+10 Which he established as a statute for Jacob, *
+  an everlasting covenant for Israel,
+11 Saying, "To you will I give the land of Canaan *
+  to be your allotted inheritance."
+12 When they were few in number, *
+  of little account, and sojourners in the land,
+13 Wandering from nation to nation *
+  and from one kingdom to another,
+14 He let no one oppress them *
+  and rebuked kings for their sake,
+15 Saying, "Do not touch my anointed *
+  and do my prophets no harm."
+16 Then he called for a famine in the land *
+  and destroyed the supply of bread.
+17 He sent a man before them, *
+  Joseph, who was sold as a slave.
+18 They bruised his feet in fetters; *
+  his neck they put in an iron collar.
+19 Until his prediction came to pass, *
+  the word of the Lord tested him.
+20 The king sent and released him; *
+  the ruler of the peoples set him free.
+21 He set him as a master over his household, *
+  as a ruler over all his possessions,
+22 To instruct his princes according to his will *
+  and to teach his elders wisdom.
+23 Israel came into Egypt, *
+  and Jacob became a sojourner in the land of Ham.
+24 The Lord made his people exceedingly fruitful; *
+  he made them stronger than their enemies;
+25 Whose heart he turned, so that they hated his people, *
+  and dealt unjustly with his servants.
+26 He sent Moses his servant, *
+  and Aaron whom he had chosen.
+27 They worked his signs among them, *
+  and portents in the land of Ham.
+28 He sent darkness, and it grew dark; *
+  but the Egyptians rebelled against his words.
+29 He turned their waters into blood *
+  and caused their fish to die.
+30 Their land was overrun by frogs, *
+  in the very chambers of their kings.
+31 He spoke, and there came swarms of insects *
+  and gnats within all their borders.
+32 He gave them hailstones instead of rain, *
+  and flames of fire throughout their land.
+33 He blasted their vines and their fig trees *
+  and shattered every tree in their country.
+34 He spoke, and the locust came, *
+  and young locusts without number,
+35 Which ate up all the green plants in their land *
+  and devoured the fruit of their soil.
+36 He struck down the firstborn of their land, *
+  the firstfruits of all their strength.
+37 He led out his people with silver and gold; *
+  in all their tribes there was not one that stumbled.
+38 Egypt was glad of their going, *
+  because they were afraid of them.
+39 He spread out a cloud for a covering *
+  and a fire to give light in the night season.
+40 They asked, and quails appeared, *
+  and he satisfied them with bread from heaven.
+41 He opened the rock, and water flowed, *
+  so the river ran in the dry places.
+42 For God remembered his holy word *
+  and Abraham his servant.
+43 So he led forth his people with gladness, *
+  his chosen with shouts of joy.
+44 He gave his people the lands of the nations, *
+  and they took the fruit of others' toil,
+45 That they might keep his statutes *
+  and observe his laws.
+  Hallelujah!`,
+  },
+
+  106: {
+    title: "Confitemini Domino",
+    bcpRef: "BCP p. 741",
+    content:
+`1 Hallelujah!
+  Give thanks to the Lord, for he is good, *
+  for his mercy endures for ever.
+2 Who can declare the mighty acts of the Lord *
+  or show forth all his praise?
+3 Happy are those who act with justice *
+  and always do what is right!
+4 Remember me, O Lord, with the favor you have for your people, *
+  and visit me with your saving help;
+5 That I may see the prosperity of your elect
+  and be glad with the gladness of your people, *
+  that I may glory with your inheritance.
+6 We have sinned as our forebears did; *
+  we have done wrong and dealt wickedly.
+7 In Egypt they did not consider your marvelous works,
+  nor remember the abundance of your love; *
+  they defied the Most High at the Red Sea.
+8 But he saved them for his Name's sake, *
+  to make his power known.
+9 He rebuked the Red Sea, and it dried up, *
+  and he led them through the deep as through a desert.
+10 He saved them from the hand of those who hated them *
+  and redeemed them from the hand of the enemy.
+11 The waters covered their oppressors; *
+  not one of them was left.
+12 Then they believed his words *
+  and sang him songs of praise.
+13 But they soon forgot his deeds *
+  and did not wait for his counsel.
+14 A craving seized them in the wilderness, *
+  and they put God to the test in the desert.
+15 He gave them what they asked, *
+  but sent leanness into their soul.
+16 They envied Moses in the camp, *
+  and Aaron, the holy one of the Lord.
+17 The earth opened and swallowed Dathan *
+  and covered the company of Abiram.
+18 Fire blazed up against their company, *
+  and flames devoured the wicked.
+19 Israel made a bull-calf at Horeb *
+  and worshiped a molten image;
+20 And so they exchanged their Glory *
+  for the image of an ox that feeds on grass.
+21 They forgot God their Savior, *
+  who had done great things in Egypt,
+22 Wonderful deeds in the land of Ham, *
+  and fearful things at the Red Sea.
+23 So he would have destroyed them,
+  had not Moses his chosen stood before him in the breach, *
+  to turn away his wrath from consuming them.
+24 They refused the pleasant land *
+  and would not believe his promise.
+25 They grumbled in their tents *
+  and would not listen to the voice of the Lord.
+26 So he lifted his hand against them, *
+  to overthrow them in the wilderness,
+27 To cast out their seed among the nations, *
+  and to scatter them throughout the lands.
+28 They joined themselves to Baal-Peor *
+  and ate sacrifices offered to the dead.
+29 They provoked him to anger with their actions, *
+  and a plague broke out among them.
+30 Then Phinehas stood up and interceded, *
+  and the plague came to an end.
+31 This was reckoned to him as righteousness *
+  throughout all generations for ever.
+32 Again they provoked his anger at the waters of Meribah, *
+  so that he punished Moses because of them;
+33 For they so embittered his spirit *
+  that he spoke rash words with his lips.
+34 They did not destroy the peoples *
+  as the Lord had commanded them.
+35 They intermingled with the heathen *
+  and learned their pagan ways,
+36 So that they worshiped their idols, *
+  which became a snare to them.
+37 They sacrificed their sons *
+  and their daughters to evil spirits.
+38 They shed innocent blood,
+  the blood of their sons and daughters, *
+  which they offered to the idols of Canaan,
+  and the land was defiled with blood.
+39 Thus they were polluted by their actions *
+  and went whoring in their evil deeds.
+40 Therefore the wrath of the Lord was kindled against his people *
+  and he abhorred his inheritance.
+41 He gave them over to the hand of the heathen, *
+  and those who hated them ruled over them.
+42 Their enemies oppressed them, *
+  and they were humbled under their hand.
+43 Many a time did he deliver them,
+  but they rebelled through their own devices, *
+  and were brought down in their iniquity.
+44 Nevertheless, he saw their distress, *
+  when he heard their lamentation.
+45 He remembered his covenant with them *
+  and relented in accordance with his great mercy.
+46 He caused them to be pitied *
+  by those who held them captive.
+47 Save us, O Lord our God,
+  and gather us from among the nations, *
+  that we may give thanks to your holy Name
+  and glory in your praise.
+48 Blessed be the Lord, the God of Israel,
+  from everlasting to everlasting; *
+  and let all the people say, "Amen!"
+  Hallelujah!`,
+  },
 };
