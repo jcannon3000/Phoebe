@@ -2155,12 +2155,18 @@ function FeedTodayCard({
   const pulse = !!sf.todayEntry && !sf.prayedToday;
   const href = `/prayer-feeds/${sf.feed.slug}`;
   const emoji = sf.feed.coverEmoji ?? "🕊️";
-  const eyebrow = sf.todayEntry
-    ? (sf.prayedToday ? "Prayed today" : "Praying today")
-    : "Subscribed";
-  const title = sf.todayEntry?.title ?? sf.feed.title;
+
+  // Card layout: feed name is the headline, "N praying" sits underneath,
+  // and a "View" pill anchors the right side. The day's entry title and
+  // scripture reference are deliberately not surfaced here — they're the
+  // payload the user discovers when they tap through. Earlier we put
+  // today's entry in the headline ("Rising Ocean Levels") and tucked the
+  // feed identity into the subtitle, which read as "an individual
+  // intercession" instead of "the climate feed today" and tested as
+  // confusing.
+  const prayCount = sf.todayEntry?.prayCount ?? 0;
   const subtitle = sf.todayEntry
-    ? `${sf.todayEntry.prayCount} ${sf.todayEntry.prayCount === 1 ? "person" : "people"} praying · ${sf.feed.title}`
+    ? `${prayCount} ${prayCount === 1 ? "person" : "people"} praying`
     : (sf.feed.tagline ?? "No new intention today");
 
   return (
@@ -2183,24 +2189,22 @@ function FeedTodayCard({
           className={`w-1 flex-shrink-0 ${pulse ? colors.barPulseClass : ""}`}
           style={{ background: pulse ? undefined : colors.bar }}
         />
-        <div className="flex-1 px-4 pt-3 pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-              {emoji} {title}
-            </span>
-            <span className="text-[10px] font-semibold uppercase shrink-0 mt-1" style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}>
-              {eyebrow}
-            </span>
-          </div>
-          <div className="mt-1.5">
-            <p className="text-sm" style={{ color: "#8FAF96", lineHeight: "20px", margin: 0 }}>
-              {subtitle}
-            </p>
-            {sf.todayEntry?.scriptureRef && (
-              <p className="text-[11px] mt-0.5 italic" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.01em" }}>
-                {sf.todayEntry.scriptureRef}
+        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                {emoji} {sf.feed.title}
               </p>
-            )}
+              <p className="text-sm mt-0.5 truncate" style={{ color: "#8FAF96", lineHeight: "20px" }}>
+                {subtitle}
+              </p>
+            </div>
+            <span
+              className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap"
+              style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+            >
+              View →
+            </span>
           </div>
         </div>
       </motion.div>
