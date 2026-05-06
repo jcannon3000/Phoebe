@@ -213,11 +213,21 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
             )}
           </div>
 
-          {showCountdown && (
-            <p className="text-xs mt-1.5" style={{ color: "#8FAF96" }}>
-              You can reply in {waitingDays} day{waitingDays !== 1 ? "s" : ""}
-            </p>
-          )}
+          {showCountdown && (() => {
+            // If the current user just sent a letter, the windowOpenDate
+            // is when the *recipient's* reply window opens — not the
+            // user's own. Address them by first name when we have one,
+            // falling back to "they".
+            const otherFirstName = otherMembersFull[0]?.name?.split(/\s+/)[0]
+              || otherMembersFull[0]?.email?.split("@")[0]
+              || "they";
+            const subject = currentPeriod.hasWrittenThisPeriod ? otherFirstName : "You";
+            return (
+              <p className="text-xs mt-1.5" style={{ color: "#8FAF96" }}>
+                {subject} can reply in {waitingDays} day{waitingDays !== 1 ? "s" : ""}
+              </p>
+            );
+          })()}
 
           {unread && item.unreadPreview && !showCountdown && (
             <p className="text-sm mt-2 line-clamp-2 italic" style={{ color: "#8FAF96", fontFamily: isOneToOne ? "Georgia, serif" : undefined }}>
