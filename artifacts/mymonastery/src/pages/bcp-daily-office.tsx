@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
+import { bibleGatewayUrl } from "@/lib/bibleGatewayUrl";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -441,20 +442,33 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               {currentSlide.content}
             </p>
           ) : null}
-          {/* On lesson slides, the assembler stores a BibleGateway
-              deep link in metadata.readUrl. openExternal() routes
-              the URL through SFSafariViewController on the iOS
-              shell so the user stays inside Phoebe; web falls back
-              to a new tab. */}
-          {currentSlide.type === "lesson" &&
-            typeof (currentSlide.metadata as { readUrl?: unknown } | undefined)?.readUrl === "string" && (
-              <button
-                type="button"
-                onClick={() =>
-                  openExternal(
-                    (currentSlide.metadata as { readUrl: string }).readUrl,
-                  )
-                }
+          {/* On lesson slides we link out to BibleGateway for the
+              appointed passage. The URL is computed client-side from
+              the slide title (the reference) so it works even when
+              the server-cached slide pre-dates the metadata.readUrl
+              field. We render an actual <a> with href so iOS won't
+              swallow the click — onClick still goes through
+              openExternal so the iOS shell shows SFSafariViewController
+              instead of bouncing the user out to mobile Safari. */}
+          {currentSlide.type === "lesson" && (() => {
+            const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
+            const serverUrl = typeof meta?.readUrl === "string" ? meta.readUrl : null;
+            const computed = currentSlide.title ? bibleGatewayUrl(currentSlide.title) : null;
+            const url = serverUrl ?? computed;
+            if (!url) return null;
+            return (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  // Always intercept on native + web. openExternal
+                  // routes through SFSafariViewController on iOS and
+                  // window.open on the web. preventDefault stops the
+                  // iOS WebView from also navigating to the URL.
+                  e.preventDefault();
+                  openExternal(url);
+                }}
                 style={{
                   alignSelf: "flex-start",
                   marginTop: 4,
@@ -466,12 +480,14 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   fontFamily: SPACE_GROTESK,
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: "pointer",
+                  textDecoration: "none",
+                  display: "inline-block",
                 }}
               >
                 Read on BibleGateway →
-              </button>
-            )}
+              </a>
+            );
+          })()}
           {currentSlide.bcpReference && (
             <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginTop: 8 }}>
               {currentSlide.bcpReference}

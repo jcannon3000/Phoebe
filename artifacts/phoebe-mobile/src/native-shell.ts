@@ -971,6 +971,13 @@ declare global {
         nextPracticeName?: string | null;
       }) => void;
       isNative: () => boolean;
+      // Synchronous front door for Browser.open. The previous bridge
+      // dispatched a `phoebe:open-url` event whose listener then called
+      // Browser.open — which dropped the iOS user-gesture context and
+      // got blocked. Calling Browser.open directly from the click
+      // handler keeps it within the gesture, so SFSafariViewController
+      // is allowed to present.
+      openInAppBrowser?: (url: string) => Promise<void>;
     };
   }
 }
@@ -1035,6 +1042,21 @@ function exposePublicApi() {
     },
     isNative() {
       return Capacitor.isNativePlatform();
+    },
+    async openInAppBrowser(url: string) {
+      if (!url) return;
+      try {
+        await Browser.open({ url });
+      } catch (err) {
+        console.error("[PhoebeNative] Browser.open failed:", err);
+        // Last-ditch fallback: try a plain navigation. iOS may still
+        // block this, but at least we surfaced an error.
+        try {
+          window.open(url, "_blank");
+        } catch {
+          /* ignore */
+        }
+      }
     },
   };
 }

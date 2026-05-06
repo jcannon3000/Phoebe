@@ -1,18 +1,27 @@
-// Open an outbound link. On the iOS Capacitor shell the native bridge
-// dispatches the URL through SFSafariViewController so the user stays
-// inside Phoebe (back button returns to the slideshow). On the web
-// build, fall back to a regular new-tab open.
+// Open an outbound link. On the iOS Capacitor shell we call
+// PhoebeNative.openInAppBrowser directly (synchronously, from the user's
+// click handler), which calls Browser.open() under the hood and presents
+// SFSafariViewController. Calling it inside the click context preserves
+// the iOS user-gesture requirement that the popup blocker enforces;
+// dispatching through a CustomEvent (the previous wiring) lost that
+// context and got silently blocked.
 //
-// Usage in components: call openExternal(url) from an onClick handler
-// AND prevent default on the underlying anchor (or render a button).
+// On the web build PhoebeNative is undefined, so we fall back to
+// window.open — which iOS Safari blocks unless triggered by a click,
+// but we ARE in a click handler here, so it opens a new tab.
+
+type PhoebeNative = {
+  isNative?: () => boolean;
+  openInAppBrowser?: (url: string) => Promise<void>;
+};
+
 export function openExternal(url: string): void {
   if (!url) return;
-  const isNative = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-    .PhoebeNative?.isNative?.();
-  if (isNative) {
-    // The native shell listens for `phoebe:open-url` and calls
-    // Browser.open(). See artifacts/phoebe-mobile/src/native-shell.ts.
-    window.dispatchEvent(new CustomEvent("phoebe:open-url", { detail: { url } }));
+  const native = (window as unknown as { PhoebeNative?: PhoebeNative })
+    .PhoebeNative;
+  if (native?.openInAppBrowser) {
+    // Don't await — keeps the call within the user-gesture context.
+    void native.openInAppBrowser(url);
     return;
   }
   // Web fallback. noopener for security; noreferrer to keep the
