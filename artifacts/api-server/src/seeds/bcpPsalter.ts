@@ -3220,4 +3220,234 @@ export const PSALTER: Record<number, PsalmEntry> = {
 11 Exalt yourself above the heavens, O God, *
   and your glory over all the earth.`,
   },
+
+  58: {
+    title: "Si vere utique",
+    bcpRef: "BCP p. 663",
+    content:
+`1 Do you indeed decree righteousness, you rulers? *
+  do you judge the peoples with equity?
+2 No; you devise evil in your hearts, *
+  and your hands deal out violence in the land.
+3 The wicked are perverse from the womb; *
+  liars go astray from their birth.
+4 They are as venomous as a serpent, *
+  they are like the deaf adder which stops its ears,
+5 Which does not heed the voice of the charmer, *
+  no matter how skillful his charming.
+6 O God, break their teeth in their mouths; *
+  pull the fangs of the young lions, O Lord.
+7 Let them vanish like water that runs off; *
+  let them wither like trodden grass.
+8 Let them be like the snail that melts away, *
+  like a stillborn child that never sees the sun.
+9 Before they bear fruit, let them be cut down like a brier; *
+  like thorns and thistles let them be swept away.
+10 The righteous will be glad when they see the vengeance; *
+  they will bathe their feet in the blood of the wicked.
+11 And they will say,
+  "Surely, there is a reward for the righteous; *
+  surely, there is a God who rules in the earth."`,
+  },
+
+  59: {
+    title: "Eripe me de inimicis",
+    bcpRef: "BCP p. 664",
+    content:
+`1 Rescue me from my enemies, O God; *
+  protect me from those who rise up against me.
+2 Rescue me from evildoers *
+  and save me from those who thirst for my blood.
+3 See how they lie in wait for my life,
+  how the mighty gather together against me; *
+  not for any offense or fault of mine, O Lord.
+4 Not because of any guilt of mine *
+  they run and prepare themselves for battle.
+5 Rouse yourself, come to my side, and see; *
+  for you, Lord God of hosts, are Israel's God.
+6 Awake, and punish all the ungodly; *
+  show no mercy to those who are faithless and evil.
+7 They go to and fro in the evening; *
+  they snarl like dogs and run about the city.
+8 Behold, they boast with their mouths,
+  and taunts are on their lips; *
+  "For who," they say, "will hear us?"
+9 But you, O Lord, you laugh at them; *
+  you laugh all the ungodly to scorn.
+10 My eyes are fixed on you, O my Strength; *
+  for you, O God, are my stronghold.
+11 My merciful God comes to meet me; *
+  God will let me look in triumph on my enemies.
+12 Slay them, O God, lest my people forget; *
+  send them reeling by your might
+  and put them down, O Lord our shield.
+13 For the sins of their mouths, for the words of their lips,
+  for the cursing and lies that they utter, *
+  let them be caught in their pride.
+14 Make an end of them in your wrath; *
+  make an end of them, and they shall be no more.
+15 Let everyone know that God rules in Jacob, *
+  and to the ends of the earth.
+16 They go to and fro in the evening; *
+  they snarl like dogs and run about the city.
+17 They forage for food, *
+  and if they are not filled, they howl.
+18 For my part, I will sing of your strength; *
+  I will celebrate your love in the morning;
+19 For you have become my stronghold, *
+  a refuge in the day of my trouble.
+20 To you, O my Strength, will I sing; *
+  for you, O God, are my stronghold and my merciful God.`,
+  },
+
+  60: {
+    title: "Deus, repulisti nos",
+    bcpRef: "BCP p. 666",
+    content:
+`1 O God, you have cast us off and broken us; *
+  you have been angry;
+  oh, take us back to you again.
+2 You have shaken the earth and split it open; *
+  repair the cracks in it, for it totters.
+3 You have made your people know hardship; *
+  you have given us wine that makes us stagger.
+4 You have set up a banner for those who fear you, *
+  to be a refuge from the power of the bow.
+5 Save us by your right hand and answer us, *
+  that those who are dear to you may be delivered.
+6 God spoke from his holy place and said: *
+  "I will exult and parcel out Shechem;
+  I will divide the valley of Succoth.
+7 Gilead is mine and Manasseh is mine; *
+  Ephraim is my helmet and Judah my scepter.
+8 Moab is my wash-basin,
+  on Edom I throw down my sandal to claim it, *
+  and over Philistia will I shout in triumph."
+9 Who will lead me into the strong city? *
+  who will bring me to Edom?
+10 Have you not cast us off, O God? *
+  you no longer go out, O God, with our armies.
+11 Grant us your help against the enemy, *
+  for vain is the help of man.
+12 With God we will do valiant deeds, *
+  and he shall tread our enemies under foot.`,
+  },
+
+  64: {
+    title: "Exaudi, Deus",
+    bcpRef: "BCP p. 670",
+    content:
+`1 Hear my voice, O God, when I complain; *
+  protect my life from fear of the enemy.
+2 Hide me from the conspiracy of the wicked, *
+  from the mob of evildoers.
+3 They sharpen their tongue like a sword, *
+  and aim their bitter words like arrows,
+4 That they may shoot down the blameless from ambush; *
+  they shoot without warning and are not afraid.
+5 They hold fast to their evil course; *
+  they plan how they may hide their snares.
+6 They say, "Who will see us?
+  who will find out our crimes? *
+  we have thought out a perfect plot."
+7 The human mind and heart are a mystery; *
+  but God will loose an arrow at them,
+  and suddenly they will be wounded.
+8 He will make them trip over their tongues, *
+  and all who see them will shake their heads.
+9 Everyone will stand in awe and declare God's deeds; *
+  they will recognize his works.
+10 The righteous will rejoice in the Lord and put their trust in him, *
+  and all who are true of heart will glory.`,
+  },
+
+  65: {
+    title: "Te decet hymnus",
+    bcpRef: "BCP p. 671",
+    content:
+`1 You are to be praised, O God, in Zion; *
+  to you shall vows be performed in Jerusalem.
+2 To you that hear prayer shall all flesh come, *
+  because of their transgressions.
+3 Our sins are stronger than we are, *
+  but you will blot them out.
+4 Happy are they whom you choose
+  and draw to your courts to dwell there! *
+  they will be satisfied by the beauty of your house,
+  by the holiness of your temple.
+5 Awesome things will you show us in your righteousness,
+  O God of our salvation, *
+  O Hope of all the ends of the earth
+  and of the seas that are far away.
+6 You make fast the mountains by your power; *
+  they are girded about with might.
+7 You still the roaring of the seas, *
+  the roaring of their waves,
+  and the clamor of the peoples.
+8 Those who dwell at the ends of the earth will tremble at your marvelous signs; *
+  you make the dawn and the dusk to sing for joy.
+9 You visit the earth and water it abundantly;
+  you make it very plenteous; *
+  the river of God is full of water.
+10 You prepare the grain, *
+  for so you provide for the earth.
+11 You drench the furrows and smooth out the ridges; *
+  with heavy rain you soften the ground and bless its increase.
+12 You crown the year with your goodness, *
+  and your paths overflow with plenty.
+13 May the fields of the wilderness be rich for grazing, *
+  and the hills be clothed with joy.
+14 May the meadows cover themselves with flocks,
+  and the valleys cloak themselves with grain; *
+  let them shout for joy and sing.`,
+  },
+
+  66: {
+    title: "Jubilate Deo",
+    bcpRef: "BCP p. 673",
+    content:
+`1 Be joyful in God, all you lands; *
+  sing the glory of his Name;
+  sing the glory of his praise.
+2 Say to God, "How awesome are your deeds! *
+  because of your great strength your enemies cringe before you.
+3 All the earth bows down before you, *
+  sings to you, sings out your Name."
+4 Come now and see the works of God, *
+  how wonderful he is in his doing toward all people.
+5 He turned the sea into dry land,
+  so that they went through the water on foot, *
+  and there we rejoiced in him.
+6 In his might he rules for ever;
+  his eyes keep watch over the nations; *
+  let no rebel rise up against him.
+7 Bless our God, you peoples; *
+  make the voice of his praise to be heard;
+8 Who holds our souls in life, *
+  and will not allow our feet to slip.
+9 For you, O God, have proved us; *
+  you have tried us just as silver is tried.
+10 You brought us into the snare; *
+  you laid heavy burdens upon our backs.
+11 You let enemies ride over our heads;
+  we went through fire and water; *
+  but you brought us out into a place of refreshment.
+12 I will enter your house with burnt-offerings
+  and will pay you my vows, *
+  which I promised with my lips
+  and spoke with my mouth when I was in trouble.
+13 I will offer you sacrifices of fat beasts
+  with the smoke of rams; *
+  I will give you oxen and goats.
+14 Come and listen, all you who fear God, *
+  and I will tell you what he has done for me.
+15 I called out to him with my mouth, *
+  and his praise was on my tongue.
+16 If I had found evil in my heart, *
+  the Lord would not have heard me;
+17 But in truth God has heard me; *
+  he has attended to the voice of my prayer.
+18 Blessed be God, who has not rejected my prayer, *
+  nor withheld his love from me.`,
+  },
 };
