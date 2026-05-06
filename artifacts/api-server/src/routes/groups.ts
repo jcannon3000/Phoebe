@@ -902,8 +902,63 @@ router.delete("/groups/:slug", async (req, res): Promise<void> => {
 
   const result = await requireAdmin(req.params.slug, user.id);
   if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+  const groupId = result.group.id;
 
-  await db.delete(groupsTable).where(eq(groupsTable.id, result.group.id));
+  // Hard delete. The schema CASCADEs membership, intentions, daily
+  // focus, announcements, admin-notification acks, prayer requests,
+  // and the moment_groups junction automatically. We have to take care
+  // of three groups of references manually:
+  //
+  //   1. shared_moments.group_id (intercessions, lectio practices,
+  //      fasting, etc.) — schema is ON DELETE SET NULL, so without
+  //      explicit cleanup the practices would survive as orphaned
+  //      groupless rows. The user expects "delete the group →
+  //      delete its intercessions / lectio." So we delete them.
+  //   2. rituals.group_id (events / gatherings) — same SET NULL
+  //      schema, same expectation: deleting the parish wipes its
+  //      events. meetups + ritual_messages + schedule_responses etc.
+  //      cascade off rituals automatically.
+  //   3. users.parish_id — declared without an ON DELETE clause, so
+  //      Postgres would reject the delete with a foreign-key
+  //      violation if any user still pointed at this group as their
+  //      primary parish. NULL them out first.
+  //
+  // We deliberately do NOT touch:
+  //   - prayer_feeds (no FK to groups in current schema; feeds are
+  //     creator-scoped, not parish-scoped, even on the climate side)
+  //   - moment_groups secondary-share rows for OTHER groups (only
+  //     the rows where group_id = this group cascade off via the
+  //     existing FK)
+
+  // 1. NULL out users.parish_id pointing here so the group delete
+  //    doesn't fail on the FK constraint.
+  await db
+    .update(usersTable)
+    .set({ parishId: null } as Record<string, unknown>)
+    .where(eq(usersTable.parishId, groupId));
+
+  // 2. Delete every intercession / lectio / practice owned by this
+  //    group. shared_moments has CASCADEs on its child tables
+  //    (moment_user_tokens, moment_posts, moment_windows,
+  //    moment_renewals, moment_calendar_events, moment_groups,
+  //    moment_streak_days, lectio_reflections), so this is enough.
+  //    Rows that are SHARED with this group via moment_groups but
+  //    primary-owned by another group stay alive — only their
+  //    junction row disappears via that table's CASCADE.
+  await db.delete(sharedMomentsTable).where(eq(sharedMomentsTable.groupId, groupId));
+
+  // 3. Delete every event / gathering tied to this group. Rituals'
+  //    own children (meetups, ritual_messages, schedule_responses,
+  //    scheduling_responses, invite_tokens, ritual_time_suggestions)
+  //    cascade off rituals.id via their existing FKs.
+  await db.delete(ritualsTable).where(eq(ritualsTable.groupId, groupId));
+
+  // 4. Finally drop the group row. The schema's existing CASCADEs
+  //    handle the rest: group_members, circle_intentions,
+  //    circle_daily_focus, group_announcements, prayer_requests
+  //    scoped to this group, etc.
+  await db.delete(groupsTable).where(eq(groupsTable.id, groupId));
+
   res.json({ ok: true });
 });
 

@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { ExternalLink, Users, Plus, X } from "lucide-react";
+import { ExternalLink, Users, Plus, X, Trash2 } from "lucide-react";
 import { MetricsDashboard } from "./community-metrics";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -157,6 +157,32 @@ export default function CommunitySettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
     },
   });
+
+  // Permanent group deletion. Two-step UX (open the panel → type the
+  // name → confirm) to make it nearly impossible to nuke a real
+  // community by accident. Server cascades on group_members,
+  // intentions, daily_focus, announcements, etc.; shared_moments
+  // (intercessions) keep their own state with groupId set NULL —
+  // they don't disappear, they just become un-scoped.
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/groups/${slug}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      // Drop the now-stale per-group cache so navigating back to a
+      // community detail URL with this slug 404s cleanly instead of
+      // showing the cached page.
+      queryClient.removeQueries({ queryKey: ["/api/groups", slug] });
+      setLocation("/communities");
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Couldn't delete the community.";
+      setDeleteError(msg);
+    },
+  });
+  const canDelete = !!group && deleteConfirmText.trim() === group.name.trim();
 
   if (!group) return null;
 
@@ -567,6 +593,123 @@ export default function CommunitySettingsPage() {
         >
           {saveMutation.isPending ? "Saving…" : saved ? "✓ Saved" : "Save Changes"}
         </button>
+
+        {/* ── Danger zone ───────────────────────────────────────────────────
+            Permanent community deletion. Two-step: tapping "Delete community"
+            opens a confirm panel asking the admin to type the community's
+            name before the destructive button enables. This is the same
+            pattern GitHub / Discord / Linear use for repo / server / team
+            deletion — high-friction by design so a misclick can't end a
+            community. */}
+        <div className="mt-12 pt-6" style={{ borderTop: "1px solid rgba(196,122,101,0.18)" }}>
+          {!showDeleteConfirm ? (
+            <button
+              type="button"
+              onClick={() => { setShowDeleteConfirm(true); setDeleteError(null); }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(196,122,101,0.4)",
+                color: "#C47A65",
+                fontFamily: FONT,
+              }}
+            >
+              <Trash2 size={14} />
+              Delete community
+            </button>
+          ) : (
+            <div
+              className="rounded-2xl p-5"
+              style={{
+                background: "rgba(196,122,101,0.08)",
+                border: "1px solid rgba(196,122,101,0.35)",
+              }}
+            >
+              <p
+                className="text-[13px] font-semibold mb-2"
+                style={{ color: "#E8A28D", fontFamily: FONT }}
+              >
+                Delete {group?.name}?
+              </p>
+              <p
+                className="text-[12px] leading-relaxed mb-4"
+                style={{ color: "rgba(232,162,141,0.85)", fontFamily: FONT }}
+              >
+                This permanently removes the community, every membership, every
+                announcement, every intention, and the daily focus history.
+                Practices and intercessions tied to this community stay alive
+                but become un-scoped. <strong>This cannot be undone.</strong>
+              </p>
+              <label
+                className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5"
+                style={{ color: "rgba(232,162,141,0.6)", fontFamily: FONT }}
+              >
+                Type the community name to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => { setDeleteConfirmText(e.target.value); setDeleteError(null); }}
+                placeholder={group?.name ?? ""}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none mb-3"
+                style={{
+                  background: "rgba(196,122,101,0.08)",
+                  border: `1px solid ${canDelete ? "rgba(196,122,101,0.6)" : "rgba(196,122,101,0.25)"}`,
+                  color: "#F0EDE6",
+                  fontFamily: FONT,
+                }}
+              />
+              {deleteError && (
+                <p
+                  className="text-[12px] mb-3"
+                  style={{ color: "#C47A65", fontFamily: FONT }}
+                >
+                  {deleteError}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText("");
+                    setDeleteError(null);
+                  }}
+                  disabled={deleteMutation.isPending}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(143,175,150,0.3)",
+                    color: "rgba(200,212,192,0.75)",
+                    fontFamily: FONT,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!canDelete) return;
+                    deleteMutation.mutate();
+                  }}
+                  disabled={!canDelete || deleteMutation.isPending}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+                  style={{
+                    background: canDelete ? "#7A2818" : "rgba(122,40,24,0.35)",
+                    color: "#F0EDE6",
+                    fontFamily: FONT,
+                  }}
+                >
+                  {deleteMutation.isPending ? "Deleting…" : "Delete forever"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         </>)}
       </div>
