@@ -573,12 +573,67 @@ function getInvitatorySeason(season: LiturgicalSeason): string {
 // ── Lectionary Week Key ────────────────────────────────────────────────────────
 
 function getLectionaryWeekKey(
+  date: Date,
   season: LiturgicalSeason,
   weekInSeason: number,
   dayOfWeek: number,
   properNumber: number | null,
 ): string {
   const dayName = DAY_KEYS[dayOfWeek];
+
+  // ── Fixed-date and movable-feast overrides ──
+  // The lectionary file has dedicated entries for the Twelve Days of
+  // Christmas (by date), Ash Wednesday, Pentecost (Eve and Day),
+  // Trinity (Eve and Day), Ascension Eve, and the Last Week after
+  // Epiphany — keys not produced by the regular weekly pattern.
+  // Sundays in the Christmas range still defer to christmas_<n>_sunday
+  // since those drive the Sunday cycle independent of the calendar
+  // date.
+  const m = date.getMonth();
+  const dom = date.getDate();
+  const year = date.getFullYear();
+  const sameDay = (a: Date, b: Date) =>
+    startOfDay(a).getTime() === startOfDay(b).getTime();
+
+  // Christmas Day (Dec 25) always uses its proper, even on a Sunday.
+  if (m === 11 && dom === 25) return "christmas_dec25";
+  // Holy Name (Jan 1) always uses its proper.
+  if (m === 0 && dom === 1) return "christmas_jan1";
+  // Other Christmas-octave days: Sundays use the christmas_<n>_sunday
+  // cycle; weekdays use the date-keyed entry.
+  if (m === 11 && dom >= 26 && dom <= 31 && dayOfWeek !== 0) {
+    return `christmas_dec${dom}`;
+  }
+  if (m === 0 && dom >= 2 && dom <= 5 && dayOfWeek !== 0) {
+    return `christmas_jan${dom}`;
+  }
+
+  // Easter-relative special days
+  const easter = computeEaster(year);
+  const ashWed = addDays(easter, -46);
+  const ascensionDay = addDays(easter, 39); // 40th day of Easter (Thu)
+  const ascensionEve = addDays(ascensionDay, -1);
+  const pentecost = addDays(easter, 49);
+  const pentecostEve = addDays(pentecost, -1);
+  const trinitySunday = addDays(pentecost, 7);
+  const trinityEve = addDays(trinitySunday, -1);
+
+  if (sameDay(date, ashWed)) return "ash_wednesday";
+  if (sameDay(date, ascensionEve)) return "ascension_eve";
+  if (sameDay(date, pentecostEve)) return "pentecost_eve";
+  if (sameDay(date, pentecost)) return "pentecost";
+  if (sameDay(date, trinityEve)) return "trinity_eve";
+  if (sameDay(date, trinitySunday)) return "trinity_sunday";
+
+  // Last Week after the Epiphany — the lectionary covers Sun/Mon/Tue
+  // before Ash Wed, then Thu/Fri/Sat after Ash Wed (the days between
+  // Ash Wednesday and the First Sunday in Lent), all under the
+  // `epiphany_last_<day>` key. Ash Wed itself is handled above.
+  const lastEpiphanySunday = addDays(ashWed, -((ashWed.getDay() || 7)));
+  const lastEpiphanyEnd = addDays(ashWed, 3); // Saturday after Ash Wed
+  if (date >= startOfDay(lastEpiphanySunday) && date <= startOfDay(lastEpiphanyEnd)) {
+    return `epiphany_last_${dayName}`;
+  }
 
   switch (season) {
     case "advent":
@@ -739,6 +794,7 @@ export function getOfficeDay(date: Date): LiturgicalDay {
   const antiphonKey = getAntiphonKey(season, d);
   const invitatorySeason = getInvitatorySeason(season);
   const lectionaryWeekKey = getLectionaryWeekKey(
+    d,
     season,
     weekInSeason,
     dayOfWeek,
