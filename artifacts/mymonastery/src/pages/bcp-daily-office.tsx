@@ -48,6 +48,7 @@ const SECTION_LABEL: Record<string, string> = {
   suffrages: "Suffrages",
   collect: "Collect",
   prayer_for_mission: "Prayer for Mission",
+  intercessions: "Intercessions",
   general_thanksgiving: "General Thanksgiving",
   closing: "Closing",
 };
@@ -166,11 +167,8 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
             {officeTitle}
           </span>
           <div style={{ textAlign: "right", minWidth: 0 }}>
-            <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>
-              {currentSlide.eyebrow || sectionLabel}
-            </p>
             {refLabel && (
-              <p style={{ color: MUTED_GREEN, fontSize: 12, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <p style={{ color: MUTED_GREEN, fontSize: 12, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {refLabel}
               </p>
             )}
@@ -178,7 +176,15 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
         </div>
       </header>
 
-      {/* Body */}
+      {/* Body. Top padding bumped from safe+88 → max(120, safe+108)
+          so the bar clears on web (where safe-area-inset-top is 0)
+          without forcing the slide content to ride up under the
+          fixed header. The earlier value left the title sitting too
+          close to the bar; the user reported "loads a little too low"
+          as shorthand for content reading too compressed against the
+          header strip. Inner content is left-aligned now (was center)
+          so liturgical text reads like a missal page rather than a
+          centered poster. */}
       <main
         className="flex-1 px-5"
         style={{
@@ -186,24 +192,40 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
-          paddingTop: "calc(env(safe-area-inset-top) + 88px)",
+          paddingTop: "max(120px, calc(env(safe-area-inset-top) + 108px))",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 112px)",
         }}
       >
         <div
           className="max-w-2xl w-full mx-auto"
-          style={{ minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center", gap: 20 }}
+          style={{ minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left", gap: 20 }}
         >
           {currentSlide.emoji && (
             <div style={{ fontSize: 40, lineHeight: 1 }}>{currentSlide.emoji}</div>
           )}
+          {/* Section eyebrow — moved here from the top-right corner of
+              the fixed header. Sits above the title so the user can
+              tell at a glance which part of the office they're in
+              without glancing up at the corner. */}
+          <p
+            style={{
+              color: FAINT_GREEN,
+              fontSize: 10,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              margin: 0,
+              fontWeight: 600,
+            }}
+          >
+            {currentSlide.eyebrow || sectionLabel}
+          </p>
           {currentSlide.title && (
             <h2 style={{ fontSize: 22, fontWeight: 600, color: WARM_TEXT, letterSpacing: "-0.01em", margin: 0 }}>
               {currentSlide.title}
             </h2>
           )}
           {currentSlide.isCallAndResponse && currentSlide.callAndResponseLines ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 560, margin: "0 auto", textAlign: "left" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 560 }}>
               {currentSlide.callAndResponseLines.map((line, i) => (
                 <div key={i}>
                   <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginBottom: 4 }}>
@@ -226,8 +248,6 @@ function OfficeViewer({ office, onBack }: OfficeViewerProps) {
                 fontFamily: "Georgia, 'Times New Roman', serif",
                 fontStyle: "italic",
                 maxWidth: 600,
-                marginLeft: "auto",
-                marginRight: "auto",
               }}
             >
               {currentSlide.content}

@@ -734,6 +734,32 @@ async function seedCollectStubs() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Psalter                                                            */
+/* ------------------------------------------------------------------ */
+
+// Seed the BCP 1979 Psalter. Each entry in PSALTER (bcpPsalter.ts)
+// becomes a bcp_texts row with key `psalm_${n}`. Idempotent — the
+// upsert helper updates content/title/ref on every run, so adding
+// or fixing a psalm in bcpPsalter.ts and redeploying re-seeds.
+async function seedPsalter() {
+  const { PSALTER } = await import("./bcpPsalter");
+  const psalmNumbers = Object.keys(PSALTER).map(Number).sort((a, b) => a - b);
+  console.log(`Seeding ${psalmNumbers.length} psalms…`);
+  for (const n of psalmNumbers) {
+    const p = PSALTER[n];
+    if (!p) continue;
+    await upsert({
+      textKey: `psalm_${n}`,
+      category: "psalm",
+      title: p.title,
+      bcpReference: p.bcpRef,
+      content: p.content,
+    });
+  }
+  console.log(`  ✓ ${psalmNumbers.length} psalms seeded`);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -742,6 +768,8 @@ export async function seedBcpTexts(): Promise<{ inserted: number; skipped: numbe
   await seedStaticTexts();
   await sleep(DELAY_MS);
   await seedCollectStubs();
+  await sleep(DELAY_MS);
+  await seedPsalter();
   console.log("\n✓ BCP texts seed complete.");
   return { inserted: 0, skipped: 0 };
 }
