@@ -11,6 +11,7 @@
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getEveningCanticles } from "./eveningCanticleSelector";
 import { getLectionaryReadings } from "./lectionary";
+import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
 import { buildIntercessionsSlide } from "./assembleIntercessions";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
@@ -256,6 +257,7 @@ export async function assembleEveningPrayer(
       title: lesson3,
       metadata: {
         reference: lesson3,
+        readUrl: bibleGatewayUrl(lesson3),
         readingNote: "Read the Gospel in your own Bible or preferred translation.",
       },
     }),

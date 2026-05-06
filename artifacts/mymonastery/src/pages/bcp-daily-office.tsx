@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
+import { openExternal } from "@/lib/openExternal";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -138,6 +139,17 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // Reset scroll to the top each time the slide changes — otherwise a
+  // long-content slide that the reader scrolled through carries its
+  // scroll position into the next slide, which is shorter and starts
+  // mid-way down (or below the eyebrow). Run after the new slide
+  // mounts so the scrollHeight is correct.
+  useEffect(() => {
+    const el = mainRef.current;
+    if (el) el.scrollTop = 0;
+  }, [slideIdx]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -265,6 +277,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           so liturgical text reads like a missal page rather than a
           centered poster. */}
       <main
+        ref={mainRef}
         className="flex-1 px-5"
         style={{
           minHeight: 0,
@@ -421,6 +434,37 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               {currentSlide.content}
             </p>
           ) : null}
+          {/* On lesson slides, the assembler stores a BibleGateway
+              deep link in metadata.readUrl. openExternal() routes
+              the URL through SFSafariViewController on the iOS
+              shell so the user stays inside Phoebe; web falls back
+              to a new tab. */}
+          {currentSlide.type === "lesson" &&
+            typeof (currentSlide.metadata as { readUrl?: unknown } | undefined)?.readUrl === "string" && (
+              <button
+                type="button"
+                onClick={() =>
+                  openExternal(
+                    (currentSlide.metadata as { readUrl: string }).readUrl,
+                  )
+                }
+                style={{
+                  alignSelf: "flex-start",
+                  marginTop: 4,
+                  padding: "10px 18px",
+                  borderRadius: 999,
+                  background: "rgba(46,107,64,0.18)",
+                  border: "1px solid rgba(46,107,64,0.45)",
+                  color: WARM_TEXT,
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Read on BibleGateway →
+              </button>
+            )}
           {currentSlide.bcpReference && (
             <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginTop: 8 }}>
               {currentSlide.bcpReference}

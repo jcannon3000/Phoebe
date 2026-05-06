@@ -15,6 +15,7 @@ import {
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getCanticles } from "./canticleSelector";
 import { getLectionaryReadings } from "./lectionary";
+import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import { buildIntercessionsSlide } from "./assembleIntercessions";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
 // open scripture in their own bible/app. No scripture-text lookup.
@@ -476,7 +477,7 @@ export async function assembleMorningPrayer(
         title: lesson1,
         isScrollable: false,
         scrollHint: null,
-        metadata: { reference: lesson1 },
+        metadata: { reference: lesson1, readUrl: bibleGatewayUrl(lesson1) },
       }),
     );
   }
@@ -505,7 +506,7 @@ export async function assembleMorningPrayer(
         title: lesson2,
         isScrollable: false,
         scrollHint: null,
-        metadata: { reference: lesson2 },
+        metadata: { reference: lesson2, readUrl: bibleGatewayUrl(lesson2) },
       }),
     );
   }
