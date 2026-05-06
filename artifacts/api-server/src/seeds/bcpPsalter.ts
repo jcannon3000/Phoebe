@@ -356,6 +356,101 @@ export const PSALTER: Record<number, PsalmEntry> = {
   so that mere mortals may strike terror no more.`,
   },
 
+  11: {
+    title: "In Domino confido",
+    bcpRef: "BCP p. 596",
+    content:
+`1 In the Lord have I taken refuge; *
+  how then can you say to me,
+  "Fly away like a bird to the hilltop;
+2 For see how the wicked bend the bow
+  and fit their arrows to the string, *
+  to shoot from ambush at the true of heart.
+3 When the foundations are being destroyed, *
+  what can the righteous do?"
+4 The Lord is in his holy temple; *
+  the Lord's throne is in heaven.
+5 His eyes behold the inhabited world; *
+  his piercing eye weighs our worth.
+6 The Lord weighs the righteous as well as the wicked, *
+  but those who delight in violence he abhors.
+7 Upon the wicked he shall rain coals of fire and burning sulphur; *
+  a scorching wind shall be their lot.
+8 For the Lord is righteous;
+  he delights in righteous deeds; *
+  and the just shall see his face.`,
+  },
+
+  12: {
+    title: "Salvum me fac",
+    bcpRef: "BCP p. 597",
+    content:
+`1 Help me, Lord, for there is no godly one left; *
+  the faithful have vanished from among us.
+2 Everyone speaks falsely with his neighbor; *
+  with a smooth tongue they speak from a double heart.
+3 Oh, that the Lord would cut off all smooth tongues, *
+  and close the lips that utter proud boasts!
+4 Those who say, "With our tongue will we prevail; *
+  our lips are our own; who is lord over us?"
+5 "Because the needy are oppressed,
+  and the poor cry out in misery, *
+  I will rise up," says the Lord,
+  "and give them the help they long for."
+6 The words of the Lord are pure words, *
+  like silver refined from ore
+  and purified seven times in the fire.
+7 O Lord, watch over us *
+  and save us from this generation for ever.
+8 The wicked prowl on every side, *
+  and that which is worthless is highly prized by everyone.`,
+  },
+
+  13: {
+    title: "Usquequo, Domine?",
+    bcpRef: "BCP p. 597",
+    content:
+`1 How long, O Lord?
+  will you forget me for ever? *
+  how long will you hide your face from me?
+2 How long shall I have perplexity in my mind,
+  and grief in my heart, day after day? *
+  how long shall my enemy triumph over me?
+3 Look upon me and answer me, O Lord my God; *
+  give light to my eyes, lest I sleep in death;
+4 Lest my enemy say, "I have prevailed over him," *
+  and my foes rejoice that I have fallen.
+5 But I put my trust in your mercy; *
+  my heart is joyful because of your saving help.
+6 I will sing to the Lord, for he has dealt with me richly; *
+  I will praise the Name of the Lord Most High.`,
+  },
+
+  14: {
+    title: "Dixit insipiens",
+    bcpRef: "BCP p. 597",
+    content:
+`1 The fool has said in his heart, "There is no God." *
+  All are corrupt and commit abominable acts;
+  there is none who does any good.
+2 The Lord looks down from heaven upon us all, *
+  to see if there is any who is wise,
+  if there is one who seeks after God.
+3 Every one has proved faithless;
+  all alike have turned bad; *
+  there is none who does good; no, not one.
+4 Have they no knowledge, all those evildoers *
+  who eat up my people like bread
+  and do not call upon the Lord?
+5 See how they tremble with fear, *
+  because God is in the company of the righteous.
+6 Their aim is to confound the plans of the afflicted, *
+  but the Lord is their refuge.
+7 Oh, that Israel's deliverance would come out of Zion! *
+  when the Lord restores the fortunes of his people,
+  Jacob will rejoice and Israel be glad.`,
+  },
+
   15: {
     title: "Domine, quis habitabit?",
     bcpRef: "BCP p. 599",
