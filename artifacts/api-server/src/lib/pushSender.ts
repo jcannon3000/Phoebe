@@ -339,12 +339,22 @@ export function sendBellPush(userId: number) {
   });
 }
 
-// Evening nudge (7 PM local). Only fires if the user hasn't logged a
-// prayer that day — see runEveningNudgeSender for the gating.
-export function sendEveningNudgePush(userId: number) {
+// Evening nudge (20:00 local). Fires only if the recipient hasn't
+// logged a prayer today AND at least one person in their garden has —
+// the body is social-proof copy ("Join N people…") so it's pointless
+// without a positive count. See runEveningNudgeSender for the gating.
+//
+// `communityPrayerCount` is the number of distinct garden members
+// (group peers + letter correspondents) who have prayed today in the
+// recipient's tz. The caller has already filtered to count > 0 before
+// reaching here; we still defensively pluralise for count = 1.
+export function sendEveningNudgePush(userId: number, communityPrayerCount: number) {
+  const body = communityPrayerCount === 1
+    ? "Join 1 person from your community who has prayed today."
+    : `Join ${communityPrayerCount} people from your community who have prayed together today.`;
   return sendPushToUser(userId, {
     title: "Don't forget to pray for your friends",
-    body: "A few minutes before the day closes.",
+    body,
     path: "/prayer-mode",
     threadId: "bell",
     sound: PHOEBE_SOUND_LOW,

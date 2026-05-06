@@ -9,7 +9,7 @@ import {
   lectioReflectionsTable,
   lectionaryReadingsTable,
 } from "@workspace/db";
-import { eq, and, gte, ne, sql, isNull } from "drizzle-orm";
+import { eq, and, gte, ne, sql, isNull, inArray } from "drizzle-orm";
 import {
   sendBellPush,
   sendEveningNudgePush,
@@ -18,6 +18,7 @@ import {
   sendPrayerRenewalNudgePush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
+import { getGardenUserIds } from "./garden";
 import { logger } from "./logger";
 
 // ─── Timezone helpers ───────────────────────────────────────────────────────
@@ -194,8 +195,43 @@ async function runDayCallSender(opts: {
       });
       if (prayedToday) continue;
 
+      // Social-proof copy: "Join N people from your community who have
+      // prayed together today." Garden = group peers + letter
+      // correspondents (the same visibility set that drives the
+      // recipient's prayer-list feed). We count DISTINCT garden user
+      // IDs that have at least one amen logged today in the
+      // recipient's tz. If nobody has prayed yet, skip the push
+      // entirely — "Join 0 people" reads broken, and the social
+      // signal is the whole point of this nudge.
+      const gardenIds = await getGardenUserIds(user.id);
+      let communityPrayerCount = 0;
+      if (gardenIds.length > 0) {
+        const gardenAmens = await db
+          .select({ userId: prayerRequestAmensTable.userId, prayedAt: prayerRequestAmensTable.prayedAt })
+          .from(prayerRequestAmensTable)
+          .where(
+            and(
+              inArray(prayerRequestAmensTable.userId, gardenIds),
+              gte(prayerRequestAmensTable.prayedAt, sinceUtc),
+            ),
+          );
+        const distinctTodayUsers = new Set<number>();
+        for (const r of gardenAmens) {
+          if (!r.prayedAt) continue;
+          const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(r.prayedAt);
+          if (ymd === todayStr) distinctTodayUsers.add(r.userId);
+        }
+        communityPrayerCount = distinctTodayUsers.size;
+      }
+      if (communityPrayerCount === 0) {
+        // No social signal yet — don't fire the evening nudge today.
+        // The morning bell already pinged this user; this slot is
+        // purely a community-prayed-together invitation.
+        continue;
+      }
+
       try {
-        await sendEveningNudgePush(user.id);
+        await sendEveningNudgePush(user.id, communityPrayerCount);
       } catch (err) {
         logger.warn({ err, userId: user.id, slot: opts.slotKey }, `${opts.logTag} push dispatch failed — skipping dedup insert so we retry next tick`);
         continue;
