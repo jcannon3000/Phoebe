@@ -13,6 +13,12 @@ export type SlideType =
   | "suffrages"
   | "collect"
   | "prayer_for_mission"
+  // Per-item intercession slide produced by buildIntercessionSlides
+  // (one slide per request / prayers-for / circle intention / feed
+  // entry). The renderer detects this type to render the prayer-mode-
+  // style centered avatar + name + eyebrow + italic body, instead of
+  // the default left-aligned missal layout.
+  | "intercessions"
   | "general_thanksgiving"
   | "closing";
 

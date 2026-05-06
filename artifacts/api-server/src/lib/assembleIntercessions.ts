@@ -267,6 +267,7 @@ export async function buildIntercessionSlides(
           ownerId: prayerRequestsTable.ownerId,
           isAnonymous: prayerRequestsTable.isAnonymous,
           ownerName: usersTable.name,
+          ownerAvatarUrl: usersTable.avatarUrl,
         })
         .from(prayerRequestsTable)
         .leftJoin(usersTable, eq(usersTable.id, prayerRequestsTable.ownerId))
@@ -291,6 +292,7 @@ export async function buildIntercessionSlides(
       recipientUserId: prayersForTable.recipientUserId,
       expiresAt: prayersForTable.expiresAt,
       recipientName: usersTable.name,
+      recipientAvatarUrl: usersTable.avatarUrl,
     })
     .from(prayersForTable)
     .leftJoin(usersTable, eq(usersTable.id, prayersForTable.recipientUserId))
@@ -363,6 +365,10 @@ export async function buildIntercessionSlides(
   for (const r of requestRows) {
     if (!r.body) continue;
     const who = r.isAnonymous ? "Someone" : (r.ownerName ?? "Someone");
+    // Anonymous requests intentionally drop the avatar so the slide
+    // doesn't betray the requester's identity even when the renderer
+    // has the URL handy.
+    const avatarUrl = r.isAnonymous ? null : (r.ownerAvatarUrl ?? null);
     slides.push({
       id: `dev-req-${r.id}-${dayKey}`,
       type: "intercessions",
@@ -375,7 +381,16 @@ export async function buildIntercessionSlides(
       bcpReference: null,
       isScrollable: r.body.length > 280,
       scrollHint: r.body.length > 280 ? "↓ continue · tap when ready" : null,
-      metadata: { source: "request", requestId: r.id, isAnonymous: r.isAnonymous },
+      metadata: {
+        source: "request",
+        requestId: r.id,
+        isAnonymous: r.isAnonymous,
+        // Avatar surfaces in the renderer for the prayer-mode-style
+        // centered layout. authorName mirrors the title for consistency
+        // with the prayer-mode slide schema.
+        authorName: who,
+        authorAvatarUrl: avatarUrl,
+      },
     });
   }
 
@@ -397,7 +412,12 @@ export async function buildIntercessionSlides(
       bcpReference: null,
       isScrollable: p.prayerText.length > 280,
       scrollHint: p.prayerText.length > 280 ? "↓ continue · tap when ready" : null,
-      metadata: { source: "prayer-for", prayerForId: p.id },
+      metadata: {
+        source: "prayer-for",
+        prayerForId: p.id,
+        authorName: who,
+        authorAvatarUrl: p.recipientAvatarUrl ?? null,
+      },
     });
   }
 
