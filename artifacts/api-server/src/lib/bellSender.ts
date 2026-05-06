@@ -47,9 +47,10 @@ function todayDateInTz(timezone: string): string {
 // ─── Main bell sender ───────────────────────────────────────────────────────
 //
 // Push-only. Fires for every user at 07:00 local in their timezone — the
-// first of three daily nudges (07:00 / 14:00 / 20:00). This morning slot
-// fires unconditionally; the midday and evening slots are gentler and
-// skip users who have already prayed today. The time is global — the
+// first of two daily nudges (07:00 / 20:00). This morning slot fires
+// unconditionally; the evening slot is gentler and skips users who have
+// already prayed today. The midday (14:00) slot was removed per user
+// direction — two nudges felt right; three was noisy. The time is global — the
 // per-user `dailyBellTime` column is still in the schema for now but is
 // no longer read here. The bell is on by default for everyone;
 // `sendPushToUser` no-ops for users without an active device token, so
@@ -125,21 +126,22 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
   }
 }
 
-// ─── Day-call senders (midday 14:00, evening 20:00) ────────────────────────
+// ─── Day-call sender (evening 20:00) ───────────────────────────────────────
 //
-// Two follow-up nudges that gently re-invite a user back to prayer if the
-// 07:00 morning bell didn't catch them. Both share the same shape — fire
-// inside their 15-minute window (so the cron tick at any minute lands a
-// single send), skip users who have already prayed today (any amen tap
-// that day in the user's timezone is enough), and dedup via a slot-keyed
-// `bell_notifications` row so a refire on the next tick can't double-
-// send. The morning bell above fires unconditionally because it's the
-// wake-up call; these two are softer because they're catching people who
-// missed it.
+// One follow-up nudge that gently re-invites a user back to prayer if the
+// 07:00 morning bell didn't catch them. Fires inside its 15-minute window
+// (so the cron tick at any minute lands a single send), skips users who
+// have already prayed today (any amen tap that day in the user's
+// timezone is enough), and dedups via a slot-keyed `bell_notifications`
+// row so a refire on the next tick can't double-send. The morning bell
+// fires unconditionally because it's the wake-up call; this one is
+// softer because it's catching people who missed it. (A midday 14:00
+// nudge used to live here too; it was removed per user direction —
+// the morning bell + evening catch-up was the rhythm they wanted.)
 
 async function runDayCallSender(opts: {
   hour: number;
-  slotKey: "midday" | "evening";
+  slotKey: "evening";
   logTag: string;
 }): Promise<void> {
   const bellUsers = await db
@@ -210,10 +212,6 @@ async function runDayCallSender(opts: {
       logger.error({ err, userId: user.id, slot: opts.slotKey }, `${opts.logTag} user processing failed`);
     }
   }
-}
-
-export async function runMiddayNudgeSender(): Promise<void> {
-  return runDayCallSender({ hour: 14, slotKey: "midday", logTag: "[bell-midday]" });
 }
 
 export async function runEveningNudgeSender(): Promise<void> {
@@ -682,9 +680,6 @@ export function startBellScheduler(): void {
     runBellSender().catch((err) =>
       logger.error({ err }, "[bell] initial run failed"),
     );
-    runMiddayNudgeSender().catch((err) =>
-      logger.error({ err }, "[bell-midday] initial run failed"),
-    );
     runEveningNudgeSender().catch((err) =>
       logger.error({ err }, "[bell-evening] initial run failed"),
     );
@@ -703,9 +698,6 @@ export function startBellScheduler(): void {
     () => {
       runBellSender().catch((err) =>
         logger.error({ err }, "[bell] scheduled run failed"),
-      );
-      runMiddayNudgeSender().catch((err) =>
-        logger.error({ err }, "[bell-midday] scheduled run failed"),
       );
       runEveningNudgeSender().catch((err) =>
         logger.error({ err }, "[bell-evening] scheduled run failed"),
