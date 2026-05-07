@@ -28,7 +28,14 @@ export interface PsalmRef {
  */
 export function parsePsalmRef(ref: string): PsalmRef | null {
   if (!ref) return null;
-  const trimmed = ref.trim();
+  // The BCP daily office lectionary marks optional psalms with square
+  // brackets, e.g. "[70]" or "[27:1-13]" — they're appointed for the
+  // day but may be omitted if pressed for time. Treat them as regular
+  // appointments here so both the full Office (which renders all
+  // appointed psalms) and the Devotion (which uses psalms[0]) show
+  // the same first psalm. Stripping the brackets up front means the
+  // rest of the parser doesn't need to know about the convention.
+  const trimmed = ref.trim().replace(/^\[+/, "").replace(/\]+$/, "").trim();
   if (!trimmed) return null;
 
   // Take the first numeric/range token, ignoring any "* & N" suffix.
