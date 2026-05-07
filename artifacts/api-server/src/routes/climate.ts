@@ -594,7 +594,7 @@ router.post("/climate/admin/intercessions", requireClimateAdmin, async (req, res
 
     const title = body.title.trim();
     const fullText = body.fullText.trim();
-    const scheduledTime = (body.scheduledTime ?? "07:00").trim();
+    const scheduledTime = (body.scheduledTime ?? "09:30").trim();
     const frequency = (body.frequency ?? "daily").trim();
     const timezone = (body.timezone ?? feed.timezone ?? "America/New_York").trim();
     const learnMoreUrl = normalizeLearnMoreUrl(body.learnMoreUrl);

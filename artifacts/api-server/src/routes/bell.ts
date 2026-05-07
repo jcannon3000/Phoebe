@@ -89,7 +89,7 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
             calendarStatus = "none";
             try { await deleteCalendarEvent(user.id, u.bellCalendarEventId!); } catch { /* may already be gone */ }
             await updateBellPrefs(user.id, {
-              bellEnabled: false, dailyBellTime: u.dailyBellTime ?? "07:00",
+              bellEnabled: false, dailyBellTime: u.dailyBellTime ?? "09:30",
               timezone: u.timezone ?? "America/New_York", bellCalendarEventId: null,
             });
             console.log(`[bell] User ${user.id} declined bell event — prefs reset.`);
@@ -112,7 +112,7 @@ router.get("/bell/preferences", async (req, res): Promise<void> => {
     }
 
     let bellEnabled = u.bellEnabled;
-    let resolvedTime = u.dailyBellTime ?? "07:00";
+    let resolvedTime = u.dailyBellTime ?? "09:30";
     let resolvedTz = u.timezone ?? "America/New_York";
 
     // ── Auto-recovery: scan the scheduler calendar for an accepted, active,

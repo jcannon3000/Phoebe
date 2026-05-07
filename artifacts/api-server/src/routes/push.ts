@@ -83,7 +83,7 @@ router.post("/push/device-token", async (req, res): Promise<void> => {
       await db.execute(sql`
         UPDATE users
         SET bell_enabled = TRUE,
-            daily_bell_time = COALESCE(daily_bell_time, '07:00'),
+            daily_bell_time = COALESCE(daily_bell_time, '09:30'),
             bell_calendar_event_id = NULL
         WHERE id = ${user.id}
       `);
@@ -185,7 +185,7 @@ router.post("/push/web-subscription", async (req, res): Promise<void> => {
       await db.execute(sql`
         UPDATE users
         SET bell_enabled = TRUE,
-            daily_bell_time = COALESCE(daily_bell_time, '07:00'),
+            daily_bell_time = COALESCE(daily_bell_time, '09:30'),
             bell_calendar_event_id = NULL
         WHERE id = ${user.id}
       `);

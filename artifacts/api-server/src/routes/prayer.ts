@@ -5,7 +5,8 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
-import { sendPrayerWordPush, sendFirstAmenPush, sendThirdAmenTodayPush } from "../lib/pushSender";
+import { sendPrayerWordPush, sendFirstAmenPush, sendThirdAmenTodayPush, sendNewPrayerRequestPush } from "../lib/pushSender";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -405,11 +406,33 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
     })
     .returning();
 
-  // Garden-wide "{owner} is asking for your prayers" push is disabled —
-  // requesters didn't want to ping every connection on every new
-  // request. The request still appears on each garden member's prayer
-  // list / slideshow; we just don't pre-empt their lock screen.
-  void getGardenUserIds;
+  // Fan out a "{owner} is asking for your prayers" push to every
+  // member of the requester's garden. Re-enabled per user direction
+  // — the request appearing in the slideshow / prayer list isn't
+  // enough; people need the lock-screen prompt to actually carry
+  // each other in real time. Fired async so the HTTP response
+  // doesn't wait on APNs / web-push round-trips.
+  (async () => {
+    try {
+      const gardenIds = await getGardenUserIds(sessionUserId);
+      const recipients = gardenIds.filter((id) => id !== sessionUserId);
+      if (recipients.length === 0) return;
+      const authorName = owner?.name ?? "Someone";
+      await Promise.all(
+        recipients.map((rid) =>
+          sendNewPrayerRequestPush(rid, {
+            authorName,
+            isAnonymous: parsed.data.isAnonymous,
+            prayerRequestId: created.id,
+          }).catch((err) =>
+            console.warn("[prayer] new-prayer-request push failed:", err)
+          )
+        )
+      );
+    } catch (err) {
+      console.warn("[prayer] new-prayer-request fan-out failed:", err);
+    }
+  })();
 
   res.status(201).json(created);
 });
@@ -823,9 +846,12 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
         if (r.userId === sessionUserId) sessionAlreadyToday = true;
       }
     }
-    // If the request's first-ever amen happened today, the owner already
-    // got the "your community is praying for you" push today — don't
-    // double-tap them with the 3-today push on the same day.
+    // Day-one silence: if the very first amen this request ever
+    // received happened today, the owner already got the
+    // first-amen "Sarah is praying for you" push and we don't want
+    // to double-tap them with "3 people are praying" the same day.
+    // Day two and on, when older amens exist, the third-today push
+    // fires as a fresh celebration of the day's care.
     const earliestPrior = prior.reduce<Date | null>((acc, r) => {
       if (!r.prayedAt) return acc;
       if (!acc || r.prayedAt < acc) return r.prayedAt;
@@ -839,6 +865,17 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
       firstEverAmenWasToday = true;
     }
     thirdTodayFire = !firstEverAmenWasToday && !sessionAlreadyToday && distinctTodayBefore.size === 2;
+    logger.info({
+      requestId: id,
+      ownerId: request.ownerId,
+      ownerTz,
+      ownerLocalYmd,
+      priorCount: prior.length,
+      distinctTodayBefore: distinctTodayBefore.size,
+      sessionAlreadyToday,
+      firstEverAmenWasToday,
+      thirdTodayFire,
+    }, "[prayer/amen] third-today check");
   }
 
   await db.insert(prayerRequestAmensTable).values({

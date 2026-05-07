@@ -1232,6 +1232,13 @@ export async function migrate() {
     // at the API surface (the settings toggle is hidden for them).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'en'`);
 
+    // ── Standard daily bell time → 09:30 ────────────────────────────────────
+    // Default went from 07:00 → 09:30 by user direction (a more
+    // pastoral hour). Idempotent: re-running this on a DB that's
+    // already moved past 07:00 is a no-op since the WHERE clause
+    // only catches rows still on the old default.
+    await run(client, `UPDATE users SET daily_bell_time = '09:30' WHERE daily_bell_time = '07:00' OR daily_bell_time IS NULL`);
+
     // Platform-owned feeds: drop NOT NULL on creator_user_id so editorial
     // feeds (phoebe-climate) can exist without a human creator. The
     // existing FK + ON DELETE CASCADE behaviour for user-created feeds

@@ -3193,7 +3193,7 @@ router.post("/beta/bells/send-invite/:userId", async (req, res): Promise<void> =
     const tz = row.timezone ?? "America/New_York";
     const invite = await sendAdminBellInvite(
       { id: row.id, email: row.email, timezone: row.timezone },
-      "07:00",
+      "09:30",
     );
 
     // Persist: enable the bell, default to 7 AM, and if the Google path
@@ -3202,7 +3202,7 @@ router.post("/beta/bells/send-invite/:userId", async (req, res): Promise<void> =
     await pool.query(
       `UPDATE users
           SET bell_enabled = true,
-              daily_bell_time = '07:00',
+              daily_bell_time = '09:30',
               timezone = COALESCE(timezone, $1),
               bell_calendar_event_id = COALESCE($2, bell_calendar_event_id)
         WHERE id = $3`,
@@ -3229,7 +3229,7 @@ router.post("/beta/bells/send-invite/:userId", async (req, res): Promise<void> =
 
 // ─── POST /api/beta/bells/send-invites ──────────────────────────────────────
 // Admin action: send a 7 AM ICS calendar invite to every user who does NOT
-// have a bell enabled yet. Sets bell_enabled=true + daily_bell_time='07:00'
+// have a bell enabled yet. Sets bell_enabled=true + daily_bell_time='09:30'
 // for each user so the daily sender will also pick them up going forward.
 //
 // Returns { attempted, sent, failed, users: [{ id, email, sent }] }
@@ -3266,7 +3266,7 @@ router.post("/beta/bells/send-invites", async (req, res): Promise<void> => {
         const tz = u.timezone ?? "America/New_York";
         const invite = await sendAdminBellInvite(
           { id: u.id, email: u.email, timezone: u.timezone },
-          "07:00",
+          "09:30",
         );
 
         // Enable bell + persist Google event ID if the API path succeeded.
@@ -3275,7 +3275,7 @@ router.post("/beta/bells/send-invites", async (req, res): Promise<void> => {
         await pool.query(
           `UPDATE users
               SET bell_enabled = true,
-                  daily_bell_time = '07:00',
+                  daily_bell_time = '09:30',
                   timezone = COALESCE(timezone, $1),
                   bell_calendar_event_id = COALESCE($2, bell_calendar_event_id)
             WHERE id = $3`,
@@ -3367,7 +3367,7 @@ router.post("/beta/bells/resend-ics-invites", async (req, res): Promise<void> =>
         // Respect whatever time the user originally picked. Default only
         // if the DB truly has nothing, which shouldn't happen for a row
         // with bell_enabled=true but we're belt-and-suspenders here.
-        const dailyBellTime = /^\d{2}:\d{2}$/.test(u.dailyBellTime ?? "") ? u.dailyBellTime! : "07:00";
+        const dailyBellTime = /^\d{2}:\d{2}$/.test(u.dailyBellTime ?? "") ? u.dailyBellTime! : "09:30";
         const invite = await sendAdminBellInvite(
           { id: u.id, email: u.email, timezone: u.timezone },
           dailyBellTime,
@@ -3511,7 +3511,7 @@ router.post("/beta/bells/reinvite-pending", async (req, res): Promise<void> => {
           );
         }
 
-        const dailyBellTime = /^\d{2}:\d{2}$/.test(u.dailyBellTime ?? "") ? u.dailyBellTime! : "07:00";
+        const dailyBellTime = /^\d{2}:\d{2}$/.test(u.dailyBellTime ?? "") ? u.dailyBellTime! : "09:30";
         const invite = await sendAdminBellInvite(
           { id: u.id, email: u.email, timezone: u.timezone },
           dailyBellTime,
