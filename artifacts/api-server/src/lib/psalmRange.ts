@@ -128,6 +128,52 @@ export function splitPsalmIntoChunks(
 }
 
 /**
+ * Split canticle content into N-verse chunks.
+ *
+ * Canticles don't carry numeric verse markers like psalms — instead a
+ * "verse" is a non-indented line plus any immediately-following
+ * indented continuation lines (the second hemistich after the BCP `*`
+ * caesura). Stanza separators (blank lines) attach to the preceding
+ * verse so the chunking respects the printed layout.
+ *
+ * Returns the verse-count + the chunked text. Callers can decide
+ * whether to chunk based on the count (e.g. only chunk if > 4).
+ */
+export function splitCanticleIntoChunks(
+  content: string,
+  versesPerChunk: number,
+): { verses: number; chunks: string[] } {
+  if (versesPerChunk <= 0) return { verses: 0, chunks: [content] };
+  const verses: string[][] = [];
+  let current: string[] | null = null;
+  for (const line of content.split("\n")) {
+    const isContinuation = /^\s/.test(line);
+    const isBlank = line.trim().length === 0;
+    if (!isContinuation && !isBlank) {
+      // Start of a new verse.
+      if (current) verses.push(current);
+      current = [line];
+    } else if (current) {
+      current.push(line);
+    } else {
+      // Pre-verse content (rare). Seed the first verse.
+      current = [line];
+    }
+  }
+  if (current) verses.push(current);
+
+  const chunks: string[] = [];
+  for (let i = 0; i < verses.length; i += versesPerChunk) {
+    const slice = verses.slice(i, i + versesPerChunk);
+    chunks.push(slice.map((v) => v.join("\n")).join("\n").replace(/\s+$/, ""));
+  }
+  return {
+    verses: verses.length,
+    chunks: chunks.length > 0 ? chunks : [content],
+  };
+}
+
+/**
  * Pretty label for a parsed reference. "PSALM 119:1-24" or "PSALM 23".
  */
 export function psalmEyebrow(ref: PsalmRef): string {

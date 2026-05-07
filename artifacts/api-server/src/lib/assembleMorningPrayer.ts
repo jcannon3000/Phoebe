@@ -21,6 +21,7 @@ import {
   sliceVersesByRange,
   psalmEyebrow,
   splitPsalmIntoChunks,
+  splitCanticleIntoChunks,
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
@@ -38,6 +39,7 @@ export type SlideType =
   | "psalm_title"
   | "psalm"
   | "lesson"
+  | "canticle_title"
   | "canticle"
   | "creed"
   | "lords_prayer"
@@ -110,6 +112,65 @@ function slide(
     metadata: {},
     ...overrides,
   };
+}
+
+// Push a canticle onto the slide list — single slide if it's short
+// enough (≤4 verses), otherwise a "Canticle N" title slide followed
+// by 4-verse chunked verse slides. Same shape as the psalm chunking
+// so the UI rhythm reads as one pattern across the office.
+function pushCanticle(
+  slidesArr: Slide[],
+  args: {
+    id: () => string;
+    canticleKey: string;
+    text: string;
+    emoji: string;
+    title: string | null;
+    bcpReference: string | null;
+  },
+): void {
+  const { id, canticleKey, text, emoji, title, bcpReference } = args;
+  const eyebrow = `CANTICLE · ${(title ?? canticleKey).toUpperCase()}`;
+  const numMatch = canticleKey.match(/canticle_(\d+)/);
+  const headlineNum = numMatch ? `Canticle ${numMatch[1]}` : (title ?? "Canticle");
+
+  const { verses, chunks } = splitCanticleIntoChunks(text, 4);
+  if (verses <= 4) {
+    // Short canticle — single slide as before.
+    slidesArr.push(
+      slide(id(), "canticle", emoji, eyebrow, text, {
+        title,
+        bcpReference,
+      }),
+    );
+    return;
+  }
+
+  // Long canticle: big title slide + verse-chunk slides.
+  slidesArr.push(
+    slide(id(), "canticle_title", emoji, eyebrow, "", {
+      title,
+      bcpReference,
+      isScrollable: false,
+      scrollHint: null,
+      metadata: { canticleKey, canticleHeadline: headlineNum },
+    }),
+  );
+  chunks.forEach((chunk, i) => {
+    slidesArr.push(
+      slide(id(), "canticle", emoji, eyebrow, chunk, {
+        title,
+        bcpReference,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: {
+          canticleKey,
+          canticleChunkIndex: i,
+          canticleChunkTotal: chunks.length,
+        },
+      }),
+    );
+  });
 }
 
 const PSALM_EMOJI: Record<number, string> = {};
@@ -579,18 +640,14 @@ export async function assembleMorningPrayer(
 
   // Canticle after OT.
   const afterOTData = texts[afterOT];
-  slides.push(
-    slide(
-      id(),
-      "canticle",
-      CANTICLE_EMOJI[afterOT] ?? "🌟",
-      `CANTICLE · ${(afterOTData?.title ?? afterOT).toUpperCase()}`,
-      getText(afterOT),
-      {
-        bcpReference: afterOTData?.bcpReference ?? null,
-      },
-    ),
-  );
+  pushCanticle(slides, {
+    id,
+    canticleKey: afterOT,
+    text: getText(afterOT),
+    emoji: CANTICLE_EMOJI[afterOT] ?? "🌟",
+    title: afterOTData?.title ?? null,
+    bcpReference: afterOTData?.bcpReference ?? null,
+  });
 
   // Second Lesson — Epistle (the new layout: MP shows OT + Epistle,
   // EP shows Gospel only). Skipped on feast days where the BCP
@@ -608,18 +665,14 @@ export async function assembleMorningPrayer(
 
   // Canticle after NT
   const afterNTData = texts[afterNT];
-  slides.push(
-    slide(
-      id(),
-      "canticle",
-      CANTICLE_EMOJI[afterNT] ?? "🌟",
-      `CANTICLE · ${(afterNTData?.title ?? afterNT).toUpperCase()}`,
-      getText(afterNT),
-      {
-        bcpReference: afterNTData?.bcpReference ?? null,
-      },
-    ),
-  );
+  pushCanticle(slides, {
+    id,
+    canticleKey: afterNT,
+    text: getText(afterNT),
+    emoji: CANTICLE_EMOJI[afterNT] ?? "🌟",
+    title: afterNTData?.title ?? null,
+    bcpReference: afterNTData?.bcpReference ?? null,
+  });
 
   // Creed
   slides.push(

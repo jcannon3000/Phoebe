@@ -19,6 +19,7 @@ import {
   sliceVersesByRange,
   psalmEyebrow,
   splitPsalmIntoChunks,
+  splitCanticleIntoChunks,
 } from "./psalmRange";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
 import { buildIntercessionSlides } from "./assembleIntercessions";
@@ -379,18 +380,43 @@ export async function assembleEveningPrayer(
   // on day; we use the canticle the season selector returns for the
   // post-NT slot. The two-canticle pattern at EP (one between lessons,
   // one after the second) collapses to one when there's only one lesson.
+  // Long canticles get a title slide + 4-verse-per-slide chunking;
+  // short ones (≤4 verses, e.g. Nunc Dimittis) ship as a single slide.
   const afterNTData = getTextData(afterNT);
-  slides.push(
-    slide(id(), "canticle", CANTICLE_EMOJI[afterNT] ?? "🌟",
-      afterNTData.title.toUpperCase(),
-      afterNTData.content,
-      {
+  const epEyebrow = afterNTData.title.toUpperCase();
+  const epEmoji = CANTICLE_EMOJI[afterNT] ?? "🌟";
+  const numMatch = afterNT.match(/canticle_(\d+)/);
+  const epHeadlineNum = numMatch ? `Canticle ${numMatch[1]}` : afterNTData.title;
+  const { verses: epVerseCount, chunks: epChunks } = splitCanticleIntoChunks(afterNTData.content, 4);
+  if (epVerseCount <= 4) {
+    slides.push(
+      slide(id(), "canticle", epEmoji, epEyebrow, afterNTData.content, {
+        title: afterNTData.title,
         bcpReference: afterNTData.bcpReference,
-        isScrollable: true,
-        scrollHint: "↓ continue · tap when ready",
-      },
-    ),
-  );
+      }),
+    );
+  } else {
+    slides.push(
+      slide(id(), "canticle_title", epEmoji, epEyebrow, "", {
+        title: afterNTData.title,
+        bcpReference: afterNTData.bcpReference,
+        metadata: { canticleKey: afterNT, canticleHeadline: epHeadlineNum },
+      }),
+    );
+    epChunks.forEach((chunk, i) => {
+      slides.push(
+        slide(id(), "canticle", epEmoji, epEyebrow, chunk, {
+          title: afterNTData.title,
+          bcpReference: afterNTData.bcpReference,
+          metadata: {
+            canticleKey: afterNT,
+            canticleChunkIndex: i,
+            canticleChunkTotal: epChunks.length,
+          },
+        }),
+      );
+    });
+  }
 
   // 12. The Apostles' Creed
   const creedData = getTextData("apostles_creed");

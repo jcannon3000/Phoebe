@@ -614,7 +614,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             // viewport. Applies equally to the full Daily Office
             // and the abbreviated Daily Devotions.
             const longTypes = new Set<string>([
-              "canticle",
               "creed",
               "general_thanksgiving",
               "suffrages",
@@ -624,14 +623,18 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               (currentSlide.content?.length ?? 0)
               + (currentSlide.callAndResponseLines?.reduce((acc, l) => acc + l.text.length, 0) ?? 0);
             const isShortEnough = bodyLength <= 320;
-            // Psalm slides now ship 4 verses each — short enough to
-            // breathe vertically centered on the page rather than
-            // top-aligning like a missal column.
+            // Psalm + canticle slides now ship 4 verses each — short
+            // enough to breathe vertically centered on the page
+            // rather than top-aligning like a missal column. Short
+            // canticles (≤4 verses, single slide) also benefit from
+            // centering since they're typically only a stanza or two.
             const centered =
               currentSlide.type === "intercessions"
               || currentSlide.type === "intercessions_portal"
               || currentSlide.type === "psalm_title"
               || currentSlide.type === "psalm"
+              || currentSlide.type === "canticle_title"
+              || currentSlide.type === "canticle"
               || (!isLongType && isShortEnough);
             return {
               display: "flex",
@@ -744,6 +747,75 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 </p>
               )}
             </div>
+          ) : currentSlide.type === "canticle_title" ? (
+            // Big "Canticle 8" headline, mirrors the psalm_title
+            // pattern. Subtitle ("The Canticle Appointed For This
+            // Morning") sits above; the canticle's full title (e.g.
+            // "The Song of Moses") sits below in italic so the reader
+            // knows what they're about to say.
+            (() => {
+              const meta = currentSlide.metadata as { canticleHeadline?: unknown } | undefined;
+              const headline =
+                typeof meta?.canticleHeadline === "string"
+                  ? meta.canticleHeadline
+                  : "Canticle";
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    minHeight: 240,
+                    textAlign: "center",
+                    gap: 16,
+                  }}
+                >
+                  <p
+                    style={{
+                      color: FAINT_GREEN,
+                      fontSize: 11,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {resolvedMode === "evening" || resolvedMode === "early-evening-devotion"
+                      ? "The Canticle Appointed For This Evening"
+                      : "The Canticle Appointed For This Morning"}
+                  </p>
+                  <h1
+                    className="title-glow-breathe"
+                    style={{
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: "clamp(48px, 9vw, 88px)",
+                      fontWeight: 700,
+                      letterSpacing: "-0.02em",
+                      color: WARM_TEXT,
+                      margin: 0,
+                      lineHeight: 1.0,
+                    }}
+                  >
+                    {headline}
+                  </h1>
+                  {currentSlide.title && (
+                    <p
+                      style={{
+                        fontSize: 16,
+                        fontStyle: "italic",
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        color: "rgba(200,212,192,0.75)",
+                        margin: 0,
+                      }}
+                    >
+                      {currentSlide.title.replace(/^Canticle\s+\d+\s*[—-]\s*/i, "")}
+                    </p>
+                  )}
+                </div>
+              );
+            })()
           ) : currentSlide.type === "intercessions" ? (
             (() => {
               const meta = currentSlide.metadata as
@@ -791,6 +863,29 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             >
               {(currentSlide.eyebrow || "PSALM").replace(/^PSALM\b/, "Psalm")}
             </p>
+          ) : currentSlide.type === "canticle" && (currentSlide.metadata as { canticleChunkIndex?: unknown } | undefined)?.canticleChunkIndex !== undefined ? (
+            // Chunked canticle slide — title slide already showed the
+            // big headline. Slim "Canticle 8" eyebrow so the reader
+            // doesn't lose place mid-rotation. Verses centered below.
+            (() => {
+              const meta = currentSlide.metadata as { canticleKey?: unknown } | undefined;
+              const key = typeof meta?.canticleKey === "string" ? meta.canticleKey : "";
+              const num = key.match(/canticle_(\d+)/)?.[1];
+              return (
+                <p
+                  style={{
+                    color: FAINT_GREEN,
+                    fontSize: 10,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                    fontWeight: 600,
+                  }}
+                >
+                  {num ? `Canticle ${num}` : "Canticle"}
+                </p>
+              );
+            })()
           ) : (
             <>
               <p
@@ -826,8 +921,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               </p>
               {/* Title slot. Intercession + psalm slides took
                   earlier branches (above), so we know currentSlide
-                  isn't either of those here. */}
-              {currentSlide.title && (
+                  isn't either of those here. The collect drops its
+                  Sunday-name title ("The Fifth Sunday of Easter")
+                  so the prayer text itself is the centered focus —
+                  the proper-name lives in the chrome's date label
+                  already, no need to repeat it on the slide. */}
+              {currentSlide.title && currentSlide.type !== "collect" && (
                 <h2
                   style={{
                     fontSize: 22,

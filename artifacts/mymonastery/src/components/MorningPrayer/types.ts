@@ -11,6 +11,9 @@ export type SlideType =
   | "psalm_title"
   | "psalm"
   | "lesson"
+  // Title-only slide for canticles longer than 4 verses — same big
+  // headline pattern as psalm_title.
+  | "canticle_title"
   | "canticle"
   | "creed"
   | "lords_prayer"
