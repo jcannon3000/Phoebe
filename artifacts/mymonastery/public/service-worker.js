@@ -17,7 +17,7 @@
  * is simpler and adequate for the "network degraded" scenario.
  */
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const SHELL_CACHE = `phoebe-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `phoebe-assets-${CACHE_VERSION}`;
 const SHELL_URLS = ["/", "/index.html", "/favicon.svg"];
@@ -125,4 +125,79 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Everything else: passthrough.
+});
+
+// ─── Web Push (VAPID) ───────────────────────────────────────────────────────
+// The server posts an encrypted JSON payload here when it's time to
+// remind the user. We unwrap it and show a system notification — same
+// lock-screen UX Android Chrome users get from native apps. Tap →
+// notificationclick handler focuses an existing tab if there is one,
+// otherwise opens a new one at the deep-link path.
+
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  let data;
+  try {
+    data = event.data.json();
+  } catch {
+    // Server should always send JSON. If we somehow get plain text,
+    // fall back to showing the bare string so the user gets *something*
+    // rather than a silent dropped notification.
+    data = { title: "Phoebe", body: event.data.text(), path: "/" };
+  }
+
+  const title = data.title || "Phoebe";
+  const options = {
+    body: data.body || "",
+    icon: "/favicon.png",
+    badge: "/favicon.png",
+    // tag groups duplicates — second push with same tag replaces the
+    // first instead of stacking. Mirrors APNs collapse-id semantics.
+    tag: data.tag || data.threadId || undefined,
+    // Custom data threaded through to notificationclick so we know
+    // where to deep-link.
+    data: { path: data.path || "/" },
+    // requireInteraction=false keeps Android's default behavior
+    // (auto-dismisses after a few seconds). The bell isn't urgent
+    // enough to camp on the lock screen.
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetPath = (event.notification.data && event.notification.data.path) || "/";
+  const targetUrl = new URL(targetPath, self.location.origin).href;
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      // Prefer focusing an existing Phoebe tab — opening a fresh tab
+      // every time a notification is tapped would litter the user's
+      // browser. We navigate the existing tab to the deep-link path so
+      // the in-app router lands on the right page.
+      for (const client of allClients) {
+        const url = new URL(client.url);
+        if (url.origin === self.location.origin) {
+          await client.focus();
+          if ("navigate" in client) {
+            try { await client.navigate(targetUrl); } catch { /* cross-origin nav not allowed; ignore */ }
+          }
+          return;
+        }
+      }
+      // No existing tab — open a new one.
+      await self.clients.openWindow(targetUrl);
+    })(),
+  );
+});
+
+// Fired when the push service rotates a subscription (rare but
+// happens, especially on Firefox). We can't re-register from the
+// service worker since we don't have the user's session — log it so
+// the next page load picks it up via the WebPushPermissionPrompt
+// re-registration check.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  console.warn("[sw] pushsubscriptionchange — subscription rotated, awaiting re-register on next visit");
 });

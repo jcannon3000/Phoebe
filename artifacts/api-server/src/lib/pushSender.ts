@@ -20,8 +20,21 @@
 import http2 from "node:http2";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { SignJWT, importPKCS8, type KeyLike } from "jose";
-import { db, deviceTokensTable } from "@workspace/db";
+import webpush from "web-push";
+import { db, deviceTokensTable, webPushSubscriptionsTable } from "@workspace/db";
 import { logger } from "./logger";
+
+// VAPID config for browser Web Push (Android Chrome / Firefox / Edge,
+// desktop too). Subject is required by the spec — must be either a
+// `mailto:` or `https:` URL identifying the sender, used by push
+// services for abuse contact. Falls through silently when unset so
+// dev environments without VAPID keys keep working.
+const VAPID_PUBLIC = process.env["VAPID_PUBLIC_KEY"] ?? null;
+const VAPID_PRIVATE = process.env["VAPID_PRIVATE_KEY"] ?? null;
+const VAPID_SUBJECT = process.env["VAPID_SUBJECT"] ?? "mailto:hello@withphoebe.app";
+if (VAPID_PUBLIC && VAPID_PRIVATE) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+}
 
 const APNS_ENV = (process.env["APNS_ENVIRONMENT"] ?? "production").toLowerCase();
 const APNS_HOST = APNS_ENV === "sandbox"
@@ -117,51 +130,141 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
   // sanitizing here means callers can pass moment / community names with
   // emoji and we still ship a clean lock-screen string.
   payload = { ...payload, title: clean(payload.title), body: clean(payload.body) };
-  const tokens = await db.select({
-    id: deviceTokensTable.id,
-    platform: deviceTokensTable.platform,
-    token: deviceTokensTable.token,
-  })
-    .from(deviceTokensTable)
-    .where(and(
-      eq(deviceTokensTable.userId, userId),
-      isNull(deviceTokensTable.invalidatedAt),
-    ));
+  const [tokens, webSubs] = await Promise.all([
+    db.select({
+      id: deviceTokensTable.id,
+      platform: deviceTokensTable.platform,
+      token: deviceTokensTable.token,
+    })
+      .from(deviceTokensTable)
+      .where(and(
+        eq(deviceTokensTable.userId, userId),
+        isNull(deviceTokensTable.invalidatedAt),
+      )),
+    db.select({
+      id: webPushSubscriptionsTable.id,
+      endpoint: webPushSubscriptionsTable.endpoint,
+      p256dh: webPushSubscriptionsTable.p256dh,
+      auth: webPushSubscriptionsTable.auth,
+    })
+      .from(webPushSubscriptionsTable)
+      .where(and(
+        eq(webPushSubscriptionsTable.userId, userId),
+        isNull(webPushSubscriptionsTable.invalidatedAt),
+      )),
+  ]);
 
-  if (tokens.length === 0) {
+  const totalTargets = tokens.length + webSubs.length;
+  if (totalTargets === 0) {
     // Visible log so we can tell from Railway whether a push was
     // intended but had no target. "Tried to send to user X but they
     // have no active device tokens" almost always means the client
     // POST to /api/push/device-token failed silently on first launch.
     logger.info(
       { userId, title: payload.title },
-      "[push] no active device tokens — skipping send"
+      "[push] no active device tokens or web subs — skipping send"
     );
     return { attempted: 0, succeeded: 0, invalidated: 0 };
   }
   logger.info(
-    { userId, tokenCount: tokens.length, title: payload.title },
+    { userId, tokenCount: tokens.length, webSubCount: webSubs.length, title: payload.title },
     "[push] sending"
   );
 
-  const result: SendResult = { attempted: tokens.length, succeeded: 0, invalidated: 0 };
+  const result: SendResult = { attempted: totalTargets, succeeded: 0, invalidated: 0 };
   const invalidTokenIds: number[] = [];
+  const invalidWebSubIds: number[] = [];
 
   for (const t of tokens) {
-    if (t.platform !== "ios") continue; // Android path to be added later
+    if (t.platform !== "ios") continue; // Android-native path to be added later
     const outcome = await sendOneApns(t.token, payload);
     if (outcome === "ok") result.succeeded += 1;
     else if (outcome === "invalid") invalidTokenIds.push(t.id);
+  }
+
+  for (const sub of webSubs) {
+    const outcome = await sendOneWebPush(sub, payload);
+    if (outcome === "ok") result.succeeded += 1;
+    else if (outcome === "invalid") invalidWebSubIds.push(sub.id);
   }
 
   if (invalidTokenIds.length > 0) {
     await db.update(deviceTokensTable)
       .set({ invalidatedAt: sql`now()` })
       .where(inArray(deviceTokensTable.id, invalidTokenIds));
-    result.invalidated = invalidTokenIds.length;
+    result.invalidated += invalidTokenIds.length;
+  }
+  if (invalidWebSubIds.length > 0) {
+    await db.update(webPushSubscriptionsTable)
+      .set({ invalidatedAt: sql`now()` })
+      .where(inArray(webPushSubscriptionsTable.id, invalidWebSubIds));
+    result.invalidated += invalidWebSubIds.length;
   }
 
   return result;
+}
+
+type WebPushOutcome = "ok" | "invalid" | "error" | "stub";
+
+/**
+ * Send a single Web Push (VAPID). Returns:
+ *   "ok"      — push service accepted (201)
+ *   "invalid" — 404/410 (subscription gone — user revoked permission,
+ *               cleared site data, or it expired). Caller invalidates.
+ *   "error"   — any other failure (5xx, network). Caller retries next tick.
+ *   "stub"    — VAPID env vars unset; logged and skipped.
+ */
+async function sendOneWebPush(
+  sub: { endpoint: string; p256dh: string; auth: string },
+  payload: PushPayload,
+): Promise<WebPushOutcome> {
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+    logger.info({
+      webpush: "stub",
+      endpoint: sub.endpoint.slice(0, 40) + "…",
+      payload,
+    }, "[push] VAPID_* env vars not set — would have sent web push");
+    return "stub";
+  }
+
+  // Service worker reads this JSON in its `push` listener and turns
+  // it into a system notification. Keep the field shape stable —
+  // the SW depends on it (title, body, path, tag).
+  const json = JSON.stringify({
+    title: payload.title,
+    body: payload.body,
+    path: payload.path ?? "/",
+    tag: payload.collapseId ?? payload.threadId ?? undefined,
+    threadId: payload.threadId ?? undefined,
+  });
+
+  try {
+    await webpush.sendNotification(
+      {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth },
+      },
+      json,
+      {
+        // TTL controls how long the push service holds the message
+        // if the device is offline. 24h matches the daily cadence —
+        // an old bell waiting in queue is no longer useful.
+        TTL: 60 * 60 * 24,
+        // urgency=high mirrors APNs priority=10; the push service
+        // delivers immediately even if the device is in deep sleep.
+        urgency: "high",
+      },
+    );
+    return "ok";
+  } catch (err) {
+    const status = (err as { statusCode?: number } | null)?.statusCode;
+    if (status === 404 || status === 410) {
+      // Subscription expired or user revoked permission — drop it.
+      return "invalid";
+    }
+    logger.warn({ err, status, endpoint: sub.endpoint.slice(0, 40) + "…" }, "[push] web-push send failed");
+    return status && status >= 400 && status < 500 ? "invalid" : "error";
+  }
 }
 
 type ApnsOutcome = "ok" | "invalid" | "error" | "stub";

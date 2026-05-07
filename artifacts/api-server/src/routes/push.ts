@@ -1,9 +1,23 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
 import { and, eq, sql } from "drizzle-orm";
-import { db, deviceTokensTable } from "@workspace/db";
+import { db, deviceTokensTable, webPushSubscriptionsTable } from "@workspace/db";
 
 const router: IRouter = Router();
+
+// VAPID public key — handed to the browser so it can register a
+// subscription that's bound to OUR private key. Public-by-design;
+// served unauthenticated since the browser needs it before the user
+// is necessarily signed in. Returns 503 when unconfigured so the
+// client can stay quiet rather than registering against a dead key.
+router.get("/push/vapid-public-key", (_req, res): void => {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  if (!publicKey) {
+    res.status(503).json({ error: "Web push not configured" });
+    return;
+  }
+  res.json({ publicKey });
+});
 
 function getUser(req: any): { id: number } | null {
   return (req as any).user ?? null;
@@ -108,6 +122,107 @@ router.delete("/push/device-token", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[push] device-token delete failed:", err);
     res.status(500).json({ error: "Failed to unregister device" });
+  }
+});
+
+// ─── POST /api/push/web-subscription ────────────────────────────────────────
+// Browser (Android Chrome / Firefox / desktop) calls this after the
+// user grants notification permission. The PushSubscription handed to
+// JS includes an endpoint URL plus encryption keys; we store it so the
+// bell sender can post to that endpoint with web-push later.
+//
+// Idempotent on (userId, endpoint) — re-registering the same browser
+// just bumps last_seen_at and clears any prior invalidation (e.g.
+// user re-granted permission after revoking it).
+const webSubscriptionSchema = z.object({
+  endpoint: z.string().url().min(20).max(500),
+  keys: z.object({
+    p256dh: z.string().min(20).max(200),
+    auth: z.string().min(10).max(100),
+  }),
+  userAgent: z.string().max(500).optional(),
+});
+
+router.post("/push/web-subscription", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = webSubscriptionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid payload", detail: parsed.error.format() });
+    return;
+  }
+
+  try {
+    await db.insert(webPushSubscriptionsTable)
+      .values({
+        userId: user.id,
+        endpoint: parsed.data.endpoint,
+        p256dh: parsed.data.keys.p256dh,
+        auth: parsed.data.keys.auth,
+        userAgent: parsed.data.userAgent ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [webPushSubscriptionsTable.userId, webPushSubscriptionsTable.endpoint],
+        set: {
+          p256dh: parsed.data.keys.p256dh,
+          auth: parsed.data.keys.auth,
+          userAgent: parsed.data.userAgent ?? null,
+          lastSeenAt: sql`now()`,
+          invalidatedAt: null,
+        },
+      });
+
+    console.log(
+      `[push] web-subscription registered: userId=${user.id} ` +
+      `endpoint=${parsed.data.endpoint.slice(0, 40)}…`
+    );
+
+    // Granting browser-push permission is the bell opt-in for web,
+    // mirroring the iOS device-token path. Default 07:00 local if the
+    // user hasn't picked a time yet.
+    try {
+      await db.execute(sql`
+        UPDATE users
+        SET bell_enabled = TRUE,
+            daily_bell_time = COALESCE(daily_bell_time, '07:00'),
+            bell_calendar_event_id = NULL
+        WHERE id = ${user.id}
+      `);
+    } catch (err) {
+      console.warn("[push] bell auto-enable failed:", err);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[push] web-subscription upsert failed:", err);
+    res.status(500).json({ error: "Failed to register web subscription" });
+  }
+});
+
+// ─── DELETE /api/push/web-subscription ──────────────────────────────────────
+// Called when the user disables notifications in Settings or revokes
+// permission. We scope to the caller's userId so one user can't drop
+// another user's subscription.
+router.delete("/push/web-subscription", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const { endpoint } = req.body as { endpoint?: string };
+  if (!endpoint) {
+    res.status(400).json({ error: "endpoint required" });
+    return;
+  }
+
+  try {
+    await db.delete(webPushSubscriptionsTable).where(and(
+      eq(webPushSubscriptionsTable.userId, user.id),
+      eq(webPushSubscriptionsTable.endpoint, endpoint),
+    ));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[push] web-subscription delete failed:", err);
+    res.status(500).json({ error: "Failed to unregister web subscription" });
   }
 });
 

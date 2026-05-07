@@ -876,6 +876,26 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS device_tokens_user_platform_token_idx ON device_tokens (user_id, platform, token)`);
 
+    // ── web_push_subscriptions — VAPID push subs for browser users ────────
+    // Android Chrome / Firefox / Edge etc. Once the user grants
+    // notification permission, the browser hands us a PushSubscription
+    // (endpoint URL + p256dh + auth keys) which we store here. The bell
+    // sender posts encrypted payloads to that endpoint with web-push.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS web_push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        invalidated_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS web_push_subscriptions_user_endpoint_idx ON web_push_subscriptions (user_id, endpoint)`);
+
     // ── Prayer-request Amens ───────────────────────────────────────────────
     // One row per "Amen" tap on someone else's prayer request. The owner sees
     // an aggregate count (today / all-time) of how many times their request

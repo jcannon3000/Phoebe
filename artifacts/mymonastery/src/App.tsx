@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
 import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
+import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { IOSAppDownloadPrompt } from "@/components/IOSAppDownloadPrompt";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -355,6 +356,7 @@ function App() {
         <ErrorBoundary>
           <GlobalButtonHaptics />
           <PushPermissionPrompt />
+          <WebPushPermissionPrompt />
           <IOSAppDownloadPrompt />
           <ForegroundPushToast />
           <NetworkBanner />
