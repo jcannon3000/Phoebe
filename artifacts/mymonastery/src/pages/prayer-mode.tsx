@@ -779,19 +779,29 @@ function SlideContent({
 
       {slide.kind === "intercession" && (
         <>
+          {/* Up-to-7 prayed-this-week avatar stack. Same visual
+              vocabulary as the dashboard's Daily Prayer card — small
+              overlapping circles with a slim background-matching
+              border that punches the rounded edges. Server fills
+              `slide.communityFaces` with feed subscribers who have
+              actually posted to this moment in the rolling 7-day
+              window (preferring members with avatars when more than
+              7 candidates qualify; backfilled with initials-only
+              members otherwise). The "X people have prayed this
+              this week" line below labels what the stack represents. */}
           {slide.communityFaces && slide.communityFaces.length > 0 && (
             <div
               className="flex items-center -space-x-2"
               style={{ marginTop: "-2px" }}
             >
-              {slide.communityFaces.map((f) => (
+              {slide.communityFaces.slice(0, 7).map((f) => (
                 <div
                   key={f.email}
                   title={f.name}
                   className="rounded-full overflow-hidden shrink-0"
                   style={{
-                    width: 28,
-                    height: 28,
+                    width: 30,
+                    height: 30,
                     border: "2px solid #091A10",
                     background: "#1A4A2E",
                   }}
@@ -804,7 +814,7 @@ function SlideContent({
                     />
                   ) : (
                     <div
-                      className="w-full h-full flex items-center justify-center text-[10px] font-semibold"
+                      className="w-full h-full flex items-center justify-center text-[11px] font-semibold"
                       style={{ color: "#A8C5A0" }}
                     >
                       {f.name
