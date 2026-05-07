@@ -422,9 +422,15 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
       const rid = meta.requestId;
       apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
         .then(() => {
-          // Same invalidation prayer-mode does — keeps the dashboard
-          // "prayed today" state + the prayer-list amen counts in sync.
+          // Two invalidations:
+          //   • /api/prayer-requests — the prayer-list feed; updates the
+          //     dashboard's "prayed today" state + per-card amen counts.
+          //   • /api/prayer-requests/by-id/:id — the detail page's query
+          //     for THIS request specifically. Without this the detail
+          //     page's "Prayed N times" line went stale until the user
+          //     manually navigated away and back.
           queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+          queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${rid}`] });
         })
         .catch(() => { /* best-effort */ });
       return;
@@ -1017,37 +1023,43 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           >
             {slideIdx + 1} · {sectionLabel}
           </p>
-          <button
-            type="button"
-            // Intercession slides swap "Next" for "Amen" — same button,
-            // same place, same visual weight, but the click logs the
-            // amen via the right endpoint for the slide's source so it
-            // counts toward the recipient's metrics + the bell
-            // scheduler's "prayed today" gate. Office + Devotion both
-            // route through this viewer so the wiring covers Morning
-            // Prayer, Evening Prayer, In the Morning, and In the Early
-            // Evening simultaneously.
-            onClick={
+          {(() => {
+            // Slide types that finish on "Amen" rather than "Next":
+            // intercessions (already amen-bound), the Lord's Prayer,
+            // and any Collect / Prayer for Mission. The user reads
+            // through the prayer, taps "Amen" to seal it, and only
+            // then advances. Same button visual, just truer copy.
+            const isAmenSlide =
               isIntercessionSlide
-                ? amen
-                : atEnd ? onBack : next
-            }
-            className="rounded-full transition-opacity"
-            style={{
-              background: BUTTON_BG,
-              color: WARM_TEXT,
-              border: "none",
-              padding: "6px 16px",
-              fontSize: 12,
-              fontFamily: SPACE_GROTESK,
-              fontWeight: 600,
-              letterSpacing: "0.02em",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {isIntercessionSlide ? "Amen" : atEnd ? "Done" : "Next"}
-          </button>
+              || currentSlide.type === "lords_prayer"
+              || currentSlide.type === "collect"
+              || currentSlide.type === "prayer_for_mission";
+            const label = atEnd ? "Done" : (isAmenSlide ? "Amen" : "Next");
+            const handler = isIntercessionSlide
+              ? amen
+              : atEnd ? onBack : next;
+            return (
+              <button
+                type="button"
+                onClick={handler}
+                className="rounded-full transition-opacity"
+                style={{
+                  background: BUTTON_BG,
+                  color: WARM_TEXT,
+                  border: "none",
+                  padding: "6px 16px",
+                  fontSize: 12,
+                  fontFamily: SPACE_GROTESK,
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })()}
         </div>
       </nav>
     </div>

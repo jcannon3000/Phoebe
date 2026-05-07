@@ -1915,11 +1915,18 @@ export default function PrayerModePage() {
       const rid = current.requestId;
       apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
         .then(() => {
-          // Refresh the prayer-requests cache so myAmenedToday flips to
-          // true. Drives the dashboard's partial-progress state ("X more
-          // prayers / Continue praying") and the slideshow's resume-where-
-          // you-left-off if the user re-enters mid-session.
+          // Two invalidations:
+          //   • /api/prayer-requests — the prayer-list feed; flips
+          //     myAmenedToday and updates per-card amen counts. Drives
+          //     the dashboard's partial-progress state ("X more
+          //     prayers / Continue praying") and this slideshow's
+          //     resume-where-you-left-off behaviour on re-entry.
+          //   • /api/prayer-requests/by-id/:id — the detail page's
+          //     query for THIS request specifically. Without it the
+          //     "Prayed N times" line on /prayer-requests/:id went
+          //     stale until the user navigated away and back.
           queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+          queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${rid}`] });
         })
         .catch(() => {
           /* swallow — amen logging is best-effort, never blocks prayer flow */

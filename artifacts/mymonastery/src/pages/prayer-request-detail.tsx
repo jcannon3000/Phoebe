@@ -395,9 +395,18 @@ export default function PrayerRequestDetailPage() {
                   fontFamily: "'Space Grotesk', sans-serif",
                 }}
               >
+                {/* Wording matches the community-metrics page: count is
+                    distinct (user, day-in-owner-tz) pairs, which is the
+                    "times prayed" definition (one prayer per person per
+                    day, no matter how many taps). The earlier "X people
+                    have prayed" copy was misleading — a single person
+                    praying on three days drove the number to 3 even
+                    though it was one person, and the metrics page's
+                    "Times prayed" used the same count. Same label
+                    everywhere now. */}
                 {data.amenCountTotal === 1
-                  ? "1 person has prayed for this so far."
-                  : `${data.amenCountTotal} people have prayed for this so far.`}
+                  ? "Prayed 1 time so far."
+                  : `Prayed ${data.amenCountTotal} times so far.`}
               </p>
             )}
 
