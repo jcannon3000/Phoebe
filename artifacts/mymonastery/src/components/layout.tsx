@@ -61,17 +61,16 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "👥", label: "People",      path: "/people" },
     { divider: true },
     // Liturgy section — book of common prayer reference content.
-    // Daily Office (Morning + Evening Prayer Rite II) is still
-    // beta-gated; lessons render as references for readers to open
-    // in their own bible.
+    // Daily Office (Morning + Evening Prayer Rite II) and the
+    // Daily Devotions (BCP pp. 137 + 139, the abbreviated morning +
+    // early-evening forms) are now visible to every signed-in user.
+    // Lessons render as references for readers to open in their own
+    // bible; the Office cache is content-addressable so the load is
+    // cheap.
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
-    ...(rawIsBeta ? [{ emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" }] : []),
-    // Daily Devotions (BCP pp. 137 + 139) — abbreviated morning +
-    // early-evening forms. Same beta gate as the full Office until
-    // the surface settles. Psalm slot uses the day's lectionary
-    // psalm so the rhythm tracks with the Office.
-    ...(rawIsBeta ? [{ emoji: "🌿", label: "Daily Devotions", path: "/bcp/daily-devotions" }] : []),
+    { emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" },
+    { emoji: "🌿", label: "Daily Devotions", path: "/bcp/daily-devotions" },
     { divider: true },
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },

@@ -1070,69 +1070,55 @@ function ClosingSlide({
         gap: 28,
       }}
     >
-      {/* Celebration burst still fires on firstToday — kept for the
-          satisfying entrance — but the resting headline below is the
-          community count, not a streak number. */}
-      {celebration && (
-        <StreakCelebration streak={celebration.streak} />
-      )}
-
-      {/* Headline: people-prayed-with count. Only rendered if the
-          celebration animation isn't running (otherwise we have two
-          big numbers on screen). Falls back to a quiet "Held in
-          prayer" eyebrow when the count is zero, so a first-ever
-          session before any garden activity still feels complete. */}
-      {!celebration && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col items-center"
+      {/* Headline: people-prayed-for count. The streak-celebration
+          burst that used to overlay this on firstToday was retired
+          per user direction — the closing slide is meant to
+          highlight community ("you prayed alongside N people"), not
+          a personal streak. The count below now ALWAYS renders;
+          firstToday-only behavior moves to the streak-pill in the
+          chrome (out of the closing slide's focal area). */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex flex-col items-center"
+      >
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          <p
-            className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            {/* Was "You prayed with" — read as "X people prayed
-                alongside me", which conflicted with per-slide
-                "N people have prayed this this week" copy and made
-                the user expect the two numbers to match. They don't:
-                the slide count is intercession-scoped, this count
-                is people-whose-requests-I-prayed-for-scoped. New
-                wording highlights the direction of the action. */}
-            You prayed for
-          </p>
-          {peopleCount > 0 ? (
-            <>
-              <p
-                className="font-bold leading-none"
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  color: "#C8D4C0",
-                  fontSize: 88,
-                  letterSpacing: "-0.04em",
-                  marginTop: 6,
-                }}
-              >
-                {peopleCount}
-              </p>
-              <p
-                className="text-sm mt-1"
-                style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                {peopleCount === 1 ? "person this week" : "people this week"}
-              </p>
-            </>
-          ) : (
+          You prayed for
+        </p>
+        {peopleCount > 0 ? (
+          <>
             <p
-              className="text-[22px] mt-3 italic"
-              style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}
+              className="font-bold leading-none"
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                color: "#C8D4C0",
+                fontSize: 88,
+                letterSpacing: "-0.04em",
+                marginTop: 6,
+              }}
             >
-              You held the world in prayer.
+              {peopleCount}
             </p>
-          )}
-        </motion.div>
-      )}
+            <p
+              className="text-sm mt-1"
+              style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              {peopleCount === 1 ? "person this week" : "people this week"}
+            </p>
+          </>
+        ) : (
+          <p
+            className="text-[22px] mt-3 italic"
+            style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}
+          >
+            You held the world in prayer.
+          </p>
+        )}
+      </motion.div>
 
       {/* Avatar rail — up to 5 + tail. Hidden if no co-prayers (e.g.
           first-ever session, or a quiet week with only the user's own

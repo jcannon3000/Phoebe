@@ -2,13 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { playOpeningSwell, triggerAmenFeedback, triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { RequestWordField } from "@/components/RequestWordField";
+import { PrayerKindPill } from "@/components/prayer-kind-pill";
 
-// Dedicated landing page for "X left a word of comfort on your prayer
-// request" pushes. Mirrors the prayer-mode slideshow's visual language —
-// dark forest background, Playfair Display body, avatar pulse — so the
-// tap-from-notification experience feels like stepping into the same
-// chapel as the daily prayer slideshow rather than into a settings list.
+// Deep-link landing for "X is asking for your prayers" (and the
+// other prayer-request pushes — first amen, third amen, word of
+// comfort, renewal nudge). The slide is intentionally a 1:1 copy of
+// the slideshow's `kind === "request"` slide: same author face +
+// pulse, same eyebrow + kind pill, same italic Georgia body, same
+// word-of-comfort composer, same 7-second-hold Amen button.
+//
+// Owner branch (rare here — the new-prayer-request push doesn't
+// target the author) keeps the engagement-history view: latest
+// amen avatar pulse, count line, full pray-er rail, every word.
 
 type PrayerWord = {
   id: number;
@@ -28,119 +35,17 @@ type PrayerAmen = {
 type PrayerRequestDetail = {
   id: number;
   body: string;
+  kind: string | null;
   ownerId: number;
   ownerName: string | null;
   ownerAvatarUrl: string | null;
   viewerIsOwner: boolean;
   words: PrayerWord[];
-  // Owner-only — empty array for non-owner viewers. Server already
-  // dedupes (user, calendar-day in owner-tz) so we can render straight
-  // from this list without extra grouping.
   amens: PrayerAmen[];
   amenCountTotal: number;
+  myWord: string | null;
+  myAmenedToday: boolean;
 };
-
-// Inline compose for a viewer's "word of comfort" on this request —
-// mirrors the field on the prayer-mode slideshow so the experience
-// matches whether the viewer arrives from the bell push or the daily
-// slideshow. Submits to POST /api/prayer-requests/:id/word; the route
-// idempotently inserts/updates so a re-tap from the same viewer just
-// edits their existing word.
-function RequestWordField({ requestId }: { requestId: number }) {
-  const queryClient = useQueryClient();
-  const [draft, setDraft] = useState("");
-  const [submittedWord, setSubmittedWord] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit() {
-    const content = draft.trim();
-    if (!content || submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content });
-      setSubmittedWord(content);
-      setDraft("");
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    } catch (err: unknown) {
-      const raw = err instanceof Error ? err.message : String(err);
-      const friendly = /closed|expired|answered/i.test(raw)
-        ? "This prayer is closed — can't leave a word."
-        : /unauthorized|401/i.test(raw)
-          ? "Please sign in and try again."
-          : /network|failed to fetch|offline/i.test(raw)
-            ? "No connection — try again in a moment."
-            : "Couldn't send your word. Tap again?";
-      setError(friendly);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  if (submittedWord) {
-    return (
-      <div
-        className="w-full rounded-2xl px-5 py-3 text-left mt-2"
-        style={{
-          background: "rgba(46,107,64,0.08)",
-          border: "1px solid rgba(46,107,64,0.18)",
-        }}
-      >
-        <p className="text-[10px] uppercase tracking-[0.14em] mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-          Your word
-        </p>
-        <p className="text-[14px] italic" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
-          “{submittedWord}”
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full mt-2">
-      <div
-        className="w-full rounded-full px-4 py-1.5 flex items-center gap-2"
-        style={{
-          background: "rgba(46,107,64,0.1)",
-          border: error ? "1px solid rgba(196,122,101,0.6)" : "1px solid rgba(46,107,64,0.25)",
-        }}
-      >
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => { setDraft(e.target.value); if (error) setError(null); }}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
-          placeholder="Leave a word of comfort…"
-          maxLength={120}
-          className="word-of-comfort-input flex-1 bg-transparent outline-none text-[14px] py-1.5"
-          style={{
-            color: "#E8E4D8",
-            fontSize: 16,
-            background: "transparent",
-            boxShadow: "none",
-            WebkitAppearance: "none",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        />
-        <button
-          onClick={submit}
-          disabled={!draft.trim() || submitting}
-          aria-label="Send word"
-          className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-        >
-          {submitting ? "…" : "→"}
-        </button>
-      </div>
-      {error && (
-        <p className="text-[12px] mt-1.5 px-2" style={{ color: "#C47A65" }} role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
 
 function initials(name: string): string {
   return name
@@ -150,6 +55,73 @@ function initials(name: string): string {
     .join("");
 }
 
+// 7-second pause-before-Amen, byte-for-byte the same as the
+// slideshow's AmenButton (prayer-mode.tsx). Lifted in here so the
+// notification deep-link slide feels identical to the slideshow
+// surface — same wash animation, same haptic on reveal, same
+// medium impact on tap. Re-mounts (and therefore restarts the
+// timer) when slideKey changes; here that's a no-op because the
+// slide is the page itself, but we keep the prop for parity.
+function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdvance: () => void }) {
+  const HOLD_MS = 7000;
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setReady(true);
+      try {
+        window.dispatchEvent(
+          new CustomEvent("phoebe:haptic", { detail: { style: "light" } }),
+        );
+      } catch { /* non-fatal */ }
+    }, HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [slideKey]);
+
+  return (
+    <button
+      onClick={() => { if (ready) onAdvance(); }}
+      disabled={!ready}
+      aria-disabled={!ready}
+      aria-label={ready ? "Amen" : "Hold a moment"}
+      className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
+      style={{
+        background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
+        border: `1px solid ${ready ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
+        color: "#F0EDE6",
+        cursor: ready ? "pointer" : "default",
+        minWidth: 140,
+        transition: ready
+          ? "background-color 360ms ease-out, border-color 360ms ease-out"
+          : "none",
+      }}
+    >
+      <span
+        aria-hidden
+        key={slideKey}
+        className="absolute left-0 top-0 bottom-0 amen-progress-fill"
+        style={{
+          background: "rgba(46,107,64,0.45)",
+          pointerEvents: "none",
+          opacity: ready ? 0 : 1,
+          transition: "opacity 360ms ease-out",
+        }}
+      />
+      <span
+        style={{
+          position: "relative",
+          opacity: ready ? 1 : 0,
+          transform: ready ? "translateY(0)" : "translateY(2px)",
+          transition: "opacity 280ms ease-out, transform 280ms ease-out",
+          display: "inline-block",
+        }}
+      >
+        Amen →
+      </span>
+    </button>
+  );
+}
+
 export default function PrayerRequestDetailPage() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/prayer-requests/:id");
@@ -157,11 +129,6 @@ export default function PrayerRequestDetailPage() {
   const search = useSearch();
   const queryClient = useQueryClient();
 
-  // ?renew=1 — set by the 1-day-left renewal push so the owner lands
-  // on a renew/release decision UI instead of the read-only detail
-  // view. Surfaces the running amen count + a renew button + a release
-  // button so the owner can decide whether to carry the request another
-  // 7 days or let it close.
   const showRenewSlide = useMemo(() => {
     return new URLSearchParams(search).get("renew") === "1";
   }, [search]);
@@ -172,20 +139,17 @@ export default function PrayerRequestDetailPage() {
     enabled: Number.isFinite(id),
   });
 
-  // One-tap amen for the viewer who arrived via the
-  // "{Name} is asking for your prayers" push. Same endpoint the
-  // slideshow uses, same per-day throttle on the server side. After a
-  // successful tap we flip a local `amened` flag so the button shows
-  // a quiet acknowledgement instead of inviting another tap. We also
-  // refresh the detail query so the owner-side count stays current
-  // when they navigate here next.
   const [amened, setAmened] = useState(false);
   const amenMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/prayer-requests/${id}/amen`),
     onSuccess: () => {
-      triggerSubmitFeedback();
+      // Same feedback the slideshow fires on Amen — a medium-impact
+      // haptic + the chapel chime. Keeps the deep-link slide feeling
+      // like a slide, not a settings row.
+      try { triggerAmenFeedback(); } catch { /* non-fatal */ }
       setAmened(true);
       queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
   });
 
@@ -207,9 +171,9 @@ export default function PrayerRequestDetailPage() {
     },
   });
 
-  // Match prayer-mode's chrome: paint Safari/WebView background to the
-  // slide bg, lock body scroll, and play the opening swell + a medium
-  // haptic on arrival so the tap feels grounded the moment the page lands.
+  // Match prayer-mode chrome — paint the WebView background to the
+  // slide bg, lock body scroll, play the opening swell + a medium
+  // haptic on arrival.
   useEffect(() => {
     const SLIDE_BG = "#0C1F12";
     const html = document.documentElement;
@@ -235,10 +199,13 @@ export default function PrayerRequestDetailPage() {
     };
   }, []);
 
+  // ── Vertically-centered slide column ───────────────────────────────────
+  const SLIDE_BG = "#0C1F12";
+
   return (
     <div
       style={{
-        background: "#0C1F12",
+        background: SLIDE_BG,
         minHeight: "100dvh",
         position: "relative",
       }}
@@ -249,9 +216,12 @@ export default function PrayerRequestDetailPage() {
           maxWidth: 560,
           margin: "0 auto",
           minHeight: "100dvh",
-          justifyContent: "flex-start",
-          paddingTop: "clamp(64px, 16dvh, 180px)",
-          paddingBottom: 40,
+          // Center vertically — matches the slideshow's slide layout
+          // so the view reads as "you walked into the chapel," not
+          // "you opened a settings page."
+          justifyContent: "center",
+          paddingTop: "clamp(48px, 12dvh, 120px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 56px)",
         }}
       >
         {isLoading && (
@@ -262,49 +232,115 @@ export default function PrayerRequestDetailPage() {
 
         {!isLoading && (error || !data) && (
           <p className="text-sm" style={{ color: "rgba(200,212,192,0.55)" }}>
-            We couldn’t load this prayer request.
+            We couldn't load this prayer request.
           </p>
         )}
 
-        {data && (
+        {data && !data.viewerIsOwner && (
+          // ── Recipient view: 1:1 with the slideshow's request slide ──
+          // Author face + name + Prayer Request eyebrow + kind pill +
+          // body + word-of-comfort composer + 7s Amen.
           <div className="w-full flex flex-col items-center text-center gap-5">
-            {!data.viewerIsOwner && (
-              <div className="flex flex-col items-center gap-3">
-                {data.ownerAvatarUrl ? (
-                  <img
-                    src={data.ownerAvatarUrl}
-                    alt={data.ownerName ?? "Prayer author"}
-                    className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
-                  />
-                ) : (
-                  <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
-                    style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                  >
-                    {initials(data.ownerName ?? "")}
-                  </div>
-                )}
-                {data.ownerName && (
-                  <p
-                    className="text-[14px]"
-                    style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
-                  >
-                    {data.ownerName}
-                  </p>
-                )}
-              </div>
-            )}
+            {/* Author avatar with the soft prayer-avatar-pulse breathing
+                border — same visual heartbeat the slideshow uses to
+                anchor each request to a specific person. */}
+            <div className="flex flex-col items-center gap-3">
+              {data.ownerAvatarUrl ? (
+                <img
+                  src={data.ownerAvatarUrl}
+                  alt={data.ownerName ?? "Prayer author"}
+                  className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
+                />
+              ) : (
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
+                  style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                >
+                  {initials(data.ownerName ?? "")}
+                </div>
+              )}
+              {data.ownerName && (
+                <p
+                  className="text-[14px]"
+                  style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
+                >
+                  {data.ownerName}
+                </p>
+              )}
+            </div>
 
+            {/* Eyebrow + kind pill on a single row, same shape as
+                the slideshow. */}
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="flex items-center gap-2 flex-wrap justify-center">
+                <p
+                  className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+                  style={{ color: "rgba(143,175,150,0.45)" }}
+                >
+                  Prayer Request
+                </p>
+                <PrayerKindPill kind={data.kind} />
+              </div>
+            </div>
+
+            {/* Body — italic Georgia, 22px, leading 1.5 — identical
+                to the slideshow body styling. */}
             <p
-              className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-              style={{ color: "rgba(143,175,150,0.45)" }}
+              className="text-[22px] leading-[1.5] font-medium italic"
+              style={{
+                color: "#E8E4D8",
+                fontFamily: "Georgia, 'Times New Roman', serif",
+              }}
             >
-              {data.viewerIsOwner
-                ? showRenewSlide
-                  ? "Your prayer is wrapping up"
-                  : "Your prayer request"
-                : `${data.ownerName ?? "Someone"} is asking for your prayers`}
+              {data.body}
             </p>
+
+            {/* Word of comfort — shared component the slideshow uses,
+                so the composer behavior (existing word display, ×-clear,
+                error mapping) matches exactly. */}
+            <RequestWordField requestId={data.id} initialWord={data.myWord ?? null} />
+
+            {/* 7-second Amen. After tap, swap to a quiet "✓ Amen sent"
+                state — same once-per-day server throttle as the
+                slideshow's path; re-tapping is a no-op. */}
+            {amened || data.myAmenedToday ? (
+              <div
+                className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide"
+                style={{
+                  background: "rgba(46,107,64,0.18)",
+                  border: "1px solid rgba(46,107,64,0.45)",
+                  color: "#A8C5A0",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  minWidth: 140,
+                }}
+              >
+                ✓ Amen sent
+              </div>
+            ) : (
+              <AmenButton
+                slideKey={data.id}
+                onAdvance={() => { if (!amenMutation.isPending) amenMutation.mutate(); }}
+              />
+            )}
+          </div>
+        )}
+
+        {data && data.viewerIsOwner && (
+          // ── Owner view: engagement history (rare — the new-request
+          // push doesn't target the author, but they CAN navigate here
+          // from the prayer-list, the renewal nudge, etc.). Same slide
+          // chrome as the recipient view (centered column, paddings)
+          // but the active surfaces below are amens / words / renew
+          // controls instead of an Amen button.
+          <div className="w-full flex flex-col items-center text-center gap-5">
+            <div className="flex flex-col items-center gap-1.5">
+              <p
+                className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+                style={{ color: "rgba(143,175,150,0.45)" }}
+              >
+                {showRenewSlide ? "Your prayer is wrapping up" : "Your prayer request"}
+              </p>
+            </div>
 
             <p
               className="text-[22px] leading-[1.5] font-medium italic"
@@ -316,49 +352,9 @@ export default function PrayerRequestDetailPage() {
               {data.body}
             </p>
 
-            {!data.viewerIsOwner && (
-              <>
-                {/* Amen — primary action for the viewer who arrived from
-                    the "{Name} is asking for your prayers" push. Single
-                    tap; the server throttles to once-per-day per
-                    (user, request). After a successful tap the button
-                    holds a quiet "✓ Amen sent" state instead of
-                    inviting another tap. */}
-                <button
-                  type="button"
-                  onClick={() => { if (!amened && !amenMutation.isPending) amenMutation.mutate(); }}
-                  disabled={amened || amenMutation.isPending}
-                  className="px-10 py-3.5 rounded-full text-sm font-semibold transition-opacity disabled:cursor-default"
-                  style={{
-                    background: amened ? "rgba(46,107,64,0.18)" : "#2D5E3F",
-                    color: amened ? "#A8C5A0" : "#F0EDE6",
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    minWidth: 220,
-                    border: amened ? "1px solid rgba(46,107,64,0.45)" : "none",
-                  }}
-                >
-                  {amenMutation.isPending
-                    ? "…"
-                    : amened
-                      ? "✓ Amen sent"
-                      : `Amen — pray for ${(data.ownerName ?? "this person").split(/\s+/)[0]}`}
-                </button>
-                <RequestWordField requestId={data.id} />
-              </>
-            )}
-
-            {/* ── Owner view: who is praying + how many + every word ── */}
-            {/* Surfaces the things the first-amen / third-amen pushes are
-                celebrating. Order from top to bottom is intentional:
-                  1. The most-recent amen-er (the avatar pulse — this is
-                     what the push is heralding).
-                  2. The total count, framed as encouragement.
-                  3. The strip of all pray-er avatars.
-                  4. Every word of comfort.
-                The latestWord-only card we used to render is gone — we
-                show the full list now so a tap from any push brings up
-                the whole communal record, not just the freshest beat. */}
-            {data.viewerIsOwner && data.amens.length > 0 && (() => {
+            {/* Latest amen — pulses the freshest pray-er, the avatar
+                the first/third-amen pushes are heralding. */}
+            {data.amens.length > 0 && (() => {
               const latestAmen = data.amens[0];
               const latestAmenName = latestAmen.userName ?? "Someone";
               return (
@@ -387,7 +383,7 @@ export default function PrayerRequestDetailPage() {
               );
             })()}
 
-            {data.viewerIsOwner && data.amenCountTotal > 0 && (
+            {data.amenCountTotal > 0 && (
               <p
                 className="text-[13px]"
                 style={{
@@ -395,27 +391,27 @@ export default function PrayerRequestDetailPage() {
                   fontFamily: "'Space Grotesk', sans-serif",
                 }}
               >
-                {/* Wording matches the community-metrics page: count is
-                    distinct (user, day-in-owner-tz) pairs, which is the
-                    "times prayed" definition (one prayer per person per
-                    day, no matter how many taps). The earlier "X people
-                    have prayed" copy was misleading — a single person
-                    praying on three days drove the number to 3 even
-                    though it was one person, and the metrics page's
-                    "Times prayed" used the same count. Same label
-                    everywhere now. */}
                 {data.amenCountTotal === 1
                   ? "Prayed 1 time so far."
                   : `Prayed ${data.amenCountTotal} times so far.`}
               </p>
             )}
 
-            {/* Renew / release decision UI — only when the viewer is the
-                owner AND ?renew=1 is on the URL (set by the 1-day-left
-                push). Renewing extends expiresAt by 7 days and routes
-                home; releasing closes the request and routes to
-                /prayer-list so the owner sees what's still active. */}
-            {data.viewerIsOwner && showRenewSlide && (
+            {data.amens.length === 0 && !showRenewSlide && (
+              <p
+                className="text-[13px] italic"
+                style={{
+                  color: "rgba(143,175,150,0.7)",
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                }}
+              >
+                Your community has been notified. We'll let you know when the first amen lands.
+              </p>
+            )}
+
+            {/* Renew / release decision UI — only when the viewer is
+                the owner AND ?renew=1 is on the URL. */}
+            {showRenewSlide && (
               <div className="w-full flex flex-col items-center gap-3 mt-4">
                 <button
                   onClick={() => renewMutation.mutate()}
@@ -443,19 +439,15 @@ export default function PrayerRequestDetailPage() {
               </div>
             )}
 
-            {/* Strip of every pray-er, most recent leftmost. We cap the
-                visible row at 8 to keep the slide readable; the count
-                line above already conveys the full magnitude. Each
-                avatar slightly overlaps the next (negative margin) for
-                a "circle of people" feel. */}
-            {data.viewerIsOwner && data.amens.length > 1 && (
+            {/* Avatar rail — every distinct pray-er, most recent first. */}
+            {data.amens.length > 1 && (
               <div className="flex items-center justify-center -mt-1">
                 {data.amens.slice(0, 8).map((a, i) => (
                   <div
                     key={`${a.userId}-${a.prayedAt}`}
                     className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden border-2"
                     style={{
-                      borderColor: "#0C1F12",
+                      borderColor: SLIDE_BG,
                       marginLeft: i === 0 ? 0 : -8,
                       background: "#1A4A2E",
                       color: "#A8C5A0",
@@ -486,12 +478,8 @@ export default function PrayerRequestDetailPage() {
               </div>
             )}
 
-            {/* Every word of comfort, newest first. Each word is its own
-                small card so the owner can scan who said what — much
-                richer than the single-latestWord card we used to show.
-                Past-tense framing for older words isn't necessary; the
-                ordering is enough. */}
-            {data.viewerIsOwner && data.words.length > 0 && (
+            {/* Every word of comfort, newest first. */}
+            {data.words.length > 0 && (
               <div className="w-full flex flex-col gap-3 mt-3">
                 <p
                   className="text-[10px] uppercase tracking-[0.18em] font-semibold"
@@ -537,25 +525,30 @@ export default function PrayerRequestDetailPage() {
                         lineHeight: 1.55,
                       }}
                     >
-                      “{w.content}”
+                      "{w.content}"
                     </p>
                   </div>
                 ))}
               </div>
             )}
-
-            <button
-              onClick={() => setLocation("/dashboard")}
-              className="mt-6 px-6 py-3 rounded-full text-sm font-medium"
-              style={{
-                color: "#C8D4C0",
-                background: "rgba(200,212,192,0.08)",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              ← Back
-            </button>
           </div>
+        )}
+
+        {/* Quiet "Back" anchored at the bottom — both branches share
+            this so a recipient who tapped Amen and an owner reading
+            their amen rail both have the same exit. */}
+        {data && (
+          <button
+            onClick={() => setLocation("/dashboard")}
+            className="mt-6 px-6 py-3 rounded-full text-sm font-medium"
+            style={{
+              color: "#C8D4C0",
+              background: "rgba(200,212,192,0.08)",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            ← Back
+          </button>
         )}
       </div>
     </div>

@@ -135,9 +135,51 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     amenCountTotal = userDayKeys.size;
   }
 
+  // Viewer-side bits the deep-link page needs to behave like the
+  // slideshow request slide: their own word (if any) and whether
+  // they've already amened today.
+  let myWord: string | null = null;
+  let myAmenedToday = false;
+  if (!viewerIsOwner) {
+    const [w] = await db
+      .select({ content: prayerWordsTable.content })
+      .from(prayerWordsTable)
+      .where(and(
+        eq(prayerWordsTable.requestId, id),
+        eq(prayerWordsTable.authorUserId, sessionUserId),
+      ))
+      .limit(1);
+    myWord = w?.content ?? null;
+    // Was there an amen by THIS viewer that lands on today's calendar
+    // date in the OWNER's tz? Same dedupe rule the count uses.
+    const myAmens = await db
+      .select({ prayedAt: prayerRequestAmensTable.prayedAt })
+      .from(prayerRequestAmensTable)
+      .where(and(
+        eq(prayerRequestAmensTable.requestId, id),
+        eq(prayerRequestAmensTable.userId, sessionUserId),
+      ))
+      .orderBy(desc(prayerRequestAmensTable.prayedAt))
+      .limit(1);
+    if (myAmens.length > 0) {
+      const [ownerTzRow] = await db
+        .select({ timezone: usersTable.timezone })
+        .from(usersTable)
+        .where(eq(usersTable.id, r.ownerId));
+      const ownerTz = ownerTzRow?.timezone || "UTC";
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const lastDay = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(myAmens[0].prayedAt);
+      myAmenedToday = today === lastDay;
+    }
+  }
+
   res.json({
     id: r.id,
     body: r.body,
+    // Author's framing — drives the small pill next to the eyebrow.
+    // Mirrors the field on the prayer-mode slideshow's request slide
+    // so the deep-link page renders the same chip.
+    kind: r.kind ?? "request",
     ownerId: r.ownerId,
     ownerName: owner?.name ?? null,
     ownerAvatarUrl: owner?.avatarUrl ?? null,
@@ -153,6 +195,8 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
     amens,
     amenCountTotal,
+    myWord,
+    myAmenedToday,
   });
 });
 
