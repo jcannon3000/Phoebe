@@ -1753,17 +1753,13 @@ export default function CommunityDetailPage() {
                             {progressLabel}
                           </span>
                         )}
-                        {/* "Pray now" pill removed — community intercessions
-                            now route into the unified slideshow from the
-                            home dashboard, so a separate per-card CTA was
-                            redundant. We still surface a brief status line
-                            for "prayed today" and "not today" so the card
-                            tells the viewer where things stand. */}
+                        {/* Prayed-today affirmation only. The earlier
+                            "Not today" label was removed per user
+                            direction — surfacing inactivity as its
+                            own pill made the list read like a
+                            scoreboard rather than an invitation. */}
                         {prayedToday && (
                           <span className="text-[10px]" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
-                        )}
-                        {!m.windowOpen && !prayedToday && (
-                          <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>Not today</span>
                         )}
                       </div>
                     </div>

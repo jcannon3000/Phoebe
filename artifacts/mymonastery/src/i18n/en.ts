@@ -34,7 +34,7 @@ export const en = {
     days_left_other: "{{count}} days left",
   },
   dashboard: {
-    daily_prayer_list: "Daily Prayer",
+    daily_prayer_list: "Daily Prayer List",
     pray_again: "Pray again →",
     view_list: "View list →",
     submit_prayer_request: "What are you carrying? 🌿",

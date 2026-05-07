@@ -251,50 +251,8 @@ function AmenButton({ slideKey, onAdvance }: {
   );
 }
 
-// "Not today" — quiet skip link, anchored above the "X of Y" slide
-// counter. Visible immediately on every new slide (per user
-// direction) so the viewer can tap out before Amen has even had a
-// chance to load — they don't have to sit through the 7s hold for
-// a prayer they're not in a place to carry today. The link uses
-// the same slideKey reset that Amen does so the visibility pulse
-// re-fires as the user advances.
-function NotTodayLink({ slideKey, onSkip }: { slideKey: string | number; onSkip: () => void }) {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    // Force a fresh fade-in on every slide change. We flip to
-    // false synchronously then to true on the next animation frame
-    // so the CSS transition kicks; otherwise React batches the two
-    // setState calls and the user sees no fade at all.
-    setVisible(false);
-    const raf = window.requestAnimationFrame(() => setVisible(true));
-    return () => window.cancelAnimationFrame(raf);
-  }, [slideKey]);
-  return (
-    // Anchor well above the home-indicator safe area + slide
-    // counter so the link sits in a comfortable thumb-reach band
-    // and doesn't crowd the bottom navigation gutter.
-    <div
-      className="absolute left-0 right-0 flex justify-center pointer-events-none"
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 132px)" }}
-    >
-      <button
-        type="button"
-        onClick={onSkip}
-        className="text-[12px] underline underline-offset-4 pointer-events-auto"
-        style={{
-          color: "rgba(143,175,150,0.55)",
-          opacity: visible ? 1 : 0,
-          transition: "opacity 280ms ease-out",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        Not today
-      </button>
-    </div>
-  );
-}
+// (Removed: NotTodayLink — the per-slide "Not today" skip link is
+// gone per user direction. The slide flow is Amen-or-X-out only.)
 
 function SlideContent({
   slide,
@@ -1820,11 +1778,11 @@ export default function PrayerModePage() {
   //
   // Also fire the audio + haptic moment that marks the conclusion: a
   // resolving swell at the base octave (matches the opening) plus a
-  // big "celebration" haptic — the iOS success-notification double-tap
-  // chained with a heavy thump ~140ms later, à la Duolingo's lesson-
-  // complete moment. Independent of `firstToday` — every arrival on
-  // the closing slide should feel like crossing a threshold, even if
-  // it's the user's second prayer today and no streak card pops.
+  // single heavy haptic — one solid "you arrived" thump rather than
+  // a 7-second oscillating rumble. Independent of `firstToday` —
+  // every arrival on the closing slide should feel like crossing a
+  // threshold, even if it's the user's second prayer today and no
+  // streak card pops.
   useEffect(() => {
     if (phase !== "closing") return;
     // Continue the chord progression: each prior slide played
@@ -1835,7 +1793,7 @@ export default function PrayerModePage() {
     // lands back on 0 naturally.
     playOpeningSwell(displaySlides.length % 3);
     try {
-      window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "celebration" } }));
+      window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "heavy" } }));
     } catch { /* ignore */ }
 
     let cancelled = false;

@@ -23,6 +23,7 @@ import {
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
 import { logger } from "./logger";
+import { PHOEBE_PARISH_ENABLED } from "./parishFlag";
 
 // ─── Timezone helpers ───────────────────────────────────────────────────────
 
@@ -756,6 +757,7 @@ function isWithinTickWindow(
 }
 
 export async function runParishOfficeReminderSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  if (!PHOEBE_PARISH_ENABLED) return;
   try {
     // Pull every parish-only user with at least one non-"none" pref.
     // Bail fast if there are no candidates.
@@ -844,6 +846,7 @@ const PARISH_EVENING_HOUR = "20:00";
 const PARISH_EVENING_MIN_PARTICIPANTS = 4;
 
 export async function runParishEveningRecapSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  if (!PHOEBE_PARISH_ENABLED) return;
   try {
     const parishes = await db
       .select({

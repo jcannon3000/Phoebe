@@ -9,6 +9,7 @@ import { eq, and } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { getUserAccessTier } from "../lib/parishGate";
+import { PHOEBE_PARISH_ENABLED } from "../lib/parishFlag";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
@@ -202,7 +203,12 @@ router.get("/auth/me", async (req, res) => {
   // Phoebe Parish access tier. Computed server-side so every page that
   // calls useAuth() knows immediately whether to render the simplified
   // parish-only UI or the full app — no per-page round-trip needed.
-  const access = await getUserAccessTier(u.id);
+  // Gated by the parish feature flag — when off (the current default
+  // while Parish is tucked away) every existing user reads as "full"
+  // tier, no DB round-trip, no behavior change.
+  const access = PHOEBE_PARISH_ENABLED
+    ? await getUserAccessTier(u.id)
+    : { tier: "full" as const, parishFeedId: null, parishSlug: null };
   res.json({
     id: u.id,
     name: u.name,

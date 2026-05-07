@@ -140,6 +140,7 @@ import ParishSettings from "./pages/parish-settings";
 import ParishCelebration from "./pages/parish-celebration";
 import ParishAdmin from "./pages/parish-admin";
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
+import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
 // /climate*, /climate/admin, /climate/parish routes redirect to the
@@ -256,6 +257,11 @@ function ParishGate({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuthForGate();
 
   useEffect(() => {
+    // Tucked-away mode: the entire Parish flow is dormant. Don't
+    // redirect anyone, don't read the access tier, just pass through.
+    // Flip PHOEBE_PARISH_ENABLED in lib/parishFlag.ts (client + server)
+    // when ready to roll Parish out.
+    if (!PHOEBE_PARISH_ENABLED) return;
     if (isLoading || !user) return;
     if (user.accessTier === "full") {
       // Full-app users shouldn't get stuck on /parish; if they

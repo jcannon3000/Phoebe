@@ -40,7 +40,7 @@ export const es: Translations = {
     days_left_other: "Quedan {{count}} días",
   },
   dashboard: {
-    daily_prayer_list: "Oración diaria",
+    daily_prayer_list: "Lista de oración diaria",
     pray_again: "Orar de nuevo →",
     view_list: "Ver lista →",
     submit_prayer_request: "¿Qué llevas hoy? 🌿",
