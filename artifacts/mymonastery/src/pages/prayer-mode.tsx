@@ -1980,12 +1980,21 @@ export default function PrayerModePage() {
           /* swallow — amen logging is best-effort, never blocks prayer flow */
         });
     }
-    if (current && current.kind === "intercession" && current.momentToken && current.myUserToken) {
+    if (current && current.kind === "intercession" && current.momentToken) {
       const mt = current.momentToken;
-      const ut = current.myUserToken;
       if (!loggedIntercessionsRef.current.has(mt)) {
         loggedIntercessionsRef.current.add(mt);
-        apiRequest("POST", `/api/moment/${mt}/${ut}/post`, { isCheckin: true })
+        // Prefer the auto-enrolling /amen endpoint — it works even
+        // when myUserToken is null (the reconcile job hasn't yet
+        // wired this user into the intercession). Falls back to the
+        // legacy token-in-URL post endpoint when we DO have a token,
+        // both for back-compat with older server builds and so the
+        // existing posts/check-ins shape stays the system of record
+        // while the new endpoint rolls out.
+        const promise = current.myUserToken
+          ? apiRequest("POST", `/api/moment/${mt}/${current.myUserToken}/post`, { isCheckin: true })
+          : apiRequest("POST", `/api/moment/${mt}/amen`, {});
+        promise
           .then(() => {
             // Keep the detail page + dashboard fresh so the new amen shows
             // up the moment the viewer lands there.
@@ -2066,18 +2075,21 @@ export default function PrayerModePage() {
     // Log against the frozen slide list, not the live `intercessions`
     // array — if a moment vanished from the API mid-session we still
     // want to credit the user for what they actually walked through.
+    // Slides without a myUserToken go through the auto-enrolling /amen
+    // endpoint so reconcile races never drop a tap silently.
     const toLog = displaySlides.filter(
-      (s): s is PrayerSlide & { momentToken: string; myUserToken: string } =>
+      (s): s is PrayerSlide & { momentToken: string } =>
         s.kind === "intercession" &&
         !!s.momentToken &&
-        !!s.myUserToken &&
         !loggedIntercessionsRef.current.has(s.momentToken),
     );
     await Promise.allSettled(
       toLog.map((s) =>
-        apiRequest("POST", `/api/moment/${s.momentToken}/${s.myUserToken}/post`, {
-          isCheckin: true,
-        }),
+        s.myUserToken
+          ? apiRequest("POST", `/api/moment/${s.momentToken}/${s.myUserToken}/post`, {
+              isCheckin: true,
+            })
+          : apiRequest("POST", `/api/moment/${s.momentToken}/amen`, {}),
       ),
     );
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });

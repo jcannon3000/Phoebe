@@ -3072,6 +3072,103 @@ router.post("/moment/:momentToken/:userToken/post", async (req, res): Promise<vo
   }
 });
 
+// ─── POST /api/moment/:momentToken/amen — auto-enrolling amen ────────────────
+//
+// Counterpart to /moment/:momentToken/:userToken/post for the case where
+// the client doesn't have a per-moment userToken yet. The reconcile job
+// (reconcileFeedPracticeMembers) is supposed to keep every Phoebe Climate
+// subscriber enrolled in every active climate intercession, but races
+// (subscription created between intercession-create and the next /api/moments
+// fetch, or a transient reconcile error) can leave a subscriber's
+// myUserToken null on the slide. With the userToken-required endpoint
+// that meant their amen tap silently dropped on the floor.
+//
+// This endpoint:
+//   1. Authenticates via the session (no token-in-URL)
+//   2. Finds-or-creates a moment_user_tokens row for (moment, user.email)
+//   3. Upserts today's moment_post with isCheckin=1
+//
+// Result: every authenticated tap counts, exactly once per (moment, user, day).
+const AmenSchema = z.object({
+  reflectionText: z.string().max(280).optional(),
+  photoUrl: z.string().optional(),
+});
+
+router.post("/moment/:momentToken/amen", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = AmenSchema.safeParse(req.body ?? {});
+  if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
+
+  try {
+    const [moment] = await db.select().from(sharedMomentsTable)
+      .where(eq(sharedMomentsTable.momentToken, String(req.params.momentToken)));
+    if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
+
+    const [sessionUser] = await db.select().from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const email = sessionUser.email.toLowerCase();
+    const name = sessionUser.name ?? sessionUser.email;
+
+    // Find or mint a per-moment token for this user.
+    let [tokenRow] = await db.select().from(momentUserTokensTable).where(and(
+      eq(momentUserTokensTable.momentId, moment.id),
+      eq(momentUserTokensTable.email, email),
+    ));
+    if (!tokenRow) {
+      const [inserted] = await db.insert(momentUserTokensTable).values({
+        momentId: moment.id,
+        email,
+        name,
+        userToken: generateToken(),
+      }).returning();
+      tokenRow = inserted;
+    }
+
+    const windowDate = todayDateInTz(moment.timezone || "UTC");
+    // Upsert today's post by (moment, userToken, windowDate). Re-tapping
+    // amen on the same intercession the same day is idempotent.
+    const [existing] = await db.select().from(momentPostsTable).where(and(
+      eq(momentPostsTable.momentId, moment.id),
+      eq(momentPostsTable.windowDate, windowDate),
+      eq(momentPostsTable.userToken, tokenRow.userToken),
+    ));
+    if (existing) {
+      await db.update(momentPostsTable).set({
+        isCheckin: 1,
+        photoUrl: parsed.data.photoUrl ?? existing.photoUrl,
+        reflectionText: parsed.data.reflectionText ?? existing.reflectionText,
+      }).where(eq(momentPostsTable.id, existing.id));
+    } else {
+      await db.insert(momentPostsTable).values({
+        momentId: moment.id,
+        windowDate,
+        userToken: tokenRow.userToken,
+        guestName: name,
+        photoUrl: parsed.data.photoUrl ?? null,
+        reflectionText: parsed.data.reflectionText ?? null,
+        isCheckin: 1,
+      });
+    }
+
+    const allTodayPosts = await db.select().from(momentPostsTable).where(and(
+      eq(momentPostsTable.momentId, moment.id),
+      eq(momentPostsTable.windowDate, windowDate),
+    ));
+
+    res.status(201).json({
+      success: true,
+      todayPostCount: allTodayPosts.length,
+      myUserToken: tokenRow.userToken,
+    });
+  } catch (err) {
+    console.error("POST /moment/:momentToken/amen error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ─── GET /api/moments/:id/fasting-stats — water savings & participation ──────
 router.get("/moments/:id/fasting-stats", async (req, res): Promise<void> => {
   const momentId = parseInt(req.params.id, 10);
