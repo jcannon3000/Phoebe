@@ -8,6 +8,7 @@ import {
   momentUserTokensTable,
   lectioReflectionsTable,
   lectionaryReadingsTable,
+  groupsTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray } from "drizzle-orm";
 import {
@@ -16,6 +17,7 @@ import {
   sendLectioReminderPush,
   sendLectioEveningReminderPush,
   sendPrayerRenewalNudgePush,
+  sendOfficePracticePush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
@@ -607,6 +609,194 @@ export async function runLectioEveningReminderSender(opts: { forceNow?: boolean 
 
 void sql;
 void ne;
+
+// ─── Daily Office / Devotion practice reminder ────────────────────────────
+//
+// Per-practice push that fires for every joined member of an
+// active "morning-prayer" / "evening-prayer" / "morning-devotion"
+// / "early-evening-devotion" practice when its window opens for
+// the day. Cadence depends on the practice's frequencyType:
+//
+//   • "daily"    → every day at the variant's scheduled hour
+//   • "once" / "twice" / "three" / "five" → only on the days listed
+//     in `practiceDays` (JSON array of "MO" / "TU" / … / "SU")
+//   • "flexible" → fires once a week on Monday at the variant's
+//     scheduled hour. The point is "remember this is on your
+//     plate this week", not a specific day. Member can pray it
+//     any other day too.
+//
+// Hour-of-day defaults:
+//   morning-prayer  / morning-devotion       → 07:00 local
+//   evening-prayer  / early-evening-devotion → 19:00 local
+//
+// The push is community-aware: when the practice has a `groupId`,
+// the title reads "Time for X with {community name}". If it's a
+// personal-scope practice, the "with X" tail is omitted.
+//
+// Dedup: bell_notifications keyed by `<ymd>-office-practice-<id>`
+// per (user, practice, day). One push per practice per day per
+// member. The bell-clear handler dismisses delivered pushes the
+// instant the user prays via the Office Amen path.
+
+const OFFICE_PRACTICE_VARIANTS = new Set([
+  "morning-prayer",
+  "evening-prayer",
+  "morning-devotion",
+  "early-evening-devotion",
+]);
+
+// Hour-of-day defaults per variant. The morning bell already fires at
+// 07:00 unconditionally — the office-practice reminder lands at the
+// same time so a member with both gets one combined "time to pray"
+// moment rather than two pushes 30 minutes apart.
+const OFFICE_VARIANT_HOUR: Record<string, number> = {
+  "morning-prayer": 7,
+  "morning-devotion": 7,
+  "evening-prayer": 19,
+  "early-evening-devotion": 19,
+};
+
+// Display name + deep-link path per variant. The deep links match the
+// dashboard's OFFICE_VARIANT_ROUTES exactly so a tap from either
+// surface lands in the same place.
+const OFFICE_VARIANT_TITLE: Record<string, string> = {
+  "morning-prayer": "Morning Prayer",
+  "evening-prayer": "Evening Prayer",
+  "morning-devotion": "Morning Devotion",
+  "early-evening-devotion": "Early Evening Devotion",
+};
+const OFFICE_VARIANT_PATH: Record<string, string> = {
+  "morning-prayer": "/bcp/daily-office?mode=morning",
+  "evening-prayer": "/bcp/daily-office?mode=evening",
+  "morning-devotion": "/bcp/daily-devotions?mode=morning-devotion",
+  "early-evening-devotion": "/bcp/daily-devotions?mode=early-evening-devotion",
+};
+
+// JSON-encoded practiceDays use iCalendar two-letter weekday codes.
+const PRACTICE_DAY_TO_DOW: Record<string, number> = {
+  SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6,
+};
+
+export async function runOfficePracticeSender(): Promise<void> {
+  // Pull every membership in an active BCP-variant practice, joined
+  // to the registered user (by email) + the optional community name.
+  const memberships = await db
+    .select({
+      userId: usersTable.id,
+      userEmail: usersTable.email,
+      userTimezone: usersTable.timezone,
+      personalTimezone: momentUserTokensTable.personalTimezone,
+      practiceId: sharedMomentsTable.id,
+      practiceName: sharedMomentsTable.name,
+      practiceTimezone: sharedMomentsTable.timezone,
+      templateType: sharedMomentsTable.templateType,
+      frequencyType: sharedMomentsTable.frequencyType,
+      practiceDays: sharedMomentsTable.practiceDays,
+      groupId: sharedMomentsTable.groupId,
+      groupName: groupsTable.name,
+    })
+    .from(momentUserTokensTable)
+    .innerJoin(sharedMomentsTable, eq(sharedMomentsTable.id, momentUserTokensTable.momentId))
+    .innerJoin(usersTable, sql`LOWER(${usersTable.email}) = LOWER(${momentUserTokensTable.email})`)
+    .leftJoin(groupsTable, eq(groupsTable.id, sharedMomentsTable.groupId))
+    .where(
+      and(
+        eq(sharedMomentsTable.state, "active"),
+      ),
+    );
+
+  if (memberships.length === 0) return;
+
+  for (const m of memberships) {
+    try {
+      if (!m.templateType || !OFFICE_PRACTICE_VARIANTS.has(m.templateType)) continue;
+      const targetHour = OFFICE_VARIANT_HOUR[m.templateType] ?? 7;
+
+      // Prefer the per-membership tz override, then user account tz,
+      // then the practice's own tz, then a sane default. Same fallback
+      // chain the lectio reminder uses.
+      const tz = m.personalTimezone ?? m.userTimezone ?? m.practiceTimezone ?? "America/New_York";
+
+      // Fire any time at-or-after the variant hour. Same self-healing
+      // tick model as the morning bell — a missed minute (server
+      // restart, deploy lag) catches up next pass instead of dropping
+      // the day. Dedup row below makes this idempotent.
+      const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
+      if ((nowH * 60 + nowM) < (targetHour * 60)) continue;
+
+      // Cadence gate. We only push on the days the practice is
+      // actually scheduled.
+      const dow = dowInTz(tz);
+      const freqType = m.frequencyType ?? "once";
+
+      let shouldFireToday = false;
+      if (freqType === "daily") {
+        shouldFireToday = true;
+      } else if (freqType === "flexible") {
+        // Once a week on Monday — the "you've got this practice this
+        // week" reminder. If the user prays it any other day, the
+        // dedup row prevents a duplicate next week (which is fine —
+        // we want the weekly nudge to land regardless).
+        shouldFireToday = dow === 1;
+      } else {
+        // Fixed-day practice — practiceDays JSON carries the codes.
+        const days: unknown = m.practiceDays
+          ? safeJsonParse(m.practiceDays)
+          : [];
+        if (Array.isArray(days)) {
+          for (const d of days) {
+            if (typeof d === "string" && PRACTICE_DAY_TO_DOW[d.toUpperCase()] === dow) {
+              shouldFireToday = true;
+              break;
+            }
+          }
+        }
+      }
+      if (!shouldFireToday) continue;
+
+      const todayStr = todayDateInTz(tz);
+      const dedupKey = `${todayStr}-office-practice-${m.practiceId}`;
+
+      const [existing] = await db
+        .select()
+        .from(bellNotificationsTable)
+        .where(
+          and(
+            eq(bellNotificationsTable.userId, m.userId),
+            eq(bellNotificationsTable.bellDate, dedupKey),
+          ),
+        );
+      if (existing) continue;
+
+      try {
+        await sendOfficePracticePush(m.userId, {
+          practiceId: m.practiceId,
+          variantTitle: OFFICE_VARIANT_TITLE[m.templateType] ?? m.practiceName ?? "Daily Office",
+          communityName: m.groupName ?? null,
+          deepLinkPath: OFFICE_VARIANT_PATH[m.templateType] ?? "/bcp/daily-office",
+          ymdLocal: todayStr,
+        });
+      } catch (err) {
+        logger.warn({ err, userId: m.userId, practiceId: m.practiceId }, "[office-practice] push dispatch failed — skipping dedup insert so we retry next tick");
+        continue;
+      }
+
+      await db.insert(bellNotificationsTable).values({
+        userId: m.userId,
+        bellDate: dedupKey,
+        sentAt: new Date(),
+      });
+
+      logger.info({ userId: m.userId, practiceId: m.practiceId, variant: m.templateType, freqType, dedupKey }, "[office-practice] sent");
+    } catch (err) {
+      logger.error({ err, userId: m.userId, practiceId: m.practiceId }, "[office-practice] member processing failed");
+    }
+  }
+}
+
+function safeJsonParse(s: string): unknown {
+  try { return JSON.parse(s); } catch { return null; }
+}
 
 // ─── Prayer-request renewal nudge (1 day before expiry) ────────────────────
 //

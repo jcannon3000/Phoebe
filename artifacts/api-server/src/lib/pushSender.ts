@@ -78,6 +78,27 @@ export interface PushPayload {
   collapseId?: string;
   // Sound name from the app bundle, or "default".
   sound?: string;
+  // APNs interruption level. iOS uses this to decide whether the
+  // notification breaks through Focus modes / Do Not Disturb:
+  //
+  //   • "passive"        — silent, never interrupts. For info that
+  //                        can wait.
+  //   • "active"         — default; uses the user's normal alert
+  //                        settings.
+  //   • "time-sensitive" — breaks through most Focus modes when the
+  //                        user has granted the per-app "Time
+  //                        Sensitive Notifications" toggle. Used by
+  //                        Duolingo's daily streak reminder so the
+  //                        bell still lands during a "Work" or
+  //                        "Personal" focus.
+  //   • "critical"       — bypasses everything including Do Not
+  //                        Disturb; requires a special Apple
+  //                        entitlement we don't have.
+  //
+  // We use "time-sensitive" for the daily bell + evening nudge so a
+  // user who's gone heads-down still gets the appointed prompt,
+  // matching the Duolingo-style "your streak depends on this" feel.
+  interruptionLevel?: "passive" | "active" | "time-sensitive";
 }
 
 interface SendResult {
@@ -182,6 +203,7 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
   };
   if (payload.threadId) apsPayload["thread-id"] = payload.threadId;
   if (payload.badge !== undefined) apsPayload["badge"] = payload.badge;
+  if (payload.interruptionLevel) apsPayload["interruption-level"] = payload.interruptionLevel;
 
   const body = JSON.stringify({
     aps: apsPayload,
@@ -336,6 +358,15 @@ export function sendBellPush(userId: number) {
     path: "/prayer-mode",
     threadId: "bell",
     sound: PHOEBE_SOUND_LOW,
+    // Time-sensitive so the bell breaks through Focus modes the
+    // way Duolingo's daily streak reminder does — a user who's
+    // gone heads-down still gets the appointed prompt at 7 AM
+    // local. Requires the matching iOS entitlement
+    // (com.apple.developer.usernotifications.time-sensitive) AND
+    // the per-app "Time Sensitive Notifications" toggle in iOS
+    // Settings; iOS silently downgrades to "active" if either is
+    // missing, so we never need to fall back manually.
+    interruptionLevel: "time-sensitive",
   });
 }
 
@@ -358,6 +389,10 @@ export function sendEveningNudgePush(userId: number, communityPrayerCount: numbe
     path: "/prayer-mode",
     threadId: "bell",
     sound: PHOEBE_SOUND_LOW,
+    // Same time-sensitive treatment as the morning bell. The
+    // evening nudge fires at 8 PM local; a user with a "Wind
+    // down" Focus would otherwise miss it.
+    interruptionLevel: "time-sensitive",
   });
 }
 
@@ -743,6 +778,37 @@ export function sendLectioEveningReminderPush(
     path: `/lectio/${opts.momentToken}/${opts.userToken}`,
     threadId: `lectio-${opts.momentId}`,
     collapseId: `lectio-evening-${opts.momentId}-${opts.stage}-${opts.sundayDate}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
+// Daily Office / Devotion practice reminder. Fires for every joined
+// member of a "morning-prayer" / "evening-prayer" / "morning-devotion"
+// / "early-evening-devotion" practice when the practice's scheduled
+// window opens for the day. Per-practice + per-day collapse-id makes
+// the fan-out idempotent.
+//
+// Tap deep-links straight to the OfficeViewer at the right mode so a
+// member can start praying with one tap.
+export function sendOfficePracticePush(
+  userId: number,
+  opts: {
+    practiceId: number;
+    variantTitle: string;     // "Morning Prayer", "Early Evening Devotion", …
+    communityName: string | null;
+    deepLinkPath: string;     // e.g. "/bcp/daily-office?mode=morning"
+    ymdLocal: string;         // YYYY-MM-DD in the practice's tz, for collapse-id
+  },
+) {
+  const withCommunity = opts.communityName
+    ? `${opts.variantTitle} with ${opts.communityName}`
+    : opts.variantTitle;
+  return sendPushToUser(userId, {
+    title: `Time for ${withCommunity}`,
+    body: "Open Phoebe to pray together.",
+    path: opts.deepLinkPath,
+    threadId: `office-practice-${opts.practiceId}`,
+    collapseId: `office-practice-${opts.practiceId}-${opts.ymdLocal}`,
     sound: PHOEBE_SOUND_MID,
   });
 }

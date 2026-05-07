@@ -17,6 +17,17 @@
 	<key>aps-environment</key>
 	<string>production</string>
 
+	<!-- Time Sensitive Notifications: lets the daily bell + evening
+	     nudge break through iOS Focus modes (Work, Sleep, Personal,
+	     etc.) when the server marks the APNs payload with
+	     `interruption-level: "time-sensitive"`. Same affordance
+	     Duolingo uses for its streak reminders so the appointed
+	     prompt still lands when the user has gone heads-down.
+	     Without this entitlement, iOS silently downgrades the
+	     notification to "active" priority and Focus modes hide it. -->
+	<key>com.apple.developer.usernotifications.time-sensitive</key>
+	<true/>
+
 	<!-- Sign in with Apple: mandatory under Apple Guideline 4.8 since
 	     Phoebe offers Google SSO. Enable this capability in Xcode on
 	     the App ID and in the entitlements file (here). -->

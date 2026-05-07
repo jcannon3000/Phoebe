@@ -228,11 +228,27 @@ function nextWindowDaysAhead(m: Pick<Moment, "frequency" | "dayOfWeek" | "practi
 const PRACTICE_EMOJI: Record<string, string> = {
   "morning-prayer": "🌅",
   "evening-prayer": "🌙",
+  // Daily Devotions (BCP pp. 137 / 139) get distinct emoji from the
+  // full Office so the dashboard tile reads at a glance which form
+  // the practice is.
+  "morning-devotion": "☕",
+  "early-evening-devotion": "🌆",
   "intercession": "🙏🏽",
   "contemplative": "🕯️",
   "fasting": "🌿",
   "lectio-divina": "📜",
   "custom": "🌱",
+};
+
+// The four BCP "Daily Office / Devotion" practice variants share a
+// route mapping: tapping the practice card opens the OfficeViewer
+// directly at that mode rather than the generic moment-detail page,
+// so a community member can pray straight from the dashboard.
+const OFFICE_VARIANT_ROUTES: Record<string, string> = {
+  "morning-prayer": "/bcp/daily-office?mode=morning",
+  "evening-prayer": "/bcp/daily-office?mode=evening",
+  "morning-devotion": "/bcp/daily-devotions?mode=morning-devotion",
+  "early-evening-devotion": "/bcp/daily-devotions?mode=early-evening-devotion",
 };
 
 // ─── Service schedules (e.g. Sunday Services) ───────────────────────────────
@@ -1227,13 +1243,23 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
   // on, so both the card and the Pray pill fall through to openHref.
   const prayHref: string | null = null;
 
+  // BCP Daily Office / Devotion practices route the dashboard tap
+  // directly to the OfficeViewer at the right mode, so a member can
+  // start praying with one tap from their dashboard. The shouldPulse
+  // gate only matters for the legacy /morning-prayer slideshow page;
+  // the new viewer is fine to land on regardless of whether today
+  // is a practice day (the user can pray off-schedule too).
+  const officeRoute = m.templateType
+    ? OFFICE_VARIANT_ROUTES[m.templateType]
+    : undefined;
+
   // When the user has already submitted this stage's reflection ("Responses"
   // pill state), drop them directly into the responses slide for the current
   // stage — they don't need to land on the week-overview status page first.
   const openHref = (isLectio && m.momentToken && m.myUserToken)
     ? `/lectio/${m.momentToken}/${m.myUserToken}${isLectioCaughtUp ? "?view=responses" : ""}`
-    : (shouldPulse && isMorningPrayer && m.myUserToken)
-    ? `/morning-prayer/${m.id}/${m.myUserToken}`
+    : officeRoute
+    ? officeRoute
     : `/moments/${m.id}`;
 
   // Cycling subtitle lines.
