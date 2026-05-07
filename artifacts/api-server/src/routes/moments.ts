@@ -4363,13 +4363,28 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
     if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
     const [u] = await db
-      .select({ email: usersTable.email, timezone: usersTable.timezone })
+      .select({
+        email: usersTable.email,
+        timezone: usersTable.timezone,
+        // Fallback signal — /api/prayer-streak/log stamps these on the
+        // user row when the closing slide fires. Lets us mark
+        // loggedToday=true for sessions that consisted entirely of
+        // request slides (no intercession check-ins, so moment_posts
+        // would have nothing to say). Without this fallback the
+        // dashboard sat on "Begin prayer" forever after a request-only
+        // session.
+        prayerStreakLastDate: usersTable.prayerStreakLastDate,
+        prayerStreakCount: usersTable.prayerStreakCount,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
     if (!u) { res.json({ streak: 0, lastPrayedDate: null, loggedToday: false }); return; }
 
     const tz = u.timezone || "UTC";
     const emailLower = u.email.toLowerCase();
+
+    const userRowToday = todayDateInTz(tz);
+    const userRowLoggedToday = u.prayerStreakLastDate === userRowToday;
 
     // All tokens tied to this user's email across every moment they're in.
     // We lowercase in JS rather than relying on column case — the email
@@ -4381,7 +4396,17 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
     const myTokens = tokens
       .filter(t => (t.email || "").toLowerCase() === emailLower)
       .map(t => t.userToken);
-    if (myTokens.length === 0) { res.json({ streak: 0, lastPrayedDate: null, loggedToday: false }); return; }
+    if (myTokens.length === 0) {
+      // No moments → moment_posts has nothing for us. Fall back to
+      // the user-row marker so a request-only completion still flips
+      // loggedToday true.
+      res.json({
+        streak: userRowLoggedToday ? (u.prayerStreakCount ?? 1) : 0,
+        lastPrayedDate: userRowLoggedToday ? u.prayerStreakLastDate : null,
+        loggedToday: userRowLoggedToday,
+      });
+      return;
+    }
 
     // Distinct window dates this user has checked-in on. isCheckin=1 is the
     // signal written by prayer-mode's handleDone — one row per intercession
@@ -4402,8 +4427,18 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
         .filter((d): d is string => typeof d === "string" && d !== "seed" && /^\d{4}-\d{2}-\d{2}$/.test(d)),
     );
     const today = todayDateInTz(tz);
-    const loggedToday = dates.has(today);
-    if (dates.size === 0) { res.json({ streak: 0, lastPrayedDate: null, loggedToday }); return; }
+    // OR the two signals — a request-only completion writes only to
+    // the user-row marker; an intercession-walking completion writes
+    // to moment_posts. Either is sufficient.
+    const loggedToday = dates.has(today) || userRowLoggedToday;
+    if (dates.size === 0) {
+      res.json({
+        streak: userRowLoggedToday ? (u.prayerStreakCount ?? 1) : 0,
+        lastPrayedDate: userRowLoggedToday ? u.prayerStreakLastDate : null,
+        loggedToday,
+      });
+      return;
+    }
 
     // Walk consecutive days backward. YYYY-MM-DD arithmetic via UTC midnight
     // is safe because we only ever add/subtract whole days.

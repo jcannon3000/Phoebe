@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
@@ -30,22 +30,26 @@ export function RequestWordField({
   // and the author can see it.
   const [isPrivate, setIsPrivate] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Track the latest values in refs so the slide-change effect can
+  // auto-submit a half-typed draft before resetting state. Without
+  // this, a user who typed "praying with you" and hit Amen on the
+  // slide before pressing send saw their word silently dropped on
+  // the floor — the requestId-change effect ran setDraft("") and
+  // their content was gone before the next slide had even mounted.
+  const draftRef = useRef(draft);
+  const isPrivateRef = useRef(isPrivate);
+  const submittingRef = useRef(submitting);
+  useEffect(() => { draftRef.current = draft; }, [draft]);
+  useEffect(() => { isPrivateRef.current = isPrivate; }, [isPrivate]);
+  useEffect(() => { submittingRef.current = submitting; }, [submitting]);
 
-  // If the slide changes (new request) reset local state from the new prop.
-  useEffect(() => {
-    setWord(initialWord);
-    setDraft("");
-    setError(null);
-    setIsPrivate(false);
-  }, [requestId, initialWord]);
-
-  async function submit() {
-    const content = draft.trim();
-    if (!content || submitting) return;
+  async function submitContent(content: string, isPrivateVal: boolean): Promise<void> {
+    if (!content || submittingRef.current) return;
     setSubmitting(true);
+    submittingRef.current = true;
     setError(null);
     try {
-      await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content, isPrivate });
+      await apiRequest("POST", `/api/prayer-requests/${requestId}/word`, { content, isPrivate: isPrivateVal });
       triggerSubmitFeedback();
       setWord(content);
       setDraft("");
@@ -63,8 +67,54 @@ export function RequestWordField({
       console.warn("[RequestWordField] submit failed:", raw);
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   }
+
+  async function submit() {
+    return submitContent(draft.trim(), isPrivate);
+  }
+
+  // If the slide changes (new request) reset local state from the new
+  // prop. CRITICAL: if the user typed something and never tapped send
+  // (they advanced via Amen instead), fire-and-forget the submit
+  // BEFORE we wipe local state. We're firing under the OLD requestId
+  // closure because submitContent has it captured — the new slide's
+  // RequestWordField mounts fresh after this effect returns.
+  useEffect(() => {
+    const pendingDraft = draftRef.current.trim();
+    if (pendingDraft && !submittingRef.current) {
+      // Fire-and-forget — the user has already moved on, we don't
+      // want to block the slide transition on the network round-trip.
+      // The POST is upsert-safe so a stale background submit can't
+      // double-write.
+      const pendingPrivate = isPrivateRef.current;
+      const reqId = requestId;
+      apiRequest("POST", `/api/prayer-requests/${reqId}/word`, {
+        content: pendingDraft,
+        isPrivate: pendingPrivate,
+      }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      }).catch((err) => {
+        console.warn("[RequestWordField] background flush failed:", err);
+      });
+    }
+    setWord(initialWord);
+    setDraft("");
+    setError(null);
+    setIsPrivate(false);
+    // Intentionally only listen on requestId — we don't want the
+    // initialWord changing on the same slide (e.g. another viewer's
+    // word arriving in a refetch) to wipe the user's in-flight draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
+
+  // Sync `word` when initialWord changes within the same slide (e.g.
+  // a refetch returned the freshly-saved word). Decoupled from the
+  // reset effect above so it doesn't clobber the draft.
+  useEffect(() => {
+    setWord(initialWord);
+  }, [initialWord]);
 
   async function deleteWord() {
     if (submitting) return;
@@ -183,6 +233,17 @@ export function RequestWordField({
             if (e.key === "Enter") {
               e.preventDefault();
               submit();
+            }
+          }}
+          onBlur={() => {
+            // If the user typed something and the field loses focus
+            // (typically because they tapped Amen on the slide and
+            // the keyboard dismissed), fire-and-forget submit. Better
+            // a stray request that's idempotently upserted server-
+            // side than a silently-dropped word of comfort.
+            const pending = draft.trim();
+            if (pending && !submittingRef.current) {
+              void submitContent(pending, isPrivate);
             }
           }}
           placeholder="Leave a word of comfort…"

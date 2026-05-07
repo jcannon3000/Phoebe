@@ -1938,8 +1938,16 @@ function PrayerListCard({
   const visibleSubtitle = activeSlot.text;
   const visibleSubtitleKey = activeSlot.key;
 
+  // If the user has already finished today's pass, the CTA reads
+  // "Pray again" and they expect a fresh start. Pass ?reset=1 so the
+  // slideshow skips its resume-from-last-amen branch and lands on
+  // slide 0 (mirroring what tapping a brand-new slideshow does).
+  // For a partial session (Continue) we still want resume behavior,
+  // so we leave the URL bare in that case.
+  const ctaHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
+
   return (
-    <Link key={`${keyPrefix}-prayer-list`} href="/prayer-mode" className="block">
+    <Link key={`${keyPrefix}-prayer-list`} href={ctaHref} className="block">
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}

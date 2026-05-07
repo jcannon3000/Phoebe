@@ -1236,6 +1236,18 @@ export default function PrayerModePage() {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("closingOnly") === "1";
   })();
+  // ?reset=1 → start fresh at slide 0, ignoring localStorage progress
+  // AND the alreadyPrayedToday skip. Set when the user taps "Pray
+  // again" on the dashboard card (after they've already completed
+  // today's pass) — they explicitly want a do-over, not a resume.
+  // Without this flag a re-tap landed on the first un-prayed slide,
+  // which on a fully-completed list happened to be the LAST slide,
+  // and on a partially-completed list jumped past the slides they'd
+  // already amened. Both read as bugs.
+  const resetFlow = (() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("reset") === "1";
+  })();
   const finishHref = returnToHref ?? "/dashboard";
 
   const momentsQuery = useQuery<{ moments: Moment[] }>({
@@ -1692,14 +1704,16 @@ export default function PrayerModePage() {
     const captured = slides;
     setFrozenSlides(captured);
     let resumeAt = 0;
-    // Seamless handoff from the Daily Office / Devotion intercession
-    // portal: ALWAYS start at index 0, ignoring any stored "resume"
-    // progress and the alreadyPrayedToday skip. The user is in the
-    // middle of a liturgy and expects to walk every appointed
-    // intercession from the top — picking up mid-rotation or
-    // skipping slides because they already amened earlier today
-    // both read as bugs in this flow.
-    if (!seamlessFlow) {
+    // Two flows force a fresh-from-zero start, both intentionally:
+    //   • seamlessFlow — coming from the Daily Office / Devotion
+    //     intercession portal; the user is mid-liturgy and expects
+    //     every appointed intercession from the top.
+    //   • resetFlow — the dashboard's "Pray again" CTA passes
+    //     ?reset=1, signaling "start over even though I've prayed
+    //     today." Without this branch the resume-from-last-amen
+    //     skip jumped past slides the user had already prayed,
+    //     landing them on the LAST slide of a 9-slide list.
+    if (!seamlessFlow && !resetFlow) {
       try {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {
@@ -1716,8 +1730,14 @@ export default function PrayerModePage() {
         resumeAt = firstUnPrayed >= 0 ? firstUnPrayed : 0;
       }
     }
+    // resetFlow also wipes the localStorage progress entry — once the
+    // user opts into a do-over, the half-finished progress shouldn't
+    // hang around to bite them on the NEXT visit either.
+    if (resetFlow) {
+      try { localStorage.removeItem(progressStorageKey); } catch { /* non-fatal */ }
+    }
     setIndex(resumeAt);
-  }, [dataReady, index, progressStorageKey, slides, seamlessFlow]);
+  }, [dataReady, index, progressStorageKey, slides, seamlessFlow, resetFlow]);
 
   // All consumers below should read from this — `slides` is the live
   // (re-rendering) array, `displaySlides` is the stable session copy.

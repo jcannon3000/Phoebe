@@ -103,6 +103,32 @@ router.post("/prayer-streak/log", async (req: Request, res: Response): Promise<v
     }
 
     const streak = alreadyToday ? existingStreak : existingStreak + 1;
+
+    // Write a fallback marker on the user row so the GET can detect a
+    // completion that happened on a request-only slideshow (no
+    // intercession check-ins). The previous "moment_posts.isCheckin=1
+    // is the only source of truth" assumption broke when a user
+    // walked a slideshow of prayer requests + prayers-for with zero
+    // intercessions — handleDone had nothing to log, no rows landed
+    // in moment_posts, and the dashboard's loggedToday flag stayed
+    // false ("Begin prayer" forever even right after a session).
+    // Now /log stamps users.prayer_streak_last_date + count, and the
+    // GET (in moments.ts) ORs the user-row signal with the
+    // moment_posts signal so either path satisfies loggedToday.
+    if (!alreadyToday) {
+      try {
+        await db
+          .update(usersTable)
+          .set({
+            prayerStreakLastDate: today,
+            prayerStreakCount: streak,
+          })
+          .where(eq(usersTable.id, sessionUser.id));
+      } catch (err) {
+        console.warn("[prayer-streak:log] user-row marker write failed:", err);
+      }
+    }
+
     res.json({ streak, firstToday: !alreadyToday });
   } catch (err) {
     console.error("[prayer-streak:log] failed:", err);
