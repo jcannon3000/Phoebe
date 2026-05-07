@@ -2266,20 +2266,13 @@ export default function PrayerModePage() {
         )}
       </div>
 
-      {/* "Not today" skip link, anchored just above the slide
-          counter. Only shown on slides where the viewer is actually
-          praying for something they could decline today (request /
-          intercession / circle-intention / prayer-for); we don't
-          surface it on prompt slides like ask-request or pause that
-          aren't asking the viewer to amen something.  */}
-      {phase === "prayer" && slide && (
-        slide.kind === "request"
-        || slide.kind === "intercession"
-        || slide.kind === "circle-intention"
-        || slide.kind === "prayer-for"
-      ) && (
-        <NotTodayLink slideKey={index} onSkip={skipToNext} />
-      )}
+      {/* "Not today" skip link removed — the dashboard count was
+          showing garden members as having "prayed today" when they
+          had actually walked through the slideshow but skipped the
+          owner's request via Not today. Forcing Amen-or-X-out makes
+          the count truthful: people who reach a request either carry
+          it (amen, which feeds the count) or close the slideshow
+          (which doesn't). */}
 
       {/* Progress — lifted well above the home-indicator gutter so
           the counter reads as a deliberate footer mark for the slide,
