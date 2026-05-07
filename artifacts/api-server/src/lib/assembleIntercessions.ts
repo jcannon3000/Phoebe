@@ -137,10 +137,14 @@ export async function buildIntercessionsSlide(
     .from(prayerFeedSubscriptionsTable)
     .where(eq(prayerFeedSubscriptionsTable.userId, userId));
   const subscribedFeedIds = feedSubs.map((s) => s.feedId);
+  // Up to three slots per (feed, today). Each slot is its own
+  // intention; we render them as three lines in the combined
+  // intercessions paragraph below, keyed by slot order.
   const feedRows = subscribedFeedIds.length > 0
     ? await db
         .select({
           id: prayerFeedEntriesTable.id,
+          slot: prayerFeedEntriesTable.slot,
           title: prayerFeedEntriesTable.title,
           feedTitle: prayerFeedsTable.title,
         })
@@ -336,10 +340,15 @@ export async function buildIntercessionSlides(
     .from(prayerFeedSubscriptionsTable)
     .where(eq(prayerFeedSubscriptionsTable.userId, userId));
   const subscribedFeedIds = feedSubs.map((s) => s.feedId);
+  // Up to three slots per (feed, today) — each becomes its own
+  // intercession slide on the subscriber side. Order ascends by
+  // slot so a feed programmed with morning / midday / evening
+  // intentions reads top-to-bottom in the deck.
   const feedRows = subscribedFeedIds.length > 0
     ? await db
         .select({
           id: prayerFeedEntriesTable.id,
+          slot: prayerFeedEntriesTable.slot,
           title: prayerFeedEntriesTable.title,
           body: prayerFeedEntriesTable.body,
           feedTitle: prayerFeedsTable.title,
@@ -356,6 +365,7 @@ export async function buildIntercessionSlides(
           ),
         )
     : [];
+  feedRows.sort((a, b) => a.slot - b.slot);
 
   const slides: Slide[] = [];
   const dayKey = cacheDate.toISOString().slice(0, 10);

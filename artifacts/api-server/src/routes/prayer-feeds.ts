@@ -124,6 +124,10 @@ const updateFeedSchema = z.object({
 
 const entrySchema = z.object({
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "entryDate must be YYYY-MM-DD"),
+  // 1, 2, or 3. Default 1 so callers that don't specify keep working
+  // (single-slot legacy behavior). Each slot becomes its own slide on
+  // the subscriber side, in ascending order.
+  slot: z.number().int().min(1).max(3).default(1),
   title: z.string().trim().min(1).max(120),
   body: z.string().trim().max(2000).default(""),
   scriptureRef: z.string().trim().max(80).nullable().optional(),
@@ -188,12 +192,20 @@ router.get("/prayer-feeds/subscribed", requireBeta, async (req, res): Promise<vo
 
   for (const { feed } of subs) {
     const today = todayInZone(feed.timezone);
+    // Multi-slot feeds publish up to three entries per date. The
+    // dashboard summary card has room for one preview, so we pick the
+    // earliest slot (smallest slot number) that's been published. That
+    // matches the order subscribers see them in prayer-mode and gives
+    // a stable "today's intention" preview regardless of how many
+    // slots are filled.
     const [entry] = await db.select().from(prayerFeedEntriesTable)
       .where(and(
         eq(prayerFeedEntriesTable.feedId, feed.id),
         eq(prayerFeedEntriesTable.entryDate, today),
         eq(prayerFeedEntriesTable.state, "published"),
-      ));
+      ))
+      .orderBy(asc(prayerFeedEntriesTable.slot))
+      .limit(1);
     let prayedToday = false;
     if (entry) {
       const [p] = await db.select({ id: prayerFeedPrayersTable.id })
@@ -311,7 +323,7 @@ router.get("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promise
 
   const entries = await db.select().from(prayerFeedEntriesTable)
     .where(and(...conditions))
-    .orderBy(asc(prayerFeedEntriesTable.entryDate));
+    .orderBy(asc(prayerFeedEntriesTable.entryDate), asc(prayerFeedEntriesTable.slot));
   res.json({ entries });
 });
 
@@ -330,12 +342,15 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
     res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
     return;
   }
-  const { entryDate, title, body, scriptureRef, imageUrl, state } = parsed.data;
+  const { entryDate, slot, title, body, scriptureRef, imageUrl, state } = parsed.data;
   const publishedAt = state === "published" ? new Date() : null;
 
+  // Upsert by (feed, date, slot). Three slots per day max — slot 1
+  // is the legacy default for clients that haven't been updated.
   const [row] = await db.insert(prayerFeedEntriesTable).values({
     feedId: feed.id,
     entryDate,
+    slot,
     title,
     body,
     scriptureRef: scriptureRef ?? null,
@@ -344,7 +359,7 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
     createdByUserId: user.id,
     publishedAt,
   }).onConflictDoUpdate({
-    target: [prayerFeedEntriesTable.feedId, prayerFeedEntriesTable.entryDate],
+    target: [prayerFeedEntriesTable.feedId, prayerFeedEntriesTable.entryDate, prayerFeedEntriesTable.slot],
     set: {
       title,
       body,
@@ -359,7 +374,10 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
   res.status(201).json({ entry: row });
 });
 
-// DELETE /api/prayer-feeds/:slug/entries/:date — editor-only
+// DELETE /api/prayer-feeds/:slug/entries/:date — editor-only.
+// Optional ?slot=1|2|3 narrows the delete to a single slot. Without
+// the param we delete every slot on that date (back-compat with
+// callers that pre-date the multi-slot rollout).
 router.delete("/prayer-feeds/:slug/entries/:date", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
@@ -373,10 +391,15 @@ router.delete("/prayer-feeds/:slug/entries/:date", requireBeta, async (req, res)
     res.status(400).json({ error: "date must be YYYY-MM-DD" });
     return;
   }
-  await db.delete(prayerFeedEntriesTable).where(and(
+
+  const slotRaw = typeof req.query.slot === "string" ? parseInt(req.query.slot, 10) : null;
+  const slot = slotRaw && Number.isInteger(slotRaw) && slotRaw >= 1 && slotRaw <= 3 ? slotRaw : null;
+  const conditions = [
     eq(prayerFeedEntriesTable.feedId, feed.id),
     eq(prayerFeedEntriesTable.entryDate, String(req.params.date)),
-  ));
+  ];
+  if (slot !== null) conditions.push(eq(prayerFeedEntriesTable.slot, slot));
+  await db.delete(prayerFeedEntriesTable).where(and(...conditions));
   res.json({ ok: true });
 });
 
@@ -439,6 +462,11 @@ router.delete("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Pr
 
 // POST /api/prayer-feeds/:slug/entries/:date/pray — log a prayer.
 // Returns updated today-context: prayCount + who-prayed roster.
+//
+// Slot is taken from `?slot=` (1/2/3) or body.slot, defaulting to 1
+// for back-compat with single-slot callers. Each slot has its own
+// `prayCount` and roster, so a feed with three slides per day records
+// three independent prayer streams.
 router.post("/prayer-feeds/:slug/entries/:date/pray", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
@@ -448,10 +476,14 @@ router.post("/prayer-feeds/:slug/entries/:date/pray", requireBeta, async (req, r
     res.status(400).json({ error: "date must be YYYY-MM-DD" });
     return;
   }
+  const slotRaw = req.query.slot ?? req.body?.slot ?? 1;
+  const slotNum = typeof slotRaw === "string" ? parseInt(slotRaw, 10) : Number(slotRaw);
+  const slot = Number.isInteger(slotNum) && slotNum >= 1 && slotNum <= 3 ? slotNum : 1;
   const [entry] = await db.select().from(prayerFeedEntriesTable)
     .where(and(
       eq(prayerFeedEntriesTable.feedId, feed.id),
       eq(prayerFeedEntriesTable.entryDate, String(req.params.date)),
+      eq(prayerFeedEntriesTable.slot, slot),
       eq(prayerFeedEntriesTable.state, "published"),
     ));
   if (!entry) { res.status(404).json({ error: "Entry not published." }); return; }
@@ -486,7 +518,10 @@ router.post("/prayer-feeds/:slug/entries/:date/pray", requireBeta, async (req, r
   res.json({ ok: true, prayCount: count });
 });
 
-// GET /api/prayer-feeds/:slug/entries/:date/prayers — roster for a day
+// GET /api/prayer-feeds/:slug/entries/:date/prayers — roster for a day.
+// Slot is read from `?slot=` (1/2/3), defaulting to 1. Each slot has
+// its own roster — calling without a slot still returns slot 1 to keep
+// pre-multi-slot UIs working.
 router.get("/prayer-feeds/:slug/entries/:date/prayers", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
@@ -501,13 +536,16 @@ router.get("/prayer-feeds/:slug/entries/:date/prayers", requireBeta, async (req,
     res.status(400).json({ error: "date must be YYYY-MM-DD" });
     return;
   }
+  const slotRaw = typeof req.query.slot === "string" ? parseInt(req.query.slot, 10) : 1;
+  const slot = Number.isInteger(slotRaw) && slotRaw >= 1 && slotRaw <= 3 ? slotRaw : 1;
 
   const [entry] = await db.select().from(prayerFeedEntriesTable)
     .where(and(
       eq(prayerFeedEntriesTable.feedId, feed.id),
       eq(prayerFeedEntriesTable.entryDate, String(req.params.date)),
+      eq(prayerFeedEntriesTable.slot, slot),
     ));
-  if (!entry) { res.json({ prayers: [] }); return; }
+  if (!entry) { res.json({ prayers: [], prayCount: 0 }); return; }
 
   const rows = await db
     .select({

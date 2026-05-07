@@ -959,8 +959,23 @@ export async function migrate() {
         published_at TIMESTAMPTZ
       )
     `);
-    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feed_entries_feed_date ON prayer_feed_entries (feed_id, entry_date)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_entries_feed_date ON prayer_feed_entries (feed_id, entry_date)`);
+
+    // ── Multi-slot prayer feed entries ─────────────────────────────────────
+    // Each (feed_id, entry_date) supports up to three entries — slots
+    // 1/2/3. Each slot becomes its own slide on the subscriber side, so
+    // an admin can program three distinct intentions per day.
+    //
+    // Migration steps (idempotent — runs every boot):
+    //   1. Add `slot` column with default 1 if missing. Existing rows
+    //      land on slot=1 so single-slot legacy data keeps working.
+    //   2. Drop the old (feed_id, entry_date) unique index — it
+    //      conflicts with the new triple unique once a feed has more
+    //      than one entry per day.
+    //   3. Create the new (feed_id, entry_date, slot) unique index.
+    await run(client, `ALTER TABLE prayer_feed_entries ADD COLUMN IF NOT EXISTS slot INTEGER NOT NULL DEFAULT 1`);
+    await run(client, `DROP INDEX IF EXISTS uniq_prayer_feed_entries_feed_date`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feed_entries_feed_date_slot ON prayer_feed_entries (feed_id, entry_date, slot)`);
 
     await run(client, `
       CREATE TABLE IF NOT EXISTS prayer_feed_subscriptions (

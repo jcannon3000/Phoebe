@@ -10,8 +10,11 @@ import { usersTable } from "./users";
 // to be interpreted in the parent feed's timezone so subscribers all
 // see the same "today's intention" regardless of where they are.
 //
-// Exactly one entry per (feed, date). That's the discipline of the
-// Prayer Feed — one intention, one day.
+// Up to three entries per (feed, date) — one per slot. Slots 1/2/3 each
+// produce their own slide in the subscriber's prayer-mode deck +
+// Office intercessions, so an admin can program a day with three
+// distinct intentions (e.g. a morning, midday, evening focus). Older
+// single-entry rows are kept on slot=1 by default.
 export const prayerFeedEntriesTable = pgTable(
   "prayer_feed_entries",
   {
@@ -20,6 +23,10 @@ export const prayerFeedEntriesTable = pgTable(
       .notNull()
       .references(() => prayerFeedsTable.id, { onDelete: "cascade" }),
     entryDate: date("entry_date").notNull(),
+    // 1, 2, or 3. Position within the day. Render order on the
+    // subscriber side is ascending. Default 1 so legacy single-slot
+    // rows keep working without backfill.
+    slot: integer("slot").notNull().default(1),
     title: text("title").notNull(),
     body: text("body").notNull().default(""),
     scriptureRef: text("scripture_ref"),
@@ -33,7 +40,8 @@ export const prayerFeedEntriesTable = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }),
   },
   (t) => ({
-    feedDateUnique: uniqueIndex("uniq_prayer_feed_entries_feed_date").on(t.feedId, t.entryDate),
+    // Unique on (feed, date, slot) — three rows max per day per feed.
+    feedDateSlotUnique: uniqueIndex("uniq_prayer_feed_entries_feed_date_slot").on(t.feedId, t.entryDate, t.slot),
     feedDateIdx: index("idx_prayer_feed_entries_feed_date").on(t.feedId, t.entryDate),
   }),
 );

@@ -6,13 +6,13 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
-// Subscriber detail page for a Prayer Feed. Shows today's intention
-// prominently, a "Pray 🙏🏽" action, who-prayed-today chips (mirrors
-// the beta intercession panel), and a collapsed list of back issues.
+// Subscriber detail page for a Prayer Feed. Three intentions per day —
+// each gets its own card with its own "Pray 🙏🏽" button and roster, and
+// the page shows a 7-day calendar grid so subscribers can see what's
+// coming this week. Past days collapse into a back-issues list.
 //
 // The same URL works for the creator — if `isCreator` is true we
-// surface a small "Manage feed" button so they can hop into the
-// calendar editor.
+// surface a "Manage" button so they can hop into the calendar editor.
 
 type FeedState = "draft" | "live" | "paused";
 type EntryState = "draft" | "scheduled" | "published";
@@ -34,6 +34,9 @@ interface Entry {
   id: number;
   feedId: number;
   entryDate: string;
+  // 1, 2, or 3. Position within the day. Server-side default is 1 so
+  // legacy single-slot rows keep working.
+  slot: number;
   title: string;
   body: string;
   scriptureRef: string | null;
@@ -55,6 +58,13 @@ interface FeedResponse {
   isSubscribed: boolean;
 }
 
+const SLOT_LABELS: Record<number, string> = {
+  1: "First",
+  2: "Second",
+  3: "Third",
+};
+const SLOTS = [1, 2, 3] as const;
+
 function todayInZone(tz: string): string {
   try {
     return new Intl.DateTimeFormat("en-CA", {
@@ -64,6 +74,13 @@ function todayInZone(tz: string): string {
   } catch {
     return new Date().toISOString().slice(0, 10);
   }
+}
+
+function addDays(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
 }
 
 function prettyDate(dateStr: string): string {
@@ -77,6 +94,11 @@ function shortDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
   return dt.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+}
+function dayOfWeek(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" });
 }
 
 export default function PrayerFeedDetailPage() {
@@ -98,7 +120,7 @@ export default function PrayerFeedDetailPage() {
     if (slug === "phoebe-climate") setLocation("/climate");
   }, [user, authLoading, isBeta, setLocation, slug]);
 
-  // ── Feed + today's entry ───────────────────────────────────────────────
+  // ── Feed + entries window ──────────────────────────────────────────────
   const feedQ = useQuery<FeedResponse>({
     queryKey: [`/api/prayer-feeds/${slug}`],
     queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}`),
@@ -108,36 +130,69 @@ export default function PrayerFeedDetailPage() {
   const tz = feed?.timezone ?? "America/New_York";
   const today = feed ? todayInZone(tz) : null;
 
-  // Load last 30 days so we can show today prominently + back issues.
+  // Pull a generous window so we can render today + the next 6 days +
+  // back issues without making three separate queries.
   const entriesQ = useQuery<{ entries: Entry[] }>({
     queryKey: [`/api/prayer-feeds/${slug}/entries`, "subscriber"],
     queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/entries`),
     enabled: !!feed,
   });
   const entries = entriesQ.data?.entries ?? [];
-  const todayEntry = useMemo(
-    () => today ? entries.find(e => e.entryDate === today) ?? null : null,
-    [entries, today],
-  );
+
+  // Group entries by date so the calendar can render each day's three
+  // slot cards in O(1). Within a date we also keep an ordered slot map.
+  const bySlot = useMemo(() => {
+    const m = new Map<string, Entry>();
+    for (const e of entries) m.set(`${e.entryDate}|${e.slot}`, e);
+    return m;
+  }, [entries]);
+  const slotKey = (date: string, slot: number) => `${date}|${slot}`;
+
+  // Today's entries — sort by slot ascending so cards stack First /
+  // Second / Third in the order admins programmed them.
+  const todayEntries: Entry[] = useMemo(() => {
+    if (!today) return [];
+    return entries
+      .filter(e => e.entryDate === today && e.state === "published")
+      .sort((a, b) => a.slot - b.slot);
+  }, [entries, today]);
+
+  // Back issues — flat list, newest first, three rows per past day.
   const backIssues = useMemo(() => {
     if (!today) return [];
     return entries
       .filter(e => e.entryDate < today && e.state === "published")
-      .sort((a, b) => b.entryDate.localeCompare(a.entryDate));
+      .sort((a, b) => {
+        const cmp = b.entryDate.localeCompare(a.entryDate);
+        return cmp !== 0 ? cmp : a.slot - b.slot;
+      });
   }, [entries, today]);
 
-  // ── Today's prayer roster ──────────────────────────────────────────────
-  const prayersQ = useQuery<{ prayers: PrayerRow[]; prayCount: number }>({
-    queryKey: [`/api/prayer-feeds/${slug}/entries/${today}/prayers`],
-    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/entries/${today}/prayers`),
-    enabled: !!feed && !!today && !!todayEntry,
+  // ── Today's prayer roster — one query per slot. ────────────────────────
+  // Each slot has its own pray-count and roster server-side, so we
+  // fan out one fetch per published slot. Three small parallel queries
+  // is cheap and keeps slot state independent on the client.
+  const slotsForRoster = todayEntries.map(e => e.slot);
+  const slot1RosterQ = useQuery<{ prayers: PrayerRow[]; prayCount: number }>({
+    queryKey: [`/api/prayer-feeds/${slug}/entries/${today}/prayers`, 1],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/entries/${today}/prayers?slot=1`),
+    enabled: !!feed && !!today && slotsForRoster.includes(1),
   });
-  const prayers = prayersQ.data?.prayers ?? [];
-  const prayedTodayCount = prayersQ.data?.prayCount ?? todayEntry?.prayCount ?? 0;
-  const didIPrayToday = useMemo(() => {
-    if (!user) return false;
-    return prayers.some(p => p.email.toLowerCase() === (user as any).email?.toLowerCase?.());
-  }, [prayers, user]);
+  const slot2RosterQ = useQuery<{ prayers: PrayerRow[]; prayCount: number }>({
+    queryKey: [`/api/prayer-feeds/${slug}/entries/${today}/prayers`, 2],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/entries/${today}/prayers?slot=2`),
+    enabled: !!feed && !!today && slotsForRoster.includes(2),
+  });
+  const slot3RosterQ = useQuery<{ prayers: PrayerRow[]; prayCount: number }>({
+    queryKey: [`/api/prayer-feeds/${slug}/entries/${today}/prayers`, 3],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/entries/${today}/prayers?slot=3`),
+    enabled: !!feed && !!today && slotsForRoster.includes(3),
+  });
+  const rosterBySlot: Record<number, { prayers: PrayerRow[]; prayCount: number } | undefined> = {
+    1: slot1RosterQ.data,
+    2: slot2RosterQ.data,
+    3: slot3RosterQ.data,
+  };
 
   // ── Mutations ──────────────────────────────────────────────────────────
   const subscribe = useMutation({
@@ -149,10 +204,11 @@ export default function PrayerFeedDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}`] }),
   });
   const pray = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/prayer-feeds/${slug}/entries/${today}/pray`, {}),
-    onSuccess: () => {
+    mutationFn: (slot: number) =>
+      apiRequest("POST", `/api/prayer-feeds/${slug}/entries/${today}/pray?slot=${slot}`, {}),
+    onSuccess: (_data, slot) => {
       qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries`, "subscriber"] });
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries/${today}/prayers`] });
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries/${today}/prayers`, slot] });
     },
   });
 
@@ -176,6 +232,12 @@ export default function PrayerFeedDetailPage() {
 
   const isCreator = feedQ.data?.isCreator ?? false;
   const isSubscribed = feedQ.data?.isSubscribed ?? false;
+  const userEmail = (user as any).email?.toLowerCase?.() ?? "";
+
+  // 7-day calendar window: today + 6 upcoming days. Each day surfaces
+  // up to 3 slot rows with their published title or a soft placeholder.
+  const calendarDays: string[] = [];
+  if (today) for (let i = 0; i < 7; i++) calendarDays.push(addDays(today, i));
 
   return (
     <Layout>
@@ -247,127 +309,191 @@ export default function PrayerFeedDetailPage() {
           </div>
         )}
 
-        {/* Today's intention */}
+        {/* Today section — three intentions, each with its own pray
+            button and roster. We render one card per published slot
+            and keep the empty-state copy if no slots are live yet. */}
         <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
           Today · {today ? prettyDate(today) : ""}
         </p>
 
-        {todayEntry ? (
-          <div
-            className="rounded-2xl p-5 mb-5"
-            style={{ background: "#0F2622", border: "1px solid rgba(62,124,122,0.35)" }}
-          >
-            <h2
-              className="text-lg font-semibold leading-snug mb-2"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              {todayEntry.title}
-            </h2>
-            {todayEntry.body && (
-              <p
-                className="text-sm leading-relaxed whitespace-pre-line"
-                style={{ color: "rgba(240,237,230,0.88)" }}
-              >
-                {todayEntry.body}
-              </p>
-            )}
-            {todayEntry.scriptureRef && (
-              <p
-                className="text-xs italic mt-3"
-                style={{ color: "#8FAF96", fontFamily: "Georgia, 'Times New Roman', serif" }}
-              >
-                — {todayEntry.scriptureRef}
-              </p>
-            )}
+        {todayEntries.length > 0 ? (
+          <div className="space-y-3 mb-6">
+            {todayEntries.map(entry => {
+              const roster = rosterBySlot[entry.slot];
+              const prayedTodayCount = roster?.prayCount ?? entry.prayCount ?? 0;
+              const prayers = roster?.prayers ?? [];
+              const didIPrayToday = prayers.some(
+                p => p.email.toLowerCase() === userEmail,
+              );
+              return (
+                <div
+                  key={entry.id}
+                  className="rounded-2xl p-5"
+                  style={{ background: "#0F2622", border: "1px solid rgba(62,124,122,0.35)" }}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(168,197,160,0.7)" }}>
+                    {SLOT_LABELS[entry.slot] ?? `Slot ${entry.slot}`}
+                  </p>
+                  <h2
+                    className="text-lg font-semibold leading-snug mb-2"
+                    style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    {entry.title}
+                  </h2>
+                  {entry.body && (
+                    <p
+                      className="text-sm leading-relaxed whitespace-pre-line"
+                      style={{ color: "rgba(240,237,230,0.88)" }}
+                    >
+                      {entry.body}
+                    </p>
+                  )}
+                  {entry.scriptureRef && (
+                    <p
+                      className="text-xs italic mt-3"
+                      style={{ color: "#8FAF96", fontFamily: "Georgia, 'Times New Roman', serif" }}
+                    >
+                      — {entry.scriptureRef}
+                    </p>
+                  )}
 
-            {/* Pray action */}
-            <div className="mt-5 flex items-center gap-3">
-              {didIPrayToday ? (
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: "#A8C5A0" }}
-                >
-                  🙏🏽 You prayed today
-                </span>
-              ) : (
-                <button
-                  onClick={() => pray.mutate()}
-                  disabled={pray.isPending || (!isSubscribed && !isCreator)}
-                  className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
-                  style={{ background: "#3E7C7A", color: "#F0EDE6" }}
-                >
-                  {pray.isPending ? "…" : "Pray 🙏🏽"}
-                </button>
-              )}
-              {!isSubscribed && !isCreator && (
-                <span className="text-[11px] italic" style={{ color: "rgba(143,175,150,0.7)" }}>
-                  Subscribe to join in
-                </span>
-              )}
-            </div>
+                  {/* Pray action + count for this slot */}
+                  <div className="mt-5 flex items-center gap-3 flex-wrap">
+                    {didIPrayToday ? (
+                      <span className="text-sm font-medium" style={{ color: "#A8C5A0" }}>
+                        🙏🏽 You prayed
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => pray.mutate(entry.slot)}
+                        disabled={pray.isPending || (!isSubscribed && !isCreator)}
+                        className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
+                        style={{ background: "#3E7C7A", color: "#F0EDE6" }}
+                      >
+                        {pray.isPending && pray.variables === entry.slot ? "…" : "Pray 🙏🏽"}
+                      </button>
+                    )}
+                    <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)" }}>
+                      {prayedTodayCount} prayed today
+                    </span>
+                    {!isSubscribed && !isCreator && (
+                      <span className="text-[11px] italic" style={{ color: "rgba(143,175,150,0.7)" }}>
+                        Subscribe to join in
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Who-prayed chips for this slot */}
+                  {prayers.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {prayers.slice(0, 12).map((p, i) => (
+                        <div
+                          key={`${p.email}-${i}`}
+                          className="flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-0.5"
+                          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
+                        >
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+                          ) : (
+                            <div
+                              className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold"
+                              style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
+                            >
+                              {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-[11px]" style={{ color: "#F0EDE6" }}>
+                            {p.name || p.email.split("@")[0]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div
-            className="rounded-2xl p-5 mb-5 text-sm italic"
+            className="rounded-2xl p-5 mb-6 text-sm italic"
             style={{ background: "rgba(62,124,122,0.06)", border: "1px solid rgba(62,124,122,0.18)", color: "#8FAF96" }}
           >
-            No intention published for today yet — check back soon.
+            No intentions published for today yet — check back soon.
           </div>
         )}
 
-        {/* Stats panel — streak + prayed today + who prayed today */}
-        {todayEntry && (
-          <div
-            className="rounded-2xl p-5 mb-6"
-            style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
-          >
-            <div className="flex items-baseline gap-6 mb-4">
-              <div>
-                <p className="text-3xl font-bold text-foreground tabular-nums" style={{ color: "#F0EDE6" }}>
-                  {prayedTodayCount}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>prayed today</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-foreground tabular-nums" style={{ color: "#F0EDE6" }}>
-                  {feed.subscriberCount}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>subscribed</p>
-              </div>
-            </div>
-            {prayers.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {prayers.map((p, i) => (
-                  <div
-                    key={`${p.email}-${i}`}
-                    className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1"
-                    style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
-                  >
-                    {p.avatarUrl ? (
-                      <img src={p.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
-                    ) : (
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
-                        style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
-                      >
-                        {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="text-xs" style={{ color: "#F0EDE6" }}>
-                      {p.name || p.email.split("@")[0]}
+        {/* This-week calendar — 7 days × 3 slots. Today is highlighted,
+            other days show the title for any slots that have been
+            published or scheduled (so subscribers can see what's
+            coming). Empty slots are silent. */}
+        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
+          This week
+        </p>
+        <div className="space-y-3 mb-6">
+          {calendarDays.map((dateStr, di) => {
+            const isToday = dateStr === today;
+            const filledSlots = SLOTS.filter(s => bySlot.has(slotKey(dateStr, s)));
+            return (
+              <div
+                key={dateStr}
+                className="rounded-2xl px-4 py-3"
+                style={{
+                  background: isToday ? "rgba(62,124,122,0.12)" : "rgba(46,107,64,0.05)",
+                  border: `1px solid ${isToday ? "rgba(62,124,122,0.35)" : "rgba(46,107,64,0.15)"}`,
+                }}
+              >
+                <div className="flex items-baseline justify-between gap-3 mb-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: isToday ? "#C8D4C0" : "rgba(143,175,150,0.7)" }}>
+                    {isToday ? "Today" : di === 1 ? "Tomorrow" : dayOfWeek(dateStr)}
+                    <span className="ml-2 font-normal" style={{ color: "rgba(143,175,150,0.5)" }}>
+                      {shortDate(dateStr)}
                     </span>
+                  </p>
+                  {filledSlots.length === 0 && (
+                    <p className="text-[11px] italic" style={{ color: "rgba(143,175,150,0.5)" }}>
+                      Not yet programmed
+                    </p>
+                  )}
+                </div>
+                {filledSlots.length > 0 && (
+                  <div className="space-y-1">
+                    {SLOTS.map(slot => {
+                      const e = bySlot.get(slotKey(dateStr, slot));
+                      if (!e) return null;
+                      const isPublished = e.state === "published";
+                      return (
+                        <div
+                          key={slot}
+                          className="flex items-center gap-3 py-1"
+                        >
+                          <span
+                            className="text-[10px] font-semibold uppercase tracking-widest w-14 flex-shrink-0"
+                            style={{ color: "rgba(143,175,150,0.55)" }}
+                          >
+                            {SLOT_LABELS[slot]}
+                          </span>
+                          <span
+                            className="text-sm flex-1 min-w-0 truncate"
+                            style={{ color: isPublished ? "#F0EDE6" : "rgba(240,237,230,0.6)" }}
+                          >
+                            {e.title}
+                          </span>
+                          {!isPublished && (
+                            <span className="text-[10px] uppercase tracking-widest flex-shrink-0" style={{ color: "rgba(143,175,150,0.5)" }}>
+                              {e.state}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <p className="text-xs italic" style={{ color: "#8FAF96" }}>
-                No one has prayed yet today. Be the first.
-              </p>
-            )}
-          </div>
-        )}
+            );
+          })}
+        </div>
 
-        {/* Back issues */}
+        {/* Back issues — flat past-slot list, newest first. */}
         {backIssues.length > 0 && (
           <div>
             <button
@@ -380,15 +506,18 @@ export default function PrayerFeedDetailPage() {
             </button>
             {showBackIssues && (
               <div className="space-y-2">
-                {backIssues.slice(0, 30).map(e => (
+                {backIssues.slice(0, 60).map(e => (
                   <div
-                    key={e.entryDate}
+                    key={`${e.entryDate}-${e.slot}`}
                     className="rounded-xl px-4 py-3"
                     style={{ background: "rgba(62,124,122,0.06)", border: "1px solid rgba(62,124,122,0.15)" }}
                   >
                     <div className="flex items-baseline justify-between gap-3 mb-0.5">
                       <p className="text-[11px] font-medium" style={{ color: "rgba(143,175,150,0.7)" }}>
                         {shortDate(e.entryDate)}
+                        <span className="ml-2" style={{ color: "rgba(143,175,150,0.5)" }}>
+                          {SLOT_LABELS[e.slot] ?? `#${e.slot}`}
+                        </span>
                       </p>
                       <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>
                         {e.prayCount} prayed

@@ -31,6 +31,10 @@ interface Entry {
   id: number;
   feedId: number;
   entryDate: string; // "YYYY-MM-DD"
+  // 1, 2, or 3. Position within the day. Older single-entry rows
+  // default to 1 server-side, so manage UIs that pre-date this
+  // change keep working.
+  slot: number;
   title: string;
   body: string;
   scriptureRef: string | null;
@@ -38,6 +42,16 @@ interface Entry {
   state: EntryState;
   prayCount: number;
 }
+
+// Up to three programmable slots per day. The numbers are positional
+// labels — each slot becomes its own slide on the subscriber side, in
+// ascending order.
+const SLOT_LABELS: Record<number, string> = {
+  1: "First",
+  2: "Second",
+  3: "Third",
+};
+const SLOTS = [1, 2, 3] as const;
 
 interface FeedResponse {
   feed: Feed;
@@ -113,11 +127,15 @@ export default function PrayerFeedManagePage() {
   });
 
   const entries: Entry[] = entriesQ.data?.entries ?? [];
-  const byDate = useMemo(() => {
+  // Lookup per (date, slot). Three rows per date max. The key is
+  // `${date}|${slot}` so callers can grab an exact cell without
+  // walking the array.
+  const bySlot = useMemo(() => {
     const m = new Map<string, Entry>();
-    for (const e of entries) m.set(e.entryDate, e);
+    for (const e of entries) m.set(`${e.entryDate}|${e.slot}`, e);
     return m;
   }, [entries]);
+  const slotKey = (date: string, slot: number) => `${date}|${slot}`;
 
   // ── Mutations ───────────────────────────────────────────────────────────
   const updateFeed = useMutation({
@@ -129,6 +147,7 @@ export default function PrayerFeedManagePage() {
   const saveEntry = useMutation({
     mutationFn: (e: {
       entryDate: string;
+      slot: number;
       title: string;
       body: string;
       scriptureRef: string | null;
@@ -141,40 +160,43 @@ export default function PrayerFeedManagePage() {
   });
 
   const deleteEntry = useMutation({
-    mutationFn: (date: string) =>
-      apiRequest("DELETE", `/api/prayer-feeds/${slug}/entries/${date}`),
+    mutationFn: ({ date, slot }: { date: string; slot: number }) =>
+      apiRequest("DELETE", `/api/prayer-feeds/${slug}/entries/${date}?slot=${slot}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries`, windowFrom, windowTo] });
     },
   });
 
-  // ── Modal state ─────────────────────────────────────────────────────────
-  const [editorDate, setEditorDate] = useState<string | null>(null);
+  // ── Modal state — keyed by (date, slot) since each cell is its
+  // own intercession. The editor remembers which cell is open so
+  // saves / deletes don't drift to the wrong slot. ──────────────
+  const [editorTarget, setEditorTarget] = useState<{ date: string; slot: number } | null>(null);
   const [draft, setDraft] = useState<{ title: string; body: string; scriptureRef: string }>({
     title: "", body: "", scriptureRef: "",
   });
 
-  function openEditor(dateStr: string) {
-    const existing = byDate.get(dateStr);
+  function openEditor(dateStr: string, slot: number) {
+    const existing = bySlot.get(slotKey(dateStr, slot));
     setDraft({
       title: existing?.title ?? "",
       body: existing?.body ?? "",
       scriptureRef: existing?.scriptureRef ?? "",
     });
-    setEditorDate(dateStr);
+    setEditorTarget({ date: dateStr, slot });
   }
-  function closeEditor() { setEditorDate(null); }
+  function closeEditor() { setEditorTarget(null); }
 
   async function commitEditor(state: EntryState) {
-    if (!editorDate) return;
+    if (!editorTarget) return;
     await saveEntry.mutateAsync({
-      entryDate: editorDate,
+      entryDate: editorTarget.date,
+      slot: editorTarget.slot,
       title: draft.title.trim(),
       body: draft.body.trim(),
       scriptureRef: draft.scriptureRef.trim() || null,
       state,
     });
-    setEditorDate(null);
+    setEditorTarget(null);
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -191,12 +213,19 @@ export default function PrayerFeedManagePage() {
     );
   }
 
-  const todayEntry = today ? byDate.get(today) ?? null : null;
-  const upcoming: string[] = [];
-  for (let i = 1; i <= 7; i++) upcoming.push(addDays(today!, i));
+  // 7-day window for the calendar editor: today + 6 upcoming days.
+  // Each day expands to 3 editable slot cells.
+  const calendarDays: string[] = [];
+  for (let i = 0; i < 7; i++) calendarDays.push(addDays(today!, i));
+  // Past entries surface as a flat list (one row per slot) so admins
+  // can scan history without scrolling 21 cells per day. Slot order
+  // is preserved within each date.
   const past: Entry[] = entries
     .filter(e => e.entryDate < today!)
-    .sort((a, b) => b.entryDate.localeCompare(a.entryDate));
+    .sort((a, b) => {
+      const cmp = b.entryDate.localeCompare(a.entryDate);
+      return cmp !== 0 ? cmp : a.slot - b.slot;
+    });
 
   return (
     <Layout>
@@ -252,86 +281,85 @@ export default function PrayerFeedManagePage() {
           ))}
         </div>
 
-        {/* Today */}
+        {/* 7-day calendar — today + 6 upcoming days, three editable
+            slots per day. Each cell opens the editor pre-filled with
+            its existing entry (or empty for an unfilled slot). */}
         <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
-          Today · {prettyDate(today!)}
+          This week
         </p>
-        <button
-          onClick={() => openEditor(today!)}
-          className="w-full text-left rounded-2xl p-4 mb-6 transition-opacity hover:opacity-90"
-          style={{
-            background: todayEntry ? "#0F2818" : "rgba(46,107,64,0.06)",
-            border: `1px solid ${todayEntry ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.18)"}`,
-          }}
-        >
-          {todayEntry ? (
-            <>
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{todayEntry.title}</p>
-              {todayEntry.body && (
-                <p className="text-xs mt-1 line-clamp-3" style={{ color: "#8FAF96" }}>{todayEntry.body}</p>
-              )}
-              <p className="text-[11px] mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                {todayEntry.state === "published"
-                  ? `${todayEntry.prayCount} prayed today`
-                  : `${todayEntry.state} · tap to publish`}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm italic" style={{ color: "#8FAF96" }}>+ Compose today's intention</p>
-          )}
-        </button>
-
-        {/* Upcoming */}
-        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
-          Upcoming
-        </p>
-        <div className="space-y-2 mb-6">
-          {upcoming.map(dateStr => {
-            const e = byDate.get(dateStr);
-            const statusDot = e
-              ? (e.state === "published" ? "🟢" : e.state === "scheduled" ? "🟡" : "⚫")
-              : null;
+        <div className="space-y-4 mb-6">
+          {calendarDays.map((dateStr, di) => {
+            const isToday = dateStr === today;
             return (
-              <button
-                key={dateStr}
-                onClick={() => openEditor(dateStr)}
-                className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
-                style={{
-                  background: "rgba(46,107,64,0.06)",
-                  border: "1px solid rgba(46,107,64,0.18)",
-                }}
-              >
-                <span className="text-[11px] font-medium w-20 flex-shrink-0" style={{ color: "rgba(143,175,150,0.7)" }}>
-                  {prettyDate(dateStr)}
-                </span>
-                <span className="text-sm flex-1 min-w-0 truncate" style={{ color: e ? "#F0EDE6" : "#8FAF96" }}>
-                  {e ? e.title : "(draft an intention)"}
-                </span>
-                {statusDot ? (
-                  <span className="text-[10px] flex-shrink-0">{statusDot}</span>
-                ) : (
-                  <span className="text-xs flex-shrink-0" style={{ color: "#8FAF96" }}>+ Add</span>
-                )}
-              </button>
+              <div key={dateStr}>
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-widest mb-2"
+                  style={{ color: isToday ? "#C8D4C0" : "rgba(143,175,150,0.7)" }}
+                >
+                  {isToday ? "Today" : di === 1 ? "Tomorrow" : prettyDate(dateStr)}
+                  <span className="ml-2 font-normal" style={{ color: "rgba(143,175,150,0.5)" }}>
+                    {isToday ? prettyDate(dateStr) : ""}
+                  </span>
+                </p>
+                <div className="space-y-1.5">
+                  {SLOTS.map(slot => {
+                    const e = bySlot.get(slotKey(dateStr, slot));
+                    const statusDot = e
+                      ? (e.state === "published" ? "🟢" : e.state === "scheduled" ? "🟡" : "⚫")
+                      : null;
+                    return (
+                      <button
+                        key={slot}
+                        onClick={() => openEditor(dateStr, slot)}
+                        className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
+                        style={{
+                          background: e ? "#0F2818" : "rgba(46,107,64,0.06)",
+                          border: `1px solid ${e ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.18)"}`,
+                        }}
+                      >
+                        <span
+                          className="text-[10px] font-semibold uppercase tracking-widest w-14 flex-shrink-0"
+                          style={{ color: "rgba(143,175,150,0.6)" }}
+                        >
+                          {SLOT_LABELS[slot]}
+                        </span>
+                        <span className="text-sm flex-1 min-w-0 truncate" style={{ color: e ? "#F0EDE6" : "#8FAF96" }}>
+                          {e ? e.title : "(draft an intention)"}
+                        </span>
+                        {statusDot ? (
+                          <span className="text-[10px] flex-shrink-0">{statusDot}</span>
+                        ) : (
+                          <span className="text-xs flex-shrink-0" style={{ color: "#8FAF96" }}>+ Add</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
 
-        {/* Past */}
+        {/* Past entries — flat history list so admins can scan recent
+            programming without scrolling per-day grids. Each row is
+            one slot. */}
         {past.length > 0 && (
           <>
             <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
               Past
             </p>
             <div className="space-y-2">
-              {past.slice(0, 14).map(e => (
+              {past.slice(0, 21).map(e => (
                 <div
-                  key={e.entryDate}
+                  key={`${e.entryDate}-${e.slot}`}
                   className="rounded-xl px-4 py-3 flex items-center gap-3"
                   style={{ background: "rgba(46,107,64,0.05)", border: "1px solid rgba(46,107,64,0.14)" }}
                 >
                   <span className="text-[11px] font-medium w-20 flex-shrink-0" style={{ color: "rgba(143,175,150,0.6)" }}>
                     {prettyDate(e.entryDate)}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-widest w-12 flex-shrink-0" style={{ color: "rgba(143,175,150,0.5)" }}>
+                    {SLOT_LABELS[e.slot] ?? `#${e.slot}`}
                   </span>
                   <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "rgba(240,237,230,0.75)" }}>
                     {e.title}
@@ -345,8 +373,13 @@ export default function PrayerFeedManagePage() {
           </>
         )}
 
-        {/* ── Editor modal ────────────────────────────────────────────── */}
-        {editorDate && (
+        {/* ── Editor modal — keyed on (date, slot) so each cell on
+              the calendar opens its own intention. ─────────────── */}
+        {editorTarget && (() => {
+          const editorDate = editorTarget.date;
+          const editorSlot = editorTarget.slot;
+          const existing = bySlot.get(slotKey(editorDate, editorSlot));
+          return (
           <div
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 py-6"
             style={{ background: "rgba(0,0,0,0.55)" }}
@@ -362,9 +395,10 @@ export default function PrayerFeedManagePage() {
                   <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.45)" }}>
                     {prettyDate(editorDate)}
                     {editorDate === today && " · Today"}
+                    {" · "}{SLOT_LABELS[editorSlot]} slot
                   </p>
                   <p className="text-sm font-semibold mt-0.5" style={{ color: "#F0EDE6" }}>
-                    {byDate.has(editorDate) ? "Edit intention" : "Compose intention"}
+                    {existing ? "Edit intention" : "Compose intention"}
                   </p>
                 </div>
                 <button onClick={closeEditor} className="text-xl leading-none" style={{ color: "#8FAF96" }} aria-label="Close">
@@ -446,11 +480,11 @@ export default function PrayerFeedManagePage() {
                 </button>
               </div>
 
-              {byDate.has(editorDate) && (
+              {existing && (
                 <button
                   onClick={async () => {
                     if (confirm("Delete this intention?")) {
-                      await deleteEntry.mutateAsync(editorDate);
+                      await deleteEntry.mutateAsync({ date: editorDate, slot: editorSlot });
                       closeEditor();
                     }
                   }}
@@ -463,7 +497,8 @@ export default function PrayerFeedManagePage() {
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </Layout>
   );
