@@ -309,14 +309,13 @@ export async function assembleEveningPrayer(
       }),
     );
 
-    // 4 verses per slide; Gloria Patri goes on the last chunk only.
+    // 4 verses per slide. Gloria Patri lives on its own slide (per
+    // user direction) — emitted right after the chunks below.
     if (sliced) {
       const chunks = splitPsalmIntoChunks(sliced, 4);
-      const lastIdx = chunks.length - 1;
       chunks.forEach((chunk, i) => {
-        const content = i === lastIdx ? chunk + epGloriaPatri : chunk;
         slides.push(
-          slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, content, {
+          slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, chunk, {
             title: psalmData?.title ?? null,
             bcpReference: psalmData?.bcpReference ?? null,
             isScrollable: false,
@@ -338,7 +337,7 @@ export async function assembleEveningPrayer(
           "psalm",
           PSALM_EMOJI[psalmNum] ?? "📖",
           eyebrow,
-          `[Psalm ${psalmRef.raw} — see BCP Psalter]${epGloriaPatri}`,
+          `[Psalm ${psalmRef.raw} — see BCP Psalter]`,
           {
             title: psalmData?.title ?? null,
             bcpReference: psalmData?.bcpReference ?? null,
@@ -353,6 +352,21 @@ export async function assembleEveningPrayer(
         ),
       );
     }
+
+    // Gloria Patri — its own slide, sealing the psalm.
+    slides.push(
+      slide(id(), "psalm_gloria", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, epGloriaPatri.trimStart(), {
+        title: psalmData?.title ?? null,
+        bcpReference: psalmData?.bcpReference ?? null,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: {
+          psalmNumber: psalmNum,
+          psalmRange: range,
+          psalmRef: psalmRef.raw,
+        },
+      }),
+    );
   }
 
   // 8. The Gospel — reference only.

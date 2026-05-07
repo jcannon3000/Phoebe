@@ -237,14 +237,14 @@ export async function assembleDevotion(
   );
 
   if (slicedPsalm) {
-    // 4 verses per slide; Gloria Patri appended to the last chunk
-    // only so the doxology still seals the psalm.
+    // 4 verses per slide. Gloria Patri lives on its own slide (per
+    // user direction) — emitted after the chunks below so the doxology
+    // reads as a distinct sealing beat rather than tacked onto the
+    // last verse.
     const chunks = splitPsalmIntoChunks(slicedPsalm, 4);
-    const lastIdx = chunks.length - 1;
     chunks.forEach((chunk, i) => {
-      const content = i === lastIdx ? chunk + gloriaPatri : chunk;
       slides.push(
-        slide(id(), "psalm", "📖", eyebrow, content, {
+        slide(id(), "psalm", "📖", eyebrow, chunk, {
           title: psalmRow?.title ?? null,
           bcpReference: psalmRow?.bcpReference ?? null,
           isScrollable: false,
@@ -267,7 +267,7 @@ export async function assembleDevotion(
         "psalm",
         "📖",
         eyebrow,
-        `[Psalm ${parsedRef.raw} — see BCP Psalter]${gloriaPatri}`,
+        `[Psalm ${parsedRef.raw} — see BCP Psalter]`,
         {
           title: psalmRow?.title ?? null,
           bcpReference: psalmRow?.bcpReference ?? null,
@@ -283,6 +283,22 @@ export async function assembleDevotion(
       ),
     );
   }
+
+  // Gloria Patri — its own slide, sealing the devotion psalm.
+  slides.push(
+    slide(id(), "psalm_gloria", "📖", eyebrow, gloriaPatri.trimStart(), {
+      title: psalmRow?.title ?? null,
+      bcpReference: psalmRow?.bcpReference ?? null,
+      isScrollable: false,
+      scrollHint: null,
+      metadata: {
+        psalmNumber: psalmNum,
+        psalmRange: parsedRef.range,
+        psalmRef: parsedRef.raw,
+        fromLectionary: true,
+      },
+    }),
+  );
 
   // 4. Reading — pulled from the day's lectionary so the devotion
   // tracks the same Bible journey as the full Daily Office. Morning

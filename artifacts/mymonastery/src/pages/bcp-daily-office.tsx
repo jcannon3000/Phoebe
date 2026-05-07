@@ -62,6 +62,8 @@ const SECTION_LABEL: Record<string, string> = {
   invitatory: "Invitatory",
   invitatory_psalm: "Invitatory Psalm",
   psalm: "Psalm",
+  psalm_title: "Psalm",
+  psalm_gloria: "Doxology",
   lesson: "Lesson",
   canticle: "Canticle",
   creed: "Creed",
@@ -644,19 +646,33 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               (currentSlide.content?.length ?? 0)
               + (currentSlide.callAndResponseLines?.reduce((acc, l) => acc + l.text.length, 0) ?? 0);
             const isShortEnough = bodyLength <= 320;
+            // Verse-shape slides — psalm bodies, canticle bodies, and
+            // the chunked invitatory psalm — must always stay left-
+            // aligned and top-anchored so the BCP line indents (the
+            // continuation hemistichs after the `*` caesura) read as
+            // a missal column rather than floating in the middle of
+            // the slide. Without this exclusion they'd hit the short-
+            // enough-to-center fallback below.
+            const verseTypes = new Set<string>([
+              "psalm",
+              "canticle",
+              "invitatory_psalm",
+            ]);
+            const isVerseType = verseTypes.has(currentSlide.type);
             // Title cards (psalm/canticle headline slides) center their
             // big numeral; the prayer-mode portal centers its glowing
-            // "Intercessions" headline. Verse content itself — psalm
-            // and canticle bodies — stays left-aligned and top-anchored
-            // so the BCP line indents (continuation hemistichs after
-            // the `*` caesura) read as a missal column rather than
-            // each line floating in the middle of the slide.
+            // "Intercessions" headline. The psalm_gloria doxology slide
+            // also centers — it's a single short italic seal, not a
+            // missal column.
             const centered =
-              currentSlide.type === "intercessions"
-              || currentSlide.type === "intercessions_portal"
-              || currentSlide.type === "psalm_title"
-              || currentSlide.type === "canticle_title"
-              || (!isLongType && isShortEnough);
+              !isVerseType && (
+                currentSlide.type === "intercessions"
+                || currentSlide.type === "intercessions_portal"
+                || currentSlide.type === "psalm_title"
+                || currentSlide.type === "canticle_title"
+                || currentSlide.type === "psalm_gloria"
+                || (!isLongType && isShortEnough)
+              );
             return {
               display: "flex",
               flexDirection: "column",
@@ -708,66 +724,92 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               </h1>
             </div>
           ) : currentSlide.type === "psalm_title" ? (
-            // Big "Psalm 23" headline on its own slide before the
-            // verses begin. Mirrors the intercessions_portal layout
-            // so the reader gets a deliberate breath into the psalm.
-            // Subtitle ("The Psalm Appointed For This Morning")
-            // sits above the title, matching the missal voice the
-            // verse slides use.
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "100%",
-                minHeight: 240,
-                textAlign: "center",
-                gap: 16,
-              }}
-            >
-              <p
-                style={{
-                  color: FAINT_GREEN,
-                  fontSize: 11,
-                  letterSpacing: "0.18em",
-                  textTransform: "uppercase",
-                  margin: 0,
-                  fontWeight: 600,
-                }}
-              >
-                {resolvedMode === "evening" || resolvedMode === "early-evening-devotion"
+            // Big psalm headline on its own slide before the verses
+            // begin. Mirrors the intercessions_portal layout so the
+            // reader gets a deliberate breath into the psalm.
+            // Two flavors:
+            //  • Appointed psalm — eyebrow comes in as "PSALM 72" and
+            //    we transform to "Psalm 72". Subtitle reads "The
+            //    Psalm Appointed For This Morning/Evening".
+            //  • Invitatory psalm — server stamps metadata.invitatory
+            //    + metadata.psalmHeadline ("Venite" / "Jubilate" /
+            //    "Pascha Nostrum"). Subtitle reads "The Invitatory
+            //    Psalm" so the reader knows they're at the call-to-
+            //    worship, not the appointed psalm.
+            (() => {
+              const meta = currentSlide.metadata as
+                | { invitatory?: unknown; psalmHeadline?: unknown }
+                | undefined;
+              const isInvitatory = meta?.invitatory === true;
+              const customHeadline =
+                typeof meta?.psalmHeadline === "string" && meta.psalmHeadline.length > 0
+                  ? meta.psalmHeadline
+                  : null;
+              const headline =
+                customHeadline
+                ?? (currentSlide.eyebrow || "PSALM").replace(/^PSALM\b/, "Psalm");
+              const isEvening =
+                resolvedMode === "evening" || resolvedMode === "early-evening-devotion";
+              const subtitle = isInvitatory
+                ? "The Invitatory Psalm"
+                : isEvening
                   ? "The Psalm Appointed For This Evening"
-                  : "The Psalm Appointed For This Morning"}
-              </p>
-              <h1
-                className="title-glow-breathe"
-                style={{
-                  fontFamily: SPACE_GROTESK,
-                  fontSize: "clamp(48px, 9vw, 88px)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  color: WARM_TEXT,
-                  margin: 0,
-                  lineHeight: 1.0,
-                }}
-              >
-                {(currentSlide.eyebrow || "PSALM").replace(/^PSALM\b/, "Psalm")}
-              </h1>
-              {currentSlide.title && (
-                <p
+                  : "The Psalm Appointed For This Morning";
+              return (
+                <div
                   style={{
-                    fontSize: 16,
-                    fontStyle: "italic",
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    color: "rgba(200,212,192,0.75)",
-                    margin: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    minHeight: 240,
+                    textAlign: "center",
+                    gap: 16,
                   }}
                 >
-                  {currentSlide.title}
-                </p>
-              )}
-            </div>
+                  <p
+                    style={{
+                      color: FAINT_GREEN,
+                      fontSize: 11,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {subtitle}
+                  </p>
+                  <h1
+                    className="title-glow-breathe"
+                    style={{
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: "clamp(48px, 9vw, 88px)",
+                      fontWeight: 700,
+                      letterSpacing: "-0.02em",
+                      color: WARM_TEXT,
+                      margin: 0,
+                      lineHeight: 1.0,
+                    }}
+                  >
+                    {headline}
+                  </h1>
+                  {currentSlide.title && !isInvitatory && (
+                    <p
+                      style={{
+                        fontSize: 16,
+                        fontStyle: "italic",
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        color: "rgba(200,212,192,0.75)",
+                        margin: 0,
+                      }}
+                    >
+                      {currentSlide.title}
+                    </p>
+                  )}
+                </div>
+              );
+            })()
           ) : currentSlide.type === "canticle_title" ? (
             // Big "Canticle 8" headline, mirrors the psalm_title
             // pattern. Subtitle ("The Canticle Appointed For This
@@ -871,7 +913,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             // already shown the big "Psalm 72" + appointed-for
             // headline, so here we just keep a slim eyebrow ("Psalm 72")
             // above the verses so the reader knows where they are
-            // mid-rotation. Verses get vertical centering treatment.
+            // mid-rotation.
             <p
               style={{
                 color: FAINT_GREEN,
@@ -883,6 +925,49 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               }}
             >
               {(currentSlide.eyebrow || "PSALM").replace(/^PSALM\b/, "Psalm")}
+            </p>
+          ) : currentSlide.type === "invitatory_psalm" ? (
+            // Chunked invitatory verse slide. Slim eyebrow with the
+            // invitatory's proper name (Venite / Jubilate / Pascha
+            // Nostrum) so the reader keeps their place mid-rotation,
+            // mirroring the appointed-psalm chunk eyebrow.
+            (() => {
+              const meta = currentSlide.metadata as { psalmHeadline?: unknown } | undefined;
+              const headline =
+                typeof meta?.psalmHeadline === "string" && meta.psalmHeadline.length > 0
+                  ? meta.psalmHeadline
+                  : "Invitatory";
+              return (
+                <p
+                  style={{
+                    color: FAINT_GREEN,
+                    fontSize: 10,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                    fontWeight: 600,
+                  }}
+                >
+                  {headline}
+                </p>
+              );
+            })()
+          ) : currentSlide.type === "psalm_gloria" ? (
+            // Doxology slide — sealing the psalm. Slim "Doxology"
+            // eyebrow keeps the breadcrumb consistent with the verse
+            // slides above. Body renders as italic Georgia via the
+            // default <p> below the branch list.
+            <p
+              style={{
+                color: FAINT_GREEN,
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                margin: 0,
+                fontWeight: 600,
+              }}
+            >
+              Doxology
             </p>
           ) : currentSlide.type === "canticle" && (currentSlide.metadata as { canticleChunkIndex?: unknown } | undefined)?.canticleChunkIndex !== undefined ? (
             // Chunked canticle slide — title slide already showed the

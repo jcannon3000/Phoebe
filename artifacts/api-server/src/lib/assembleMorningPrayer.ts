@@ -38,6 +38,7 @@ export type SlideType =
   | "invitatory_psalm"
   | "psalm_title"
   | "psalm"
+  | "psalm_gloria"
   | "lesson"
   | "canticle_title"
   | "canticle"
@@ -498,16 +499,22 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // SLIDE 6: Invitatory Psalm (with seasonal antiphon bookending it
-  // when present). Per user direction the antiphon no longer gets its
-  // own slide; instead it appears at the top of the invitatory psalm
-  // slide (said before the psalm) and again at the bottom (said
-  // after), matching the BCP rubric on p. 80 ("the Antiphon may be
-  // sung or said before, and after, the Invitatory Psalm").
-  const invitPsalmTitles: Record<string, string> = {
+  // SLIDES 6+: Invitatory Psalm — title slide + 4-verse chunked verse
+  // slides, matching the appointed-psalm treatment introduced in commit
+  // e4eb38f. The seasonal antiphon (when present) bookends the verses
+  // per BCP rubric p. 80 ("the Antiphon may be sung or said before,
+  // and after, the Invitatory Psalm"): we prepend it to the first
+  // chunk and append it to the last so the reader gets it at both
+  // ends without needing a separate slide.
+  const invitPsalmEyebrows: Record<string, string> = {
     venite: "VENITE · PSALM 95",
     jubilate: "JUBILATE · PSALM 100",
     pascha_nostrum: "PASCHA NOSTRUM",
+  };
+  const invitPsalmHeadlines: Record<string, string> = {
+    venite: "Venite",
+    jubilate: "Jubilate",
+    pascha_nostrum: "Pascha Nostrum",
   };
   const invitPsalmRefs: Record<string, string> = {
     venite: "BCP p. 82",
@@ -520,17 +527,79 @@ export async function assembleMorningPrayer(
   const antiphonText = getText(liturgicalDay.antiphonKey);
   const hasAntiphon = !!antiphonText && antiphonText.trim().length > 0 && !antiphonText.startsWith("[");
   const psalmBody = getText(invitPsalmKey);
-  const invitPsalmContent = hasAntiphon
-    ? `${antiphonText}\n\n${psalmBody}\n\n${antiphonText}`
-    : psalmBody;
+  const invitEyebrow = invitPsalmEyebrows[invitPsalmKey] ?? "VENITE";
+  const invitHeadline = invitPsalmHeadlines[invitPsalmKey] ?? "Venite";
+  const invitBcpRef = invitPsalmRefs[invitPsalmKey] ?? "BCP p. 82";
 
+  // Title slide — big "Venite" / "Jubilate" / "Pascha Nostrum"
+  // headline, mirrors the psalm_title pattern. The renderer reads
+  // metadata.invitatory to swap the subtitle from "The Psalm Appointed
+  // …" to "The Invitatory Psalm".
   slides.push(
-    slide(id(), "invitatory_psalm", "🎶", invitPsalmTitles[invitPsalmKey] ?? "VENITE", invitPsalmContent, {
-      bcpReference: invitPsalmRefs[invitPsalmKey] ?? "BCP p. 82",
-      isScrollable: true,
-      scrollHint: "↓ continue · tap when ready",
+    slide(id(), "psalm_title", "🎶", invitEyebrow, "", {
+      bcpReference: invitBcpRef,
+      isScrollable: false,
+      scrollHint: null,
+      metadata: {
+        invitatory: true,
+        invitPsalmKey,
+        psalmHeadline: invitHeadline,
+      },
     }),
   );
+
+  // Chunk the body. Invitatory text in bcp_texts uses canticle-shape
+  // (no numeric verse markers — non-indented line + indented
+  // continuation), so splitCanticleIntoChunks is the right splitter.
+  // 4 verses per chunk matches the appointed-psalm cadence.
+  const { chunks: invitChunks } = splitCanticleIntoChunks(psalmBody, 4);
+  const lastInvitIdx = invitChunks.length - 1;
+  invitChunks.forEach((chunk, i) => {
+    let content = chunk;
+    if (i === 0 && hasAntiphon) {
+      content = `${antiphonText}\n\n${content}`;
+    }
+    // Closing antiphon goes on the LAST verse chunk per the BCP rubric
+    // bookend pattern. The Gloria Patri lives on its own slide below
+    // (skipped for Pascha Nostrum, which closes with its own paschal
+    // Alleluias rather than the standard doxology).
+    if (i === lastInvitIdx && hasAntiphon) {
+      content = `${content}\n\n${antiphonText}`;
+    }
+    slides.push(
+      slide(id(), "invitatory_psalm", "🎶", invitEyebrow, content, {
+        bcpReference: invitBcpRef,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: {
+          invitatory: true,
+          invitPsalmKey,
+          psalmHeadline: invitHeadline,
+          invitatoryChunkIndex: i,
+          invitatoryChunkTotal: invitChunks.length,
+        },
+      }),
+    );
+  });
+  // Gloria Patri — its own slide, sealing the invitatory psalm. Uses
+  // psalm_gloria so it shares the appointed-psalm doxology renderer
+  // for visual consistency. Skipped for Pascha Nostrum since the
+  // paschal anthem doesn't end with the standard doxology.
+  if (invitPsalmKey !== "pascha_nostrum") {
+    const invitGloriaPatri =
+      "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
+    slides.push(
+      slide(id(), "psalm_gloria", "🎶", invitEyebrow, invitGloriaPatri, {
+        bcpReference: invitBcpRef,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: {
+          invitatory: true,
+          invitPsalmKey,
+        },
+      }),
+    );
+  }
 
   // SLIDES 7+: Appointed Psalms
   const gloriaPatri =
@@ -567,16 +636,16 @@ export async function assembleMorningPrayer(
       }),
     );
 
-    // Verse chunks — 4 verses per slide, centered vertically. The
-    // Gloria Patri is appended to whichever chunk lands last so the
-    // doxology still closes the psalm.
+    // Verse chunks — 4 verses per slide. Per user direction the Gloria
+    // Patri lives on its OWN slide after the verses (was appended to
+    // the last chunk; that mashed the doxology onto a verse that didn't
+    // belong to it). Emitted below the chunk loop so the doxology
+    // always seals the psalm.
     if (sliced) {
       const chunks = splitPsalmIntoChunks(sliced, 4);
-      const lastIdx = chunks.length - 1;
       chunks.forEach((chunk, i) => {
-        const content = i === lastIdx ? chunk + gloriaPatri : chunk;
         slides.push(
-          slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, content, {
+          slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, chunk, {
             title: psalmData?.title ?? null,
             isScrollable: false,
             scrollHint: null,
@@ -592,14 +661,15 @@ export async function assembleMorningPrayer(
         );
       });
     } else {
-      // Psalm row missing — single placeholder slide.
+      // Psalm row missing — single placeholder slide. No doxology
+      // appended here either; it'll come on its own slide below.
       slides.push(
         slide(
           id(),
           "psalm",
           PSALM_EMOJI[psalmNum] ?? "📖",
           eyebrow,
-          `[Psalm ${psalmRef.raw} — see BCP Psalter]${gloriaPatri}`,
+          `[Psalm ${psalmRef.raw} — see BCP Psalter]`,
           {
             title: psalmData?.title ?? null,
             isScrollable: false,
@@ -613,6 +683,23 @@ export async function assembleMorningPrayer(
         ),
       );
     }
+
+    // Gloria Patri — its own slide, sealing the psalm. Reads as a
+    // distinct beat (a brief doxology after the recitation) rather
+    // than getting tacked onto the last verse's chunk. Same eyebrow
+    // so the reader knows which psalm it's sealing.
+    slides.push(
+      slide(id(), "psalm_gloria", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, gloriaPatri.trimStart(), {
+        title: psalmData?.title ?? null,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: {
+          psalmNumber: psalmNum,
+          psalmRange: range,
+          psalmRef: psalmRef.raw,
+        },
+      }),
+    );
   }
 
   // BCP marks empty lesson slots with dashes ("----------") on major

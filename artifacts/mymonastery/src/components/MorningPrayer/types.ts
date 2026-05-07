@@ -10,6 +10,10 @@ export type SlideType =
   // follow on subsequent slides (4 verses each).
   | "psalm_title"
   | "psalm"
+  // Doxology slide that seals the psalm — the Gloria Patri lives on
+  // its own slide after the verse chunks rather than tacked onto the
+  // last verse. Same eyebrow / breadcrumb as the verse slides.
+  | "psalm_gloria"
   | "lesson"
   // Title-only slide for canticles longer than 4 verses — same big
   // headline pattern as psalm_title.
