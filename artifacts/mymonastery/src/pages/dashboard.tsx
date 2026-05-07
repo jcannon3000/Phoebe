@@ -1979,7 +1979,7 @@ function PrayerListCard({
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              🕯️ Daily Prayer List
+              🕯️ Daily Prayer
             </span>
             {streak > 0 && (
               <span
