@@ -49,6 +49,10 @@ export const prayerFeedsTable = pgTable(
     // staff provision parishes manually for now (no self-serve
     // parish creation in the UI).
     kind: text("kind").notNull().default("general"), // general | parish
+    // Phoebe Parish — last YYYY-MM-DD (parish TZ) we fired the 8pm
+    // recap push for this parish. Idempotency for the bell-scheduler
+    // tick; only used when kind="parish".
+    parishEveningRecapSentDate: text("parish_evening_recap_sent_date"),
     subscriberCount: integer("subscriber_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

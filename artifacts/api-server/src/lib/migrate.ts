@@ -968,6 +968,7 @@ export async function migrate() {
     // subscription per user (enforced via users.parish_feed_id).
     // Idempotent: existing rows fall through the default 'general'.
     await run(client, `ALTER TABLE prayer_feeds ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'general'`);
+    await run(client, `ALTER TABLE prayer_feeds ADD COLUMN IF NOT EXISTS parish_evening_recap_sent_date TEXT`);
 
     await run(client, `
       CREATE TABLE IF NOT EXISTS prayer_feed_entries (

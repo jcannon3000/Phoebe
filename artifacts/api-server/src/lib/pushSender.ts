@@ -717,6 +717,28 @@ export function sendParishOfficeReminderPush(
   });
 }
 
+// Phoebe Parish — 8pm "your parish prayed today" recap. Fires once
+// per parish per local day, only to parishioners who themselves
+// prayed today, and only when 4+ distinct parishioners prayed. Body
+// reads as a quiet companion note rather than a notification.
+export function sendParishEveningRecapPush(
+  userId: number,
+  opts: { parishTitle: string; prayedTodayCount: number }
+) {
+  const others = Math.max(0, opts.prayedTodayCount - 1);
+  const body = others === 1
+    ? "1 other from your parish prayed today."
+    : `${others} others from your parish prayed today.`;
+  return sendPushToUser(userId, {
+    title: opts.parishTitle,
+    body,
+    path: "/parish/celebration",
+    threadId: "parish-evening-recap",
+    collapseId: `parish-evening-recap-${userId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Fires for each admin of a community when someone taps "Request to
 // join" on /communities/browse. Deep-links to the requests management
 // panel so the admin can accept or decline in two taps.

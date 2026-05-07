@@ -18,6 +18,7 @@ import {
   sendLectioEveningReminderPush,
   sendPrayerRenewalNudgePush,
   sendParishOfficeReminderPush,
+  sendParishEveningRecapPush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
@@ -826,6 +827,84 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
   }
 }
 
+// ─── Phoebe Parish — 8pm prayed-today recap ────────────────────────────────
+//
+// Once per parish per local day, when the parish's clock crosses 20:00,
+// we fan out a recap push to every parishioner who prayed today —
+// provided 4+ distinct parishioners prayed (the user + 3+ others). Body
+// reads "N others from your parish prayed today." Tap deep-links to
+// /parish/celebration which shows the avatar rail of who.
+//
+// Threshold (4+) keeps the push from feeling lonely on quiet days — the
+// "more than three other people pray also from that parish" rule.
+//
+// Idempotency: prayer_feeds.parish_evening_recap_sent_date stamped with
+// today (parish TZ) on first fire, checked before re-firing.
+const PARISH_EVENING_HOUR = "20:00";
+const PARISH_EVENING_MIN_PARTICIPANTS = 4;
+
+export async function runParishEveningRecapSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    const parishes = await db
+      .select({
+        id: prayerFeedsTable.id,
+        title: prayerFeedsTable.title,
+        timezone: prayerFeedsTable.timezone,
+        sentDate: prayerFeedsTable.parishEveningRecapSentDate,
+      })
+      .from(prayerFeedsTable)
+      .where(and(
+        eq(prayerFeedsTable.kind, "parish"),
+        eq(prayerFeedsTable.state, "live"),
+      ));
+
+    for (const p of parishes) {
+      const tz = p.timezone || "America/New_York";
+      const today = todayInZone(tz);
+      if (p.sentDate === today && !opts.forceNow) continue;
+      if (!opts.forceNow && !isWithinTickWindow(tz, PARISH_EVENING_HOUR)) continue;
+
+      // Distinct user_ids from this parish who prayed today.
+      const rows = await db.execute<{ user_id: number }>(sql`
+        SELECT DISTINCT ps.user_id
+        FROM prayer_sessions ps
+        INNER JOIN prayer_feed_subscriptions pfs
+          ON pfs.user_id = ps.user_id AND pfs.feed_id = ${p.id}
+        WHERE (ps.ended_at AT TIME ZONE ${tz})::date = ${today}::date
+      `);
+      const userIds = rows.rows.map((r) => r.user_id);
+      const count = userIds.length;
+
+      if (count >= PARISH_EVENING_MIN_PARTICIPANTS) {
+        for (const uid of userIds) {
+          try {
+            await sendParishEveningRecapPush(uid, {
+              parishTitle: p.title,
+              prayedTodayCount: count,
+            });
+          } catch (err) {
+            logger.warn({ err, userId: uid, parishId: p.id }, "[parish-evening] push failed");
+          }
+        }
+        logger.info({ parishId: p.id, count }, "[parish-evening] fan-out sent");
+      } else {
+        logger.info({ parishId: p.id, count }, "[parish-evening] threshold not met — skipped");
+      }
+
+      // Stamp regardless of whether we fanned out. The threshold check
+      // is "did enough pray today" — if not, we shouldn't re-evaluate
+      // on every later tick within the same day; once 8pm passes the
+      // window is closed.
+      await db
+        .update(prayerFeedsTable)
+        .set({ parishEveningRecapSentDate: today })
+        .where(eq(prayerFeedsTable.id, p.id));
+    }
+  } catch (err) {
+    logger.error({ err }, "[parish-evening] sender failed");
+  }
+}
+
 // ─── Scheduler ──────────────────────────────────────────────────────────────
 
 let bellInterval: ReturnType<typeof setInterval> | null = null;
@@ -853,6 +932,9 @@ export function startBellScheduler(): void {
     runParishOfficeReminderSender().catch((err) =>
       logger.error({ err }, "[parish-office] initial run failed"),
     );
+    runParishEveningRecapSender().catch((err) =>
+      logger.error({ err }, "[parish-evening] initial run failed"),
+    );
   }, 45_000);
 
   bellInterval = setInterval(
@@ -874,6 +956,9 @@ export function startBellScheduler(): void {
       );
       runParishOfficeReminderSender().catch((err) =>
         logger.error({ err }, "[parish-office] scheduled run failed"),
+      );
+      runParishEveningRecapSender().catch((err) =>
+        logger.error({ err }, "[parish-evening] scheduled run failed"),
       );
     },
     15 * 60 * 1000,
