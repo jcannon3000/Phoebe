@@ -1938,8 +1938,18 @@ function PrayerListCard({
   const visibleSubtitle = activeSlot.text;
   const visibleSubtitleKey = activeSlot.key;
 
+  // Tap takes the user straight into the appropriate Daily Devotion
+  // (Morning before noon, Early Evening after) — no chooser screen
+  // in the middle. The two heavier paths (community prayer list and
+  // the full Office) are surfaced as quiet links above the bottom
+  // nav on the devotion's first slide.
+  const devotionHref =
+    new Date().getHours() < 12
+      ? "/bcp/daily-devotions?mode=morning-devotion"
+      : "/bcp/daily-devotions?mode=early-evening-devotion";
+
   return (
-    <Link key={`${keyPrefix}-prayer-list`} href="/prayer-start" className="block">
+    <Link key={`${keyPrefix}-prayer-list`} href={devotionHref} className="block">
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}

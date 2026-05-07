@@ -1125,7 +1125,14 @@ function ClosingSlide({
             className="text-[10px] uppercase tracking-[0.18em] font-semibold"
             style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            You prayed with
+            {/* Was "You prayed with" — read as "X people prayed
+                alongside me", which conflicted with per-slide
+                "N people have prayed this this week" copy and made
+                the user expect the two numbers to match. They don't:
+                the slide count is intercession-scoped, this count
+                is people-whose-requests-I-prayed-for-scoped. New
+                wording highlights the direction of the action. */}
+            You prayed for
           </p>
           {peopleCount > 0 ? (
             <>

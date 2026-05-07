@@ -1406,6 +1406,75 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               {currentSlide.bcpReference}
             </p>
           )}
+          {/* Devotion-only side-doors. The dashboard's "Pray" tap
+              now lands here directly (the standalone /prayer-start
+              chooser was a pre-step the user wanted gone), so the
+              two heavier paths it used to surface — community
+              prayer list and the full Office — live on this first
+              slide instead, sitting quietly above the bottom nav
+              so they're discoverable but don't compete with the
+              opening acclamation. Only on the first slide; once the
+              reader is moving through the devotion they shouldn't
+              keep seeing alternate routes. */}
+          {isDevotion && slideIdx === 0 && (
+            <div
+              style={{
+                marginTop: 28,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 12,
+                paddingTop: 16,
+                borderTop: `1px solid ${BORDER}`,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setViewerLocation("/prayer-mode")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: MUTED_GREEN,
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: 6,
+                  textDecoration: "underline",
+                  textDecorationColor: "rgba(143,175,150,0.35)",
+                  textUnderlineOffset: 4,
+                }}
+              >
+                Skip to community prayer list →
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Morning devotion → Morning Prayer; early-evening
+                  // devotion → Evening Prayer. Same time-of-day rule
+                  // the picker uses.
+                  const target =
+                    resolvedMode === "early-evening-devotion"
+                      ? "/bcp/daily-office?mode=evening"
+                      : "/bcp/daily-office?mode=morning";
+                  setViewerLocation(target);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: MUTED_GREEN,
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: 6,
+                  textDecoration: "underline",
+                  textDecorationColor: "rgba(143,175,150,0.35)",
+                  textUnderlineOffset: 4,
+                }}
+              >
+                Pray the full {resolvedMode === "early-evening-devotion" ? "Evening Prayer" : "Morning Prayer"} →
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
