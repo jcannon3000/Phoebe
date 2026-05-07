@@ -394,64 +394,88 @@ function wireNativeOpenUrl() {
 // NotificationType.
 //
 // "celebration" is the lesson-complete moment — when the prayer-list
-// slideshow lands on its closing slide. The earlier implementation
-// pulsed heavy impacts at a tight 70ms interval which read as a
-// "buzz / rumble" — the user described it as a back-and-forth
-// vibration. The new pattern shapes the haptic as a SWELL: it
-// starts soft and slow, builds to a heavy peak in the middle, then
-// fades back to soft and spaced out before silence. The intensity
-// curve and the timing curve both arc up and down together, so the
-// felt result is a single rising-and-falling gesture rather than a
-// uniform rumble.
+// slideshow lands on its closing slide. The user wants the haptic
+// to feel like ONE LONG smooth vibration that breathes the same
+// way the closing chime does (~7s open-fifth pad with a 2.5s
+// crescendo, 0.8s hold, 3.7s fade).
 //
-// Capacitor's Haptics plugin doesn't expose Core Haptics' continuous
-// patterns, so we approximate the swell by scheduling discrete
-// impacts with carefully chosen styles + delays. We track the
-// scheduled timeouts so a second "celebration" event mid-swell can
-// cancel the first cleanly.
-let celebrationTimers: number[] = [];
+// Capacitor's Haptics plugin doesn't expose Core Haptics'
+// continuous patterns, so we approximate continuity by firing
+// impact() at the tightest cadence the Taptic Engine accepts
+// without dropping pulses (~50ms). At that rate the engine
+// doesn't fully relax between hits and the felt result reads as
+// a sustained vibration rather than a string of taps. The
+// intensity curve climbs Light → Medium → Heavy through the
+// crescendo, holds Heavy at the peak, then falls Heavy →
+// Medium → Light through the fade — mirroring the chime's
+// amplitude envelope so the buzz feels coupled to the sound.
+//
+// We track the active interval so a second "celebration" event
+// mid-swell cancels the first cleanly instead of stacking.
+let celebrationInterval: number | null = null;
+let celebrationStartedAt = 0;
 function fireCelebrationRumble() {
-  // Cancel any in-flight swell from a prior celebration so we don't
-  // stack patterns.
-  for (const t of celebrationTimers) window.clearTimeout(t);
-  celebrationTimers = [];
+  // Cancel any in-flight swell from a prior celebration.
+  if (celebrationInterval !== null) {
+    window.clearInterval(celebrationInterval);
+    celebrationInterval = null;
+  }
 
-  // Each step: { atMs: when to fire, style: which impact }. The
-  // arc rises light → medium → heavy → medium → light, and the
-  // spacing tightens toward the peak then loosens out — both
-  // shaping the swell felt through the wrist.
-  type Step = { atMs: number; style: ImpactStyle };
-  const steps: Step[] = [
-    { atMs:    0, style: ImpactStyle.Light },
-    { atMs:  220, style: ImpactStyle.Light },
-    { atMs:  410, style: ImpactStyle.Medium },
-    { atMs:  580, style: ImpactStyle.Medium },
-    { atMs:  730, style: ImpactStyle.Heavy },
-    { atMs:  860, style: ImpactStyle.Heavy },
-    { atMs:  990, style: ImpactStyle.Heavy }, // peak
-    { atMs: 1140, style: ImpactStyle.Heavy },
-    { atMs: 1310, style: ImpactStyle.Medium },
-    { atMs: 1500, style: ImpactStyle.Medium },
-    { atMs: 1720, style: ImpactStyle.Light },
-    { atMs: 1980, style: ImpactStyle.Light },
-  ];
+  // Mirrors playOpeningSwell's amplitude envelope (s):
+  //   • SWELL_IN  2.5  rising intensity
+  //   • HOLD      0.8  peak (Heavy)
+  //   • FADE_OUT  3.7  falling intensity
+  const SWELL_IN_MS = 2500;
+  const HOLD_MS = 800;
+  const FADE_OUT_MS = 3700;
+  const TOTAL_MS = SWELL_IN_MS + HOLD_MS + FADE_OUT_MS;
 
-  // Opening success notification — gives the recognizable
-  // "completion" feel before the swell rises underneath.
+  // 50ms cadence — fastest interval where the Taptic Engine still
+  // honors each pulse cleanly. Faster than that and pulses get
+  // dropped/merged in unpredictable ways; slower and the felt
+  // result reads as discrete taps instead of a continuous buzz.
+  const TICK_MS = 50;
+
+  // Opening success notification — the recognizable "completion"
+  // double-tap that anchors the start of the swell.
   try {
     Haptics.notification({ type: NotificationType.Success });
   } catch { /* non-fatal */ }
 
-  // Schedule the swell. Each impact runs after the success
-  // notification's own ~80ms double-tap so the two beats don't
-  // collide.
-  const SWELL_OFFSET_MS = 90;
-  for (const step of steps) {
-    const handle = window.setTimeout(() => {
-      Haptics.impact({ style: step.style }).catch(() => {});
-    }, SWELL_OFFSET_MS + step.atMs);
-    celebrationTimers.push(handle);
-  }
+  celebrationStartedAt = Date.now();
+  const tick = () => {
+    const elapsed = Date.now() - celebrationStartedAt;
+    if (elapsed >= TOTAL_MS) {
+      if (celebrationInterval !== null) {
+        window.clearInterval(celebrationInterval);
+        celebrationInterval = null;
+      }
+      return;
+    }
+    let style: ImpactStyle;
+    if (elapsed < SWELL_IN_MS) {
+      // Crescendo: Light → Medium → Heavy across 2.5s
+      const t = elapsed / SWELL_IN_MS;
+      style = t < 0.33 ? ImpactStyle.Light
+            : t < 0.66 ? ImpactStyle.Medium
+            : ImpactStyle.Heavy;
+    } else if (elapsed < SWELL_IN_MS + HOLD_MS) {
+      // Peak: Heavy hold
+      style = ImpactStyle.Heavy;
+    } else {
+      // Fade: Heavy → Medium → Light across 3.7s
+      const t = (elapsed - SWELL_IN_MS - HOLD_MS) / FADE_OUT_MS;
+      style = t < 0.33 ? ImpactStyle.Heavy
+            : t < 0.66 ? ImpactStyle.Medium
+            : ImpactStyle.Light;
+    }
+    Haptics.impact({ style }).catch(() => {});
+  };
+
+  // Fire the first tick immediately so there's no perceptible
+  // gap between the success notification and the rising swell.
+  tick();
+  celebrationInterval = window.setInterval(tick, TICK_MS);
 }
 
 function wireHaptics() {
