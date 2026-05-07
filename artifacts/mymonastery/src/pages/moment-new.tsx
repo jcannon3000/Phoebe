@@ -16,10 +16,7 @@ type FastingTypeChoice = "meat" | "custom" | null;
 type LoggingType = "photo" | "reflection" | "both" | "checkin";
 type Frequency = "daily" | "weekly";
 type TimeOfDay = "early-morning" | "morning" | "midday" | "afternoon" | "late-afternoon" | "evening" | "night";
-// "flexible" = once a week, no fixed day. Members pray the office at
-// any time during the week that works for them. Distinct from "once"
-// (which lets the admin pin a specific day, e.g. every Wednesday).
-type BcpFreqType = "flexible" | "once" | "twice" | "three" | "five" | "daily";
+type BcpFreqType = "once" | "twice" | "three" | "five" | "daily";
 
 // ─── BCP Frequency options ────────────────────────────────────────────────────
 const BCP_FREQ_OPTIONS: {
@@ -27,12 +24,7 @@ const BCP_FREQ_OPTIONS: {
   dots: number; daysPerWeek: number; badge: string | null;
   bg: string; message: string;
 }[] = [
-  // Flexible — once a week with no fixed day. Members pray whenever
-  // works for them. Skips the bcp-days picker entirely (handled in
-  // goNext()). This is the default-recommended option for community
-  // practices since it removes scheduling friction.
-  { id: "flexible", emoji: "🌿", label: "Flexible — any day this week", sub: "Once a week, anytime", dots: 1, daysPerWeek: 1, badge: "Easiest", bg: "#0F2818", message: "Once during the week. Whenever works for you." },
-  { id: "once",  emoji: "🌱", label: "Once a week — a specific day", sub: "Pick a day to pray together", dots: 1, daysPerWeek: 1, badge: null,             bg: "#0F2818",              message: "One office together each week. A beginning." },
+  { id: "once",  emoji: "🌱", label: "Once a week",       sub: "A gentle beginning",    dots: 1, daysPerWeek: 1, badge: null,             bg: "#0F2818",              message: "One office together each week. A beginning." },
   { id: "twice", emoji: "🌿", label: "Twice a week",       sub: "Taking root",           dots: 2, daysPerWeek: 2, badge: null,             bg: "rgba(46,107,64,0.18)", message: "Two offices. Enough to find a rhythm." },
   { id: "three", emoji: "🌸", label: "Three times a week", sub: "A real rhythm",         dots: 3, daysPerWeek: 3, badge: "Most chosen 🌿", bg: "rgba(46,107,64,0.25)", message: "Three times. This is where something real takes root." },
   { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",    dots: 5, daysPerWeek: 5, badge: null,             bg: "rgba(46,107,64,0.32)", message: "The weekday office. A serious commitment." },
@@ -816,21 +808,7 @@ export default function MomentNew() {
   }
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
-  // The four BCP "Daily Office / Devotion" practice variants share
-  // the bcp-commitment → bcp-frequency → bcp-days → bcp-invite step
-  // sequence and the bcpPlantMutation save path. The renderer-side
-  // OfficeViewer accepts the same four mode strings, so templateId
-  // round-trips through to /bcp/daily-office?mode=… on the dashboard
-  // tap without any further mapping.
-  const isBcpTemplate =
-    templateId === "morning-prayer"
-    || templateId === "evening-prayer"
-    || templateId === "morning-devotion"
-    || templateId === "early-evening-devotion";
-  const isBcpMorning =
-    templateId === "morning-prayer" || templateId === "morning-devotion";
-  const isBcpDevotion =
-    templateId === "morning-devotion" || templateId === "early-evening-devotion";
+  const isBcpTemplate = templateId === "morning-prayer" || templateId === "evening-prayer";
   const BCP_STEP_ORDER: StepId[] = ["template", "bcp-commitment", "bcp-frequency", "bcp-days", "bcp-invite"];
   const STEP_ORDER: StepId[] = isBcpTemplate
     ? BCP_STEP_ORDER
@@ -851,10 +829,8 @@ export default function MomentNew() {
       : ["template", "name", "intention", "logging", "schedule", "invite"];
 
   function goNext() {
-    // Skip bcp-days when there's no specific day to choose:
-    //   • "daily"   → every day, so the day picker is meaningless
-    //   • "flexible" → once a week with no fixed day, so likewise
-    if (step === "bcp-frequency" && (bcpFreqType === "daily" || bcpFreqType === "flexible")) {
+    // Skip bcp-days for daily (no specific days to choose)
+    if (step === "bcp-frequency" && bcpFreqType === "daily") {
       setStep("bcp-invite");
       return;
     }
@@ -983,7 +959,7 @@ export default function MomentNew() {
   });
 
   function handleSubmitBcp() {
-    const isMorning = templateId === "morning-prayer" || templateId === "morning-devotion";
+    const isMorning = templateId === "morning-prayer";
     const freqOpt = BCP_FREQ_OPTIONS.find(f => f.id === bcpFreqType);
     const daysPerWeek = freqOpt?.daysPerWeek ?? 7;
     const isDaily = bcpFreqType === "daily";
@@ -1001,53 +977,21 @@ export default function MomentNew() {
     })();
     const scheduledTimeStr = `${String(h).padStart(2, "0")}:${String(bcpPersonalMinute).padStart(2, "0")}`;
 
-    // Per-variant naming + intention so the dashboard tile reads
-    // right for whichever of the four LiturgyMode flavors the admin
-    // picked. Devotions get distinct names so members can tell them
-    // apart from the full Office on their dashboard.
-    const titleByVariant: Record<string, { name: string; intention: string }> = {
-      "morning-prayer": {
-        name: "Morning Prayer 🌅",
-        intention: "We open the day together. From the same book, in our own homes — but not alone.",
-      },
-      "evening-prayer": {
-        name: "Evening Prayer 🌙",
-        intention: "We close the day together. From the same book, in our own homes — but not alone.",
-      },
-      "morning-devotion": {
-        name: "Morning Devotion ☕",
-        intention: "A short devotion to begin the day — together, wherever we are.",
-      },
-      "early-evening-devotion": {
-        name: "Early Evening Devotion 🌆",
-        intention: "A short devotion as the day cools — together, wherever we are.",
-      },
-    };
-    const variantTitle = titleByVariant[templateId ?? ""] ?? titleByVariant["morning-prayer"];
     bcpPlantMutation.mutate({
-      name: variantTitle.name,
-      intention: variantTitle.intention,
+      name: isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙",
+      intention: isMorning
+        ? "We open the day together. From the same book, in our own homes — but not alone."
+        : "We close the day together. From the same book, in our own homes — but not alone.",
       loggingType: "checkin",
       templateType: templateId,
-      // "flexible" rides as weekly + frequencyType=flexible so the
-      // server can tell it apart from a fixed-day "once a week".
       frequency: isDaily ? "daily" : "weekly",
       scheduledTime: scheduledTimeStr,
       timezone: bcpTimezone,
       goalDays: 0,
       frequencyType: bcpFreqType,
       frequencyDaysPerWeek: daysPerWeek,
-      // No fixed days for "daily" or "flexible" — the rest pass
-      // through bcpPracticeDays untouched.
-      practiceDays: (isDaily || bcpFreqType === "flexible")
-        ? "[]"
-        : JSON.stringify(bcpPracticeDays),
+      practiceDays: isDaily ? "[]" : JSON.stringify(bcpPracticeDays),
       participants: validParticipants,
-      // Community scope. When set, the server's moment-create handler
-      // adds every joined member of the group as a participant. Falls
-      // through to undefined for personal-scope BCP practices, which
-      // still work as before.
-      groupId: selectedGroupId ?? undefined,
     });
   }
 
@@ -1202,7 +1146,7 @@ export default function MomentNew() {
 
   // ── BCP Confirmation screen ─────────────────────────────────────────────────
   if (bcpDone) {
-    const isMorning = templateId === "morning-prayer" || templateId === "morning-devotion";
+    const isMorning = templateId === "morning-prayer";
     const freqOpt = BCP_FREQ_OPTIONS.find(f => f.id === bcpFreqType);
     const freqLabel = freqOpt?.label ?? "Daily";
     return (
@@ -1241,7 +1185,7 @@ export default function MomentNew() {
 
   // ── BCP Commitment screen (full screen, soil bg) ─────────────────────────────
   if (step === "bcp-commitment" && isBcpTemplate) {
-    const isMorning = templateId === "morning-prayer" || templateId === "morning-devotion";
+    const isMorning = templateId === "morning-prayer";
     return (
       <div className="min-h-screen bg-[#091A10] flex items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -1378,20 +1322,12 @@ export default function MomentNew() {
                     Which Office will you pray? 📖
                   </h2>
                   <p className="text-sm italic mb-8" style={{ color: "#8FAF96" }}>
-                    The full Office or the short Devotion — pick whichever rhythm fits.
+                    Each morning or evening, wherever you are — knowing the other is doing the same.
                   </p>
                   <div className="space-y-3">
-                    {/* Four variants matching the LiturgyMode enum on the
-                        OfficeViewer renderer. The full Office is ~15 min;
-                        the abbreviated Devotion (BCP pp. 137 / 139) is
-                        closer to 5 min. Time-of-day defaults are baked
-                        in: morning variants schedule for AM, evening
-                        variants for PM. */}
                     {[
-                      { id: "morning-prayer", emoji: "🌅", name: "Morning Prayer", desc: "Begin the day together in the full Office" },
-                      { id: "evening-prayer", emoji: "🌙", name: "Evening Prayer", desc: "Close the day together in the full Office" },
-                      { id: "morning-devotion", emoji: "☕", name: "Morning Devotion", desc: "A short morning prayer · BCP p. 137" },
-                      { id: "early-evening-devotion", emoji: "🌆", name: "Early Evening Devotion", desc: "A short evening prayer · BCP p. 139" },
+                      { id: "morning-prayer", emoji: "🌅", name: "Morning Prayer", desc: "Begin the day together in the Daily Office" },
+                      { id: "evening-prayer", emoji: "🌙", name: "Evening Prayer", desc: "Close the day together in the Daily Office" },
                     ].map(office => (
                       <button
                         key={office.id}
@@ -1499,7 +1435,7 @@ export default function MomentNew() {
 
               {/* ── BCP: How often ──────────────────────────────────── */}
               {step === "bcp-frequency" && (() => {
-                const isMorning = templateId === "morning-prayer" || templateId === "morning-devotion";
+                const isMorning = templateId === "morning-prayer";
                 const freqOpt = BCP_FREQ_OPTIONS.find(f => f.id === bcpFreqType);
                 const requiredDays = freqOpt && freqOpt.id !== "daily" ? freqOpt.daysPerWeek : 0;
                 return (
@@ -1618,51 +1554,16 @@ export default function MomentNew() {
 
               {/* ── BCP: Invite ──────────────────────────────────────── */}
               {step === "bcp-invite" && (() => {
-                const isMorning = templateId === "morning-prayer" || templateId === "morning-devotion";
+                const isMorning = templateId === "morning-prayer";
                 return (
                   <div className="flex-1 space-y-5">
                     <div>
                       <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who will pray with you? 🌿</h2>
                       <p className="text-sm text-muted-foreground italic">
-                        {adminGroups.length > 0
-                          ? "Pick a community below — every member is in. Or invite individuals one at a time."
-                          : "Invite someone to commit to this practice with you."}
-                        {" "}They will choose their own time in the {isMorning ? "morning" : "evening"}.
+                        Invite someone to commit to this practice with you.<br />
+                        They will choose their own time in the {isMorning ? "morning" : "evening"}.
                       </p>
                     </div>
-                    {/* Community-group picker — admin-only. Picking a
-                        community scopes the practice to that group;
-                        every joined member becomes a participant
-                        automatically (server-side reconciliation).
-                        Mirrors the lectio / fasting / intercession
-                        community-picker layout so the surface feels
-                        familiar across templates. */}
-                    {adminGroups.length > 0 && (
-                      <div className="space-y-2">
-                        <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>
-                          Community
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {adminGroups.map(g => (
-                            <button
-                              key={g.id}
-                              onClick={() => setSelectedGroupId(selectedGroupId === g.id ? null : g.id)}
-                              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${selectedGroupId === g.id ? "animate-turn-pulse" : ""}`}
-                              style={selectedGroupId === g.id
-                                ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
-                                : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
-                            >
-                              {g.emoji ? `${g.emoji} ` : ""}{g.name}
-                            </button>
-                          ))}
-                        </div>
-                        {selectedGroupId !== null && (
-                          <p className="text-xs italic mt-1" style={{ color: "rgba(143,175,150,0.7)" }}>
-                            All members of this community will be added.
-                          </p>
-                        )}
-                      </div>
-                    )}
                     {/* Autofill from existing connections */}
                     {bcpConnections.length > 0 && (
                       <div className="space-y-2">

@@ -782,33 +782,3 @@ export function sendLectioEveningReminderPush(
   });
 }
 
-// Daily Office / Devotion practice reminder. Fires for every joined
-// member of a "morning-prayer" / "evening-prayer" / "morning-devotion"
-// / "early-evening-devotion" practice when the practice's scheduled
-// window opens for the day. Per-practice + per-day collapse-id makes
-// the fan-out idempotent.
-//
-// Tap deep-links straight to the OfficeViewer at the right mode so a
-// member can start praying with one tap.
-export function sendOfficePracticePush(
-  userId: number,
-  opts: {
-    practiceId: number;
-    variantTitle: string;     // "Morning Prayer", "Early Evening Devotion", …
-    communityName: string | null;
-    deepLinkPath: string;     // e.g. "/bcp/daily-office?mode=morning"
-    ymdLocal: string;         // YYYY-MM-DD in the practice's tz, for collapse-id
-  },
-) {
-  const withCommunity = opts.communityName
-    ? `${opts.variantTitle} with ${opts.communityName}`
-    : opts.variantTitle;
-  return sendPushToUser(userId, {
-    title: `Time for ${withCommunity}`,
-    body: "Open Phoebe to pray together.",
-    path: opts.deepLinkPath,
-    threadId: `office-practice-${opts.practiceId}`,
-    collapseId: `office-practice-${opts.practiceId}-${opts.ymdLocal}`,
-    sound: PHOEBE_SOUND_MID,
-  });
-}
