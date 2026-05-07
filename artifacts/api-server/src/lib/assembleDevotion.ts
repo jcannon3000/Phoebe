@@ -232,11 +232,11 @@ export async function assembleDevotion(
 
   // 4. Reading — pulled from the day's lectionary so the devotion
   // tracks the same Bible journey as the full Daily Office. Morning
-  // takes lesson1 (the OT reading); early evening takes lesson3
+  // takes lesson2 (the Epistle reading); early evening takes lesson3
   // (the Gospel) to mirror the full EP. If the lectionary entry
   // happens to be missing or empty, fall back to the BCP devotion
   // rubric's fixed pair.
-  const lectReading = isMorning ? lectionary.lesson1 : lectionary.lesson3;
+  const lectReading = isMorning ? lectionary.lesson2 : lectionary.lesson3;
   const readingRef =
     lectReading && lectReading.trim().length > 0 && !/^-+$/.test(lectReading.trim())
       ? lectReading

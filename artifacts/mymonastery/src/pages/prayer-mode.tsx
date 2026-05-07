@@ -1748,12 +1748,22 @@ export default function PrayerModePage() {
   // so the closing slide falls back to the normal "you have carried…" copy.
   const [celebration, setCelebration] = useState<{ streak: number } | null>(null);
 
-  // Initialise phase once slides are loaded
+  // Initialise phase once slides are loaded. The empty-list case
+  // normally lands on the closing summary so the user sees a
+  // streak / "you've prayed for X people" recap; in seamless mode
+  // (intercessions handoff from the Office / Devotion) we instead
+  // hand the user back to the office, since the closing summary is
+  // the very thing the seamless flow is meant to defer to the end
+  // of the whole liturgy.
   useEffect(() => {
     if (displaySlides.length === 0 && momentsData && prayerRequests && myPrayersFor) {
-      setPhase("closing");
+      if (seamlessFlow) {
+        setLocation(finishHref);
+      } else {
+        setPhase("closing");
+      }
     }
-  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor]);
+  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, seamlessFlow, finishHref, setLocation]);
 
   // When the user lands on the closing slide, log the prayer-list streak.
   // The server is idempotent per TZ-local day — calling twice doesn't
@@ -1957,12 +1967,20 @@ export default function PrayerModePage() {
         playOpeningSwell(nextIndex % 3);
       } else {
         // Reaching the end — clear the progress entry so a re-entry
-        // later today doesn't resume past the end. The closing slide
-        // handles the "fully done" case via loggedToday on the server.
+        // later today doesn't resume past the end. Seamless mode
+        // (intercessions handoff from the Daily Office / Devotion):
+        // skip the closing summary entirely and hand the user back
+        // to the office for its General Thanksgiving + final
+        // blessing. Otherwise show the streak / "you've prayed for
+        // X people" closing slide as usual.
         try {
           localStorage.removeItem(progressStorageKey);
         } catch { /* non-fatal */ }
-        setPhase("closing");
+        if (seamlessFlow) {
+          setLocation(finishHref);
+        } else {
+          setPhase("closing");
+        }
       }
       setSlideVisible(true);
     }, 220);
