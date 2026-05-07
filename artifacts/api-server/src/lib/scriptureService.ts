@@ -326,6 +326,46 @@ function lookupPassage(reference: string): string {
   return extractText(parsed.bookName, parsed.ranges);
 }
 
+export interface LessonVerse {
+  chapter: number;
+  verse: number;
+  text: string;
+}
+
+/**
+ * Same lookup as getLesson, but returns a structured per-verse array
+ * instead of a single concatenated string. Used by the office
+ * assemblers to render a lesson as numbered-verse slide chunks
+ * (mirroring the psalm chunked-slide treatment).
+ *
+ * Returns null when the book is missing from local data (e.g. the
+ * deuterocanonical books) or the reference can't be parsed — callers
+ * fall back to the reference-only "open your bible" slide in that
+ * case.
+ */
+export function lookupLessonVerses(reference: string): LessonVerse[] | null {
+  const parsed = parseReference(reference);
+  if (!parsed) return null;
+  const book = bookByName.get(parsed.bookName);
+  if (!book) return null;
+
+  const verses: LessonVerse[] = [];
+  for (const range of parsed.ranges) {
+    for (const chapter of book.chapters) {
+      if (chapter.chapter < range.startChapter) continue;
+      if (chapter.chapter > range.endChapter) break;
+      for (const v of chapter.verses) {
+        const isStart = chapter.chapter === range.startChapter;
+        const isEnd = chapter.chapter === range.endChapter;
+        if (isStart && v.verse < range.startVerse && range.startVerse !== 0) continue;
+        if (isEnd && v.verse > range.endVerse && range.endVerse !== Infinity) continue;
+        verses.push({ chapter: chapter.chapter, verse: v.verse, text: v.text.trim() });
+      }
+    }
+  }
+  return verses.length > 0 ? verses : null;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Public API                                                         */
 /* ------------------------------------------------------------------ */

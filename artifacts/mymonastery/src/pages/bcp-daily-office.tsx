@@ -64,6 +64,8 @@ const SECTION_LABEL: Record<string, string> = {
   psalm: "Psalm",
   psalm_title: "Psalm",
   psalm_gloria: "Doxology",
+  lesson_title: "Lesson",
+  lesson_verses: "Lesson",
   lesson: "Lesson",
   canticle: "Canticle",
   creed: "Creed",
@@ -657,19 +659,21 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               "psalm",
               "canticle",
               "invitatory_psalm",
+              "lesson_verses",
             ]);
             const isVerseType = verseTypes.has(currentSlide.type);
-            // Title cards (psalm/canticle headline slides) center their
-            // big numeral; the prayer-mode portal centers its glowing
-            // "Intercessions" headline. The psalm_gloria doxology slide
-            // also centers — it's a single short italic seal, not a
-            // missal column.
+            // Title cards (psalm/canticle/lesson headline slides)
+            // center their big headline; the prayer-mode portal
+            // centers its glowing "Intercessions" headline. The
+            // psalm_gloria doxology slide also centers — it's a
+            // single short italic seal, not a missal column.
             const centered =
               !isVerseType && (
                 currentSlide.type === "intercessions"
                 || currentSlide.type === "intercessions_portal"
                 || currentSlide.type === "psalm_title"
                 || currentSlide.type === "canticle_title"
+                || currentSlide.type === "lesson_title"
                 || currentSlide.type === "psalm_gloria"
                 || (!isLongType && isShortEnough)
               );
@@ -879,6 +883,62 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 </div>
               );
             })()
+          ) : currentSlide.type === "lesson_title" ? (
+            // Big lesson reference headline ("Romans 14:1-12") + a
+            // subtitle that names which lesson slot this is ("The
+            // First Lesson Appointed For This Morning"). Mirrors
+            // psalm_title; the verses follow on lesson_verses chunks.
+            (() => {
+              const meta = currentSlide.metadata as
+                | { lessonSubtitle?: unknown }
+                | undefined;
+              const subtitle =
+                typeof meta?.lessonSubtitle === "string" && meta.lessonSubtitle.length > 0
+                  ? meta.lessonSubtitle
+                  : "A Lesson";
+              const reference = currentSlide.title ?? "";
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    minHeight: 240,
+                    textAlign: "center",
+                    gap: 16,
+                  }}
+                >
+                  <p
+                    style={{
+                      color: FAINT_GREEN,
+                      fontSize: 11,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {subtitle}
+                  </p>
+                  <h1
+                    className="title-glow-breathe"
+                    style={{
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: "clamp(36px, 7vw, 64px)",
+                      fontWeight: 700,
+                      letterSpacing: "-0.01em",
+                      color: WARM_TEXT,
+                      margin: 0,
+                      lineHeight: 1.05,
+                    }}
+                  >
+                    {reference}
+                  </h1>
+                </div>
+              );
+            })()
           ) : currentSlide.type === "intercessions" ? (
             (() => {
               const meta = currentSlide.metadata as
@@ -968,6 +1028,24 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               }}
             >
               Doxology
+            </p>
+          ) : currentSlide.type === "lesson_verses" ? (
+            // Chunked lesson verse slide. The dedicated lesson_title
+            // already showed the big reference headline; here we keep
+            // a slim eyebrow with the reference so the reader doesn't
+            // lose place mid-rotation. Verses render below in the
+            // numbered-row layout.
+            <p
+              style={{
+                color: FAINT_GREEN,
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                margin: 0,
+                fontWeight: 600,
+              }}
+            >
+              {currentSlide.title ?? "Lesson"}
             </p>
           ) : currentSlide.type === "canticle" && (currentSlide.metadata as { canticleChunkIndex?: unknown } | undefined)?.canticleChunkIndex !== undefined ? (
             // Chunked canticle slide — title slide already showed the
@@ -1059,7 +1137,91 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               The data is already in the right shape — verses begin
               with `<digit><space>`, hemistichs are split by " *\n  "
               — so the parser just walks line by line. */}
-          {currentSlide.type === "psalm" && currentSlide.content ? (
+          {currentSlide.type === "lesson_verses" ? (
+            // Numbered-verse layout for a lesson chunk — verse number
+            // on the left (faint sage), prose text on the right
+            // (Georgia). Mirrors the psalm verse layout but the
+            // verses come from metadata.verses (chapter+verse+text)
+            // instead of being parsed from a string blob. When a
+            // chunk crosses a chapter boundary we mark the first verse
+            // of the new chapter with "chapter:verse" notation so the
+            // reader doesn't see verse numbers silently restart.
+            (() => {
+              const meta = currentSlide.metadata as
+                | { verses?: unknown }
+                | undefined;
+              const versesRaw = Array.isArray(meta?.verses) ? meta.verses : null;
+              const verses = (versesRaw ?? [])
+                .filter((v: unknown): v is { chapter: number; verse: number; text: string } => {
+                  if (!v || typeof v !== "object") return false;
+                  const o = v as Record<string, unknown>;
+                  return (
+                    typeof o.chapter === "number"
+                    && typeof o.verse === "number"
+                    && typeof o.text === "string"
+                  );
+                });
+              if (verses.length === 0) {
+                // Defensive — server should always populate verses for
+                // this slide type, but if it didn't, render the body
+                // string as italic Georgia so we don't blank out.
+                return (
+                  <p
+                    style={{
+                      fontSize: 17,
+                      lineHeight: 1.7,
+                      color: WARM_TEXT,
+                      margin: 0,
+                      whiteSpace: "pre-wrap",
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontStyle: "italic",
+                      maxWidth: 600,
+                    }}
+                  >
+                    {currentSlide.content}
+                  </p>
+                );
+              }
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
+                  {verses.map((v, i) => {
+                    const prev = i > 0 ? verses[i - 1] : null;
+                    const showChapter = !prev || prev.chapter !== v.chapter;
+                    const label = showChapter ? `${v.chapter}:${v.verse}` : String(v.verse);
+                    return (
+                      <div key={i} style={{ display: "flex", gap: 10 }}>
+                        <span
+                          style={{
+                            flex: "0 0 auto",
+                            minWidth: showChapter ? 36 : 22,
+                            color: FAINT_GREEN,
+                            fontSize: 13,
+                            fontFamily: SPACE_GROTESK,
+                            lineHeight: 1.6,
+                            paddingTop: 2,
+                          }}
+                        >
+                          {label}
+                        </span>
+                        <p
+                          style={{
+                            flex: 1,
+                            fontSize: 16,
+                            lineHeight: 1.6,
+                            color: WARM_TEXT,
+                            margin: 0,
+                            fontFamily: "Georgia, 'Times New Roman', serif",
+                          }}
+                        >
+                          {v.text}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          ) : currentSlide.type === "psalm" && currentSlide.content ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
               {parsePsalmContent(currentSlide.content).map((v, i) => (
                 v.kind === "verse" ? (
@@ -1190,7 +1352,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               click — onClick still goes through openExternal so the
               iOS shell shows SFSafariViewController instead of
               bouncing the user out to mobile Safari. */}
-          {currentSlide.type === "lesson" && (() => {
+          {(currentSlide.type === "lesson" || currentSlide.type === "lesson_title") && (() => {
+            // Bible.com pill on the title card and on the legacy
+            // reference-only fallback slide. The verse-chunk slides
+            // don't get the pill — the user is already reading the
+            // text in-app and the pill would compete with the verses.
             const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
             const serverUrl = typeof meta?.readUrl === "string" ? meta.readUrl : null;
             const computed = currentSlide.title ? bibleGatewayUrl(currentSlide.title) : null;

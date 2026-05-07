@@ -30,6 +30,7 @@ import {
   psalmEyebrow,
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
+import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 
 export type DevotionKind = "morning" | "early-evening";
@@ -311,16 +312,16 @@ export async function assembleDevotion(
     lectReading && lectReading.trim().length > 0 && !/^-+$/.test(lectReading.trim())
       ? lectReading
       : (isMorning ? FALLBACK_READING_MORNING_REF : FALLBACK_READING_EARLY_EVENING_REF);
-  slides.push(
-    slide(id(), "lesson", "📜", "A READING FROM SCRIPTURE", LESSON_BODY_PROMPT, {
-      title: readingRef,
-      metadata: {
-        reference: readingRef,
-        readUrl: bibleGatewayUrl(readingRef),
-        readingNote: "Read this passage in your own Bible or preferred translation.",
-      },
-    }),
-  );
+  // Title card + chunked numbered-verse slides — same shape as the
+  // full Office. Falls back to a single reference-only "open your
+  // bible" card when the book isn't in local data.
+  for (const s of buildLessonSlides(
+    readingRef,
+    isMorning ? "devotion_morning" : "devotion_evening",
+    id,
+  )) {
+    slides.push(s);
+  }
 
   // 5. Intercessions handoff. The BCP rubric "Prayers may be
   //    offered for ourselves and others" maps to a single

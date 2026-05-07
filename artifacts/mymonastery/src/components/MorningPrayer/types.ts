@@ -15,6 +15,13 @@ export type SlideType =
   // last verse. Same eyebrow / breadcrumb as the verse slides.
   | "psalm_gloria"
   | "lesson"
+  // Title slide for a lesson — big reference headline ("Romans 14:1-12")
+  // + appointed-for subtitle, mirroring psalm_title. Followed by
+  // lesson_verses chunks when local Bible data has the passage.
+  | "lesson_title"
+  // Chunked numbered-verse slide for a lesson, matching the psalm
+  // verse layout. metadata.verses carries Array<{chapter, verse, text}>.
+  | "lesson_verses"
   // Title-only slide for canticles longer than 4 verses — same big
   // headline pattern as psalm_title.
   | "canticle_title"

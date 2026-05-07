@@ -24,6 +24,7 @@ import {
   splitCanticleIntoChunks,
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
+import { buildLessonSlides } from "./assembleLesson";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
 // open scripture in their own bible/app. No scripture-text lookup.
 
@@ -40,6 +41,13 @@ export type SlideType =
   | "psalm"
   | "psalm_gloria"
   | "lesson"
+  // Title slide for a lesson — big "Romans 14:1-12" headline +
+  // "The First Lesson Appointed For This Morning" subtitle. Mirrors
+  // the psalm_title pattern; the verses follow on lesson_verses slides.
+  | "lesson_title"
+  // Chunked numbered-verse slide for a lesson, matching the psalm
+  // verse layout — verse number on the left, body on the right.
+  | "lesson_verses"
   | "canticle_title"
   | "canticle"
   | "creed"
@@ -710,19 +718,14 @@ export async function assembleMorningPrayer(
   const isLessonPresent = (l: string | null | undefined): boolean =>
     !!l && l.trim().length > 0 && !/^-+$/.test(l.trim());
 
-  // First Lesson — OT. Title is the reference (e.g. "Isa. 55:1-11");
-  // body is a soft prompt to open the passage rather than echoing
-  // the same reference again. Phoebe doesn't ship scripture text —
-  // readers go to their own bible/app.
+  // First Lesson — OT. The lesson now renders as a title slide +
+  // chunked numbered-verse slides (matching the psalm treatment) when
+  // the local Bible JSON has the book; deuterocanonical readings fall
+  // back to a single reference-only "open your bible" card.
   if (isLessonPresent(lesson1)) {
-    slides.push(
-      slide(id(), "lesson", "📜", "FIRST LESSON", LESSON_PROMPT, {
-        title: lesson1,
-        isScrollable: false,
-        scrollHint: null,
-        metadata: { reference: lesson1, readUrl: bibleGatewayUrl(lesson1) },
-      }),
-    );
+    for (const s of buildLessonSlides(lesson1, "first_morning", id)) {
+      slides.push(s);
+    }
   }
 
   // Canticle after OT.
@@ -740,14 +743,9 @@ export async function assembleMorningPrayer(
   // EP shows Gospel only). Skipped on feast days where the BCP
   // appoints no Epistle at MP.
   if (isLessonPresent(lesson2)) {
-    slides.push(
-      slide(id(), "lesson", "✉️", "SECOND LESSON", LESSON_PROMPT, {
-        title: lesson2,
-        isScrollable: false,
-        scrollHint: null,
-        metadata: { reference: lesson2, readUrl: bibleGatewayUrl(lesson2) },
-      }),
-    );
+    for (const s of buildLessonSlides(lesson2, "second_morning", id)) {
+      slides.push(s);
+    }
   }
 
   // Canticle after NT

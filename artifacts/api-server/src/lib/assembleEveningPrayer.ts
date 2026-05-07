@@ -23,6 +23,7 @@ import {
 } from "./psalmRange";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
 import { buildIntercessionSlides } from "./assembleIntercessions";
+import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -379,16 +380,13 @@ export async function assembleEveningPrayer(
   // duplication of MP's lessons here. Earlier the server emitted
   // lesson1+lesson2 in EP too, which mirrored MP and read as a bug.
   const lesson3 = readings.lesson3;
-  slides.push(
-    slide(id(), "lesson", "✝️", "THE GOSPEL", LESSON_PROMPT, {
-      title: lesson3,
-      metadata: {
-        reference: lesson3,
-        readUrl: bibleGatewayUrl(lesson3),
-        readingNote: "Read the Gospel in your own Bible or preferred translation.",
-      },
-    }),
-  );
+  // Title card + chunked numbered-verse slides — same shape as MP's
+  // lessons. The reference-only fallback fires automatically inside
+  // buildLessonSlides if the Gospel happens to land on a deuteron-
+  // ical pericope (rare, but defensible).
+  for (const s of buildLessonSlides(lesson3, "gospel_evening", id)) {
+    slides.push(s);
+  }
 
   // 9. Canticle after the Gospel — Magnificat or Nunc Dimittis depending
   // on day; we use the canticle the season selector returns for the
