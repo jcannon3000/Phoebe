@@ -394,66 +394,64 @@ function wireNativeOpenUrl() {
 // NotificationType.
 //
 // "celebration" is the lesson-complete moment — when the prayer-list
-// slideshow lands on its closing slide. We open with iOS's success
-// notification (a quick "ding-ding") and then keep the haptic engine
-// firing rapid heavy impacts for ~2.2 seconds so the buzz feels
-// SUSTAINED, the way Duolingo's lesson-complete celebration does. The
-// Capacitor Haptics plugin doesn't expose Core Haptics' continuous
-// patterns directly, so we approximate by pulsing impacts on a tight
-// interval — at ~70ms spacing the Taptic Engine doesn't have time to
-// fully relax between hits and the felt result is a continuous rumble
-// rather than discrete taps.
+// slideshow lands on its closing slide. The earlier implementation
+// pulsed heavy impacts at a tight 70ms interval which read as a
+// "buzz / rumble" — the user described it as a back-and-forth
+// vibration. The new pattern shapes the haptic as a SWELL: it
+// starts soft and slow, builds to a heavy peak in the middle, then
+// fades back to soft and spaced out before silence. The intensity
+// curve and the timing curve both arc up and down together, so the
+// felt result is a single rising-and-falling gesture rather than a
+// uniform rumble.
 //
-// We track the active rumble in a module-scoped handle so a second
-// "celebration" event mid-rumble cancels the first cleanly, instead
-// of stacking two intervals on top of each other.
-let celebrationRumbleHandle: number | null = null;
+// Capacitor's Haptics plugin doesn't expose Core Haptics' continuous
+// patterns, so we approximate the swell by scheduling discrete
+// impacts with carefully chosen styles + delays. We track the
+// scheduled timeouts so a second "celebration" event mid-swell can
+// cancel the first cleanly.
+let celebrationTimers: number[] = [];
 function fireCelebrationRumble() {
-  // Cancel any in-flight rumble from a prior celebration so we don't
-  // stack haptic loops.
-  if (celebrationRumbleHandle !== null) {
-    window.clearInterval(celebrationRumbleHandle);
-    celebrationRumbleHandle = null;
-  }
+  // Cancel any in-flight swell from a prior celebration so we don't
+  // stack patterns.
+  for (const t of celebrationTimers) window.clearTimeout(t);
+  celebrationTimers = [];
 
-  // Opening flourish — iOS notification(.success) gives the recognizable
-  // "completion" double-tap.
+  // Each step: { atMs: when to fire, style: which impact }. The
+  // arc rises light → medium → heavy → medium → light, and the
+  // spacing tightens toward the peak then loosens out — both
+  // shaping the swell felt through the wrist.
+  type Step = { atMs: number; style: ImpactStyle };
+  const steps: Step[] = [
+    { atMs:    0, style: ImpactStyle.Light },
+    { atMs:  220, style: ImpactStyle.Light },
+    { atMs:  410, style: ImpactStyle.Medium },
+    { atMs:  580, style: ImpactStyle.Medium },
+    { atMs:  730, style: ImpactStyle.Heavy },
+    { atMs:  860, style: ImpactStyle.Heavy },
+    { atMs:  990, style: ImpactStyle.Heavy }, // peak
+    { atMs: 1140, style: ImpactStyle.Heavy },
+    { atMs: 1310, style: ImpactStyle.Medium },
+    { atMs: 1500, style: ImpactStyle.Medium },
+    { atMs: 1720, style: ImpactStyle.Light },
+    { atMs: 1980, style: ImpactStyle.Light },
+  ];
+
+  // Opening success notification — gives the recognizable
+  // "completion" feel before the swell rises underneath.
   try {
     Haptics.notification({ type: NotificationType.Success });
   } catch { /* non-fatal */ }
 
-  // Sustained rumble — heavy impacts every 70ms for ~2.2s. We start
-  // 110ms after the success notification so the opening double-tap
-  // reads as its own beat before the rumble takes over, instead of
-  // being swallowed by it.
-  const RUMBLE_START_MS = 110;
-  const PULSE_INTERVAL_MS = 70;
-  const RUMBLE_TOTAL_MS = 2200;
-  window.setTimeout(() => {
-    const startedAt = Date.now();
-    const tick = () => {
-      Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
-    };
-    // Fire the first pulse synchronously so there's no perceptible
-    // gap between the opening double-tap and the rumble.
-    tick();
-    celebrationRumbleHandle = window.setInterval(() => {
-      if (Date.now() - startedAt >= RUMBLE_TOTAL_MS) {
-        if (celebrationRumbleHandle !== null) {
-          window.clearInterval(celebrationRumbleHandle);
-          celebrationRumbleHandle = null;
-        }
-        // Closing thump — slightly heavier "the rumble landed" feel
-        // before silence. Without it the haptic just stops, which
-        // reads as a glitch rather than a finished gesture.
-        try {
-          Haptics.impact({ style: ImpactStyle.Heavy });
-        } catch { /* non-fatal */ }
-        return;
-      }
-      tick();
-    }, PULSE_INTERVAL_MS);
-  }, RUMBLE_START_MS);
+  // Schedule the swell. Each impact runs after the success
+  // notification's own ~80ms double-tap so the two beats don't
+  // collide.
+  const SWELL_OFFSET_MS = 90;
+  for (const step of steps) {
+    const handle = window.setTimeout(() => {
+      Haptics.impact({ style: step.style }).catch(() => {});
+    }, SWELL_OFFSET_MS + step.atMs);
+    celebrationTimers.push(handle);
+  }
 }
 
 function wireHaptics() {

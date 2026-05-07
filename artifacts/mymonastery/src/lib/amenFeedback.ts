@@ -181,13 +181,14 @@ export function triggerAmenFeedback() {
 }
 
 /**
- * Submit feedback — a brief organ-pad swell + smooth "medium" haptic.
+ * Submit feedback — full chapel-exhale swell + smooth "medium" haptic.
  * Fires on successful submission of a prayer request, a comment, or a
- * word written for someone else's intercession. Same shape as the
- * slideshow-opening swell (open-fifth pad on sine + triangle with a
- * low-pass that opens as it rises), but shorter (~1.5s total) and
- * pitched an octave higher so it reads as a confirmation rather than
- * a scene change.
+ * word written for someone else's intercession. Per user direction
+ * the envelope now matches the slideshow-opening / office-slide
+ * chimes (~7s total) so a submit doesn't feel like a clipped chirp
+ * compared to a slide turn — every Phoebe sound effect now breathes
+ * the same way. Pitched an octave above the opening swell so it
+ * still reads as a confirmation rather than a scene change.
  */
 export function triggerSubmitFeedback() {
   try {
@@ -207,10 +208,6 @@ export function triggerSubmitFeedback() {
     const ctx = _audioCtx;
     ensureAudioUnlock();
     ensureVisibilityResume();
-    // If the context hasn't been unlocked by a user gesture yet, defer
-    // the entire call rather than scheduling oscillators on a deaf
-    // context — same fix as playOpeningSwell. Browser audio policy
-    // applies on web too, not just iOS.
     if (isAudioStillLocked()) {
       void ctx.resume().catch(() => { /* ignore */ });
       _pendingAudio.push(() => triggerSubmitFeedback());
@@ -219,12 +216,12 @@ export function triggerSubmitFeedback() {
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
-    // Compressed version of the opening-swell envelope — same crescendo
-    // → hold → fade shape, but under two seconds so it feels like an
-    // affirmation, not a preamble.
-    const SWELL_IN = 0.7;
-    const HOLD     = 0.25;
-    const FADE_OUT = 0.6;
+    // Same envelope as playOpeningSwell — long crescendo, brief
+    // hold, slow fade — so the submit chime overlaps with the user
+    // reading whatever lands next instead of vanishing in a second.
+    const SWELL_IN = 2.5;
+    const HOLD     = 0.8;
+    const FADE_OUT = 3.7;
     const TOTAL    = SWELL_IN + HOLD + FADE_OUT;
 
     const master = ctx.createGain();
@@ -241,9 +238,9 @@ export function triggerSubmitFeedback() {
     lp.frequency.linearRampToValueAtTime(1500, now + TOTAL);
     lp.connect(master).connect(ctx.destination);
 
-    // Open fifth, pitched an octave above the opening swell (was
-    // A2/E3/A3 → now A3/E4/A4). Same sine + triangle voicing, same
-    // tiny upward glide for "breath."
+    // Open fifth pitched an octave above the opening swell
+    // (A3 / E4 / A4) — same sine + triangle voicing, same subtle
+    // upward glide for "breath."
     const voices: Array<{ freq: number; type: OscillatorType; gain: number }> = [
       { freq: 220, type: "sine",     gain: 0.55 },
       { freq: 330, type: "triangle", gain: 0.28 },
