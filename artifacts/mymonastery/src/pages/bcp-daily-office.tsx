@@ -614,7 +614,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             // viewport. Applies equally to the full Daily Office
             // and the abbreviated Daily Devotions.
             const longTypes = new Set<string>([
-              "psalm",
               "canticle",
               "creed",
               "general_thanksgiving",
@@ -625,9 +624,14 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               (currentSlide.content?.length ?? 0)
               + (currentSlide.callAndResponseLines?.reduce((acc, l) => acc + l.text.length, 0) ?? 0);
             const isShortEnough = bodyLength <= 320;
+            // Psalm slides now ship 4 verses each — short enough to
+            // breathe vertically centered on the page rather than
+            // top-aligning like a missal column.
             const centered =
               currentSlide.type === "intercessions"
               || currentSlide.type === "intercessions_portal"
+              || currentSlide.type === "psalm_title"
+              || currentSlide.type === "psalm"
               || (!isLongType && isShortEnough);
             return {
               display: "flex",
@@ -679,6 +683,67 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 Intercessions
               </h1>
             </div>
+          ) : currentSlide.type === "psalm_title" ? (
+            // Big "Psalm 23" headline on its own slide before the
+            // verses begin. Mirrors the intercessions_portal layout
+            // so the reader gets a deliberate breath into the psalm.
+            // Subtitle ("The Psalm Appointed For This Morning")
+            // sits above the title, matching the missal voice the
+            // verse slides use.
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                minHeight: 240,
+                textAlign: "center",
+                gap: 16,
+              }}
+            >
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 11,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                  fontWeight: 600,
+                }}
+              >
+                {resolvedMode === "evening" || resolvedMode === "early-evening-devotion"
+                  ? "The Psalm Appointed For This Evening"
+                  : "The Psalm Appointed For This Morning"}
+              </p>
+              <h1
+                className="title-glow-breathe"
+                style={{
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: "clamp(48px, 9vw, 88px)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  color: WARM_TEXT,
+                  margin: 0,
+                  lineHeight: 1.0,
+                }}
+              >
+                {(currentSlide.eyebrow || "PSALM").replace(/^PSALM\b/, "Psalm")}
+              </h1>
+              {currentSlide.title && (
+                <p
+                  style={{
+                    fontSize: 16,
+                    fontStyle: "italic",
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    color: "rgba(200,212,192,0.75)",
+                    margin: 0,
+                  }}
+                >
+                  {currentSlide.title}
+                </p>
+              )}
+            </div>
           ) : currentSlide.type === "intercessions" ? (
             (() => {
               const meta = currentSlide.metadata as
@@ -709,62 +774,23 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               );
             })()
           ) : currentSlide.type === "psalm" ? (
-            // Psalm slide header has three stacked labels per the
-            // BCP missal idiom + user direction:
-            //   1) Contextual eyebrow ("The Psalm Appointed For This
-            //      Morning / Evening") — orients the reader.
-            //   2) The big psalm reference ("Psalm 72" or
-            //      "Psalm 119:73-96") as the slide title.
-            //   3) The Latin incipit ("Deus, judicium") as a small
-            //      italic subtitle below the title, the way it sits
-            //      on a printed BCP page.
-            <>
-              <p
-                style={{
-                  color: FAINT_GREEN,
-                  fontSize: 10,
-                  letterSpacing: "0.18em",
-                  textTransform: "uppercase",
-                  margin: 0,
-                  fontWeight: 600,
-                }}
-              >
-                {resolvedMode === "evening" || resolvedMode === "early-evening-devotion"
-                  ? "The Psalm Appointed For This Evening"
-                  : "The Psalm Appointed For This Morning"}
-              </p>
-              {currentSlide.eyebrow && (
-                <h2
-                  style={{
-                    // Convert the eyebrow's all-caps "PSALM 72" into
-                    // a normal-case "Psalm 72" header. Range form
-                    // ("PSALM 119:73-96") survives the transform —
-                    // only the leading word gets re-cased.
-                    fontSize: 28,
-                    fontWeight: 700,
-                    fontFamily: SPACE_GROTESK,
-                    color: WARM_TEXT,
-                    letterSpacing: "-0.01em",
-                    margin: 0,
-                  }}
-                >
-                  {currentSlide.eyebrow.replace(/^PSALM\b/, "Psalm")}
-                </h2>
-              )}
-              {currentSlide.title && (
-                <p
-                  style={{
-                    fontSize: 16,
-                    fontStyle: "italic",
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    color: "rgba(200,212,192,0.75)",
-                    margin: 0,
-                  }}
-                >
-                  {currentSlide.title}
-                </p>
-              )}
-            </>
+            // Verse-chunk slide. The dedicated psalm_title slide has
+            // already shown the big "Psalm 72" + appointed-for
+            // headline, so here we just keep a slim eyebrow ("Psalm 72")
+            // above the verses so the reader knows where they are
+            // mid-rotation. Verses get vertical centering treatment.
+            <p
+              style={{
+                color: FAINT_GREEN,
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                margin: 0,
+                fontWeight: 600,
+              }}
+            >
+              {(currentSlide.eyebrow || "PSALM").replace(/^PSALM\b/, "Psalm")}
+            </p>
           ) : (
             <>
               <p

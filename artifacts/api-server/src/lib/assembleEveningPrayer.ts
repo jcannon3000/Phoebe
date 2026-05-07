@@ -18,6 +18,7 @@ import {
   parsePsalmRef,
   sliceVersesByRange,
   psalmEyebrow,
+  splitPsalmIntoChunks,
 } from "./psalmRange";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
 import { buildIntercessionSlides } from "./assembleIntercessions";
@@ -289,17 +290,16 @@ export async function assembleEveningPrayer(
       psalmData && range
         ? sliceVersesByRange(psalmData.content, range)
         : psalmData?.content;
-    const content = sliced
-      ? sliced + epGloriaPatri
-      : `[Psalm ${psalmRef.raw} — see BCP Psalter]${epGloriaPatri}`;
     const eyebrow = psalmEyebrow(psalmRef);
 
+    // Title slide — big "Psalm 72" headline on its own page so the
+    // reader settles before the verses begin.
     slides.push(
-      slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, content, {
+      slide(id(), "psalm_title", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, "", {
         title: psalmData?.title ?? null,
         bcpReference: psalmData?.bcpReference ?? null,
-        isScrollable: true,
-        scrollHint: "↓ continue · tap when ready",
+        isScrollable: false,
+        scrollHint: null,
         metadata: {
           psalmNumber: psalmNum,
           psalmRange: range,
@@ -307,6 +307,51 @@ export async function assembleEveningPrayer(
         },
       }),
     );
+
+    // 4 verses per slide; Gloria Patri goes on the last chunk only.
+    if (sliced) {
+      const chunks = splitPsalmIntoChunks(sliced, 4);
+      const lastIdx = chunks.length - 1;
+      chunks.forEach((chunk, i) => {
+        const content = i === lastIdx ? chunk + epGloriaPatri : chunk;
+        slides.push(
+          slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, content, {
+            title: psalmData?.title ?? null,
+            bcpReference: psalmData?.bcpReference ?? null,
+            isScrollable: false,
+            scrollHint: null,
+            metadata: {
+              psalmNumber: psalmNum,
+              psalmRange: range,
+              psalmRef: psalmRef.raw,
+              psalmChunkIndex: i,
+              psalmChunkTotal: chunks.length,
+            },
+          }),
+        );
+      });
+    } else {
+      slides.push(
+        slide(
+          id(),
+          "psalm",
+          PSALM_EMOJI[psalmNum] ?? "📖",
+          eyebrow,
+          `[Psalm ${psalmRef.raw} — see BCP Psalter]${epGloriaPatri}`,
+          {
+            title: psalmData?.title ?? null,
+            bcpReference: psalmData?.bcpReference ?? null,
+            isScrollable: false,
+            scrollHint: null,
+            metadata: {
+              psalmNumber: psalmNum,
+              psalmRange: range,
+              psalmRef: psalmRef.raw,
+            },
+          },
+        ),
+      );
+    }
   }
 
   // 8. The Gospel — reference only.

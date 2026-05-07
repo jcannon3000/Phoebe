@@ -84,6 +84,50 @@ export function sliceVersesByRange(
 }
 
 /**
+ * Split psalm content into N-verse chunks for slide-by-slide reading.
+ *
+ * Each chunk is a contiguous run of verses (with their continuation
+ * lines), preserving the original line-break shape. Verses are
+ * detected by the `^<digit>+ ` marker that the seeded psalm rows use.
+ * Empty chunks are dropped — if the content has fewer than `versesPerChunk`
+ * verses we just return one chunk.
+ *
+ * Returns the chunks in reading order. The caller is responsible for
+ * appending the Gloria Patri to the last chunk only.
+ */
+export function splitPsalmIntoChunks(
+  content: string,
+  versesPerChunk: number,
+): string[] {
+  if (versesPerChunk <= 0) return [content];
+  // Walk lines, group by verse marker. Continuation lines (no leading
+  // digit) attach to the most recent verse so hemistich indents stay
+  // with their verse number.
+  const verses: string[][] = [];
+  let current: string[] | null = null;
+  for (const line of content.split("\n")) {
+    if (/^\d+\s/.test(line)) {
+      if (current) verses.push(current);
+      current = [line];
+    } else if (current) {
+      current.push(line);
+    } else {
+      // Pre-verse preamble (rare). Treat as its own pseudo-verse so
+      // it doesn't get lost.
+      current = [line];
+    }
+  }
+  if (current) verses.push(current);
+
+  const chunks: string[] = [];
+  for (let i = 0; i < verses.length; i += versesPerChunk) {
+    const slice = verses.slice(i, i + versesPerChunk);
+    chunks.push(slice.map((v) => v.join("\n")).join("\n").replace(/\s+$/, ""));
+  }
+  return chunks.length > 0 ? chunks : [content];
+}
+
+/**
  * Pretty label for a parsed reference. "PSALM 119:1-24" or "PSALM 23".
  */
 export function psalmEyebrow(ref: PsalmRef): string {

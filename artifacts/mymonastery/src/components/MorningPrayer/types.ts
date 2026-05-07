@@ -5,6 +5,10 @@ export type SlideType =
   | "absolution"
   | "invitatory"
   | "invitatory_psalm"
+  // Title-only slide that introduces the psalm — big "Psalm 23"
+  // headline, mirrors the intercessions_portal layout. The verses
+  // follow on subsequent slides (4 verses each).
+  | "psalm_title"
   | "psalm"
   | "lesson"
   | "canticle"

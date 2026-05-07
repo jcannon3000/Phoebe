@@ -25,6 +25,7 @@ import { getLectionaryReadings } from "./lectionary";
 import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import {
   parsePsalmRef,
+  splitPsalmIntoChunks,
   sliceVersesByRange,
   psalmEyebrow,
 } from "./psalmRange";
@@ -215,15 +216,17 @@ export async function assembleDevotion(
     psalmRow && parsedRef.range
       ? sliceVersesByRange(psalmRow.content, parsedRef.range)
       : psalmRow?.content;
-  const psalmContent = slicedPsalm
-    ? slicedPsalm + gloriaPatri
-    : `[Psalm ${parsedRef.raw} — see BCP Psalter]${gloriaPatri}`;
+  const eyebrow = psalmEyebrow(parsedRef);
+
+  // Title slide — same big "Psalm 23" headline pattern the full
+  // Daily Office uses. Reads as a deliberate transition into the
+  // psalm rather than verses appearing cold.
   slides.push(
-    slide(id(), "psalm", "📖", psalmEyebrow(parsedRef), psalmContent, {
+    slide(id(), "psalm_title", "📖", eyebrow, "", {
       title: psalmRow?.title ?? null,
       bcpReference: psalmRow?.bcpReference ?? null,
-      isScrollable: true,
-      scrollHint: "↓ continue · tap when ready",
+      isScrollable: false,
+      scrollHint: null,
       metadata: {
         psalmNumber: psalmNum,
         psalmRange: parsedRef.range,
@@ -232,6 +235,54 @@ export async function assembleDevotion(
       },
     }),
   );
+
+  if (slicedPsalm) {
+    // 4 verses per slide; Gloria Patri appended to the last chunk
+    // only so the doxology still seals the psalm.
+    const chunks = splitPsalmIntoChunks(slicedPsalm, 4);
+    const lastIdx = chunks.length - 1;
+    chunks.forEach((chunk, i) => {
+      const content = i === lastIdx ? chunk + gloriaPatri : chunk;
+      slides.push(
+        slide(id(), "psalm", "📖", eyebrow, content, {
+          title: psalmRow?.title ?? null,
+          bcpReference: psalmRow?.bcpReference ?? null,
+          isScrollable: false,
+          scrollHint: null,
+          metadata: {
+            psalmNumber: psalmNum,
+            psalmRange: parsedRef.range,
+            psalmRef: parsedRef.raw,
+            fromLectionary: true,
+            psalmChunkIndex: i,
+            psalmChunkTotal: chunks.length,
+          },
+        }),
+      );
+    });
+  } else {
+    slides.push(
+      slide(
+        id(),
+        "psalm",
+        "📖",
+        eyebrow,
+        `[Psalm ${parsedRef.raw} — see BCP Psalter]${gloriaPatri}`,
+        {
+          title: psalmRow?.title ?? null,
+          bcpReference: psalmRow?.bcpReference ?? null,
+          isScrollable: false,
+          scrollHint: null,
+          metadata: {
+            psalmNumber: psalmNum,
+            psalmRange: parsedRef.range,
+            psalmRef: parsedRef.raw,
+            fromLectionary: true,
+          },
+        },
+      ),
+    );
+  }
 
   // 4. Reading — pulled from the day's lectionary so the devotion
   // tracks the same Bible journey as the full Daily Office. Morning

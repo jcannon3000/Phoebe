@@ -20,6 +20,7 @@ import {
   parsePsalmRef,
   sliceVersesByRange,
   psalmEyebrow,
+  splitPsalmIntoChunks,
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
@@ -34,6 +35,7 @@ export type SlideType =
   | "absolution"
   | "invitatory"
   | "invitatory_psalm"
+  | "psalm_title"
   | "psalm"
   | "lesson"
   | "canticle"
@@ -478,36 +480,78 @@ export async function assembleMorningPrayer(
     const psalmKey = `psalm_${psalmNum}`;
     const psalmData = texts[psalmKey];
     // Slice the seeded full psalm down to the appointed verse range
-    // (when one is given). The Gloria Patri is appended to whatever
-    // we end up showing, so a partial reading still closes with the
-    // doxology like the full psalm would.
+    // (when one is given). The Gloria Patri is appended to the LAST
+    // chunk only (see chunk loop below), so a partial reading still
+    // closes with the doxology like the full psalm would.
     const sliced =
       psalmData && range
         ? sliceVersesByRange(psalmData.content, range)
         : psalmData?.content;
-    const content = sliced
-      ? sliced + gloriaPatri
-      : `[Psalm ${psalmRef.raw} — see BCP Psalter]${gloriaPatri}`;
     const eyebrow = psalmEyebrow(psalmRef);
 
+    // Title slide — mirrors the intercessions_portal pattern. Renders
+    // as a single big "Psalm 72" / "Psalm 119:73-96" headline so the
+    // reader can settle into the psalm before the verses start. The
+    // client recognises this type and renders title-only.
     slides.push(
-      slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, content, {
-        // Latin incipit goes into title so the renderer can show it as
-        // italic above the verses, matching the 1979 BCP Psalter page
-        // layout. Falls back to null if the psalm row hasn't been seeded
-        // (in which case the slide has no Latin caption — better than
-        // showing the placeholder content as a title).
+      slide(id(), "psalm_title", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, "", {
         title: psalmData?.title ?? null,
-        isScrollable: true,
-        scrollHint: "↓ continue · tap when ready",
+        isScrollable: false,
+        scrollHint: null,
         metadata: {
-          ...(psalmData?.metadata ?? {}),
           psalmNumber: psalmNum,
           psalmRange: range,
           psalmRef: psalmRef.raw,
         },
       }),
     );
+
+    // Verse chunks — 4 verses per slide, centered vertically. The
+    // Gloria Patri is appended to whichever chunk lands last so the
+    // doxology still closes the psalm.
+    if (sliced) {
+      const chunks = splitPsalmIntoChunks(sliced, 4);
+      const lastIdx = chunks.length - 1;
+      chunks.forEach((chunk, i) => {
+        const content = i === lastIdx ? chunk + gloriaPatri : chunk;
+        slides.push(
+          slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, content, {
+            title: psalmData?.title ?? null,
+            isScrollable: false,
+            scrollHint: null,
+            metadata: {
+              ...(psalmData?.metadata ?? {}),
+              psalmNumber: psalmNum,
+              psalmRange: range,
+              psalmRef: psalmRef.raw,
+              psalmChunkIndex: i,
+              psalmChunkTotal: chunks.length,
+            },
+          }),
+        );
+      });
+    } else {
+      // Psalm row missing — single placeholder slide.
+      slides.push(
+        slide(
+          id(),
+          "psalm",
+          PSALM_EMOJI[psalmNum] ?? "📖",
+          eyebrow,
+          `[Psalm ${psalmRef.raw} — see BCP Psalter]${gloriaPatri}`,
+          {
+            title: psalmData?.title ?? null,
+            isScrollable: false,
+            scrollHint: null,
+            metadata: {
+              psalmNumber: psalmNum,
+              psalmRange: range,
+              psalmRef: psalmRef.raw,
+            },
+          },
+        ),
+      );
+    }
   }
 
   // BCP marks empty lesson slots with dashes ("----------") on major
