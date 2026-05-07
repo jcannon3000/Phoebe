@@ -1713,23 +1713,32 @@ export default function PrayerModePage() {
     const captured = slides;
     setFrozenSlides(captured);
     let resumeAt = 0;
-    try {
-      const raw = localStorage.getItem(progressStorageKey);
-      if (raw) {
-        const parsed = JSON.parse(raw) as { completed?: number };
-        if (typeof parsed.completed === "number" &&
-            parsed.completed > 0 &&
-            parsed.completed < captured.length) {
-          resumeAt = parsed.completed;
+    // Seamless handoff from the Daily Office / Devotion intercession
+    // portal: ALWAYS start at index 0, ignoring any stored "resume"
+    // progress and the alreadyPrayedToday skip. The user is in the
+    // middle of a liturgy and expects to walk every appointed
+    // intercession from the top — picking up mid-rotation or
+    // skipping slides because they already amened earlier today
+    // both read as bugs in this flow.
+    if (!seamlessFlow) {
+      try {
+        const raw = localStorage.getItem(progressStorageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as { completed?: number };
+          if (typeof parsed.completed === "number" &&
+              parsed.completed > 0 &&
+              parsed.completed < captured.length) {
+            resumeAt = parsed.completed;
+          }
         }
+      } catch { /* ignore corrupt entry */ }
+      if (resumeAt === 0) {
+        const firstUnPrayed = captured.findIndex((s) => !s.alreadyPrayedToday);
+        resumeAt = firstUnPrayed >= 0 ? firstUnPrayed : 0;
       }
-    } catch { /* ignore corrupt entry */ }
-    if (resumeAt === 0) {
-      const firstUnPrayed = captured.findIndex((s) => !s.alreadyPrayedToday);
-      resumeAt = firstUnPrayed >= 0 ? firstUnPrayed : 0;
     }
     setIndex(resumeAt);
-  }, [dataReady, index, progressStorageKey, slides]);
+  }, [dataReady, index, progressStorageKey, slides, seamlessFlow]);
 
   // All consumers below should read from this — `slides` is the live
   // (re-rendering) array, `displaySlides` is the stable session copy.

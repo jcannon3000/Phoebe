@@ -1045,12 +1045,28 @@ function exposePublicApi() {
     },
     async openInAppBrowser(url: string) {
       if (!url) return;
+      // Prefer the native BibleBrowser plugin (custom WKWebView wrapped
+      // in a UINavigationController) — its Done button stays pinned at
+      // the top of the screen for the whole reading session, where
+      // SFSafariViewController auto-collapses its top toolbar on scroll
+      // and hides the only way back to the liturgy. If the plugin
+      // isn't registered (older bundle, web build), fall through to
+      // the SFSafariViewController path via Browser.open, then to
+      // window.open as a last resort.
+      try {
+        const cap = (window as { Capacitor?: { Plugins?: Record<string, { open?: (opts: { url: string }) => Promise<void> }> } }).Capacitor;
+        const biblePlugin = cap?.Plugins?.BibleBrowser;
+        if (biblePlugin?.open) {
+          await biblePlugin.open({ url });
+          return;
+        }
+      } catch (err) {
+        console.warn("[PhoebeNative] BibleBrowser.open failed, falling back:", err);
+      }
       try {
         await Browser.open({ url });
       } catch (err) {
         console.error("[PhoebeNative] Browser.open failed:", err);
-        // Last-ditch fallback: try a plain navigation. iOS may still
-        // block this, but at least we surfaced an error.
         try {
           window.open(url, "_blank");
         } catch {

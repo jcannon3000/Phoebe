@@ -135,11 +135,14 @@ export async function assembleDevotion(
   // we render a placeholder so the slide still appears (the user can
   // tap through and we can backfill the seed later).
   const psalmKey = `psalm_${psalmNum}`;
-  const psalmRows = await db
+  const collectKey = liturgicalDay.collectKey;
+  const fetchKeys = [psalmKey, collectKey];
+  const fetchedRows = await db
     .select()
     .from(bcpTextsTable)
-    .where(inArray(bcpTextsTable.textKey, [psalmKey]));
-  const psalmRow = psalmRows[0] ?? null;
+    .where(inArray(bcpTextsTable.textKey, fetchKeys));
+  const psalmRow = fetchedRows.find((r) => r.textKey === psalmKey) ?? null;
+  const collectOfTheDayRow = fetchedRows.find((r) => r.textKey === collectKey) ?? null;
 
   // ── Build slides ────────────────────────────────────────────────────────────
 
@@ -283,10 +286,22 @@ export async function assembleDevotion(
     }),
   );
 
-  // 7. Collect — devotion-specific.
+  // 7. Collect — pulled from the day's lectionary so the devotion
+  // closes with the same Collect of the Day that the full Daily
+  // Office uses. Falls back to the BCP rubric's fixed devotion
+  // collect (Lord God, almighty… in the morning / Lord Jesus,
+  // stay with us… at early evening) if the lectionary entry is
+  // missing for any reason.
+  const collectText =
+    collectOfTheDayRow?.content
+      ? collectOfTheDayRow.content
+      : (isMorning ? COLLECT_MORNING : COLLECT_EARLY_EVENING);
+  const collectBcpRef =
+    collectOfTheDayRow?.bcpReference
+      ?? (isMorning ? "BCP p. 137" : "BCP p. 140");
   slides.push(
-    slide(id(), "collect", "🌿", "THE COLLECT", isMorning ? COLLECT_MORNING : COLLECT_EARLY_EVENING, {
-      bcpReference: isMorning ? "BCP p. 137" : "BCP p. 140",
+    slide(id(), "collect", "🌿", "THE COLLECT OF THE DAY", collectText, {
+      bcpReference: collectBcpRef,
     }),
   );
 

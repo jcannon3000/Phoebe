@@ -333,11 +333,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     const basePath = isDevotion ? "/bcp/daily-devotions" : "/bcp/daily-office";
     const returnTo = `${basePath}?mode=${encodeURIComponent(resolvedMode)}&slide=${nextOfficeIdx}`;
     const url = `/prayer-mode?returnTo=${encodeURIComponent(returnTo)}&seamless=1`;
-    // Hold the glowing "Intercessions" title for a beat so the
+    // Hold the glowing "Intercessions" title for ~4 seconds so the
     // handoff reads as a deliberate transition into prayer-mode
-    // rather than a flash of an empty slide. 2.4s lines up with
-    // one full breath of the title-glow keyframe.
-    const t = window.setTimeout(() => setViewerLocation(url), 2400);
+    // rather than a flash of an empty slide. Tuned long enough to
+    // let the user's eyes settle on the headline before the page
+    // changes underneath them.
+    const t = window.setTimeout(() => setViewerLocation(url), 4000);
     return () => window.clearTimeout(t);
   }, [slides, slideIdx, resolvedMode, isDevotion, setViewerLocation]);
 
