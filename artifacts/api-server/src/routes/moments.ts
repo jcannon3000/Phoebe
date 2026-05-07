@@ -8,6 +8,7 @@ import {
   momentCalendarEventsTable, momentRenewalsTable, userConnectionsCacheTable,
   lectioReflectionsTable, groupsTable, groupMembersTable, momentGroupsTable,
   prayerFeedSubscriptionsTable, prayerFeedsTable, betaUsersTable,
+  prayerRequestsTable, prayerRequestAmensTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, createAllDayCalendarEvent as _createAllDayCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, updateCalendarEvent } from "../lib/calendar";
@@ -4331,19 +4332,76 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
       cursor = stepBack(cursor);
     }
 
-    // How many people in the viewer's garden have walked their own
-    // prayer slideshow today (in their own local timezone). Used by
-    // the Daily Prayer List card to alternate the subtitle with
-    // "X people prayed with you today".
+    // How many people prayed with the viewer today. Counts distinct
+    // users who have engaged with the viewer's prayer life today via
+    // either signal:
+    //
+    //   1) Tapped Amen on any of the viewer's active prayer requests
+    //      (amen-based — runs across ALL prayer-request authors who
+    //      can see the viewer's request, not just garden members,
+    //      since "praying for me" is the user's mental model).
+    //   2) Walked their own prayer slideshow today (moment-checkin-
+    //      based — preserves the original signal that picks up
+    //      garden members who are praying through community
+    //      practices but haven't necessarily amened anything yet).
+    //
+    // The two sets are unioned by user id; the count is the size of
+    // the union. Today is computed in the VIEWER's timezone, since
+    // the "today" the viewer is asking about is their own.
     let gardenPrayedTodayCount = 0;
     try {
+      const myUserRow = await db
+        .select({ timezone: usersTable.timezone })
+        .from(usersTable)
+        .where(eq(usersTable.id, sessionUserId));
+      const myTz = myUserRow[0]?.timezone || tz;
+      const myToday = todayDateInTz(myTz);
+      const ymdInMyTz = (d: Date) =>
+        new Intl.DateTimeFormat("en-CA", {
+          timeZone: myTz,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(d);
+
+      const prayedUserIds = new Set<number>();
+
+      // ── Signal 1: amens on the viewer's active prayer requests ──
+      const myRequests = await db
+        .select({ id: prayerRequestsTable.id })
+        .from(prayerRequestsTable)
+        .where(eq(prayerRequestsTable.ownerId, sessionUserId));
+      const myRequestIds = myRequests.map((r) => r.id);
+      if (myRequestIds.length > 0) {
+        const amenRows = await db
+          .select({
+            userId: prayerRequestAmensTable.userId,
+            prayedAt: prayerRequestAmensTable.prayedAt,
+          })
+          .from(prayerRequestAmensTable)
+          .where(inArray(prayerRequestAmensTable.requestId, myRequestIds));
+        for (const a of amenRows) {
+          if (!a.prayedAt) continue;
+          if (a.userId === sessionUserId) continue; // own taps don't count
+          if (ymdInMyTz(a.prayedAt) === myToday) {
+            prayedUserIds.add(a.userId);
+          }
+        }
+      }
+
+      // ── Signal 2: garden members who did a moment check-in today ──
       const gardenIds = await getGardenUserIds(sessionUserId);
       if (gardenIds.length > 0) {
         const gardenUsers = await db
           .select({ id: usersTable.id, email: usersTable.email, timezone: usersTable.timezone })
           .from(usersTable)
           .where(inArray(usersTable.id, gardenIds));
-        const emails = gardenUsers.map(g => (g.email || "").toLowerCase()).filter(Boolean);
+        const emailToId = new Map<string, number>();
+        for (const g of gardenUsers) {
+          const e = (g.email || "").toLowerCase();
+          if (e) emailToId.set(e, g.id);
+        }
+        const emails = Array.from(emailToId.keys());
         if (emails.length > 0) {
           const tokenRows = await db
             .select({ userToken: momentUserTokensTable.userToken, email: momentUserTokensTable.email })
@@ -4351,7 +4409,7 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
           const tokensByEmail = new Map<string, string[]>();
           for (const t of tokenRows) {
             const e = (t.email || "").toLowerCase();
-            if (!emails.includes(e)) continue;
+            if (!emailToId.has(e)) continue;
             const list = tokensByEmail.get(e) ?? [];
             list.push(t.userToken);
             tokensByEmail.set(e, list);
@@ -4378,18 +4436,19 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
               if (!e) continue;
               todayByEmail.set(e, todayDateInTz(g.timezone || "UTC"));
             }
-            const prayedEmails = new Set<string>();
             for (const r of checkinRows) {
               const email = tokenToEmail.get(r.userToken);
               if (!email) continue;
               if (r.windowDate === todayByEmail.get(email)) {
-                prayedEmails.add(email);
+                const uid = emailToId.get(email);
+                if (uid) prayedUserIds.add(uid);
               }
             }
-            gardenPrayedTodayCount = prayedEmails.size;
           }
         }
       }
+
+      gardenPrayedTodayCount = prayedUserIds.size;
     } catch (gardenErr) {
       console.error("GET /api/prayer-streak garden count failed:", gardenErr);
     }
