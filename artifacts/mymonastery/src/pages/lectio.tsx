@@ -25,6 +25,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, isToday } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { bibleUrl } from "@/lib/bibleGatewayUrl";
+import { openExternal } from "@/lib/openExternal";
 
 type Stage = "lectio" | "meditatio" | "oratio";
 const STAGE_ORDER: Stage[] = ["lectio", "meditatio", "oratio"];
@@ -934,13 +936,16 @@ function PromptSlide({ stage }: { stage: Stage }) {
 }
 
 function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
-  // Per UX feedback: drop the bordered card chrome and let the gospel
-  // sit directly on the page background. The pulsing border was reading
-  // as visual noise (and was the source of repeated complaints). Keeps
-  // the same internal layout — fixed title block, scrollable body, fade
-  // overlay at the bottom — but with no card background, border, or
-  // shadow. The fade now resolves to the page background (#091A10)
-  // instead of the old card tint.
+  // Per user direction the reading slide no longer prints the gospel
+  // text inline — that surface had become a wall of small type that
+  // people scrolled past without reading. We now mirror the Daily
+  // Office's lesson treatment: the reference is the headline, a
+  // prompt invites the reader to open it in their bible, and a
+  // pill button deep-links to YouVersion's NRSVUE in the in-app
+  // BibleBrowser (custom WKWebView with a persistent Done button).
+  // Falls back to a regular new tab on the web build, where the
+  // native plugin isn't available.
+  const url = bibleUrl(reading.gospelReference);
   return (
     <div
       style={{
@@ -948,64 +953,82 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        position: "relative",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: "32px 16px",
+        gap: 24,
       }}
     >
-      <div
-        style={{
-          padding: "22px 4px 14px",
-          textAlign: "center",
-        }}
-      >
+      <div>
         <p
           style={{
             color: FAINT_GREEN,
             fontSize: 11,
             letterSpacing: "0.22em",
             textTransform: "uppercase",
-            marginBottom: 6,
+            marginBottom: 8,
           }}
         >
           {reading.sundayName}
         </p>
-        <p
+        <h2
           style={{
-            color: MUTED_GREEN,
-            fontSize: 13,
-            letterSpacing: "0.04em",
+            color: WARM_TEXT,
+            fontSize: "clamp(28px, 6vw, 36px)",
+            fontWeight: 700,
+            fontFamily: SPACE_GROTESK,
+            letterSpacing: "-0.01em",
+            margin: 0,
+            lineHeight: 1.15,
           }}
         >
           {reading.gospelReference}
-        </p>
+        </h2>
       </div>
-      <div
+      <p
         style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-          color: WARM_TEXT,
-          fontSize: 18,
-          lineHeight: 1.8,
-          fontFamily: SPACE_GROTESK,
-          whiteSpace: "pre-wrap",
-          padding: "8px 4px 26px",
+          color: MUTED_GREEN,
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontStyle: "italic",
+          fontSize: 16,
+          lineHeight: 1.6,
+          maxWidth: 360,
+          margin: 0,
         }}
       >
-        {reading.gospelText}
-      </div>
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: 56,
-          pointerEvents: "none",
-          background: `linear-gradient(to bottom, rgba(9,26,16,0) 0%, rgba(9,26,16,0.98) 100%)`,
-        }}
-      />
+        Open your Bible, or read this passage online.
+      </p>
+      {url && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => {
+            // Intercept on native + web. openExternal routes through
+            // the BibleBrowser plugin (custom WKWebView with
+            // persistent Done button) on iOS and through window.open
+            // on the web. preventDefault stops the WebView from also
+            // navigating in the main frame.
+            e.preventDefault();
+            openExternal(url);
+          }}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 999,
+            background: "rgba(46,107,64,0.18)",
+            border: "1px solid rgba(46,107,64,0.45)",
+            color: WARM_TEXT,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 13,
+            fontWeight: 600,
+            textDecoration: "none",
+            display: "inline-block",
+          }}
+        >
+          Read on Bible.com →
+        </a>
+      )}
     </div>
   );
 }
