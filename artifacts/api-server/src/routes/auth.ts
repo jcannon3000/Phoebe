@@ -8,6 +8,7 @@ import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlis
 import { eq, and } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
+import { getUserAccessTier } from "../lib/parishGate";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
@@ -177,7 +178,7 @@ router.get("/auth/scheduler/callback", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/auth/me", (req, res) => {
+router.get("/auth/me", async (req, res) => {
   if (!req.user) {
     res.status(401).json({ error: "Not authenticated" });
     return;
@@ -194,9 +195,14 @@ router.get("/auth/me", (req, res) => {
     climateOnboardingCompleted: boolean;
     climateOnly: boolean;
     parishId: number | null;
+    parishFeedId: number | null;
     bellEnabled: boolean;
     locale: string | null;
   };
+  // Phoebe Parish access tier. Computed server-side so every page that
+  // calls useAuth() knows immediately whether to render the simplified
+  // parish-only UI or the full app — no per-page round-trip needed.
+  const access = await getUserAccessTier(u.id);
   res.json({
     id: u.id,
     name: u.name,
@@ -223,6 +229,10 @@ router.get("/auth/me", (req, res) => {
     parishId: u.parishId ?? null,
     bellEnabled: u.bellEnabled ?? false,
     locale: u.locale ?? "en",
+    // Phoebe Parish — flat fields the client uses to decide UI shape.
+    accessTier: access.tier,
+    parishFeedId: access.parishFeedId,
+    parishSlug: access.parishSlug,
   });
 });
 

@@ -962,6 +962,13 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feeds_slug ON prayer_feeds (slug)`);
 
+    // Phoebe Parish — `kind` partitions feeds. "general" is the legacy
+    // shape (anyone can subscribe, the creator publishes content);
+    // "parish" is a Phoebe Parish congregation with at-most-one
+    // subscription per user (enforced via users.parish_feed_id).
+    // Idempotent: existing rows fall through the default 'general'.
+    await run(client, `ALTER TABLE prayer_feeds ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'general'`);
+
     await run(client, `
       CREATE TABLE IF NOT EXISTS prayer_feed_entries (
         id SERIAL PRIMARY KEY,
@@ -1225,6 +1232,19 @@ export async function migrate() {
 
     // parish_id FK (nullable, no NOT NULL)
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_id INTEGER REFERENCES groups(id)`);
+
+    // Phoebe Parish — pointer to the user's chosen parish feed (kind="parish"
+    // in prayer_feeds). At most one parish per user is enforced by this
+    // column existing as a single FK rather than a join table. The
+    // simplified parish-only UI is gated by:
+    //   parish_feed_id IS NOT NULL
+    //     AND user has no row in beta_users
+    //     AND user has no rows in group_members
+    // Joining a community via invite link writes a group_members row,
+    // which flips the gate and unlocks the full app on the next
+    // request — no separate promotion job needed.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_feed_id INTEGER REFERENCES prayer_feeds(id) ON DELETE SET NULL`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_users_parish_feed_id ON users (parish_feed_id) WHERE parish_feed_id IS NOT NULL`);
 
     // BCP-47 locale code. Default English so legacy rows render in
     // English without backfill. Beta users can flip to "es" via

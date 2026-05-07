@@ -40,6 +40,15 @@ export const prayerFeedsTable = pgTable(
     // stable regardless of where subscribers live.
     timezone: text("timezone").notNull().default("America/New_York"),
     state: text("state").notNull().default("draft"), // draft | live | paused
+    // Feed taxonomy. "general" feeds are what the system has had since
+    // day one — anyone can subscribe, content is curated by the
+    // creator. "parish" feeds are Phoebe Parish congregations: each
+    // user can be subscribed to AT MOST ONE parish (the canonical
+    // pointer lives on users.parish_feed_id), and the parish powers
+    // the simplified parish-only signup flow + admin metrics. Phoebe
+    // staff provision parishes manually for now (no self-serve
+    // parish creation in the UI).
+    kind: text("kind").notNull().default("general"), // general | parish
     subscriberCount: integer("subscriber_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -50,3 +59,4 @@ export const prayerFeedsTable = pgTable(
 );
 
 export type PrayerFeedState = "draft" | "live" | "paused";
+export type PrayerFeedKind = "general" | "parish";

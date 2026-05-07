@@ -134,6 +134,9 @@ import PrayerFeedNewPage from "./pages/prayer-feed-new";
 import PrayerFeedManagePage from "./pages/prayer-feed-manage";
 import PrayerFeedsBrowsePage from "./pages/prayer-feeds-browse";
 import PrayerFeedDetailPage from "./pages/prayer-feed-detail";
+import ParishDashboard from "./pages/parish-dashboard";
+import ParishOnboarding from "./pages/parish-onboarding";
+import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
 // /climate*, /climate/admin, /climate/parish routes redirect to the
@@ -204,6 +207,94 @@ function NotificationTapPrewarm() {
   return null;
 }
 
+// Phoebe Parish — routing gate.
+//
+// Watches the current path + the user's accessTier and redirects when
+// the two don't match. Lives at the top of <Router/> so every navigation
+// passes through it. Three rules:
+//
+//   1. parish-only user on a full-app path → /parish
+//      (e.g. they manually typed /people, or hit a stale push deep-link
+//       from before they were demoted)
+//   2. parish-only user with no parish_feed_id (race) → /parish/onboarding
+//   3. unassigned user → /parish/onboarding
+//      (signed up but hasn't picked a parish yet — only matters for the
+//       parish-tier signup flow we're building; existing beta users skip
+//       this branch entirely because they're "full" tier)
+//
+// Anything PUBLIC (BCP, daily-office, settings, the parish routes
+// themselves) is allow-listed — parish users SHOULD be able to read
+// the BCP and pray the offices. The denylist is everything that
+// surfaces user-generated or community content.
+const PARISH_DENIED_PATHS = [
+  "/dashboard",
+  "/people",
+  "/people/find",
+  "/letters",
+  "/letter",
+  "/communities",
+  "/community",
+  "/prayer-list",
+  "/my-prayer-requests",
+  "/prayers-for-me",
+  "/prayer-requests",
+  "/pray-for",
+  "/pray-request",
+  "/practices",
+  "/moment",
+  "/moments",
+  "/gatherings",
+  "/ritual",
+  "/tradition",
+];
+
+function ParishGate({ children }: { children: ReactNode }) {
+  const [location, setLocation] = useLocation();
+  const { user, isLoading } = useAuthForGate();
+
+  useEffect(() => {
+    if (isLoading || !user) return;
+    if (user.accessTier === "full") {
+      // Full-app users shouldn't get stuck on /parish; if they
+      // navigated there manually, send them home.
+      if (location === "/parish" || location.startsWith("/parish/")) {
+        setLocation("/dashboard");
+      }
+      return;
+    }
+    if (user.accessTier === "parish-only") {
+      // Allow the parish surfaces themselves + BCP + settings + the
+      // root onboarding fall-through.
+      const allowed =
+        location === "/" ||
+        location === "/parish" ||
+        location === "/parish/onboarding" ||
+        location === "/settings" ||
+        location.startsWith("/bcp") ||
+        location === "/about" ||
+        location === "/privacy" ||
+        location === "/terms" ||
+        location === "/feedback" ||
+        location.startsWith("/onboarding");
+      if (!allowed) {
+        // Anything in the denylist OR anything not in the allowlist
+        // bounces home.
+        setLocation("/parish");
+      }
+      return;
+    }
+    if (user.accessTier === "unassigned") {
+      if (location !== "/parish/onboarding" && location !== "/" && !location.startsWith("/onboarding")) {
+        setLocation("/parish/onboarding");
+      }
+    }
+  }, [location, setLocation, user, isLoading]);
+
+  void PARISH_DENIED_PATHS; // explicit denylist kept for readability + future toggling
+
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -211,6 +302,14 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/dashboard" component={Dashboard} />
+      {/* Phoebe Parish — simplified tier. /parish is the dashboard
+          for parish-only users; /parish/onboarding is the parish
+          picker. The router-level gate (ParishGate below) redirects
+          parish-only users away from full-app routes and full-app
+          users away from /parish, so these are reachable but not
+          conflicting. */}
+      <Route path="/parish" component={ParishDashboard} />
+      <Route path="/parish/onboarding" component={ParishOnboarding} />
       <Route path="/gatherings" component={GatheringsPage} />
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />
@@ -366,7 +465,9 @@ function App() {
           <PullToRefresh />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
-            <Router />
+            <ParishGate>
+              <Router />
+            </ParishGate>
           </WouterRouter>
           <Toaster />
         </ErrorBoundary>

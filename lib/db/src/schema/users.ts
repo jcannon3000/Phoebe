@@ -66,6 +66,19 @@ export const usersTable = pgTable("users", {
   // cohort while leaving dual users' experience intact.
   climateOnly: boolean("climate_only").notNull().default(false),
   parishId: integer("parish_id"),  // FK to groups.id, enforced only in migration SQL — no .references() here to avoid circular import
+  // ── Phoebe Parish ─────────────────────────────────────────────────────────
+  // FK to prayer_feeds.id when the feed has kind="parish". This is the
+  // canonical "my parish" pointer — there's also a row in
+  // prayer_feed_subscriptions so the feed system's many-to-many
+  // infrastructure (today's intentions, etc.) keeps working, but
+  // parish_feed_id is the unique cap (one parish per user). Non-null
+  // means the user signed up via the Parish flow; combined with "no
+  // beta_users row + no group_members rows" they get the simplified
+  // parish-only UI. Joining a community via invite link unlocks the
+  // full app (the gate is a derived state, no separate flag flip
+  // needed). FK constraint is added in migration SQL to avoid a
+  // circular import between this schema file and prayer_feeds.
+  parishFeedId: integer("parish_feed_id"),
   // BCP-47 locale code (e.g. "en", "es"). Drives i18next on the client
   // and template selection in pushSender / email senders. Beta users
   // can flip this to "es" via Settings → Language; non-beta accounts

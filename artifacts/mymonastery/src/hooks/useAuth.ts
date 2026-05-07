@@ -1,5 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+// Phoebe Parish — derived server-side from beta_users + group_members
+// + users.parish_feed_id. "full" sees everything (the historical
+// experience), "parish-only" sees a stripped UI (BCP + parish dash +
+// settings), "unassigned" hasn't picked anything yet (gets routed to
+// parish onboarding).
+export type AccessTier = "full" | "parish-only" | "unassigned";
+
 export interface AuthUser {
   id: number;
   name: string;
@@ -23,6 +30,10 @@ export interface AuthUser {
   climateOnly: boolean;
   parishId: number | null;
   bellEnabled: boolean;
+  // Phoebe Parish — see AccessTier comment above.
+  accessTier: AccessTier;
+  parishFeedId: number | null;
+  parishSlug: string | null;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {
