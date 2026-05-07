@@ -28,6 +28,7 @@ import {
   prayerFeedEntriesTable,
   prayerFeedSubscriptionsTable,
   usersTable,
+  betaUsersTable,
   prayerSessionsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
@@ -374,11 +375,20 @@ router.get("/parish/prefs", async (req, res) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.id));
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    // Whether the caller can manage their current parish — used by the
+    // settings UI to surface the "Admin" link only for parish creators
+    // and Phoebe staff. Non-managers don't see a link they can't act on.
+    let canManage = false;
+    if (user.parishFeedId !== null) {
+      const result = await canManageParish(session.id, user.parishFeedId);
+      canManage = result.allowed;
+    }
     res.json({
       morning: user.parishOfficeMorningPref ?? "none",
       evening: user.parishOfficeEveningPref ?? "none",
       morningTime: user.parishOfficeMorningTime ?? null,
       parishFeedId: user.parishFeedId,
+      canManage,
     });
   } catch (err) {
     console.error("[parish] prefs failed:", err);
@@ -414,6 +424,202 @@ router.put("/parish/prefs", async (req, res) => {
   } catch (err) {
     console.error("[parish] prefs update failed:", err);
     res.status(500).json({ error: "Failed to save prefs" });
+  }
+});
+
+// ─── Admin: who can manage this parish? ───────────────────────────────────
+//
+// A user can manage a parish if:
+//   • they're the creator (creator_user_id matches), OR
+//   • they're a Phoebe beta admin (beta_users.is_admin = true)
+// Mirrors canEditFeed in prayer-feeds.ts but adapted for parishes
+// (we always require kind="parish" so a "general" feed doesn't
+// accidentally fall under parish admin tooling).
+async function canManageParish(userId: number, parishId: number): Promise<{
+  allowed: boolean;
+  parish: typeof prayerFeedsTable.$inferSelect | null;
+}> {
+  const [parish] = await db
+    .select()
+    .from(prayerFeedsTable)
+    .where(and(
+      eq(prayerFeedsTable.id, parishId),
+      eq(prayerFeedsTable.kind, "parish"),
+    ));
+  if (!parish) return { allowed: false, parish: null };
+  if (parish.creatorUserId === userId) return { allowed: true, parish };
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return { allowed: false, parish };
+  const [admin] = await db
+    .select({ isAdmin: betaUsersTable.isAdmin })
+    .from(betaUsersTable)
+    .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+  return { allowed: !!admin?.isAdmin, parish };
+}
+
+// ─── GET /api/parish/admin/parishes ───────────────────────────────────────
+// List of parishes the caller can manage. Lets the admin UI build a
+// switcher when a Phoebe staff account oversees multiple congregations.
+router.get("/parish/admin/parishes", async (req, res) => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, session.id));
+    if (!u) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const [admin] = await db
+      .select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    const isStaffAdmin = !!admin?.isAdmin;
+
+    // Beta admins see every parish; everyone else only sees parishes
+    // they personally created.
+    const rows = isStaffAdmin
+      ? await db
+          .select({
+            id: prayerFeedsTable.id,
+            slug: prayerFeedsTable.slug,
+            title: prayerFeedsTable.title,
+            timezone: prayerFeedsTable.timezone,
+            state: prayerFeedsTable.state,
+            subscriberCount: prayerFeedsTable.subscriberCount,
+          })
+          .from(prayerFeedsTable)
+          .where(eq(prayerFeedsTable.kind, "parish"))
+          .orderBy(asc(prayerFeedsTable.title))
+      : await db
+          .select({
+            id: prayerFeedsTable.id,
+            slug: prayerFeedsTable.slug,
+            title: prayerFeedsTable.title,
+            timezone: prayerFeedsTable.timezone,
+            state: prayerFeedsTable.state,
+            subscriberCount: prayerFeedsTable.subscriberCount,
+          })
+          .from(prayerFeedsTable)
+          .where(and(
+            eq(prayerFeedsTable.kind, "parish"),
+            eq(prayerFeedsTable.creatorUserId, session.id),
+          ))
+          .orderBy(asc(prayerFeedsTable.title));
+    res.json({ parishes: rows, isStaffAdmin });
+  } catch (err) {
+    console.error("[parish] admin parishes failed:", err);
+    res.status(500).json({ error: "Failed to list parishes" });
+  }
+});
+
+// ─── GET /api/parish/admin/metrics ────────────────────────────────────────
+//
+// Aggregate prayer-session metrics for a parish over a rolling window
+// (default 7 days). Returns:
+//   • totals: { sessions, distinctPrayers, totalSeconds }
+//   • bySurface: per-liturgy breakdown (morning-prayer, evening-prayer,
+//     morning-devotion, early-evening-devotion, slideshow)
+//   • daily: per-day rollup so the dashboard can render a sparkline
+//     or bar chart
+const MetricsSchema = z.object({
+  parishId: z.coerce.number().int(),
+  days: z.coerce.number().int().min(1).max(90).optional().default(7),
+});
+
+router.get("/parish/admin/metrics", async (req, res) => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = MetricsSchema.safeParse(req.query);
+  if (!parsed.success) { res.status(400).json({ error: String(parsed.error) }); return; }
+  const { parishId, days } = parsed.data;
+
+  try {
+    const { allowed, parish } = await canManageParish(session.id, parishId);
+    if (!allowed || !parish) {
+      res.status(403).json({ error: "Not authorized to manage this parish" });
+      return;
+    }
+
+    const tz = parish.timezone || "America/New_York";
+
+    const [totalsRow, surfaceRows, dailyRows] = await Promise.all([
+      db.execute<{ sessions: string; distinct_prayers: string; total_seconds: string }>(sql`
+        SELECT
+          COUNT(*)::text AS sessions,
+          COUNT(DISTINCT ps.user_id)::text AS distinct_prayers,
+          COALESCE(SUM(ps.duration_seconds), 0)::text AS total_seconds
+        FROM prayer_sessions ps
+        INNER JOIN prayer_feed_subscriptions pfs
+          ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parishId}
+        WHERE ps.ended_at > NOW() - (${days}::int * INTERVAL '1 day')
+      `),
+      db.execute<{
+        surface: string;
+        sessions: string;
+        distinct_prayers: string;
+        total_seconds: string;
+      }>(sql`
+        SELECT
+          ps.surface,
+          COUNT(*)::text AS sessions,
+          COUNT(DISTINCT ps.user_id)::text AS distinct_prayers,
+          COALESCE(SUM(ps.duration_seconds), 0)::text AS total_seconds
+        FROM prayer_sessions ps
+        INNER JOIN prayer_feed_subscriptions pfs
+          ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parishId}
+        WHERE ps.ended_at > NOW() - (${days}::int * INTERVAL '1 day')
+        GROUP BY ps.surface
+        ORDER BY total_seconds DESC
+      `),
+      db.execute<{
+        day: string;
+        sessions: string;
+        distinct_prayers: string;
+        total_seconds: string;
+      }>(sql`
+        SELECT
+          (ps.ended_at AT TIME ZONE ${tz})::date::text AS day,
+          COUNT(*)::text AS sessions,
+          COUNT(DISTINCT ps.user_id)::text AS distinct_prayers,
+          COALESCE(SUM(ps.duration_seconds), 0)::text AS total_seconds
+        FROM prayer_sessions ps
+        INNER JOIN prayer_feed_subscriptions pfs
+          ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parishId}
+        WHERE ps.ended_at > NOW() - (${days}::int * INTERVAL '1 day')
+        GROUP BY day
+        ORDER BY day ASC
+      `),
+    ]);
+
+    const t = totalsRow.rows[0] ?? { sessions: "0", distinct_prayers: "0", total_seconds: "0" };
+
+    res.json({
+      parish: {
+        id: parish.id,
+        slug: parish.slug,
+        title: parish.title,
+        timezone: tz,
+        subscriberCount: parish.subscriberCount,
+      },
+      windowDays: days,
+      totals: {
+        sessions: Number(t.sessions),
+        distinctPrayers: Number(t.distinct_prayers),
+        totalSeconds: Number(t.total_seconds),
+      },
+      bySurface: surfaceRows.rows.map((r) => ({
+        surface: r.surface,
+        sessions: Number(r.sessions),
+        distinctPrayers: Number(r.distinct_prayers),
+        totalSeconds: Number(r.total_seconds),
+      })),
+      daily: dailyRows.rows.map((r) => ({
+        day: r.day,
+        sessions: Number(r.sessions),
+        distinctPrayers: Number(r.distinct_prayers),
+        totalSeconds: Number(r.total_seconds),
+      })),
+    });
+  } catch (err) {
+    console.error("[parish] admin metrics failed:", err);
+    res.status(500).json({ error: "Failed to load metrics" });
   }
 });
 

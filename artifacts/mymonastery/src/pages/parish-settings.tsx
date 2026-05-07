@@ -39,6 +39,10 @@ interface ParishPrefs {
   evening: OfficePref;
   morningTime: string | null;
   parishFeedId: number | null;
+  // True when the caller is the parish creator OR a Phoebe staff
+  // admin. Drives whether the "Admin & metrics" entry shows in
+  // the parish section.
+  canManage: boolean;
 }
 
 interface ParishToday {
@@ -175,29 +179,48 @@ export default function ParishSettings() {
               )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm("Leave this parish? You can pick a new one afterwards.")) {
-                leaveMutation.mutate();
-              }
-            }}
-            disabled={leaveMutation.isPending}
-            style={{
-              background: "none",
-              border: "none",
-              color: SAGE,
-              fontSize: 13,
-              fontFamily: SPACE_GROTESK,
-              padding: "8px 0 0",
-              cursor: leaveMutation.isPending ? "default" : "pointer",
-              textDecoration: "underline",
-              textDecorationColor: "rgba(143,175,150,0.35)",
-              textUnderlineOffset: 4,
-            }}
-          >
-            {leaveMutation.isPending ? "Leaving…" : "Change parish →"}
-          </button>
+          <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("Leave this parish? You can pick a new one afterwards.")) {
+                  leaveMutation.mutate();
+                }
+              }}
+              disabled={leaveMutation.isPending}
+              style={{
+                background: "none",
+                border: "none",
+                color: SAGE,
+                fontSize: 13,
+                fontFamily: SPACE_GROTESK,
+                padding: 0,
+                cursor: leaveMutation.isPending ? "default" : "pointer",
+                textDecoration: "underline",
+                textDecorationColor: "rgba(143,175,150,0.35)",
+                textUnderlineOffset: 4,
+              }}
+            >
+              {leaveMutation.isPending ? "Leaving…" : "Change parish →"}
+            </button>
+            {prefs?.canManage && (
+              <Link href="/parish/admin">
+                <span
+                  style={{
+                    color: "#A8C5A0",
+                    fontSize: 13,
+                    fontFamily: SPACE_GROTESK,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                    textDecorationColor: "rgba(168,197,160,0.35)",
+                    textUnderlineOffset: 4,
+                  }}
+                >
+                  Admin & metrics →
+                </span>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Office reminders */}
