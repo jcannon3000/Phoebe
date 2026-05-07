@@ -3793,15 +3793,23 @@ export default function Dashboard() {
                   );
                 })()}
 
-                {/* Unfiltered empty state. The "Start a practice / Start
-                    a gathering" CTAs were retired here — too many users
-                    landed on this card without any community context and
-                    didn't know what either option meant. The single
-                    "Join a community" path is the right next step for
-                    anyone genuinely empty: communities carry prayer
-                    requests, practices, and gatherings, so joining one
-                    seeds all three at once. */}
-                {filter === null && totalCount === 0 && (
+                {/* Unfiltered empty state — only fires when the user is
+                    *truly* empty: no practices, no gatherings, no
+                    prayers in their slideshow, no community
+                    membership. If any of those is true the page
+                    already has a meaningful surface above (the Daily
+                    Prayer List card, the community pills, etc.) so a
+                    "nothing here" card below them is misleading.
+                    A user who's in a community whose members have
+                    posted requests was previously seeing this card
+                    saying "Start a practice" even though Jeremy's
+                    requests were sitting in their slideshow — wrong
+                    signal. The "Join a community" path stays for
+                    genuinely brand-new users with no context. */}
+                {filter === null
+                  && totalCount === 0
+                  && pendingPrayerCount === 0
+                  && (dashGroups?.groups?.length ?? 0) === 0 && (
                   <div className="rounded-xl p-5 text-center" style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}>
                     <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>
                       Nothing here yet. 🌱
