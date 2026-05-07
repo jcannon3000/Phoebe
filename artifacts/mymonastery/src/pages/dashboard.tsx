@@ -3612,8 +3612,15 @@ export default function Dashboard() {
           {/* Persistent daily prayer list card — same PrayerListCard
               used elsewhere, just routed through its `prayedToday`
               variant so the subtitle/CTA adapt. Lives here as the
-              home-screen anchor and is filter-gated. */}
-          {filter === null && (pendingPrayerCount > 0 || prayerStreak > 0) && (() => {
+              home-screen anchor and is filter-gated.
+              Shows when the user has pending prayers OR an active
+              streak OR membership in any community. The membership
+              clause is what surfaces this card for someone who's
+              just joined a group whose members haven't posted any
+              requests yet — without it the dashboard reads as
+              "nothing here" even though there's a slideshow path
+              into the BCP intercessions waiting for them. */}
+          {filter === null && (pendingPrayerCount > 0 || prayerStreak > 0 || (dashGroups?.groups?.length ?? 0) > 0) && (() => {
             // Up to 3 avatars of people whose prayers are in the
             // viewer's slideshow today. Source: non-own open prayer
             // request authors + active prayers-for recipients.
@@ -3786,14 +3793,24 @@ export default function Dashboard() {
                   );
                 })()}
 
-                {/* Unfiltered empty state */}
+                {/* Unfiltered empty state. The "Start a practice / Start
+                    a gathering" CTAs were retired here — too many users
+                    landed on this card without any community context and
+                    didn't know what either option meant. The single
+                    "Join a community" path is the right next step for
+                    anyone genuinely empty: communities carry prayer
+                    requests, practices, and gatherings, so joining one
+                    seeds all three at once. */}
                 {filter === null && totalCount === 0 && (
                   <div className="rounded-xl p-5 text-center" style={{ background: "transparent", border: "1px dashed rgba(200, 212, 192, 0.25)" }}>
-                    <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>No practices or gatherings yet. 🌱</p>
-                    <div className="flex justify-center gap-4">
-                      <Link href="/moment/new"><span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a practice →</span></Link>
-                      <Link href="/tradition/new"><span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>Start a gathering →</span></Link>
-                    </div>
+                    <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>
+                      Nothing here yet. 🌱
+                    </p>
+                    <Link href="/communities/browse">
+                      <span className="text-sm font-semibold" style={{ color: "#A8C5A0" }}>
+                        Join a community to get started →
+                      </span>
+                    </Link>
                   </div>
                 )}
               </motion.div>
