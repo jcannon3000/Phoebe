@@ -432,7 +432,7 @@ function SlideContent({
           className="text-[12px] italic"
           style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
         >
-          A short note; your garden will hold it for 3 days.
+          A short note; your garden will hold it for 7 days.
         </p>
 
         <textarea
@@ -1266,6 +1266,15 @@ export default function PrayerModePage() {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("seamless") === "1";
   })();
+  // closingOnly=1 → land directly on the celebration summary, skipping
+  // the prayer rotation entirely. Used by the Office / Devotion
+  // viewers when the seamless intercessions handoff is over and the
+  // user has just finished the closing collect — the celebration
+  // belongs at the end of the full liturgy, not mid-flow.
+  const closingOnly = (() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("closingOnly") === "1";
+  })();
   const finishHref = returnToHref ?? "/dashboard";
 
   const momentsQuery = useQuery<{ moments: Moment[] }>({
@@ -1752,7 +1761,7 @@ export default function PrayerModePage() {
   // All consumers below should read from this — `slides` is the live
   // (re-rendering) array, `displaySlides` is the stable session copy.
   const displaySlides = frozenSlides ?? slides;
-  const [phase, setPhase] = useState<"prayer" | "closing">("prayer");
+  const [phase, setPhase] = useState<"prayer" | "closing">(() => closingOnly ? "closing" : "prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
   // Track which intercessions the viewer has already "amened" this
@@ -1774,6 +1783,10 @@ export default function PrayerModePage() {
   // the very thing the seamless flow is meant to defer to the end
   // of the whole liturgy.
   useEffect(() => {
+    if (closingOnly) {
+      setPhase("closing");
+      return;
+    }
     if (displaySlides.length === 0 && momentsData && prayerRequests && myPrayersFor) {
       if (seamlessFlow) {
         setLocation(finishHref);
@@ -1781,7 +1794,7 @@ export default function PrayerModePage() {
         setPhase("closing");
       }
     }
-  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, seamlessFlow, finishHref, setLocation]);
+  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, seamlessFlow, closingOnly, finishHref, setLocation]);
 
   // When the user lands on the closing slide, log the prayer-list streak.
   // The server is idempotent per TZ-local day — calling twice doesn't

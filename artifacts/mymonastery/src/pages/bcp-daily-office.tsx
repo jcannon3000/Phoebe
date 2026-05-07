@@ -261,6 +261,14 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   // mode again — once we've handed off, we treat the portal as a
   // transparent slide for the rest of the session.
   const portalHandedOffRef = useRef(false);
+  // Did the seamless intercessions handoff already run for this
+  // session? If yes, when the user finishes the closing collect we
+  // route them to the prayer-mode celebration summary instead of
+  // dropping them straight back to the dashboard — the celebration
+  // belongs at the end of the FULL liturgy, not mid-flow. Stamped
+  // either by the in-session portal redirect or by the URL param
+  // we set when prayer-mode bounces us back.
+  const seamlessReturnRef = useRef(false);
 
   // Reset scroll to the top each time the slide changes — otherwise a
   // long-content slide that the reader scrolled through carries its
@@ -302,7 +310,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             ? slideParam
             : 0;
         setSlideIdx(initialIdx);
-        if (search.has("slide") || search.has("mode") || search.has("returnTo")) {
+        // ?seamlessReturn=1 is appended by the prayer-mode handoff
+        // when it bounces us back. Stamp our ref so the closing
+        // collect's "Amen" routes to the celebration summary.
+        if (search.get("seamlessReturn") === "1") {
+          seamlessReturnRef.current = true;
+        }
+        if (search.has("slide") || search.has("mode") || search.has("returnTo") || search.has("seamlessReturn")) {
           try {
             window.history.replaceState(null, "", window.location.pathname);
           } catch { /* non-fatal */ }
@@ -340,8 +354,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     // reads ?mode=… on mount so the viewer auto-resumes instead
     // of dropping back onto the picker.
     const basePath = isDevotion ? "/bcp/daily-devotions" : "/bcp/daily-office";
-    const returnTo = `${basePath}?mode=${encodeURIComponent(resolvedMode)}&slide=${nextOfficeIdx}`;
+    const returnTo = `${basePath}?mode=${encodeURIComponent(resolvedMode)}&slide=${nextOfficeIdx}&seamlessReturn=1`;
     const url = `/prayer-mode?returnTo=${encodeURIComponent(returnTo)}&seamless=1`;
+    // Mark this session as having gone through the seamless flow so
+    // the closing collect's Amen lands on the celebration summary
+    // even though we'll re-enter the office below.
+    seamlessReturnRef.current = true;
     // Hold the glowing "Intercessions" title for ~4 seconds so the
     // handoff reads as a deliberate transition into prayer-mode
     // rather than a flash of an empty slide. Tuned long enough to
@@ -480,8 +498,18 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     } catch {
       /* non-fatal; web build has no listener and the OS will drop the push later */
     }
-    if (!atEnd) setSlideIdx(slideIdx + 1);
-    else onBack();
+    if (!atEnd) {
+      setSlideIdx(slideIdx + 1);
+      return;
+    }
+    // End of office: route to the deferred celebration summary if
+    // we came through the seamless intercessions handoff, otherwise
+    // exit cleanly.
+    if (seamlessReturnRef.current) {
+      setViewerLocation("/prayer-mode?closingOnly=1");
+    } else {
+      onBack();
+    }
   }
 
   return (
@@ -1044,10 +1072,26 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               || currentSlide.type === "lords_prayer"
               || currentSlide.type === "collect"
               || currentSlide.type === "prayer_for_mission";
-            const label = atEnd ? "Done" : (isAmenSlide ? "Amen" : "Next");
+            // "Amen" wins over "Done" on prayer-shaped slides — the
+            // closing collect IS the seal of the office, so the pill
+            // should say Amen even when it's the very last slide. The
+            // tap still exits the office (handler logic below).
+            const label = isAmenSlide ? "Amen" : (atEnd ? "Done" : "Next");
+            // When the user has completed the seamless intercessions
+            // handoff and is now finishing the closing collect, route
+            // them to /prayer-mode?closingOnly=1 so they get the
+            // streak / co-prayers celebration that we deferred from
+            // mid-flow. Otherwise the final-slide tap just exits.
+            const handleEnd = () => {
+              if (seamlessReturnRef.current) {
+                setViewerLocation("/prayer-mode?closingOnly=1");
+              } else {
+                onBack();
+              }
+            };
             const handler = isIntercessionSlide
               ? amen
-              : atEnd ? onBack : next;
+              : atEnd ? handleEnd : next;
             return (
               <button
                 type="button"

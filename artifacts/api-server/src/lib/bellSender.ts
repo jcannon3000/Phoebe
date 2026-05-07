@@ -608,20 +608,20 @@ export async function runLectioEveningReminderSender(opts: { forceNow?: boolean 
 void sql;
 void ne;
 
-// ─── Prayer-request renewal nudge (1 day before expiry) ────────────────────
+// ─── Prayer-request renewal nudge (8pm on the last day) ────────────────────
 //
-// Fires once per active prayer request when its expiresAt sits in the
-// owner's "tomorrow" — i.e. expiresAt's calendar date in the owner's
-// tz is exactly +1 day from today's calendar date. Push body names the
-// running amen count so the owner sees that what they shared has been
-// carried before deciding whether to renew or release. Dedup is via
-// the `renewal_nudge_sent_at` column on prayer_requests, stamped on
-// successful push dispatch.
+// Fires once per active prayer request at 20:00 owner-local on the last
+// calendar day of the request's lifetime — i.e. expiresAt's calendar
+// date in the owner's tz equals today's calendar date. Push body names
+// the running amen count so the owner sees that what they shared has
+// been carried before deciding whether to renew or release. Dedup is
+// via the `renewal_nudge_sent_at` column on prayer_requests, stamped
+// on successful push dispatch.
 //
-// Uses the same 09:30-local time gate as the morning bell so the nudge
-// arrives at the same calm hour, not in the middle of the night.
-const RENEWAL_NUDGE_HOUR = 9;
-const RENEWAL_NUDGE_MINUTE = 30;
+// 20:00 owner-local mirrors the evening-nudge cadence: a single calm
+// end-of-day prompt, not a daytime interruption.
+const RENEWAL_NUDGE_HOUR = 20;
+const RENEWAL_NUDGE_MINUTE = 0;
 export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // Pull every active, unstamped, not-yet-released request with an
   // expiresAt set. We project the expiry into each owner's local tz
@@ -652,8 +652,8 @@ export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } =
       const expiresAt = c.expiresAt;
       if (!expiresAt) continue;
 
-      // Time gate (skip if forced) — fire only at/after 09:30 local so
-      // the nudge sits with the morning bell's cadence.
+      // Time gate (skip if forced) — fire only at/after 20:00 local so
+      // the nudge lands as a calm end-of-day prompt, not midday.
       if (!opts.forceNow) {
         const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
         if ((nowH * 60 + nowM) < (RENEWAL_NUDGE_HOUR * 60 + RENEWAL_NUDGE_MINUTE)) continue;
@@ -669,7 +669,10 @@ export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } =
       const todayUtc = Date.parse(`${todayStr}T00:00:00Z`);
       const expiryUtc = Date.parse(`${expiryStr}T00:00:00Z`);
       const dayDiff = Math.round((expiryUtc - todayUtc) / 86_400_000);
-      if (!opts.forceNow && dayDiff !== 1) continue;
+      // dayDiff === 0 → expiresAt is today in owner-tz, i.e. this is
+      // the last day of the request's lifetime. Combined with the 20:00
+      // gate above, the nudge lands ~evening of the final day.
+      if (!opts.forceNow && dayDiff !== 0) continue;
 
       // Pull the amen count to put a number in the push body. Throttled
       // POST means each row is an eligible amen; total count is just
