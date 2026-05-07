@@ -398,18 +398,19 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // SLIDE 3: Confession
+  // SLIDE 3: Confession + Absolution (one slide). The two BCP
+  // beats read as one liturgical motion — confess, then receive
+  // forgiveness — and splitting them into two cards added a tap
+  // between them that broke the rhythm. Joined with a blank line
+  // so the renderer's pre-wrap paragraph keeps the visual break.
+  const confessionPlusAbsolution =
+    getText("confession_text").trimEnd()
+    + "\n\n"
+    + getText("confession_absolution").trimStart();
   slides.push(
-    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", getText("confession_text"), {
+    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", confessionPlusAbsolution, {
       bcpReference: "BCP p. 79",
       metadata: { prompt: "Pause. Bring what you carry. 🌿" },
-    }),
-  );
-
-  // SLIDE 4: Absolution
-  slides.push(
-    slide(id(), "absolution", "☀️", "ABSOLUTION", getText("confession_absolution"), {
-      bcpReference: "BCP p. 80",
     }),
   );
 

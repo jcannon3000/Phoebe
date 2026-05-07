@@ -84,11 +84,13 @@ const COLLECT_MORNING =
 const COLLECT_EARLY_EVENING =
   "Lord Jesus, stay with us, for evening is at hand and the day is past; be our companion in the way, kindle our hearts, and awaken hope, that we may know you as you are revealed in Scripture and the breaking of bread. Grant this for the sake of your love. Amen.";
 
-// Reading suggestions from the BCP devotion rubrics. Rendered as
-// references only — readers open scripture in their own bible/app,
-// matching the Daily Office lesson behavior.
-const READING_MORNING_REF = "1 Peter 1:3";
-const READING_EARLY_EVENING_REF = "2 Corinthians 4:5–6";
+// Fallback readings from the BCP devotion rubrics (pp. 137 / 139).
+// Used only when the lectionary lookup misses for some reason — by
+// default the devotion's scripture slide pulls from the day's
+// lectionary so the devotion tracks the same Bible journey as the
+// full Daily Office.
+const FALLBACK_READING_MORNING_REF = "1 Peter 1:3";
+const FALLBACK_READING_EARLY_EVENING_REF = "2 Corinthians 4:5–6";
 
 // Body copy on the scripture slide. Title carries the reference; body
 // is a soft prompt rather than echoing the same string, since
@@ -112,7 +114,8 @@ export async function assembleDevotion(
   // any suitable psalm; pulling from the day's lectionary keeps the
   // devotion in rhythm with the rest of the liturgical calendar.
   const lectOffice = kind === "morning" ? "morning" : "evening";
-  const { psalms } = getLectionaryReadings(liturgicalDay, lectOffice);
+  const lectionary = getLectionaryReadings(liturgicalDay, lectOffice);
+  const { psalms } = lectionary;
 
   // Take just the first appointed psalm — the devotions are meant to
   // be short. If the lectionary entry is missing or yields no psalms,
@@ -227,11 +230,17 @@ export async function assembleDevotion(
     }),
   );
 
-  // 4. Reading — title carries the reference; body is a soft prompt
-  // and a BibleGateway deep link to NRSVUE so the reader can tap
-  // through without leaving Phoebe (SFSafariViewController on the
-  // iOS shell, new tab on web).
-  const readingRef = isMorning ? READING_MORNING_REF : READING_EARLY_EVENING_REF;
+  // 4. Reading — pulled from the day's lectionary so the devotion
+  // tracks the same Bible journey as the full Daily Office. Morning
+  // takes lesson1 (the OT reading); early evening takes lesson3
+  // (the Gospel) to mirror the full EP. If the lectionary entry
+  // happens to be missing or empty, fall back to the BCP devotion
+  // rubric's fixed pair.
+  const lectReading = isMorning ? lectionary.lesson1 : lectionary.lesson3;
+  const readingRef =
+    lectReading && lectReading.trim().length > 0 && !/^-+$/.test(lectReading.trim())
+      ? lectReading
+      : (isMorning ? FALLBACK_READING_MORNING_REF : FALLBACK_READING_EARLY_EVENING_REF);
   slides.push(
     slide(id(), "lesson", "📜", "A READING FROM SCRIPTURE", LESSON_BODY_PROMPT, {
       title: readingRef,

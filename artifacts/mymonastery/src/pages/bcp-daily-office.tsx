@@ -835,24 +835,20 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               ))}
             </div>
           ) : currentSlide.isCallAndResponse && currentSlide.callAndResponseLines ? (
-            // The Officiant / People / All speaker labels make sense
-            // when a community prays the Office together. The Daily
-            // Devotions (BCP pp. 137 / 139) are explicitly the short
-            // forms for personal or family use, so on devotion mode we
-            // drop the role labels and read the lines as one
+            // Officiant / People / All speaker labels are dropped on
+            // both the Daily Office AND the Daily Devotions — Phoebe
+            // is used overwhelmingly as a personal-prayer surface, not
+            // a corporate one, so the role labels just added visual
+            // noise above each line. The lines now read as one
             // continuous prayer.
-            <div style={{ display: "flex", flexDirection: "column", gap: isDevotion ? 10 : 14, maxWidth: 560 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 560 }}>
               {currentSlide.callAndResponseLines.map((line, i) => (
-                <div key={i}>
-                  {!isDevotion && (
-                    <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginBottom: 4 }}>
-                      {line.speaker === "officiant" ? "Officiant" : line.speaker === "people" ? "People" : "All"}
-                    </p>
-                  )}
-                  <p style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}>
-                    {line.text}
-                  </p>
-                </div>
+                <p
+                  key={i}
+                  style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}
+                >
+                  {line.text}
+                </p>
               ))}
             </div>
           ) : currentSlide.content ? (
@@ -924,7 +920,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   openExternal(url);
                 }}
                 style={{
-                  alignSelf: "flex-start",
+                  // Use `auto` margins so the pill horizontally
+                  // centers itself when the parent is centered (lesson
+                  // slides flow centered now) and naturally shrinks
+                  // back to the start on left-aligned layouts via the
+                  // flex parent's alignItems.
+                  alignSelf: "center",
                   marginTop: 4,
                   padding: "10px 18px",
                   borderRadius: 999,

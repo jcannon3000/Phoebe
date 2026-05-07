@@ -228,18 +228,18 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 3. Confession
+  // 3. Confession + Absolution (one slide). Same join as MP —
+  // the two BCP beats read as one liturgical motion (confess,
+  // then receive forgiveness) so we keep them on the same card
+  // with a blank line between to preserve the visual break.
+  const epConfessionPlusAbsolution =
+    getText("confession_text").trimEnd()
+    + "\n\n"
+    + getText("confession_absolution").trimStart();
   slides.push(
-    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", getText("confession_text"), {
+    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", epConfessionPlusAbsolution, {
       bcpReference: "BCP p. 116",
       metadata: { prompt: "Pause. Bring what you carry. 🌿" },
-    }),
-  );
-
-  // 4. Absolution
-  slides.push(
-    slide(id(), "absolution", "☀️", "ABSOLUTION", getText("confession_absolution"), {
-      bcpReference: "BCP p. 117",
     }),
   );
 
