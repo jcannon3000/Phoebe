@@ -335,17 +335,17 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     return () => { cancelled = true; };
   }, [endpoint, officeTitle, resolvedMode]);
 
-  // Auto-jump to /prayer-mode when the user lands on the
-  // intercessions portal. Has to live ABOVE the loading / error
-  // early returns so the hook count stays stable across renders
-  // (otherwise React #310). We bail inside the effect when the
-  // slides aren't ready yet, when the slide isn't a portal, or
-  // when we already handed off this session.
-  useEffect(() => {
-    if (slides.length === 0) return;
-    const slide = slides[slideIdx];
-    if (!slide) return;
-    if (slide.type !== "intercessions_portal") return;
+  // Hand the user off into /prayer-mode for the community
+  // intercession slideshow, with a return URL that lands them right
+  // back at the next office slide when they finish. Idempotent —
+  // if the ref is already set, this is a no-op.
+  //
+  // Both the auto-fire effect (4s after landing on the portal) and
+  // the user-tap handler call this. Previously only the effect ran
+  // it, which meant tapping "Next" before the timeout fired
+  // cancelled the cleanup-bound timeout and silently skipped the
+  // slideshow — landing the user on the Lord's Prayer instead.
+  function handIntoPrayerMode() {
     if (portalHandedOffRef.current) return;
     portalHandedOffRef.current = true;
     const nextOfficeIdx = Math.min(slideIdx + 1, slides.length - 1);
@@ -360,14 +360,26 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     // the closing collect's Amen lands on the celebration summary
     // even though we'll re-enter the office below.
     seamlessReturnRef.current = true;
-    // Hold the glowing "Intercessions" title for ~4 seconds so the
-    // handoff reads as a deliberate transition into prayer-mode
-    // rather than a flash of an empty slide. Tuned long enough to
-    // let the user's eyes settle on the headline before the page
-    // changes underneath them.
-    const t = window.setTimeout(() => setViewerLocation(url), 4000);
+    setViewerLocation(url);
+  }
+
+  // Auto-fire the handoff when the user lands on the intercessions
+  // portal — but with a ~4s grace window so the glowing
+  // "Intercessions" headline can settle. Lives above the loading /
+  // error early returns so the hook count stays stable across
+  // renders (otherwise React #310). The tap handler in next() also
+  // calls handIntoPrayerMode synchronously, so an impatient tap
+  // doesn't skip the slideshow.
+  useEffect(() => {
+    if (slides.length === 0) return;
+    const slide = slides[slideIdx];
+    if (!slide) return;
+    if (slide.type !== "intercessions_portal") return;
+    if (portalHandedOffRef.current) return;
+    const t = window.setTimeout(() => handIntoPrayerMode(), 4000);
     return () => window.clearTimeout(t);
-  }, [slides, slideIdx, resolvedMode, isDevotion, setViewerLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slides, slideIdx, resolvedMode, isDevotion]);
 
   if (loading) {
     return (
@@ -396,6 +408,15 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
 
   function next() {
     if (atEnd) return;
+    // Tapping "Next" on the intercessions portal should mean "take me
+    // into the slideshow now" — not "skip past it". Without this
+    // branch the slideIdx change cancels the 4s auto-fire timeout
+    // (cleanup → clearTimeout) and the user lands on the slide AFTER
+    // the portal (e.g. Lord's Prayer) without ever seeing prayer-mode.
+    if (currentSlide.type === "intercessions_portal" && !portalHandedOffRef.current) {
+      handIntoPrayerMode();
+      return;
+    }
     // Skip portal slides — the viewer auto-jumps to prayer-mode on
     // first arrival, but on a subsequent visit (back-navigation
     // within this session) we want the slide to behave as a no-op
@@ -623,18 +644,18 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               (currentSlide.content?.length ?? 0)
               + (currentSlide.callAndResponseLines?.reduce((acc, l) => acc + l.text.length, 0) ?? 0);
             const isShortEnough = bodyLength <= 320;
-            // Psalm + canticle slides now ship 4 verses each — short
-            // enough to breathe vertically centered on the page
-            // rather than top-aligning like a missal column. Short
-            // canticles (≤4 verses, single slide) also benefit from
-            // centering since they're typically only a stanza or two.
+            // Title cards (psalm/canticle headline slides) center their
+            // big numeral; the prayer-mode portal centers its glowing
+            // "Intercessions" headline. Verse content itself — psalm
+            // and canticle bodies — stays left-aligned and top-anchored
+            // so the BCP line indents (continuation hemistichs after
+            // the `*` caesura) read as a missal column rather than
+            // each line floating in the middle of the slide.
             const centered =
               currentSlide.type === "intercessions"
               || currentSlide.type === "intercessions_portal"
               || currentSlide.type === "psalm_title"
-              || currentSlide.type === "psalm"
               || currentSlide.type === "canticle_title"
-              || currentSlide.type === "canticle"
               || (!isLongType && isShortEnough);
             return {
               display: "flex",
