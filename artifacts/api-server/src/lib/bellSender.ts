@@ -915,6 +915,9 @@ export function startBellScheduler(): void {
     runLectioEveningReminderSender().catch((err) =>
       logger.error({ err }, "[lectio-evening] initial run failed"),
     );
+    runOfficePracticeSender().catch((err) =>
+      logger.error({ err }, "[office-practice] initial run failed"),
+    );
     runPrayerRenewalNudgeSender().catch((err) =>
       logger.error({ err }, "[renewal-nudge] initial run failed"),
     );
@@ -933,6 +936,9 @@ export function startBellScheduler(): void {
       );
       runLectioEveningReminderSender().catch((err) =>
         logger.error({ err }, "[lectio-evening] scheduled run failed"),
+      );
+      runOfficePracticeSender().catch((err) =>
+        logger.error({ err }, "[office-practice] scheduled run failed"),
       );
       runPrayerRenewalNudgeSender().catch((err) =>
         logger.error({ err }, "[renewal-nudge] scheduled run failed"),
