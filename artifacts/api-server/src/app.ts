@@ -23,6 +23,28 @@ if (process.env["NODE_ENV"] === "production" && !process.env["SESSION_SECRET"]) 
 const app: Express = express();
 app.set("trust proxy", 1);
 
+// ─── www → apex 301 redirect ───────────────────────────────────────────────
+// Some users (especially on desktop) type or autocomplete
+// `www.withphoebe.app/...`; without this redirect the request lands on
+// the same Railway app but on a hostname that breaks Universal Links,
+// trips CORS, and serves the SPA from the wrong canonical URL — which
+// shows up as "the link doesn't open on desktop". 301 to the apex on
+// every request from the www host so anything written on the apex
+// (Universal Links, share links, OAuth redirects) keeps working.
+//
+// This only catches the case where DNS for `www.withphoebe.app` is
+// already pointed at this server. If `www.` has no DNS entry at all
+// the request never hits us — that needs a DNS CNAME/ALIAS at your
+// registrar pointing www → withphoebe.app (or to the Railway domain).
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const host = req.hostname?.toLowerCase();
+  if (host === "www.withphoebe.app") {
+    res.redirect(301, `https://withphoebe.app${req.originalUrl}`);
+    return;
+  }
+  next();
+});
+
 app.use(
   pinoHttp({
     logger,
