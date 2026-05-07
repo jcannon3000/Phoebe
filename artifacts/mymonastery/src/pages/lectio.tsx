@@ -727,14 +727,19 @@ export default function LectioPage() {
       {/* Floating nav pill at the bottom of the viewport. Fixed so scrolling
           inside a slide (e.g. the gospel card) doesn't move the nav. Hidden
           on entry slides — the textarea has its own Back / Share controls
-          and the keyboard would push the pill on top of the text. */}
+          and the keyboard would push the pill on top of the text.
+          --kb-inset is deliberately NOT included here: the nav only renders
+          on slides without inputs (prompt, reading, responses, summary),
+          so the keyboard is never up while it's visible. Including it
+          caused the pill to float halfway up the screen when the keyboard
+          variable was left stale by a prior entry slide. */}
       {current.kind !== "entry" && (
       <nav
         aria-label="Slide navigation"
         style={{
           position: "fixed",
           left: "50%",
-          bottom: "calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 16px)",
+          bottom: "calc(env(safe-area-inset-bottom) + 16px)",
           transform: "translateX(-50%)",
           zIndex: 50,
           background: "rgba(19,44,29,0.92)",
