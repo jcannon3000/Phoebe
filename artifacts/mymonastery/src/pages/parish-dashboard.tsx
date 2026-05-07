@@ -111,7 +111,7 @@ export default function ParishDashboard() {
           >
             Phoebe
           </p>
-          <Link href="/settings">
+          <Link href="/parish/settings">
             <span
               style={{
                 fontFamily: SPACE_GROTESK,

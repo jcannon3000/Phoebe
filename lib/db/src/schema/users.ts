@@ -79,6 +79,26 @@ export const usersTable = pgTable("users", {
   // needed). FK constraint is added in migration SQL to avoid a
   // circular import between this schema file and prayer_feeds.
   parishFeedId: integer("parish_feed_id"),
+  // ── Phoebe Parish: office reminder preferences ───────────────────────────
+  // Each side of the day picks one of three values:
+  //   "none"     — do not push at the morning/evening reminder hour
+  //   "office"   — push the full Daily Office (Morning Prayer / Evening Prayer)
+  //   "devotion" — push the abbreviated Devotion (BCP pp. 137 / 139)
+  // The push fires from a per-user cron at the user's stored
+  // `dailyBellTime` (morning) or a fixed evening hour (in their TZ),
+  // and deep-links straight into the chosen liturgy. Default "none"
+  // for legacy rows so we don't start pinging anyone without consent.
+  parishOfficeMorningPref: text("parish_office_morning_pref").notNull().default("none"),
+  parishOfficeEveningPref: text("parish_office_evening_pref").notNull().default("none"),
+  // Optional override of the morning push time (HH:MM, parish TZ). If
+  // null, falls back to dailyBellTime (the existing daily-prayer-list
+  // bell). Evening push is fixed at 18:00 in the parish TZ for v1.
+  parishOfficeMorningTime: text("parish_office_morning_time"),
+  // YYYY-MM-DD (parish TZ) of the last morning / evening reminder we
+  // fired for this user. Idempotency for the 15-min scheduler tick:
+  // we only push once per local day. NULL = never sent.
+  parishOfficeMorningSentDate: text("parish_office_morning_sent_date"),
+  parishOfficeEveningSentDate: text("parish_office_evening_sent_date"),
   // BCP-47 locale code (e.g. "en", "es"). Drives i18next on the client
   // and template selection in pushSender / email senders. Beta users
   // can flip this to "es" via Settings → Language; non-beta accounts

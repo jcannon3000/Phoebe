@@ -136,6 +136,7 @@ import PrayerFeedsBrowsePage from "./pages/prayer-feeds-browse";
 import PrayerFeedDetailPage from "./pages/prayer-feed-detail";
 import ParishDashboard from "./pages/parish-dashboard";
 import ParishOnboarding from "./pages/parish-onboarding";
+import ParishSettings from "./pages/parish-settings";
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
@@ -269,7 +270,7 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/" ||
         location === "/parish" ||
         location === "/parish/onboarding" ||
-        location === "/settings" ||
+        location === "/parish/settings" ||
         location.startsWith("/bcp") ||
         location === "/about" ||
         location === "/privacy" ||
@@ -310,6 +311,7 @@ function Router() {
           conflicting. */}
       <Route path="/parish" component={ParishDashboard} />
       <Route path="/parish/onboarding" component={ParishOnboarding} />
+      <Route path="/parish/settings" component={ParishSettings} />
       <Route path="/gatherings" component={GatheringsPage} />
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />

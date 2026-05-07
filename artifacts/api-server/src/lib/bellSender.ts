@@ -8,14 +8,16 @@ import {
   momentUserTokensTable,
   lectioReflectionsTable,
   lectionaryReadingsTable,
+  prayerFeedsTable,
 } from "@workspace/db";
-import { eq, and, gte, ne, sql, isNull, inArray } from "drizzle-orm";
+import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
   sendBellPush,
   sendEveningNudgePush,
   sendLectioReminderPush,
   sendLectioEveningReminderPush,
   sendPrayerRenewalNudgePush,
+  sendParishOfficeReminderPush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
@@ -707,6 +709,123 @@ export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } =
   }
 }
 
+// ─── Phoebe Parish — office reminder push ──────────────────────────────────
+//
+// Runs every 15 minutes alongside the other bell-style senders. Fires
+// per-user pushes when:
+//   • the user is in the parish-only tier (parish_feed_id set)
+//   • their pref for this side of the day isn't "none"
+//   • their parish's local time is within ±15min of the chosen reminder
+//     hour (default 07:00 morning, fixed 18:00 evening for v1)
+//   • we haven't already fired this side's push today (idempotent via
+//     parish_office_*_sent_date)
+//
+// Push deep-links straight into the chosen liturgy via
+// sendParishOfficeReminderPush.
+
+function todayInZone(tz: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+// Default morning hour when the user hasn't set parish_office_morning_time.
+// 07:00 lines up with the existing daily-prayer bell default.
+const DEFAULT_MORNING_TIME = "07:00";
+// Fixed evening reminder hour. Could be made configurable later but
+// the v1 spec is "evening = 18:00 in parish TZ".
+const FIXED_EVENING_TIME = "18:00";
+
+// ±15 min window around the target time — matches the bell scheduler
+// tick rate, so a single tick that lands within the window fires
+// exactly once.
+function isWithinTickWindow(
+  parishTz: string,
+  targetHHMM: string,
+): boolean {
+  const [hStr, mStr] = targetHHMM.split(":");
+  const target = parseInt(hStr, 10) * 60 + parseInt(mStr, 10);
+  const { hour, minute } = getCurrentTimeInTz(parishTz);
+  const now = hour * 60 + minute;
+  return Math.abs(now - target) <= 15;
+}
+
+export async function runParishOfficeReminderSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    // Pull every parish-only user with at least one non-"none" pref.
+    // Bail fast if there are no candidates.
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        morningPref: usersTable.parishOfficeMorningPref,
+        eveningPref: usersTable.parishOfficeEveningPref,
+        morningTime: usersTable.parishOfficeMorningTime,
+        morningSentDate: usersTable.parishOfficeMorningSentDate,
+        eveningSentDate: usersTable.parishOfficeEveningSentDate,
+        parishFeedId: usersTable.parishFeedId,
+        parishTitle: prayerFeedsTable.title,
+        parishTimezone: prayerFeedsTable.timezone,
+      })
+      .from(usersTable)
+      .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, usersTable.parishFeedId))
+      .where(and(
+        isNotNull(usersTable.parishFeedId),
+        eq(prayerFeedsTable.kind, "parish"),
+        sql`(${usersTable.parishOfficeMorningPref} != 'none' OR ${usersTable.parishOfficeEveningPref} != 'none')`,
+      ));
+
+    for (const r of rows) {
+      const tz = r.parishTimezone || "America/New_York";
+      const today = todayInZone(tz);
+
+      // Morning side
+      if (r.morningPref !== "none" && r.morningSentDate !== today) {
+        const targetTime = r.morningTime || DEFAULT_MORNING_TIME;
+        if (opts.forceNow || isWithinTickWindow(tz, targetTime)) {
+          try {
+            await sendParishOfficeReminderPush(r.userId, {
+              side: "morning",
+              pref: r.morningPref as "office" | "devotion",
+              parishTitle: r.parishTitle ?? "your parish",
+            });
+            await db
+              .update(usersTable)
+              .set({ parishOfficeMorningSentDate: today })
+              .where(eq(usersTable.id, r.userId));
+          } catch (err) {
+            logger.warn({ err, userId: r.userId }, "[parish-office] morning push failed");
+          }
+        }
+      }
+
+      // Evening side
+      if (r.eveningPref !== "none" && r.eveningSentDate !== today) {
+        if (opts.forceNow || isWithinTickWindow(tz, FIXED_EVENING_TIME)) {
+          try {
+            await sendParishOfficeReminderPush(r.userId, {
+              side: "evening",
+              pref: r.eveningPref as "office" | "devotion",
+              parishTitle: r.parishTitle ?? "your parish",
+            });
+            await db
+              .update(usersTable)
+              .set({ parishOfficeEveningSentDate: today })
+              .where(eq(usersTable.id, r.userId));
+          } catch (err) {
+            logger.warn({ err, userId: r.userId }, "[parish-office] evening push failed");
+          }
+        }
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[parish-office] sender failed");
+  }
+}
+
 // ─── Scheduler ──────────────────────────────────────────────────────────────
 
 let bellInterval: ReturnType<typeof setInterval> | null = null;
@@ -731,6 +850,9 @@ export function startBellScheduler(): void {
     runPrayerRenewalNudgeSender().catch((err) =>
       logger.error({ err }, "[renewal-nudge] initial run failed"),
     );
+    runParishOfficeReminderSender().catch((err) =>
+      logger.error({ err }, "[parish-office] initial run failed"),
+    );
   }, 45_000);
 
   bellInterval = setInterval(
@@ -749,6 +871,9 @@ export function startBellScheduler(): void {
       );
       runPrayerRenewalNudgeSender().catch((err) =>
         logger.error({ err }, "[renewal-nudge] scheduled run failed"),
+      );
+      runParishOfficeReminderSender().catch((err) =>
+        logger.error({ err }, "[parish-office] scheduled run failed"),
       );
     },
     15 * 60 * 1000,

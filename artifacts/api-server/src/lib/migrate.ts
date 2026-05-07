@@ -1246,6 +1246,16 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_feed_id INTEGER REFERENCES prayer_feeds(id) ON DELETE SET NULL`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_users_parish_feed_id ON users (parish_feed_id) WHERE parish_feed_id IS NOT NULL`);
 
+    // Office reminder prefs for Phoebe Parish users. Three-way enum
+    // per side of the day ("none" / "office" / "devotion"), with
+    // optional morning-time override. Defaults to "none" so existing
+    // rows don't start receiving pushes without consent.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_pref TEXT NOT NULL DEFAULT 'none'`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_pref TEXT NOT NULL DEFAULT 'none'`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_time TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_sent_date TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_sent_date TEXT`);
+
     // BCP-47 locale code. Default English so legacy rows render in
     // English without backfill. Beta users can flip to "es" via
     // Settings → Language; non-beta accounts stay locked to English

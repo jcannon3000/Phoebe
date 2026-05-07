@@ -265,6 +265,58 @@ router.get("/parish/today", async (req, res) => {
   }
 });
 
+// ─── GET /api/parish/prefs ────────────────────────────────────────────────
+// Office reminder prefs (and parish meta for the settings page header).
+router.get("/parish/prefs", async (req, res) => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.id));
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    res.json({
+      morning: user.parishOfficeMorningPref ?? "none",
+      evening: user.parishOfficeEveningPref ?? "none",
+      morningTime: user.parishOfficeMorningTime ?? null,
+      parishFeedId: user.parishFeedId,
+    });
+  } catch (err) {
+    console.error("[parish] prefs failed:", err);
+    res.status(500).json({ error: "Failed to load prefs" });
+  }
+});
+
+// ─── PUT /api/parish/prefs ────────────────────────────────────────────────
+// Update office reminder prefs. Idempotent — partial updates allowed
+// (the body's keys merge into the existing values).
+const PrefSchema = z.object({
+  morning: z.enum(["none", "office", "devotion"]).optional(),
+  evening: z.enum(["none", "office", "devotion"]).optional(),
+  morningTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+});
+
+router.put("/parish/prefs", async (req, res) => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = PrefSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: String(parsed.error) });
+    return;
+  }
+  try {
+    const update: Record<string, unknown> = {};
+    if (parsed.data.morning !== undefined) update.parishOfficeMorningPref = parsed.data.morning;
+    if (parsed.data.evening !== undefined) update.parishOfficeEveningPref = parsed.data.evening;
+    if (parsed.data.morningTime !== undefined) update.parishOfficeMorningTime = parsed.data.morningTime;
+    if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
+    await db.update(usersTable).set(update).where(eq(usersTable.id, session.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[parish] prefs update failed:", err);
+    res.status(500).json({ error: "Failed to save prefs" });
+  }
+});
+
 void prayerSessionsTable;
 
 export default router;

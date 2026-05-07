@@ -681,6 +681,42 @@ export function sendNewPrayerRequestPush(
   });
 }
 
+// Phoebe Parish — morning / evening office reminder. Fires at the
+// user's chosen reminder time once per local day. Body branches by
+// pref: "office" deep-links into the full Daily Office, "devotion"
+// into the abbreviated form. Sound is the standard mid chime —
+// not the urgent variant, since this is a gentle invitation.
+export function sendParishOfficeReminderPush(
+  userId: number,
+  opts: {
+    side: "morning" | "evening";
+    pref: "office" | "devotion";
+    parishTitle: string;
+  }
+) {
+  const { side, pref, parishTitle } = opts;
+  const liturgyName = (() => {
+    if (side === "morning" && pref === "office") return "Morning Prayer";
+    if (side === "morning" && pref === "devotion") return "Morning Devotion";
+    if (side === "evening" && pref === "office") return "Evening Prayer";
+    return "Evening Devotion";
+  })();
+  const path = (() => {
+    if (side === "morning" && pref === "office") return "/bcp/daily-office?mode=morning";
+    if (side === "morning" && pref === "devotion") return "/bcp/daily-devotions?mode=morning-devotion";
+    if (side === "evening" && pref === "office") return "/bcp/daily-office?mode=evening";
+    return "/bcp/daily-devotions?mode=early-evening-devotion";
+  })();
+  return sendPushToUser(userId, {
+    title: `Time for ${liturgyName}`,
+    body: `Pray with ${parishTitle}.`,
+    path,
+    threadId: `parish-office-${side}`,
+    collapseId: `parish-office-${side}-${userId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Fires for each admin of a community when someone taps "Request to
 // join" on /communities/browse. Deep-links to the requests management
 // panel so the admin can accept or decline in two taps.
