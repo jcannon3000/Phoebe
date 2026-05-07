@@ -670,7 +670,24 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         -- Distinct users who have prayed in each window.
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $2)::int AS prayed_today,
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $3)::int AS prayed_week,
-        (SELECT COUNT(DISTINCT user_id) FROM prayer_days)::int AS prayed_all_time
+        (SELECT COUNT(DISTINCT user_id) FROM prayer_days)::int AS prayed_all_time,
+
+        -- "Time praying" — sum of duration_seconds across every
+        -- prayer_sessions row whose user is in this community. Sessions
+        -- are committed by the slideshow / Office / Devotion viewer
+        -- when their React component unmounts; bible-reading time
+        -- launched from a lesson slide is captured naturally because
+        -- the parent surface stays mounted while SFSafariViewController
+        -- is open. Anti-cheat (5s floor + 60min cap) lives in the POST
+        -- route, so the sum here is already clean.
+        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2), 0)::bigint AS seconds_prayed_today,
+        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3), 0)::bigint AS seconds_prayed_week,
+        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)), 0)::bigint AS seconds_prayed_total
     `, [result.group.id, todayStr, weekStartStr, tz]);
     const row = q.rows[0] ?? {};
     res.json({
@@ -692,6 +709,14 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       timesPrayedTotal: Number(row.times_prayed_total ?? 0),
       timesPrayedToday: Number(row.times_prayed_today ?? 0),
       timesPrayedThisWeek: Number(row.times_prayed_week ?? 0),
+
+      // "Time praying" — total seconds spent in the slideshow / Office
+      // / Devotion viewers across every joined community member.
+      // Capped per-session in the POST /prayer-sessions route so a
+      // phone left on a slide overnight can't skew the rollup.
+      secondsPrayedTotal: Number(row.seconds_prayed_total ?? 0),
+      secondsPrayedToday: Number(row.seconds_prayed_today ?? 0),
+      secondsPrayedThisWeek: Number(row.seconds_prayed_week ?? 0),
     });
   } catch (err) {
     console.error("[groups/metrics] query failed:", err);

@@ -9,6 +9,7 @@ import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
+import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -231,6 +232,14 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
 export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
+
+  // Track time-spent for the community metrics' "Time praying" row.
+  // The four LiturgyMode values map 1:1 onto PrayerSurface, so we
+  // pass it through. Bible-reading time launched from a lesson
+  // slide (SFSafariViewController) is captured naturally — this
+  // component stays mounted, visibilitychange handles pause/resume.
+  // Anti-cheat (5s floor + 60min cap) lives server-side.
+  usePrayerSession(resolvedMode as PrayerSurface);
   // The Daily Devotions are explicitly the personal short forms
   // (BCP pp. 137 / 139). The full Daily Office's missal-page layout
   // (top-aligned, left-aligned, role-labelled) reads as overkill

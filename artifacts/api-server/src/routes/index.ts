@@ -27,6 +27,7 @@ import pushRouter from "./push";
 import authAppleRouter from "./auth-apple";
 import reportsRouter from "./reports";
 import climateRouter from "./climate";
+import prayerSessionsRouter from "./prayer-sessions";
 
 const router: IRouter = Router();
 
@@ -58,5 +59,6 @@ router.use(pushRouter);
 router.use(authAppleRouter);
 router.use(reportsRouter);
 router.use(climateRouter);
+router.use(prayerSessionsRouter);
 
 export default router;

@@ -11,6 +11,7 @@ import { openExternal } from "@/lib/openExternal";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
+import { usePrayerSession } from "@/hooks/usePrayerSession";
 
 // Scale the big prayer-text block by character length so long prayers
 // (like the BCP collects) stay on one screen without scrolling, and short
@@ -250,44 +251,43 @@ function AmenButton({ slideKey, onAdvance }: {
   );
 }
 
-// "Not today" — quiet skip link, anchored to the bottom of the
-// slideshow viewport just above the "X of Y" counter. Used to live
-// directly under the Amen button, but the user wanted it pushed
-// down so it doesn't read as a sibling action to Amen — it's the
-// quieter way out, not the obvious move. Each new slide gets a
-// fresh 7-second hold (keyed on slideKey) so the link can't be
-// tapped before the viewer has actually settled on the slide,
-// matching the Amen button's gate.
+// "Not today" — quiet skip link, anchored above the "X of Y" slide
+// counter. Visible immediately on every new slide (per user
+// direction) so the viewer can tap out before Amen has even had a
+// chance to load — they don't have to sit through the 7s hold for
+// a prayer they're not in a place to carry today. The link uses
+// the same slideKey reset that Amen does so the visibility pulse
+// re-fires as the user advances.
 function NotTodayLink({ slideKey, onSkip }: { slideKey: string | number; onSkip: () => void }) {
-  const HOLD_MS = 7000;
-  const [ready, setReady] = useState(false);
+  const [visible, setVisible] = useState(false);
   useEffect(() => {
-    setReady(false);
-    const t = window.setTimeout(() => setReady(true), HOLD_MS);
-    return () => window.clearTimeout(t);
+    // Force a fresh fade-in on every slide change. We flip to
+    // false synchronously then to true on the next animation frame
+    // so the CSS transition kicks; otherwise React batches the two
+    // setState calls and the user sees no fade at all.
+    setVisible(false);
+    const raf = window.requestAnimationFrame(() => setVisible(true));
+    return () => window.cancelAnimationFrame(raf);
   }, [slideKey]);
   return (
-    // Anchor above the home-indicator safe area; the slide counter
-    // sits at `safe + 16`, so we sit at `safe + 56` to leave a
-    // breathable gap. Hard-coded pixel offsets (the previous bottom: 56)
-    // don't account for the device gutter and got partially cut off on
-    // iPhones with a home indicator.
+    // Anchor well above the home-indicator safe area + slide
+    // counter so the link sits in a comfortable thumb-reach band
+    // and doesn't crowd the bottom navigation gutter.
     <div
       className="absolute left-0 right-0 flex justify-center pointer-events-none"
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 56px)" }}
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 132px)" }}
     >
       <button
         type="button"
-        onClick={() => { if (ready) onSkip(); }}
-        disabled={!ready}
+        onClick={onSkip}
         className="text-[12px] underline underline-offset-4 pointer-events-auto"
         style={{
           color: "rgba(143,175,150,0.55)",
-          opacity: ready ? 1 : 0,
+          opacity: visible ? 1 : 0,
           transition: "opacity 280ms ease-out",
           background: "transparent",
           border: "none",
-          cursor: ready ? "pointer" : "default",
+          cursor: "pointer",
         }}
       >
         Not today
@@ -1239,6 +1239,15 @@ export default function PrayerModePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
+  // Track time-spent for the community metrics' "Time praying" row.
+  // Mounts a clock that pauses on background and commits a single
+  // session row to /api/prayer-sessions when the page unmounts.
+  // Bible-reading time launched from a slide (BibleGateway in
+  // SFSafariViewController) is captured naturally — the page stays
+  // mounted, visibilitychange handles the pause/resume. Anti-cheat
+  // (5s floor + 60min cap) lives server-side.
+  usePrayerSession(user ? "slideshow" : null);
 
   // When prayer-mode is opened as the intercessions handoff from the
   // Daily Office or a Devotion, the office tacks ?returnTo=<office url>
@@ -2230,13 +2239,15 @@ export default function PrayerModePage() {
         <NotTodayLink slideKey={index} onSkip={skipToNext} />
       )}
 
-      {/* Progress — sits just above the home-indicator gutter. The
-          old `bottom-8` (32px) overlapped the gutter on iPhones with
-          safe-area inset. */}
+      {/* Progress — lifted well above the home-indicator gutter so
+          the counter reads as a deliberate footer mark for the slide,
+          not something hugging the bottom edge of the screen. The
+          earlier `safe + 16` sat too close to the home indicator
+          for the user to scan comfortably. */}
       {phase === "prayer" && displaySlides.length > 0 && (
         <div
           className="absolute left-0 right-0 flex justify-center pointer-events-none"
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
         >
           <p className="text-xs" style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em" }}>
             {index + 1} of {displaySlides.length}

@@ -989,6 +989,36 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_prayers_feed_day ON prayer_feed_prayers (feed_id, day_local)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_prayers_user ON prayer_feed_prayers (user_id)`);
 
+    // ── prayer_sessions ─────────────────────────────────────────────────────
+    // Per-user time-spent ledger. One row per finished session in the
+    // slideshow / Office / Devotion viewer. The metrics page rolls
+    // these up by community to surface a "Time praying" row.
+    //
+    // Why a dedicated table instead of widening prayer_request_amens?
+    // (a) Sessions don't have a target row to attach to (the slideshow
+    //     is a deck, not a single request).
+    // (b) Sessions cap at 60 min and exclude <5 sec passes — those
+    //     filters should live next to the duration column, not be
+    //     re-applied at every read site.
+    // (c) Surface granularity (slideshow vs. morning-prayer vs.
+    //     morning-devotion etc.) lets the metrics page break down
+    //     where the time came from, which we'd lose if we conflated
+    //     it with amen rows.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        surface TEXT NOT NULL,
+        duration_seconds INTEGER NOT NULL,
+        started_at TIMESTAMPTZ NOT NULL,
+        ended_at TIMESTAMPTZ NOT NULL
+      )
+    `);
+    // Composite index for the per-user "this week / this month" rollups
+    // the metrics page does. Covering both columns means the rollup is
+    // an index-only range scan.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_sessions_user_ended ON prayer_sessions (user_id, ended_at)`);
+
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing
     // Google-only / email-only users don't trip a uniqueness check on NULL.

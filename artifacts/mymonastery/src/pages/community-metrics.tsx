@@ -37,7 +37,30 @@ type Metrics = {
   timesPrayedTotal: number;
   timesPrayedToday: number;
   timesPrayedThisWeek: number;
+
+  // "Time praying" — total seconds members have spent in the
+  // slideshow / Office / Devotion viewers. Tracked per-session and
+  // capped per-session in the POST /prayer-sessions route, so a
+  // phone left on a slide overnight can't skew the rollup.
+  secondsPrayedTotal: number;
+  secondsPrayedToday: number;
+  secondsPrayedThisWeek: number;
 };
+
+// Format a seconds total for the metrics tile. Today buckets render
+// as "Mm" (or "<1m" if non-zero but under 60s), week / all-time
+// buckets render as "Hh Mm" with the hours dropping when under an
+// hour. Keeps the tile readable at any magnitude without overflowing
+// the three-column grid.
+function formatPrayingDuration(seconds: number): string {
+  if (!seconds || seconds < 0) return "0m";
+  if (seconds < 60) return "<1m";
+  const totalMinutes = Math.floor(seconds / 60);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+}
 
 // Standalone page (route: /communities/:slug/metrics). Thin wrapper
 // around MetricsDashboard with Layout + auth redirect.
@@ -179,6 +202,25 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         <StatTile label="All time" value={data.timesPrayedTotal} />
       </div>
 
+      {/* Time praying — total seconds members have spent in the
+          slideshow / Office / Devotion viewers. Captured client-side
+          via the usePrayerSession hook (paused on background, capped
+          per-session) and rolled up here. */}
+      <SectionHeader label="Time praying" />
+      <p
+        className="text-[11px] leading-relaxed mb-3"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
+      >
+        Total time members spent in the prayer slideshow, the Daily
+        Office, or a Daily Devotion. Reading time launched from a
+        lesson slide is included while the viewer is open.
+      </p>
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        <StatTextTile label="Today" value={formatPrayingDuration(data.secondsPrayedToday)} />
+        <StatTextTile label="This week" value={formatPrayingDuration(data.secondsPrayedThisWeek)} />
+        <StatTextTile label="All time" value={formatPrayingDuration(data.secondsPrayedTotal)} />
+      </div>
+
       {/* Prayer requests */}
       <SectionHeader label="Prayer requests" />
       <div className="grid grid-cols-3 gap-3 mb-8">
@@ -221,6 +263,44 @@ function SectionHeader({ label }: { label: string }) {
         {label}
       </span>
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+    </div>
+  );
+}
+
+// Tile that takes a pre-formatted string value (e.g. "1h 12m") instead
+// of a number. Used by the "Time praying" row, which has variable-
+// width values that the count-style 3xl/4xl class would clip.
+function StatTextTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      className="rounded-2xl px-5 py-4 text-center"
+      style={{
+        background: "rgba(46,107,64,0.10)",
+        border: "1px solid rgba(46,107,64,0.22)",
+      }}
+    >
+      <p
+        className="text-[10px] font-semibold uppercase mb-1"
+        style={{
+          color: "rgba(143,175,150,0.7)",
+          fontFamily: FONT,
+          letterSpacing: "0.14em",
+        }}
+      >
+        {label}
+      </p>
+      <p
+        className="text-2xl"
+        style={{
+          fontFamily: FONT,
+          color: "#F0EDE6",
+          fontWeight: 700,
+          lineHeight: 1.1,
+          letterSpacing: "-0.02em",
+        }}
+      >
+        {value}
+      </p>
     </div>
   );
 }
