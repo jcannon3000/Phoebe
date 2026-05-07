@@ -1355,25 +1355,79 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               })}
             </div>
           ) : currentSlide.content ? (
-            <p
-              style={{
-                // Intercession slides bump the body to 22px italic
-                // serif to match the prayer-mode slideshow's
-                // "carrying one prayer" weight; everything else stays
-                // at the missal-page 17px reading size.
-                fontSize: currentSlide.type === "intercessions" ? 22 : 17,
-                lineHeight: currentSlide.type === "intercessions" ? 1.5 : 1.7,
-                fontWeight: currentSlide.type === "intercessions" ? 500 : 400,
-                color: currentSlide.type === "intercessions" ? "#E8E4D8" : WARM_TEXT,
-                margin: 0,
-                whiteSpace: "pre-wrap",
-                fontFamily: "Georgia, 'Times New Roman', serif",
-                fontStyle: "italic",
-                maxWidth: 600,
-              }}
-            >
-              {currentSlide.content}
-            </p>
+            (() => {
+              // Prose prayers (general thanksgiving, confession,
+              // absolution, collect, prayer for mission, opening
+              // sentence, blessing) read as flowing paragraphs, not
+              // a chopped-up phrase-per-line column. The seeded
+              // content uses \n at clause boundaries for readability
+              // in source — strip them down to spaces here so the
+              // body wraps naturally on the device.
+              //
+              // Lord's Prayer + Creed keep their structural line
+              // breaks (each line is a beat the reader speaks
+              // separately), so they stay on pre-wrap.
+              const proseTypes = new Set<string>([
+                "general_thanksgiving",
+                "confession",
+                "absolution",
+                "collect",
+                "prayer_for_mission",
+                "opening_sentence",
+                "closing",
+              ]);
+              const isProse = proseTypes.has(currentSlide.type);
+              // For prose: split on blank lines (paragraph breaks)
+              // and within each paragraph collapse single \n into
+              // spaces. For everything else: render as one block
+              // with pre-wrap so structural line breaks survive.
+              if (isProse) {
+                const paragraphs = currentSlide.content
+                  .split(/\n\s*\n/)
+                  .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
+                  .filter((p) => p.length > 0);
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
+                    {paragraphs.map((p, i) => (
+                      <p
+                        key={i}
+                        style={{
+                          fontSize: 17,
+                          lineHeight: 1.7,
+                          color: WARM_TEXT,
+                          margin: 0,
+                          fontFamily: "Georgia, 'Times New Roman', serif",
+                          fontStyle: "italic",
+                        }}
+                      >
+                        {p}
+                      </p>
+                    ))}
+                  </div>
+                );
+              }
+              return (
+                <p
+                  style={{
+                    // Intercession slides bump the body to 22px italic
+                    // serif to match the prayer-mode slideshow's
+                    // "carrying one prayer" weight; everything else stays
+                    // at the missal-page 17px reading size.
+                    fontSize: currentSlide.type === "intercessions" ? 22 : 17,
+                    lineHeight: currentSlide.type === "intercessions" ? 1.5 : 1.7,
+                    fontWeight: currentSlide.type === "intercessions" ? 500 : 400,
+                    color: currentSlide.type === "intercessions" ? "#E8E4D8" : WARM_TEXT,
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    fontStyle: "italic",
+                    maxWidth: 600,
+                  }}
+                >
+                  {currentSlide.content}
+                </p>
+              );
+            })()
           ) : null}
           {/* Word-of-comfort field — only for prayer-request slides
               (other intercession sources don't have a /word endpoint).
