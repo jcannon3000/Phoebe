@@ -1232,6 +1232,26 @@ export async function migrate() {
     // at the API surface (the settings toggle is hidden for them).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'en'`);
 
+    // Liturgical dialect — "eow1" pulls Enriching Our Worship 1
+    // alternatives (expansive language + canticles A–S) where seeded;
+    // "bcp" stays on the 1979 BCP. Default new rows to "eow1" so the
+    // contemporary forms are the out-of-box experience; users toggle
+    // back to BCP from Settings → Liturgy.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS liturgy_dialect TEXT NOT NULL DEFAULT 'eow1'`);
+
+    // Add `dialect` to morning_prayer_cache so EOW and BCP each get
+    // their own cached payload per date. Existing rows get 'bcp' as
+    // the default — they were assembled before EOW landed. We drop
+    // the old single-column unique on cache_date and replace it
+    // with a composite (cache_date, dialect) so both dialects can
+    // coexist in the cache for the same calendar day.
+    await run(client, `ALTER TABLE morning_prayer_cache ADD COLUMN IF NOT EXISTS dialect TEXT NOT NULL DEFAULT 'bcp'`);
+    // The original unique was created via "DATE NOT NULL UNIQUE" so
+    // PG named it morning_prayer_cache_cache_date_key. Drop and
+    // recreate as a composite. IF EXISTS keeps the migration idempotent.
+    await run(client, `ALTER TABLE morning_prayer_cache DROP CONSTRAINT IF EXISTS morning_prayer_cache_cache_date_key`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS morning_prayer_cache_date_dialect_idx ON morning_prayer_cache (cache_date, dialect)`);
+
     // Platform-owned feeds: drop NOT NULL on creator_user_id so editorial
     // feeds (phoebe-climate) can exist without a human creator. The
     // existing FK + ON DELETE CASCADE behaviour for user-created feeds

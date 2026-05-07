@@ -6,7 +6,9 @@
  */
 
 import { Router } from "express";
-import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
+import { eq } from "drizzle-orm";
+import { db, usersTable } from "@workspace/db";
+import { assembleMorningPrayer, type LiturgyDialect } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
@@ -14,6 +16,22 @@ import { seedBcpTexts } from "../seeds/bcpTexts";
 import { PSALTER } from "../seeds/bcpPsalter";
 
 const router = Router();
+
+// Resolve the caller's preferred liturgy dialect. Logged-out callers
+// (the URL is public so liturgical content is visible without auth)
+// default to the EOW1 expansive language form, matching the new-user
+// default at signup. Returning the user's stored choice when known
+// keeps the office consistent across devices.
+async function resolveDialect(userId: number): Promise<LiturgyDialect> {
+  if (userId === 0) return "eow1";
+  const rows = await db
+    .select({ dialect: usersTable.liturgyDialect })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  const stored = rows[0]?.dialect;
+  return stored === "bcp" ? "bcp" : "eow1";
+}
 
 // GET /office/morning — public, no auth required (liturgical content is same for all users)
 router.get("/office/morning", async (req, res) => {
@@ -29,9 +47,11 @@ router.get("/office/morning", async (req, res) => {
 
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
+    const dialect = await resolveDialect(userId);
     const { slides, officeDay, fromCache } = await assembleMorningPrayer(
       date,
       userId,
+      dialect,
     );
 
     return res.json({
@@ -141,7 +161,8 @@ router.get("/office/evening", async (req, res) => {
 
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
-    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId);
+    const dialect = await resolveDialect(userId);
+    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId, dialect);
 
     return res.json({
       slides,
@@ -222,9 +243,15 @@ router.post("/office/morning/prefetch", async (req, res) => {
   }
 
   try {
-    const { fromCache } = await assembleMorningPrayer(date, 0);
+    // Warm both dialect caches so neither EOW nor BCP readers pay the
+    // assembly cost on the first hit of the day. Cheap (parallel
+    // queries; no per-user data threaded in here).
+    const [bcp, eow] = await Promise.all([
+      assembleMorningPrayer(date, 0, "bcp"),
+      assembleMorningPrayer(date, 0, "eow1"),
+    ]);
     return res.json({
-      cached: !fromCache,
+      cached: !(bcp.fromCache && eow.fromCache),
       date: date.toISOString().slice(0, 10),
     });
   } catch (err) {
@@ -275,7 +302,8 @@ router.get("/devotion/:kind", async (req, res) => {
 
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
-    const { slides, officeDay } = await assembleDevotion(date, userId, kind);
+    const dialect = await resolveDialect(userId);
+    const { slides, officeDay } = await assembleDevotion(date, userId, kind, dialect);
     return res.json({
       slides,
       officeDay: { ...officeDay, totalSlides: slides.length },
