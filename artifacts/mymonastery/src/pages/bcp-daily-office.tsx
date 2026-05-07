@@ -237,6 +237,14 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
 
+  // Phoebe Parish — when the user is in the parish-only tier we
+  // route them to the parish celebration screen on Amen instead of
+  // the standard onBack() exit. The handler below reads parishOnly
+  // off this; otherwise the historical exit path is unchanged for
+  // beta + community users.
+  const { user: viewerUser } = useAuth();
+  const parishOnly = viewerUser?.accessTier === "parish-only";
+
   // Track time-spent for the community metrics' "Time praying" row.
   // The four LiturgyMode values map 1:1 onto PrayerSurface, so we
   // pass it through. Bible-reading time launched from a lesson
@@ -1652,9 +1660,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             // handoff and is now finishing the closing collect, route
             // them to /prayer-mode?closingOnly=1 so they get the
             // streak / co-prayers celebration that we deferred from
-            // mid-flow. Otherwise the final-slide tap just exits.
+            // mid-flow. Parish-only users get the parish celebration
+            // instead — "N from your parish prayed today / this
+            // week". Otherwise the final-slide tap just exits.
             const handleEnd = () => {
-              if (seamlessReturnRef.current) {
+              if (parishOnly) {
+                setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
+              } else if (seamlessReturnRef.current) {
                 setViewerLocation("/prayer-mode?closingOnly=1");
               } else {
                 onBack();

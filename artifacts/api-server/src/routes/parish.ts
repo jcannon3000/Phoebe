@@ -265,6 +265,106 @@ router.get("/parish/today", async (req, res) => {
   }
 });
 
+// ─── GET /api/parish/celebration ──────────────────────────────────────────
+//
+// Powers the closing screen a parish-only user sees after finishing
+// an office or devotion — "N from your parish prayed today, M this
+// week". Distinct from /parish/today (which is the dashboard payload):
+// celebration zooms in on the just-completed session and the
+// surrounding community signal.
+//
+// Optional ?surface= query — one of "morning-prayer" / "evening-prayer"
+// / "morning-devotion" / "early-evening-devotion" / "slideshow" —
+// scopes the today-count to that one liturgy. No surface = aggregate
+// across all surfaces (used as a fallback if the client doesn't know
+// which one just finished).
+router.get("/parish/celebration", async (req, res) => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.id));
+    if (!user || user.parishFeedId === null) {
+      res.status(404).json({ error: "No parish" });
+      return;
+    }
+    const [parish] = await db
+      .select({
+        id: prayerFeedsTable.id,
+        slug: prayerFeedsTable.slug,
+        title: prayerFeedsTable.title,
+        timezone: prayerFeedsTable.timezone,
+      })
+      .from(prayerFeedsTable)
+      .where(eq(prayerFeedsTable.id, user.parishFeedId));
+    if (!parish) {
+      res.status(404).json({ error: "Parish not found" });
+      return;
+    }
+
+    const surface = typeof req.query.surface === "string" ? req.query.surface : null;
+    const today = todayInZone(parish.timezone);
+
+    // Parish today + this-week counts — distinct user_ids who logged a
+    // prayer_session in (today, last 7 days). Joined to subscriptions
+    // so non-parishioners can't pad the count.
+    const [todayRows, weekRows, todayFaceRows] = await Promise.all([
+      db.execute<{ count: string }>(sql`
+        SELECT COUNT(DISTINCT ps.user_id)::text AS count
+        FROM prayer_sessions ps
+        INNER JOIN prayer_feed_subscriptions pfs
+          ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parish.id}
+        WHERE (ps.ended_at AT TIME ZONE ${parish.timezone})::date = ${today}::date
+          ${surface ? sql`AND ps.surface = ${surface}` : sql``}
+      `),
+      db.execute<{ count: string }>(sql`
+        SELECT COUNT(DISTINCT ps.user_id)::text AS count
+        FROM prayer_sessions ps
+        INNER JOIN prayer_feed_subscriptions pfs
+          ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parish.id}
+        WHERE ps.ended_at > NOW() - INTERVAL '7 days'
+      `),
+      // Up to 7 faces of distinct parishioners who prayed today
+      // (not counting the viewer — the slide is "who else carried
+      // this with me", not a self-portrait).
+      db.execute<{ user_id: number; name: string | null; avatar_url: string | null }>(sql`
+        SELECT DISTINCT ON (u.id) u.id AS user_id, u.name, u.avatar_url
+        FROM prayer_sessions ps
+        INNER JOIN prayer_feed_subscriptions pfs
+          ON pfs.user_id = ps.user_id AND pfs.feed_id = ${parish.id}
+        INNER JOIN users u ON u.id = ps.user_id
+        WHERE (ps.ended_at AT TIME ZONE ${parish.timezone})::date = ${today}::date
+          AND ps.user_id != ${session.id}
+        ORDER BY u.id, ps.ended_at DESC
+        LIMIT 7
+      `),
+    ]);
+
+    const prayedTodayCount = Number(todayRows.rows[0]?.count ?? "0");
+    const prayedWeekCount = Number(weekRows.rows[0]?.count ?? "0");
+    const faces = todayFaceRows.rows.map((r) => ({
+      userId: r.user_id,
+      name: r.name ?? "Someone",
+      avatarUrl: r.avatar_url,
+    }));
+
+    res.json({
+      parish: {
+        id: parish.id,
+        slug: parish.slug,
+        title: parish.title,
+      },
+      prayedTodayCount,
+      prayedWeekCount,
+      faces,
+      surface,
+    });
+  } catch (err) {
+    console.error("[parish] celebration failed:", err);
+    res.status(500).json({ error: "Failed to load celebration" });
+  }
+});
+
 // ─── GET /api/parish/prefs ────────────────────────────────────────────────
 // Office reminder prefs (and parish meta for the settings page header).
 router.get("/parish/prefs", async (req, res) => {
