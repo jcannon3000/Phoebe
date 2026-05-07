@@ -23,6 +23,7 @@ import {
 } from "./psalmRange";
 import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
 import { buildIntercessionSlides } from "./assembleIntercessions";
+import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -157,12 +158,9 @@ function pickConcludingBlessing(date: Date): { ref: string; text: string } {
 
 // ── Main Assembly ────────────────────────────────────────────────────────────
 
-export type LiturgyDialect = "bcp" | "eow1";
-
 export async function assembleEveningPrayer(
   date: Date,
   userId: number,
-  dialect: LiturgyDialect = "bcp",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -173,7 +171,7 @@ export async function assembleEveningPrayer(
   // EP only renders one lesson now (the Gospel — see lesson3 below),
   // so the post-OT canticle slot is unused. Keep destructuring for
   // forward-compat but mark afterOT as deliberately ignored.
-  const { afterOT: _afterOT, afterNT } = getEveningCanticles(liturgicalDay, dialect);
+  const { afterOT: _afterOT, afterNT } = getEveningCanticles(liturgicalDay);
   void _afterOT;
 
   const openingSentenceKey = pickOpeningSentenceKey(liturgicalDay.season, date.getDate());
@@ -190,92 +188,29 @@ export async function assembleEveningPrayer(
 
   // Pull psalm rows from bcp_texts (the same seeded source MP uses).
   // EP_BCP_TEXTS only carries canticles + invariant prayers, not the
-  // 150 psalms. When dialect=eow1, we also fetch the _eow1 variants
-  // of every key the EP assembler uses below — these live in
-  // bcp_texts (e.g. confession_text_eow1, phos_hilaron_eow1,
-  // canticle_a_eow1) and override the embedded EP_BCP_TEXTS lookup
-  // when present.
+  // 150 psalms.
   const psalmKeys = appointedPsalms.map((p) => `psalm_${p.number}`);
-  const eowKeysNeeded = dialect === "eow1"
-    ? [
-        "confession_text_eow1",
-        "confession_absolution_eow1",
-        "phos_hilaron_eow1",
-        "apostles_creed_eow1",
-        "doxology_eow1",
-        "evening_opening_acclamation_default_eow1",
-        "evening_opening_acclamation_easter_eow1",
-        "evening_opening_acclamation_lent_eow1",
-        // Canticle keys + the EOW recasts of any BCP-numbered ones
-        // EP might select. We fetch the canticle-key-of-record below
-        // dialect-aware via getEveningCanticles, so just include the
-        // string we know we'll need.
-        afterNT,
-      ]
-    : [];
-  const dbKeys = [...psalmKeys, ...eowKeysNeeded];
-  const dbRows =
-    dbKeys.length > 0
+  const psalmRows =
+    psalmKeys.length > 0
       ? await db
           .select()
           .from(bcpTextsTable)
-          .where(inArray(bcpTextsTable.textKey, dbKeys))
+          .where(inArray(bcpTextsTable.textKey, psalmKeys))
       : [];
   const psalmTexts: Record<string, { content: string; title: string | null; bcpReference: string | null }> = {};
-  const eowTexts: Record<string, { content: string; title: string | null; bcpReference: string | null }> = {};
-  for (const row of dbRows) {
-    const entry = {
+  for (const row of psalmRows) {
+    psalmTexts[row.textKey] = {
       content: row.content,
       title: row.title ?? null,
       bcpReference: row.bcpReference ?? null,
     };
-    if (row.textKey.startsWith("psalm_")) {
-      psalmTexts[row.textKey] = entry;
-    } else {
-      eowTexts[row.textKey] = entry;
-    }
   }
 
-  /**
-   * Look up a text. Three resolution paths in order:
-   *   1. If the key already ends with `_eow1` (e.g. canticle_15_eow1
-   *      coming straight out of getEveningCanticles), look it up
-   *      directly in the eowTexts map fetched from bcp_texts above.
-   *   2. If dialect=eow1, prefer the _eow1 variant of the base key.
-   *   3. Fall back to the embedded EP_BCP_TEXTS row.
-   */
+  /** Look up a text from embedded data */
   function getText(key: string): string {
-    if (key.endsWith("_eow1")) {
-      const eow = eowTexts[key];
-      if (eow) return eow.content;
-    }
-    if (dialect === "eow1") {
-      const eow = eowTexts[`${key}_eow1`];
-      if (eow) return eow.content;
-    }
     return EP_BCP_TEXTS[key]?.content ?? "";
   }
   function getTextData(key: string) {
-    if (key.endsWith("_eow1")) {
-      const eow = eowTexts[key];
-      if (eow) {
-        return {
-          content: eow.content,
-          title: eow.title ?? key,
-          bcpReference: eow.bcpReference ?? "",
-        };
-      }
-    }
-    if (dialect === "eow1") {
-      const eow = eowTexts[`${key}_eow1`];
-      if (eow) {
-        return {
-          content: eow.content,
-          title: eow.title ?? key,
-          bcpReference: eow.bcpReference ?? "",
-        };
-      }
-    }
     return EP_BCP_TEXTS[key] ?? { content: "", title: key, bcpReference: "" };
   }
 
@@ -311,20 +246,13 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 5. Invitatory — EP uses different versicle. Doxology line picks
-  // the EOW Trinitarian acclamation when dialect=eow1, otherwise the
-  // BCP Gloria Patri.
-  const epDoxologyLine =
-    dialect === "eow1"
-      ? (eowTexts["doxology_eow1"]?.content
-          ?? "Praise to the holy and undivided Trinity, one God: as it was in the beginning, is now, and will be for ever. Amen.")
-      : "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
+  // 5. Invitatory — EP uses different versicle
   const invitatoryLines: CallAndResponseLine[] = [
     { speaker: "officiant", text: "O God, make speed to save us." },
     { speaker: "people", text: "O Lord, make haste to help us." },
     {
       speaker: "both",
-      text: epDoxologyLine,
+      text: "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.",
     },
   ];
   if (liturgicalDay.useAlleluia) {
@@ -354,7 +282,8 @@ export async function assembleEveningPrayer(
   // Mirrors Morning Prayer's psalm rendering so EP isn't a second-
   // class surface that asks the reader to leave the office to find
   // the text.
-  const epGloriaPatri = "\n" + epDoxologyLine;
+  const epGloriaPatri =
+    "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
   for (const psalmRef of appointedPsalms) {
     const { number: psalmNum, range } = psalmRef;
     const psalmKey = `psalm_${psalmNum}`;
@@ -451,19 +380,13 @@ export async function assembleEveningPrayer(
   // duplication of MP's lessons here. Earlier the server emitted
   // lesson1+lesson2 in EP too, which mirrored MP and read as a bug.
   const lesson3 = readings.lesson3;
-  // Single reference card + Bible.com pill, mirroring MP's lessons.
-  // Phoebe doesn't ship scripture text in the slide rotation; readers
-  // tap "Read on Bible.com" to read the Gospel in their bible app.
-  slides.push(
-    slide(id(), "lesson", "✝️", "THE GOSPEL", LESSON_PROMPT, {
-      title: lesson3,
-      metadata: {
-        reference: lesson3,
-        readUrl: bibleGatewayUrl(lesson3),
-        readingNote: "Read the Gospel in your own Bible or preferred translation.",
-      },
-    }),
-  );
+  // Title card + chunked numbered-verse slides — same shape as MP's
+  // lessons. The reference-only fallback fires automatically inside
+  // buildLessonSlides if the Gospel happens to land on a deuteron-
+  // ical pericope (rare, but defensible).
+  for (const s of buildLessonSlides(lesson3, "gospel_evening", id)) {
+    slides.push(s);
+  }
 
   // 9. Canticle after the Gospel — Magnificat or Nunc Dimittis depending
   // on day; we use the canticle the season selector returns for the

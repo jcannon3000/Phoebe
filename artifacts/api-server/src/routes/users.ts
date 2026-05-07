@@ -50,49 +50,6 @@ router.put("/users/me", async (req, res): Promise<void> => {
   res.json(UpsertUserResponse.parse(created));
 });
 
-// ─── GET /api/users/me/liturgy-dialect ────────────────────────────────────
-// Read the user's chosen liturgical dialect ("eow1" or "bcp"). Used
-// by the Settings page to render the toggle in its current state.
-router.get("/users/me/liturgy-dialect", async (req, res): Promise<void> => {
-  const user = req.user as { id: number } | undefined;
-  if (!user) {
-    res.status(401).json({ error: "not_authenticated" });
-    return;
-  }
-  const [row] = await db
-    .select({ dialect: usersTable.liturgyDialect })
-    .from(usersTable)
-    .where(eq(usersTable.id, user.id))
-    .limit(1);
-  res.json({ dialect: row?.dialect === "bcp" ? "bcp" : "eow1" });
-});
-
-// ─── PATCH /api/users/me/liturgy-dialect ──────────────────────────────────
-// Toggle between "eow1" (Enriching Our Worship 1, expansive language —
-// the default for new accounts) and "bcp" (1979 Book of Common Prayer
-// throughout). Settings UI calls this when the user flips the toggle;
-// next office or devotion they open is reassembled from the dialect
-// they chose. We invalidate nothing here — the morning_prayer_cache
-// is keyed on (date, dialect) so each form has its own cached payload
-// per day, and switching just makes the next request hit the other key.
-router.patch("/users/me/liturgy-dialect", async (req, res): Promise<void> => {
-  const user = req.user as { id: number } | undefined;
-  if (!user) {
-    res.status(401).json({ error: "not_authenticated" });
-    return;
-  }
-  const dialect = (req.body as { dialect?: unknown })?.dialect;
-  if (dialect !== "eow1" && dialect !== "bcp") {
-    res.status(400).json({ error: "dialect must be 'eow1' or 'bcp'" });
-    return;
-  }
-  await db
-    .update(usersTable)
-    .set({ liturgyDialect: dialect })
-    .where(eq(usersTable.id, user.id));
-  res.json({ ok: true, dialect });
-});
-
 // ─── GET /api/users/me/export — data portability ──────────────────────────
 // Returns a JSON blob of everything we have that's tied to this user. The
 // client downloads it as a timestamped file so the user can keep a copy

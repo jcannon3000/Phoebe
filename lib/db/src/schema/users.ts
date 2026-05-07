@@ -71,14 +71,6 @@ export const usersTable = pgTable("users", {
   // can flip this to "es" via Settings → Language; non-beta accounts
   // stay on "en". Default English so legacy rows don't need a backfill.
   locale: text("locale").notNull().default("en"),
-  // Liturgical dialect — drives which texts the office and devotion
-  // assemblers pick. "eow1" pulls Enriching Our Worship 1 alternatives
-  // (expansive language, additional canticles A–S) where available;
-  // "bcp" stays on the 1979 BCP throughout. Defaults to "eow1" so new
-  // users land on the contemporary forms; toggleable via Settings →
-  // Liturgy. The assemblers fall back to BCP for any text key that
-  // doesn't have an EOW variant seeded.
-  liturgyDialect: text("liturgy_dialect").notNull().default("eow1"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

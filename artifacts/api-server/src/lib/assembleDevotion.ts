@@ -30,6 +30,7 @@ import {
   psalmEyebrow,
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
+import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 
 export type DevotionKind = "morning" | "early-evening";
@@ -101,13 +102,10 @@ const LESSON_BODY_PROMPT = "Open your Bible, or read this passage online.";
 
 // ── Main assembly ────────────────────────────────────────────────────────────
 
-export type LiturgyDialect = "bcp" | "eow1";
-
 export async function assembleDevotion(
   date: Date,
   userId: number,
   kind: DevotionKind,
-  dialect: LiturgyDialect = "bcp",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -140,24 +138,13 @@ export async function assembleDevotion(
   // tap through and we can backfill the seed later).
   const psalmKey = `psalm_${psalmNum}`;
   const collectKey = liturgicalDay.collectKey;
-  // When dialect=eow1, also fetch the EOW collect variant (if seeded)
-  // and the EOW doxology row used for the Gloria Patri replacement.
-  const eowExtras = dialect === "eow1"
-    ? [`${collectKey}_eow1`, "doxology_eow1"]
-    : [];
-  const fetchKeys = [psalmKey, collectKey, ...eowExtras];
+  const fetchKeys = [psalmKey, collectKey];
   const fetchedRows = await db
     .select()
     .from(bcpTextsTable)
     .where(inArray(bcpTextsTable.textKey, fetchKeys));
   const psalmRow = fetchedRows.find((r) => r.textKey === psalmKey) ?? null;
-  const collectOfTheDayRow =
-    (dialect === "eow1"
-      ? fetchedRows.find((r) => r.textKey === `${collectKey}_eow1`)
-      : null)
-    ?? fetchedRows.find((r) => r.textKey === collectKey)
-    ?? null;
-  const doxologyRow = fetchedRows.find((r) => r.textKey === "doxology_eow1") ?? null;
+  const collectOfTheDayRow = fetchedRows.find((r) => r.textKey === collectKey) ?? null;
 
   // ── Build slides ────────────────────────────────────────────────────────────
 
@@ -224,14 +211,8 @@ export async function assembleDevotion(
 
   // 3. Psalm — appointed lectionary psalm for the office, sliced to
   // the appointed verse range when the lectionary specifies one.
-  // BCP closes psalms with the Gloria Patri; EOW uses the Trinitarian
-  // acclamation seeded as `doxology_eow1`. Devotion echoes the same
-  // dialect-aware doxology so MP/EP/Devotion all stay consistent.
   const gloriaPatri =
-    dialect === "eow1"
-      ? "\n" + (doxologyRow?.content
-          ?? "Praise to the holy and undivided Trinity, one God: as it was in the beginning, is now, and will be for ever. Amen.")
-      : "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
+    "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
   const slicedPsalm =
     psalmRow && parsedRef.range
       ? sliceVersesByRange(psalmRow.content, parsedRef.range)
@@ -331,19 +312,16 @@ export async function assembleDevotion(
     lectReading && lectReading.trim().length > 0 && !/^-+$/.test(lectReading.trim())
       ? lectReading
       : (isMorning ? FALLBACK_READING_MORNING_REF : FALLBACK_READING_EARLY_EVENING_REF);
-  // Single reference card + Bible.com pill — same shape as the full
-  // Office. Phoebe doesn't ship scripture text in the slide
-  // rotation; readers tap "Read on Bible.com" to open their bible.
-  slides.push(
-    slide(id(), "lesson", "📜", "A READING FROM SCRIPTURE", LESSON_BODY_PROMPT, {
-      title: readingRef,
-      metadata: {
-        reference: readingRef,
-        readUrl: bibleGatewayUrl(readingRef),
-        readingNote: "Read this passage in your own Bible or preferred translation.",
-      },
-    }),
-  );
+  // Title card + chunked numbered-verse slides — same shape as the
+  // full Office. Falls back to a single reference-only "open your
+  // bible" card when the book isn't in local data.
+  for (const s of buildLessonSlides(
+    readingRef,
+    isMorning ? "devotion_morning" : "devotion_evening",
+    id,
+  )) {
+    slides.push(s);
+  }
 
   // 5. Intercessions handoff. The BCP rubric "Prayers may be
   //    offered for ourselves and others" maps to a single

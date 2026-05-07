@@ -25,26 +25,17 @@ export const scriptureCacheTable = pgTable(
   (t) => [unique().on(t.reference, t.cacheDate)]
 );
 
-export const morningPrayerCacheTable = pgTable(
-  "morning_prayer_cache",
-  {
-    id: serial("id").primaryKey(),
-    cacheDate: date("cache_date").notNull(),
-    // Liturgical dialect the cached slides were assembled for —
-    // "bcp" or "eow1". Cache lookups must match both date AND
-    // dialect so the EOW reader and the BCP reader each get the
-    // right cached payload.
-    dialect: text("dialect").notNull().default("bcp"),
-    liturgicalYear: integer("liturgical_year").notNull(),
-    liturgicalSeason: text("liturgical_season").notNull(),
-    properNumber: integer("proper_number"),
-    feastName: text("feast_name"),
-    slidesJson: jsonb("slides_json").notNull(),
-    assembledAt: timestamp("assembled_at").defaultNow(),
-    assembledByUserId: integer("assembled_by_user_id").references(() => usersTable.id),
-  },
-  (t) => [unique().on(t.cacheDate, t.dialect)],
-);
+export const morningPrayerCacheTable = pgTable("morning_prayer_cache", {
+  id: serial("id").primaryKey(),
+  cacheDate: date("cache_date").notNull().unique(),
+  liturgicalYear: integer("liturgical_year").notNull(),
+  liturgicalSeason: text("liturgical_season").notNull(),
+  properNumber: integer("proper_number"),
+  feastName: text("feast_name"),
+  slidesJson: jsonb("slides_json").notNull(),
+  assembledAt: timestamp("assembled_at").defaultNow(),
+  assembledByUserId: integer("assembled_by_user_id").references(() => usersTable.id),
+});
 
 export type BcpText = typeof bcpTextsTable.$inferSelect;
 export type ScriptureCache = typeof scriptureCacheTable.$inferSelect;

@@ -6,7 +6,7 @@
  * first user bears assembly cost; every user after gets it in ~5ms.
  */
 
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   db,
   bcpTextsTable,
@@ -24,6 +24,7 @@ import {
   splitCanticleIntoChunks,
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
+import { buildLessonSlides } from "./assembleLesson";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
 // open scripture in their own bible/app. No scripture-text lookup.
 
@@ -40,6 +41,13 @@ export type SlideType =
   | "psalm"
   | "psalm_gloria"
   | "lesson"
+  // Title slide for a lesson — big "Romans 14:1-12" headline +
+  // "The First Lesson Appointed For This Morning" subtitle. Mirrors
+  // the psalm_title pattern; the verses follow on lesson_verses slides.
+  | "lesson_title"
+  // Chunked numbered-verse slide for a lesson, matching the psalm
+  // verse layout — verse number on the left, body on the right.
+  | "lesson_verses"
   | "canticle_title"
   | "canticle"
   | "creed"
@@ -314,12 +322,9 @@ function pickConcludingBlessing(date: Date): { ref: string; text: string } {
 
 // ── Main Assembly ─────────────────────────────────────────────────────────────
 
-export type LiturgyDialect = "bcp" | "eow1";
-
 export async function assembleMorningPrayer(
   date: Date,
   userId: number,
-  dialect: LiturgyDialect = "bcp",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -328,15 +333,11 @@ export async function assembleMorningPrayer(
   const cacheDate = startOfDay(date);
   const cacheDateStr = cacheDate.toISOString().slice(0, 10);
 
-  // 1. Check cache — keyed by (cacheDate, dialect) so EOW and BCP
-  //    each get their own cached payload per day.
+  // 1. Check cache
   const cached = await db
     .select()
     .from(morningPrayerCacheTable)
-    .where(and(
-      eq(morningPrayerCacheTable.cacheDate, cacheDateStr),
-      eq(morningPrayerCacheTable.dialect, dialect),
-    ))
+    .where(eq(morningPrayerCacheTable.cacheDate, cacheDateStr))
     .limit(1);
 
   if (cached.length > 0) {
@@ -369,7 +370,7 @@ export async function assembleMorningPrayer(
   // 2. Assemble
   const liturgicalDay = getOfficeDay(date);
   const { psalms, lesson1, lesson2 } = getLectionaryReadings(liturgicalDay);
-  const { afterOT, afterNT } = getCanticles(liturgicalDay, dialect);
+  const { afterOT, afterNT } = getCanticles(liturgicalDay);
 
   // Determine text keys needed
   const openingSentenceKey = pickOpeningSentenceKey(
@@ -390,13 +391,7 @@ export async function assembleMorningPrayer(
   }
 
   const suffragesKey = pickSuffragesKey(liturgicalDay.weekInSeason);
-
-  // Base keys we always need. When dialect=eow1, we also fetch the
-  // _eow1 variants of every base key — the pickText helper below
-  // returns the EOW variant if seeded, falling back to BCP otherwise.
-  // This lets us extend EOW coverage incrementally without touching
-  // the assembler each time a new variant lands.
-  const baseKeys = [
+  const keysNeeded = [
     openingSentenceKey,
     "confession_text",
     "confession_absolution",
@@ -410,10 +405,6 @@ export async function assembleMorningPrayer(
     liturgicalDay.collectKey,
     "general_thanksgiving",
   ];
-  const keysNeeded =
-    dialect === "eow1"
-      ? [...baseKeys, ...baseKeys.map((k) => `${k}_eow1`), "doxology_eow1"]
-      : baseKeys;
 
   // Parse appointed psalms — we keep both the bare number (used to
   // look up the seeded psalm row) and the optional verse range, so
@@ -458,25 +449,9 @@ export async function assembleMorningPrayer(
     };
   }
 
-  // Dialect-aware text picker: when dialect=eow1, prefer the
-  // ${key}_eow1 row if it exists, otherwise fall back to the BCP
-  // row. Same shape returned either way so the slide builder
-  // doesn't need to know which dialect won.
   function getText(key: string): string {
-    if (dialect === "eow1") {
-      const eowRow = texts[`${key}_eow1`];
-      if (eowRow) return eowRow.content;
-    }
     return texts[key]?.content ?? `[${key} — see BCP]`;
   }
-  function getTextRow(key: string) {
-    if (dialect === "eow1") {
-      const eowRow = texts[`${key}_eow1`];
-      if (eowRow) return eowRow;
-    }
-    return texts[key];
-  }
-  void getTextRow;
 
   // ── Build slide array ──────────────────────────────────────────────────────
 
@@ -635,14 +610,8 @@ export async function assembleMorningPrayer(
   }
 
   // SLIDES 7+: Appointed Psalms
-  // Doxology: BCP uses Gloria Patri; EOW1 uses the Trinitarian
-  // acclamation seeded as `doxology_eow1`. We pick by dialect so
-  // every psalm + invitatory closes with the right form.
   const gloriaPatri =
-    dialect === "eow1"
-      ? "\n" + (texts["doxology_eow1"]?.content
-          ?? "Praise to the holy and undivided Trinity, one God: as it was in the beginning, is now, and will be for ever. Amen.")
-      : "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
+    "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
 
   for (const psalmRef of appointedPsalms) {
     const { number: psalmNum, range } = psalmRef;
@@ -749,20 +718,14 @@ export async function assembleMorningPrayer(
   const isLessonPresent = (l: string | null | undefined): boolean =>
     !!l && l.trim().length > 0 && !/^-+$/.test(l.trim());
 
-  // First Lesson — OT. Title is the reference (e.g. "Isa. 55:1-11");
-  // body is a soft prompt to open the passage rather than echoing
-  // the reference. Phoebe doesn't ship scripture text in the slide
-  // rotation — readers tap "Read on Bible.com" to read in NRSVUE in
-  // their bible app of choice.
+  // First Lesson — OT. The lesson now renders as a title slide +
+  // chunked numbered-verse slides (matching the psalm treatment) when
+  // the local Bible JSON has the book; deuterocanonical readings fall
+  // back to a single reference-only "open your bible" card.
   if (isLessonPresent(lesson1)) {
-    slides.push(
-      slide(id(), "lesson", "📜", "FIRST LESSON", LESSON_PROMPT, {
-        title: lesson1,
-        isScrollable: false,
-        scrollHint: null,
-        metadata: { reference: lesson1, readUrl: bibleGatewayUrl(lesson1) },
-      }),
-    );
+    for (const s of buildLessonSlides(lesson1, "first_morning", id)) {
+      slides.push(s);
+    }
   }
 
   // Canticle after OT.
@@ -780,14 +743,9 @@ export async function assembleMorningPrayer(
   // EP shows Gospel only). Skipped on feast days where the BCP
   // appoints no Epistle at MP.
   if (isLessonPresent(lesson2)) {
-    slides.push(
-      slide(id(), "lesson", "✉️", "SECOND LESSON", LESSON_PROMPT, {
-        title: lesson2,
-        isScrollable: false,
-        scrollHint: null,
-        metadata: { reference: lesson2, readUrl: bibleGatewayUrl(lesson2) },
-      }),
-    );
+    for (const s of buildLessonSlides(lesson2, "second_morning", id)) {
+      slides.push(s);
+    }
   }
 
   // Canticle after NT
@@ -896,7 +854,6 @@ export async function assembleMorningPrayer(
       .insert(morningPrayerCacheTable)
       .values({
         cacheDate: cacheDateStr,
-        dialect,
         liturgicalYear: liturgicalDay.liturgicalYear,
         liturgicalSeason: liturgicalDay.season,
         properNumber: liturgicalDay.properNumber,

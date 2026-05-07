@@ -97,82 +97,6 @@ function MutedPeople() {
   );
 }
 
-// ─── Liturgy Section ──────────────────────────────────────────────────────
-// Lets the user toggle between Enriching Our Worship 1 (the default for
-// new accounts — expansive language + canticles A–S + EOW recasts of
-// the BCP numbered canticles) and the standard 1979 BCP throughout.
-// Choice persists server-side; the next office or devotion the user
-// opens is reassembled from the chosen dialect.
-function LiturgySection() {
-  const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery<{ dialect: "eow1" | "bcp" }>({
-    queryKey: ["/api/users/me/liturgy-dialect"],
-    queryFn: () => apiRequest("GET", "/api/users/me/liturgy-dialect"),
-  });
-  const dialect = data?.dialect ?? "eow1";
-
-  const update = useMutation({
-    mutationFn: (next: "eow1" | "bcp") =>
-      apiRequest("PATCH", "/api/users/me/liturgy-dialect", { dialect: next }),
-    onSuccess: (_res, next) => {
-      queryClient.setQueryData(["/api/users/me/liturgy-dialect"], { dialect: next });
-      // The office/devotion endpoints cache server-side keyed by
-      // (date, dialect) — invalidating the relevant queries here
-      // ensures the next office view fetches the new dialect's slides.
-      queryClient.invalidateQueries({ queryKey: ["/api/office/morning"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/office/evening"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/devotion/morning"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/devotion/early-evening"] });
-    },
-  });
-
-  return (
-    <>
-      <SectionHeader label="Liturgy" />
-      <SettingsCard>
-        <div className="mb-3">
-          <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
-            Prayer book language
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-            Enriching Our Worship uses expansive language for God; the 1979 BCP is the standard form.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {([
-            { value: "eow1", label: "Enriching Our Worship", sub: "Expansive language" },
-            { value: "bcp", label: "1979 BCP", sub: "Standard" },
-          ] as const).map((opt) => {
-            const selected = dialect === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => !selected && !update.isPending && update.mutate(opt.value)}
-                disabled={isLoading || update.isPending || selected}
-                className="flex-1 rounded-xl px-3 py-2.5 text-left transition-opacity"
-                style={{
-                  background: selected ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.10)",
-                  border: `1px solid ${selected ? "rgba(143,175,150,0.55)" : "rgba(46,107,64,0.18)"}`,
-                  cursor: selected || update.isPending ? "default" : "pointer",
-                  opacity: update.isPending && !selected ? 0.5 : 1,
-                }}
-              >
-                <p className="text-xs font-semibold" style={{ color: selected ? "#F0EDE6" : "#A8C5A0" }}>
-                  {opt.label}
-                </p>
-                <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                  {opt.sub}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </SettingsCard>
-    </>
-  );
-}
-
 // ─── Account Section (photo + name editing) ────────────────────────────────
 
 // ─── Phone number section ──────────────────────────────────────────────────
@@ -766,11 +690,6 @@ export default function SettingsPage() {
             Only rendered when running inside the Capacitor shell. Web users
             don't have Face ID, so showing the toggle would confuse them. */}
         <MobileDeviceSection />
-
-        {/* ── Liturgy ── */}
-        <div className="mb-8">
-          <LiturgySection />
-        </div>
 
         {/* ── Muted People ── */}
         <MutedPeople />
