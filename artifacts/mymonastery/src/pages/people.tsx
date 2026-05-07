@@ -399,6 +399,10 @@ export default function People() {
   const { data: people, isLoading } = usePeople(user?.id);
   const highlightEmail = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "").get("highlight") ?? null;
   const highlightRef = useRef<HTMLDivElement | null>(null);
+  // Search query for the top-of-page filter. Lives in component state
+  // so a query is preserved while the user scrolls + interacts with
+  // cards but is dropped on navigation away.
+  const [searchQuery, setSearchQuery] = useState("");
 
   const gardenEmails = useMemo(() => new Set((people ?? []).map(p => p.email)), [people]);
   const emptyMomentIds = useMemo(() => new Set<number>(), []);
@@ -470,6 +474,22 @@ export default function People() {
   if (authLoading || !user) return null;
 
   const sorted = people ? sortPeople(people, presentEmails) : [];
+  // Case-insensitive name + email + active-prayer-text match. Trimmed
+  // empty query falls through and the full sorted list renders, so
+  // the search bar acts as a filter overlay rather than a separate
+  // mode. Matched on name + email so power users can paste an email
+  // straight in; matched on activePrayerRequest body so a user
+  // searching "moving" finds whoever asked for moving prayers.
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const filtered = trimmedQuery.length === 0
+    ? sorted
+    : sorted.filter(p => {
+        if (p.name.toLowerCase().includes(trimmedQuery)) return true;
+        if (p.email.toLowerCase().includes(trimmedQuery)) return true;
+        const req = p.activePrayerRequest?.body ?? "";
+        if (req.toLowerCase().includes(trimmedQuery)) return true;
+        return false;
+      });
 
   return (
     <Layout>
@@ -483,6 +503,75 @@ export default function People() {
           <h1 style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
             People 🌿
           </h1>
+        </div>
+
+        {/* Search bar — filters the garden list by name, email, or
+            active prayer-request body. Sits above the find-friends
+            entry so it's the first interactive element on the page,
+            and the user-flow reads "search → find → write a prayer"
+            top to bottom. Empty query falls through and the full
+            sorted list renders. */}
+        <div className="mb-4 relative">
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: 14,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "rgba(143,175,150,0.55)",
+              fontSize: 14,
+              pointerEvents: "none",
+            }}
+          >
+            🔍
+          </span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search your garden"
+            aria-label="Search your garden"
+            className="w-full"
+            style={{
+              background: "#0F2818",
+              border: "1px solid rgba(46,107,64,0.35)",
+              borderRadius: 999,
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 14,
+              padding: "10px 40px 10px 38px",
+              outline: "none",
+            }}
+          />
+          {searchQuery.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              aria-label="Clear search"
+              style={{
+                position: "absolute",
+                right: 8,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.35)",
+                color: "#F0EDE6",
+                width: 24,
+                height: 24,
+                borderRadius: 999,
+                fontSize: 14,
+                lineHeight: 1,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+              }}
+            >
+              ×
+            </button>
+          )}
         </div>
 
         {/* Find friends entry — native-only. The underlying flow reads
@@ -521,9 +610,26 @@ export default function People() {
               </div>
             </div>
           </motion.div>
+        ) : filtered.length === 0 ? (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            <div
+              className="rounded-xl px-5 py-5 mb-6 flex items-center gap-4"
+              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
+            >
+              <span style={{ fontSize: "28px" }}>🔍</span>
+              <div>
+                <p className="font-semibold" style={{ color: "#F0EDE6", fontSize: "15px", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  No matches
+                </p>
+                <p className="mt-0.5" style={{ color: "#8FAF96", fontSize: "13px" }}>
+                  Nobody in your garden matches "{searchQuery.trim()}"
+                </p>
+              </div>
+            </div>
+          </motion.div>
         ) : (
           <div className="space-y-2">
-            {sorted.map(person => {
+            {filtered.map(person => {
               const isHighlighted = highlightEmail === person.email;
               return (
                 <div
