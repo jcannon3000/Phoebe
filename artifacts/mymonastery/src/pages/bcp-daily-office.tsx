@@ -449,6 +449,21 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   }
   function amen() {
     if (currentSlide) fireAmenSideEffect(currentSlide);
+    // Clear the morning bell / evening nudge from the iOS lock screen
+    // the moment the user prays. The native shell listens for
+    // `phoebe:clear-notifications` and removes any delivered push
+    // whose APN thread-id matches "bell". Mirrors what prayer-mode
+    // does on Amen — without this dispatch the Office/Devotion amen
+    // counted toward metrics but the lock-screen reminder kept
+    // sitting there for the rest of the day, which the user
+    // explicitly flagged as broken.
+    try {
+      window.dispatchEvent(
+        new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "bell" } })
+      );
+    } catch {
+      /* non-fatal; web build has no listener and the OS will drop the push later */
+    }
     if (!atEnd) setSlideIdx(slideIdx + 1);
     else onBack();
   }
