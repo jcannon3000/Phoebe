@@ -7,54 +7,50 @@ import { useAuth } from "@/hooks/useAuth";
 // ── Prayer chooser ──────────────────────────────────────────────────────────
 //
 // Lands here when the user taps the home-screen prayer-list CTA
-// ("Begin prayer" / "Pray again" / "Start prayer"). Asks how they'd
-// like to pray today — full Office, abbreviated Devotion, or just
-// the intercessions rotation — and routes accordingly.
+// ("Begin prayer" / "Pray again" / "Start prayer"). Defaults to the
+// short Daily Devotion for the time of day — the gentlest entry point
+// — and surfaces the heavier paths (full Office, intercessions-only)
+// as quiet links underneath.
 //
-// Time-of-day default: under noon → morning labels, at-or-after noon
-// → evening labels. Mirrors the same threshold the Daily Office and
-// Devotion pickers use to highlight their "now" card.
+// Time-of-day default: under noon → morning, at-or-after noon → early
+// evening. Mirrors the same threshold the Daily Office and Devotion
+// pickers use to highlight their "now" card.
 
 const BG = "#091A10";
 const WARM_TEXT = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+const GEORGIA = "Georgia, 'Times New Roman', serif";
 
-type ChoiceKey = "office" | "devotion" | "intercessions";
-
-interface Choice {
-  key: ChoiceKey;
-  label: string;
-  sub: string;
+interface DevotionContext {
+  // Big title at the top of the screen — what kind of devotion this
+  // is, in plain BCP language.
+  title: string;
+  // The route the primary "Begin" button navigates to.
   href: string;
+  // The route the "Pray full office" link navigates to — same time-
+  // of-day, just the unabbreviated form.
+  fullOfficeHref: string;
+  // The label on the full-office secondary link, since it changes
+  // morning vs evening.
+  fullOfficeLabel: string;
 }
 
-function buildChoices(): Choice[] {
+function buildDevotionContext(): DevotionContext {
   const isMorning = new Date().getHours() < 12;
-  return [
-    {
-      key: "office",
-      label: isMorning ? "Pray Morning Prayer" : "Pray Evening Prayer",
-      sub: "The full Daily Office",
-      href: isMorning
-        ? "/bcp/daily-office?mode=morning"
-        : "/bcp/daily-office?mode=evening",
-    },
-    {
-      key: "devotion",
-      label: isMorning ? "Pray Morning Devotion" : "Pray Evening Devotion",
-      sub: "The short BCP form for personal use",
-      href: isMorning
-        ? "/bcp/daily-devotions?mode=morning-devotion"
-        : "/bcp/daily-devotions?mode=early-evening-devotion",
-    },
-    {
-      key: "intercessions",
-      label: "Pray intercessions",
-      sub: "Just the prayer-list slideshow",
-      href: "/prayer-mode",
-    },
-  ];
+  return isMorning
+    ? {
+        title: "Morning Devotion",
+        href: "/bcp/daily-devotions?mode=morning-devotion",
+        fullOfficeHref: "/bcp/daily-office?mode=morning",
+        fullOfficeLabel: "Pray full Morning Prayer",
+      }
+    : {
+        title: "Evening Devotion",
+        href: "/bcp/daily-devotions?mode=early-evening-devotion",
+        fullOfficeHref: "/bcp/daily-office?mode=evening",
+        fullOfficeLabel: "Pray full Evening Prayer",
+      };
 }
 
 export default function PrayerStartPage() {
@@ -67,7 +63,7 @@ export default function PrayerStartPage() {
 
   if (isLoading || !user) return null;
 
-  const choices = buildChoices();
+  const ctx = buildDevotionContext();
 
   return (
     <Layout>
@@ -77,87 +73,139 @@ export default function PrayerStartPage() {
           minHeight: "calc(100vh - 80px)",
           paddingTop: "clamp(48px, 12vh, 120px)",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 32px)",
-          gap: 32,
+          gap: 24,
         }}
       >
-        <motion.h1
+        {/* Title block — what we're about to pray, with the BCP
+            attribution as a quiet subtitle. */}
+        <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}
           className="text-center"
+          style={{ padding: "0 24px" }}
+        >
+          <h1
+            style={{
+              color: WARM_TEXT,
+              fontFamily: SPACE_GROTESK,
+              fontSize: "clamp(32px, 7vw, 44px)",
+              fontWeight: 700,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.1,
+              margin: 0,
+            }}
+          >
+            {ctx.title}
+          </h1>
+          <p
+            style={{
+              color: SAGE,
+              fontFamily: GEORGIA,
+              fontStyle: "italic",
+              fontSize: "clamp(13px, 2.6vw, 15px)",
+              marginTop: 10,
+              marginBottom: 0,
+            }}
+          >
+            from the Book of Common Prayer
+          </p>
+        </motion.div>
+
+        {/* Primary action — begin the devotion. Big, warm, the only
+            CTA above the fold. */}
+        <motion.button
+          type="button"
+          onClick={() => setLocation(ctx.href)}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.35 }}
+          whileTap={{ scale: 0.98 }}
           style={{
+            background: "rgba(46,107,64,0.22)",
+            border: "1px solid rgba(46,107,64,0.5)",
             color: WARM_TEXT,
             fontFamily: SPACE_GROTESK,
-            fontSize: "clamp(28px, 6vw, 40px)",
-            fontWeight: 700,
+            borderRadius: 999,
+            padding: "20px 36px",
+            cursor: "pointer",
+            fontSize: "clamp(17px, 3.5vw, 20px)",
+            fontWeight: 600,
             letterSpacing: "-0.01em",
-            lineHeight: 1.15,
-            margin: 0,
-            padding: "0 24px",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+            marginTop: 8,
           }}
         >
-          How would you like to pray today?
-        </motion.h1>
+          Begin
+        </motion.button>
 
-        <div
+        {/* Spacer pushes the secondary actions toward the bottom of
+            the screen. */}
+        <div style={{ flex: 1, minHeight: 24 }} />
+
+        {/* Secondary actions — the two heavier paths, available but
+            visually quieter so they don't compete with the primary
+            "Begin" button. */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35, duration: 0.4 }}
           className="w-full flex flex-col items-center"
           style={{ gap: 14, padding: "0 20px" }}
         >
-          {choices.map((c, i) => (
-            <motion.button
-              key={c.key}
-              type="button"
-              onClick={() => setLocation(c.href)}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 + i * 0.07, duration: 0.35 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full"
-              style={{
-                background: "rgba(46,107,64,0.18)",
-                border: "1px solid rgba(46,107,64,0.45)",
-                color: WARM_TEXT,
-                fontFamily: SPACE_GROTESK,
-                borderRadius: 999,
-                padding: "20px 28px",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "clamp(17px, 3.5vw, 20px)",
-                  fontWeight: 600,
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {c.label}
-              </span>
-              <span style={{ fontSize: 12, color: SAGE, fontWeight: 400 }}>
-                {c.sub}
-              </span>
-            </motion.button>
-          ))}
-        </div>
+          <button
+            type="button"
+            onClick={() => setLocation("/prayer-mode")}
+            style={{
+              background: "none",
+              border: "none",
+              color: SAGE,
+              fontFamily: SPACE_GROTESK,
+              fontSize: 14,
+              cursor: "pointer",
+              padding: 6,
+              textDecoration: "underline",
+              textDecorationColor: "rgba(143,175,150,0.35)",
+              textUnderlineOffset: 4,
+            }}
+          >
+            Skip to community prayer list →
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocation(ctx.fullOfficeHref)}
+            style={{
+              background: "none",
+              border: "none",
+              color: SAGE,
+              fontFamily: SPACE_GROTESK,
+              fontSize: 14,
+              cursor: "pointer",
+              padding: 6,
+              textDecoration: "underline",
+              textDecorationColor: "rgba(143,175,150,0.35)",
+              textUnderlineOffset: 4,
+            }}
+          >
+            {ctx.fullOfficeLabel} →
+          </button>
+        </motion.div>
 
         <motion.button
           type="button"
           onClick={() => setLocation("/dashboard")}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.5 }}
           style={{
             background: "none",
             border: "none",
-            color: SAGE,
+            color: "rgba(143,175,150,0.6)",
             fontFamily: SPACE_GROTESK,
             fontSize: 13,
             cursor: "pointer",
             padding: 8,
+            marginTop: 8,
           }}
         >
           ← Back
