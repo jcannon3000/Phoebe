@@ -1939,7 +1939,7 @@ function PrayerListCard({
   const visibleSubtitleKey = activeSlot.key;
 
   return (
-    <Link key={`${keyPrefix}-prayer-list`} href="/prayer-mode" className="block">
+    <Link key={`${keyPrefix}-prayer-list`} href="/prayer-start" className="block">
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
