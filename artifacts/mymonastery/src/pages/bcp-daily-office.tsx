@@ -1051,12 +1051,15 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             </p>
           ) : currentSlide.type === "canticle" && (currentSlide.metadata as { canticleChunkIndex?: unknown } | undefined)?.canticleChunkIndex !== undefined ? (
             // Chunked canticle slide — title slide already showed the
-            // big headline. Slim "Canticle 8" eyebrow so the reader
-            // doesn't lose place mid-rotation. Verses centered below.
+            // big headline. Slim eyebrow uses the canticle's own
+            // name ("The Song of Mary") instead of "Canticle 15" so
+            // the reader sees what they're saying, not just an index.
+            // The seeded title is shaped like "Canticle 15 — The Song
+            // of Mary"; we strip the "Canticle N — " prefix.
             (() => {
-              const meta = currentSlide.metadata as { canticleKey?: unknown } | undefined;
-              const key = typeof meta?.canticleKey === "string" ? meta.canticleKey : "";
-              const num = key.match(/canticle_(\d+)/)?.[1];
+              const fullTitle = currentSlide.title ?? "";
+              const stripped = fullTitle.replace(/^Canticle\s+\w+\s*[—-]\s*/i, "");
+              const eyebrowLabel = stripped.length > 0 ? stripped : (fullTitle || "Canticle");
               return (
                 <p
                   style={{
@@ -1068,7 +1071,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                     fontWeight: 600,
                   }}
                 >
-                  {num ? `Canticle ${num}` : "Canticle"}
+                  {eyebrowLabel}
                 </p>
               );
             })()
@@ -1255,7 +1258,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                             whiteSpace: "pre-wrap",
                           }}
                         >
-                          {ln.text}
+                          {/* Bind a trailing " *" caesura with a
+                              non-breaking space so the asterisk
+                              never wraps onto its own line when
+                              the first hemistich is too long for
+                              the viewport. */}
+                          {ln.text.replace(/ \*$/, " *")}
                         </p>
                       ))}
                     </div>
@@ -1304,6 +1312,47 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   {line.text}
                 </p>
               ))}
+            </div>
+          ) : currentSlide.type === "canticle" && currentSlide.content ? (
+            // Canticles render line-by-line so:
+            //   1) Indented continuation lines (the second hemistich
+            //      after the BCP `*` caesura) get a real paddingLeft
+            //      rather than just the 2 literal spaces from the
+            //      seed text, which collapsed visually under
+            //      pre-wrap.
+            //   2) The `*` caesura mark binds to the end of its
+            //      first hemistich via a non-breaking space, so it
+            //      can't get pushed onto a line by itself when the
+            //      first hemistich wraps.
+            //   3) Each source line is its own <p> block, so a long
+            //      first hemistich wrapping doesn't drag the * down
+            //      with weird whitespace under it.
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 600 }}>
+              {currentSlide.content.split("\n").map((raw, i) => {
+                if (raw.trim().length === 0) {
+                  return <div key={i} style={{ height: 8 }} />;
+                }
+                const indented = /^\s/.test(raw);
+                // Bind a trailing " *" so the caesura can't wrap
+                // onto its own line. Replace the last " *" only.
+                const text = raw.trimEnd().replace(/ \*$/, " *");
+                return (
+                  <p
+                    key={i}
+                    style={{
+                      fontSize: 17,
+                      lineHeight: 1.6,
+                      color: WARM_TEXT,
+                      margin: 0,
+                      paddingLeft: indented ? 32 : 0,
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    {text.replace(/^\s+/, "")}
+                  </p>
+                );
+              })}
             </div>
           ) : currentSlide.content ? (
             <p
