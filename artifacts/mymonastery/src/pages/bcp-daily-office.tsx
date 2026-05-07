@@ -699,7 +699,10 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             // /prayer-mode. CSS animation .title-glow-breathe pairs
             // a soft sage halo with the fade-up so the slide reads
             // as "you are crossing into something" rather than a
-            // navigation glitch.
+            // navigation glitch. Drops the previous minHeight: 240
+            // — the parent flex layout already vertically centers
+            // the slide body, so an inner minHeight just stacked
+            // 120px of empty space above the headline.
             <div
               style={{
                 display: "flex",
@@ -707,7 +710,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 alignItems: "center",
                 justifyContent: "center",
                 width: "100%",
-                minHeight: 240,
                 textAlign: "center",
                 gap: 16,
               }}
