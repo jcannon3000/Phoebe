@@ -171,17 +171,18 @@ export default function PrayerRequestDetailPage() {
     },
   });
 
-  // Match prayer-mode chrome — paint the WebView background to the
-  // slide bg, lock body scroll, play the opening swell + a medium
-  // haptic on arrival.
+  // Paint Safari/WebView background to the slide bg + play the opening
+  // swell + medium haptic on arrival. We do NOT lock body scroll here
+  // — the slideshow does because each slide fits in one viewport, but
+  // an owner viewing this deep-link page can have a long amen rail +
+  // words-of-comfort list that overflow. Locking body scroll trapped
+  // the user with no way to reach the bottom and no X-out either.
   useEffect(() => {
     const SLIDE_BG = "#0C1F12";
     const html = document.documentElement;
     const body = document.body;
-    const prevBodyOverflow = body.style.overflow;
     const prevBodyBg = body.style.backgroundColor;
     const prevHtmlBg = html.style.backgroundColor;
-    body.style.overflow = "hidden";
     body.style.backgroundColor = SLIDE_BG;
     html.style.backgroundColor = SLIDE_BG;
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -192,15 +193,20 @@ export default function PrayerRequestDetailPage() {
       window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } }));
     } catch { /* ignore */ }
     return () => {
-      body.style.overflow = prevBodyOverflow;
       body.style.backgroundColor = prevBodyBg;
       html.style.backgroundColor = prevHtmlBg;
       meta?.setAttribute("content", prevMeta);
     };
   }, []);
 
-  // ── Vertically-centered slide column ───────────────────────────────────
+  // ── Layout ──────────────────────────────────────────────────────────────
+  // The recipient view is short and stays vertically centered like a
+  // slideshow slide. The owner view can grow tall (amen rail + every
+  // word-of-comfort card) so it justifies to the top and scrolls
+  // naturally. Either way a fixed X in the top-right always provides
+  // a no-fail exit.
   const SLIDE_BG = "#0C1F12";
+  const isOwnerView = data?.viewerIsOwner === true;
 
   return (
     <div
@@ -210,17 +216,48 @@ export default function PrayerRequestDetailPage() {
         position: "relative",
       }}
     >
+      {/* Always-visible close — fixed position so it never scrolls
+          off, and high enough above any iOS notch / safe area that
+          the user can always reach it. Routes back to /dashboard. */}
+      <button
+        type="button"
+        onClick={() => setLocation("/dashboard")}
+        aria-label="Close"
+        style={{
+          position: "fixed",
+          top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+          right: 16,
+          zIndex: 100,
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          background: "rgba(46,107,64,0.18)",
+          border: "1px solid rgba(46,107,64,0.35)",
+          color: "#C8D4C0",
+          fontSize: 18,
+          fontFamily: "'Space Grotesk', sans-serif",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          lineHeight: 1,
+          padding: 0,
+        }}
+      >
+        ×
+      </button>
       <div
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
           maxWidth: 560,
           margin: "0 auto",
           minHeight: "100dvh",
-          // Center vertically — matches the slideshow's slide layout
-          // so the view reads as "you walked into the chapel," not
-          // "you opened a settings page."
-          justifyContent: "center",
-          paddingTop: "clamp(48px, 12dvh, 120px)",
+          // Recipient view stays vertically centered (single slide-
+          // shaped column). Owner view top-anchors so a long amen
+          // rail + every word-of-comfort can scroll naturally without
+          // pushing the body off the top of the screen.
+          justifyContent: isOwnerView ? "flex-start" : "center",
+          paddingTop: "clamp(64px, 14dvh, 140px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 56px)",
         }}
       >
