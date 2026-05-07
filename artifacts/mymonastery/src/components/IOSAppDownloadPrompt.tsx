@@ -14,9 +14,11 @@ import { useAuth } from "@/hooks/useAuth";
 //      Android users get no prompt because there's no Android build
 //      to point them at yet. Includes Chrome/Firefox on iOS (still iOS
 //      under the hood) and in-app browsers.
-//   2. Hidden if the viewer is signed in — useAuth resolves to a real
-//      user means they have an account already. The prompt is for new
-//      visitors evaluating whether to try Phoebe.
+//   2. Hidden until the viewer is signed in — useAuth resolves to a
+//      real user means they're an active user who'd benefit from the
+//      native shell (push notifications, smoother slideshow). Showing
+//      the prompt to anonymous visitors hadn't earned its keep — they
+//      hadn't yet decided whether to try Phoebe at all.
 //   3. Dismissible — `phoebe:ios-app-prompt-dismissed` localStorage
 //      key suppresses subsequent renders. Tapping the Download button
 //      also stamps the key (we did our job; don't re-prompt on return).
@@ -55,7 +57,7 @@ export function IOSAppDownloadPrompt() {
   useEffect(() => {
     if (!isIOSWeb()) return;
     if (isLoading) return; // wait for auth to resolve
-    if (user) return; // signed in → not the audience
+    if (!user) return;    // not signed in → not the audience yet
     try {
       if (localStorage.getItem(DISMISS_KEY) === "1") return;
     } catch { /* private mode — fall through to show */ }
