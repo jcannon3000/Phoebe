@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
-import { sendPrayerWordPush, sendFirstAmenPush, sendThirdAmenTodayPush, sendNewPrayerRequestPush } from "../lib/pushSender";
+import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -937,14 +937,12 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
       console.warn("[prayer/amen] first-amen push failed:", err);
     });
   }
-  if (thirdTodayFire) {
-    sendThirdAmenTodayPush(request.ownerId, {
-      prayerRequestId: id,
-      localYmd: ownerLocalYmd,
-    }).catch((err) => {
-      console.warn("[prayer/amen] third-amen push failed:", err);
-    });
-  }
+  // "3 people are praying for you today" push — disabled per user
+  // direction. The owner can still see their amen counts inside
+  // /prayer-requests/:id and /prayer-list; the lock-screen nudge
+  // was felt as noise. Leaving the `thirdTodayFire` calculation in
+  // place above so re-enabling later is a one-line change.
+  void thirdTodayFire;
 
   res.json({ ok: true });
 });
