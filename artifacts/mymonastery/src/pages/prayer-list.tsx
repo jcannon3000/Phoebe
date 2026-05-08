@@ -1527,7 +1527,7 @@ export default function PrayerListPage() {
 // asks whether the prayer is for the viewer themselves (→ personal
 // prayer request, same as homepage) or for someone else (→ route to
 // /pray-for/new which shows the friend picker + compose form).
-function PrayerListComposeBar() {
+export function PrayerListComposeBar() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [value, setValue] = useState("");

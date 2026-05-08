@@ -9,6 +9,7 @@ import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
+import { PrayerListComposeBar } from "@/pages/prayer-list";
 
 import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek, endOfWeek, addWeeks, differenceInCalendarDays } from "date-fns";
 
@@ -2022,6 +2023,70 @@ function PrayerOfficeCard() {
   );
 }
 
+// ── ActiveRequestsCard — your own active asks + amen total + compose ──
+//
+// Sits under PrayerOfficeCard. Reads the viewer's active prayer
+// requests (own + non-answered + non-closed + non-expired) and shows:
+//   1. "You have N active prayer request(s)"
+//   2. "Prayed M times so far" (sum of amenCountTotal across the
+//      requests; the server only populates that field for the owner).
+//   3. The same compose bar /prayer-list uses, so they can drop a
+//      new ask in two taps.
+//
+// Empty state (no active own requests): card still renders so the
+// compose bar stays visible — a short prompt replaces the count line.
+function ActiveRequestsCard({
+  activeCount,
+  prayedTotal,
+}: {
+  activeCount: number;
+  prayedTotal: number;
+}) {
+  const headline = activeCount === 0
+    ? "Share something on your heart"
+    : activeCount === 1
+      ? "You have 1 active prayer request"
+      : `You have ${activeCount} active prayer requests`;
+  const sub = activeCount === 0
+    ? "Your community will hold it."
+    : prayedTotal === 0
+      ? "Waiting for the first amen."
+      : prayedTotal === 1
+        ? "Prayed for 1 time so far."
+        : `Prayed for ${prayedTotal} times so far.`;
+  return (
+    <div className="mt-3">
+      <div
+        className="rounded-2xl px-5 pt-5 pb-1"
+        style={{
+          background: "rgba(46,107,64,0.18)",
+          border: "1px solid rgba(46,107,64,0.4)",
+        }}
+      >
+        <p
+          className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2"
+          style={{ color: "rgba(143,175,150,0.65)", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          🙏🏽 Your prayers
+        </p>
+        <h3
+          className="text-xl font-bold"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {headline}
+        </h3>
+        <p
+          className="text-sm mt-1 mb-4"
+          style={{ color: "rgba(168,197,160,0.85)", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {sub}
+        </p>
+        <PrayerListComposeBar />
+      </div>
+    </div>
+  );
+}
+
 // ── PrayerListCarousel — vertical Prayer List peek ──────────────────────
 //
 // Vertical stack of full-width cards, identical layout to RequestCard
@@ -3227,6 +3292,11 @@ export default function Dashboard() {
     // they engaged with previously doesn't reappear as "new" tomorrow
     // morning when myAmenedToday flips back to false.
     myAmenedEver?: boolean;
+    // Total times THIS request has been prayed for (deduped per-user-
+    // per-day). Server only populates this for the request's owner.
+    // Used by ActiveRequestsCard to roll up "prayed N times" across
+    // the viewer's own active requests.
+    amenCountTotal?: number | null;
   };
   type DashPrayerFor = {
     id: number; expired: boolean; expiresAt: string;
@@ -4013,6 +4083,24 @@ export default function Dashboard() {
               const key = `req-${r.ownerId ?? r.id}`;
               addFace(key, r.ownerName ?? "Someone", r.ownerAvatarUrl ?? null);
             }
+            // Roll-up of the viewer's own active prayer requests for
+            // ActiveRequestsCard. "Active" = not answered, not closed,
+            // and (if expiresAt is set) not past the expiry. The owner
+            // continues to see expired-but-not-closed requests, but
+            // for this card we want the meaningful "asks the community
+            // is currently carrying" count.
+            const ownActive = (dashPrayerRequests ?? []).filter((r) => {
+              if (!r.isOwnRequest) return false;
+              if (r.isAnswered) return false;
+              if (r.closedAt) return false;
+              if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+              return true;
+            });
+            const ownActiveCount = ownActive.length;
+            const ownPrayedTotal = ownActive.reduce(
+              (sum, r) => sum + (typeof r.amenCountTotal === "number" ? r.amenCountTotal : 0),
+              0,
+            );
             return (
               <>
                 {newPrayersCount > 0 && (
@@ -4023,6 +4111,10 @@ export default function Dashboard() {
                 <div className="mt-3">
                   <PrayerOfficeCard />
                 </div>
+                <ActiveRequestsCard
+                  activeCount={ownActiveCount}
+                  prayedTotal={ownPrayedTotal}
+                />
               </>
             );
           })()}
