@@ -8,6 +8,7 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { HomeAuthoringFAB } from "@/pages/dashboard";
+import { usePrayerSession } from "@/hooks/usePrayerSession";
 import type { PrayerForMe, MyActivePrayerFor } from "@/components/pray-for-them";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -1054,6 +1055,14 @@ export default function PrayerListPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
+  // Mark "this user opened their prayer list" as a prayer event for
+  // the community metrics dashboard's Times-prayed rollup. The
+  // surface is exempt from the 5-second floor server-side, so a
+  // glance-and-back still records. usePrayerSession also tracks the
+  // duration so longer dwell times feed the Time-praying rollup
+  // through prayer_sessions.
+  usePrayerSession(user ? "prayer-list" : null);
 
   const { data: momentsData } = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],

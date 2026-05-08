@@ -33,7 +33,11 @@ export type PrayerSurface =
   | "morning-prayer"
   | "evening-prayer"
   | "morning-devotion"
-  | "early-evening-devotion";
+  | "early-evening-devotion"
+  // "prayer-list" — opening the manage prayer list page counts as a
+  // prayer event for the metrics dashboard. Server exempts this
+  // surface from the 5-second floor so a glance still records.
+  | "prayer-list";
 
 export function usePrayerSession(surface: PrayerSurface | null | undefined) {
   // Refs so the visibility / unload handlers always read the live

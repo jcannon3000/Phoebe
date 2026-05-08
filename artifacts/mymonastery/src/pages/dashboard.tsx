@@ -2027,13 +2027,12 @@ function PrayerOfficeCard() {
             View
           </Link>
         </div>
-        {/* Headline + streak pill inline. Streak is a small pill
-            (same shape as View, warmer accent color) sitting at the
-            right edge of the headline row. mt-2 gives breathing room
-            between the View pill above and the streak below them.
-            Hidden when 0 to avoid a lonely zero on a brand-new
-            account. */}
-        <div className="flex items-center justify-between gap-2 mt-2">
+        {/* Headline + streak pill inline. Tight against the eyebrow
+            row above (no top margin) so the card stays compact;
+            View pill and streak pill won't be vertically aligned but
+            that's fine — the visual rhythm reads as eyebrow → big
+            line → subtitle. Streak hidden when 0. */}
+        <div className="flex items-center justify-between gap-2">
           <p
             className="text-base font-semibold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2055,7 +2054,7 @@ function PrayerOfficeCard() {
           )}
         </div>
         <p
-          className="text-sm mt-1"
+          className="text-sm"
           style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
         >
           From the Book of Common Prayer
@@ -2310,6 +2309,29 @@ function PrayerListCarousel({
           />
         )}
       </div>
+
+      {/* "Pray through the whole list →" — same CTA the manage
+          prayer list page surfaces. Sits below the carousel so a
+          user who wants to walk every request has a one-tap entrance
+          right under what they were just browsing. ?reset=1 starts
+          the slideshow from slide 0 and bypasses the alreadyPrayed
+          skip, so this is a real do-over even if they prayed earlier
+          today. */}
+      <Link
+        href="/prayer-mode?reset=1"
+        className="block mt-4 rounded-xl px-4 py-3 transition-opacity hover:opacity-90"
+        style={{
+          background: "rgba(46,107,64,0.18)",
+          border: "1px solid rgba(46,107,64,0.4)",
+          textAlign: "center",
+          color: "#F0EDE6",
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: 14,
+          fontWeight: 600,
+        }}
+      >
+        🕯️ Pray through the whole list →
+      </Link>
     </div>
   );
 }

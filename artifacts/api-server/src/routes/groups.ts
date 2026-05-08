@@ -692,6 +692,21 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
                to_char((lr.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
         FROM lectio_reflections lr
         WHERE lr.user_id IN (SELECT user_id FROM members)
+
+        UNION
+
+        -- Opening /prayer-list counts as a prayer event for that
+        -- user-day. Source rows are prayer_sessions writes with
+        -- surface = 'prayer-list' (exempt from the 5s floor on
+        -- POST /api/prayer-sessions, so a glance-and-back still
+        -- records). DISTINCT happens via the UNION + the prayer_days
+        -- CTE below, so multiple opens in one day collapse to a
+        -- single event.
+        SELECT ps.user_id,
+               to_char((ps.ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_sessions ps
+        WHERE ps.user_id IN (SELECT user_id FROM members)
+          AND ps.surface = 'prayer-list'
       ),
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM prayer_events

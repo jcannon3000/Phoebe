@@ -22,6 +22,10 @@ export const prayerSurfaces = [
   "evening-prayer",
   "morning-devotion",
   "early-evening-devotion",
+  // Just opening /prayer-list counts as "praying" for the metrics
+  // dashboard's Times-prayed rollup. Visit rows are exempt from the
+  // 5-second minimum so a brief glance still records.
+  "prayer-list",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

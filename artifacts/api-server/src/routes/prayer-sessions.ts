@@ -42,7 +42,10 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Unknown surface" });
     return;
   }
-  if (durationSeconds < MIN_SESSION_SECONDS) {
+  // surface = "prayer-list" is exempt from the floor: it's a visit
+  // event ("you opened your prayer list"), not a duration-tracked
+  // prayer surface. A glance-and-back is the whole point.
+  if (surface !== "prayer-list" && durationSeconds < MIN_SESSION_SECONDS) {
     // Drop silently — too short to count as a real prayer session.
     res.json({ ok: true, recorded: false, reason: "below-floor" });
     return;
