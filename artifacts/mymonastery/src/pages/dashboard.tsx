@@ -2008,7 +2008,7 @@ function PrayerOfficeCard() {
         border: "1px solid rgba(46,107,64,0.20)",
       }}
     >
-      <div className="flex-1 px-4 pt-3 pb-3">
+      <div className="flex-1 px-4 pt-2 pb-3">
         <div className="flex items-start justify-between gap-2">
           <p
             className="text-[11px] font-semibold uppercase tracking-widest"
@@ -2029,12 +2029,14 @@ function PrayerOfficeCard() {
             View
           </Link>
         </div>
-        {/* Headline + streak pill inline. Tight against the eyebrow
-            row above (no top margin) so the card stays compact;
-            View pill and streak pill won't be vertically aligned but
-            that's fine — the visual rhythm reads as eyebrow → big
-            line → subtitle. Streak hidden when 0. */}
-        <div className="flex items-center justify-between gap-2">
+        {/* Headline (top-aligned) + streak pill (pushed down with
+            mt-2). items-start lets the two columns sit at different
+            vertical heights — the headline rides the top of the row
+            so it's tight against the eyebrow above; the streak sits
+            lower so it doesn't compete with the View pill above it.
+            mb-2 on the row gives breathing room below the streak
+            before the subtitle. Streak hidden when 0. */}
+        <div className="flex items-start justify-between gap-2 mb-2">
           <p
             className="text-base font-semibold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2043,7 +2045,7 @@ function PrayerOfficeCard() {
           </p>
           {officeStreak > 0 && (
             <span
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0 mt-2"
               style={{
                 background: "rgba(168,197,160,0.12)",
                 color: "rgba(168,197,160,0.95)",
@@ -2093,7 +2095,12 @@ function PrayerOfficeCard() {
               textUnderlineOffset: 3,
             }}
           >
-            or pray {bigIsOffice ? "the " : "the full "}{smallLabel}
+            {/* When the small link is the OFFICE form (i.e. the user
+                last prayed a Devotion), call it "Morning/Evening
+                Prayer Office" so it's clear it's the full BCP office,
+                not the short Devotion. When the small is the
+                Devotion, the existing label is unambiguous. */}
+            or pray {bigIsOffice ? `the ${smallLabel}` : `the full ${smallLabel} Office`}
           </span>
         </Link>
       </div>
