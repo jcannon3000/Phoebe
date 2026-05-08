@@ -2014,40 +2014,46 @@ function PrayerOfficeCard() {
           >
             {eyebrow}
           </p>
-          <Link
-            href="/offices"
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80"
-            style={{
-              background: "rgba(46,107,64,0.22)",
-              color: "#A8C5A0",
-              border: "1px solid rgba(46,107,64,0.4)",
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            View
-          </Link>
-        </div>
-        {/* Headline + streak chip inline. Streak is just the flame +
-            number (no "day"/"days" word) so the chip stays compact
-            and reads as a small status indicator next to the title.
-            Hidden when 0 to avoid a lonely zero on a brand-new
-            account. */}
-        <div className="flex items-center justify-between gap-2 mt-0.5">
-          <p
-            className="text-base font-semibold"
-            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-          >
-            Pray with your community
-          </p>
-          {officeStreak > 0 && (
-            <span
-              className="text-[12px] font-semibold tabular-nums shrink-0"
-              style={{ color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif" }}
+          {/* View pill + streak pill stacked vertically. Both share
+              the same dimensions (text size, padding, min-width) so
+              the streak reads as a sibling badge to View, not a
+              loose chip. Streak hidden when 0. */}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <Link
+              href="/offices"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center transition-opacity hover:opacity-80"
+              style={{
+                background: "rgba(46,107,64,0.22)",
+                color: "#A8C5A0",
+                border: "1px solid rgba(46,107,64,0.4)",
+                fontFamily: "'Space Grotesk', sans-serif",
+                minWidth: 60,
+              }}
             >
-              🔥 {officeStreak}
-            </span>
-          )}
+              View
+            </Link>
+            {officeStreak > 0 && (
+              <span
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums"
+                style={{
+                  background: "rgba(168,197,160,0.12)",
+                  color: "rgba(168,197,160,0.95)",
+                  border: "1px solid rgba(168,197,160,0.3)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  minWidth: 60,
+                }}
+              >
+                🔥 {officeStreak}
+              </span>
+            )}
+          </div>
         </div>
+        <p
+          className="text-base font-semibold mt-0.5"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+        >
+          Pray with your community
+        </p>
         <p
           className="text-sm mt-1"
           style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
