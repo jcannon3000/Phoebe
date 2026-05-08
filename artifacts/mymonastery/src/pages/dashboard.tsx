@@ -2022,15 +2022,13 @@ function PrayerOfficeCard() {
   );
 }
 
-// ── PrayerListCarousel — horizontal-scroll Prayer List peek ──────────
+// ── PrayerListCarousel — vertical Prayer List peek ──────────────────────
 //
-// Cards mirror the layout of RequestCard on /prayer-list exactly:
-// avatar on the left, eyebrow + body in the right column. Each card
-// is wide enough to fit that row comfortably, with ~3.5 visible on a
-// phone-width viewport and a right-edge mask gradient for the fade.
-// Sits AFTER the Upcoming section so it reads as a peek into a
-// different surface (the management list) rather than as another
-// daily-action bucket.
+// Vertical stack of full-width cards, identical layout to RequestCard
+// on /prayer-list (avatar | eyebrow + body). Clamped to ~3.5 card rows
+// with a bottom fade so the user can see there's more below — same
+// pattern SectionShell uses on the prayer-list page. "View all →" in
+// the title row links into the full management surface.
 type PrayerListCarouselRow = {
   id: number;
   body: string;
@@ -2051,13 +2049,19 @@ function PrayerListCarousel({
 }) {
   if (requests.length === 0) return null;
 
+  // ~3.5 card rows. Each card is roughly 72-80px tall with vertical
+  // gap; 280px lands around 3 full + half-row peek. Fade gradient
+  // sits on top so the partial card reads as "more below" instead of
+  // a hard cutoff.
+  const CLAMP = 280;
+  const overflowing = requests.length > 3;
+
   const initials = (name: string) =>
     name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
   return (
     <div className="mt-8">
-      {/* Title row: "Prayer List" left, "View all →" right linking to
-          /prayer-list. */}
+      {/* Title row: "Prayer List" left, "View all →" right. */}
       <div className="flex items-center justify-between mb-3 px-1">
         <h3
           className="text-base font-semibold"
@@ -2074,20 +2078,20 @@ function PrayerListCarousel({
         </Link>
       </div>
 
-      {/* Negative margins extend the scroll surface to the viewport
-          edges so the right-side fade reaches all the way out. The
-          mask gradient fades the rightmost ~12% of the visible strip,
-          giving the half-card peek the "scroll for more" affordance. */}
-      <div
-        className="overflow-x-auto -mx-4 px-4 pb-1"
-        style={{
-          scrollSnapType: "x proximity",
-          WebkitOverflowScrolling: "touch",
-          maskImage: "linear-gradient(to right, black 0, black 88%, transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to right, black 0, black 88%, transparent 100%)",
-        }}
-      >
-        <div className="flex gap-3" style={{ width: "max-content" }}>
+      <div style={{ position: "relative" }}>
+        <div
+          className="space-y-2"
+          style={
+            overflowing
+              ? {
+                  maxHeight: CLAMP,
+                  overflowY: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  paddingBottom: 8,
+                }
+              : undefined
+          }
+        >
           {requests.map((req) => {
             const displayName = req.isAnonymous
               ? "Anonymous"
@@ -2097,19 +2101,7 @@ function PrayerListCarousel({
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));
             const eyebrow = req.isOwnRequest ? "Your request" : `From ${displayName}`;
             return (
-              <Link
-                key={req.id}
-                href={`/prayer-requests/${req.id}`}
-                className="block shrink-0"
-                style={{
-                  // 320px keeps the avatar + content in a single row
-                  // (matching /prayer-list) while leaving room for ~3
-                  // full cards + a half-card peek on a 393px-wide
-                  // phone with the page padding accounted for.
-                  width: 320,
-                  scrollSnapAlign: "start",
-                }}
-              >
+              <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -2122,8 +2114,6 @@ function PrayerListCarousel({
                 >
                   <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
                   <div className="flex-1 px-4 pt-3 pb-3">
-                    {/* Single-row layout matching RequestCard on
-                        /prayer-list: avatar | (eyebrow + body). */}
                     <div className="flex items-center gap-3">
                       {displayAvatar ? (
                         <img
@@ -2161,6 +2151,15 @@ function PrayerListCarousel({
             );
           })}
         </div>
+        {/* Bottom fade — only when overflowing. Same gradient + page bg
+            color the /prayer-list SectionShell uses, so the visual
+            language of "more below" is identical across surfaces. */}
+        {overflowing && (
+          <div
+            className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
+          />
+        )}
       </div>
     </div>
   );
