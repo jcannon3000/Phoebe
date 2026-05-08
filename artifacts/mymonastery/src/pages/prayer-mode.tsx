@@ -1437,11 +1437,12 @@ export default function PrayerModePage() {
 
   // Reciprocity rule: others' prayer requests are only surfaced to
   // viewers who have an open prayer request of their own. The slideshow
-  // is meant to feel like a circle of mutual intercession — viewers who
-  // don't share their own asks shouldn't be on the receiving end of
-  // others'. Computed up front so the slides[] spread can gate the
-  // request section on it; the same flag still drives the trailing
-  // "ask-request" slide further below for viewers with no active ask.
+  // The reciprocity rule that used to gate the request section is
+  // gone — anyone in a community sees their group's prayer requests
+  // regardless of whether they've shared one of their own. We still
+  // compute hasActiveOwnRequest because the trailing "ask-request"
+  // slide (a soft nudge to share something) only fires for viewers
+  // without an active ask, and that part of the UX is intentional.
   const hasActiveOwnRequest = prayerRequests.some(
     (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
   );
@@ -1549,42 +1550,40 @@ export default function PrayerModePage() {
     }))),
     // Other people's prayer requests come before the user's own private
     // prayers-for — hearing others first, then turning inward. We
-    // deliberately exclude the viewer's own requests; they don't need to
-    // be shown their own ask as a slide to pray for. Gated on
-    // `hasActiveOwnRequest` (computed above): viewers without an open
-    // ask of their own skip this section entirely and instead see the
-    // trailing "ask-request" slide nudging them to participate.
-    ...(hasActiveOwnRequest
-      ? prayerRequests
-          .filter((r) => {
-            if (r.isAnswered) return false;
-            // Default-kind own requests stay out of the slideshow — the
-            // viewer doesn't need their own personal ask as a slide to
-            // pray for. But Justice and Life-event are intentions the
-            // author explicitly wants their community (themselves
-            // included) to carry, so we keep them in.
-            if (r.isOwnRequest && (!r.kind || r.kind === "request")) return false;
-            // Defense in depth: the personal feed already drops others'
-            // expired requests at the SQL layer, but a stale cache (e.g.
-            // an expiry crossing while the user is mid-session) could let
-            // one slip through. Skip it so it never appears as a slide.
-            if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
-            return true;
-          })
-          .map((r): PrayerSlide => ({
-            kind: "request",
-            text: r.body,
-            // Avatar + name render in-slide now; keep attribution empty so
-            // we don't duplicate "from Name" under the body.
-            attribution: "",
-            requestId: r.id,
-            myWord: r.myWord ?? null,
-            authorName: r.ownerName ?? null,
-            authorAvatarUrl: r.ownerAvatarUrl ?? null,
-            requestKind: r.kind ?? null,
-            alreadyPrayedToday: r.myAmenedToday === true,
-          }))
-      : []),
+    // deliberately exclude the viewer's own default-kind requests;
+    // they don't need to be shown their own ask as a slide to pray for.
+    // The reciprocity gate that used to skip this whole section for
+    // viewers without their own active ask is gone — anyone sees the
+    // group's requests.
+    ...prayerRequests
+      .filter((r) => {
+        if (r.isAnswered) return false;
+        // Default-kind own requests stay out of the slideshow — the
+        // viewer doesn't need their own personal ask as a slide to
+        // pray for. But Justice and Life-event are intentions the
+        // author explicitly wants their community (themselves
+        // included) to carry, so we keep them in.
+        if (r.isOwnRequest && (!r.kind || r.kind === "request")) return false;
+        // Defense in depth: the personal feed already drops others'
+        // expired requests at the SQL layer, but a stale cache (e.g.
+        // an expiry crossing while the user is mid-session) could let
+        // one slip through. Skip it so it never appears as a slide.
+        if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+        return true;
+      })
+      .map((r): PrayerSlide => ({
+        kind: "request",
+        text: r.body,
+        // Avatar + name render in-slide now; keep attribution empty so
+        // we don't duplicate "from Name" under the body.
+        attribution: "",
+        requestId: r.id,
+        myWord: r.myWord ?? null,
+        authorName: r.ownerName ?? null,
+        authorAvatarUrl: r.ownerAvatarUrl ?? null,
+        requestKind: r.kind ?? null,
+        alreadyPrayedToday: r.myAmenedToday === true,
+      })),
     ...activePrayersFor.map((p): PrayerSlide => {
       // Calendar-day diff so a prayer started yesterday evening reads "Day 2"
       // this morning rather than still "Day 1".

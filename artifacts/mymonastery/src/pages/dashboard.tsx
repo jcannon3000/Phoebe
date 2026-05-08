@@ -3012,18 +3012,11 @@ export default function Dashboard() {
   // right now. Same computation the invite-popup uses, but memoized so the
   // dashboard can show it on a fallback card regardless of whether the
   // popup fires.
-  // Reciprocity gate: others' prayer requests are only surfaced to
-  // viewers who have an open prayer request of their own. The slideshow
-  // (prayer-mode.tsx) already enforces this — mirroring it here keeps
-  // the dashboard count, avatars, and red-dot signal in sync with what
-  // the slideshow will actually render. A viewer with no active ask
-  // sees no requests in the slideshow and shouldn't see them counted /
-  // dotted on the home card either.
-  const hasActiveOwnRequest = useMemo(() => {
-    return (dashPrayerRequests ?? []).some(
-      r => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
-    );
-  }, [dashPrayerRequests]);
+  // (Reciprocity gate removed — anyone in a community sees their
+  // group's prayer requests, regardless of whether they've shared
+  // one of their own. Prayer for others is a virtue without
+  // precondition; the gate was preventing new joiners from seeing
+  // active prayers in groups they'd just joined.)
 
   const pendingPrayerCount = useMemo(() => {
     const moments = momentsData?.moments ?? [];
@@ -3039,17 +3032,19 @@ export default function Dashboard() {
       const intentions = gid ? (intentionCountByGroup.get(gid) ?? 0) : 0;
       activeIntercessions += intentions > 0 ? intentions : 1;
     }
-    // Reciprocity-gated: viewers without an active own ask do not see
-    // others' requests in the slideshow, so they shouldn't be counted
-    // here either.
-    const othersRequests = hasActiveOwnRequest
-      ? (dashPrayerRequests ?? []).filter(
-          r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
-        ).length
-      : 0;
+    // Reciprocity gate dropped per user direction — anyone in a
+    // community sees their group's prayer requests on the home
+    // screen, regardless of whether they've shared one of their own.
+    // The "you have to share to see others'" rule was making the
+    // home read as empty for new joiners whose group already had
+    // active prayers; they couldn't tell whether the silence was
+    // theirs or the system's.
+    const othersRequests = (dashPrayerRequests ?? []).filter(
+      r => !r.isAnswered && !r.isOwnRequest && !r.closedAt,
+    ).length;
     const activePrayersFor = countActivePrayersFor(dashPrayersFor);
     return activeIntercessions + othersRequests + activePrayersFor;
-  }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor, hasActiveOwnRequest]);
+  }, [momentsData, dashCircleIntentions, dashPrayerRequests, dashPrayersFor]);
 
   // Count of open prayer requests from others that the viewer has
   // never amened. Drives the "X new prayers" subtitle rotation and
@@ -3057,14 +3052,13 @@ export default function Dashboard() {
   // myAmenedToday so a request the user already engaged with stays
   // "not new" forever — otherwise every prayer reappears as "new"
   // each morning when myAmenedToday resets at midnight in the user's
-  // tz, which is the bug they reported. Still reciprocity-gated to
-  // match the slideshow.
+  // tz, which is the bug they reported. Reciprocity gate dropped —
+  // see pendingPrayerCount note above.
   const newPrayersCount = useMemo(() => {
-    if (!hasActiveOwnRequest) return 0;
     return (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
     ).length;
-  }, [dashPrayerRequests, hasActiveOwnRequest]);
+  }, [dashPrayerRequests]);
 
   // Detect new unread letters. Runs once per session. The localStorage key
   // stores the *set* of correspondence ids that were already shown unread
@@ -3632,12 +3626,9 @@ export default function Dashboard() {
             // Up to 3 avatars of people whose prayers are in the
             // viewer's slideshow today. Source: non-own open prayer
             // request authors + active prayers-for recipients.
-            // Deduped, cap 3. Prayer-request authors are gated on
-            // `hasActiveOwnRequest` so the avatar stack mirrors the
-            // slideshow's reciprocity rule — a viewer with no own ask
-            // sees no request slides, so we don't tease faces here
-            // either. Prayers-for recipients are unaffected by the
-            // gate (they're a private practice, not communal).
+            // Deduped, cap 3. The reciprocity gate that used to hide
+            // these faces from users without an own ask is gone —
+            // anyone in the community sees who's asking for prayer.
             type Face = { key: string; name: string; avatarUrl: string | null };
             const faces: Face[] = [];
             const seenSource = new Set<string>();
@@ -3661,12 +3652,10 @@ export default function Dashboard() {
               seenIdentity.add(identity);
               faces.push({ key, name, avatarUrl });
             };
-            if (hasActiveOwnRequest) {
-              for (const r of dashPrayerRequests ?? []) {
-                if (r.isAnswered || r.isOwnRequest || r.closedAt || r.isAnonymous) continue;
-                const key = `req-${r.ownerId ?? r.id}`;
-                addFace(key, r.ownerName ?? "Someone", r.ownerAvatarUrl ?? null);
-              }
+            for (const r of dashPrayerRequests ?? []) {
+              if (r.isAnswered || r.isOwnRequest || r.closedAt || r.isAnonymous) continue;
+              const key = `req-${r.ownerId ?? r.id}`;
+              addFace(key, r.ownerName ?? "Someone", r.ownerAvatarUrl ?? null);
             }
             for (const p of dashPrayersFor ?? []) {
               if (p.expired) continue;
