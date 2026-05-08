@@ -2029,19 +2029,21 @@ function PrayerOfficeCard() {
             View
           </Link>
         </div>
-        {/* Headline + streak row, fully condensed: streak sits at the
-            top of its row (no mt), no bottom margin — the subtitle
-            sits flush below. Card now reads as a tight stack. */}
+        {/* Headline + streak row + subtitle, all tight. leading-tight
+            on the headline kills the line-height padding that was
+            opening a gap before the subtitle. Streak pill is items-
+            start so it sits at the top of the row, flush against the
+            eyebrow. */}
         <div className="flex items-start justify-between gap-2">
           <p
-            className="text-base font-semibold"
+            className="text-base font-semibold leading-tight"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
           >
             Pray with your community
           </p>
           {officeStreak > 0 && (
             <span
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0"
+              className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full text-center tabular-nums shrink-0 leading-tight"
               style={{
                 background: "rgba(168,197,160,0.12)",
                 color: "rgba(168,197,160,0.95)",
@@ -2054,7 +2056,7 @@ function PrayerOfficeCard() {
           )}
         </div>
         <p
-          className="text-sm"
+          className="text-sm leading-tight"
           style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
         >
           From the Book of Common Prayer
