@@ -251,7 +251,23 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         How many times your community has prayed Morning / Evening
         Prayer or a Daily Devotion. Each completed session counts.
       </p>
-      <OfficesRow offices={data.offices} />
+      {/* Defensive default: if the API server is on an older build
+          (Railway redeploy lag, or a region not yet rolled out) the
+          response may not carry the `offices` block. Fill in zeros
+          so the dashboard still renders instead of crashing on
+          undefined property access. */}
+      <OfficesRow
+        offices={data.offices ?? {
+          morningPrayer: { today: 0, thisWeek: 0, thisMonth: 0 },
+          morningDevotion: { today: 0, thisWeek: 0, thisMonth: 0 },
+          eveningPrayer: { today: 0, thisWeek: 0, thisMonth: 0 },
+          eveningDevotion: { today: 0, thisWeek: 0, thisMonth: 0 },
+          secondsToday: 0,
+          secondsThisWeek: 0,
+          secondsThisMonth: 0,
+          secondsTotal: 0,
+        }}
+      />
 
       {/* Prayer requests */}
       <SectionHeader label="Prayer requests" />
@@ -347,27 +363,36 @@ function StatTextTile({ label, value }: { label: string; value: string }) {
 // separate aggregate field for this.
 function OfficesRow({ offices }: { offices: OfficesMetrics }) {
   const [expanded, setExpanded] = useState(false);
+  // Defensive fill so a partial API response (e.g. server still
+  // rolling out the new fields) doesn't crash the page. Each office
+  // counts block is read three times below, so wrapping the access
+  // here keeps the JSX clean.
+  const empty: OfficeWindowCounts = { today: 0, thisWeek: 0, thisMonth: 0 };
+  const morningPrayer = offices.morningPrayer ?? empty;
+  const morningDevotion = offices.morningDevotion ?? empty;
+  const eveningPrayer = offices.eveningPrayer ?? empty;
+  const eveningDevotion = offices.eveningDevotion ?? empty;
   const sumToday =
-    offices.morningPrayer.today +
-    offices.morningDevotion.today +
-    offices.eveningPrayer.today +
-    offices.eveningDevotion.today;
+    morningPrayer.today +
+    morningDevotion.today +
+    eveningPrayer.today +
+    eveningDevotion.today;
   const sumWeek =
-    offices.morningPrayer.thisWeek +
-    offices.morningDevotion.thisWeek +
-    offices.eveningPrayer.thisWeek +
-    offices.eveningDevotion.thisWeek;
+    morningPrayer.thisWeek +
+    morningDevotion.thisWeek +
+    eveningPrayer.thisWeek +
+    eveningDevotion.thisWeek;
   const sumMonth =
-    offices.morningPrayer.thisMonth +
-    offices.morningDevotion.thisMonth +
-    offices.eveningPrayer.thisMonth +
-    offices.eveningDevotion.thisMonth;
+    morningPrayer.thisMonth +
+    morningDevotion.thisMonth +
+    eveningPrayer.thisMonth +
+    eveningDevotion.thisMonth;
 
   const rows: Array<{ label: string; counts: OfficeWindowCounts }> = [
-    { label: "Morning Prayer", counts: offices.morningPrayer },
-    { label: "Morning Devotion", counts: offices.morningDevotion },
-    { label: "Evening Prayer", counts: offices.eveningPrayer },
-    { label: "Evening Devotion", counts: offices.eveningDevotion },
+    { label: "Morning Prayer", counts: morningPrayer },
+    { label: "Morning Devotion", counts: morningDevotion },
+    { label: "Evening Prayer", counts: eveningPrayer },
+    { label: "Evening Devotion", counts: eveningDevotion },
   ];
 
   return (
@@ -464,13 +489,13 @@ function OfficesRow({ offices }: { offices: OfficesMetrics }) {
               Total time
             </span>
             <span className="text-[12px] tabular-nums text-right" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
-              {formatPrayingDuration(offices.secondsToday)}
+              {formatPrayingDuration(offices.secondsToday ?? 0)}
             </span>
             <span className="text-[12px] tabular-nums text-right" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
-              {formatPrayingDuration(offices.secondsThisWeek)}
+              {formatPrayingDuration(offices.secondsThisWeek ?? 0)}
             </span>
             <span className="text-[12px] tabular-nums text-right" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
-              {formatPrayingDuration(offices.secondsThisMonth)}
+              {formatPrayingDuration(offices.secondsThisMonth ?? 0)}
             </span>
           </div>
         </div>
