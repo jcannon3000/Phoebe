@@ -68,6 +68,16 @@ const DAILY_BELL_HOUR = 7;
 const DAILY_BELL_MINUTE = 0;
 
 export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // Daily slideshow push is OFF per user direction — the slideshow is
+  // no longer the daily ritual; users open the app to respond to
+  // their community's requests + optionally pray an office.
+  // Office reminder pushes (per-user opt-in for Morning / Evening
+  // Prayer or the Devotion) live in their own runner. Returning
+  // early here keeps the rest of the bell scheduler (renewal nudge,
+  // letter delivery, etc.) running without firing the slideshow
+  // push that we no longer want.
+  if (!opts.forceNow) return;
+
   // Single bell for all users now. Climate-enrolled users used to be
   // disjoined here so a parallel runClimateDailySender could fire a
   // climate-themed push at the same slot, but Phoebe Climate has
@@ -757,13 +767,19 @@ function isWithinTickWindow(
 }
 
 export async function runParishOfficeReminderSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  if (!PHOEBE_PARISH_ENABLED) return;
+  // Generalized — fires for any user with at least one non-"none"
+  // office pref, regardless of whether they're in a parish. The
+  // column names still carry the parish_office_ prefix because they
+  // were originally added for the parish tier; renaming them would
+  // be a migration cost we don't need yet. Functionally these are
+  // the user's office-reminder prefs full stop. When a parish is
+  // attached we use parish title + timezone in the push; otherwise
+  // we fall back to "your community" + the user's own timezone.
   try {
-    // Pull every parish-only user with at least one non-"none" pref.
-    // Bail fast if there are no candidates.
     const rows = await db
       .select({
         userId: usersTable.id,
+        userTimezone: usersTable.timezone,
         morningPref: usersTable.parishOfficeMorningPref,
         eveningPref: usersTable.parishOfficeEveningPref,
         morningTime: usersTable.parishOfficeMorningTime,
@@ -774,16 +790,16 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
         parishTimezone: prayerFeedsTable.timezone,
       })
       .from(usersTable)
-      .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, usersTable.parishFeedId))
-      .where(and(
-        isNotNull(usersTable.parishFeedId),
+      .leftJoin(prayerFeedsTable, and(
+        eq(prayerFeedsTable.id, usersTable.parishFeedId),
         eq(prayerFeedsTable.kind, "parish"),
-        sql`(${usersTable.parishOfficeMorningPref} != 'none' OR ${usersTable.parishOfficeEveningPref} != 'none')`,
-      ));
+      ))
+      .where(sql`(${usersTable.parishOfficeMorningPref} != 'none' OR ${usersTable.parishOfficeEveningPref} != 'none')`);
 
     for (const r of rows) {
-      const tz = r.parishTimezone || "America/New_York";
+      const tz = r.parishTimezone || r.userTimezone || "America/New_York";
       const today = todayInZone(tz);
+      const communityTitle = r.parishTitle ?? "your community";
 
       // Morning side
       if (r.morningPref !== "none" && r.morningSentDate !== today) {
@@ -793,14 +809,14 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
             await sendParishOfficeReminderPush(r.userId, {
               side: "morning",
               pref: r.morningPref as "office" | "devotion",
-              parishTitle: r.parishTitle ?? "your parish",
+              parishTitle: communityTitle,
             });
             await db
               .update(usersTable)
               .set({ parishOfficeMorningSentDate: today })
               .where(eq(usersTable.id, r.userId));
           } catch (err) {
-            logger.warn({ err, userId: r.userId }, "[parish-office] morning push failed");
+            logger.warn({ err, userId: r.userId }, "[office-reminder] morning push failed");
           }
         }
       }
@@ -812,20 +828,20 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
             await sendParishOfficeReminderPush(r.userId, {
               side: "evening",
               pref: r.eveningPref as "office" | "devotion",
-              parishTitle: r.parishTitle ?? "your parish",
+              parishTitle: communityTitle,
             });
             await db
               .update(usersTable)
               .set({ parishOfficeEveningSentDate: today })
               .where(eq(usersTable.id, r.userId));
           } catch (err) {
-            logger.warn({ err, userId: r.userId }, "[parish-office] evening push failed");
+            logger.warn({ err, userId: r.userId }, "[office-reminder] evening push failed");
           }
         }
       }
     }
   } catch (err) {
-    logger.error({ err }, "[parish-office] sender failed");
+    logger.error({ err }, "[office-reminder] sender failed");
   }
 }
 

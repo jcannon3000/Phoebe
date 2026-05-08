@@ -256,4 +256,65 @@ router.delete("/users/me/phone", async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// ─── Office reminder prefs (everyone) ───────────────────────────────────
+//
+// Per-user prefs for the daily morning + evening office reminder push.
+// Each side picks "none" / "office" / "devotion"; morning takes an
+// optional time override (HH:MM in the user's timezone). Storage uses
+// the parish_office_* columns — they were added for the parish tier
+// originally but the rename cost isn't worth it; functionally they're
+// general office prefs.
+//
+// GET returns the current prefs; PUT does a partial update (any keys
+// present in the body merge in).
+router.get("/me/office-prefs", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [u] = await db
+      .select({
+        morning: usersTable.parishOfficeMorningPref,
+        evening: usersTable.parishOfficeEveningPref,
+        morningTime: usersTable.parishOfficeMorningTime,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    res.json({
+      morning: u?.morning ?? "none",
+      evening: u?.evening ?? "none",
+      morningTime: u?.morningTime ?? null,
+    });
+  } catch (err) {
+    console.error("[office-prefs] GET failed:", err);
+    res.status(500).json({ error: "Failed to load office prefs" });
+  }
+});
+
+router.put("/me/office-prefs", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const body = req.body ?? {};
+  const allowedPrefs = new Set(["none", "office", "devotion"]);
+  const update: Record<string, unknown> = {};
+  if (typeof body.morning === "string" && allowedPrefs.has(body.morning)) {
+    update.parishOfficeMorningPref = body.morning;
+  }
+  if (typeof body.evening === "string" && allowedPrefs.has(body.evening)) {
+    update.parishOfficeEveningPref = body.evening;
+  }
+  if (body.morningTime === null) {
+    update.parishOfficeMorningTime = null;
+  } else if (typeof body.morningTime === "string" && /^\d{2}:\d{2}$/.test(body.morningTime)) {
+    update.parishOfficeMorningTime = body.morningTime;
+  }
+  if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
+  try {
+    await db.update(usersTable).set(update).where(eq(usersTable.id, sessionUserId));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[office-prefs] PUT failed:", err);
+    res.status(500).json({ error: "Failed to save office prefs" });
+  }
+});
+
 export default router;

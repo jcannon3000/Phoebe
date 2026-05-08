@@ -30,6 +30,132 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
 }
 
 
+// ─── Office reminder settings ───────────────────────────────────────────
+//
+// Per-user prefs for the daily morning + evening office reminder push.
+// Each side picks none / Office (full Daily Prayer) / Devotion (BCP
+// short form). Saves on every change — reads as a setting, not a
+// form. Backed by /api/me/office-prefs which writes to the
+// parish_office_* user columns under the hood.
+type OfficePref = "none" | "office" | "devotion";
+type OfficePrefs = { morning: OfficePref; evening: OfficePref; morningTime: string | null };
+
+function OfficeReminderSettings() {
+  const queryClient = useQueryClient();
+  const { data } = useQuery<OfficePrefs>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<OfficePrefs>,
+  });
+  const save = useMutation({
+    mutationFn: (patch: Partial<OfficePrefs>) =>
+      apiRequest("PUT", "/api/me/office-prefs", patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }),
+  });
+
+  const morning = data?.morning ?? "none";
+  const evening = data?.evening ?? "none";
+
+  const morningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
+    { value: "none", label: "No reminder", sub: "" },
+    { value: "office", label: "Morning Prayer", sub: "Full Daily Office" },
+    { value: "devotion", label: "Morning Devotion", sub: "Short BCP form" },
+  ];
+  const eveningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
+    { value: "none", label: "No reminder", sub: "" },
+    { value: "office", label: "Evening Prayer", sub: "Full Daily Office" },
+    { value: "devotion", label: "Evening Devotion", sub: "Short BCP form" },
+  ];
+
+  return (
+    <>
+      <SectionHeader label="Daily reminders" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        Pick the office Phoebe will nudge you toward each morning and evening — or none, if you'd rather not be pinged.
+      </p>
+      <SettingsCard>
+        <p className="text-[12px] font-semibold mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+          In the morning
+        </p>
+        {morningOptions.map((opt, i) => {
+          const isSelected = morning === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => save.mutate({ morning: opt.value })}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                {opt.sub && (
+                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                    {opt.sub}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+      <SettingsCard>
+        <p className="text-[12px] font-semibold mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+          In the evening
+        </p>
+        {eveningOptions.map((opt, i) => {
+          const isSelected = evening === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => save.mutate({ evening: opt.value })}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                {opt.sub && (
+                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                    {opt.sub}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
+  );
+}
+
 // ─── Muted People ───────────────────────────────────────────────────────────
 
 type MutedUser = { userId: number; name: string; email: string };
@@ -690,6 +816,9 @@ export default function SettingsPage() {
             Only rendered when running inside the Capacitor shell. Web users
             don't have Face ID, so showing the toggle would confuse them. */}
         <MobileDeviceSection />
+
+        {/* ── Office reminders ── */}
+        <OfficeReminderSettings />
 
         {/* ── Muted People ── */}
         <MutedPeople />

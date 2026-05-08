@@ -1838,6 +1838,196 @@ function ServiceCard({
 // ("pray for N people") instead of an empty home screen, and surfaces their
 // streak in the top-right corner as gentle reinforcement of the habit.
 
+// ── NewPrayerRequestsCard — top-of-home notification-style card ──────────
+//
+// Surfaces UN-amened prayer requests from the user's community. Acts
+// as the in-app mirror of the iOS app icon badge — "you have N
+// people asking for prayer." Tapping routes into the slideshow so
+// the user can respond one-by-one, clearing the queue.
+//
+// Replaces the old "🕯️ Daily Prayer List" card as the home anchor.
+// That card pushed a daily-ritual model (everyone walks the slideshow
+// every morning) which users weren't doing in practice; this one
+// reads as "respond to your friends," which is what people are
+// already doing on their own.
+//
+// Hidden when count = 0 — silence is the right state when the queue
+// is empty.
+function NewPrayerRequestsCard({
+  count,
+  faces,
+}: {
+  count: number;
+  faces: Array<{ key: string; name: string; avatarUrl: string | null }>;
+}) {
+  const colors = CATEGORY_COLORS.practices;
+  const headline = count === 1
+    ? "1 prayer request waiting"
+    : `${count} prayer requests waiting`;
+  return (
+    <Link href="/prayer-mode" className="block">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer ${colors.pulseClass}`}
+        style={{
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+        }}
+      >
+        <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
+        <div className="flex-1 px-4 pt-3 pb-3">
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className="text-base font-semibold"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              🙏🏽 {headline}
+            </span>
+          </div>
+          <div className="mt-1.5 flex items-center justify-between gap-3">
+            <p
+              className="text-sm truncate"
+              style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+            >
+              {count === 1 ? "Tap to respond" : "Tap to respond to your friends"}
+            </p>
+            {faces.length > 0 && (
+              <div className="flex items-center -space-x-2 shrink-0">
+                {faces.slice(0, 3).map((f) => (
+                  <div
+                    key={f.key}
+                    title={f.name}
+                    className="rounded-full overflow-hidden shrink-0"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      border: "1.5px solid #0F2818",
+                      background: "#1A4A2E",
+                    }}
+                  >
+                    {f.avatarUrl ? (
+                      <img
+                        src={f.avatarUrl}
+                        alt={f.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center text-[10px] font-semibold"
+                        style={{ color: "#A8C5A0" }}
+                      >
+                        {f.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mt-3 w-full">
+            <div
+              className="w-full rounded-xl text-center"
+              style={{
+                background: "#4A7A5B",
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                padding: "9px 12px",
+                border: "1px solid rgba(111,175,133,0.45)",
+              }}
+            >
+              Respond <span aria-hidden>→</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
+// ── PrayerOfficeCard — always-visible "pray with your community" anchor ──
+//
+// The home-screen invitation to pray the appropriate office for the
+// time of day. Defaults to the Devotion (the gentler entry point)
+// with a small "or pray full Morning/Evening Prayer →" link as
+// alternate. Time threshold is noon — same threshold the Daily
+// Office picker uses for "today's office."
+function PrayerOfficeCard() {
+  const isMorning = new Date().getHours() < 12;
+  const devotionLabel = isMorning ? "Morning Devotion" : "Evening Devotion";
+  const devotionHref = isMorning
+    ? "/bcp/daily-devotions?mode=morning-devotion"
+    : "/bcp/daily-devotions?mode=early-evening-devotion";
+  const officeLabel = isMorning ? "Morning Prayer" : "Evening Prayer";
+  const officeHref = isMorning
+    ? "/bcp/daily-office?mode=morning"
+    : "/bcp/daily-office?mode=evening";
+  const eyebrow = isMorning ? "🌅 This morning" : "🌙 This evening";
+  return (
+    <div
+      className="relative flex rounded-xl overflow-hidden"
+      style={{
+        background: "rgba(46,107,64,0.08)",
+        border: "1px solid rgba(46,107,64,0.20)",
+      }}
+    >
+      <div className="flex-1 px-4 pt-3 pb-3">
+        <p
+          className="text-[11px] font-semibold uppercase tracking-widest"
+          style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+        >
+          {eyebrow}
+        </p>
+        <p
+          className="text-base font-semibold mt-0.5"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+        >
+          Pray with your community
+        </p>
+        <p
+          className="text-sm mt-1"
+          style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+        >
+          From the Book of Common Prayer
+        </p>
+        <Link href={devotionHref}>
+          <div
+            className="mt-3 w-full rounded-xl text-center cursor-pointer"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 14,
+              fontWeight: 500,
+              padding: "9px 12px",
+              border: "1px solid rgba(46,107,64,0.45)",
+            }}
+          >
+            Pray the {devotionLabel} <span aria-hidden>→</span>
+          </div>
+        </Link>
+        <Link href={officeHref}>
+          <p
+            className="text-[12px] mt-2 text-center cursor-pointer"
+            style={{
+              color: "rgba(143,175,150,0.7)",
+              fontFamily: "'Space Grotesk', sans-serif",
+              textDecoration: "underline",
+              textDecorationColor: "rgba(143,175,150,0.3)",
+              textUnderlineOffset: 3,
+              margin: 0,
+            }}
+          >
+            or pray the full {officeLabel}
+          </p>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function PrayerListCard({
   pendingCount,
   streak,
@@ -3611,38 +3801,32 @@ export default function Dashboard() {
 
           {/* Menu pill strip removed — nav lives in the side Menu. */}
 
-          {/* Persistent daily prayer list card — same PrayerListCard
-              used elsewhere, just routed through its `prayedToday`
-              variant so the subtitle/CTA adapt. Lives here as the
-              home-screen anchor and is filter-gated.
-              Shows when the user has pending prayers OR an active
-              streak OR membership in any community. The membership
-              clause is what surfaces this card for someone who's
-              just joined a group whose members haven't posted any
-              requests yet — without it the dashboard reads as
-              "nothing here" even though there's a slideshow path
-              into the BCP intercessions waiting for them. */}
-          {filter === null && (pendingPrayerCount > 0 || prayerStreak > 0 || (dashGroups?.groups?.length ?? 0) > 0) && (() => {
-            // Up to 3 avatars of people whose prayers are in the
-            // viewer's slideshow today. Source: non-own open prayer
-            // request authors + active prayers-for recipients.
-            // Deduped, cap 3. The reciprocity gate that used to hide
-            // these faces from users without an own ask is gone —
-            // anyone in the community sees who's asking for prayer.
+          {/* Home-screen anchors — replaced the single Daily Prayer
+              List card per user direction. Two cards now share the
+              top spot:
+                1. NewPrayerRequestsCard (only when count > 0) — a
+                   notification-style "X new prayer requests" tap-
+                   target. Routes to the slideshow filtered to just
+                   un-amened requests so the user can respond and
+                   clear the queue.
+                2. PrayerOfficeCard — always visible. Surfaces the
+                   liturgy that fits the current time of day
+                   (Morning Prayer before noon, Evening Prayer
+                   after) with the Devotion as a quieter alternate.
+                   Replaces the slideshow-as-daily-ritual model
+                   that wasn't working — the daily rhythm is now
+                   "respond to your community + pray the office,"
+                   not "walk through the slideshow every day." */}
+          {filter === null && (() => {
+            // Up to 3 avatars of new-prayer-request authors for the
+            // top card's face stack. Limited to authors whose
+            // requests the viewer has NOT yet amened (newPrayersCount
+            // semantics) so the card stops nudging once the queue
+            // is cleared.
             type Face = { key: string; name: string; avatarUrl: string | null };
             const faces: Face[] = [];
             const seenSource = new Set<string>();
             const seenIdentity = new Set<string>();
-            // Dedup happens on TWO axes:
-            //   - source key (`req-<ownerId>`, `pfor-<email>`) so we
-            //     don't add the same prayer-request twice within a
-            //     single source pass
-            //   - person identity (lowercased name + avatar URL) so
-            //     when the same person shows up as both a prayer
-            //     request author AND a prayer-for recipient, only one
-            //     circle renders. Two different people with the same
-            //     display name + null avatar collapse into one slot,
-            //     which is fine — the alternative was duplicate faces.
             const addFace = (key: string, name: string, avatarUrl: string | null) => {
               if (!key || faces.length >= 3) return;
               if (seenSource.has(key)) return;
@@ -3654,48 +3838,21 @@ export default function Dashboard() {
             };
             for (const r of dashPrayerRequests ?? []) {
               if (r.isAnswered || r.isOwnRequest || r.closedAt || r.isAnonymous) continue;
+              if (r.myAmenedEver) continue;
               const key = `req-${r.ownerId ?? r.id}`;
               addFace(key, r.ownerName ?? "Someone", r.ownerAvatarUrl ?? null);
             }
-            for (const p of dashPrayersFor ?? []) {
-              if (p.expired) continue;
-              const key = `pfor-${p.recipientEmail ?? p.id}`;
-              addFace(key, p.recipientName ?? "Someone", p.recipientAvatarUrl ?? null);
-            }
-            // Partial-progress detection — read the localStorage
-            // entry the slideshow writes on every advance() and on
-            // X-out. Counts ALL slide kinds (intercessions, circle
-            // intentions, prayer requests, prayers-for), not just
-            // request amens. The previous request-only path read
-            // 0 when the user prayed two intercessions and bailed,
-            // and the dashboard fell through to "Pray again".
-            let partialRemaining = 0;
-            try {
-              const todayKey = todayLocalKey();
-              const raw = localStorage.getItem(`phoebe:slideshow-progress:${todayKey}`);
-              if (raw) {
-                const parsed = JSON.parse(raw) as { completed?: number; total?: number };
-                if (typeof parsed.completed === "number" &&
-                    typeof parsed.total === "number" &&
-                    parsed.completed > 0 &&
-                    parsed.completed < parsed.total) {
-                  partialRemaining = parsed.total - parsed.completed;
-                }
-              }
-            } catch { /* corrupt entry — fall through to zero */ }
             return (
-              <div className="mt-5">
-                <PrayerListCard
-                  pendingCount={pendingPrayerCount}
-                  streak={prayerStreak}
-                  prayedToday={prayerListDoneToday}
-                  partialRemaining={partialRemaining}
-                  faces={faces}
-                  gardenPrayedTodayCount={gardenPrayedTodayCount}
-                  newPrayersCount={newPrayersCount}
-                  keyPrefix="anchor"
-                />
-              </div>
+              <>
+                {newPrayersCount > 0 && (
+                  <div className="mt-5">
+                    <NewPrayerRequestsCard count={newPrayersCount} faces={faces} />
+                  </div>
+                )}
+                <div className="mt-3">
+                  <PrayerOfficeCard />
+                </div>
+              </>
             );
           })()}
 

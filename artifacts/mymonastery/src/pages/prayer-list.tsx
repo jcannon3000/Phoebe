@@ -1233,6 +1233,30 @@ export default function PrayerListPage() {
           </p>
         </div>
 
+        {/* "Pray through all" — explicit slideshow entry for users
+            who want the contemplative walk through the whole list.
+            The dashboard no longer surfaces this as a daily ritual
+            (per user direction the daily anchor is offices, not the
+            slideshow), but the option lives here for anyone who
+            wants it. */}
+        {focused === null && (
+          <Link
+            href="/prayer-mode?reset=1"
+            className="block mb-4 rounded-xl px-4 py-3 cursor-pointer"
+            style={{
+              background: "rgba(46,107,64,0.18)",
+              border: "1px solid rgba(46,107,64,0.4)",
+              textAlign: "center",
+              fontFamily: "'Space Grotesk', sans-serif",
+              color: "#F0EDE6",
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            🕯️ Pray through the whole list →
+          </Link>
+        )}
+
         {/* Compose bar — same input shape as the home-page prayer
             section. Tapping 🙏🏽 opens a centered popup asking whether
             the prayer is for the viewer (→ prayer request for yourself)
