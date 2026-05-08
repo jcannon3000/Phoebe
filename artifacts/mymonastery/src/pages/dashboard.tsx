@@ -2029,9 +2029,11 @@ function PrayerOfficeCard() {
         </div>
         {/* Headline + streak pill inline. Streak is a small pill
             (same shape as View, warmer accent color) sitting at the
-            right edge of the headline row. Hidden when 0 to avoid a
-            lonely zero on a brand-new account. */}
-        <div className="flex items-center justify-between gap-2 mt-0.5">
+            right edge of the headline row. mt-2 gives breathing room
+            between the View pill above and the streak below them.
+            Hidden when 0 to avoid a lonely zero on a brand-new
+            account. */}
+        <div className="flex items-center justify-between gap-2 mt-2">
           <p
             className="text-base font-semibold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2077,9 +2079,9 @@ function PrayerOfficeCard() {
         {/* Spacing lives on the Link wrapper, not the <span>: the
             inline `margin: 0` style on the previous <p> was clobbering
             Tailwind's mt-* and collapsing the gap between the big
-            CTA and this link. mt-3 keeps them visually paired without
-            a yawning gap. */}
-        <Link href={smallHref} className="block mt-3 text-center">
+            CTA and this link. mt-2 keeps them tight as a primary/
+            secondary pair. */}
+        <Link href={smallHref} className="block mt-2 text-center">
           <span
             className="text-[12px] cursor-pointer"
             style={{
@@ -4086,27 +4088,24 @@ export default function Dashboard() {
       <div className="dash-shell flex flex-col w-full pb-36">
 
         {/* ── Header ── */}
-        {/* On native iOS the OS status bar already gives the time +
-            date so the header stays tight. On web (no status bar
-            context) we put the calendar date back above the feast
-            eyebrow, so visitors land on a page that tells them what
-            today is at a glance. */}
+        {/* Calendar date rendered on every surface (was gated to
+            non-native; the iOS status bar shows the system clock but
+            not the day-of-week, so we want the in-app date visible
+            there too). */}
         <div className="mb-4">
-          {!isNative && (
-            <p
-              className="mb-1"
-              style={{
-                color: "#F0EDE6",
-                fontSize: 22,
-                fontWeight: 600,
-                letterSpacing: "-0.02em",
-                lineHeight: 1.2,
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              {format(new Date(), "EEEE, d MMMM")}
-            </p>
-          )}
+          <p
+            className="mb-1"
+            style={{
+              color: "#F0EDE6",
+              fontSize: 22,
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.2,
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            {format(new Date(), "EEEE, d MMMM")}
+          </p>
           {/* Show the feast/Sunday/commemoration when there is one;
               otherwise fall back to the brand tagline. Plain ferial
               seasonal labels ("The Fourth Week of Easter") are
