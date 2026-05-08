@@ -71,6 +71,11 @@ interface PrayerRequest {
   // request when the user partially completed it earlier, and (b)
   // drive the dashboard's "X more prayers" partial-progress card.
   myAmenedToday?: boolean;
+  // True if THIS viewer has *ever* tapped Amen on this request (any
+  // day). Drives the queue-new mode below — when the home card sends
+  // the user in to "respond to your friends," we only want to show
+  // requests they haven't engaged with at all.
+  myAmenedEver?: boolean;
   // ISO timestamp when the request stops appearing to non-owners
   // unless renewed. Used by the slideshow as a defensive expiry filter.
   expiresAt?: string | null;
@@ -1248,6 +1253,17 @@ export default function PrayerModePage() {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("reset") === "1";
   })();
+  // ?queue=new → focused mode for the home-screen "X prayer requests
+  // waiting" card. Skips the daily slideshow framing (no intercessions,
+  // no circle intentions, no own prayers-for, no ask-request nudge)
+  // and shows ONLY prayer requests this viewer has never amen'd. The
+  // card promised "tap to respond" — we honour that literally instead
+  // of dropping them into the full daily walk.
+  const queueMode = (() => {
+    if (typeof window === "undefined") return null;
+    const v = new URLSearchParams(window.location.search).get("queue");
+    return v === "new" ? "new" : null;
+  })();
   const finishHref = returnToHref ?? "/dashboard";
 
   const momentsQuery = useQuery<{ moments: Moment[] }>({
@@ -1447,7 +1463,34 @@ export default function PrayerModePage() {
     (r) => r.isOwnRequest === true && !r.isAnswered && !r.closedAt,
   );
 
-  const slides: PrayerSlide[] = [
+  // queueMode === "new" builds a tightly-scoped slide list: only
+  // prayer requests the viewer hasn't amen'd before. Everything else
+  // (intercessions, circle intentions, prayers-for, ask-request) is
+  // omitted — the home-screen card sent the user here to clear a
+  // specific queue, not to walk the whole daily list.
+  const slides: PrayerSlide[] = queueMode === "new"
+    ? prayerRequests
+        .filter((r) => {
+          if (r.isAnswered) return false;
+          if (r.closedAt) return false;
+          if (r.isOwnRequest) return false;
+          if (r.myAmenedEver === true) return false;
+          if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+          return true;
+        })
+        .map((r): PrayerSlide => ({
+          kind: "request",
+          text: r.body,
+          attribution: "",
+          requestId: r.id,
+          myWord: r.myWord ?? null,
+          authorName: r.ownerName ?? null,
+          authorAvatarUrl: r.ownerAvatarUrl ?? null,
+          requestKind: r.kind ?? null,
+          // Always false in queue-new — these are by definition un-prayed.
+          alreadyPrayedToday: false,
+        }))
+    : [
     ...intercessions.map((m) => {
       const title = m.intercessionTopic || m.name;
       // For custom intercessions the user-entered `intention` often duplicates
@@ -1712,7 +1755,11 @@ export default function PrayerModePage() {
     //     today." Without this branch the resume-from-last-amen
     //     skip jumped past slides the user had already prayed,
     //     landing them on the LAST slide of a 9-slide list.
-    if (!seamlessFlow && !resetFlow) {
+    // queueMode === "new" is its own fresh-start path — the home card
+    // sent the user in to handle a specific queue, so resume-progress
+    // and alreadyPrayedToday-skip don't apply (all queue slides are
+    // un-prayed by construction; no localStorage to honor).
+    if (!seamlessFlow && !resetFlow && queueMode !== "new") {
       try {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {
@@ -1736,7 +1783,7 @@ export default function PrayerModePage() {
       try { localStorage.removeItem(progressStorageKey); } catch { /* non-fatal */ }
     }
     setIndex(resumeAt);
-  }, [dataReady, index, progressStorageKey, slides, seamlessFlow, resetFlow]);
+  }, [dataReady, index, progressStorageKey, slides, seamlessFlow, resetFlow, queueMode]);
 
   // All consumers below should read from this — `slides` is the live
   // (re-rendering) array, `displaySlides` is the stable session copy.
