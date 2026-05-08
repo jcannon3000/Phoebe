@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import UserNotifications
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -86,6 +87,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             DispatchQueue.main.async { [weak self] in
                 self?.dispatchShortcut(path: path)
             }
+        }
+
+        // Clear the app-icon badge whenever the user opens the app.
+        // The new-prayer-request push sets the badge to the recipient's
+        // current "unprayed" count; once they're inside Phoebe, the
+        // dot has done its job and shouldn't linger on the icon — they
+        // can see what's waiting on the home screen card. iOS 16+ uses
+        // UNUserNotificationCenter.setBadgeCount(); older releases fall
+        // back to the deprecated UIApplication setter, which still
+        // works through iOS 17 even with the deprecation warning.
+        if #available(iOS 16.0, *) {
+            UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+        } else {
+            application.applicationIconBadgeNumber = 0
         }
     }
 

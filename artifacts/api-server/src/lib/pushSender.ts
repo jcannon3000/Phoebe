@@ -664,17 +664,36 @@ export function sendPrayerWordPush(
 // Tap deep-links to the request's slide page (/prayer-requests/:id)
 // where the recipient sees the prayer body, can leave a word of
 // comfort, and can amen.
-export function sendNewPrayerRequestPush(
+//
+// Badge: we set the iOS app-icon badge to the recipient's current
+// unprayed count (computed *after* the new request landed). This
+// is the central UX nudge in the new "respond to requests" model —
+// the app icon shows how many prayers are still owed without
+// requiring the user to open the app. The number is the same one
+// the dashboard's "X new prayers waiting" card shows.
+export async function sendNewPrayerRequestPush(
   recipientUserId: number,
   opts: { authorName: string; isAnonymous: boolean; prayerRequestId: number },
 ) {
   const display = opts.isAnonymous
     ? "Someone"
     : ((opts.authorName || "Someone").split(/\s+/)[0] || "Someone");
+  // Compute badge after the new request has been written — getUnprayedCount
+  // queries the DB directly, so the just-inserted request is included.
+  // Failures here are non-fatal: if the count blows up we still want
+  // the push to land, just without a badge.
+  let badge: number | undefined;
+  try {
+    const { getUnprayedCount } = await import("./unprayedCount");
+    badge = await getUnprayedCount(recipientUserId);
+  } catch (err) {
+    logger.warn({ err, recipientUserId }, "[push] failed to compute unprayed badge count");
+  }
   return sendPushToUser(recipientUserId, {
     title: `${display} is asking for your prayers`,
     body: "Open Phoebe to pray for them.",
     path: `/prayer-requests/${opts.prayerRequestId}`,
+    badge,
     threadId: `prayer-request-${opts.prayerRequestId}`,
     collapseId: `new-prayer-request-${opts.prayerRequestId}`,
     sound: PHOEBE_SOUND_MID,
