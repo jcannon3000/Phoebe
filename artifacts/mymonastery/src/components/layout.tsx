@@ -57,7 +57,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // the dashboard's filter; removed — the dashboard itself is the home
     // surface, and the Practices pill there is the canonical way to narrow.
     { emoji: "🙏🏽", label: "Manage Prayer List", path: "/prayer-list" },
-    { emoji: "🤝🏽", label: "Gatherings",  path: "/gatherings"  },
+    // Gatherings tab removed from the side menu per user direction.
+    // The page itself still lives at /gatherings — the home dashboard
+    // surfaces upcoming events directly so a dedicated tab on the
+    // side felt redundant. Re-add this row to bring it back if the
+    // need ever returns.
     { emoji: "👥", label: "People",      path: "/people" },
     { divider: true },
     // Liturgy section — book of common prayer reference content.

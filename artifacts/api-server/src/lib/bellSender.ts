@@ -304,6 +304,15 @@ function dowInTz(timezone: string): number {
 export async function runLectioReminderSender(
   opts: { forceNow?: boolean; bypassReflectionGate?: boolean } = {},
 ): Promise<void> {
+  // Lectio reminder pushes are OFF per user direction — the lectio
+  // surface is reachable from the home and direct deep-links and
+  // doesn't need its own daily nudge. forceNow callers (manual
+  // triggers from the admin endpoint) still go through, so the
+  // path remains testable. Flip this guard to re-enable.
+  if (!opts.forceNow) {
+    logger.info("[lectio-reminder] disabled — skipping run");
+    return;
+  }
   // Pull every membership in any lectio-divina moment, joined to the
   // matching registered user (by email). Email-only invitees with no
   // account get skipped — pushes need a userId to resolve device tokens.
@@ -459,6 +468,13 @@ const LECTIO_EVENING_DOW_TO_STAGE: Record<number, { stage: "lectio" | "meditatio
 };
 
 export async function runLectioEveningReminderSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // Evening lectio reminder also off — same rationale as the morning
+  // sender above: lectio surfaces are reachable from home + deep
+  // links, no need for its own nudge.
+  if (!opts.forceNow) {
+    logger.info("[lectio-evening-reminder] disabled — skipping run");
+    return;
+  }
   const memberships = await db
     .select({
       userId: usersTable.id,

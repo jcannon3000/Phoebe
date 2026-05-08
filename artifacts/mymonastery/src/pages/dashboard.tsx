@@ -168,23 +168,23 @@ function countActivePrayersFor(prayersFor: Array<{ id: number; expired: boolean;
 }
 
 function nextDayLabel(date: Date): string {
+  // Mirrors community-detail.tsx#gatheringDayLabel so the same
+  // gathering renders the same line on the home dashboard and the
+  // community page. Today / Tomorrow / "Next Wednesday" (next
+  // calendar week, Sun→Sat) / weekday / "MMM d" for far-out.
   if (isToday(date)) return "Today";
   const now = new Date();
-  const today = startOfDay(now);
-  const tomorrow = addDays(today, 1);
+  const tomorrow = addDays(startOfDay(now), 1);
   if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
-  // For events still inside "this week" (anywhere from day-after-
-  // tomorrow through the upcoming Sunday) we show the day name —
-  // "Sunday", "Monday", etc. Past the upcoming Sunday it switches to
-  // a calendar date ("May 17") so a far-out event reads as a date,
-  // not as an ambiguous weekday.
-  const dow = today.getDay(); // 0 = Sunday
-  const daysToUpcomingSunday = dow === 0 ? 7 : 7 - dow;
-  const upcomingSundayEnd = addDays(today, daysToUpcomingSunday + 1); // exclusive
-  if (date < upcomingSundayEnd) {
-    return format(date, "EEEE");
+  const nextWeekStart = startOfWeek(addWeeks(now, 1));
+  const nextWeekEnd = endOfWeek(addWeeks(now, 1));
+  if (date >= nextWeekStart && date <= nextWeekEnd) {
+    return `Next ${format(date, "EEEE")}`;
   }
-  return format(date, "MMM d");
+  // Two weeks+ out: switch to a calendar date so the row doesn't
+  // read as an ambiguous weekday.
+  if (date > nextWeekEnd) return format(date, "MMM d");
+  return format(date, "EEEE");
 }
 
 const DOW_LC: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
@@ -1719,14 +1719,16 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
 // pill list so the CSS keyframe can translate from 0 to -50% and seam.
 
 function ServiceTimesPillRow({ schedule, nextDate }: { schedule: ServiceSchedule; nextDate: Date }) {
-  // Single combined line: "<date-or-day> — <trailing>". Date format
-  // matches the rest of the dashboard via nextDayLabel: Today /
-  // Tomorrow / weekday name (this week) / "MMM d" (further out).
+  // Mirrors the community-detail page's pill: "<Month D> — <trailing>"
+  // where trailing is the single service time, or "Tap to See All
+  // Service Times" when there's more than one. Same date format
+  // (long month + numeric day) and same "All" wording so a parish's
+  // home card reads identically to the community-detail card.
   if (schedule.times.length === 0) return null;
-  const dateLabel = nextDayLabel(nextDate);
+  const dateLabel = nextDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   const trailing = schedule.times.length === 1
     ? formatServiceTime(schedule.times[0].time)
-    : "Tap to See Service Times";
+    : "Tap to See All Service Times";
   return (
     <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
       <span style={{ color: "#C8D4C0" }}>{dateLabel}</span>
