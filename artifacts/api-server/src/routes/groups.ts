@@ -584,6 +584,12 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
     const weekStartDate = new Date(nowDate);
     weekStartDate.setUTCDate(weekStartDate.getUTCDate() - 6);
     const weekStartStr = ymdInTz(weekStartDate);
+    // 30-day rolling "month" window — matches the rolling semantics
+    // of the existing week window so the month tile reads as
+    // "the last month" rather than this calendar month.
+    const monthStartDate = new Date(nowDate);
+    monthStartDate.setUTCDate(monthStartDate.getUTCDate() - 29);
+    const monthStartStr = ymdInTz(monthStartDate);
 
     // A "prayer event" is one of two things logged by a member of this
     // community:
@@ -687,8 +693,78 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
            WHERE user_id IN (SELECT user_id FROM members)
              AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3), 0)::bigint AS seconds_prayed_week,
         COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)), 0)::bigint AS seconds_prayed_total
-    `, [result.group.id, todayStr, weekStartStr, tz]);
+           WHERE user_id IN (SELECT user_id FROM members)), 0)::bigint AS seconds_prayed_total,
+
+        -- ── Offices breakdown ───────────────────────────────────────
+        -- Per-surface session counts (one row per office completion in
+        -- the prayer_sessions ledger) for each of the four daily
+        -- liturgies, scoped to community members. "Month" is the same
+        -- 30-day rolling window used by the existing week tile, just
+        -- wider, so the user sees a steady trend line instead of a
+        -- jagged calendar-month edge.
+
+        -- Morning Prayer (full Daily Office)
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'morning-prayer'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS office_morning_prayer_today,
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'morning-prayer'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS office_morning_prayer_week,
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'morning-prayer'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_morning_prayer_month,
+
+        -- Morning Devotion (short BCP form)
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'morning-devotion'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS office_morning_devotion_today,
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'morning-devotion'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS office_morning_devotion_week,
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'morning-devotion'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_morning_devotion_month,
+
+        -- Evening Prayer (full Daily Office)
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'evening-prayer'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS office_evening_prayer_today,
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'evening-prayer'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS office_evening_prayer_week,
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'evening-prayer'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_evening_prayer_month,
+
+        -- Early Evening Devotion (short BCP form)
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'early-evening-devotion'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS office_evening_devotion_today,
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'early-evening-devotion'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS office_evening_devotion_week,
+        (SELECT COUNT(*) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface = 'early-evening-devotion'
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_evening_devotion_month,
+
+        -- Aggregate seconds across all four offices, all-time. One
+        -- number for the "Total time" line in the Offices detail.
+        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')), 0)::bigint AS offices_seconds_total
+    `, [result.group.id, todayStr, weekStartStr, tz, monthStartStr]);
     const row = q.rows[0] ?? {};
     res.json({
       groupName: result.group.name,
@@ -717,6 +793,35 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       secondsPrayedTotal: Number(row.seconds_prayed_total ?? 0),
       secondsPrayedToday: Number(row.seconds_prayed_today ?? 0),
       secondsPrayedThisWeek: Number(row.seconds_prayed_week ?? 0),
+
+      // "Offices" rollup — per-surface session counts for the four
+      // daily liturgies (Morning/Evening Prayer + Morning/Early-
+      // Evening Devotion), plus the aggregate total time across all
+      // four. The dashboard shows the four counts as a click-to-
+      // expand detail under a single "Offices" row.
+      offices: {
+        morningPrayer: {
+          today: Number(row.office_morning_prayer_today ?? 0),
+          thisWeek: Number(row.office_morning_prayer_week ?? 0),
+          thisMonth: Number(row.office_morning_prayer_month ?? 0),
+        },
+        morningDevotion: {
+          today: Number(row.office_morning_devotion_today ?? 0),
+          thisWeek: Number(row.office_morning_devotion_week ?? 0),
+          thisMonth: Number(row.office_morning_devotion_month ?? 0),
+        },
+        eveningPrayer: {
+          today: Number(row.office_evening_prayer_today ?? 0),
+          thisWeek: Number(row.office_evening_prayer_week ?? 0),
+          thisMonth: Number(row.office_evening_prayer_month ?? 0),
+        },
+        eveningDevotion: {
+          today: Number(row.office_evening_devotion_today ?? 0),
+          thisWeek: Number(row.office_evening_devotion_week ?? 0),
+          thisMonth: Number(row.office_evening_devotion_month ?? 0),
+        },
+        secondsTotal: Number(row.offices_seconds_total ?? 0),
+      },
     });
   } catch (err) {
     console.error("[groups/metrics] query failed:", err);

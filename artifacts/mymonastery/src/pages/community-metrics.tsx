@@ -10,7 +10,7 @@
  * inline under the Metrics tab without wrapping in a second Layout.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +45,20 @@ type Metrics = {
   secondsPrayedTotal: number;
   secondsPrayedToday: number;
   secondsPrayedThisWeek: number;
+
+  // "Offices" rollup — one row in the dashboard summarises all four
+  // daily liturgies; tap to expand for the per-office breakdown.
+  offices: OfficesMetrics;
+};
+
+type OfficeWindowCounts = { today: number; thisWeek: number; thisMonth: number };
+type OfficesMetrics = {
+  morningPrayer: OfficeWindowCounts;
+  morningDevotion: OfficeWindowCounts;
+  eveningPrayer: OfficeWindowCounts;
+  eveningDevotion: OfficeWindowCounts;
+  /** Aggregate seconds spent across all four offices, all time. */
+  secondsTotal: number;
 };
 
 // Format a seconds total for the metrics tile. Today buckets render
@@ -221,6 +235,19 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         <StatTextTile label="All time" value={formatPrayingDuration(data.secondsPrayedTotal)} />
       </div>
 
+      {/* Offices — one row labelled "Offices" with click-for-detail.
+          Expanded view shows per-office today/week/month counts plus
+          the aggregate total time across all four. */}
+      <SectionHeader label="Offices" />
+      <p
+        className="text-[11px] leading-relaxed mb-3"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
+      >
+        How many times your community has prayed Morning / Evening
+        Prayer or a Daily Devotion. Each completed session counts.
+      </p>
+      <OfficesRow offices={data.offices} />
+
       {/* Prayer requests */}
       <SectionHeader label="Prayer requests" />
       <div className="grid grid-cols-3 gap-3 mb-8">
@@ -301,6 +328,136 @@ function StatTextTile({ label, value }: { label: string; value: string }) {
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+// ── OfficesRow — collapsed summary + per-office breakdown ──────────────
+//
+// One row labelled "Offices" — sums all four sessions counts for
+// today / this week / this month — with a "More detail" toggle that
+// reveals the four-row breakdown plus the all-time total time across
+// all four offices. Sums are computed client-side from the per-office
+// counts the API already returns; the API doesn't need to ship a
+// separate aggregate field for this.
+function OfficesRow({ offices }: { offices: OfficesMetrics }) {
+  const [expanded, setExpanded] = useState(false);
+  const sumToday =
+    offices.morningPrayer.today +
+    offices.morningDevotion.today +
+    offices.eveningPrayer.today +
+    offices.eveningDevotion.today;
+  const sumWeek =
+    offices.morningPrayer.thisWeek +
+    offices.morningDevotion.thisWeek +
+    offices.eveningPrayer.thisWeek +
+    offices.eveningDevotion.thisWeek;
+  const sumMonth =
+    offices.morningPrayer.thisMonth +
+    offices.morningDevotion.thisMonth +
+    offices.eveningPrayer.thisMonth +
+    offices.eveningDevotion.thisMonth;
+
+  const rows: Array<{ label: string; counts: OfficeWindowCounts }> = [
+    { label: "Morning Prayer", counts: offices.morningPrayer },
+    { label: "Morning Devotion", counts: offices.morningDevotion },
+    { label: "Evening Prayer", counts: offices.eveningPrayer },
+    { label: "Evening Devotion", counts: offices.eveningDevotion },
+  ];
+
+  return (
+    <div className="mb-8">
+      {/* Collapsed: today / week / month aggregate tiles. */}
+      <div className="grid grid-cols-3 gap-3 mb-2">
+        <StatTile label="Today" value={sumToday} />
+        <StatTile label="This week" value={sumWeek} />
+        <StatTile label="This month" value={sumMonth} />
+      </div>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="text-[11px] font-semibold uppercase tracking-[0.14em] transition-opacity hover:opacity-80"
+        style={{
+          color: "rgba(143,175,150,0.7)",
+          fontFamily: FONT,
+          background: "transparent",
+          border: "none",
+          padding: "4px 0",
+          cursor: "pointer",
+        }}
+      >
+        {expanded ? "Hide detail ↑" : "More detail ↓"}
+      </button>
+
+      {expanded && (
+        <div
+          className="rounded-2xl mt-3 overflow-hidden"
+          style={{
+            background: "rgba(46,107,64,0.08)",
+            border: "1px solid rgba(46,107,64,0.22)",
+          }}
+        >
+          {/* Header row — column labels for the per-office grid. */}
+          <div
+            className="grid items-center gap-2 px-4 py-2.5"
+            style={{
+              gridTemplateColumns: "1fr 56px 56px 56px",
+              borderBottom: "1px solid rgba(46,107,64,0.18)",
+            }}
+          >
+            <span />
+            {(["Today", "Week", "Month"] as const).map((h) => (
+              <span
+                key={h}
+                className="text-[10px] font-semibold uppercase tracking-[0.14em] text-right"
+                style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}
+              >
+                {h}
+              </span>
+            ))}
+          </div>
+          {rows.map((r, i) => (
+            <div
+              key={r.label}
+              className="grid items-center gap-2 px-4 py-3"
+              style={{
+                gridTemplateColumns: "1fr 56px 56px 56px",
+                borderTop: i === 0 ? "none" : "1px solid rgba(46,107,64,0.12)",
+              }}
+            >
+              <span
+                className="text-sm"
+                style={{ color: "#F0EDE6", fontFamily: FONT }}
+              >
+                {r.label}
+              </span>
+              <span className="text-sm tabular-nums text-right" style={{ color: "#C8D4C0", fontFamily: FONT }}>
+                {r.counts.today.toLocaleString()}
+              </span>
+              <span className="text-sm tabular-nums text-right" style={{ color: "#C8D4C0", fontFamily: FONT }}>
+                {r.counts.thisWeek.toLocaleString()}
+              </span>
+              <span className="text-sm tabular-nums text-right" style={{ color: "#C8D4C0", fontFamily: FONT }}>
+                {r.counts.thisMonth.toLocaleString()}
+              </span>
+            </div>
+          ))}
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}
+          >
+            <span
+              className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+              style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}
+            >
+              Total time (all four)
+            </span>
+            <span className="text-sm tabular-nums" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
+              {formatPrayingDuration(offices.secondsTotal)}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
