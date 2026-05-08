@@ -57,7 +57,12 @@ type OfficesMetrics = {
   morningDevotion: OfficeWindowCounts;
   eveningPrayer: OfficeWindowCounts;
   eveningDevotion: OfficeWindowCounts;
-  /** Aggregate seconds spent across all four offices, all time. */
+  /** Aggregate seconds spent across all four offices, per window.
+   *  Mirrors the count columns (Today / Week / Month) so the detail
+   *  panel can show a parallel "Total time" row at the bottom. */
+  secondsToday: number;
+  secondsThisWeek: number;
+  secondsThisMonth: number;
   secondsTotal: number;
 };
 
@@ -442,18 +447,30 @@ function OfficesRow({ offices }: { offices: OfficesMetrics }) {
               </span>
             </div>
           ))}
+          {/* Total time row — three windowed values lined up under the
+              count columns (Today / Week / Month) so the time totals
+              and counts share the same visual rhythm. */}
           <div
-            className="px-4 py-3 flex items-center justify-between"
-            style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}
+            className="grid items-center gap-2 px-4 py-3"
+            style={{
+              gridTemplateColumns: "1fr 56px 56px 56px",
+              borderTop: "1px solid rgba(46,107,64,0.18)",
+            }}
           >
             <span
               className="text-[10px] font-semibold uppercase tracking-[0.14em]"
               style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}
             >
-              Total time (all four)
+              Total time
             </span>
-            <span className="text-sm tabular-nums" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
-              {formatPrayingDuration(offices.secondsTotal)}
+            <span className="text-[12px] tabular-nums text-right" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
+              {formatPrayingDuration(offices.secondsToday)}
+            </span>
+            <span className="text-[12px] tabular-nums text-right" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
+              {formatPrayingDuration(offices.secondsThisWeek)}
+            </span>
+            <span className="text-[12px] tabular-nums text-right" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
+              {formatPrayingDuration(offices.secondsThisMonth)}
             </span>
           </div>
         </div>

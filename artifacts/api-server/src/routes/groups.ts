@@ -759,8 +759,22 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
              AND surface = 'early-evening-devotion'
              AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_evening_devotion_month,
 
-        -- Aggregate seconds across all four offices, all-time. One
-        -- number for the "Total time" line in the Offices detail.
+        -- Aggregate seconds across all four offices, by window. One
+        -- value per window so the dashboard's office-detail row can
+        -- show "Total time" parallel to the count columns
+        -- (Today / Week / Month) instead of just an all-time number.
+        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2), 0)::bigint AS offices_seconds_today,
+        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3), 0)::bigint AS offices_seconds_week,
+        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5), 0)::bigint AS offices_seconds_month,
         COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
            WHERE user_id IN (SELECT user_id FROM members)
              AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')), 0)::bigint AS offices_seconds_total
@@ -820,6 +834,9 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
           thisWeek: Number(row.office_evening_devotion_week ?? 0),
           thisMonth: Number(row.office_evening_devotion_month ?? 0),
         },
+        secondsToday: Number(row.offices_seconds_today ?? 0),
+        secondsThisWeek: Number(row.offices_seconds_week ?? 0),
+        secondsThisMonth: Number(row.offices_seconds_month ?? 0),
         secondsTotal: Number(row.offices_seconds_total ?? 0),
       },
     });
