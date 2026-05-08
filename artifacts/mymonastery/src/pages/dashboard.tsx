@@ -2043,7 +2043,7 @@ function PrayerOfficeCard() {
           </p>
           {officeStreak > 0 && (
             <span
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0 mt-1"
               style={{
                 background: "rgba(168,197,160,0.12)",
                 color: "rgba(168,197,160,0.95)",
