@@ -630,15 +630,25 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         WHERE owner_id IN (SELECT user_id FROM members)
       ),
       -- Two derived sets:
-      --   prayer_events: distinct (user, day) tuples across both
-      --     check-ins and amens. One prayer event per user per day —
-      --     a member who prays for ten requests + checks in to two
-      --     intercessions still counts as one prayer event for the
-      --     day. We dedupe via UNION (not UNION ALL) so the same
-      --     (user, day) appearing on both sides collapses to a single
-      --     row.
+      --   prayer_events: distinct (user, day) tuples across every
+      --     prayer-shaped action a community member can take. One
+      --     prayer event per user per day — a member who prays for
+      --     ten requests + walks the office + leaves a word still
+      --     counts as one prayer event for the day. UNION (not
+      --     UNION ALL) so the same (user, day) appearing across
+      --     multiple signals collapses to a single row.
       --   prayer_days: same set, kept under its old name so the
       --     downstream SELECTs don't have to change.
+      --
+      --   Counted signals (anything = a prayer that day):
+      --     • moment check-in (slideshow walk-through)
+      --     • prayer-request Amen tap
+      --     • prayer session (Office, Devotion, slideshow time —
+      --       captures users who pray a liturgy without amen-ing
+      --       anything specific)
+      --     • word of comfort left on a request
+      --     • "I prayed" tap on a prayer-feed entry
+      --     • lectio reflection
       prayer_events AS (
         SELECT mt.user_id, mp.window_date AS day
         FROM moment_posts mp
@@ -653,6 +663,35 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         FROM prayer_request_amens a
         WHERE a.user_id IN (SELECT user_id FROM members)
           AND a.prayed_at IS NOT NULL
+
+        UNION
+
+        SELECT ps.user_id,
+               to_char((ps.ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_sessions ps
+        WHERE ps.user_id IN (SELECT user_id FROM members)
+          AND ps.ended_at IS NOT NULL
+
+        UNION
+
+        SELECT pw.author_user_id AS user_id,
+               to_char((pw.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_words pw
+        WHERE pw.author_user_id IN (SELECT user_id FROM members)
+
+        UNION
+
+        SELECT pfp.user_id,
+               to_char((pfp.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_feed_prayers pfp
+        WHERE pfp.user_id IN (SELECT user_id FROM members)
+
+        UNION
+
+        SELECT lr.user_id,
+               to_char((lr.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM lectio_reflections lr
+        WHERE lr.user_id IN (SELECT user_id FROM members)
       ),
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM prayer_events
