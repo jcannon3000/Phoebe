@@ -2014,46 +2014,44 @@ function PrayerOfficeCard() {
           >
             {eyebrow}
           </p>
-          {/* View pill + streak pill stacked vertically. Both share
-              the same dimensions (text size, padding, min-width) so
-              the streak reads as a sibling badge to View, not a
-              loose chip. Streak hidden when 0. */}
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <Link
-              href="/offices"
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center transition-opacity hover:opacity-80"
+          <Link
+            href="/offices"
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.4)",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            View
+          </Link>
+        </div>
+        {/* Headline + streak pill inline. Streak is a small pill
+            (same shape as View, warmer accent color) sitting at the
+            right edge of the headline row. Hidden when 0 to avoid a
+            lonely zero on a brand-new account. */}
+        <div className="flex items-center justify-between gap-2 mt-0.5">
+          <p
+            className="text-base font-semibold"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+          >
+            Pray with your community
+          </p>
+          {officeStreak > 0 && (
+            <span
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0"
               style={{
-                background: "rgba(46,107,64,0.22)",
-                color: "#A8C5A0",
-                border: "1px solid rgba(46,107,64,0.4)",
+                background: "rgba(168,197,160,0.12)",
+                color: "rgba(168,197,160,0.95)",
+                border: "1px solid rgba(168,197,160,0.3)",
                 fontFamily: "'Space Grotesk', sans-serif",
-                minWidth: 60,
               }}
             >
-              View
-            </Link>
-            {officeStreak > 0 && (
-              <span
-                className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums"
-                style={{
-                  background: "rgba(168,197,160,0.12)",
-                  color: "rgba(168,197,160,0.95)",
-                  border: "1px solid rgba(168,197,160,0.3)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  minWidth: 60,
-                }}
-              >
-                🔥 {officeStreak}
-              </span>
-            )}
-          </div>
+              🔥 {officeStreak}
+            </span>
+          )}
         </div>
-        <p
-          className="text-base font-semibold mt-0.5"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-        >
-          Pray with your community
-        </p>
         <p
           className="text-sm mt-1"
           style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2079,8 +2077,9 @@ function PrayerOfficeCard() {
         {/* Spacing lives on the Link wrapper, not the <span>: the
             inline `margin: 0` style on the previous <p> was clobbering
             Tailwind's mt-* and collapsing the gap between the big
-            CTA and this link. */}
-        <Link href={smallHref} className="block mt-6 text-center">
+            CTA and this link. mt-3 keeps them visually paired without
+            a yawning gap. */}
+        <Link href={smallHref} className="block mt-3 text-center">
           <span
             className="text-[12px] cursor-pointer"
             style={{
@@ -2130,7 +2129,7 @@ function ActiveRequestsCard({
     // Flat on the dashboard background — headline + compose. No
     // sub line ("Prayed for X times so far"); the count is
     // surfaced inside the manage view via the View pill.
-    <div className="mt-4 px-1">
+    <div className="mt-8 px-1">
       <div className="flex items-start justify-between gap-3 mb-3">
         <p
           className="text-base font-semibold"
