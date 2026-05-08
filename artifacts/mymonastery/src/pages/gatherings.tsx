@@ -269,8 +269,14 @@ export default function GatheringsPage() {
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user,
   });
-  const [communityAdminView] = useCommunityAdminToggle();
-  const isAdminOfAnyGroup = communityAdminView && (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin");
+  // "+ New" — gated to community admins only. The demo-toggle gate
+  // is gone; if the user holds an admin role (admin or hidden_admin)
+  // in any of their groups, they can create. Anyone else just sees
+  // the read-only timeline.
+  void useCommunityAdminToggle;
+  const isAdminOfAnyGroup = (groupsData?.groups ?? []).some(
+    (g) => g.myRole === "admin" || g.myRole === "hidden_admin",
+  );
 
   const removeSub = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/gatherings/calendars/${id}`),
@@ -349,7 +355,7 @@ export default function GatheringsPage() {
       const diff = (s.dayOfWeek - d.getDay() + 7) % 7;
       return addDays(d, diff);
     })();
-    const scheduleName = s.name || "Sunday Services";
+    const scheduleName = s.name || "Worship";
     for (const t of s.times) {
       // Parse the HH:mm into a Date anchored on `next` so sorting and
       // "Today / Tomorrow" grouping works the same as iCal events.
@@ -565,19 +571,23 @@ export default function GatheringsPage() {
 function EventCard({ event }: { event: TimelineEvent }) {
   const isPhoebe = event.kind === "phoebe" || event.kind === "service";
 
-  // Phoebe gatherings + community services render like the dashboard's
-  // Sunday Service card: soft gatherings-green bg, pill for time,
-  // eyebrow for the rhythm/community label. iCal keeps the compact
-  // external-calendar look so the user can tell at a glance which are
-  // Phoebe-native and which come from a subscribed calendar.
+  // Phoebe gatherings + community services match the home dashboard
+  // gathering card: title + uppercase community eyebrow, then a single
+  // line with the time. No pill, no inline location, no participants
+  // list — the detail page surfaces the rest. The simpler card reads
+  // as a peer of the home cards so the gatherings page feels like the
+  // same surface zoomed out.
   if (isPhoebe) {
     const accent = "#6FAF85";
     const eyebrow = event.subtitle ?? (event.kind === "service" ? "Service" : "Gathering");
+    const subline = event.endStr
+      ? `${event.startStr} – ${event.endStr}`
+      : event.startStr;
     const inner = (
       <div
         className="relative flex rounded-xl overflow-hidden transition-all hover:brightness-110 cursor-pointer"
         style={{
-          background: "rgba(111,175,133,0.15)",
+          background: "rgba(46,107,64,0.08)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -595,35 +605,10 @@ function EventCard({ event }: { event: TimelineEvent }) {
               {eyebrow}
             </span>
           </div>
-
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <span
-              className="inline-flex items-center rounded-full text-xs font-semibold tabular-nums"
-              style={{
-                background: "rgba(111,175,133,0.18)",
-                color: "#F0EDE6",
-                border: "1px solid rgba(111,175,133,0.35)",
-                padding: "3px 10px",
-                letterSpacing: "-0.01em",
-                lineHeight: "18px",
-              }}
-            >
-              {event.startStr}{event.endStr ? ` – ${event.endStr}` : ""}
-            </span>
-            {event.location && (
-              <span
-                className="inline-flex items-center gap-1 text-xs"
-                style={{ color: "#C8D4C0", padding: "3px 2px", letterSpacing: "-0.01em", lineHeight: "18px" }}
-              >
-                <MapPin size={11} /> <span className="truncate">{event.location}</span>
-              </span>
-            )}
-          </div>
-
-          {event.participants && (
-            <p className="text-xs mt-1.5 truncate" style={{ color: "#8FAF96", margin: 0 }}>
-              with {event.participants}
-            </p>
+          {subline && (
+            <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
+              {subline}
+            </div>
           )}
         </div>
       </div>

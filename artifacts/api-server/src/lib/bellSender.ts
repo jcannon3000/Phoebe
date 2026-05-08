@@ -783,6 +783,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
         morningPref: usersTable.parishOfficeMorningPref,
         eveningPref: usersTable.parishOfficeEveningPref,
         morningTime: usersTable.parishOfficeMorningTime,
+        eveningTime: usersTable.parishOfficeEveningTime,
         morningSentDate: usersTable.parishOfficeMorningSentDate,
         eveningSentDate: usersTable.parishOfficeEveningSentDate,
         parishFeedId: usersTable.parishFeedId,
@@ -823,7 +824,8 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
 
       // Evening side
       if (r.eveningPref !== "none" && r.eveningSentDate !== today) {
-        if (opts.forceNow || isWithinTickWindow(tz, FIXED_EVENING_TIME)) {
+        const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
+        if (opts.forceNow || isWithinTickWindow(tz, eveningTarget)) {
           try {
             await sendParishOfficeReminderPush(r.userId, {
               side: "evening",

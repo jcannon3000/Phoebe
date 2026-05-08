@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -1052,6 +1052,8 @@ function ClosingSlide({
   coPrayers,
   onDone,
   visible,
+  showSetReminder = false,
+  reminderSide = "morning",
 }: {
   celebration: { streak: number } | null;
   /** Still accepted for symmetry with the celebration animation, but no
@@ -1060,6 +1062,13 @@ function ClosingSlide({
   coPrayers: Array<{ id: number; name: string | null; avatarUrl: string | null }>;
   onDone: () => void;
   visible: boolean;
+  /** True when the user just finished an office and hasn't enabled a
+   *  daily reminder for that side. Surfaces a "Set reminder" CTA below
+   *  Done so the habit can be turned on without leaving the slide. */
+  showSetReminder?: boolean;
+  /** Which office side the user likely just prayed (morning/evening).
+   *  Drives the CTA copy and the deep-link target. */
+  reminderSide?: "morning" | "evening";
 }) {
   void _streak;
   const visibleAvatars = coPrayers.slice(0, 5);
@@ -1197,6 +1206,31 @@ function ClosingSlide({
       >
         Done
       </button>
+
+      {/* "Set reminder" CTA — fires when the user just finished an
+          office and hasn't enabled the daily reminder for that side
+          yet. Routes to /settings where the OfficeReminderSettings
+          card lets them pick None / Office / Devotion + a time. */}
+      {showSetReminder && (
+        <Link href="/settings">
+          <button
+            type="button"
+            className="text-[13px] font-medium underline transition-opacity hover:opacity-80"
+            style={{
+              color: "rgba(168,197,160,0.8)",
+              textDecorationColor: "rgba(168,197,160,0.4)",
+              textUnderlineOffset: 4,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            Set a daily reminder for {reminderSide === "morning" ? "Morning" : "Evening"} Prayer →
+          </button>
+        </Link>
+      )}
     </div>
   );
 }
@@ -1788,6 +1822,27 @@ export default function PrayerModePage() {
   // All consumers below should read from this — `slides` is the live
   // (re-rendering) array, `displaySlides` is the stable session copy.
   const displaySlides = frozenSlides ?? slides;
+  // Office-reminder prefs query — used by the closing slide to surface
+  // a "Set reminder" CTA when the user just finished an office and
+  // hasn't enabled a daily reminder for that side yet. Only fetched in
+  // the closingOnly path so we don't pay for it on the prayer-list
+  // slideshow flow that doesn't render the CTA.
+  const officePrefsQuery = useQuery<{ morning: string; evening: string }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
+    enabled: !!user && closingOnly,
+    staleTime: 60_000,
+  });
+  // Which office did the user likely just finish? closingOnly is set
+  // by both the Daily Office and the Daily Devotion redirect paths,
+  // and neither carries a side hint, so we infer from local hour.
+  // Before noon → morning, otherwise evening. Good enough — the
+  // settings link points to the same screen either way.
+  const reminderSide: "morning" | "evening" = new Date().getHours() < 12 ? "morning" : "evening";
+  const sidePref = reminderSide === "morning"
+    ? officePrefsQuery.data?.morning
+    : officePrefsQuery.data?.evening;
+  const showSetReminder = closingOnly && sidePref === "none";
   const [phase, setPhase] = useState<"prayer" | "closing">(() => closingOnly ? "closing" : "prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
@@ -2272,17 +2327,43 @@ export default function PrayerModePage() {
             coPrayers={coPrayersData?.people ?? []}
             onDone={handleDone}
             visible={slideVisible}
+            showSetReminder={showSetReminder}
+            reminderSide={reminderSide}
           />
         )}
       </div>
 
-      {/* "Not today" skip link removed — the dashboard count was
-          showing garden members as having "prayed today" when they
-          had actually walked through the slideshow but skipped the
-          owner's request via Not today. Forcing Amen-or-X-out makes
-          the count truthful: people who reach a request either carry
-          it (amen, which feeds the count) or close the slideshow
-          (which doesn't). */}
+      {/* "Not today" skip link, below the Amen pulse, on request
+          slides only. Lets the viewer pass on a particular ask
+          without closing the slideshow — a small relief valve so
+          they can keep going. Restored per user direction; was
+          previously removed because it inflated the "prayed today"
+          dashboard count, but the count semantics are now derived
+          from amen rows directly so a skip doesn't poison anything. */}
+      {phase === "prayer" && displaySlides[index]?.kind === "request" && (
+        <div
+          className="absolute left-0 right-0 flex justify-center pointer-events-none"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 130px)" }}
+        >
+          <button
+            type="button"
+            onClick={skipToNext}
+            className="pointer-events-auto text-[12px] font-medium underline transition-opacity hover:opacity-80"
+            style={{
+              color: "rgba(143,175,150,0.6)",
+              textDecorationColor: "rgba(143,175,150,0.3)",
+              textUnderlineOffset: 4,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            Not today
+          </button>
+        </div>
+      )}
 
       {/* Progress — lifted well above the home-indicator gutter so
           the counter reads as a deliberate footer mark for the slide,

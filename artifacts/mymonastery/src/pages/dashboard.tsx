@@ -170,13 +170,20 @@ function countActivePrayersFor(prayersFor: Array<{ id: number; expired: boolean;
 function nextDayLabel(date: Date): string {
   if (isToday(date)) return "Today";
   const now = new Date();
-  const tomorrow = addDays(startOfDay(now), 1);
+  const today = startOfDay(now);
+  const tomorrow = addDays(today, 1);
   if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
-  // Beyond Tomorrow we render the actual calendar date ("May 10") so
-  // gathering cards line up with the Sunday-services format which
-  // also leads with "<Month D>". Earlier this returned "Wednesday" /
-  // "Next Wednesday" but those felt ambiguous (which Wednesday?) and
-  // drifted from how the user schedules — they think in dates.
+  // For events still inside "this week" (anywhere from day-after-
+  // tomorrow through the upcoming Sunday) we show the day name —
+  // "Sunday", "Monday", etc. Past the upcoming Sunday it switches to
+  // a calendar date ("May 17") so a far-out event reads as a date,
+  // not as an ambiguous weekday.
+  const dow = today.getDay(); // 0 = Sunday
+  const daysToUpcomingSunday = dow === 0 ? 7 : 7 - dow;
+  const upcomingSundayEnd = addDays(today, daysToUpcomingSunday + 1); // exclusive
+  if (date < upcomingSundayEnd) {
+    return format(date, "EEEE");
+  }
   return format(date, "MMM d");
 }
 
@@ -1712,12 +1719,11 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
 // pill list so the CSS keyframe can translate from 0 to -50% and seam.
 
 function ServiceTimesPillRow({ schedule, nextDate }: { schedule: ServiceSchedule; nextDate: Date }) {
-  // Single combined line: "<Month D> — <trailing>" where trailing is
-  // either the one service time (when the schedule has exactly one)
-  // or "Tap to See Service Times". A short clean line under the title
-  // — no third line.
+  // Single combined line: "<date-or-day> — <trailing>". Date format
+  // matches the rest of the dashboard via nextDayLabel: Today /
+  // Tomorrow / weekday name (this week) / "MMM d" (further out).
   if (schedule.times.length === 0) return null;
-  const dateLabel = format(nextDate, "MMM d");
+  const dateLabel = nextDayLabel(nextDate);
   const trailing = schedule.times.length === 1
     ? formatServiceTime(schedule.times[0].time)
     : "Tap to See Service Times";
@@ -1749,7 +1755,10 @@ function ServiceCard({
   keyPrefix: string;
 }) {
   const colors = CATEGORY_COLORS.gatherings;
-  const title = schedule.name || DAY_OF_WEEK_NAMES[schedule.dayOfWeek] + " Services";
+  // Default label is "Worship" rather than "{Day} Services" — reads
+  // less institutional and works for parishes that aren't on Sundays.
+  // Custom names from the schedule still win.
+  const title = schedule.name || "Worship";
 
   // Layout:
   //   Top row:     🙌🏽 Title            {emoji} Community
@@ -1969,12 +1978,26 @@ function PrayerOfficeCard() {
       }}
     >
       <div className="flex-1 px-4 pt-3 pb-3">
-        <p
-          className="text-[11px] font-semibold uppercase tracking-widest"
-          style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
-        >
-          {eyebrow}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-widest"
+            style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+          >
+            {eyebrow}
+          </p>
+          <Link
+            href="/offices"
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.4)",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            View
+          </Link>
+        </div>
         <p
           className="text-base font-semibold mt-0.5"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2005,7 +2028,7 @@ function PrayerOfficeCard() {
         </Link>
         <Link href={officeHref}>
           <p
-            className="text-[12px] mt-5 text-center cursor-pointer"
+            className="text-[12px] mt-7 text-center cursor-pointer"
             style={{
               color: "rgba(143,175,150,0.7)",
               fontFamily: "'Space Grotesk', sans-serif",
@@ -2057,31 +2080,51 @@ function ActiveRequestsCard({
   return (
     <div className="mt-3">
       <div
-        className="rounded-2xl px-5 pt-5 pb-1"
+        className="relative flex rounded-xl overflow-hidden"
         style={{
-          background: "rgba(46,107,64,0.18)",
-          border: "1px solid rgba(46,107,64,0.4)",
+          background: "rgba(46,107,64,0.08)",
+          border: "1px solid rgba(46,107,64,0.20)",
         }}
       >
-        <p
-          className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2"
-          style={{ color: "rgba(143,175,150,0.65)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          🙏🏽 Your prayers
-        </p>
-        <h3
-          className="text-xl font-bold"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {headline}
-        </h3>
-        <p
-          className="text-sm mt-1 mb-4"
-          style={{ color: "rgba(168,197,160,0.85)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {sub}
-        </p>
-        <PrayerListComposeBar />
+        <div className="flex-1 px-4 pt-3 pb-3">
+          <div className="flex items-start justify-between gap-2 mb-0.5">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+            >
+              🙏🏽 Your prayers
+            </p>
+            {activeCount > 0 && (
+              <Link
+                href="/my-prayer-requests"
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80"
+                style={{
+                  background: "rgba(46,107,64,0.22)",
+                  color: "#A8C5A0",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                View
+              </Link>
+            )}
+          </div>
+          <p
+            className="text-base font-semibold mt-0.5"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+          >
+            {headline}
+          </p>
+          <p
+            className="text-sm mt-1 mb-3"
+            style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+          >
+            {sub}
+          </p>
+          <div className="mt-3">
+            <PrayerListComposeBar />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -2126,20 +2169,27 @@ function PrayerListCarousel({
 
   return (
     <div className="mt-8">
-      {/* Title row: "Prayer List" left, "View all →" right. */}
-      <div className="flex items-center justify-between mb-3 px-1">
+      {/* Title row mirrors SectionShell on /prayer-list: title +
+          horizontal divider + "View all" pill on the right, so the
+          row reads as a peer of the manage-prayer-list sections. */}
+      <div className="flex items-center gap-3 mb-2">
         <h3
-          className="text-base font-semibold"
+          className="text-lg font-semibold"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           Prayer List
         </h3>
+        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
         <Link
           href="/prayer-list"
-          className="text-xs font-medium transition-opacity hover:opacity-80"
-          style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+          className="text-[10px] font-semibold uppercase transition-opacity hover:opacity-80"
+          style={{
+            color: "rgba(143,175,150,0.55)",
+            letterSpacing: "0.12em",
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
         >
-          View all →
+          View all
         </Link>
       </div>
 
@@ -3779,21 +3829,12 @@ export default function Dashboard() {
       else monthItems.push(item);
     }
 
-    // ── Prayer feeds placement (beta)
-    // Feeds with a published entry for today that I haven't yet prayed → Today.
-    // After I pray, the feed quiets down (same pattern as intercessions).
-    // Subscribed feeds without a today entry go to This week so the card
-    // stays visible but low-priority.
-    for (const sf of subscribedFeeds) {
-      const item: DashboardItem = { kind: "feed", data: sf };
-      if (sf.todayEntry && !sf.prayedToday) {
-        todayItems.push(item);
-      } else if (!sf.todayEntry) {
-        weekItems.push(item);
-      }
-      // If there's a todayEntry and I already prayed, the card goes quiet
-      // for the rest of the day (drop entirely).
-    }
+    // Prayer feeds (Phoebe Climate, etc.) used to surface as their own
+    // dashboard cards. Off the home screen now per user direction —
+    // feed content reaches the user through the prayer-list slideshow
+    // and the dedicated /climate hub. Surfacing it here was crowding
+    // the home with a card that didn't drive engagement on its own.
+    void subscribedFeeds;
 
     // ── Gatherings / traditions placement
     // Bucket by nextMeetupDate: today → Today, tomorrow → Tomorrow,

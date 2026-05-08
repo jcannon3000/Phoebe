@@ -1254,6 +1254,7 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_pref TEXT NOT NULL DEFAULT 'none'`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_pref TEXT NOT NULL DEFAULT 'none'`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_time TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_sent_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_sent_date TEXT`);
 

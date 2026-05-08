@@ -276,6 +276,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         morning: usersTable.parishOfficeMorningPref,
         evening: usersTable.parishOfficeEveningPref,
         morningTime: usersTable.parishOfficeMorningTime,
+        eveningTime: usersTable.parishOfficeEveningTime,
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
@@ -283,6 +284,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       morning: u?.morning ?? "none",
       evening: u?.evening ?? "none",
       morningTime: u?.morningTime ?? null,
+      eveningTime: u?.eveningTime ?? null,
     });
   } catch (err) {
     console.error("[office-prefs] GET failed:", err);
@@ -306,6 +308,11 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
     update.parishOfficeMorningTime = null;
   } else if (typeof body.morningTime === "string" && /^\d{2}:\d{2}$/.test(body.morningTime)) {
     update.parishOfficeMorningTime = body.morningTime;
+  }
+  if (body.eveningTime === null) {
+    update.parishOfficeEveningTime = null;
+  } else if (typeof body.eveningTime === "string" && /^\d{2}:\d{2}$/.test(body.eveningTime)) {
+    update.parishOfficeEveningTime = body.eveningTime;
   }
   if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
   try {

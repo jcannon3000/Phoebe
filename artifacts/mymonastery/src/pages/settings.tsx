@@ -38,7 +38,52 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
 // form. Backed by /api/me/office-prefs which writes to the
 // parish_office_* user columns under the hood.
 type OfficePref = "none" | "office" | "devotion";
-type OfficePrefs = { morning: OfficePref; evening: OfficePref; morningTime: string | null };
+type OfficePrefs = {
+  morning: OfficePref;
+  evening: OfficePref;
+  morningTime: string | null;
+  eveningTime: string | null;
+};
+
+// Small inline row used by OfficeReminderSettings. Renders a labeled
+// HH:MM picker that fires `onChange` on every commit so the parent
+// can persist it through the office-prefs mutation. Hidden when the
+// side's pref is "none" (the parent decides; this just renders).
+function ReminderTimeRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div
+      className="flex items-center justify-between gap-3 py-2.5"
+      style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}
+    >
+      <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+        {label}
+      </p>
+      <input
+        type="time"
+        value={value}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (/^\d{2}:\d{2}$/.test(v)) onChange(v);
+        }}
+        className="text-[14px] rounded-md px-2 py-1"
+        style={{
+          background: "rgba(15,40,24,0.6)",
+          border: "1px solid rgba(46,107,64,0.4)",
+          color: "#F0EDE6",
+          fontFamily: "'Space Grotesk', sans-serif",
+        }}
+      />
+    </div>
+  );
+}
 
 function OfficeReminderSettings() {
   const queryClient = useQueryClient();
@@ -54,6 +99,13 @@ function OfficeReminderSettings() {
 
   const morning = data?.morning ?? "none";
   const evening = data?.evening ?? "none";
+  // Default placeholders so the time picker has a sensible starting
+  // value when the user first turns a side on. Stored values (when
+  // present) override these.
+  const DEFAULT_MORNING = "07:00";
+  const DEFAULT_EVENING = "18:00";
+  const morningTime = data?.morningTime ?? DEFAULT_MORNING;
+  const eveningTime = data?.eveningTime ?? DEFAULT_EVENING;
 
   const morningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
     { value: "none", label: "No reminder", sub: "" },
@@ -111,6 +163,13 @@ function OfficeReminderSettings() {
             </button>
           );
         })}
+        {morning !== "none" && (
+          <ReminderTimeRow
+            label="Reminder time"
+            value={morningTime}
+            onChange={(t) => save.mutate({ morningTime: t })}
+          />
+        )}
       </SettingsCard>
       <SettingsCard>
         <p className="text-[12px] font-semibold mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -151,6 +210,13 @@ function OfficeReminderSettings() {
             </button>
           );
         })}
+        {evening !== "none" && (
+          <ReminderTimeRow
+            label="Reminder time"
+            value={eveningTime}
+            onChange={(t) => save.mutate({ eveningTime: t })}
+          />
+        )}
       </SettingsCard>
     </>
   );

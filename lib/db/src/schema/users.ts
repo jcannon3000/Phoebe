@@ -90,10 +90,12 @@ export const usersTable = pgTable("users", {
   // for legacy rows so we don't start pinging anyone without consent.
   parishOfficeMorningPref: text("parish_office_morning_pref").notNull().default("none"),
   parishOfficeEveningPref: text("parish_office_evening_pref").notNull().default("none"),
-  // Optional override of the morning push time (HH:MM, parish TZ). If
-  // null, falls back to dailyBellTime (the existing daily-prayer-list
-  // bell). Evening push is fixed at 18:00 in the parish TZ for v1.
+  // Optional override of the morning / evening push times (HH:MM,
+  // user TZ). If null, the cron falls back to its built-in defaults
+  // (dailyBellTime / 18:00). Both sides are independently set from
+  // Settings → Daily reminders.
   parishOfficeMorningTime: text("parish_office_morning_time"),
+  parishOfficeEveningTime: text("parish_office_evening_time"),
   // YYYY-MM-DD (parish TZ) of the last morning / evening reminder we
   // fired for this user. Idempotency for the 15-min scheduler tick:
   // we only push once per local day. NULL = never sent.
