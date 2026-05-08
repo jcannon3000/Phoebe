@@ -2029,12 +2029,10 @@ function PrayerOfficeCard() {
             View
           </Link>
         </div>
-        {/* Headline (top-aligned) + streak pill (pushed down a hair
-            with mt-1). items-start keeps the headline at the top of
-            the row tight against the eyebrow; mb-1 below the row
-            gives just enough air before the subtitle without
-            ballooning the card height. Streak hidden when 0. */}
-        <div className="flex items-start justify-between gap-2 mb-1">
+        {/* Headline + streak row, fully condensed: streak sits at the
+            top of its row (no mt), no bottom margin — the subtitle
+            sits flush below. Card now reads as a tight stack. */}
+        <div className="flex items-start justify-between gap-2">
           <p
             className="text-base font-semibold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2043,7 +2041,7 @@ function PrayerOfficeCard() {
           </p>
           {officeStreak > 0 && (
             <span
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0 mt-1"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0"
               style={{
                 background: "rgba(168,197,160,0.12)",
                 color: "rgba(168,197,160,0.95)",
