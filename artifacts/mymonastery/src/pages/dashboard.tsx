@@ -2014,40 +2014,40 @@ function PrayerOfficeCard() {
           >
             {eyebrow}
           </p>
-          {/* View pill stacked over a streak count (when the user has
-              one). Renders 🔥 7 days under the pill so the streak
-              feels like a badge attached to the View — same visual
-              affordance Duolingo uses. Hidden when streak is 0 to
-              avoid a lonely zero on a brand-new account. */}
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <Link
-              href="/offices"
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
-              style={{
-                background: "rgba(46,107,64,0.22)",
-                color: "#A8C5A0",
-                border: "1px solid rgba(46,107,64,0.4)",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              View
-            </Link>
-            {officeStreak > 0 && (
-              <span
-                className="text-[10px] font-semibold tabular-nums"
-                style={{ color: "rgba(168,197,160,0.85)", fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                🔥 {officeStreak} {officeStreak === 1 ? "day" : "days"}
-              </span>
-            )}
-          </div>
+          <Link
+            href="/offices"
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.4)",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            View
+          </Link>
         </div>
-        <p
-          className="text-base font-semibold mt-0.5"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-        >
-          Pray with your community
-        </p>
+        {/* Headline + streak chip inline. Streak is just the flame +
+            number (no "day"/"days" word) so the chip stays compact
+            and reads as a small status indicator next to the title.
+            Hidden when 0 to avoid a lonely zero on a brand-new
+            account. */}
+        <div className="flex items-center justify-between gap-2 mt-0.5">
+          <p
+            className="text-base font-semibold"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+          >
+            Pray with your community
+          </p>
+          {officeStreak > 0 && (
+            <span
+              className="text-[12px] font-semibold tabular-nums shrink-0"
+              style={{ color: "rgba(168,197,160,0.9)", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              🔥 {officeStreak}
+            </span>
+          )}
+        </div>
         <p
           className="text-sm mt-1"
           style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2130,14 +2130,14 @@ function ActiveRequestsCard({
         ? "Prayed for 1 time so far."
         : `Prayed for ${prayedTotal} times so far.`;
   return (
-    <div className="mt-5 px-1">
-      <p
-        className="text-[11px] font-semibold uppercase tracking-widest"
-        style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
-      >
-        🙏🏽 Your prayers
-      </p>
-      <div className="flex items-start justify-between gap-3 mt-1">
+    // Sits flat on the dashboard background. No eyebrow, no card —
+    // just a headline + sub + the standard compose input. Top
+    // margin (mt-8) gives a clear gap between this and the Pray-
+    // with-your-community card above; the bottom of the compose
+    // bar carries its own mb-5 from PrayerListComposeBar so we
+    // don't need extra below.
+    <div className="mt-8 px-1">
+      <div className="flex items-start justify-between gap-3">
         <p
           className="text-base font-semibold"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2160,7 +2160,7 @@ function ActiveRequestsCard({
         )}
       </div>
       <p
-        className="text-sm mt-1 mb-3"
+        className="text-sm mt-1 mb-4"
         style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
       >
         {sub}
