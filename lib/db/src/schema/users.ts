@@ -88,7 +88,15 @@ export const usersTable = pgTable("users", {
   // `dailyBellTime` (morning) or a fixed evening hour (in their TZ),
   // and deep-links straight into the chosen liturgy. Default "none"
   // for legacy rows so we don't start pinging anyone without consent.
-  parishOfficeMorningPref: text("parish_office_morning_pref").notNull().default("none"),
+  // Morning side defaults to "devotion" — the abbreviated BCP
+  // morning office (~2-3 min). The whole pitch of Phoebe is the
+  // daily rhythm, and a fresh user sitting on "none" never feels
+  // it. Push only fires after the user has granted notification
+  // permission, so this is not a covert ping. Anyone who doesn't
+  // want it flips to "none" in Settings → Daily reminders.
+  // Evening stays "none" by default — two unsolicited daily pushes
+  // is heavier than the warmth we're aiming for.
+  parishOfficeMorningPref: text("parish_office_morning_pref").notNull().default("devotion"),
   parishOfficeEveningPref: text("parish_office_evening_pref").notNull().default("none"),
   // Optional override of the morning / evening push times (HH:MM,
   // user TZ). If null, the cron falls back to its built-in defaults

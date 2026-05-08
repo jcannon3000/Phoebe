@@ -1249,14 +1249,45 @@ export async function migrate() {
 
     // Office reminder prefs for Phoebe Parish users. Three-way enum
     // per side of the day ("none" / "office" / "devotion"), with
-    // optional morning-time override. Defaults to "none" so existing
-    // rows don't start receiving pushes without consent.
+    // optional time overrides. Morning DEFAULT is now 'devotion'
+    // (see backfill block below); evening DEFAULT stays 'none'.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_pref TEXT NOT NULL DEFAULT 'none'`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_pref TEXT NOT NULL DEFAULT 'none'`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_sent_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_sent_date TEXT`);
+
+    // ── Default morning office reminder → 'devotion' ──────────────────────
+    // The morning office pref originally defaulted to 'none' so legacy
+    // rows didn't start receiving pushes without consent. With the
+    // home redesign — daily rhythm anchored on the office — that
+    // conservative default left fresh users with no nudge at all,
+    // and the feature stayed invisible until they hunted in Settings.
+    //
+    // This block flips the default to 'devotion' (the short ~3-min
+    // BCP form) AND backfills existing rows whose pref is still the
+    // old 'none'. We gate the backfill on the column's CURRENT default
+    // — so once the default has been flipped, the UPDATE is skipped on
+    // every later boot (idempotent without a marker column). Users
+    // who deliberately set 'none' in Settings *after* this migration
+    // runs are not affected: the gate prevents re-running.
+    await run(client, `
+      DO $$ BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'users'
+            AND column_name = 'parish_office_morning_pref'
+            AND (column_default IS NULL OR column_default NOT LIKE '%devotion%')
+        ) THEN
+          UPDATE users
+            SET parish_office_morning_pref = 'devotion'
+            WHERE parish_office_morning_pref = 'none';
+        END IF;
+      END $$;
+    `);
+    await run(client, `ALTER TABLE users ALTER COLUMN parish_office_morning_pref SET DEFAULT 'devotion'`);
 
     // BCP-47 locale code. Default English so legacy rows render in
     // English without backfill. Beta users can flip to "es" via
