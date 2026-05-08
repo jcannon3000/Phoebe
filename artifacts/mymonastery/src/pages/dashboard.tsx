@@ -2057,7 +2057,18 @@ function PrayerOfficeCard() {
         </div>
         <p
           className="text-sm leading-tight"
-          style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+          style={{
+            color: "#8FAF96",
+            fontFamily: "'Space Grotesk', sans-serif",
+            // Negative top margin pulls the subtitle (and everything
+            // below it: big CTA + small link) up to sit closer to
+            // the headline. The streak pill on the right edge has
+            // mt-1 + py-1 which makes the row taller than the
+            // headline alone; the subtitle would otherwise hang in
+            // the resulting whitespace.
+            marginTop: -4,
+            marginBottom: 0,
+          }}
         >
           From the Book of Common Prayer
         </p>
