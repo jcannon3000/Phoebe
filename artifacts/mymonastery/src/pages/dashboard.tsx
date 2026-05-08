@@ -2112,32 +2112,20 @@ function PrayerOfficeCard() {
 // nothing's clamping it anymore.
 function ActiveRequestsCard({
   activeCount,
-  prayedTotal,
 }: {
   activeCount: number;
-  prayedTotal: number;
 }) {
   const headline = activeCount === 0
     ? "Share something on your heart"
     : activeCount === 1
       ? "You have 1 active prayer request"
       : `You have ${activeCount} active prayer requests`;
-  const sub = activeCount === 0
-    ? "Your community will hold it."
-    : prayedTotal === 0
-      ? "Waiting for the first amen."
-      : prayedTotal === 1
-        ? "Prayed for 1 time so far."
-        : `Prayed for ${prayedTotal} times so far.`;
   return (
-    // Sits flat on the dashboard background. No eyebrow, no card —
-    // just a headline + sub + the standard compose input. Top
-    // margin (mt-8) gives a clear gap between this and the Pray-
-    // with-your-community card above; the bottom of the compose
-    // bar carries its own mb-5 from PrayerListComposeBar so we
-    // don't need extra below.
+    // Flat on the dashboard background — headline + compose. No
+    // sub line ("Prayed for X times so far"); the count is
+    // surfaced inside the manage view via the View pill.
     <div className="mt-8 px-1">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 mb-3">
         <p
           className="text-base font-semibold"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2159,12 +2147,6 @@ function ActiveRequestsCard({
           </Link>
         )}
       </div>
-      <p
-        className="text-sm mt-1 mb-4"
-        style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-      >
-        {sub}
-      </p>
       <PrayerListComposeBar />
     </div>
   );
@@ -2190,10 +2172,15 @@ function PrayerListCarousel({
   requests,
   viewerName,
   viewerAvatarUrl,
+  tight = false,
 }: {
   requests: PrayerListCarouselRow[];
   viewerName: string | null;
   viewerAvatarUrl: string | null;
+  /** When true, the section sits closer to whatever's above it.
+   *  Set by the dashboard when no upcoming events are rendering so
+   *  the carousel doesn't drift to the bottom of an empty page. */
+  tight?: boolean;
 }) {
   if (requests.length === 0) return null;
 
@@ -2208,7 +2195,7 @@ function PrayerListCarousel({
     name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
   return (
-    <div className="mt-8">
+    <div className={tight ? "mt-3" : "mt-8"}>
       {/* Title row mirrors SectionShell on /prayer-list: title +
           horizontal divider + "View all" pill on the right, so the
           row reads as a peer of the manage-prayer-list sections. */}
@@ -4178,10 +4165,6 @@ export default function Dashboard() {
               return true;
             });
             const ownActiveCount = ownActive.length;
-            const ownPrayedTotal = ownActive.reduce(
-              (sum, r) => sum + (typeof r.amenCountTotal === "number" ? r.amenCountTotal : 0),
-              0,
-            );
             return (
               <>
                 {newPrayersCount > 0 && (
@@ -4192,10 +4175,7 @@ export default function Dashboard() {
                 <div className="mt-3">
                   <PrayerOfficeCard />
                 </div>
-                <ActiveRequestsCard
-                  activeCount={ownActiveCount}
-                  prayedTotal={ownPrayedTotal}
-                />
+                <ActiveRequestsCard activeCount={ownActiveCount} />
               </>
             );
           })()}
@@ -4297,11 +4277,22 @@ export default function Dashboard() {
                       ownerName: r.ownerName ?? null,
                       ownerAvatarUrl: r.ownerAvatarUrl ?? null,
                     }));
+                  // When the four time sections (Today / Tomorrow /
+                  // This week / Upcoming) all render empty, there's
+                  // a stretch of nothing between the compose bar and
+                  // the Prayer List section. Pull the carousel up so
+                  // it lands closer to the compose bar in that case.
+                  const noEvents =
+                    fToday.length === 0 &&
+                    fTomorrow.length === 0 &&
+                    fWeek.length === 0 &&
+                    fMonth.length === 0;
                   return (
                     <PrayerListCarousel
                       requests={carouselRows}
                       viewerName={userName || null}
                       viewerAvatarUrl={user?.avatarUrl ?? null}
+                      tight={noEvents}
                     />
                   );
                 })()}
