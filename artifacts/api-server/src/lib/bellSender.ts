@@ -766,6 +766,16 @@ function isWithinTickWindow(
   return Math.abs(now - target) <= 15;
 }
 
+// Kill switch for the office-reminder fan-out. We just flipped the
+// default morning pref to 'devotion' AND backfilled existing 'none'
+// rows, so every user is technically opted in — but the new Settings
+// UI that lets them turn it off ships with the next App Store
+// version, and we don't want to push someone before they have the
+// in-app way to opt out. Set OFFICE_REMINDERS_ENABLED=1 in Railway
+// the moment the App Store rollout completes and pushes start
+// flowing. Until then the function is a no-op.
+const OFFICE_REMINDERS_ENABLED = process.env["OFFICE_REMINDERS_ENABLED"] === "1";
+
 export async function runParishOfficeReminderSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // Generalized — fires for any user with at least one non-"none"
   // office pref, regardless of whether they're in a parish. The
@@ -775,6 +785,10 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
   // the user's office-reminder prefs full stop. When a parish is
   // attached we use parish title + timezone in the push; otherwise
   // we fall back to "your community" + the user's own timezone.
+  if (!OFFICE_REMINDERS_ENABLED && !opts.forceNow) {
+    logger.info("[office-reminder] OFFICE_REMINDERS_ENABLED unset — skipping fan-out");
+    return;
+  }
   try {
     const rows = await db
       .select({
