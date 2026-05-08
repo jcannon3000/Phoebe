@@ -1580,7 +1580,7 @@ function GatheringCard({
           style={{ background: isToday_ ? undefined : colors.bar }}
         />
         <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-3">
             <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
               {r.name}
             </span>
@@ -1807,7 +1807,7 @@ function ServiceCard({
           style={{ background: isOnDate ? undefined : colors.bar }}
         />
         <div className="flex-1 px-4 pt-3 pb-3">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-3">
             <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>🙌🏽 {title}</span>
             {/* Top-right: community eyebrow — replaces the old "SERVICE
                 TIMES" label. Emoji + name from the schedule's host group
@@ -2009,7 +2009,7 @@ function PrayerOfficeCard() {
       }}
     >
       <div className="flex-1 px-4 pt-2 pb-3">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-3">
           <p
             className="text-[11px] font-semibold uppercase tracking-widest"
             style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
@@ -2034,7 +2034,7 @@ function PrayerOfficeCard() {
             opening a gap before the subtitle. Streak pill is items-
             start so it sits at the top of the row, flush against the
             eyebrow. */}
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-3">
           <p
             className="text-base font-semibold leading-tight"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2043,7 +2043,7 @@ function PrayerOfficeCard() {
           </p>
           {officeStreak > 0 && (
             <span
-              className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full text-center tabular-nums shrink-0 leading-tight"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0"
               style={{
                 background: "rgba(168,197,160,0.12)",
                 color: "rgba(168,197,160,0.95)",
