@@ -1969,6 +1969,35 @@ function PrayerOfficeCard() {
     ? "/bcp/daily-office?mode=morning"
     : "/bcp/daily-office?mode=evening";
   const eyebrow = isMorning ? "🌅 This morning" : "🌙 This evening";
+
+  // Pull office-prefs to drive (a) which form is the BIG CTA — the
+  // user's last-prayed for the current side wins; falls back to the
+  // shorter Devotion if they've never prayed the office side at all
+  // — and (b) the office streak rendered under the View pill. Both
+  // come from /api/me/office-prefs in a single round-trip. Cached
+  // for 60s so re-renders don't refetch on every hover/scroll tick.
+  const { data: officePrefs } = useQuery<{
+    lastPrayedMorning: "office" | "devotion" | null;
+    lastPrayedEvening: "office" | "devotion" | null;
+    officeStreak: number;
+  }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
+    staleTime: 60_000,
+  });
+  const lastPrayedSide = isMorning
+    ? (officePrefs?.lastPrayedMorning ?? "devotion")
+    : (officePrefs?.lastPrayedEvening ?? "devotion");
+  const officeStreak = officePrefs?.officeStreak ?? 0;
+  // Big CTA = whichever form the user prayed last (or devotion as
+  // the friendlier default for first-time users). Small link = the
+  // other.
+  const bigIsOffice = lastPrayedSide === "office";
+  const bigLabel = bigIsOffice ? officeLabel : devotionLabel;
+  const bigHref = bigIsOffice ? officeHref : devotionHref;
+  const smallLabel = bigIsOffice ? devotionLabel : officeLabel;
+  const smallHref = bigIsOffice ? devotionHref : officeHref;
+
   return (
     <div
       className="relative flex rounded-xl overflow-hidden"
@@ -1985,18 +2014,33 @@ function PrayerOfficeCard() {
           >
             {eyebrow}
           </p>
-          <Link
-            href="/offices"
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80"
-            style={{
-              background: "rgba(46,107,64,0.22)",
-              color: "#A8C5A0",
-              border: "1px solid rgba(46,107,64,0.4)",
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            View
-          </Link>
+          {/* View pill stacked over a streak count (when the user has
+              one). Renders 🔥 7 days under the pill so the streak
+              feels like a badge attached to the View — same visual
+              affordance Duolingo uses. Hidden when streak is 0 to
+              avoid a lonely zero on a brand-new account. */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Link
+              href="/offices"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full transition-opacity hover:opacity-80"
+              style={{
+                background: "rgba(46,107,64,0.22)",
+                color: "#A8C5A0",
+                border: "1px solid rgba(46,107,64,0.4)",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              View
+            </Link>
+            {officeStreak > 0 && (
+              <span
+                className="text-[10px] font-semibold tabular-nums"
+                style={{ color: "rgba(168,197,160,0.85)", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                🔥 {officeStreak} {officeStreak === 1 ? "day" : "days"}
+              </span>
+            )}
+          </div>
         </div>
         <p
           className="text-base font-semibold mt-0.5"
@@ -2010,7 +2054,7 @@ function PrayerOfficeCard() {
         >
           From the Book of Common Prayer
         </p>
-        <Link href={devotionHref}>
+        <Link href={bigHref}>
           <div
             className="mt-3 w-full rounded-xl text-center cursor-pointer"
             style={{
@@ -2023,23 +2067,26 @@ function PrayerOfficeCard() {
               border: "1px solid rgba(46,107,64,0.45)",
             }}
           >
-            Pray the {devotionLabel} <span aria-hidden>→</span>
+            Pray {bigIsOffice ? "the full " : "the "}{bigLabel} <span aria-hidden>→</span>
           </div>
         </Link>
-        <Link href={officeHref}>
-          <p
-            className="text-[12px] mt-7 text-center cursor-pointer"
+        {/* Spacing lives on the Link wrapper, not the <span>: the
+            inline `margin: 0` style on the previous <p> was clobbering
+            Tailwind's mt-* and collapsing the gap between the big
+            CTA and this link. */}
+        <Link href={smallHref} className="block mt-6 text-center">
+          <span
+            className="text-[12px] cursor-pointer"
             style={{
               color: "rgba(143,175,150,0.7)",
               fontFamily: "'Space Grotesk', sans-serif",
               textDecoration: "underline",
               textDecorationColor: "rgba(143,175,150,0.3)",
               textUnderlineOffset: 3,
-              margin: 0,
             }}
           >
-            or pray the full {officeLabel}
-          </p>
+            or pray {bigIsOffice ? "the " : "the full "}{smallLabel}
+          </span>
         </Link>
       </div>
     </div>
@@ -2058,6 +2105,11 @@ function PrayerOfficeCard() {
 //
 // Empty state (no active own requests): card still renders so the
 // compose bar stays visible — a short prompt replaces the count line.
+// Lays out flat on the dashboard background — no card wrapper, no
+// border, just a section heading + headline + sub + the standard
+// compose input. The View pill sits inline with the headline (right
+// edge), and the input stretches the full content width since
+// nothing's clamping it anymore.
 function ActiveRequestsCard({
   activeCount,
   prayedTotal,
@@ -2078,54 +2130,42 @@ function ActiveRequestsCard({
         ? "Prayed for 1 time so far."
         : `Prayed for ${prayedTotal} times so far.`;
   return (
-    <div className="mt-3">
-      <div
-        className="relative flex rounded-xl overflow-hidden"
-        style={{
-          background: "rgba(46,107,64,0.08)",
-          border: "1px solid rgba(46,107,64,0.20)",
-        }}
+    <div className="mt-5 px-1">
+      <p
+        className="text-[11px] font-semibold uppercase tracking-widest"
+        style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
       >
-        <div className="flex-1 px-4 pt-3 pb-3">
-          <div className="flex items-start justify-between gap-2 mb-0.5">
-            <p
-              className="text-[11px] font-semibold uppercase tracking-widest"
-              style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
-            >
-              🙏🏽 Your prayers
-            </p>
-            {activeCount > 0 && (
-              <Link
-                href="/my-prayer-requests"
-                className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80"
-                style={{
-                  background: "rgba(46,107,64,0.22)",
-                  color: "#A8C5A0",
-                  border: "1px solid rgba(46,107,64,0.4)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                View
-              </Link>
-            )}
-          </div>
-          <p
-            className="text-base font-semibold mt-0.5"
-            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+        🙏🏽 Your prayers
+      </p>
+      <div className="flex items-start justify-between gap-3 mt-1">
+        <p
+          className="text-base font-semibold"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+        >
+          {headline}
+        </p>
+        {activeCount > 0 && (
+          <Link
+            href="/my-prayer-requests"
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80 mt-0.5"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.4)",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
           >
-            {headline}
-          </p>
-          <p
-            className="text-sm mt-1 mb-3"
-            style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-          >
-            {sub}
-          </p>
-          <div className="mt-3">
-            <PrayerListComposeBar />
-          </div>
-        </div>
+            View
+          </Link>
+        )}
       </div>
+      <p
+        className="text-sm mt-1 mb-3"
+        style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+      >
+        {sub}
+      </p>
+      <PrayerListComposeBar />
     </div>
   );
 }

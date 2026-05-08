@@ -280,11 +280,82 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
+
+    // Most-recent office or devotion the user has actually prayed,
+    // per side. The dashboard's PrayerOfficeCard uses this to put
+    // whichever the user last prayed in the *big* CTA, with the
+    // other form as the small "or pray the …" link below — matches
+    // the muscle memory of "pick up where I left off."
+    //
+    // Two queries, one per side, each pulling the most recent row
+    // from prayer_sessions filtered to that side's two surfaces.
+    // Returns "office" | "devotion" | null. Cheap (the index on
+    // (user_id, ended_at) covers both queries).
+    const lastPrayedSide = async (
+      offSurface: "morning-prayer" | "evening-prayer",
+      devSurface: "morning-devotion" | "early-evening-devotion",
+    ): Promise<"office" | "devotion" | null> => {
+      const rows = await db.execute<{ surface: string }>(sql`
+        SELECT surface FROM prayer_sessions
+        WHERE user_id = ${sessionUserId}
+          AND surface IN (${offSurface}, ${devSurface})
+        ORDER BY ended_at DESC
+        LIMIT 1
+      `);
+      const last = rows.rows[0]?.surface ?? null;
+      if (last === offSurface) return "office";
+      if (last === devSurface) return "devotion";
+      return null;
+    };
+    const [lastPrayedMorning, lastPrayedEvening] = await Promise.all([
+      lastPrayedSide("morning-prayer", "morning-devotion"),
+      lastPrayedSide("evening-prayer", "early-evening-devotion"),
+    ]);
+
+    // Office streak — consecutive days the user has prayed *any* of
+    // the four office/devotion surfaces. Today not yet prayed
+    // doesn't break the streak (we still credit yesterday's count
+    // until the day rolls over). Walking the day-set in JS rather
+    // than writing a recursive SQL CTE — the set is small (<= 365
+    // for a year of dedicated practice) and the round-trip cost is
+    // dwarfed by the dashboard render.
+    const [meTz] = await db
+      .select({ timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    const tz = meTz?.timezone || "UTC";
+    const dayRows = await db.execute<{ day: string }>(sql`
+      SELECT DISTINCT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day
+      FROM prayer_sessions
+      WHERE user_id = ${sessionUserId}
+        AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+    `);
+    const officeDaySet = new Set(dayRows.rows.map((r) => r.day));
+    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    const decrementDay = (ymd: string): string => {
+      const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      dt.setUTCDate(dt.getUTCDate() - 1);
+      return dt.toISOString().slice(0, 10);
+    };
+    let officeStreak = 0;
+    let cursor = todayStr;
+    // Today not yet prayed? Drop the cursor to yesterday; the streak
+    // is still alive until the day flips with no prayer.
+    if (!officeDaySet.has(cursor)) cursor = decrementDay(cursor);
+    while (officeDaySet.has(cursor)) {
+      officeStreak += 1;
+      cursor = decrementDay(cursor);
+    }
+
     res.json({
       morning: u?.morning ?? "none",
       evening: u?.evening ?? "none",
       morningTime: u?.morningTime ?? null,
       eveningTime: u?.eveningTime ?? null,
+      lastPrayedMorning,
+      lastPrayedEvening,
+      officeStreak,
     });
   } catch (err) {
     console.error("[office-prefs] GET failed:", err);
