@@ -298,6 +298,28 @@ router.put("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void> =
   res.json({ feed: row });
 });
 
+// DELETE /api/prayer-feeds/:slug — admin/creator deletes the entire feed
+// and all of its entries + subscriptions. Cascade behavior:
+//   • prayer_feed_entries → ON DELETE CASCADE drops every entry
+//   • prayer_feed_subscriptions → ON DELETE CASCADE drops every sub
+//   • prayer_feed_prayers (per-entry "I prayed" stamps) → cascades via
+//     entries
+// Permission gate is the same `canEditFeed` used by PUT — only the
+// creator (and platform admins for editorial feeds) can delete.
+// Platform-owned feeds (creator_user_id IS NULL, e.g. phoebe-climate)
+// can be deleted by any platform admin.
+router.delete("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to delete this feed." });
+    return;
+  }
+  await db.delete(prayerFeedsTable).where(eq(prayerFeedsTable.id, feed.id));
+  res.json({ ok: true });
+});
+
 // GET /api/prayer-feeds/:slug/entries — list entries in a date range.
 // Editors see every state; non-editors see only published.
 router.get("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promise<void> => {

@@ -167,10 +167,25 @@ export default function PrayerFeedManagePage() {
     },
   });
 
+  // Delete the entire feed — wipes the feed row, every entry, every
+  // subscription, and every "I prayed" stamp via DB cascades. Routes
+  // back to the dashboard since the manage URL is dead afterward.
+  const deleteFeed = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/prayer-feeds/${slug}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/prayer-feeds/mine"] });
+      qc.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+      setLocation("/dashboard");
+    },
+  });
+
   // ── Modal state — keyed by (date, slot) since each cell is its
   // own intercession. The editor remembers which cell is open so
   // saves / deletes don't drift to the wrong slot. ──────────────
   const [editorTarget, setEditorTarget] = useState<{ date: string; slot: number } | null>(null);
+  // Two-tap confirm gate for the destructive delete-feed button —
+  // first tap arms it, second tap commits.
+  const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false);
   const [draft, setDraft] = useState<{ title: string; body: string; scriptureRef: string }>({
     title: "", body: "", scriptureRef: "",
   });
@@ -372,6 +387,60 @@ export default function PrayerFeedManagePage() {
             </div>
           </>
         )}
+
+        {/* ── Danger zone — delete the entire feed.
+              Cascades wipe every entry, every subscriber row, and
+              every "I prayed" stamp via DB foreign keys. Two-tap
+              confirm prevents accidents — first tap arms the
+              destructive button, second tap commits. */}
+        <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,180,180,0.55)" }}>
+            Danger zone
+          </p>
+          <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+            Deletes the feed and every intention, every subscriber, and every "I prayed" tap. Cannot be undone.
+          </p>
+          {!deleteConfirmArmed ? (
+            <button
+              onClick={() => setDeleteConfirmArmed(true)}
+              className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-85"
+              style={{
+                background: "rgba(168,72,72,0.15)",
+                border: "1px solid rgba(168,72,72,0.4)",
+                color: "#E8B0B0",
+              }}
+            >
+              Delete feed
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => deleteFeed.mutate()}
+                disabled={deleteFeed.isPending}
+                className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-85 disabled:opacity-50"
+                style={{
+                  background: "#A84848",
+                  border: "1px solid #A84848",
+                  color: "#FFFFFF",
+                }}
+              >
+                {deleteFeed.isPending ? "Deleting…" : "Confirm delete"}
+              </button>
+              <button
+                onClick={() => setDeleteConfirmArmed(false)}
+                disabled={deleteFeed.isPending}
+                className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-85 disabled:opacity-50"
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(143,175,150,0.3)",
+                  color: "#8FAF96",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* ── Editor modal — keyed on (date, slot) so each cell on
               the calendar opens its own intention. ─────────────── */}
