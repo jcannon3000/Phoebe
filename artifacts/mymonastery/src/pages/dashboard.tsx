@@ -2124,7 +2124,7 @@ function ActiveRequestsCard({
     // Flat on the dashboard background — headline + compose. No
     // sub line ("Prayed for X times so far"); the count is
     // surfaced inside the manage view via the View pill.
-    <div className="mt-8 px-1">
+    <div className="mt-4 px-1">
       <div className="flex items-start justify-between gap-3 mb-3">
         <p
           className="text-base font-semibold"
