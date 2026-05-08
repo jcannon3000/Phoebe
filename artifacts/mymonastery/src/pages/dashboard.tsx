@@ -1711,22 +1711,20 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
 // pill list so the CSS keyframe can translate from 0 to -50% and seam.
 
 function ServiceTimesPillRow({ schedule, nextDate }: { schedule: ServiceSchedule; nextDate: Date }) {
-  // Two-line layout:
-  //   Line 1: "<Month D>" (e.g. "May 10") — the next service date.
-  //   Line 2: "<time>" if the schedule has exactly one service, else
-  //           "Tap to See Service Times" so the user knows to drill in.
-  // Splitting onto two lines keeps the date readable on a narrow phone
-  // and matches the rest of the upcoming-section cards which lead with
-  // a date on its own line.
+  // Single combined line: "<Month D> — <trailing>" where trailing is
+  // either the one service time (when the schedule has exactly one)
+  // or "Tap to See Service Times". A short clean line under the title
+  // — no third line.
   if (schedule.times.length === 0) return null;
   const dateLabel = format(nextDate, "MMM d");
   const trailing = schedule.times.length === 1
     ? formatServiceTime(schedule.times[0].time)
     : "Tap to See Service Times";
   return (
-    <div className="mt-2 text-xs font-medium" style={{ letterSpacing: "-0.01em" }}>
-      <div style={{ color: "#C8D4C0" }}>{dateLabel}</div>
-      <div style={{ color: "rgba(200,212,192,0.7)" }}>{trailing}</div>
+    <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+      <span style={{ color: "#C8D4C0" }}>{dateLabel}</span>
+      <span style={{ color: "rgba(200,212,192,0.6)" }}> — </span>
+      <span>{trailing}</span>
     </div>
   );
 }
@@ -2006,7 +2004,7 @@ function PrayerOfficeCard() {
         </Link>
         <Link href={officeHref}>
           <p
-            className="text-[12px] mt-4 text-center cursor-pointer"
+            className="text-[12px] mt-5 text-center cursor-pointer"
             style={{
               color: "rgba(143,175,150,0.7)",
               fontFamily: "'Space Grotesk', sans-serif",
@@ -2024,24 +2022,15 @@ function PrayerOfficeCard() {
   );
 }
 
-// ── PrayerListCarousel — horizontal-scroll prayer-request peek ──────────
+// ── PrayerListCarousel — horizontal-scroll Prayer List peek ──────────
 //
-// Mirrors the BarCard layout from /prayer-list inside a horizontally
-// scrollable row sized for ~3.5 cards on a phone screen, with a soft
-// right-edge fade to telegraph "scroll for more." The fade is a CSS
-// mask gradient on the scroll container; cards themselves stay opaque
-// so a tap target near the right edge is still hittable.
-//
-// Each card opens the request's detail page (the same destination the
-// /prayer-list cards reach). The header has a "View all →" affordance
-// that deep-links to /prayer-list — gives a fast hop to the full
-// management surface for users who want to triage rather than respond
-// inline.
-//
-// Hidden when there are no visible requests; the section just doesn't
-// render. When >0 requests but none of them are own + non-answered
-// + non-closed + non-expired, returns null too — silence is right
-// when there's nothing to peek at.
+// Cards mirror the layout of RequestCard on /prayer-list exactly:
+// avatar on the left, eyebrow + body in the right column. Each card
+// is wide enough to fit that row comfortably, with ~3.5 visible on a
+// phone-width viewport and a right-edge mask gradient for the fade.
+// Sits AFTER the Upcoming section so it reads as a peek into a
+// different surface (the management list) rather than as another
+// daily-action bucket.
 type PrayerListCarouselRow = {
   id: number;
   body: string;
@@ -2062,13 +2051,14 @@ function PrayerListCarousel({
 }) {
   if (requests.length === 0) return null;
 
+  const initials = (name: string) =>
+    name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+
   return (
-    <div className="mt-6">
-      {/* Title row — left: section label; right: View all link to the
-          full management surface. Mirrors the typography of TimeSection
-          (uppercase + tight tracking) so the row reads as a peer of
-          "This week" / "Upcoming". */}
-      <div className="flex items-center justify-between mb-2 px-1">
+    <div className="mt-8">
+      {/* Title row: "Prayer List" left, "View all →" right linking to
+          /prayer-list. */}
+      <div className="flex items-center justify-between mb-3 px-1">
         <h3
           className="text-base font-semibold"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
@@ -2078,21 +2068,16 @@ function PrayerListCarousel({
         <Link
           href="/prayer-list"
           className="text-xs font-medium transition-opacity hover:opacity-80"
-          style={{
-            color: "#8FAF96",
-            fontFamily: "'Space Grotesk', sans-serif",
-          }}
+          style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           View all →
         </Link>
       </div>
 
-      {/* Scrollable strip. Negative margins extend the strip to the page
-          edges so the right-side fade reaches all the way out — without
-          this, the mask cuts off before the viewport edge and the peek
-          card gets a hard edge instead of a fade. The mask-image gradient
-          fades the rightmost ~12% of the visible strip; the
-          -webkit-mask-image variant covers Safari. */}
+      {/* Negative margins extend the scroll surface to the viewport
+          edges so the right-side fade reaches all the way out. The
+          mask gradient fades the rightmost ~12% of the visible strip,
+          giving the half-card peek the "scroll for more" affordance. */}
       <div
         className="overflow-x-auto -mx-4 px-4 pb-1"
         style={{
@@ -2117,57 +2102,61 @@ function PrayerListCarousel({
                 href={`/prayer-requests/${req.id}`}
                 className="block shrink-0"
                 style={{
-                  // ~3 cards visible on a 393px-wide phone (iPhone 16 Pro)
-                  // with the gap and edge insets accounted for; the next
-                  // card peeks out from under the mask. Tweak this if the
-                  // visual count drifts on other widths.
-                  width: 240,
+                  // 320px keeps the avatar + content in a single row
+                  // (matching /prayer-list) while leaving room for ~3
+                  // full cards + a half-card peek on a 393px-wide
+                  // phone with the page padding accounted for.
+                  width: 320,
                   scrollSnapAlign: "start",
                 }}
               >
-                <div
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
                   className="relative flex rounded-xl overflow-hidden"
                   style={{
-                    background: "rgba(46,107,64,0.12)",
-                    border: "1px solid rgba(46,107,64,0.3)",
+                    background: "rgba(46,107,64,0.15)",
+                    border: "1px solid rgba(46,107,64,0.28)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                   }}
                 >
                   <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
-                  <div className="flex-1 px-3 pt-3 pb-3">
-                    <div className="flex items-center gap-2.5">
+                  <div className="flex-1 px-4 pt-3 pb-3">
+                    {/* Single-row layout matching RequestCard on
+                        /prayer-list: avatar | (eyebrow + body). */}
+                    <div className="flex items-center gap-3">
                       {displayAvatar ? (
                         <img
                           src={displayAvatar}
                           alt={displayName}
-                          className="w-8 h-8 rounded-full object-cover shrink-0"
+                          className="w-9 h-9 rounded-full object-cover shrink-0"
                           style={{ border: "1px solid rgba(46,107,64,0.3)" }}
                         />
                       ) : (
                         <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
                           style={{ background: "#1A4A2E", color: "#A8C5A0" }}
                         >
-                          {displayName.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
+                          {initials(displayName)}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
                         <p
-                          className="text-[10px] font-semibold uppercase tracking-[0.14em] truncate"
+                          className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate"
                           style={{ color: "rgba(143,175,150,0.55)" }}
                         >
                           {eyebrow}
                         </p>
+                        <p
+                          className="text-sm leading-snug line-clamp-2"
+                          style={{ color: "#F0EDE6" }}
+                        >
+                          {req.body}
+                        </p>
                       </div>
                     </div>
-                    <p
-                      className="text-sm leading-snug line-clamp-2 mt-2"
-                      style={{ color: "#F0EDE6" }}
-                    >
-                      {req.body}
-                    </p>
                   </div>
-                </div>
+                </motion.div>
               </Link>
             );
           })}
@@ -3518,21 +3507,27 @@ export default function Dashboard() {
     const weekItems: DashboardItem[] = [];
     const monthItems: DashboardItem[] = [];
 
-    // "This week" anchors on Sunday — events whose next occurrence
-    // falls on or before the Saturday after the upcoming Sunday land
-    // in This week; later events fall into Upcoming. Mirrors the
-    // church-week mental model where Sunday is the rhythm anchor.
-    // (Earlier this was a rolling 7-day window which felt arbitrary
-    // and put a Sunday picnic into "This month" while keeping the
-    // same parish's Sunday Service in "This week.")
+    // "This week" closes on the upcoming Sunday inclusive. Today and
+    // Tomorrow get their own sections; "This week" picks up everything
+    // between Tomorrow+1 and the next Sunday's end-of-day. Anything
+    // past Sunday — Mondays, Wednesdays, etc. on the *next* week —
+    // falls into "Upcoming." (Earlier we had a rolling 7-day window
+    // and even a Sun-to-Sun span; both put next-Wed in This week,
+    // which read wrong.)
     const _now = new Date();
     const _todayDate = startOfDay(_now);
     const _todayMs = _todayDate.getTime();
     const _oneDayMs = 24 * 60 * 60 * 1000;
     const _dow = _todayDate.getDay(); // 0 = Sunday
-    const _daysToUpcomingSunday = _dow === 0 ? 0 : 7 - _dow;
+    // If today IS Sunday, the "upcoming Sunday" is *next* Sunday so
+    // today's items still go into Today, not into a then-empty This-
+    // week bucket.
+    const _daysToUpcomingSunday = _dow === 0 ? 7 : 7 - _dow;
     const _upcomingSundayMs = _todayMs + _daysToUpcomingSunday * _oneDayMs;
-    const thisWeekEndExclusiveMsTop = _upcomingSundayMs + 7 * _oneDayMs;
+    // End-of-Sunday (start of Monday) is the boundary. Items strictly
+    // before this land in This week; items at or after fall into
+    // Upcoming.
+    const thisWeekEndExclusiveMsTop = _upcomingSundayMs + _oneDayMs;
     const sevenDaysFromToday = new Date(thisWeekEndExclusiveMsTop);
 
     // ── Moments placement
@@ -4099,14 +4094,20 @@ export default function Dashboard() {
                   onOpenGathering={(r) => setOpenGathering(r)}
                 />
 
-                {/* Prayer List carousel — horizontal-scroll peek into
-                    the user's prayer-request feed. Sits between the
-                    daily action sections and the upcoming events so
-                    the home screen reads "what's waiting for me right
-                    now → what's on the rest of the week." Only fires
-                    when the unfiltered ("all") view is active; when a
-                    user has filtered to a single category the carousel
-                    would be off-topic. */}
+                {/* 3. This week — events from after Tomorrow through
+                    end-of-day on the upcoming Sunday. Items past
+                    Sunday fall into Upcoming. */}
+                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+
+                {/* 4. Upcoming — everything past the upcoming Sunday. */}
+                <TimeSection label="Upcoming" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+
+                {/* Prayer List carousel — sits AFTER Upcoming so it
+                    reads as a peek into a different surface (the
+                    management list) rather than as a daily-action
+                    bucket. Only renders when the unfiltered ("all")
+                    view is active; a category filter would make it
+                    off-topic. */}
                 {filter === null && (() => {
                   const carouselRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
                     .filter((r) => {
@@ -4132,17 +4133,6 @@ export default function Dashboard() {
                     />
                   );
                 })()}
-
-                {/* 3. This week — Sunday-to-Sunday window starting from
-                    the upcoming Sunday. Items whose next occurrence
-                    falls within that window land here. */}
-                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
-
-                {/* 4. Upcoming — everything beyond the upcoming Sunday-
-                    to-Sunday week. (Was "This month" before; the new
-                    name reads more naturally for a long-tail bucket
-                    that may include events weeks out.) */}
-                <TimeSection label="Upcoming" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
 
                 {/* Filtered empty state */}
                 {filteredEmpty && (() => {
