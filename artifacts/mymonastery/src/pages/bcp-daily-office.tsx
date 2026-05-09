@@ -1277,30 +1277,58 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                     </div>
                   </div>
                 ) : (
-                  // Gloria Patri — italic, no verse number, separated
-                  // by a hairline rule above to mark it as a doxology
-                  // not part of the numbered psalm body.
-                  <div
-                    key={i}
-                    style={{
-                      borderTop: "1px solid rgba(143,175,150,0.18)",
-                      paddingTop: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 15,
-                        lineHeight: 1.7,
-                        color: WARM_TEXT,
-                        fontFamily: "Georgia, 'Times New Roman', serif",
-                        fontStyle: "italic",
-                        margin: 0,
-                      }}
-                    >
-                      {v.text}
-                    </p>
-                  </div>
+                  // Gloria Patri — italic, no verse number. When the
+                  // slide's metadata says gloryBottomRight (set by
+                  // the assembler on the LAST chunk of a multi-psalm
+                  // appointed reading), the doxology drops to the
+                  // bottom-right of the slide as a small flush-right
+                  // seal. Otherwise it falls inline below the verses
+                  // with the legacy hairline rule.
+                  (() => {
+                    const meta = currentSlide.metadata as { gloryBottomRight?: boolean } | undefined;
+                    if (meta?.gloryBottomRight) {
+                      return (
+                        <p
+                          key={i}
+                          style={{
+                            marginTop: 24,
+                            fontSize: 14,
+                            lineHeight: 1.6,
+                            color: "rgba(240,237,230,0.75)",
+                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontStyle: "italic",
+                            textAlign: "right",
+                            margin: "24px 0 0 0",
+                          }}
+                        >
+                          {v.text}
+                        </p>
+                      );
+                    }
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          borderTop: "1px solid rgba(143,175,150,0.18)",
+                          paddingTop: 12,
+                          marginTop: 4,
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontSize: 15,
+                            lineHeight: 1.7,
+                            color: WARM_TEXT,
+                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontStyle: "italic",
+                            margin: 0,
+                          }}
+                        >
+                          {v.text}
+                        </p>
+                      </div>
+                    );
+                  })()
                 )
               ))}
             </div>
@@ -1321,6 +1349,80 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 </p>
               ))}
             </div>
+          ) : currentSlide.type === "invitatory_psalm" && currentSlide.content ? (
+            // Invitatory psalm body — canticle-shaped lines (no
+            // numeric verse markers). When metadata carries
+            // antiphonOpen / antiphonClose (set on the first / last
+            // chunks per BCP rubric p. 80), render an "ANTIPHON"
+            // labeled block above/below the verses so the antiphon
+            // doesn't read as if it were the psalm's first/last line.
+            (() => {
+              const meta = currentSlide.metadata as
+                | { antiphonOpen?: string; antiphonClose?: string }
+                | undefined;
+              const antiphonOpen = meta?.antiphonOpen;
+              const antiphonClose = meta?.antiphonClose;
+              const renderAntiphon = (text: string, key: string) => (
+                <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 600 }}>
+                  <p
+                    style={{
+                      color: FAINT_GREEN,
+                      fontSize: 10,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Antiphon
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 16,
+                      lineHeight: 1.6,
+                      color: WARM_TEXT,
+                      margin: 0,
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontStyle: "italic",
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {text}
+                  </p>
+                </div>
+              );
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
+                  {antiphonOpen && renderAntiphon(antiphonOpen, "open")}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {currentSlide.content.split("\n").map((raw, i) => {
+                      if (raw.trim().length === 0) {
+                        return <div key={i} style={{ height: 8 }} />;
+                      }
+                      const indented = /^\s/.test(raw);
+                      const text = raw.trimEnd().replace(/ \*$/, " *");
+                      return (
+                        <p
+                          key={i}
+                          style={{
+                            fontSize: 17,
+                            lineHeight: 1.6,
+                            color: WARM_TEXT,
+                            margin: 0,
+                            paddingLeft: indented ? 32 : 0,
+                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {text.replace(/^\s+/, "")}
+                        </p>
+                      );
+                    })}
+                  </div>
+                  {antiphonClose && renderAntiphon(antiphonClose, "close")}
+                </div>
+              );
+            })()
           ) : currentSlide.type === "canticle" && currentSlide.content ? (
             // Canticles render line-by-line so:
             //   1) Indented continuation lines (the second hemistich

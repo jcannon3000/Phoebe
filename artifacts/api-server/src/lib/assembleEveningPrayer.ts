@@ -277,97 +277,82 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 7. Appointed Psalms — full text, sliced to the appointed verse
-  // range when the lectionary specifies one (e.g. "119:73-96").
-  // Mirrors Morning Prayer's psalm rendering so EP isn't a second-
-  // class surface that asks the reader to leave the office to find
-  // the text.
+  // 7. Appointed Psalms — render as one combined liturgical block
+  // (matches Morning Prayer): single combined title slide ("Psalm
+  // 23 & 27"), verse chunks for each psalm in sequence with no
+  // breaks or per-psalm titles between, and a single Gloria Patri
+  // pinned to the bottom-right of the LAST verse chunk. Reads as
+  // one psalm-saying instead of N independent recitations.
   const epGloriaPatri =
-    "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
-  for (const psalmRef of appointedPsalms) {
-    const { number: psalmNum, range } = psalmRef;
-    const psalmKey = `psalm_${psalmNum}`;
-    const psalmData = psalmTexts[psalmKey];
-    const sliced =
-      psalmData && range
-        ? sliceVersesByRange(psalmData.content, range)
-        : psalmData?.content;
-    const eyebrow = psalmEyebrow(psalmRef);
+    "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
 
-    // Title slide — big "Psalm 72" headline on its own page so the
-    // reader settles before the verses begin.
+  if (appointedPsalms.length > 0) {
+    const combinedEyebrow = appointedPsalms.length === 1
+      ? psalmEyebrow(appointedPsalms[0])
+      : `PSALM ${appointedPsalms.map((p) => p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`).join(" & ")}`;
+    const firstPsalm = appointedPsalms[0];
+    const firstData = psalmTexts[`psalm_${firstPsalm.number}`];
+    const combinedTitle = appointedPsalms.length === 1
+      ? (firstData?.title ?? null)
+      : `Psalm ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
+
     slides.push(
-      slide(id(), "psalm_title", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, "", {
-        title: psalmData?.title ?? null,
-        bcpReference: psalmData?.bcpReference ?? null,
+      slide(id(), "psalm_title", PSALM_EMOJI[firstPsalm.number] ?? "📖", combinedEyebrow, "", {
+        title: combinedTitle,
+        bcpReference: firstData?.bcpReference ?? null,
         isScrollable: false,
         scrollHint: null,
         metadata: {
-          psalmNumber: psalmNum,
-          psalmRange: range,
-          psalmRef: psalmRef.raw,
+          psalmNumber: firstPsalm.number,
+          psalmRange: firstPsalm.range,
+          psalmRef: appointedPsalms.map((p) => p.raw).join(" & "),
+          combined: appointedPsalms.length > 1,
         },
       }),
     );
 
-    // 4 verses per slide. Gloria Patri lives on its own slide (per
-    // user direction) — emitted right after the chunks below.
-    if (sliced) {
-      const chunks = splitPsalmIntoChunks(sliced, 4);
-      chunks.forEach((chunk, i) => {
-        slides.push(
-          slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, chunk, {
-            title: psalmData?.title ?? null,
-            bcpReference: psalmData?.bcpReference ?? null,
-            isScrollable: false,
-            scrollHint: null,
-            metadata: {
-              psalmNumber: psalmNum,
-              psalmRange: range,
-              psalmRef: psalmRef.raw,
-              psalmChunkIndex: i,
-              psalmChunkTotal: chunks.length,
-            },
-          }),
-        );
-      });
-    } else {
-      slides.push(
-        slide(
-          id(),
-          "psalm",
-          PSALM_EMOJI[psalmNum] ?? "📖",
-          eyebrow,
-          `[Psalm ${psalmRef.raw} — see BCP Psalter]`,
-          {
-            title: psalmData?.title ?? null,
-            bcpReference: psalmData?.bcpReference ?? null,
-            isScrollable: false,
-            scrollHint: null,
-            metadata: {
-              psalmNumber: psalmNum,
-              psalmRange: range,
-              psalmRef: psalmRef.raw,
-            },
-          },
-        ),
-      );
+    type Chunk = { content: string; psalmRef: typeof appointedPsalms[number] };
+    const allChunks: Chunk[] = [];
+    for (const psalmRef of appointedPsalms) {
+      const psalmData = psalmTexts[`psalm_${psalmRef.number}`];
+      const sliced =
+        psalmData && psalmRef.range
+          ? sliceVersesByRange(psalmData.content, psalmRef.range)
+          : psalmData?.content;
+      if (sliced) {
+        const chunks = splitPsalmIntoChunks(sliced, 4);
+        chunks.forEach((chunk) => allChunks.push({ content: chunk, psalmRef }));
+      } else {
+        allChunks.push({
+          content: `[Psalm ${psalmRef.raw} — see BCP Psalter]`,
+          psalmRef,
+        });
+      }
     }
 
-    // Gloria Patri — its own slide, sealing the psalm.
-    slides.push(
-      slide(id(), "psalm_gloria", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, epGloriaPatri.trimStart(), {
-        title: psalmData?.title ?? null,
-        bcpReference: psalmData?.bcpReference ?? null,
-        isScrollable: false,
-        scrollHint: null,
-        metadata: {
-          psalmNumber: psalmNum,
-          psalmRange: range,
-          psalmRef: psalmRef.raw,
-        },
-      }),
-    );
+    allChunks.forEach((c, i) => {
+      const isLast = i === allChunks.length - 1;
+      const eyebrow = psalmEyebrow(c.psalmRef);
+      const psalmNum = c.psalmRef.number;
+      const psalmData = psalmTexts[`psalm_${psalmNum}`];
+      const body = isLast ? `${c.content}\n\n${epGloriaPatri}` : c.content;
+      slides.push(
+        slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, body, {
+          title: psalmData?.title ?? null,
+          bcpReference: psalmData?.bcpReference ?? null,
+          isScrollable: false,
+          scrollHint: null,
+          metadata: {
+            psalmNumber: psalmNum,
+            psalmRange: c.psalmRef.range,
+            psalmRef: c.psalmRef.raw,
+            psalmChunkIndex: i,
+            psalmChunkTotal: allChunks.length,
+            ...(isLast ? { gloryBottomRight: true } : {}),
+          },
+        }),
+      );
+    });
   }
 
   // 8. The Gospel — reference only.

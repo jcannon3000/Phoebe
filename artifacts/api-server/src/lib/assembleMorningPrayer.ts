@@ -563,19 +563,16 @@ export async function assembleMorningPrayer(
   const { chunks: invitChunks } = splitCanticleIntoChunks(psalmBody, 4);
   const lastInvitIdx = invitChunks.length - 1;
   invitChunks.forEach((chunk, i) => {
-    let content = chunk;
-    if (i === 0 && hasAntiphon) {
-      content = `${antiphonText}\n\n${content}`;
-    }
-    // Closing antiphon goes on the LAST verse chunk per the BCP rubric
-    // bookend pattern. The Gloria Patri lives on its own slide below
-    // (skipped for Pascha Nostrum, which closes with its own paschal
-    // Alleluias rather than the standard doxology).
-    if (i === lastInvitIdx && hasAntiphon) {
-      content = `${content}\n\n${antiphonText}`;
-    }
+    // Antiphons travel via metadata (not concatenated into the body)
+    // so the renderer can prefix each with a small "ANTIPHON" header
+    // instead of letting the antiphon read as if it were the
+    // psalm's own opening/closing line. Per BCP rubric p. 80 the
+    // antiphon bookends the invitatory: open antiphon goes on the
+    // first chunk, close antiphon on the last.
+    const isFirst = i === 0;
+    const isLast = i === lastInvitIdx;
     slides.push(
-      slide(id(), "invitatory_psalm", "🎶", invitEyebrow, content, {
+      slide(id(), "invitatory_psalm", "🎶", invitEyebrow, chunk, {
         bcpReference: invitBcpRef,
         isScrollable: false,
         scrollHint: null,
@@ -585,6 +582,8 @@ export async function assembleMorningPrayer(
           psalmHeadline: invitHeadline,
           invitatoryChunkIndex: i,
           invitatoryChunkTotal: invitChunks.length,
+          ...(hasAntiphon && isFirst ? { antiphonOpen: antiphonText } : {}),
+          ...(hasAntiphon && isLast ? { antiphonClose: antiphonText } : {}),
         },
       }),
     );
@@ -610,104 +609,98 @@ export async function assembleMorningPrayer(
   }
 
   // SLIDES 7+: Appointed Psalms
+  // Render the appointed psalms as ONE liturgical block: a single
+  // combined title slide ("Psalms 75 & 76"), then verse chunks for
+  // each psalm in sequence (no breaks, no per-psalm titles, no
+  // Gloria between psalms), then a single Gloria Patri at the very
+  // end appended to the last chunk so it reads as the seal of the
+  // whole reading rather than a per-psalm flourish.
   const gloriaPatri =
-    "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
+    "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
 
-  for (const psalmRef of appointedPsalms) {
-    const { number: psalmNum, range } = psalmRef;
-    const psalmKey = `psalm_${psalmNum}`;
-    const psalmData = texts[psalmKey];
-    // Slice the seeded full psalm down to the appointed verse range
-    // (when one is given). The Gloria Patri is appended to the LAST
-    // chunk only (see chunk loop below), so a partial reading still
-    // closes with the doxology like the full psalm would.
-    const sliced =
-      psalmData && range
-        ? sliceVersesByRange(psalmData.content, range)
-        : psalmData?.content;
-    const eyebrow = psalmEyebrow(psalmRef);
+  if (appointedPsalms.length > 0) {
+    // Combined eyebrow + headline. With one psalm we render exactly
+    // as before ("PSALM 75"); with multiple we join them with " & "
+    // (75 & 76) — caller sees a single header for the block.
+    const combinedEyebrow = appointedPsalms.length === 1
+      ? psalmEyebrow(appointedPsalms[0])
+      : `PSALM ${appointedPsalms.map((p) => p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`).join(" & ")}`;
+    // Title chooses the first psalm's emoji + title text. The combined
+    // headline is built into the `title` so the renderer's title slide
+    // shows the full "Psalm 75 & 76" line.
+    const firstPsalm = appointedPsalms[0];
+    const firstData = texts[`psalm_${firstPsalm.number}`];
+    const combinedTitle = appointedPsalms.length === 1
+      ? (firstData?.title ?? null)
+      : `Psalm ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
 
-    // Title slide — mirrors the intercessions_portal pattern. Renders
-    // as a single big "Psalm 72" / "Psalm 119:73-96" headline so the
-    // reader can settle into the psalm before the verses start. The
-    // client recognises this type and renders title-only.
     slides.push(
-      slide(id(), "psalm_title", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, "", {
-        title: psalmData?.title ?? null,
+      slide(id(), "psalm_title", PSALM_EMOJI[firstPsalm.number] ?? "📖", combinedEyebrow, "", {
+        title: combinedTitle,
         isScrollable: false,
         scrollHint: null,
         metadata: {
-          psalmNumber: psalmNum,
-          psalmRange: range,
-          psalmRef: psalmRef.raw,
+          psalmNumber: firstPsalm.number,
+          psalmRange: firstPsalm.range,
+          psalmRef: appointedPsalms.map((p) => p.raw).join(" & "),
+          combined: appointedPsalms.length > 1,
         },
       }),
     );
 
-    // Verse chunks — 4 verses per slide. Per user direction the Gloria
-    // Patri lives on its OWN slide after the verses (was appended to
-    // the last chunk; that mashed the doxology onto a verse that didn't
-    // belong to it). Emitted below the chunk loop so the doxology
-    // always seals the psalm.
-    if (sliced) {
-      const chunks = splitPsalmIntoChunks(sliced, 4);
-      chunks.forEach((chunk, i) => {
-        slides.push(
-          slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, chunk, {
-            title: psalmData?.title ?? null,
-            isScrollable: false,
-            scrollHint: null,
-            metadata: {
-              ...(psalmData?.metadata ?? {}),
-              psalmNumber: psalmNum,
-              psalmRange: range,
-              psalmRef: psalmRef.raw,
-              psalmChunkIndex: i,
-              psalmChunkTotal: chunks.length,
-            },
-          }),
-        );
-      });
-    } else {
-      // Psalm row missing — single placeholder slide. No doxology
-      // appended here either; it'll come on its own slide below.
-      slides.push(
-        slide(
-          id(),
-          "psalm",
-          PSALM_EMOJI[psalmNum] ?? "📖",
-          eyebrow,
-          `[Psalm ${psalmRef.raw} — see BCP Psalter]`,
-          {
-            title: psalmData?.title ?? null,
-            isScrollable: false,
-            scrollHint: null,
-            metadata: {
-              psalmNumber: psalmNum,
-              psalmRange: range,
-              psalmRef: psalmRef.raw,
-            },
-          },
-        ),
-      );
+    // Build the full chunk list across every appointed psalm so we
+    // can pin the Gloria onto the final chunk (no matter which
+    // psalm it lands on).
+    type Chunk = { content: string; psalmRef: typeof appointedPsalms[number] };
+    const allChunks: Chunk[] = [];
+    for (const psalmRef of appointedPsalms) {
+      const psalmData = texts[`psalm_${psalmRef.number}`];
+      const sliced =
+        psalmData && psalmRef.range
+          ? sliceVersesByRange(psalmData.content, psalmRef.range)
+          : psalmData?.content;
+      if (sliced) {
+        const chunks = splitPsalmIntoChunks(sliced, 4);
+        chunks.forEach((chunk) => allChunks.push({ content: chunk, psalmRef }));
+      } else {
+        allChunks.push({
+          content: `[Psalm ${psalmRef.raw} — see BCP Psalter]`,
+          psalmRef,
+        });
+      }
     }
 
-    // Gloria Patri — its own slide, sealing the psalm. Reads as a
-    // distinct beat (a brief doxology after the recitation) rather
-    // than getting tacked onto the last verse's chunk. Same eyebrow
-    // so the reader knows which psalm it's sealing.
-    slides.push(
-      slide(id(), "psalm_gloria", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, gloriaPatri.trimStart(), {
-        title: psalmData?.title ?? null,
-        isScrollable: false,
-        scrollHint: null,
-        metadata: {
-          psalmNumber: psalmNum,
-          psalmRange: range,
-          psalmRef: psalmRef.raw,
-        },
-      }),
-    );
+    allChunks.forEach((c, i) => {
+      const isLast = i === allChunks.length - 1;
+      const eyebrow = psalmEyebrow(c.psalmRef);
+      const psalmNum = c.psalmRef.number;
+      const psalmData = texts[`psalm_${psalmNum}`];
+      // Append the Gloria Patri as a doxology block to the LAST
+      // chunk's body. The renderer's parser already detects the
+      // "Glory to the Father" pattern via gloriaMatch and emits it
+      // as a {kind:"doxology"} entry — we just need the text in
+      // the body, separated by a blank line so the regex anchors.
+      const body = isLast ? `${c.content}\n\n${gloriaPatri}` : c.content;
+      slides.push(
+        slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, body, {
+          title: psalmData?.title ?? null,
+          isScrollable: false,
+          scrollHint: null,
+          metadata: {
+            ...(psalmData?.metadata ?? {}),
+            psalmNumber: psalmNum,
+            psalmRange: c.psalmRef.range,
+            psalmRef: c.psalmRef.raw,
+            psalmChunkIndex: i,
+            psalmChunkTotal: allChunks.length,
+            // Marker for the renderer: "this slide's doxology block
+            // (parsed from the body) is the Gloria for the whole
+            // appointed-psalms reading — render it bottom-right."
+            ...(isLast ? { gloryBottomRight: true } : {}),
+          },
+        }),
+      );
+    });
   }
 
   // BCP marks empty lesson slots with dashes ("----------") on major
