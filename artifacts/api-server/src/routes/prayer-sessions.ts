@@ -28,6 +28,10 @@ const schema = z.object({
   durationSeconds: z.number().int().min(0).max(24 * 60 * 60),
   startedAt: z.string(), // ISO
   endedAt: z.string(),   // ISO
+  // Optional: max slide index the user advanced to during the session.
+  // Office viewer passes it through so metrics can distinguish
+  // "actually prayed" (≥3 slides) from "tap-and-bail".
+  slidesCompleted: z.number().int().min(0).max(10000).optional(),
 });
 
 router.post("/prayer-sessions", async (req, res): Promise<void> => {
@@ -36,7 +40,7 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
 
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
-  const { surface, durationSeconds, startedAt, endedAt } = parsed.data;
+  const { surface, durationSeconds, startedAt, endedAt, slidesCompleted } = parsed.data;
 
   if (!SURFACE_SET.has(surface)) {
     res.status(400).json({ error: "Unknown surface" });
@@ -79,6 +83,7 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     userId: sessionUserId,
     surface,
     durationSeconds: capped,
+    slidesCompleted: typeof slidesCompleted === "number" ? slidesCompleted : null,
     startedAt: startedAtDate,
     endedAt: endedAtDate,
   });

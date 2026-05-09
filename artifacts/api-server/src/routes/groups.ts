@@ -623,64 +623,105 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         FROM prayer_requests
         WHERE owner_id IN (SELECT user_id FROM members)
       ),
-      -- "Times prayed" is now driven by prayer_sessions (each office
-      -- / devotion / slideshow / prayer-list open is a session). New
-      -- counting rules per user direction:
+      -- Two derived sets, each driving a different metric:
       --
-      --   1. Each session counts as a separate "time prayed".
-      --      Earlier we collapsed all same-day signals into a single
-      --      event per user; now a member who prays the office in
-      --      the morning and the slideshow in the evening counts as
-      --      two times prayed.
+      --   prayer_days  — "Did this user pray AT ALL today?" Used
+      --     for People praying. Anything prayer-shaped counts: amens,
+      --     prayer sessions of any kind, words of comfort, prayer-
+      --     feed taps, lectio reflections, intercession check-ins.
+      --     One row per (user, day).
       --
-      --   2. Sessions within 15 minutes of an earlier session for
-      --      the same user collapse into one. Stops a user who taps
-      --      in and out from inflating the count.
-      --
-      --   3. Pilot users (users on the beta_users allowlist) cap at
-      --      3 events per day. Pilots are typically us testing the
-      --      app, not real prayer behavior.
-      --
-      -- The flow uses three chained CTEs so the window functions stay
-      -- readable: raw → 15-min-deduped → row-numbered for the cap.
-      session_raw AS (
-        SELECT
-          ps.user_id,
-          ps.ended_at,
-          to_char((ps.ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day,
-          LAG(ps.ended_at) OVER (
-            PARTITION BY ps.user_id ORDER BY ps.ended_at
-          ) AS prev_ended,
-          EXISTS (
-            SELECT 1 FROM beta_users b
-            JOIN users u2 ON LOWER(u2.email) = LOWER(b.email)
-            WHERE u2.id = ps.user_id
-          ) AS is_pilot
-        FROM prayer_sessions ps
-        WHERE ps.user_id IN (SELECT user_id FROM members)
-          AND ps.ended_at IS NOT NULL
+      --   prayer_events — "How many distinct prayer SESSIONS?" Used
+      --     for Times prayed. A session = either an Amen tap OR a
+      --     qualifying office completion (≥3 slides reached). Two
+      --     events <15 min apart for the same user collapse to one
+      --     so a tap-in/tap-out doesn't inflate the count. No daily
+      --     cap.
+      session_candidates AS (
+        SELECT user_id, occurred_at FROM (
+          -- Each Amen tap is a session candidate.
+          SELECT a.user_id, a.prayed_at AS occurred_at
+          FROM prayer_request_amens a
+          WHERE a.user_id IN (SELECT user_id FROM members)
+            AND a.prayed_at IS NOT NULL
+
+          UNION ALL
+
+          -- Office / devotion completion that reached ≥3 slides.
+          -- NULL slides_completed (legacy rows pre-dating the
+          -- column) are treated as qualifying so historic data
+          -- doesn't disappear.
+          SELECT ps.user_id, ps.ended_at AS occurred_at
+          FROM prayer_sessions ps
+          WHERE ps.user_id IN (SELECT user_id FROM members)
+            AND ps.surface IN (
+              'morning-prayer',
+              'evening-prayer',
+              'morning-devotion',
+              'early-evening-devotion'
+            )
+            AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
+        ) c
       ),
-      session_deduped AS (
-        SELECT user_id, ended_at, day, is_pilot
-        FROM session_raw
-        WHERE prev_ended IS NULL
-           OR ended_at - prev_ended > INTERVAL '15 minutes'
-      ),
-      session_capped AS (
+      session_with_lag AS (
         SELECT
-          user_id, ended_at, day, is_pilot,
-          ROW_NUMBER() OVER (
-            PARTITION BY user_id, day ORDER BY ended_at
-          ) AS rn
-        FROM session_deduped
+          user_id, occurred_at,
+          to_char((occurred_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day,
+          LAG(occurred_at) OVER (
+            PARTITION BY user_id ORDER BY occurred_at
+          ) AS prev_at
+        FROM session_candidates
       ),
       prayer_events AS (
         SELECT user_id, day
-        FROM session_capped
-        WHERE NOT is_pilot OR rn <= 3
+        FROM session_with_lag
+        WHERE prev_at IS NULL
+           OR occurred_at - prev_at > INTERVAL '15 minutes'
       ),
+      -- Broad "anyone who prayed today" — distinct (user, day).
       prayer_days AS (
-        SELECT DISTINCT user_id, day FROM prayer_events
+        SELECT a.user_id,
+               to_char((a.prayed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_request_amens a
+        WHERE a.user_id IN (SELECT user_id FROM members)
+          AND a.prayed_at IS NOT NULL
+
+        UNION
+
+        SELECT ps.user_id,
+               to_char((ps.ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_sessions ps
+        WHERE ps.user_id IN (SELECT user_id FROM members)
+
+        UNION
+
+        SELECT pw.author_user_id AS user_id,
+               to_char((pw.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_words pw
+        WHERE pw.author_user_id IN (SELECT user_id FROM members)
+
+        UNION
+
+        SELECT pfp.user_id,
+               to_char((pfp.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_feed_prayers pfp
+        WHERE pfp.user_id IN (SELECT user_id FROM members)
+
+        UNION
+
+        SELECT m.user_id,
+               to_char((lr.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM lectio_reflections lr
+        JOIN members m ON m.email_lower = LOWER(lr.user_email)
+        WHERE lr.user_email IS NOT NULL
+
+        UNION
+
+        SELECT mt.user_id, mp.window_date AS day
+        FROM moment_posts mp
+        JOIN member_tokens mt ON mt.user_token = mp.user_token
+        WHERE mp.is_checkin = 1
+          AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
       )
       SELECT
         (SELECT COUNT(*) FROM members)::int AS total_members,

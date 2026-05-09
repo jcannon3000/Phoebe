@@ -1061,6 +1061,12 @@ export async function migrate() {
     // the metrics page does. Covering both columns means the rollup is
     // an index-only range scan.
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_sessions_user_ended ON prayer_sessions (user_id, ended_at)`);
+    // High-water mark of the slide index the user reached during
+    // the session. The metrics CTE filters office sessions to those
+    // with slides_completed ≥ 3 so a tap-and-bail doesn't count.
+    // Nullable on the table; the SQL treats NULL as "qualifies"
+    // (legacy rows pre-dating this column).
+    await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS slides_completed INTEGER`);
 
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing

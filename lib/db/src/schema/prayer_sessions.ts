@@ -41,6 +41,13 @@ export const prayerSessionsTable = pgTable(
     // both treat this as opaque.
     surface: text("surface").notNull(),
     durationSeconds: integer("duration_seconds").notNull(),
+    // High-water mark of the slide index the user advanced to during
+    // the session. Used by the metrics dashboard to tell "they
+    // actually prayed an office" (≥3 slides) from "they tapped in
+    // and bailed" (<3). Nullable so legacy rows pre-dating this
+    // column don't have to be backfilled — the metrics query
+    // treats NULL as "trust it" so old data still counts.
+    slidesCompleted: integer("slides_completed"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }).notNull(),
   },

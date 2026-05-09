@@ -39,7 +39,14 @@ export type PrayerSurface =
   // surface from the 5-second floor so a glance still records.
   | "prayer-list";
 
-export function usePrayerSession(surface: PrayerSurface | null | undefined) {
+export function usePrayerSession(
+  surface: PrayerSurface | null | undefined,
+  /** Optional ref the parent updates with the highest slide index
+   *  the user has advanced to during the session. The metrics
+   *  endpoint uses this to filter "actually prayed an office"
+   *  (≥3 slides) from "tap-and-bail" (<3). */
+  slidesCompletedRef?: React.MutableRefObject<number>,
+) {
   // Refs so the visibility / unload handlers always read the live
   // accumulator without needing surface as a dep — the hook can be
   // mounted with a null surface (waiting on auth) and still no-op.
@@ -47,6 +54,7 @@ export function usePrayerSession(surface: PrayerSurface | null | undefined) {
   const segmentStartedAtRef = useRef<number | null>(null);
   const accumulatedSecondsRef = useRef<number>(0);
   const surfaceRef = useRef<PrayerSurface | null>(surface ?? null);
+  const slidesRef = slidesCompletedRef;
 
   useEffect(() => {
     surfaceRef.current = surface ?? null;
@@ -112,6 +120,7 @@ export function usePrayerSession(surface: PrayerSurface | null | undefined) {
         apiRequest("POST", "/api/prayer-sessions", {
           surface: surfaceAtCleanup,
           durationSeconds: total,
+          slidesCompleted: slidesRef?.current,
           startedAt: startedAt.toISOString(),
           endedAt: endedAt.toISOString(),
         }).catch(() => { /* best-effort */ });

@@ -245,13 +245,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const { user: viewerUser } = useAuth();
   const parishOnly = viewerUser?.accessTier === "parish-only";
 
-  // Track time-spent for the community metrics' "Time praying" row.
-  // The four LiturgyMode values map 1:1 onto PrayerSurface, so we
-  // pass it through. Bible-reading time launched from a lesson
-  // slide (SFSafariViewController) is captured naturally — this
-  // component stays mounted, visibilitychange handles pause/resume.
-  // Anti-cheat (5s floor + 60min cap) lives server-side.
-  usePrayerSession(resolvedMode as PrayerSurface);
+  // Track time-spent + max-slide-reached for the metrics dashboard.
+  // The slidesCompletedRef is the high-water mark of slideIdx; the
+  // metrics CTE uses it to filter "actually prayed an office" (≥3
+  // slides) from "tap-and-bail" (<3). The ref is updated each time
+  // slideIdx advances (effect below).
+  const slidesReachedRef = useRef(0);
+  usePrayerSession(resolvedMode as PrayerSurface, slidesReachedRef);
   // The Daily Devotions are explicitly the personal short forms
   // (BCP pp. 137 / 139). The full Daily Office's missal-page layout
   // (top-aligned, left-aligned, role-labelled) reads as overkill
@@ -290,6 +290,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   useEffect(() => {
     const el = mainRef.current;
     if (el) el.scrollTop = 0;
+    // High-water mark — the prayer-session POST reads this off the
+    // ref on unmount and submits it as slides_completed. We track
+    // the max (not the current) so a back-button doesn't undo a
+    // session's qualification.
+    if (slideIdx + 1 > slidesReachedRef.current) {
+      slidesReachedRef.current = slideIdx + 1;
+    }
   }, [slideIdx]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
