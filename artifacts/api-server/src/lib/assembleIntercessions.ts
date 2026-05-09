@@ -351,6 +351,7 @@ export async function buildIntercessionSlides(
           slot: prayerFeedEntriesTable.slot,
           title: prayerFeedEntriesTable.title,
           body: prayerFeedEntriesTable.body,
+          learnMoreUrl: prayerFeedEntriesTable.learnMoreUrl,
           feedTitle: prayerFeedsTable.title,
           feedSlug: prayerFeedsTable.slug,
           entryDate: prayerFeedEntriesTable.entryDate,
@@ -480,6 +481,10 @@ export async function buildIntercessionSlides(
         // without a follow-up lookup.
         feedSlug: f.feedSlug ?? null,
         entryDate: f.entryDate,
+        // Optional "Learn more" URL — surfaces as a pill CTA below
+        // the body, mirroring the Bible.com pill on lectionary
+        // slides. Opens in SFSafariViewController.
+        learnMoreUrl: f.learnMoreUrl ?? null,
       },
     });
   }

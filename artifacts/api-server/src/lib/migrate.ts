@@ -1002,6 +1002,10 @@ export async function migrate() {
     //      than one entry per day.
     //   3. Create the new (feed_id, entry_date, slot) unique index.
     await run(client, `ALTER TABLE prayer_feed_entries ADD COLUMN IF NOT EXISTS slot INTEGER NOT NULL DEFAULT 1`);
+    // Optional "Learn more" URL — surfaces as a pill CTA on the
+    // subscriber's intercession slide. Mirrors the Bible.com pill
+    // on lectionary slides.
+    await run(client, `ALTER TABLE prayer_feed_entries ADD COLUMN IF NOT EXISTS learn_more_url TEXT`);
     await run(client, `DROP INDEX IF EXISTS uniq_prayer_feed_entries_feed_date`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feed_entries_feed_date_slot ON prayer_feed_entries (feed_id, entry_date, slot)`);
 

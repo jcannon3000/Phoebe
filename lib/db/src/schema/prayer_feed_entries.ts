@@ -31,6 +31,12 @@ export const prayerFeedEntriesTable = pgTable(
     body: text("body").notNull().default(""),
     scriptureRef: text("scripture_ref"),
     imageUrl: text("image_url"),
+    // Optional URL to a story / article / explainer the admin wants
+    // subscribers to read. Renders as a "Learn more →" pill on the
+    // subscriber's intercession slide, mirroring the Bible.com pill
+    // on lectionary slides — opens in SFSafariViewController so the
+    // user stays inside Phoebe.
+    learnMoreUrl: text("learn_more_url"),
     state: text("state").notNull().default("draft"), // draft | scheduled | published
     prayCount: integer("pray_count").notNull().default(0),
     createdByUserId: integer("created_by_user_id")

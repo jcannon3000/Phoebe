@@ -132,6 +132,9 @@ const entrySchema = z.object({
   body: z.string().trim().max(2000).default(""),
   scriptureRef: z.string().trim().max(80).nullable().optional(),
   imageUrl: z.string().trim().url().max(500).nullable().optional(),
+  // Optional URL — surfaces as a "Learn more →" pill on the
+  // subscriber's intercession slide.
+  learnMoreUrl: z.string().trim().url().max(500).nullable().optional(),
   state: z.enum(["draft", "scheduled", "published"]).default("draft"),
 });
 
@@ -364,7 +367,7 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
     res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
     return;
   }
-  const { entryDate, slot, title, body, scriptureRef, imageUrl, state } = parsed.data;
+  const { entryDate, slot, title, body, scriptureRef, imageUrl, learnMoreUrl, state } = parsed.data;
   const publishedAt = state === "published" ? new Date() : null;
 
   // Upsert by (feed, date, slot). Three slots per day max — slot 1
@@ -377,6 +380,7 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
     body,
     scriptureRef: scriptureRef ?? null,
     imageUrl: imageUrl ?? null,
+    learnMoreUrl: learnMoreUrl ?? null,
     state,
     createdByUserId: user.id,
     publishedAt,
@@ -387,6 +391,7 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
       body,
       scriptureRef: scriptureRef ?? null,
       imageUrl: imageUrl ?? null,
+      learnMoreUrl: learnMoreUrl ?? null,
       state,
       updatedAt: new Date(),
       publishedAt: sql`CASE WHEN ${prayerFeedEntriesTable.publishedAt} IS NULL AND ${state === "published"} THEN NOW() ELSE ${prayerFeedEntriesTable.publishedAt} END`,

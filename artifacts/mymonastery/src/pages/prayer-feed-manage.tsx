@@ -39,6 +39,7 @@ interface Entry {
   body: string;
   scriptureRef: string | null;
   imageUrl: string | null;
+  learnMoreUrl: string | null;
   state: EntryState;
   prayCount: number;
 }
@@ -150,7 +151,7 @@ export default function PrayerFeedManagePage() {
       slot: number;
       title: string;
       body: string;
-      scriptureRef: string | null;
+      learnMoreUrl: string | null;
       state: EntryState;
     }) =>
       apiRequest("POST", `/api/prayer-feeds/${slug}/entries`, e),
@@ -186,8 +187,8 @@ export default function PrayerFeedManagePage() {
   // Two-tap confirm gate for the destructive delete-feed button —
   // first tap arms it, second tap commits.
   const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false);
-  const [draft, setDraft] = useState<{ title: string; body: string; scriptureRef: string }>({
-    title: "", body: "", scriptureRef: "",
+  const [draft, setDraft] = useState<{ title: string; body: string; learnMoreUrl: string }>({
+    title: "", body: "", learnMoreUrl: "",
   });
 
   function openEditor(dateStr: string, slot: number) {
@@ -195,7 +196,7 @@ export default function PrayerFeedManagePage() {
     setDraft({
       title: existing?.title ?? "",
       body: existing?.body ?? "",
-      scriptureRef: existing?.scriptureRef ?? "",
+      learnMoreUrl: existing?.learnMoreUrl ?? "",
     });
     setEditorTarget({ date: dateStr, slot });
   }
@@ -208,7 +209,7 @@ export default function PrayerFeedManagePage() {
       slot: editorTarget.slot,
       title: draft.title.trim(),
       body: draft.body.trim(),
-      scriptureRef: draft.scriptureRef.trim() || null,
+      learnMoreUrl: draft.learnMoreUrl.trim() || null,
       state,
     });
     setEditorTarget(null);
@@ -339,7 +340,7 @@ export default function PrayerFeedManagePage() {
                           {SLOT_LABELS[slot]}
                         </span>
                         <span className="text-sm flex-1 min-w-0 truncate" style={{ color: e ? "#F0EDE6" : "#8FAF96" }}>
-                          {e ? e.title : "(draft an intention)"}
+                          {e ? e.title : "(draft an intercession)"}
                         </span>
                         {statusDot ? (
                           <span className="text-[10px] flex-shrink-0">{statusDot}</span>
@@ -398,7 +399,7 @@ export default function PrayerFeedManagePage() {
             Danger zone
           </p>
           <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
-            Deletes the feed and every intention, every subscriber, and every "I prayed" tap. Cannot be undone.
+            Deletes the feed and every intercession, every subscriber, and every "I prayed" tap. Cannot be undone.
           </p>
           {!deleteConfirmArmed ? (
             <button
@@ -443,7 +444,7 @@ export default function PrayerFeedManagePage() {
         </div>
 
         {/* ── Editor modal — keyed on (date, slot) so each cell on
-              the calendar opens its own intention. ─────────────── */}
+              the calendar opens its own intercession. ─────────── */}
         {editorTarget && (() => {
           const editorDate = editorTarget.date;
           const editorSlot = editorTarget.slot;
@@ -467,7 +468,7 @@ export default function PrayerFeedManagePage() {
                     {" · "}{SLOT_LABELS[editorSlot]} slot
                   </p>
                   <p className="text-sm font-semibold mt-0.5" style={{ color: "#F0EDE6" }}>
-                    {existing ? "Edit intention" : "Compose intention"}
+                    {existing ? "Edit intercession" : "Compose intercession"}
                   </p>
                 </div>
                 <button onClick={closeEditor} className="text-xl leading-none" style={{ color: "#8FAF96" }} aria-label="Close">
@@ -508,17 +509,20 @@ export default function PrayerFeedManagePage() {
 
                 <div>
                   <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    Scripture (optional)
+                    Learn more URL (optional)
                   </label>
                   <input
-                    type="text"
-                    value={draft.scriptureRef}
-                    onChange={e => setDraft({ ...draft, scriptureRef: e.target.value })}
-                    placeholder="e.g. Isaiah 41:17"
-                    maxLength={80}
+                    type="url"
+                    value={draft.learnMoreUrl}
+                    onChange={e => setDraft({ ...draft, learnMoreUrl: e.target.value })}
+                    placeholder="https://example.org/story"
+                    maxLength={500}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
                     style={{ color: "#F0EDE6" }}
                   />
+                  <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
+                    Subscribers see a "Learn more →" pill on the slide that opens this link.
+                  </p>
                 </div>
               </div>
 
@@ -552,7 +556,7 @@ export default function PrayerFeedManagePage() {
               {existing && (
                 <button
                   onClick={async () => {
-                    if (confirm("Delete this intention?")) {
+                    if (confirm("Delete this intercession?")) {
                       await deleteEntry.mutateAsync({ date: editorDate, slot: editorSlot });
                       closeEditor();
                     }
@@ -561,7 +565,7 @@ export default function PrayerFeedManagePage() {
                   className="text-[11px] mt-3 transition-opacity hover:opacity-70"
                   style={{ color: "#E57373" }}
                 >
-                  Delete intention
+                  Delete intercession
                 </button>
               )}
             </div>
