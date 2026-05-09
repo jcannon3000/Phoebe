@@ -401,6 +401,13 @@ export default function PrayerFeedManagePage() {
           </>
         )}
 
+        {/* ── Recurring intercessions — daily / weekly templates
+              that auto-fill the slide deck on the subscriber side.
+              A one-time entry on a specific date overrides the
+              template for that day, so admins can program a
+              "default daily" intercession AND swap it on holidays. */}
+        <FeedRecurringSection slug={slug!} />
+
         {/* ── Groups — communities bound to this feed. Adding a
               group auto-subscribes every joined member; removing
               just stops auto-subscribing future joiners (existing
@@ -734,6 +741,342 @@ function FeedGroupsSection({ slug }: { slug: string }) {
           >
             Cancel
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Recurring entries section ─────────────────────────────────────────
+//
+// Daily / weekly templates that auto-expand into the daily slide
+// deck. A one-time entry on a specific date wins over a template
+// on that date+slot.
+type RecurringEntry = {
+  id: number;
+  slot: number;
+  recurrenceKind: "daily" | "weekly";
+  weekdaysMask: number;
+  title: string;
+  body: string;
+  learnMoreUrl: string | null;
+  state: "draft" | "live";
+};
+
+const WEEKDAY_LABELS: Array<{ bit: number; abbr: string; full: string }> = [
+  { bit: 1 << 0, abbr: "Su", full: "Sunday" },
+  { bit: 1 << 1, abbr: "M",  full: "Monday" },
+  { bit: 1 << 2, abbr: "Tu", full: "Tuesday" },
+  { bit: 1 << 3, abbr: "W",  full: "Wednesday" },
+  { bit: 1 << 4, abbr: "Th", full: "Thursday" },
+  { bit: 1 << 5, abbr: "F",  full: "Friday" },
+  { bit: 1 << 6, abbr: "Sa", full: "Saturday" },
+];
+
+function formatRecurrence(r: RecurringEntry): string {
+  if (r.recurrenceKind === "daily") return "Daily";
+  const days = WEEKDAY_LABELS.filter((w) => (r.weekdaysMask & w.bit) !== 0).map((w) => w.abbr);
+  if (days.length === 0) return "Weekly (no days)";
+  if (days.length === 7) return "Daily";
+  return days.join("/");
+}
+
+function FeedRecurringSection({ slug }: { slug: string }) {
+  const qc = useQueryClient();
+  const [composing, setComposing] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [draft, setDraft] = useState<{
+    slot: number;
+    kind: "daily" | "weekly";
+    mask: number;
+    title: string;
+    body: string;
+    learnMoreUrl: string;
+  }>({ slot: 1, kind: "daily", mask: 127, title: "", body: "", learnMoreUrl: "" });
+
+  const recurringQ = useQuery<{ recurring: RecurringEntry[] }>({
+    queryKey: [`/api/prayer-feeds/${slug}/recurring`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/recurring`),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (payload: {
+      id: number | null;
+      slot: number;
+      recurrenceKind: "daily" | "weekly";
+      weekdaysMask: number;
+      title: string;
+      body: string;
+      learnMoreUrl: string | null;
+      state: "live" | "draft";
+    }) => {
+      const body = {
+        slot: payload.slot,
+        recurrenceKind: payload.recurrenceKind,
+        weekdaysMask: payload.weekdaysMask,
+        title: payload.title,
+        body: payload.body,
+        learnMoreUrl: payload.learnMoreUrl,
+        state: payload.state,
+      };
+      return payload.id == null
+        ? apiRequest("POST", `/api/prayer-feeds/${slug}/recurring`, body)
+        : apiRequest("PUT", `/api/prayer-feeds/${slug}/recurring/${payload.id}`, body);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/recurring`] });
+      setComposing(false);
+      setEditingId(null);
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", `/api/prayer-feeds/${slug}/recurring/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/recurring`] });
+    },
+  });
+
+  function startNew() {
+    setDraft({ slot: 1, kind: "daily", mask: 127, title: "", body: "", learnMoreUrl: "" });
+    setEditingId(null);
+    setComposing(true);
+  }
+  function startEdit(r: RecurringEntry) {
+    setDraft({
+      slot: r.slot,
+      kind: r.recurrenceKind,
+      mask: r.weekdaysMask,
+      title: r.title,
+      body: r.body,
+      learnMoreUrl: r.learnMoreUrl ?? "",
+    });
+    setEditingId(r.id);
+    setComposing(true);
+  }
+  function toggleWeekday(bit: number) {
+    setDraft((d) => ({ ...d, mask: d.mask ^ bit }));
+  }
+  function save() {
+    if (!draft.title.trim()) return;
+    saveMutation.mutate({
+      id: editingId,
+      slot: draft.slot,
+      recurrenceKind: draft.kind,
+      weekdaysMask: draft.kind === "daily" ? 127 : draft.mask,
+      title: draft.title.trim(),
+      body: draft.body.trim(),
+      learnMoreUrl: draft.learnMoreUrl.trim() || null,
+      state: "live",
+    });
+  }
+
+  const items = recurringQ.data?.recurring ?? [];
+
+  return (
+    <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
+        Recurring intercessions
+      </p>
+      <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+        Daily or weekly templates. A one-time entry on a specific day overrides the template for that day.
+      </p>
+
+      <div className="space-y-2 mb-3">
+        {items.map((r) => (
+          <div
+            key={r.id}
+            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg"
+            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                {r.title}
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>
+                {SLOT_LABELS[r.slot] ?? `#${r.slot}`} slot · {formatRecurrence(r)}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => startEdit(r)}
+                className="text-[11px] font-semibold transition-opacity hover:opacity-70"
+                style={{ color: "#A8C5A0", background: "transparent", border: "none", cursor: "pointer" }}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Delete "${r.title}"?`)) removeMutation.mutate(r.id);
+                }}
+                disabled={removeMutation.isPending}
+                className="text-[11px] font-semibold transition-opacity hover:opacity-70"
+                style={{ color: "rgba(232,176,176,0.9)", background: "transparent", border: "none", cursor: "pointer" }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {!composing ? (
+        <button
+          type="button"
+          onClick={startNew}
+          className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
+        >
+          + Add recurring intercession
+        </button>
+      ) : (
+        <div
+          className="rounded-lg p-3 space-y-3"
+          style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
+        >
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Title
+            </label>
+            <input
+              type="text"
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              maxLength={120}
+              placeholder="e.g. Farmers in changing seasons"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Body (optional)
+            </label>
+            <textarea
+              value={draft.body}
+              onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+              rows={3}
+              maxLength={2000}
+              placeholder="One or two sentences inviting people to pray."
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm resize-none"
+              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Learn more URL (optional)
+            </label>
+            <input
+              type="url"
+              value={draft.learnMoreUrl}
+              onChange={(e) => setDraft({ ...draft, learnMoreUrl: e.target.value })}
+              maxLength={500}
+              placeholder="https://example.org/story"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Slot
+            </label>
+            <select
+              value={draft.slot}
+              onChange={(e) => setDraft({ ...draft, slot: parseInt(e.target.value, 10) })}
+              className="px-3 py-2 rounded-lg border bg-transparent text-sm"
+              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6", background: "rgba(15,40,24,0.4)" }}
+            >
+              {SLOTS.map((s) => (
+                <option key={s} value={s} style={{ background: "#0F2818", color: "#F0EDE6" }}>
+                  {SLOT_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Schedule
+            </label>
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setDraft({ ...draft, kind: "daily", mask: 127 })}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
+                style={{
+                  background: draft.kind === "daily" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                  border: `1px solid ${draft.kind === "daily" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                  color: "#F0EDE6",
+                }}
+              >
+                Daily
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft({ ...draft, kind: "weekly" })}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
+                style={{
+                  background: draft.kind === "weekly" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                  border: `1px solid ${draft.kind === "weekly" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                  color: "#F0EDE6",
+                }}
+              >
+                Weekly
+              </button>
+            </div>
+            {draft.kind === "weekly" && (
+              <div className="flex gap-1 flex-wrap">
+                {WEEKDAY_LABELS.map((w) => {
+                  const on = (draft.mask & w.bit) !== 0;
+                  return (
+                    <button
+                      key={w.bit}
+                      type="button"
+                      onClick={() => toggleWeekday(w.bit)}
+                      className="text-[11px] font-semibold rounded-full transition-opacity"
+                      style={{
+                        width: 36,
+                        height: 32,
+                        background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                        border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                        color: on ? "#F0EDE6" : "rgba(143,175,150,0.7)",
+                      }}
+                    >
+                      {w.abbr}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={save}
+              disabled={saveMutation.isPending || draft.title.trim().length === 0
+                || (draft.kind === "weekly" && draft.mask === 0)}
+              className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ background: "#2D5E3F", border: "1px solid #2D5E3F", color: "#F0EDE6" }}
+            >
+              {editingId == null ? "Add" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setComposing(false); setEditingId(null); }}
+              disabled={saveMutation.isPending}
+              className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ background: "transparent", border: "1px solid rgba(143,175,150,0.3)", color: "#A8C5A0" }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>
