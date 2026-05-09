@@ -620,19 +620,19 @@ export async function assembleMorningPrayer(
 
   if (appointedPsalms.length > 0) {
     // Combined eyebrow + headline. With one psalm we render exactly
-    // as before ("PSALM 75"); with multiple we join them with " & "
-    // (75 & 76) — caller sees a single header for the block.
+    // as before ("PSALM 75" / "Psalm 75"); with multiple we use the
+    // plural ("PSALMS 75 & 76" / "Psalms 75 & 76").
     const combinedEyebrow = appointedPsalms.length === 1
       ? psalmEyebrow(appointedPsalms[0])
-      : `PSALM ${appointedPsalms.map((p) => p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`).join(" & ")}`;
+      : `PSALMS ${appointedPsalms.map((p) => p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`).join(" & ")}`;
     // Title chooses the first psalm's emoji + title text. The combined
     // headline is built into the `title` so the renderer's title slide
-    // shows the full "Psalm 75 & 76" line.
+    // shows the full "Psalms 75 & 76" line.
     const firstPsalm = appointedPsalms[0];
     const firstData = texts[`psalm_${firstPsalm.number}`];
     const combinedTitle = appointedPsalms.length === 1
       ? (firstData?.title ?? null)
-      : `Psalm ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
+      : `Psalms ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
 
     slides.push(
       slide(id(), "psalm_title", PSALM_EMOJI[firstPsalm.number] ?? "📖", combinedEyebrow, "", {

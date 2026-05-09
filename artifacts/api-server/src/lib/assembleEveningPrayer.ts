@@ -289,12 +289,12 @@ export async function assembleEveningPrayer(
   if (appointedPsalms.length > 0) {
     const combinedEyebrow = appointedPsalms.length === 1
       ? psalmEyebrow(appointedPsalms[0])
-      : `PSALM ${appointedPsalms.map((p) => p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`).join(" & ")}`;
+      : `PSALMS ${appointedPsalms.map((p) => p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`).join(" & ")}`;
     const firstPsalm = appointedPsalms[0];
     const firstData = psalmTexts[`psalm_${firstPsalm.number}`];
     const combinedTitle = appointedPsalms.length === 1
       ? (firstData?.title ?? null)
-      : `Psalm ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
+      : `Psalms ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
 
     slides.push(
       slide(id(), "psalm_title", PSALM_EMOJI[firstPsalm.number] ?? "📖", combinedEyebrow, "", {
