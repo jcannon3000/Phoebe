@@ -693,23 +693,36 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         FROM lectio_reflections lr
         WHERE lr.user_id IN (SELECT user_id FROM members)
 
-        UNION
-
-        -- Opening /prayer-list counts as a prayer event for that
-        -- user-day. Source rows are prayer_sessions writes with
-        -- surface = 'prayer-list' (exempt from the 5s floor on
-        -- POST /api/prayer-sessions, so a glance-and-back still
-        -- records). DISTINCT happens via the UNION + the prayer_days
-        -- CTE below, so multiple opens in one day collapse to a
-        -- single event.
-        SELECT ps.user_id,
-               to_char((ps.ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_sessions ps
-        WHERE ps.user_id IN (SELECT user_id FROM members)
-          AND ps.surface = 'prayer-list'
+        -- Note: prayer_sessions for surface='prayer-list' (the
+        -- "you opened your prayer list" event) is already covered
+        -- by the all-surface prayer_sessions UNION above; no need
+        -- for a second UNION here.
       ),
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM prayer_events
+      ),
+      -- Pre-scan prayer_sessions ONCE for the four office surfaces.
+      -- The dashboard's Office breakdown asks ~16 questions of this
+      -- table (per-surface counts × 3 windows + aggregate seconds ×
+      -- 3 windows + total). Doing them as independent subqueries
+      -- against the raw table was tripping the metrics endpoint into
+      -- a multi-second timeout; pulling everything into a CTE means
+      -- one filtered scan and 16 cheap aggregations against the
+      -- in-memory result set.
+      office_sessions AS (
+        SELECT
+          user_id,
+          surface,
+          duration_seconds,
+          to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM prayer_sessions
+        WHERE user_id IN (SELECT user_id FROM members)
+          AND surface IN (
+            'morning-prayer',
+            'morning-devotion',
+            'evening-prayer',
+            'early-evening-devotion'
+          )
       )
       SELECT
         (SELECT COUNT(*) FROM members)::int AS total_members,
@@ -750,88 +763,32 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
            WHERE user_id IN (SELECT user_id FROM members)), 0)::bigint AS seconds_prayed_total,
 
         -- ── Offices breakdown ───────────────────────────────────────
-        -- Per-surface session counts (one row per office completion in
-        -- the prayer_sessions ledger) for each of the four daily
-        -- liturgies, scoped to community members. "Month" is the same
-        -- 30-day rolling window used by the existing week tile, just
-        -- wider, so the user sees a steady trend line instead of a
-        -- jagged calendar-month edge.
+        -- All sourced from the office_sessions CTE above. Each
+        -- subquery is a cheap aggregation against the pre-filtered
+        -- in-memory rowset; no second pass over the raw
+        -- prayer_sessions table.
 
-        -- Morning Prayer (full Daily Office)
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'morning-prayer'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS office_morning_prayer_today,
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'morning-prayer'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS office_morning_prayer_week,
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'morning-prayer'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_morning_prayer_month,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-prayer' AND day >= $2)::int AS office_morning_prayer_today,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-prayer' AND day >= $3)::int AS office_morning_prayer_week,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-prayer' AND day >= $5)::int AS office_morning_prayer_month,
 
-        -- Morning Devotion (short BCP form)
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'morning-devotion'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS office_morning_devotion_today,
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'morning-devotion'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS office_morning_devotion_week,
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'morning-devotion'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_morning_devotion_month,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-devotion' AND day >= $2)::int AS office_morning_devotion_today,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-devotion' AND day >= $3)::int AS office_morning_devotion_week,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-devotion' AND day >= $5)::int AS office_morning_devotion_month,
 
-        -- Evening Prayer (full Daily Office)
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'evening-prayer'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS office_evening_prayer_today,
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'evening-prayer'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS office_evening_prayer_week,
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'evening-prayer'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_evening_prayer_month,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'evening-prayer' AND day >= $2)::int AS office_evening_prayer_today,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'evening-prayer' AND day >= $3)::int AS office_evening_prayer_week,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'evening-prayer' AND day >= $5)::int AS office_evening_prayer_month,
 
-        -- Early Evening Devotion (short BCP form)
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'early-evening-devotion'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2)::int AS office_evening_devotion_today,
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'early-evening-devotion'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3)::int AS office_evening_devotion_week,
-        (SELECT COUNT(*) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface = 'early-evening-devotion'
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5)::int AS office_evening_devotion_month,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'early-evening-devotion' AND day >= $2)::int AS office_evening_devotion_today,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'early-evening-devotion' AND day >= $3)::int AS office_evening_devotion_week,
+        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'early-evening-devotion' AND day >= $5)::int AS office_evening_devotion_month,
 
-        -- Aggregate seconds across all four offices, by window. One
-        -- value per window so the dashboard's office-detail row can
-        -- show "Total time" parallel to the count columns
-        -- (Today / Week / Month) instead of just an all-time number.
-        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2), 0)::bigint AS offices_seconds_today,
-        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3), 0)::bigint AS offices_seconds_week,
-        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
-             AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $5), 0)::bigint AS offices_seconds_month,
-        COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)
-             AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')), 0)::bigint AS offices_seconds_total
+        -- Aggregate seconds across all four offices, by window.
+        COALESCE((SELECT SUM(duration_seconds) FROM office_sessions WHERE day >= $2), 0)::bigint AS offices_seconds_today,
+        COALESCE((SELECT SUM(duration_seconds) FROM office_sessions WHERE day >= $3), 0)::bigint AS offices_seconds_week,
+        COALESCE((SELECT SUM(duration_seconds) FROM office_sessions WHERE day >= $5), 0)::bigint AS offices_seconds_month,
+        COALESCE((SELECT SUM(duration_seconds) FROM office_sessions), 0)::bigint AS offices_seconds_total
     `, [result.group.id, todayStr, weekStartStr, tz, monthStartStr]);
     const row = q.rows[0] ?? {};
     res.json({
