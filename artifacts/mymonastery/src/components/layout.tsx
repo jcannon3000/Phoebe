@@ -62,6 +62,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // surfaces upcoming events directly so a dedicated tab on the
     // side felt redundant. Re-add this row to bring it back if the
     // need ever returns.
+    { emoji: "🕊️", label: "Prayer Feeds", path: "/prayer-feeds" },
     { emoji: "👥", label: "People",      path: "/people" },
     { divider: true },
     // Liturgy section — book of common prayer reference content.
