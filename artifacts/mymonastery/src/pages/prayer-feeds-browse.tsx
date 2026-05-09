@@ -21,18 +21,21 @@ interface BrowseFeed {
 
 export default function PrayerFeedsBrowsePage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { isBeta } = useBetaStatus();
+  // rawIsBeta + isLoading guard: avoids the redirect-on-refresh
+  // race where the unresolved beta-status query made `isBeta`
+  // briefly false and bounced the user to /dashboard.
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
-    if (!authLoading && user && !isBeta) setLocation("/dashboard");
-  }, [user, authLoading, isBeta, setLocation]);
+    if (!authLoading && !betaLoading && user && !rawIsBeta) setLocation("/dashboard");
+  }, [user, authLoading, betaLoading, rawIsBeta, setLocation]);
 
   const feedsQ = useQuery<{ feeds: BrowseFeed[] }>({
     queryKey: ["/api/prayer-feeds"],
     queryFn: () => apiRequest("GET", "/api/prayer-feeds"),
-    enabled: !!user && isBeta,
+    enabled: !!user && rawIsBeta,
   });
   const feeds = feedsQ.data?.feeds ?? [];
 

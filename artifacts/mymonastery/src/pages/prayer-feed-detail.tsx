@@ -103,7 +103,10 @@ function dayOfWeek(dateStr: string): string {
 
 export default function PrayerFeedDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { isBeta } = useBetaStatus();
+  // rawIsBeta + isLoading guard avoids the refresh-bounce-to-
+  // dashboard race (unresolved beta-status query → isBeta false →
+  // redirect before data lands).
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -111,13 +114,13 @@ export default function PrayerFeedDetailPage() {
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
-    if (!authLoading && user && !isBeta) setLocation("/dashboard");
+    if (!authLoading && !betaLoading && user && !rawIsBeta) setLocation("/dashboard");
     // (Removed phoebe-climate → /climate redirect: /climate already
     // redirects back here, which produced an infinite redirect loop
     // and the white "something went wrong" error page when the user
     // tapped the climate card. The 3-slot prayer-feed rollout means
     // this detail page now renders real content for phoebe-climate.)
-  }, [user, authLoading, isBeta, setLocation, slug]);
+  }, [user, authLoading, betaLoading, rawIsBeta, setLocation, slug]);
 
   // ── Feed + entries window ──────────────────────────────────────────────
   const feedQ = useQuery<FeedResponse>({

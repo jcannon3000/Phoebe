@@ -12,7 +12,10 @@ import { apiRequest } from "@/lib/queryClient";
 // the feed to `live`.
 export default function PrayerFeedNewPage() {
   const { user, isLoading } = useAuth();
-  const { isBeta } = useBetaStatus();
+  // rawIsBeta + isLoading guard avoids the refresh-bounce-to-
+  // dashboard race (unresolved beta-status query → isBeta false →
+  // redirect before data lands).
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
 
   const [title, setTitle] = useState("");
@@ -23,8 +26,8 @@ export default function PrayerFeedNewPage() {
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
-    if (!isLoading && user && !isBeta) setLocation("/dashboard");
-  }, [user, isLoading, isBeta, setLocation]);
+    if (!isLoading && !betaLoading && user && !rawIsBeta) setLocation("/dashboard");
+  }, [user, isLoading, betaLoading, rawIsBeta, setLocation]);
 
   const createMutation = useMutation({
     mutationFn: () => apiRequest<{ feed: { slug: string } }>("POST", "/api/prayer-feeds", {

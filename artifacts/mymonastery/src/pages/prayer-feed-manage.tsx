@@ -93,15 +93,23 @@ function prettyDate(dateStr: string): string {
 
 export default function PrayerFeedManagePage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { isBeta } = useBetaStatus();
+  // Use rawIsBeta + isLoading guard. rawIsBeta is the user's
+  // underlying beta access (independent of the betaViewEnabled
+  // toggle), and isLoading lets us avoid redirecting before the
+  // beta-status query has resolved. Without those, refreshing the
+  // manage page bounced the user to /dashboard the moment the
+  // effect ran with `isBeta` still falsy from the unresolved
+  // query — which is what the user reported as "the feed
+  // disappeared on refresh."
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
-    if (!authLoading && user && !isBeta) setLocation("/dashboard");
-  }, [user, authLoading, isBeta, setLocation]);
+    if (!authLoading && !betaLoading && user && !rawIsBeta) setLocation("/dashboard");
+  }, [user, authLoading, betaLoading, rawIsBeta, setLocation]);
 
   // ── Data ────────────────────────────────────────────────────────────────
   const feedQ = useQuery<FeedResponse>({
