@@ -139,7 +139,7 @@ const entrySchema = z.object({
   // 1, 2, or 3. Default 1 so callers that don't specify keep working
   // (single-slot legacy behavior). Each slot becomes its own slide on
   // the subscriber side, in ascending order.
-  slot: z.number().int().min(1).max(3).default(1),
+  slot: z.number().int().min(1).max(7).default(1),
   title: z.string().trim().min(1).max(120),
   body: z.string().trim().max(2000).default(""),
   scriptureRef: z.string().trim().max(80).nullable().optional(),
@@ -565,7 +565,7 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
 });
 
 // DELETE /api/prayer-feeds/:slug/entries/:date — editor-only.
-// Optional ?slot=1|2|3 narrows the delete to a single slot. Without
+// Optional ?slot=1..7 narrows the delete to a single slot. Without
 // the param we delete every slot on that date (back-compat with
 // callers that pre-date the multi-slot rollout).
 router.delete("/prayer-feeds/:slug/entries/:date", requireBeta, async (req, res): Promise<void> => {
@@ -583,7 +583,7 @@ router.delete("/prayer-feeds/:slug/entries/:date", requireBeta, async (req, res)
   }
 
   const slotRaw = typeof req.query.slot === "string" ? parseInt(req.query.slot, 10) : null;
-  const slot = slotRaw && Number.isInteger(slotRaw) && slotRaw >= 1 && slotRaw <= 3 ? slotRaw : null;
+  const slot = slotRaw && Number.isInteger(slotRaw) && slotRaw >= 1 && slotRaw <= 7 ? slotRaw : null;
   const conditions = [
     eq(prayerFeedEntriesTable.feedId, feed.id),
     eq(prayerFeedEntriesTable.entryDate, String(req.params.date)),
@@ -653,10 +653,10 @@ router.delete("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Pr
 // POST /api/prayer-feeds/:slug/entries/:date/pray — log a prayer.
 // Returns updated today-context: prayCount + who-prayed roster.
 //
-// Slot is taken from `?slot=` (1/2/3) or body.slot, defaulting to 1
+// Slot is taken from `?slot=` (1..7) or body.slot, defaulting to 1
 // for back-compat with single-slot callers. Each slot has its own
-// `prayCount` and roster, so a feed with three slides per day records
-// three independent prayer streams.
+// `prayCount` and roster, so a feed with multiple slides per day
+// records independent prayer streams.
 router.post("/prayer-feeds/:slug/entries/:date/pray", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
@@ -668,7 +668,7 @@ router.post("/prayer-feeds/:slug/entries/:date/pray", requireBeta, async (req, r
   }
   const slotRaw = req.query.slot ?? req.body?.slot ?? 1;
   const slotNum = typeof slotRaw === "string" ? parseInt(slotRaw, 10) : Number(slotRaw);
-  const slot = Number.isInteger(slotNum) && slotNum >= 1 && slotNum <= 3 ? slotNum : 1;
+  const slot = Number.isInteger(slotNum) && slotNum >= 1 && slotNum <= 7 ? slotNum : 1;
   const [entry] = await db.select().from(prayerFeedEntriesTable)
     .where(and(
       eq(prayerFeedEntriesTable.feedId, feed.id),
@@ -709,7 +709,7 @@ router.post("/prayer-feeds/:slug/entries/:date/pray", requireBeta, async (req, r
 });
 
 // GET /api/prayer-feeds/:slug/entries/:date/prayers — roster for a day.
-// Slot is read from `?slot=` (1/2/3), defaulting to 1. Each slot has
+// Slot is read from `?slot=` (1..7), defaulting to 1. Each slot has
 // its own roster — calling without a slot still returns slot 1 to keep
 // pre-multi-slot UIs working.
 router.get("/prayer-feeds/:slug/entries/:date/prayers", requireBeta, async (req, res): Promise<void> => {
@@ -727,7 +727,7 @@ router.get("/prayer-feeds/:slug/entries/:date/prayers", requireBeta, async (req,
     return;
   }
   const slotRaw = typeof req.query.slot === "string" ? parseInt(req.query.slot, 10) : 1;
-  const slot = Number.isInteger(slotRaw) && slotRaw >= 1 && slotRaw <= 3 ? slotRaw : 1;
+  const slot = Number.isInteger(slotRaw) && slotRaw >= 1 && slotRaw <= 7 ? slotRaw : 1;
 
   const [entry] = await db.select().from(prayerFeedEntriesTable)
     .where(and(

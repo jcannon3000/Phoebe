@@ -44,15 +44,19 @@ interface Entry {
   prayCount: number;
 }
 
-// Up to three programmable slots per day. The numbers are positional
+// Up to seven programmable slots per day. The numbers are positional
 // labels — each slot becomes its own slide on the subscriber side, in
 // ascending order.
 const SLOT_LABELS: Record<number, string> = {
   1: "First",
   2: "Second",
   3: "Third",
+  4: "Fourth",
+  5: "Fifth",
+  6: "Sixth",
+  7: "Seventh",
 };
-const SLOTS = [1, 2, 3] as const;
+const SLOTS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 interface FeedResponse {
   feed: Feed;
