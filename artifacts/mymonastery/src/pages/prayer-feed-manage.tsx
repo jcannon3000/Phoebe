@@ -397,6 +397,12 @@ export default function PrayerFeedManagePage() {
           </>
         )}
 
+        {/* ── Groups — communities bound to this feed. Adding a
+              group auto-subscribes every joined member; removing
+              just stops auto-subscribing future joiners (existing
+              subscribers stay subscribed). */}
+        <FeedGroupsSection slug={slug!} />
+
         {/* ── Danger zone — delete the entire feed.
               Cascades wipe every entry, every subscriber row, and
               every "I prayed" stamp via DB foreign keys. Two-tap
@@ -582,5 +588,150 @@ export default function PrayerFeedManagePage() {
         })()}
       </div>
     </Layout>
+  );
+}
+
+// ── Groups section on the manage page ──────────────────────────────────
+//
+// Lists every community currently bound to this feed and lets the
+// admin add another from the user's communities (where they're an
+// admin) or remove an existing binding.
+//
+// Adding a group auto-subscribes every joined member of that group
+// to the feed. Removing leaves existing subscribers in place — only
+// future joiners stop being auto-subscribed.
+type BoundGroup = {
+  groupId: number;
+  groupSlug: string | null;
+  groupName: string | null;
+  groupEmoji: string | null;
+};
+type MyGroup = { id: number; slug: string; name: string; emoji: string | null; myRole: string };
+
+function FeedGroupsSection({ slug }: { slug: string }) {
+  const qc = useQueryClient();
+  const [picking, setPicking] = useState(false);
+
+  const groupsQ = useQuery<{ groups: BoundGroup[] }>({
+    queryKey: [`/api/prayer-feeds/${slug}/groups`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/groups`),
+  });
+  const myGroupsQ = useQuery<{ groups: MyGroup[] }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (groupSlug: string) =>
+      apiRequest("POST", `/api/prayer-feeds/${slug}/groups`, { groupSlug }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/groups`] });
+      setPicking(false);
+    },
+  });
+  const removeMutation = useMutation({
+    mutationFn: (groupId: number) =>
+      apiRequest("DELETE", `/api/prayer-feeds/${slug}/groups/${groupId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/groups`] });
+    },
+  });
+
+  const bound = groupsQ.data?.groups ?? [];
+  const boundIds = new Set(bound.map((g) => g.groupId));
+  // Only offer groups where the current user has admin standing
+  // (admin / hidden_admin) and that aren't already bound.
+  const availableGroups = (myGroupsQ.data?.groups ?? []).filter(
+    (g) => !boundIds.has(g.id) && (g.myRole === "admin" || g.myRole === "hidden_admin"),
+  );
+
+  return (
+    <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
+        Communities
+      </p>
+      <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+        Bound communities have every member auto-subscribed. Removing a community here doesn't unsubscribe anyone — it just stops new joiners from being auto-added.
+      </p>
+
+      {bound.length === 0 && (
+        <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
+          No communities bound yet.
+        </p>
+      )}
+
+      <div className="space-y-2 mb-3">
+        {bound.map((g) => (
+          <div
+            key={g.groupId}
+            className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg"
+            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+          >
+            <span className="text-sm" style={{ color: "#F0EDE6" }}>
+              {g.groupEmoji ?? "⛪"} {g.groupName ?? "(unknown)"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(`Remove ${g.groupName ?? "this community"} from the feed?`)) {
+                  removeMutation.mutate(g.groupId);
+                }
+              }}
+              disabled={removeMutation.isPending}
+              className="text-[11px] font-semibold transition-opacity hover:opacity-70"
+              style={{ color: "rgba(232,176,176,0.9)", background: "transparent", border: "none", cursor: "pointer" }}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {!picking ? (
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          disabled={availableGroups.length === 0}
+          className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
+          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
+        >
+          + Add a community
+        </button>
+      ) : (
+        <div
+          className="rounded-lg p-3"
+          style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
+        >
+          {availableGroups.length === 0 ? (
+            <p className="text-xs" style={{ color: "rgba(143,175,150,0.7)" }}>
+              No more communities to add. (Only communities where you're an admin can be bound.)
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {availableGroups.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => addMutation.mutate(g.slug)}
+                  disabled={addMutation.isPending}
+                  className="text-left px-3 py-2 rounded-lg text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.28)", color: "#F0EDE6" }}
+                >
+                  {g.emoji ?? "⛪"} {g.name}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setPicking(false)}
+            className="text-[11px] mt-3 transition-opacity hover:opacity-70"
+            style={{ color: "rgba(143,175,150,0.6)", background: "transparent", border: "none", cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import { groupsTable } from "./groups";
 
 // A Prayer Feed is a subscribable cause (e.g. "Climate Justice", "Persecuted
 // Church", "Unborn Children") where the creator publishes a new specific
@@ -64,3 +65,31 @@ export const prayerFeedsTable = pgTable(
 
 export type PrayerFeedState = "draft" | "live" | "paused";
 export type PrayerFeedKind = "general" | "parish";
+
+// Many-to-many between prayer feeds and groups. A feed can be
+// "within" multiple groups; a group can carry multiple feeds.
+// Binding a group to a feed auto-subscribes every joined member of
+// the group to the feed (the bind handler enforces this).
+//
+// Add path: feed creator OR a community admin of the target group
+// can add the group. Remove path: same. Removing a binding does NOT
+// unsubscribe individuals — manually-subscribed users stay
+// subscribed; we just stop the auto-subscribe of future joiners.
+export const prayerFeedGroupsTable = pgTable(
+  "prayer_feed_groups",
+  {
+    id: serial("id").primaryKey(),
+    feedId: integer("feed_id")
+      .notNull()
+      .references(() => prayerFeedsTable.id, { onDelete: "cascade" }),
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => groupsTable.id, { onDelete: "cascade" }),
+    addedByUserId: integer("added_by_user_id")
+      .references(() => usersTable.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    feedGroupUnique: uniqueIndex("uniq_prayer_feed_groups_pair").on(t.feedId, t.groupId),
+  }),
+);

@@ -29,12 +29,25 @@ export default function PrayerFeedNewPage() {
     if (!isLoading && !betaLoading && user && !rawIsBeta) setLocation("/dashboard");
   }, [user, isLoading, betaLoading, rawIsBeta, setLocation]);
 
+  // When the user reached this page from a community's "+ Prayer
+  // Feed" button, the source slug is in the URL as ?community=…
+  // We pass it to the create endpoint as initialGroupSlug so the
+  // server binds the new feed to the community AND auto-subscribes
+  // every joined member. Without this the create silently dropped
+  // the slug and the feed appeared unbound.
+  const initialGroupSlug = (() => {
+    if (typeof window === "undefined") return null;
+    const v = new URLSearchParams(window.location.search).get("community");
+    return v && v.length > 0 ? v : null;
+  })();
+
   const createMutation = useMutation({
     mutationFn: () => apiRequest<{ feed: { slug: string } }>("POST", "/api/prayer-feeds", {
       title: title.trim(),
       tagline: tagline.trim() || null,
       coverEmoji,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York",
+      ...(initialGroupSlug ? { initialGroupSlug } : {}),
     }),
     onSuccess: (data) => {
       setLocation(`/prayer-feeds/${data.feed.slug}/manage`);

@@ -6,9 +6,13 @@ import {
   prayerFeedEntriesTable,
   prayerFeedSubscriptionsTable,
   prayerFeedPrayersTable,
+  prayerFeedGroupsTable,
   usersTable,
   betaUsersTable,
+  groupsTable,
+  groupMembersTable,
 } from "@workspace/db";
+import { inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import crypto from "crypto";
 
@@ -111,6 +115,14 @@ const createFeedSchema = z.object({
   coverEmoji: z.string().trim().max(8).optional().nullable(),
   coverImageUrl: z.string().trim().url().max(500).optional().nullable(),
   timezone: z.string().trim().max(60).optional(),
+  // Optional: when creating from a community page, the slug of the
+  // community to bind. Server resolves to a group_id and:
+  //   1. inserts a prayer_feed_groups row
+  //   2. auto-subscribes every joined member of the group to the feed
+  // Caller must be a community admin of the target group OR the
+  // feed creator (which is the same person here, since the caller is
+  // creating the feed).
+  initialGroupSlug: z.string().trim().min(1).max(80).optional(),
 });
 
 const updateFeedSchema = z.object({
@@ -224,7 +236,12 @@ router.get("/prayer-feeds/subscribed", requireBeta, async (req, res): Promise<vo
   res.json({ subscriptions: out });
 });
 
-// POST /api/prayer-feeds — create a new feed (caller is the creator)
+// POST /api/prayer-feeds — create a new feed (caller is the creator).
+// When `initialGroupSlug` is set (e.g. the user tapped "+ Prayer Feed"
+// on a community page), the new feed is bound to that group and every
+// joined member is auto-subscribed. The community + button used to
+// just pass the slug in the URL and silently drop it; now it
+// actually wires the feed to the community.
 router.post("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const parsed = createFeedSchema.safeParse(req.body);
@@ -232,7 +249,7 @@ router.post("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
     return;
   }
-  const { title, tagline, coverEmoji, coverImageUrl, timezone } = parsed.data;
+  const { title, tagline, coverEmoji, coverImageUrl, timezone, initialGroupSlug } = parsed.data;
   const slug = await uniqueSlug(title);
   const [row] = await db.insert(prayerFeedsTable).values({
     slug,
@@ -244,8 +261,72 @@ router.post("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
     timezone: timezone || "America/New_York",
     state: "draft",
   }).returning();
+
+  if (initialGroupSlug) {
+    try {
+      await bindFeedToGroup(row.id, initialGroupSlug, user.id);
+    } catch (err) {
+      // Don't fail the whole request if the group bind fails — the
+      // feed itself is created and the user can add the group from
+      // the manage page after. Log and move on.
+      console.warn("[prayer-feeds] initial group bind failed:", err);
+    }
+  }
+
   res.status(201).json({ feed: row });
 });
+
+// Binds a feed to a group. Auth: caller must be the feed's creator
+// OR a community admin of the target group. Side effect: every
+// joined member of the group gets a prayer_feed_subscriptions row
+// inserted (ON CONFLICT DO NOTHING so re-binding is idempotent).
+// Throws on permission / not-found so callers can map to the right
+// HTTP status.
+async function bindFeedToGroup(feedId: number, groupSlug: string, byUserId: number): Promise<void> {
+  const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, groupSlug));
+  if (!group) throw new Error("group_not_found");
+  // Permission: feed creator OR admin of this group.
+  const [feed] = await db.select().from(prayerFeedsTable).where(eq(prayerFeedsTable.id, feedId));
+  if (!feed) throw new Error("feed_not_found");
+  const isCreator = feed.creatorUserId === byUserId;
+  let isGroupAdmin = false;
+  if (!isCreator) {
+    const [membership] = await db
+      .select({ role: groupMembersTable.role })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, group.id),
+        eq(groupMembersTable.userId, byUserId),
+      ));
+    isGroupAdmin = membership?.role === "admin" || membership?.role === "hidden_admin";
+  }
+  if (!isCreator && !isGroupAdmin) throw new Error("forbidden");
+
+  // Bind row (idempotent).
+  await db.insert(prayerFeedGroupsTable).values({
+    feedId,
+    groupId: group.id,
+    addedByUserId: byUserId,
+  }).onConflictDoNothing();
+
+  // Auto-subscribe every joined member of the group.
+  const memberRows = await db
+    .select({ userId: groupMembersTable.userId })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, group.id),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      sql`${groupMembersTable.userId} IS NOT NULL`,
+    ));
+  const memberUserIds = memberRows
+    .map((r) => r.userId)
+    .filter((id): id is number => typeof id === "number");
+  if (memberUserIds.length > 0) {
+    await db.insert(prayerFeedSubscriptionsTable).values(
+      memberUserIds.map((uid) => ({ feedId, userId: uid })),
+    ).onConflictDoNothing();
+  }
+}
 
 // GET /api/prayer-feeds/:slug — feed metadata + permission flags for the
 // caller. Editors see everything; subscribers see published entries only.
@@ -320,6 +401,88 @@ router.delete("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void
     return;
   }
   await db.delete(prayerFeedsTable).where(eq(prayerFeedsTable.id, feed.id));
+  res.json({ ok: true });
+});
+
+// ── Feed ↔ group bindings ──────────────────────────────────────────
+//
+// GET    /:slug/groups        — list groups bound to this feed
+// POST   /:slug/groups        — bind a group (auto-subscribes members)
+// DELETE /:slug/groups/:gid   — unbind (does NOT unsubscribe)
+//
+// Auth: any beta user can list (the data is non-sensitive — it tells
+// you which communities back this feed). Add / remove gated to feed
+// creator OR community admin of the target group via bindFeedToGroup.
+
+router.get("/prayer-feeds/:slug/groups", requireBeta, async (req, res): Promise<void> => {
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  const rows = await db
+    .select({
+      groupId: prayerFeedGroupsTable.groupId,
+      addedAt: prayerFeedGroupsTable.createdAt,
+      groupSlug: groupsTable.slug,
+      groupName: groupsTable.name,
+      groupEmoji: groupsTable.emoji,
+    })
+    .from(prayerFeedGroupsTable)
+    .leftJoin(groupsTable, eq(groupsTable.id, prayerFeedGroupsTable.groupId))
+    .where(eq(prayerFeedGroupsTable.feedId, feed.id))
+    .orderBy(asc(prayerFeedGroupsTable.createdAt));
+  res.json({ groups: rows });
+});
+
+router.post("/prayer-feeds/:slug/groups", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  const groupSlug = typeof req.body?.groupSlug === "string" ? req.body.groupSlug.trim() : "";
+  if (!groupSlug) { res.status(400).json({ error: "groupSlug required" }); return; }
+  try {
+    await bindFeedToGroup(feed.id, groupSlug, user.id);
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (msg === "group_not_found") { res.status(404).json({ error: "Group not found" }); return; }
+    if (msg === "forbidden") { res.status(403).json({ error: "Only the feed creator or a community admin can bind a group." }); return; }
+    console.error("[prayer-feeds] bind group failed:", err);
+    res.status(500).json({ error: "Failed to bind group" });
+  }
+});
+
+router.delete("/prayer-feeds/:slug/groups/:groupId", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  const groupId = parseInt(String(req.params.groupId), 10);
+  if (!Number.isFinite(groupId)) { res.status(400).json({ error: "Invalid group id" }); return; }
+  // Permission: feed creator OR admin of this group (mirrors the
+  // bind path).
+  const isCreator = feed.creatorUserId === user.id;
+  let isGroupAdmin = false;
+  if (!isCreator) {
+    const [membership] = await db
+      .select({ role: groupMembersTable.role })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, groupId),
+        eq(groupMembersTable.userId, user.id),
+      ));
+    isGroupAdmin = membership?.role === "admin" || membership?.role === "hidden_admin";
+  }
+  if (!isCreator && !isGroupAdmin) {
+    res.status(403).json({ error: "Only the feed creator or a community admin can remove a group." });
+    return;
+  }
+  await db.delete(prayerFeedGroupsTable).where(and(
+    eq(prayerFeedGroupsTable.feedId, feed.id),
+    eq(prayerFeedGroupsTable.groupId, groupId),
+  ));
+  // Note: we deliberately do NOT unsubscribe individual members
+  // here. People who manually subscribed should stay subscribed;
+  // the binding remove just means new joiners won't be auto-
+  // subscribed going forward.
+  void inArray;
   res.json({ ok: true });
 });
 

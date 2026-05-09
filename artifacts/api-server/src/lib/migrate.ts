@@ -1036,6 +1036,24 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_prayers_feed_day ON prayer_feed_prayers (feed_id, day_local)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_prayers_user ON prayer_feed_prayers (user_id)`);
 
+    // ── prayer_feed_groups ────────────────────────────────────────────────
+    // Many-to-many between feeds and communities. Adding a group binds
+    // the feed to it AND auto-subscribes every joined member of the
+    // group to the feed (the API handler does the subscription
+    // INSERT). Removing a binding doesn't unsubscribe individuals.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_feed_groups (
+        id SERIAL PRIMARY KEY,
+        feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        added_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_feed_groups_pair ON prayer_feed_groups (feed_id, group_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_groups_feed ON prayer_feed_groups (feed_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_groups_group ON prayer_feed_groups (group_id)`);
+
     // ── prayer_sessions ─────────────────────────────────────────────────────
     // Per-user time-spent ledger. One row per finished session in the
     // slideshow / Office / Devotion viewer. The metrics page rolls
