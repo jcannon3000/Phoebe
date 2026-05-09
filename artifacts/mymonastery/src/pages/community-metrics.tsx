@@ -208,8 +208,9 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         className="text-[11px] leading-relaxed mb-3"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
       >
-        Counts a day whenever a member either walks their prayer list
-        or taps Amen. One per person per day.
+        One session per Amen tap or full-office reading (≥3 slides).
+        Multiple sessions within 15 minutes for the same person
+        collapse to one.
       </p>
       <div className="grid grid-cols-3 gap-3 mb-8">
         <StatTile label="Today" value={data.timesPrayedToday} />

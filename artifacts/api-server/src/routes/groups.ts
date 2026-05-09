@@ -623,23 +623,21 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         FROM prayer_requests
         WHERE owner_id IN (SELECT user_id FROM members)
       ),
-      -- Two derived sets, each driving a different metric:
+      -- One unified definition of a "prayer session" — drives BOTH
+      -- People praying and Times prayed so the math always holds
+      -- (Times ≥ People). A session is one of:
+      --   • an Amen tap (prayer_request_amens row)
+      --   • an office / devotion completion that reached ≥3 slides
+      --     (prayer_sessions with the right surface + slide count)
       --
-      --   prayer_days  — "Did this user pray AT ALL today?" Used
-      --     for People praying. Anything prayer-shaped counts: amens,
-      --     prayer sessions of any kind, words of comfort, prayer-
-      --     feed taps, lectio reflections, intercession check-ins.
-      --     One row per (user, day).
-      --
-      --   prayer_events — "How many distinct prayer SESSIONS?" Used
-      --     for Times prayed. A session = either an Amen tap OR a
-      --     qualifying office completion (≥3 slides reached). Two
-      --     events <15 min apart for the same user collapse to one
-      --     so a tap-in/tap-out doesn't inflate the count. No daily
-      --     cap.
+      -- Two events <15 min apart for the same user collapse to one,
+      -- so tapping in / out / in doesn't inflate the count.
+      -- Briefly opening an office without reaching 3 slides is NOT
+      -- counted — neither as a session nor as "this user prayed
+      -- today". The semantics: a person who "prayed today" actually
+      -- did something prayer-shaped past the threshold.
       session_candidates AS (
         SELECT user_id, occurred_at FROM (
-          -- Each Amen tap is a session candidate.
           SELECT a.user_id, a.prayed_at AS occurred_at
           FROM prayer_request_amens a
           WHERE a.user_id IN (SELECT user_id FROM members)
@@ -647,10 +645,9 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
 
           UNION ALL
 
-          -- Office / devotion completion that reached ≥3 slides.
-          -- NULL slides_completed (legacy rows pre-dating the
-          -- column) are treated as qualifying so historic data
-          -- doesn't disappear.
+          -- NULL slides_completed = legacy row pre-dating the
+          -- column; treat as qualifying so historic data doesn't
+          -- disappear from the rollup.
           SELECT ps.user_id, ps.ended_at AS occurred_at
           FROM prayer_sessions ps
           WHERE ps.user_id IN (SELECT user_id FROM members)
@@ -678,50 +675,11 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         WHERE prev_at IS NULL
            OR occurred_at - prev_at > INTERVAL '15 minutes'
       ),
-      -- Broad "anyone who prayed today" — distinct (user, day).
+      -- People praying = distinct users with at least one prayer
+      -- event. Same source as Times prayed, just deduped, so
+      -- People ≤ Times always holds.
       prayer_days AS (
-        SELECT a.user_id,
-               to_char((a.prayed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_request_amens a
-        WHERE a.user_id IN (SELECT user_id FROM members)
-          AND a.prayed_at IS NOT NULL
-
-        UNION
-
-        SELECT ps.user_id,
-               to_char((ps.ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_sessions ps
-        WHERE ps.user_id IN (SELECT user_id FROM members)
-
-        UNION
-
-        SELECT pw.author_user_id AS user_id,
-               to_char((pw.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_words pw
-        WHERE pw.author_user_id IN (SELECT user_id FROM members)
-
-        UNION
-
-        SELECT pfp.user_id,
-               to_char((pfp.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_feed_prayers pfp
-        WHERE pfp.user_id IN (SELECT user_id FROM members)
-
-        UNION
-
-        SELECT m.user_id,
-               to_char((lr.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM lectio_reflections lr
-        JOIN members m ON m.email_lower = LOWER(lr.user_email)
-        WHERE lr.user_email IS NOT NULL
-
-        UNION
-
-        SELECT mt.user_id, mp.window_date AS day
-        FROM moment_posts mp
-        JOIN member_tokens mt ON mt.user_token = mp.user_token
-        WHERE mp.is_checkin = 1
-          AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+        SELECT DISTINCT user_id, day FROM prayer_events
       )
       SELECT
         (SELECT COUNT(*) FROM members)::int AS total_members,
