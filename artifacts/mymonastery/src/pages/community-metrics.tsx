@@ -45,10 +45,6 @@ type Metrics = {
   secondsPrayedTotal: number;
   secondsPrayedToday: number;
   secondsPrayedThisWeek: number;
-
-  // "Offices" rollup — one row in the dashboard summarises all four
-  // daily liturgies; tap to expand for the per-office breakdown.
-  offices: OfficesMetrics;
 };
 
 type OfficeWindowCounts = { today: number; thisWeek: number; thisMonth: number };
@@ -240,34 +236,12 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         <StatTextTile label="All time" value={formatPrayingDuration(data.secondsPrayedTotal)} />
       </div>
 
-      {/* Offices — one row labelled "Offices" with click-for-detail.
-          Expanded view shows per-office today/week/month counts plus
-          the aggregate total time across all four. */}
-      <SectionHeader label="Offices" />
-      <p
-        className="text-[11px] leading-relaxed mb-3"
-        style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
-      >
-        How many times your community has prayed Morning / Evening
-        Prayer or a Daily Devotion. Each completed session counts.
-      </p>
-      {/* Defensive default: if the API server is on an older build
-          (Railway redeploy lag, or a region not yet rolled out) the
-          response may not carry the `offices` block. Fill in zeros
-          so the dashboard still renders instead of crashing on
-          undefined property access. */}
-      <OfficesRow
-        offices={data.offices ?? {
-          morningPrayer: { today: 0, thisWeek: 0, thisMonth: 0 },
-          morningDevotion: { today: 0, thisWeek: 0, thisMonth: 0 },
-          eveningPrayer: { today: 0, thisWeek: 0, thisMonth: 0 },
-          eveningDevotion: { today: 0, thisWeek: 0, thisMonth: 0 },
-          secondsToday: 0,
-          secondsThisWeek: 0,
-          secondsThisMonth: 0,
-          secondsTotal: 0,
-        }}
-      />
+      {/* Offices section was removed from the metrics dashboard
+          per user direction. The data still flows through
+          prayer_sessions for the time-praying rollup; we just
+          don't break it out by office surface here. The
+          OfficesRow component below is kept (unused) in case we
+          want to bring it back later. */}
 
       {/* Prayer requests */}
       <SectionHeader label="Prayer requests" />

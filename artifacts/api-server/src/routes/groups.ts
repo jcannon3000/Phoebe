@@ -584,12 +584,6 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
     const weekStartDate = new Date(nowDate);
     weekStartDate.setUTCDate(weekStartDate.getUTCDate() - 6);
     const weekStartStr = ymdInTz(weekStartDate);
-    // 30-day rolling "month" window — matches the rolling semantics
-    // of the existing week window so the month tile reads as
-    // "the last month" rather than this calendar month.
-    const monthStartDate = new Date(nowDate);
-    monthStartDate.setUTCDate(monthStartDate.getUTCDate() - 29);
-    const monthStartStr = ymdInTz(monthStartDate);
 
     // A "prayer event" is one of two things logged by a member of this
     // community:
@@ -688,10 +682,15 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
 
         UNION
 
-        SELECT lr.user_id,
+        -- Lectio reflections only carry user_token + user_email, not
+        -- user_id. Join through members on email_lower to map back
+        -- to a user_id. user_email is nullable on the table (added
+        -- after initial deploy via ALTER) so we filter NULLs out.
+        SELECT m.user_id,
                to_char((lr.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
         FROM lectio_reflections lr
-        WHERE lr.user_id IN (SELECT user_id FROM members)
+        JOIN members m ON m.email_lower = LOWER(lr.user_email)
+        WHERE lr.user_email IS NOT NULL
 
         -- Note: prayer_sessions for surface='prayer-list' (the
         -- "you opened your prayer list" event) is already covered
@@ -700,29 +699,6 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       ),
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM prayer_events
-      ),
-      -- Pre-scan prayer_sessions ONCE for the four office surfaces.
-      -- The dashboard's Office breakdown asks ~16 questions of this
-      -- table (per-surface counts × 3 windows + aggregate seconds ×
-      -- 3 windows + total). Doing them as independent subqueries
-      -- against the raw table was tripping the metrics endpoint into
-      -- a multi-second timeout; pulling everything into a CTE means
-      -- one filtered scan and 16 cheap aggregations against the
-      -- in-memory result set.
-      office_sessions AS (
-        SELECT
-          user_id,
-          surface,
-          duration_seconds,
-          to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_sessions
-        WHERE user_id IN (SELECT user_id FROM members)
-          AND surface IN (
-            'morning-prayer',
-            'morning-devotion',
-            'evening-prayer',
-            'early-evening-devotion'
-          )
       )
       SELECT
         (SELECT COUNT(*) FROM members)::int AS total_members,
@@ -760,36 +736,8 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
            WHERE user_id IN (SELECT user_id FROM members)
              AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3), 0)::bigint AS seconds_prayed_week,
         COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)), 0)::bigint AS seconds_prayed_total,
-
-        -- ── Offices breakdown ───────────────────────────────────────
-        -- All sourced from the office_sessions CTE above. Each
-        -- subquery is a cheap aggregation against the pre-filtered
-        -- in-memory rowset; no second pass over the raw
-        -- prayer_sessions table.
-
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-prayer' AND day >= $2)::int AS office_morning_prayer_today,
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-prayer' AND day >= $3)::int AS office_morning_prayer_week,
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-prayer' AND day >= $5)::int AS office_morning_prayer_month,
-
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-devotion' AND day >= $2)::int AS office_morning_devotion_today,
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-devotion' AND day >= $3)::int AS office_morning_devotion_week,
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'morning-devotion' AND day >= $5)::int AS office_morning_devotion_month,
-
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'evening-prayer' AND day >= $2)::int AS office_evening_prayer_today,
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'evening-prayer' AND day >= $3)::int AS office_evening_prayer_week,
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'evening-prayer' AND day >= $5)::int AS office_evening_prayer_month,
-
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'early-evening-devotion' AND day >= $2)::int AS office_evening_devotion_today,
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'early-evening-devotion' AND day >= $3)::int AS office_evening_devotion_week,
-        (SELECT COUNT(*) FROM office_sessions WHERE surface = 'early-evening-devotion' AND day >= $5)::int AS office_evening_devotion_month,
-
-        -- Aggregate seconds across all four offices, by window.
-        COALESCE((SELECT SUM(duration_seconds) FROM office_sessions WHERE day >= $2), 0)::bigint AS offices_seconds_today,
-        COALESCE((SELECT SUM(duration_seconds) FROM office_sessions WHERE day >= $3), 0)::bigint AS offices_seconds_week,
-        COALESCE((SELECT SUM(duration_seconds) FROM office_sessions WHERE day >= $5), 0)::bigint AS offices_seconds_month,
-        COALESCE((SELECT SUM(duration_seconds) FROM office_sessions), 0)::bigint AS offices_seconds_total
-    `, [result.group.id, todayStr, weekStartStr, tz, monthStartStr]);
+           WHERE user_id IN (SELECT user_id FROM members)), 0)::bigint AS seconds_prayed_total
+    `, [result.group.id, todayStr, weekStartStr, tz]);
     const row = q.rows[0] ?? {};
     res.json({
       groupName: result.group.name,
@@ -818,38 +766,6 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       secondsPrayedTotal: Number(row.seconds_prayed_total ?? 0),
       secondsPrayedToday: Number(row.seconds_prayed_today ?? 0),
       secondsPrayedThisWeek: Number(row.seconds_prayed_week ?? 0),
-
-      // "Offices" rollup — per-surface session counts for the four
-      // daily liturgies (Morning/Evening Prayer + Morning/Early-
-      // Evening Devotion), plus the aggregate total time across all
-      // four. The dashboard shows the four counts as a click-to-
-      // expand detail under a single "Offices" row.
-      offices: {
-        morningPrayer: {
-          today: Number(row.office_morning_prayer_today ?? 0),
-          thisWeek: Number(row.office_morning_prayer_week ?? 0),
-          thisMonth: Number(row.office_morning_prayer_month ?? 0),
-        },
-        morningDevotion: {
-          today: Number(row.office_morning_devotion_today ?? 0),
-          thisWeek: Number(row.office_morning_devotion_week ?? 0),
-          thisMonth: Number(row.office_morning_devotion_month ?? 0),
-        },
-        eveningPrayer: {
-          today: Number(row.office_evening_prayer_today ?? 0),
-          thisWeek: Number(row.office_evening_prayer_week ?? 0),
-          thisMonth: Number(row.office_evening_prayer_month ?? 0),
-        },
-        eveningDevotion: {
-          today: Number(row.office_evening_devotion_today ?? 0),
-          thisWeek: Number(row.office_evening_devotion_week ?? 0),
-          thisMonth: Number(row.office_evening_devotion_month ?? 0),
-        },
-        secondsToday: Number(row.offices_seconds_today ?? 0),
-        secondsThisWeek: Number(row.offices_seconds_week ?? 0),
-        secondsThisMonth: Number(row.offices_seconds_month ?? 0),
-        secondsTotal: Number(row.offices_seconds_total ?? 0),
-      },
     });
   } catch (err) {
     console.error("[groups/metrics] query failed:", err);
