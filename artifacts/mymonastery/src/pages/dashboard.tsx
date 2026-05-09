@@ -486,7 +486,9 @@ export function HomeAuthoringFAB() {
         aria-label={open ? "Close menu" : "New prayer"}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
-          {open ? <X size={24} /> : <Plus size={24} />}
+          {open
+            ? <X size={24} />
+            : <span style={{ fontSize: 22, lineHeight: 1, display: "block" }} aria-hidden>🙏🏽</span>}
         </motion.div>
       </button>
     </div>
@@ -576,7 +578,9 @@ function FAB() {
         style={{ background: "#1A4A2E", color: "#F0EDE6" }}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
-          {open ? <X size={24} /> : <Plus size={24} />}
+          {open
+            ? <X size={24} />
+            : <span style={{ fontSize: 22, lineHeight: 1, display: "block" }} aria-hidden>🙏🏽</span>}
         </motion.div>
       </button>
     </div>
