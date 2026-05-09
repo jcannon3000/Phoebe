@@ -41,6 +41,18 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     staleTime: 30_000,
   });
 
+  // Prayer feeds the user created (admins). Drives whether the
+  // "Manage Prayer Feeds" entry appears in the side menu — non-
+  // creators don't see it. Uses /api/prayer-feeds/mine which
+  // already gates on creatorUserId server-side.
+  const { data: myFeedsData } = useQuery<{ feeds: Array<{ slug: string }> }>({
+    queryKey: ["/api/prayer-feeds/mine"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/mine"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const myFeeds = myFeedsData?.feeds ?? [];
+
   function navigate(path: string) {
     onClose();
     setLocation(path);
@@ -76,6 +88,17 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "🌿", label: "Daily Devotions", path: "/bcp/daily-devotions" },
     { divider: true },
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
+    // "Manage Prayer Feeds" only renders for users who actually
+    // admin a feed — single-feed admins land directly on that
+    // feed's manage page; multi-feed admins land on the browse
+    // page where their feeds carry an admin badge.
+    ...(myFeeds.length > 0 ? [{
+      emoji: "🕊️",
+      label: "Manage Prayer Feeds",
+      path: myFeeds.length === 1
+        ? `/prayer-feeds/${myFeeds[0].slug}/manage`
+        : "/prayer-feeds",
+    }] : []),
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
     { emoji: "💬", label: "Feedback",    path: "/feedback"    },
     ...(isBetaAdmin ? [
