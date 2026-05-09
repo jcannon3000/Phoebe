@@ -217,24 +217,13 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         <StatTile label="All time" value={data.timesPrayedTotal} />
       </div>
 
-      {/* Time praying — total seconds members have spent in the
-          slideshow / Office / Devotion viewers. Captured client-side
-          via the usePrayerSession hook (paused on background, capped
-          per-session) and rolled up here. */}
-      <SectionHeader label="Time praying" />
-      <p
-        className="text-[11px] leading-relaxed mb-3"
-        style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
-      >
-        Total time members spent in the prayer slideshow, the Daily
-        Office, or a Daily Devotion. Reading time launched from a
-        lesson slide is included while the viewer is open.
-      </p>
-      <div className="grid grid-cols-3 gap-3 mb-8">
-        <StatTextTile label="Today" value={formatPrayingDuration(data.secondsPrayedToday)} />
-        <StatTextTile label="This week" value={formatPrayingDuration(data.secondsPrayedThisWeek)} />
-        <StatTextTile label="All time" value={formatPrayingDuration(data.secondsPrayedTotal)} />
-      </div>
+      {/* Time praying section was removed from the metrics dashboard
+          per user direction. The data still flows through
+          prayer_sessions; we just don't surface the duration rollup
+          here anymore. The endpoint still returns secondsPrayed*
+          fields and the StatTextTile / formatPrayingDuration
+          helpers are kept (unused) so bringing it back is a one-
+          place change later. */}
 
       {/* Offices section was removed from the metrics dashboard
           per user direction. The data still flows through
