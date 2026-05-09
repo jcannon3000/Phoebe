@@ -623,79 +623,61 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         FROM prayer_requests
         WHERE owner_id IN (SELECT user_id FROM members)
       ),
-      -- Two derived sets:
-      --   prayer_events: distinct (user, day) tuples across every
-      --     prayer-shaped action a community member can take. One
-      --     prayer event per user per day — a member who prays for
-      --     ten requests + walks the office + leaves a word still
-      --     counts as one prayer event for the day. UNION (not
-      --     UNION ALL) so the same (user, day) appearing across
-      --     multiple signals collapses to a single row.
-      --   prayer_days: same set, kept under its old name so the
-      --     downstream SELECTs don't have to change.
+      -- "Times prayed" is now driven by prayer_sessions (each office
+      -- / devotion / slideshow / prayer-list open is a session). New
+      -- counting rules per user direction:
       --
-      --   Counted signals (anything = a prayer that day):
-      --     • moment check-in (slideshow walk-through)
-      --     • prayer-request Amen tap
-      --     • prayer session (Office, Devotion, slideshow time —
-      --       captures users who pray a liturgy without amen-ing
-      --       anything specific)
-      --     • word of comfort left on a request
-      --     • "I prayed" tap on a prayer-feed entry
-      --     • lectio reflection
-      prayer_events AS (
-        SELECT mt.user_id, mp.window_date AS day
-        FROM moment_posts mp
-        JOIN member_tokens mt ON mt.user_token = mp.user_token
-        WHERE mp.is_checkin = 1
-          AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-
-        UNION
-
-        SELECT a.user_id,
-               to_char((a.prayed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_request_amens a
-        WHERE a.user_id IN (SELECT user_id FROM members)
-          AND a.prayed_at IS NOT NULL
-
-        UNION
-
-        SELECT ps.user_id,
-               to_char((ps.ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+      --   1. Each session counts as a separate "time prayed".
+      --      Earlier we collapsed all same-day signals into a single
+      --      event per user; now a member who prays the office in
+      --      the morning and the slideshow in the evening counts as
+      --      two times prayed.
+      --
+      --   2. Sessions within 15 minutes of an earlier session for
+      --      the same user collapse into one. Stops a user who taps
+      --      in and out from inflating the count.
+      --
+      --   3. Pilot users (users on the beta_users allowlist) cap at
+      --      3 events per day. Pilots are typically us testing the
+      --      app, not real prayer behavior.
+      --
+      -- The flow uses three chained CTEs so the window functions stay
+      -- readable: raw → 15-min-deduped → row-numbered for the cap.
+      session_raw AS (
+        SELECT
+          ps.user_id,
+          ps.ended_at,
+          to_char((ps.ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day,
+          LAG(ps.ended_at) OVER (
+            PARTITION BY ps.user_id ORDER BY ps.ended_at
+          ) AS prev_ended,
+          EXISTS (
+            SELECT 1 FROM beta_users b
+            JOIN users u2 ON LOWER(u2.email) = LOWER(b.email)
+            WHERE u2.id = ps.user_id
+          ) AS is_pilot
         FROM prayer_sessions ps
         WHERE ps.user_id IN (SELECT user_id FROM members)
           AND ps.ended_at IS NOT NULL
-
-        UNION
-
-        SELECT pw.author_user_id AS user_id,
-               to_char((pw.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_words pw
-        WHERE pw.author_user_id IN (SELECT user_id FROM members)
-
-        UNION
-
-        SELECT pfp.user_id,
-               to_char((pfp.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM prayer_feed_prayers pfp
-        WHERE pfp.user_id IN (SELECT user_id FROM members)
-
-        UNION
-
-        -- Lectio reflections only carry user_token + user_email, not
-        -- user_id. Join through members on email_lower to map back
-        -- to a user_id. user_email is nullable on the table (added
-        -- after initial deploy via ALTER) so we filter NULLs out.
-        SELECT m.user_id,
-               to_char((lr.created_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
-        FROM lectio_reflections lr
-        JOIN members m ON m.email_lower = LOWER(lr.user_email)
-        WHERE lr.user_email IS NOT NULL
-
-        -- Note: prayer_sessions for surface='prayer-list' (the
-        -- "you opened your prayer list" event) is already covered
-        -- by the all-surface prayer_sessions UNION above; no need
-        -- for a second UNION here.
+      ),
+      session_deduped AS (
+        SELECT user_id, ended_at, day, is_pilot
+        FROM session_raw
+        WHERE prev_ended IS NULL
+           OR ended_at - prev_ended > INTERVAL '15 minutes'
+      ),
+      session_capped AS (
+        SELECT
+          user_id, ended_at, day, is_pilot,
+          ROW_NUMBER() OVER (
+            PARTITION BY user_id, day ORDER BY ended_at
+          ) AS rn
+        FROM session_deduped
+      ),
+      prayer_events AS (
+        SELECT user_id, day
+        FROM session_capped
+        WHERE NOT is_pilot OR rn <= 3
       ),
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM prayer_events
