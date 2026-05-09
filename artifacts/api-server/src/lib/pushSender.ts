@@ -618,6 +618,49 @@ export function sendLetterPeriodOpenPush(
   });
 }
 
+// Day-3 reminder: window opened a few days ago, no letter yet.
+// One-to-one only — small_group "open" pushes already cover the
+// period rhythm, and a 3-day nudge on a 14-day group window felt
+// premature. Names the recipient.
+export function sendLetterReminderDay3Push(
+  userId: number,
+  opts: {
+    correspondenceId: number;
+    periodStartDate: string;
+    recipientName: string;
+  },
+) {
+  return sendPushToUser(userId, {
+    title: `Don't forget to write ${opts.recipientName}`,
+    body: `Your window to reply to ${opts.recipientName} with a letter opened a few days ago.`,
+    path: `/letters/${opts.correspondenceId}/write`,
+    threadId: `letter-${opts.correspondenceId}`,
+    collapseId: `letter-reminder-day3-${opts.correspondenceId}-${opts.periodStartDate}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
+// Day-7 reminder: a week in, still no letter. Slightly more
+// urgent copy than the Day-3 ("waiting for your letter") with a
+// dialogue-keeping nudge in the body.
+export function sendLetterReminderDay7Push(
+  userId: number,
+  opts: {
+    correspondenceId: number;
+    periodStartDate: string;
+    recipientName: string;
+  },
+) {
+  return sendPushToUser(userId, {
+    title: `${opts.recipientName} is waiting for your letter`,
+    body: `A week since your window opened. A short letter would mean a lot, lets keep the dialogue going!`,
+    path: `/letters/${opts.correspondenceId}/write`,
+    threadId: `letter-${opts.correspondenceId}`,
+    collapseId: `letter-reminder-day7-${opts.correspondenceId}-${opts.periodStartDate}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Fires when someone writes a "word of comfort" / prayer response on
 // another user's prayer request. Sender-revealing (recipients want to
 // know who cared enough to reach out). Tap lands on the recipient's

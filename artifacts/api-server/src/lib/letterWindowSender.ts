@@ -37,7 +37,11 @@ import {
   formatPeriodStartDateString,
   getOneToOneTurnState,
 } from "./letterPeriods";
-import { sendLetterPeriodOpenPush } from "./pushSender";
+import {
+  sendLetterPeriodOpenPush,
+  sendLetterReminderDay3Push,
+  sendLetterReminderDay7Push,
+} from "./pushSender";
 import { logger } from "./logger";
 
 export async function runLetterWindowSweep(): Promise<void> {
@@ -139,6 +143,40 @@ export async function runLetterWindowSweep(): Promise<void> {
           // name is missing.
           const recipientName = (other.name ?? other.email.split("@")[0] ?? "your friend").trim();
           await pushOnce(c.id, m.userId, turnKey, c.name, /*isOneToOne*/ true, recipientName);
+
+          // Day-3 + Day-7 reminders. Only fire on one_to_one (the
+          // user explicitly scoped this to letter-back-and-forth);
+          // small_group threads keep their existing single "open"
+          // push at period start.
+          //
+          // Skip if the user has already written a letter in this
+          // window — the "next writer" doesn't need a nudge to
+          // reply if they already replied. windowOpenDate is the
+          // anchor (turn.windowOpenDate set by getOneToOneTurnState
+          // when in OPEN/OVERDUE).
+          if (turn.windowOpenDate) {
+            const sentInWindow = letterRefs.some(
+              (l) => l.authorEmail.toLowerCase() === m.email.toLowerCase()
+                && turn.windowOpenDate
+                && l.sentAt >= turn.windowOpenDate,
+            );
+            if (!sentInWindow) {
+              const ageMs = now.getTime() - turn.windowOpenDate.getTime();
+              const ageDays = ageMs / (24 * 60 * 60 * 1000);
+              if (ageDays >= 3) {
+                await reminderPushOnce(
+                  "reminder_day3",
+                  c.id, m.userId, turnKey, recipientName,
+                );
+              }
+              if (ageDays >= 7) {
+                await reminderPushOnce(
+                  "reminder_day7",
+                  c.id, m.userId, turnKey, recipientName,
+                );
+              }
+            }
+          }
         }
       }
     } catch (err) {
@@ -189,6 +227,49 @@ async function pushOnce(
     isOneToOne,
     recipientName,
   }).catch((err) => logger.warn({ err, userId, correspondenceId }, "[letter-window] open push failed"));
+}
+
+// Day-3 / Day-7 reminders share dedupe semantics with pushOnce
+// above but a different `kind` (so the unique row is per-(corr,
+// user, periodKey, kind)). Helper unifies the insert-then-send
+// pattern. The kind decides which push helper fires — both names
+// the recipient and deep-links to the write surface.
+async function reminderPushOnce(
+  kind: "reminder_day3" | "reminder_day7",
+  correspondenceId: number,
+  userId: number,
+  periodKey: string,
+  recipientName: string,
+): Promise<void> {
+  const [existing] = await db.select({ id: letterWindowPushesTable.id })
+    .from(letterWindowPushesTable)
+    .where(and(
+      eq(letterWindowPushesTable.correspondenceId, correspondenceId),
+      eq(letterWindowPushesTable.userId, userId),
+      eq(letterWindowPushesTable.periodStartDate, periodKey),
+      eq(letterWindowPushesTable.kind, kind),
+    ));
+  if (existing) return;
+
+  const ins = await db.insert(letterWindowPushesTable).values({
+    correspondenceId,
+    userId,
+    periodStartDate: periodKey,
+    kind,
+  }).onConflictDoNothing().returning({ id: letterWindowPushesTable.id });
+  if (ins.length === 0) return;
+
+  const send = kind === "reminder_day3"
+    ? sendLetterReminderDay3Push
+    : sendLetterReminderDay7Push;
+  await send(userId, {
+    correspondenceId,
+    periodStartDate: periodKey,
+    recipientName,
+  }).catch((err) => logger.warn(
+    { err, userId, correspondenceId, kind },
+    "[letter-window] reminder push failed",
+  ));
 }
 
 // Scheduler — same shape as bellSender. First tick 60s after boot,
