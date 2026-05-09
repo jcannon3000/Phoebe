@@ -75,6 +75,40 @@ export type PrayerFeedKind = "general" | "parish";
 // can add the group. Remove path: same. Removing a binding does NOT
 // unsubscribe individuals — manually-subscribed users stay
 // subscribed; we just stop the auto-subscribe of future joiners.
+// Recurring entries. Unlike prayer_feed_entries (which pin to a
+// specific calendar date), these are templates that auto-expand
+// onto the daily slide deck. Two flavors:
+//   • daily    — fires on every future day in slot N
+//   • weekly   — fires on every day matching weekdaysMask in slot N
+// Concrete prayer_feed_entries (one_time) win over recurring
+// templates when both exist on the same (date, slot) — the admin
+// can override a daily template for a specific date by writing a
+// one-time entry.
+export const prayerFeedRecurringEntriesTable = pgTable(
+  "prayer_feed_recurring_entries",
+  {
+    id: serial("id").primaryKey(),
+    feedId: integer("feed_id")
+      .notNull()
+      .references(() => prayerFeedsTable.id, { onDelete: "cascade" }),
+    slot: integer("slot").notNull(),
+    // 'daily' or 'weekly'.
+    recurrenceKind: text("recurrence_kind").notNull(),
+    // Bitmask: bit 0 = Sunday, 1 = Monday, … 6 = Saturday.
+    // 'daily' kind sets this to 127 (all days). 'weekly' kind sets
+    // the bits for the chosen weekdays.
+    weekdaysMask: integer("weekdays_mask").notNull().default(127),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    learnMoreUrl: text("learn_more_url"),
+    state: text("state").notNull().default("live"), // draft | live
+    createdByUserId: integer("created_by_user_id")
+      .references(() => usersTable.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
 export const prayerFeedGroupsTable = pgTable(
   "prayer_feed_groups",
   {

@@ -1036,6 +1036,28 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_prayers_feed_day ON prayer_feed_prayers (feed_id, day_local)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_prayers_user ON prayer_feed_prayers (user_id)`);
 
+    // ── prayer_feed_recurring_entries ─────────────────────────────────────
+    // Daily / weekly templates that auto-expand into the daily
+    // slide deck on the subscriber side. Concrete prayer_feed_entries
+    // override these on a specific date+slot.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_feed_recurring_entries (
+        id SERIAL PRIMARY KEY,
+        feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        slot INTEGER NOT NULL,
+        recurrence_kind TEXT NOT NULL,
+        weekdays_mask INTEGER NOT NULL DEFAULT 127,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        learn_more_url TEXT,
+        state TEXT NOT NULL DEFAULT 'live',
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_recurring_feed_slot ON prayer_feed_recurring_entries (feed_id, slot)`);
+
     // ── prayer_feed_groups ────────────────────────────────────────────────
     // Many-to-many between feeds and communities. Adding a group binds
     // the feed to it AND auto-subscribes every joined member of the

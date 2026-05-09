@@ -7,6 +7,7 @@ import {
   prayerFeedSubscriptionsTable,
   prayerFeedPrayersTable,
   prayerFeedGroupsTable,
+  prayerFeedRecurringEntriesTable,
   usersTable,
   betaUsersTable,
   groupsTable,
@@ -448,6 +449,129 @@ router.post("/prayer-feeds/:slug/groups", requireBeta, async (req, res): Promise
     console.error("[prayer-feeds] bind group failed:", err);
     res.status(500).json({ error: "Failed to bind group" });
   }
+});
+
+// ── Recurring entries (daily / weekly templates) ─────────────────────
+//
+// GET    /:slug/recurring        — list all recurring templates
+// POST   /:slug/recurring        — create one
+// PUT    /:slug/recurring/:id    — update
+// DELETE /:slug/recurring/:id    — remove
+//
+// Editor-only (canEditFeed). The render path in
+// assembleIntercessions UNIONs these with concrete (date, slot)
+// entries so today's deck includes both. Concrete entries take
+// precedence on overlapping (date, slot) pairs.
+
+const recurringSchema = z.object({
+  slot: z.number().int().min(1).max(7),
+  recurrenceKind: z.enum(["daily", "weekly"]),
+  weekdaysMask: z.number().int().min(0).max(127).default(127),
+  title: z.string().trim().min(1).max(120),
+  body: z.string().trim().max(2000).default(""),
+  learnMoreUrl: z.string().trim().url().max(500).nullable().optional(),
+  state: z.enum(["draft", "live"]).default("live"),
+});
+
+router.get("/prayer-feeds/:slug/recurring", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "Editor only." });
+    return;
+  }
+  const rows = await db
+    .select()
+    .from(prayerFeedRecurringEntriesTable)
+    .where(eq(prayerFeedRecurringEntriesTable.feedId, feed.id))
+    .orderBy(asc(prayerFeedRecurringEntriesTable.slot), asc(prayerFeedRecurringEntriesTable.createdAt));
+  res.json({ recurring: rows });
+});
+
+router.post("/prayer-feeds/:slug/recurring", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "Editor only." });
+    return;
+  }
+  const parsed = recurringSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    return;
+  }
+  const data = parsed.data;
+  // Daily kind always sets weekdaysMask to 127 so the read-side
+  // mask check is a single conditional regardless of kind.
+  const weekdaysMask = data.recurrenceKind === "daily" ? 127 : data.weekdaysMask;
+  const [row] = await db.insert(prayerFeedRecurringEntriesTable).values({
+    feedId: feed.id,
+    slot: data.slot,
+    recurrenceKind: data.recurrenceKind,
+    weekdaysMask,
+    title: data.title,
+    body: data.body,
+    learnMoreUrl: data.learnMoreUrl ?? null,
+    state: data.state,
+    createdByUserId: user.id,
+  }).returning();
+  res.status(201).json({ recurring: row });
+});
+
+router.put("/prayer-feeds/:slug/recurring/:id", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "Editor only." });
+    return;
+  }
+  const id = parseInt(String(req.params.id), 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const parsed = recurringSchema.partial().safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    return;
+  }
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (parsed.data.slot !== undefined) patch.slot = parsed.data.slot;
+  if (parsed.data.recurrenceKind !== undefined) patch.recurrenceKind = parsed.data.recurrenceKind;
+  if (parsed.data.weekdaysMask !== undefined) patch.weekdaysMask = parsed.data.weekdaysMask;
+  if (parsed.data.title !== undefined) patch.title = parsed.data.title;
+  if (parsed.data.body !== undefined) patch.body = parsed.data.body;
+  if (parsed.data.learnMoreUrl !== undefined) patch.learnMoreUrl = parsed.data.learnMoreUrl;
+  if (parsed.data.state !== undefined) patch.state = parsed.data.state;
+  // Re-normalize daily kind to mask 127 if the kind is being set.
+  if (parsed.data.recurrenceKind === "daily") patch.weekdaysMask = 127;
+  const [row] = await db
+    .update(prayerFeedRecurringEntriesTable)
+    .set(patch)
+    .where(and(
+      eq(prayerFeedRecurringEntriesTable.id, id),
+      eq(prayerFeedRecurringEntriesTable.feedId, feed.id),
+    ))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ recurring: row });
+});
+
+router.delete("/prayer-feeds/:slug/recurring/:id", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "Editor only." });
+    return;
+  }
+  const id = parseInt(String(req.params.id), 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(prayerFeedRecurringEntriesTable).where(and(
+    eq(prayerFeedRecurringEntriesTable.id, id),
+    eq(prayerFeedRecurringEntriesTable.feedId, feed.id),
+  ));
+  res.json({ ok: true });
 });
 
 router.delete("/prayer-feeds/:slug/groups/:groupId", requireBeta, async (req, res): Promise<void> => {
