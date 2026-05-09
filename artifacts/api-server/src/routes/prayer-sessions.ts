@@ -42,10 +42,23 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Unknown surface" });
     return;
   }
-  // surface = "prayer-list" is exempt from the floor: it's a visit
-  // event ("you opened your prayer list"), not a duration-tracked
-  // prayer surface. A glance-and-back is the whole point.
-  if (surface !== "prayer-list" && durationSeconds < MIN_SESSION_SECONDS) {
+  // The 5-second floor is bypassed for "visit-style" surfaces where
+  // the act of opening the page is itself the meaningful event:
+  //   • prayer-list — opening your prayer list
+  //   • the four office / devotion surfaces — opening an office and
+  //     starting to pray. The user wants every office open counted
+  //     in the community's people-praying / times-prayed rollups,
+  //     even if the session is short. Slideshow keeps the floor
+  //     since a 0-second slideshow open is almost always a fat-
+  //     finger or a navigation transition.
+  const FLOOR_BYPASS_SURFACES = new Set<string>([
+    "prayer-list",
+    "morning-prayer",
+    "evening-prayer",
+    "morning-devotion",
+    "early-evening-devotion",
+  ]);
+  if (!FLOOR_BYPASS_SURFACES.has(surface) && durationSeconds < MIN_SESSION_SECONDS) {
     // Drop silently — too short to count as a real prayer session.
     res.json({ ok: true, recorded: false, reason: "below-floor" });
     return;
