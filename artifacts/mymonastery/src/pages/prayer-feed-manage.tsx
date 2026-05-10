@@ -514,21 +514,24 @@ export default function PrayerFeedManagePage() {
                 <div className="space-y-1.5">
                   {SLOTS.map(slot => {
                     const cell = bySlot.get(slotKey(dateStr, slot));
-                    // Status dot reads the concrete state for one-off
-                    // entries, the template state for recurring fires.
-                    // Recurring also gets a "↻" prefix on the title so
-                    // the admin can tell at a glance which days are
-                    // template-driven.
-                    const statusDot = !cell
-                      ? null
-                      : cell.kind === "concrete"
-                        ? (cell.entry.state === "published" ? "🟢" : cell.entry.state === "scheduled" ? "🟡" : "⚫")
-                        : (cell.template.state === "live" ? "↻" : "⚫");
+                    // Status pill — distinguishes a one-off concrete
+                    // entry ("• one-off") from a recurring template
+                    // fire ("↻ daily" / "↻ M/W/F"). Without this the
+                    // admin can't tell why a particular date is filled
+                    // — e.g. a leftover concrete entry from before the
+                    // template was created masquerades as a template
+                    // fire and confuses the M/W/F mental model
+                    // ("I picked M/W/F, why is Saturday filled?").
                     const cellTitle = !cell
                       ? "(draft an intercession)"
                       : cell.kind === "concrete"
                         ? cell.entry.title
                         : cell.template.title;
+                    const cellLabel = !cell
+                      ? null
+                      : cell.kind === "concrete"
+                        ? "• one-off"
+                        : `↻ ${formatRecurrence(cell.template)}`;
                     return (
                       <button
                         key={slot}
@@ -548,8 +551,13 @@ export default function PrayerFeedManagePage() {
                         <span className="text-sm flex-1 min-w-0 truncate" style={{ color: cell ? "#F0EDE6" : "#8FAF96" }}>
                           {cellTitle}
                         </span>
-                        {statusDot ? (
-                          <span className="text-[10px] flex-shrink-0">{statusDot}</span>
+                        {cellLabel ? (
+                          <span
+                            className="text-[10px] flex-shrink-0"
+                            style={{ color: "rgba(143,175,150,0.7)" }}
+                          >
+                            {cellLabel}
+                          </span>
                         ) : (
                           <span className="text-xs flex-shrink-0" style={{ color: "#8FAF96" }}>+ Add</span>
                         )}
@@ -672,6 +680,17 @@ export default function PrayerFeedManagePage() {
           // whether we're editing concrete vs recurring vs nothing.
           const editingExisting = !!existing;
           const isRecurringEdit = existing?.kind === "recurring";
+          // When the open cell is concrete, look for a recurring
+          // template at the same slot. If one exists, the concrete
+          // is "masking" the template on this date — surface a hint
+          // so the admin can delete the one-off if they actually
+          // want the template to fire here. This is the "I picked
+          // M/W/F but Saturday is filled too" footgun.
+          const overlappingTemplate = existing?.kind === "concrete"
+            ? recurringEntries.find(
+                (t) => t.slot === editorSlot && t.state === "live",
+              )
+            : null;
           return (
           <div
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 py-6"
@@ -690,6 +709,7 @@ export default function PrayerFeedManagePage() {
                     {editorDate === today && " · Today"}
                     {" · "}{SLOT_LABELS[editorSlot]} slot
                     {isRecurringEdit && " · ↻ recurring"}
+                    {existing?.kind === "concrete" && " · • one-off"}
                   </p>
                   <p className="text-sm font-semibold mt-0.5" style={{ color: "#F0EDE6" }}>
                     {editingExisting ? "Edit intercession" : "Compose intercession"}
@@ -699,6 +719,22 @@ export default function PrayerFeedManagePage() {
                   ×
                 </button>
               </div>
+
+              {overlappingTemplate && (
+                <div
+                  className="rounded-lg px-3 py-2.5 mb-4 text-[11px] leading-relaxed"
+                  style={{
+                    background: "rgba(232,176,80,0.08)",
+                    border: "1px solid rgba(232,176,80,0.28)",
+                    color: "rgba(240,222,180,0.92)",
+                  }}
+                >
+                  This date has a one-off entry sitting on top of your{" "}
+                  <strong>↻ {formatRecurrence(overlappingTemplate)}</strong> template at this
+                  slot. The one-off wins, so subscribers see "{existing!.kind === "concrete" ? existing!.entry.title : ""}" today.
+                  Delete the one-off below if you want the template to fire here instead.
+                </div>
+              )}
 
               <div className="space-y-3">
                 <div>
