@@ -419,17 +419,14 @@ export default function PrayerFeedDetailPage() {
                       const e = bySlot.get(slotKey(dateStr, slot));
                       if (!e) return null;
                       const isPublished = e.state === "published";
+                      // Slot label dropped — subscribers don't think
+                      // in "First / Second slot," they just see the
+                      // intercessions on the day.
                       return (
                         <div
                           key={slot}
                           className="flex items-center gap-3 py-1"
                         >
-                          <span
-                            className="text-[10px] font-semibold uppercase tracking-widest w-14 flex-shrink-0"
-                            style={{ color: "rgba(143,175,150,0.55)" }}
-                          >
-                            {SLOT_LABELS[slot]}
-                          </span>
                           <span
                             className="text-sm flex-1 min-w-0 truncate"
                             style={{ color: isPublished ? "#F0EDE6" : "rgba(240,237,230,0.6)" }}
@@ -473,9 +470,6 @@ export default function PrayerFeedDetailPage() {
                     <div className="flex items-baseline justify-between gap-3 mb-0.5">
                       <p className="text-[11px] font-medium" style={{ color: "rgba(143,175,150,0.7)" }}>
                         {shortDate(e.entryDate)}
-                        <span className="ml-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                          {SLOT_LABELS[e.slot] ?? `#${e.slot}`}
-                        </span>
                       </p>
                       <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>
                         {e.prayCount} prayed

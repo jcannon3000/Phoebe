@@ -678,7 +678,10 @@ router.post("/prayer-feeds/:slug/groups", requireBeta, async (req, res): Promise
 // precedence on overlapping (date, slot) pairs.
 
 const recurringSchema = z.object({
-  slot: z.number().int().min(1).max(7),
+  // Slot is now optional — modern clients omit it and the server
+  // auto-assigns the next available slot. Older clients (and the
+  // per-cell editor that still passes the cell's slot) keep working.
+  slot: z.number().int().min(1).max(7).optional(),
   recurrenceKind: z.enum(["daily", "weekly"]),
   weekdaysMask: z.number().int().min(0).max(127).default(127),
   title: z.string().trim().min(1).max(120),
@@ -721,6 +724,27 @@ router.post("/prayer-feeds/:slug/recurring", requireBeta, async (req, res): Prom
   // mask check is a single conditional regardless of kind.
   const weekdaysMask = data.recurrenceKind === "daily" ? 127 : data.weekdaysMask;
 
+  // Slot resolution: the client may omit slot entirely (newer UI
+  // doesn't show a slot picker — it's just "max 7 per day"). When
+  // omitted, pick the lowest slot 1..7 not yet taken by another
+  // recurring template on this feed. When all 7 are taken, 409.
+  let slot: number;
+  if (typeof data.slot === "number") {
+    slot = data.slot;
+  } else {
+    const taken = await db
+      .select({ slot: prayerFeedRecurringEntriesTable.slot })
+      .from(prayerFeedRecurringEntriesTable)
+      .where(eq(prayerFeedRecurringEntriesTable.feedId, feed.id));
+    const takenSet = new Set(taken.map((t) => t.slot));
+    const next = [1, 2, 3, 4, 5, 6, 7].find((s) => !takenSet.has(s));
+    if (next === undefined) {
+      res.status(409).json({ error: "Feed already has 7 recurring templates." });
+      return;
+    }
+    slot = next;
+  }
+
   // Upsert by (feed, slot) — at most one template per slot. Earlier
   // we POST'd unconditionally, which let admins accidentally stack
   // multiple templates on the same slot (e.g. by toggling Weekly
@@ -739,7 +763,7 @@ router.post("/prayer-feeds/:slug/recurring", requireBeta, async (req, res): Prom
     .from(prayerFeedRecurringEntriesTable)
     .where(and(
       eq(prayerFeedRecurringEntriesTable.feedId, feed.id),
-      eq(prayerFeedRecurringEntriesTable.slot, data.slot),
+      eq(prayerFeedRecurringEntriesTable.slot, slot),
     ))
     .orderBy(asc(prayerFeedRecurringEntriesTable.createdAt));
 
@@ -767,7 +791,7 @@ router.post("/prayer-feeds/:slug/recurring", requireBeta, async (req, res): Prom
   } else {
     [row] = await db.insert(prayerFeedRecurringEntriesTable).values({
       feedId: feed.id,
-      slot: data.slot,
+      slot,
       recurrenceKind: data.recurrenceKind,
       weekdaysMask,
       title: data.title,

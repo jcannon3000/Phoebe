@@ -185,6 +185,9 @@ export default function PrayerFeedManagePage() {
   type CellSource =
     | { kind: "concrete"; entry: Entry }
     | { kind: "recurring"; template: RecurringEntry };
+  const slotKey = (date: string, slot: number) => `${date}|${slot}`;
+  // (See the merged bySlot map below — slotKey is hoisted so the
+  // weekly-picker disabled-days computation can reuse it.)
   const bySlot = useMemo(() => {
     const m = new Map<string, CellSource>();
     // First lay down recurring templates on every matching date
@@ -212,7 +215,26 @@ export default function PrayerFeedManagePage() {
     }
     return m;
   }, [entries, recurringEntries, today, windowFrom, windowTo]);
-  const slotKey = (date: string, slot: number) => `${date}|${slot}`;
+
+  // Bitmask of weekdays that are already at 7-entry capacity inside
+  // the next-7-day visible window. The Weekly weekday-picker (in
+  // both the per-cell editor and the FeedRecurringSection composer)
+  // greys out matching bits so a new template fire can't push a
+  // saturated day over the cap.
+  const fullWeekdayBits = useMemo(() => {
+    if (!today) return 0;
+    let mask = 0;
+    for (let i = 0; i < 7; i++) {
+      const dateStr = addDays(today, i);
+      let count = 0;
+      for (const s of SLOTS) if (bySlot.has(slotKey(dateStr, s))) count++;
+      if (count >= 7) {
+        const utc = new Date(`${dateStr}T12:00:00Z`);
+        mask |= 1 << utc.getUTCDay();
+      }
+    }
+    return mask;
+  }, [bySlot, today]);
 
   // ── Mutations ───────────────────────────────────────────────────────────
   const updateFeed = useMutation({
@@ -511,60 +533,76 @@ export default function PrayerFeedManagePage() {
                     {isToday ? prettyDate(dateStr) : ""}
                   </span>
                 </p>
-                <div className="space-y-1.5">
-                  {SLOTS.map(slot => {
-                    const cell = bySlot.get(slotKey(dateStr, slot));
-                    // Status pill — distinguishes a one-off concrete
-                    // entry ("• one-off") from a recurring template
-                    // fire ("↻ daily" / "↻ M/W/F"). Without this the
-                    // admin can't tell why a particular date is filled
-                    // — e.g. a leftover concrete entry from before the
-                    // template was created masquerades as a template
-                    // fire and confuses the M/W/F mental model
-                    // ("I picked M/W/F, why is Saturday filled?").
-                    const cellTitle = !cell
-                      ? "(draft an intercession)"
-                      : cell.kind === "concrete"
-                        ? cell.entry.title
-                        : cell.template.title;
-                    const cellLabel = !cell
-                      ? null
-                      : cell.kind === "concrete"
-                        ? "• one-off"
-                        : `↻ ${formatRecurrence(cell.template)}`;
-                    return (
-                      <button
-                        key={slot}
-                        onClick={() => openEditor(dateStr, slot)}
-                        className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
-                        style={{
-                          background: cell ? "#0F2818" : "rgba(46,107,64,0.06)",
-                          border: `1px solid ${cell ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.18)"}`,
-                        }}
-                      >
-                        <span
-                          className="text-[10px] font-semibold uppercase tracking-widest w-14 flex-shrink-0"
-                          style={{ color: "rgba(143,175,150,0.6)" }}
-                        >
-                          {SLOT_LABELS[slot]}
-                        </span>
-                        <span className="text-sm flex-1 min-w-0 truncate" style={{ color: cell ? "#F0EDE6" : "#8FAF96" }}>
-                          {cellTitle}
-                        </span>
-                        {cellLabel ? (
-                          <span
-                            className="text-[10px] flex-shrink-0"
-                            style={{ color: "rgba(143,175,150,0.7)" }}
+                {/* Render only the filled entries for this day,
+                    plus a single "+ Add intercession" button if the
+                    day has fewer than 7 entries. Slot numbering is
+                    intentionally invisible — admins don't think in
+                    "First / Second / Seventh slot," they think in
+                    "what's running today." Slot is still the data
+                    model's ordering key, but tapping Add auto-picks
+                    the next free slot. */}
+                {(() => {
+                  const filled: Array<{ slot: number; cell: CellSource }> = [];
+                  for (const s of SLOTS) {
+                    const cell = bySlot.get(slotKey(dateStr, s));
+                    if (cell) filled.push({ slot: s, cell });
+                  }
+                  const remaining = 7 - filled.length;
+                  const nextSlot = SLOTS.find((s) => !bySlot.has(slotKey(dateStr, s)));
+                  return (
+                    <div className="space-y-1.5">
+                      {filled.map(({ slot, cell }) => {
+                        const cellTitle = cell.kind === "concrete" ? cell.entry.title : cell.template.title;
+                        const cellLabel = cell.kind === "concrete"
+                          ? "• one-off"
+                          : `↻ ${formatRecurrence(cell.template)}`;
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => openEditor(dateStr, slot)}
+                            className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
+                            style={{
+                              background: "#0F2818",
+                              border: "1px solid rgba(46,107,64,0.45)",
+                            }}
                           >
-                            {cellLabel}
+                            <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "#F0EDE6" }}>
+                              {cellTitle}
+                            </span>
+                            <span
+                              className="text-[10px] flex-shrink-0"
+                              style={{ color: "rgba(143,175,150,0.7)" }}
+                            >
+                              {cellLabel}
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {remaining > 0 && nextSlot !== undefined && (
+                        <button
+                          onClick={() => openEditor(dateStr, nextSlot)}
+                          className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
+                          style={{
+                            background: "rgba(46,107,64,0.06)",
+                            border: "1px dashed rgba(46,107,64,0.3)",
+                          }}
+                        >
+                          <span className="text-sm flex-1 min-w-0" style={{ color: "#8FAF96" }}>
+                            + Add intercession
                           </span>
-                        ) : (
-                          <span className="text-xs flex-shrink-0" style={{ color: "#8FAF96" }}>+ Add</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                          <span className="text-[10px] flex-shrink-0" style={{ color: "rgba(143,175,150,0.55)" }}>
+                            {filled.length}/7
+                          </span>
+                        </button>
+                      )}
+                      {remaining === 0 && (
+                        <p className="text-[10px] italic px-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+                          Day is full · 7/7
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
@@ -588,9 +626,6 @@ export default function PrayerFeedManagePage() {
                   <span className="text-[11px] font-medium w-20 flex-shrink-0" style={{ color: "rgba(143,175,150,0.6)" }}>
                     {prettyDate(e.entryDate)}
                   </span>
-                  <span className="text-[10px] uppercase tracking-widest w-12 flex-shrink-0" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    {SLOT_LABELS[e.slot] ?? `#${e.slot}`}
-                  </span>
                   <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "rgba(240,237,230,0.75)" }}>
                     {e.title}
                   </span>
@@ -608,7 +643,7 @@ export default function PrayerFeedManagePage() {
               A one-time entry on a specific date overrides the
               template for that day, so admins can program a
               "default daily" intercession AND swap it on holidays. */}
-        <FeedRecurringSection slug={slug!} />
+        <FeedRecurringSection slug={slug!} fullWeekdayBits={fullWeekdayBits} />
 
         {/* ── Groups — communities bound to this feed. Adding a
               group auto-subscribes every joined member; removing
@@ -707,7 +742,6 @@ export default function PrayerFeedManagePage() {
                   <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.45)" }}>
                     {prettyDate(editorDate)}
                     {editorDate === today && " · Today"}
-                    {" · "}{SLOT_LABELS[editorSlot]} slot
                     {isRecurringEdit && " · ↻ recurring"}
                     {existing?.kind === "concrete" && " · • one-off"}
                   </p>
@@ -874,10 +908,16 @@ export default function PrayerFeedManagePage() {
                     <div className="flex gap-1 flex-wrap">
                       {WEEKDAY_LABELS.map((w) => {
                         const on = (draft.recurrence.mask & w.bit) !== 0;
+                        // Disable bits for days that already have 7
+                        // entries this week — selecting them would
+                        // push the day over the cap.
+                        const isFull = (fullWeekdayBits & w.bit) !== 0;
                         return (
                           <button
                             key={w.bit}
                             type="button"
+                            disabled={isFull}
+                            title={isFull ? "Day is full (7 entries)" : undefined}
                             onClick={() =>
                               setDraft({
                                 ...draft,
@@ -887,13 +927,28 @@ export default function PrayerFeedManagePage() {
                                 },
                               })
                             }
-                            className="text-[11px] font-semibold rounded-full transition-opacity"
+                            className="text-[11px] font-semibold rounded-full transition-opacity disabled:cursor-not-allowed"
                             style={{
                               width: 36,
                               height: 32,
-                              background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                              border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                              color: on ? "#F0EDE6" : "rgba(143,175,150,0.7)",
+                              background: isFull
+                                ? "rgba(46,107,64,0.04)"
+                                : on
+                                  ? "rgba(46,107,64,0.35)"
+                                  : "rgba(46,107,64,0.08)",
+                              border: `1px solid ${
+                                isFull
+                                  ? "rgba(46,107,64,0.15)"
+                                  : on
+                                    ? "rgba(46,107,64,0.6)"
+                                    : "rgba(46,107,64,0.25)"
+                              }`,
+                              color: isFull
+                                ? "rgba(143,175,150,0.35)"
+                                : on
+                                  ? "#F0EDE6"
+                                  : "rgba(143,175,150,0.7)",
+                              textDecoration: isFull ? "line-through" : "none",
                             }}
                           >
                             {w.abbr}
@@ -905,6 +960,7 @@ export default function PrayerFeedManagePage() {
                   {draft.recurrence.kind !== "once" && (
                     <p className="text-[10px] mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
                       Saves as a recurring template. A one-time entry on a specific date overrides this template for that day.
+                      {fullWeekdayBits !== 0 && draft.recurrence.kind === "weekly" && " Greyed-out days already have 7 entries."}
                     </p>
                   )}
                 </div>
@@ -1144,18 +1200,28 @@ function formatRecurrence(r: RecurringEntry): string {
   return days.join("/");
 }
 
-function FeedRecurringSection({ slug }: { slug: string }) {
+function FeedRecurringSection({
+  slug,
+  fullWeekdayBits,
+}: {
+  slug: string;
+  // Bitmask of weekdays that are already at 7-entry capacity in the
+  // visible week. Toggles inside this composer disable those bits so
+  // an admin can't add a template that lands on a full day.
+  fullWeekdayBits: number;
+}) {
   const qc = useQueryClient();
   const [composing, setComposing] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  // Slot is no longer user-selected — auto-assigned server-side. The
+  // composer just collects title/body/learnMore + recurrence.
   const [draft, setDraft] = useState<{
-    slot: number;
     kind: "daily" | "weekly";
     mask: number;
     title: string;
     body: string;
     learnMoreUrl: string;
-  }>({ slot: 1, kind: "daily", mask: 127, title: "", body: "", learnMoreUrl: "" });
+  }>({ kind: "daily", mask: 127, title: "", body: "", learnMoreUrl: "" });
 
   const recurringQ = useQuery<{ recurring: RecurringEntry[] }>({
     queryKey: [`/api/prayer-feeds/${slug}/recurring`],
@@ -1165,7 +1231,6 @@ function FeedRecurringSection({ slug }: { slug: string }) {
   const saveMutation = useMutation({
     mutationFn: (payload: {
       id: number | null;
-      slot: number;
       recurrenceKind: "daily" | "weekly";
       weekdaysMask: number;
       title: string;
@@ -1174,7 +1239,6 @@ function FeedRecurringSection({ slug }: { slug: string }) {
       state: "live" | "draft";
     }) => {
       const body = {
-        slot: payload.slot,
         recurrenceKind: payload.recurrenceKind,
         weekdaysMask: payload.weekdaysMask,
         title: payload.title,
@@ -1202,13 +1266,12 @@ function FeedRecurringSection({ slug }: { slug: string }) {
   });
 
   function startNew() {
-    setDraft({ slot: 1, kind: "daily", mask: 127, title: "", body: "", learnMoreUrl: "" });
+    setDraft({ kind: "daily", mask: 127, title: "", body: "", learnMoreUrl: "" });
     setEditingId(null);
     setComposing(true);
   }
   function startEdit(r: RecurringEntry) {
     setDraft({
-      slot: r.slot,
       kind: r.recurrenceKind,
       mask: r.weekdaysMask,
       title: r.title,
@@ -1219,15 +1282,24 @@ function FeedRecurringSection({ slug }: { slug: string }) {
     setComposing(true);
   }
   function toggleWeekday(bit: number) {
+    // Don't toggle bits that are already full this week — those days
+    // are at the 7-entry cap and a new template fire would push them
+    // over. Editing into a full day is the one path the user
+    // explicitly called out as forbidden.
+    if ((fullWeekdayBits & bit) !== 0) return;
     setDraft((d) => ({ ...d, mask: d.mask ^ bit }));
   }
   function save() {
     if (!draft.title.trim()) return;
+    // Strip any full-day bits before sending so a stale state can't
+    // silently land a fire on a saturated day.
+    const safeMask = draft.kind === "daily"
+      ? (127 & ~fullWeekdayBits)
+      : (draft.mask & ~fullWeekdayBits);
     saveMutation.mutate({
       id: editingId,
-      slot: draft.slot,
       recurrenceKind: draft.kind,
-      weekdaysMask: draft.kind === "daily" ? 127 : draft.mask,
+      weekdaysMask: safeMask,
       title: draft.title.trim(),
       body: draft.body.trim(),
       learnMoreUrl: draft.learnMoreUrl.trim() || null,
@@ -1258,7 +1330,7 @@ function FeedRecurringSection({ slug }: { slug: string }) {
                 {r.title}
               </p>
               <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>
-                {SLOT_LABELS[r.slot] ?? `#${r.slot}`} slot · {formatRecurrence(r)}
+                {formatRecurrence(r)}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1345,23 +1417,9 @@ function FeedRecurringSection({ slug }: { slug: string }) {
             />
           </div>
 
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Slot
-            </label>
-            <select
-              value={draft.slot}
-              onChange={(e) => setDraft({ ...draft, slot: parseInt(e.target.value, 10) })}
-              className="px-3 py-2 rounded-lg border bg-transparent text-sm"
-              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6", background: "rgba(15,40,24,0.4)" }}
-            >
-              {SLOTS.map((s) => (
-                <option key={s} value={s} style={{ background: "#0F2818", color: "#F0EDE6" }}>
-                  {SLOT_LABELS[s]}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Slot picker removed — the server auto-assigns the next
+              available slot per day, and the cap is "7 entries per
+              day" rather than "this slot or that slot." */}
 
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
@@ -1397,18 +1455,40 @@ function FeedRecurringSection({ slug }: { slug: string }) {
               <div className="flex gap-1 flex-wrap">
                 {WEEKDAY_LABELS.map((w) => {
                   const on = (draft.mask & w.bit) !== 0;
+                  // Days that already have 7 entries this week are
+                  // disabled — saving one of these would fail anyway,
+                  // and visually hinting "can't pick this" beats a
+                  // silent server reject.
+                  const isFull = (fullWeekdayBits & w.bit) !== 0;
                   return (
                     <button
                       key={w.bit}
                       type="button"
                       onClick={() => toggleWeekday(w.bit)}
-                      className="text-[11px] font-semibold rounded-full transition-opacity"
+                      disabled={isFull}
+                      title={isFull ? "Day is full (7 entries)" : undefined}
+                      className="text-[11px] font-semibold rounded-full transition-opacity disabled:cursor-not-allowed"
                       style={{
                         width: 36,
                         height: 32,
-                        background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                        border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                        color: on ? "#F0EDE6" : "rgba(143,175,150,0.7)",
+                        background: isFull
+                          ? "rgba(46,107,64,0.04)"
+                          : on
+                            ? "rgba(46,107,64,0.35)"
+                            : "rgba(46,107,64,0.08)",
+                        border: `1px solid ${
+                          isFull
+                            ? "rgba(46,107,64,0.15)"
+                            : on
+                              ? "rgba(46,107,64,0.6)"
+                              : "rgba(46,107,64,0.25)"
+                        }`,
+                        color: isFull
+                          ? "rgba(143,175,150,0.35)"
+                          : on
+                            ? "#F0EDE6"
+                            : "rgba(143,175,150,0.7)",
+                        textDecoration: isFull ? "line-through" : "none",
                       }}
                     >
                       {w.abbr}
@@ -1417,6 +1497,11 @@ function FeedRecurringSection({ slug }: { slug: string }) {
                 })}
               </div>
             )}
+            {fullWeekdayBits !== 0 && draft.kind === "weekly" && (
+              <p className="text-[10px] mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+                Greyed-out days already have 7 entries this week.
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-2 pt-1">
@@ -1424,7 +1509,8 @@ function FeedRecurringSection({ slug }: { slug: string }) {
               type="button"
               onClick={save}
               disabled={saveMutation.isPending || draft.title.trim().length === 0
-                || (draft.kind === "weekly" && draft.mask === 0)}
+                || (draft.kind === "weekly" && (draft.mask & ~fullWeekdayBits) === 0)
+                || (draft.kind === "daily" && (127 & ~fullWeekdayBits) === 0)}
               className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: "#2D5E3F", border: "1px solid #2D5E3F", color: "#F0EDE6" }}
             >
