@@ -1058,23 +1058,14 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_recurring_feed_slot ON prayer_feed_recurring_entries (feed_id, slot)`);
 
-    // One-time dedup: collapse duplicate templates per (feed, slot)
-    // down to one row each. Earlier versions of the per-cell editor
-    // POST'd a new template every time the admin toggled Weekly/Daily
-    // in the modal, so a single slot could end up with 2-3 overlapping
-    // templates whose masks unioned. The route now upserts, but this
-    // pass cleans up rows already in the DB so subscribers don't keep
-    // seeing intercessions on days the admin never picked.
-    // Keep the row with the largest id (most recent insert) so the
-    // admin's latest intent wins; drop the older duplicates.
-    // Idempotent — re-running is a no-op once duplicates are cleared.
-    await run(client, `
-      DELETE FROM prayer_feed_recurring_entries
-      WHERE id NOT IN (
-        SELECT max(id) FROM prayer_feed_recurring_entries
-        GROUP BY feed_id, slot
-      )
-    `);
+    // (Removed: a per-deploy DELETE that collapsed duplicate templates
+    // per (feed, slot) to one row. It was meant as a one-time cleanup
+    // but kept eating user data on every Railway redeploy — admins
+    // reported losing newly-saved templates after pushes. The POST
+    // /recurring handler picks a free slot at the application layer
+    // now, so duplicates shouldn't form, and any pre-existing dupes
+    // can be tidied via the manage UI's Delete buttons rather than
+    // a destructive migration.)
 
     // ── prayer_feed_groups ────────────────────────────────────────────────
     // Many-to-many between feeds and communities. Adding a group binds
