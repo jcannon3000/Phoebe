@@ -1159,10 +1159,10 @@ export default function PrayerListPage() {
   const pastIntercessions = pastIntercessionsData?.intercessions ?? [];
 
   // Today's intercessions across every prayer feed the user subscribes
-  // to. We collapse them into one card per feed in the Community
-  // intercessions section so the list reads as "feed-as-a-source"
-  // rather than one row per slot. Empty list means no subscribed feeds
-  // or no entries today.
+  // to. Together with /subscribed (below) we surface one card per feed
+  // — even if the feed has nothing scheduled today — so an admin still
+  // sees their feed in the Community intercessions section on quiet
+  // days.
   const { data: feedTodayData } = useQuery<{
     entries: Array<{
       id: number;
@@ -1182,37 +1182,48 @@ export default function PrayerListPage() {
     queryFn: () => apiRequest("GET", "/api/prayer-feeds/today"),
     enabled: !!user,
   });
-  // Group today's entries by feed so we can render one card per feed
-  // showing N intercessions inside.
+  // Every feed the user subscribes to (regardless of whether anything
+  // is scheduled today). Drives the card list — feeds with no entries
+  // today still appear with a "Nothing yet today" subtitle.
+  const { data: subscribedData } = useQuery<{
+    subscriptions: Array<{
+      feed: {
+        id: number;
+        slug: string;
+        title: string;
+        coverEmoji: string | null;
+      };
+    }>;
+  }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
+    enabled: !!user,
+  });
+  // Build one card per subscribed feed; attach today's entries (if any)
+  // by grouping the /today response by feedId.
   const feedsToday = (() => {
-    const m = new Map<
+    const entriesByFeed = new Map<
       number,
-      {
-        feedId: number;
-        feedSlug: string;
-        feedTitle: string;
-        feedCoverEmoji: string | null;
-        entries: Array<{ id: number; slot: number; title: string; isRecurring: boolean; prayedToday: boolean }>;
-      }
+      Array<{ id: number; slot: number; title: string; isRecurring: boolean; prayedToday: boolean }>
     >();
     for (const e of feedTodayData?.entries ?? []) {
-      const cur = m.get(e.feedId) ?? {
-        feedId: e.feedId,
-        feedSlug: e.feedSlug,
-        feedTitle: e.feedTitle,
-        feedCoverEmoji: e.feedCoverEmoji,
-        entries: [],
-      };
-      cur.entries.push({
+      const cur = entriesByFeed.get(e.feedId) ?? [];
+      cur.push({
         id: e.id,
         slot: e.slot,
         title: e.title,
         isRecurring: e.isRecurring,
         prayedToday: e.prayedToday,
       });
-      m.set(e.feedId, cur);
+      entriesByFeed.set(e.feedId, cur);
     }
-    return [...m.values()];
+    return (subscribedData?.subscriptions ?? []).map((s) => ({
+      feedId: s.feed.id,
+      feedSlug: s.feed.slug,
+      feedTitle: s.feed.title,
+      feedCoverEmoji: s.feed.coverEmoji,
+      entries: entriesByFeed.get(s.feed.id) ?? [],
+    }));
   })();
 
   // Released-unread popup (kept unchanged — it's a separate closing-ritual
