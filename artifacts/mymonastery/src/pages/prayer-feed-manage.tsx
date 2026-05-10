@@ -775,7 +775,20 @@ export default function PrayerFeedManagePage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setDraft({ ...draft, recurrence: { kind: "daily", mask: 127 } })}
+                      onClick={() => {
+                        // Same pattern as Weekly: tie this toggle to
+                        // the existing template's id if one is at the
+                        // same slot, so saving updates rather than
+                        // duplicates.
+                        const existingTemplate = recurringEntries.find(
+                          (t) => t.slot === editorSlot && t.state === "live",
+                        );
+                        setDraft({
+                          ...draft,
+                          recurrence: { kind: "daily", mask: 127 },
+                          editingRecurringId: existingTemplate?.id ?? draft.editingRecurringId,
+                        });
+                      }}
                       className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
                       style={{
                         background: draft.recurrence.kind === "daily" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
@@ -787,13 +800,30 @@ export default function PrayerFeedManagePage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setDraft({
-                        ...draft,
-                        recurrence: {
-                          kind: "weekly",
-                          mask: draft.recurrence.kind === "weekly" ? draft.recurrence.mask : 0,
-                        },
-                      })}
+                      onClick={() => {
+                        // When toggling to Weekly, pre-fill the mask
+                        // from any existing recurring template at this
+                        // slot, so the admin sees their previous
+                        // selection (M/W/F still highlighted) instead
+                        // of a blank picker. Falls back to all days
+                        // selected when there's no template, so the
+                        // admin can deselect what they don't want
+                        // rather than hunt for what they do.
+                        const existingTemplate = recurringEntries.find(
+                          (t) => t.slot === editorSlot && t.state === "live",
+                        );
+                        const prefill =
+                          draft.recurrence.kind === "weekly"
+                            ? draft.recurrence.mask
+                            : existingTemplate
+                              ? existingTemplate.weekdaysMask
+                              : 127;
+                        setDraft({
+                          ...draft,
+                          recurrence: { kind: "weekly", mask: prefill },
+                          editingRecurringId: existingTemplate?.id ?? draft.editingRecurringId,
+                        });
+                      }}
                       className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
                       style={{
                         background: draft.recurrence.kind === "weekly" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",

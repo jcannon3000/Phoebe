@@ -720,17 +720,63 @@ router.post("/prayer-feeds/:slug/recurring", requireBeta, async (req, res): Prom
   // Daily kind always sets weekdaysMask to 127 so the read-side
   // mask check is a single conditional regardless of kind.
   const weekdaysMask = data.recurrenceKind === "daily" ? 127 : data.weekdaysMask;
-  const [row] = await db.insert(prayerFeedRecurringEntriesTable).values({
-    feedId: feed.id,
-    slot: data.slot,
-    recurrenceKind: data.recurrenceKind,
-    weekdaysMask,
-    title: data.title,
-    body: data.body,
-    learnMoreUrl: data.learnMoreUrl ?? null,
-    state: data.state,
-    createdByUserId: user.id,
-  }).returning();
+
+  // Upsert by (feed, slot) — at most one template per slot. Earlier
+  // we POST'd unconditionally, which let admins accidentally stack
+  // multiple templates on the same slot (e.g. by toggling Weekly
+  // inside the per-cell editor on a date that already had a
+  // template). Subscribers then saw the union of every overlapping
+  // template's mask, so days the admin never picked still fired.
+  // The single-template invariant matches the natural mental model:
+  // "this slot's recurrence is X" — one source of truth per slot.
+  // Day-specific overrides still happen via concrete entries, which
+  // win on (date, slot) collisions.
+  // Also collapse any pre-existing duplicates at this slot so old
+  // accidental rows from before this change get cleaned up the next
+  // time an admin saves.
+  const existingRows = await db
+    .select({ id: prayerFeedRecurringEntriesTable.id })
+    .from(prayerFeedRecurringEntriesTable)
+    .where(and(
+      eq(prayerFeedRecurringEntriesTable.feedId, feed.id),
+      eq(prayerFeedRecurringEntriesTable.slot, data.slot),
+    ))
+    .orderBy(asc(prayerFeedRecurringEntriesTable.createdAt));
+
+  let row;
+  if (existingRows.length > 0) {
+    const keepId = existingRows[0].id;
+    // Update the oldest row with the new payload, drop the rest.
+    [row] = await db.update(prayerFeedRecurringEntriesTable)
+      .set({
+        recurrenceKind: data.recurrenceKind,
+        weekdaysMask,
+        title: data.title,
+        body: data.body,
+        learnMoreUrl: data.learnMoreUrl ?? null,
+        state: data.state,
+        updatedAt: new Date(),
+      })
+      .where(eq(prayerFeedRecurringEntriesTable.id, keepId))
+      .returning();
+    if (existingRows.length > 1) {
+      const dupIds = existingRows.slice(1).map((r) => r.id);
+      await db.delete(prayerFeedRecurringEntriesTable)
+        .where(inArray(prayerFeedRecurringEntriesTable.id, dupIds));
+    }
+  } else {
+    [row] = await db.insert(prayerFeedRecurringEntriesTable).values({
+      feedId: feed.id,
+      slot: data.slot,
+      recurrenceKind: data.recurrenceKind,
+      weekdaysMask,
+      title: data.title,
+      body: data.body,
+      learnMoreUrl: data.learnMoreUrl ?? null,
+      state: data.state,
+      createdByUserId: user.id,
+    }).returning();
+  }
   res.status(201).json({ recurring: row });
 });
 
