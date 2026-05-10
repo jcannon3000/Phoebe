@@ -62,8 +62,27 @@ const SLOT_LABELS: Record<number, string> = {
   1: "First",
   2: "Second",
   3: "Third",
+  4: "Fourth",
+  5: "Fifth",
+  6: "Sixth",
+  7: "Seventh",
 };
-const SLOTS = [1, 2, 3] as const;
+const SLOTS = [1, 2, 3, 4, 5, 6, 7] as const;
+
+// Recurring template — same shape as the manage page. The detail
+// page renders these on every matching day in the visible week so
+// subscribers see "Mon · The Dams in Michigan" instead of "Not yet
+// programmed" when there's a daily/weekly template that fires.
+type RecurringEntry = {
+  id: number;
+  slot: number;
+  recurrenceKind: "daily" | "weekly";
+  weekdaysMask: number;
+  title: string;
+  body: string;
+  learnMoreUrl: string | null;
+  state: "draft" | "live";
+};
 
 function todayInZone(tz: string): string {
   try {
@@ -141,13 +160,53 @@ export default function PrayerFeedDetailPage() {
   });
   const entries = entriesQ.data?.entries ?? [];
 
-  // Group entries by date so the calendar can render each day's three
-  // slot cards in O(1). Within a date we also keep an ordered slot map.
+  // Recurring templates that fire across the visible week. Without
+  // this query the This-week list only shows concrete entries; days
+  // backed only by a recurring template render as "Not yet programmed"
+  // even though subscribers will get an intercession on those days.
+  const recurringQ = useQuery<{ recurring: RecurringEntry[] }>({
+    queryKey: [`/api/prayer-feeds/${slug}/recurring`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/recurring`),
+    enabled: !!feed,
+  });
+  const recurringEntries: RecurringEntry[] = recurringQ.data?.recurring ?? [];
+
+  // Group entries by (date, slot). Concrete entries from the entries
+  // table win; recurring templates fill empty cells on every matching
+  // weekday in the next-7-day window. Templates render as a synthetic
+  // Entry-shaped row keyed on the template's id so the existing
+  // calendar render code keeps working without a discriminated union.
   const bySlot = useMemo(() => {
     const m = new Map<string, Entry>();
+    if (today) {
+      // Cover today + 6 upcoming days. Same window the calendar
+      // render walks below — keeps the bySlot map and the visible
+      // grid in sync.
+      for (let i = 0; i < 7; i++) {
+        const dateStr = addDays(today, i);
+        const utc = new Date(`${dateStr}T12:00:00Z`);
+        const weekdayBit = 1 << utc.getUTCDay();
+        for (const t of recurringEntries) {
+          if (t.state !== "live") continue;
+          if ((t.weekdaysMask & weekdayBit) === 0) continue;
+          m.set(`${dateStr}|${t.slot}`, {
+            id: t.id,
+            feedId: 0,
+            entryDate: dateStr,
+            slot: t.slot,
+            title: t.title,
+            body: t.body,
+            scriptureRef: null,
+            imageUrl: null,
+            state: "published",
+            prayCount: 0,
+          });
+        }
+      }
+    }
     for (const e of entries) m.set(`${e.entryDate}|${e.slot}`, e);
     return m;
-  }, [entries]);
+  }, [entries, recurringEntries, today]);
   const slotKey = (date: string, slot: number) => `${date}|${slot}`;
 
   // Today's entries — sort by slot ascending so cards stack First /
