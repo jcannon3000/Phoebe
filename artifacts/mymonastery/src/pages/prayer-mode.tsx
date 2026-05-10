@@ -131,6 +131,16 @@ interface PrayerSlide {
   // community-intercession). Renders a small pill next to the eyebrow
   // when set. Distinct from PrayerSlide.kind (slide type).
   requestKind?: string | null;
+  // request specific — true when the viewer authored this request.
+  // Drives the "YOUR REQUEST" eyebrow, hides the comment compose
+  // field (you can't comment on your own), shows the read-only list
+  // of others' words of comfort, and suppresses the Amen API call
+  // (you can't pray for yourself via your own request).
+  isOwnRequest?: boolean;
+  // request specific — the public words of comfort others have
+  // left on this request. Used by the own-request slide to render
+  // a read-only "what people have said" list.
+  words?: Array<{ authorName: string; content: string; createdAt: string | null }>;
   // circle-intention specific — included so the slide can link back to the
   // community, and so we can attribute the shared nature of the prayer in
   // the subtitle.
@@ -1338,6 +1348,34 @@ export default function PrayerModePage() {
   });
   const circleIntentionsData = circleIntentionsQuery.data;
 
+  // Today's intercessions across every prayer feed the user subscribes
+  // to. Lives in prayerFeedEntriesTable + prayerFeedRecurringEntriesTable
+  // — a separate system from /api/moments (sharedMomentsTable), which
+  // is why feed-authored intercessions weren't surfacing in the
+  // slideshow before. The /today endpoint merges concrete + recurring
+  // entries (concrete wins on slot collisions) and returns one row per
+  // (feed, slot) for the user's current day.
+  const feedTodayQuery = useQuery<{
+    entries: Array<{
+      id: number;
+      feedId: number;
+      feedSlug: string;
+      feedTitle: string;
+      feedCoverEmoji: string | null;
+      slot: number;
+      title: string;
+      body: string;
+      learnMoreUrl: string | null;
+      isRecurring: boolean;
+      prayedToday: boolean;
+    }>;
+  }>({
+    queryKey: ["/api/prayer-feeds/today"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/today"),
+    enabled: !!user,
+  });
+  const feedTodayEntries = feedTodayQuery.data?.entries ?? [];
+
   // Streak number for the closing slide (always shown — user explicitly
   // asked for it regardless of whether today is a "first today" event).
   // Lives on the same query key as the dashboard so they share cache.
@@ -1628,6 +1666,31 @@ export default function PrayerModePage() {
       groupEmoji: intn.groupEmoji,
       groupSlug: intn.groupSlug,
     }))),
+    // Prayer feed intercessions for today — one slide per (feed, slot)
+    // for every feed the user subscribes to. These come from the
+    // `prayer_feed_entries` (concrete) + `prayer_feed_recurring_entries`
+    // (templates) tables, merged by the /api/prayer-feeds/today endpoint.
+    // Without this branch, anything authored on a feed's calendar editor
+    // (e.g. "The Dams in Michigan" on Phoebe Climate) was silently
+    // dropped from the slideshow because /api/moments only sees
+    // sharedMomentsTable rows.
+    ...feedTodayEntries.map((e): PrayerSlide => ({
+      kind: "intercession" as const,
+      text: e.title,
+      intention: null,
+      fullText: e.body?.trim() || null,
+      attribution: e.feedTitle ? `from ${e.feedTitle}` : "",
+      // Reuse the feed-tag pill — feedTitle reads as the tag for
+      // a feed-authored intercession (e.g. "Phoebe Climate"). Falls
+      // back to the title untouched.
+      feedTag: e.feedTitle || null,
+      learnMoreUrl: e.learnMoreUrl?.trim() || null,
+      // Feed entries don't carry a momentToken/userToken (different
+      // table), so the in-slide check-in path falls back to the
+      // generic Amen handler — that one stamps a prayer_feed_prayers
+      // row server-side keyed on the feed entry id.
+      alreadyPrayedToday: e.prayedToday === true,
+    })),
     // Other people's prayer requests come before the user's own private
     // prayers-for — hearing others first, then turning inward. We
     // deliberately exclude the viewer's own default-kind requests;

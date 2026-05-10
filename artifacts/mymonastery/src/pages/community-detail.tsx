@@ -1007,6 +1007,27 @@ export default function CommunityDetailPage() {
     enabled: !!user && !!slug && (activeTab === "announcements" || activeTab === "home"),
   });
 
+  // Prayer feeds bound to this community. Each row is one feed plus
+  // today's intercessions on it (concrete + recurring merged), so the
+  // home tab can surface "Phoebe Climate has 3 intercessions today" as
+  // a card alongside the in-community Intercessions list. 403 on
+  // non-members is silenced into an empty array.
+  const { data: feedsData } = useQuery<{
+    feeds: Array<{
+      feedId: number;
+      feedSlug: string;
+      feedTitle: string;
+      feedCoverEmoji: string | null;
+      subscriberCount: number;
+      todayEntries: Array<{ id: number; slot: number; title: string; isRecurring: boolean }>;
+    }>;
+  }>({
+    queryKey: ["/api/groups", slug, "prayer-feeds"],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-feeds`),
+    enabled: !!user && !!slug && activeTab === "home",
+  });
+  const boundFeeds = feedsData?.feeds ?? [];
+
   // Home-feed data: pull the rich moments list + this community's prayer
   // requests so the front page can render a dashboard-style mix of
   // intercessions, practices, and prayer requests — scoped to this group.
@@ -1777,6 +1798,10 @@ export default function CommunityDetailPage() {
             otherPractices.length === 0 &&
             recentPrayers.length === 0 &&
             recentAnnouncements.length === 0 &&
+            // Bound prayer feeds also count as "something here" — a
+            // community with a feed attached has visible content even
+            // if no in-group intercessions exist.
+            boundFeeds.length === 0 &&
             // A visible Sunday Service card is plenty to fill the page —
             // earlier we printed "nothing here yet" right under it, which
             // the user flagged as wrong ("cause there is something there").
@@ -2016,13 +2041,54 @@ export default function CommunityDetailPage() {
                 </div>
               )}
 
-              {/* Intercessions — the most prayed-through surface, shown first */}
-              {intercessions.length > 0 && (
+              {/* Intercessions — the most prayed-through surface, shown first.
+                  Section now also renders one card per prayer feed bound
+                  to this community, so a community admin's Phoebe Climate
+                  feed appears next to the group-attached intercessions. */}
+              {(intercessions.length > 0 || boundFeeds.length > 0) && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
                     Intercessions
                   </p>
                   <div className="space-y-2">
+                    {/* Bound prayer feeds — collapsed to one card per
+                        feed so the section stays calm even when a feed
+                        has 3-7 slots filled today. Tap routes to the
+                        feed detail page where every slot is its own
+                        card. */}
+                    {boundFeeds.map((f) => {
+                      const cover = f.feedCoverEmoji ?? "🕊️";
+                      const count = f.todayEntries.length;
+                      const subtitle = count === 0
+                        ? "Nothing yet today"
+                        : count === 1
+                          ? f.todayEntries[0].title
+                          : `${count} intercessions today`;
+                      return (
+                        <Link key={`feed-${f.feedId}`} href={`/feeds/${f.feedSlug}`} className="block">
+                          <div
+                            className="rounded-xl px-4 py-3 transition-colors hover:bg-[rgba(46,107,64,0.18)] relative pr-16"
+                            style={{
+                              background: "rgba(46,107,64,0.12)",
+                              border: "1px solid rgba(46,107,64,0.25)",
+                            }}
+                          >
+                            <span className="text-sm font-semibold truncate block" style={{ color: "#F0EDE6" }}>
+                              {cover} {f.feedTitle}
+                            </span>
+                            <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>
+                              {subtitle}
+                            </p>
+                            <span
+                              className="absolute top-1/2 -translate-y-1/2 right-3 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
+                              style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", letterSpacing: "0.06em" }}
+                            >
+                              View
+                            </span>
+                          </div>
+                        </Link>
+                      );
+                    })}
                     {intercessions.map((m) => renderMomentCard(m, "🙏🏽"))}
                   </div>
                 </div>

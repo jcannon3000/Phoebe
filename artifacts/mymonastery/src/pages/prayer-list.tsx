@@ -342,6 +342,51 @@ function IntercessionCard({ moment, viewerEmail }: { moment: Moment; viewerEmail
   );
 }
 
+// One card per prayer feed in the Community intercessions section.
+// Collapses N (feed, slot) entries for today into a single row with
+// a "View" pill, mirroring the IntercessionCard above. The user
+// asked for one card per feed (not one per slot) so the list reads
+// as "Phoebe Climate has 3 intercessions today" instead of three
+// separate cards. Tap routes to the feed detail page where every
+// slot's intercession is visible as its own card.
+function FeedCard({
+  feed,
+}: {
+  feed: {
+    feedId: number;
+    feedSlug: string;
+    feedTitle: string;
+    feedCoverEmoji: string | null;
+    entries: Array<{ id: number; slot: number; title: string; isRecurring: boolean; prayedToday: boolean }>;
+  };
+}) {
+  const cover = feed.feedCoverEmoji ?? "🕊️";
+  const count = feed.entries.length;
+  const subtitle = count === 0
+    ? "Nothing yet today"
+    : count === 1
+      ? feed.entries[0].title
+      : `${count} intercessions today`;
+  return (
+    <BarCard href={`/feeds/${feed.feedSlug}`} accent="#2E6B40">
+      <div className="relative pr-16">
+        <span className="text-sm font-semibold truncate block" style={{ color: "#F0EDE6" }}>
+          {cover} {feed.feedTitle}
+        </span>
+        <p className="text-[11px] mt-0.5 truncate" style={{ color: "#8FAF96" }}>
+          {subtitle}
+        </p>
+        <span
+          className="absolute bottom-0 right-0 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
+          style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", letterSpacing: "0.06em" }}
+        >
+          View
+        </span>
+      </div>
+    </BarCard>
+  );
+}
+
 // Faded card for an archived (retired) community intercession — only
 // surfaces to admins of the owning group/feed. Mirrors the past-
 // prayers-received treatment: dimmed border, dimmed text, no CTA pill,
@@ -1113,6 +1158,63 @@ export default function PrayerListPage() {
   });
   const pastIntercessions = pastIntercessionsData?.intercessions ?? [];
 
+  // Today's intercessions across every prayer feed the user subscribes
+  // to. We collapse them into one card per feed in the Community
+  // intercessions section so the list reads as "feed-as-a-source"
+  // rather than one row per slot. Empty list means no subscribed feeds
+  // or no entries today.
+  const { data: feedTodayData } = useQuery<{
+    entries: Array<{
+      id: number;
+      feedId: number;
+      feedSlug: string;
+      feedTitle: string;
+      feedCoverEmoji: string | null;
+      slot: number;
+      title: string;
+      body: string;
+      learnMoreUrl: string | null;
+      isRecurring: boolean;
+      prayedToday: boolean;
+    }>;
+  }>({
+    queryKey: ["/api/prayer-feeds/today"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/today"),
+    enabled: !!user,
+  });
+  // Group today's entries by feed so we can render one card per feed
+  // showing N intercessions inside.
+  const feedsToday = (() => {
+    const m = new Map<
+      number,
+      {
+        feedId: number;
+        feedSlug: string;
+        feedTitle: string;
+        feedCoverEmoji: string | null;
+        entries: Array<{ id: number; slot: number; title: string; isRecurring: boolean; prayedToday: boolean }>;
+      }
+    >();
+    for (const e of feedTodayData?.entries ?? []) {
+      const cur = m.get(e.feedId) ?? {
+        feedId: e.feedId,
+        feedSlug: e.feedSlug,
+        feedTitle: e.feedTitle,
+        feedCoverEmoji: e.feedCoverEmoji,
+        entries: [],
+      };
+      cur.entries.push({
+        id: e.id,
+        slot: e.slot,
+        title: e.title,
+        isRecurring: e.isRecurring,
+        prayedToday: e.prayedToday,
+      });
+      m.set(e.feedId, cur);
+    }
+    return [...m.values()];
+  })();
+
   // Released-unread popup (kept unchanged — it's a separate closing-ritual
   // surface that doesn't fit inside the card grid).
   const { data: releasedData } = useQuery<{ requests: ReleasedRequest[] }>({
@@ -1362,14 +1464,21 @@ export default function PrayerListPage() {
             engagement on, and intercessions are a different shape (ongoing
             community practices, not one-off asks). Keeping them last lets
             the personal stuff lead. */}
-        {intercessionsSorted.length > 0 && (focused === null || focused === "intercessions") && (
+        {(intercessionsSorted.length > 0 || feedsToday.length > 0) && (focused === null || focused === "intercessions") && (
           <SectionShell
             id="intercessions"
             label="Community intercessions"
-            count={intercessionsSorted.length}
+            count={intercessionsSorted.length + feedsToday.length}
             focused={focused}
             onFocus={setFocused}
           >
+            {/* One card per subscribed prayer feed, listed first so
+                feed-authored intercessions read at the top of the
+                section. Each card collapses today's slot entries into
+                "N intercessions today". */}
+            {feedsToday.map((f) => (
+              <FeedCard key={`feed-${f.feedId}`} feed={f} />
+            ))}
             {intercessionsSorted.map((m) => (
               <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
             ))}

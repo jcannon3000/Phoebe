@@ -172,6 +172,29 @@ export default function PrayerFeedManagePage() {
     },
   });
 
+  // Promote the per-cell editor draft to a recurring template — daily
+  // or weekly. Lives alongside saveEntry so the same modal can author
+  // either a one-off (concrete entry) or a template (recurring entry)
+  // without making the admin hunt for a separate composer.
+  const saveRecurring = useMutation({
+    mutationFn: (e: {
+      slot: number;
+      recurrenceKind: "daily" | "weekly";
+      weekdaysMask: number;
+      title: string;
+      body: string;
+      learnMoreUrl: string | null;
+      state: "live" | "draft";
+    }) =>
+      apiRequest("POST", `/api/prayer-feeds/${slug}/recurring`, e),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/recurring`] });
+      // Recurring templates show through on the calendar grid, so the
+      // visible entries view also needs to refresh.
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries`, windowFrom, windowTo] });
+    },
+  });
+
   const deleteEntry = useMutation({
     mutationFn: ({ date, slot }: { date: string; slot: number }) =>
       apiRequest("DELETE", `/api/prayer-feeds/${slug}/entries/${date}?slot=${slot}`),
@@ -199,8 +222,21 @@ export default function PrayerFeedManagePage() {
   // Two-tap confirm gate for the destructive delete-feed button —
   // first tap arms it, second tap commits.
   const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false);
-  const [draft, setDraft] = useState<{ title: string; body: string; learnMoreUrl: string }>({
+  // The per-cell editor draft now also carries a recurrence picker.
+  // "once" is the default and produces a one-time concrete entry on
+  // the cell's date+slot. "daily" / "weekly" promote the draft to a
+  // recurring template — useful when the admin opens a specific cell,
+  // realizes "actually this should run every weekday", and wants to
+  // commit the template right here without bouncing to the separate
+  // Recurring intercessions composer.
+  const [draft, setDraft] = useState<{
+    title: string;
+    body: string;
+    learnMoreUrl: string;
+    recurrence: { kind: "once" | "daily" | "weekly"; mask: number };
+  }>({
     title: "", body: "", learnMoreUrl: "",
+    recurrence: { kind: "once", mask: 127 },
   });
 
   function openEditor(dateStr: string, slot: number) {
@@ -209,6 +245,9 @@ export default function PrayerFeedManagePage() {
       title: existing?.title ?? "",
       body: existing?.body ?? "",
       learnMoreUrl: existing?.learnMoreUrl ?? "",
+      // Always reset to "once" when opening — the user opened a
+      // specific cell, so the natural default is "this date only".
+      recurrence: { kind: "once", mask: 127 },
     });
     setEditorTarget({ date: dateStr, slot });
   }
@@ -216,14 +255,30 @@ export default function PrayerFeedManagePage() {
 
   async function commitEditor(state: EntryState) {
     if (!editorTarget) return;
-    await saveEntry.mutateAsync({
-      entryDate: editorTarget.date,
-      slot: editorTarget.slot,
-      title: draft.title.trim(),
-      body: draft.body.trim(),
-      learnMoreUrl: draft.learnMoreUrl.trim() || null,
-      state,
-    });
+    if (draft.recurrence.kind !== "once") {
+      // Promoting to a recurring template — saveRecurring routes to
+      // the recurring endpoint instead of the per-day entries one.
+      // Concrete entries on overlapping dates still win on those
+      // specific dates, so the admin can override the template later.
+      await saveRecurring.mutateAsync({
+        slot: editorTarget.slot,
+        recurrenceKind: draft.recurrence.kind,
+        weekdaysMask: draft.recurrence.kind === "daily" ? 127 : draft.recurrence.mask,
+        title: draft.title.trim(),
+        body: draft.body.trim(),
+        learnMoreUrl: draft.learnMoreUrl.trim() || null,
+        state: state === "draft" ? "draft" : "live",
+      });
+    } else {
+      await saveEntry.mutateAsync({
+        entryDate: editorTarget.date,
+        slot: editorTarget.slot,
+        title: draft.title.trim(),
+        body: draft.body.trim(),
+        learnMoreUrl: draft.learnMoreUrl.trim() || null,
+        state,
+      });
+    }
     setEditorTarget(null);
   }
 
@@ -548,6 +603,100 @@ export default function PrayerFeedManagePage() {
                   <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
                     Subscribers see a "Learn more →" pill on the slide that opens this link.
                   </p>
+                </div>
+
+                {/* Repeats — promotes this draft to a daily/weekly
+                    template instead of a one-time entry. "Just <date>"
+                    is the default and matches the previous behaviour.
+                    Switching to daily/weekly hides the per-state
+                    Save draft / Schedule / Publish row in favor of a
+                    single "Save recurring" path because schedule-on-
+                    a-future-date doesn't apply to templates. */}
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+                    Repeats
+                  </label>
+                  <div className="flex gap-2 mb-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setDraft({ ...draft, recurrence: { kind: "once", mask: 127 } })}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
+                      style={{
+                        background: draft.recurrence.kind === "once" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                        border: `1px solid ${draft.recurrence.kind === "once" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                        color: "#F0EDE6",
+                      }}
+                    >
+                      Just {prettyDate(editorDate)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft({ ...draft, recurrence: { kind: "daily", mask: 127 } })}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
+                      style={{
+                        background: draft.recurrence.kind === "daily" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                        border: `1px solid ${draft.recurrence.kind === "daily" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                        color: "#F0EDE6",
+                      }}
+                    >
+                      Daily
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft({
+                        ...draft,
+                        recurrence: {
+                          kind: "weekly",
+                          mask: draft.recurrence.kind === "weekly" ? draft.recurrence.mask : 0,
+                        },
+                      })}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
+                      style={{
+                        background: draft.recurrence.kind === "weekly" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                        border: `1px solid ${draft.recurrence.kind === "weekly" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                        color: "#F0EDE6",
+                      }}
+                    >
+                      Weekly
+                    </button>
+                  </div>
+                  {draft.recurrence.kind === "weekly" && (
+                    <div className="flex gap-1 flex-wrap">
+                      {WEEKDAY_LABELS.map((w) => {
+                        const on = (draft.recurrence.mask & w.bit) !== 0;
+                        return (
+                          <button
+                            key={w.bit}
+                            type="button"
+                            onClick={() =>
+                              setDraft({
+                                ...draft,
+                                recurrence: {
+                                  kind: "weekly",
+                                  mask: draft.recurrence.mask ^ w.bit,
+                                },
+                              })
+                            }
+                            className="text-[11px] font-semibold rounded-full transition-opacity"
+                            style={{
+                              width: 36,
+                              height: 32,
+                              background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                              border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                              color: on ? "#F0EDE6" : "rgba(143,175,150,0.7)",
+                            }}
+                          >
+                            {w.abbr}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {draft.recurrence.kind !== "once" && (
+                    <p className="text-[10px] mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+                      Saves as a recurring template. A one-time entry on a specific date overrides this template for that day.
+                    </p>
+                  )}
                 </div>
               </div>
 

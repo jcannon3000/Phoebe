@@ -179,6 +179,220 @@ router.get("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
   });
 });
 
+// GET /api/prayer-feeds/today — today's intercessions across every
+// feed the caller subscribes to. Returns one row per (feed, slot) for
+// today, merging the concrete prayerFeedEntriesTable rows with the
+// recurringEntries that fire today's weekday. Concrete entries win on
+// (feed, slot) collisions so an admin's day-specific override beats
+// the daily/weekly template.
+//
+// This is what the prayer-mode slideshow and the personal Community
+// intercessions section consume to surface feed-authored intercessions
+// alongside group-attached ones. /api/moments doesn't see feed entries
+// (different table; sharedMomentsTable is the moments source), so this
+// route is the bridge.
+router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const subs = await db
+    .select({
+      feedId: prayerFeedsTable.id,
+      feedSlug: prayerFeedsTable.slug,
+      feedTitle: prayerFeedsTable.title,
+      feedCoverEmoji: prayerFeedsTable.coverEmoji,
+      feedTimezone: prayerFeedsTable.timezone,
+    })
+    .from(prayerFeedSubscriptionsTable)
+    .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedSubscriptionsTable.feedId))
+    .where(eq(prayerFeedSubscriptionsTable.userId, user.id));
+
+  if (subs.length === 0) { res.json({ entries: [] }); return; }
+
+  // Collect today's concrete + recurring rows per feed, grouped by
+  // feed so the response shape is feed-first (mirrors how the UI
+  // renders one card per feed with N intercessions inside).
+  type Row = {
+    id: number;
+    feedId: number;
+    feedSlug: string;
+    feedTitle: string;
+    feedCoverEmoji: string | null;
+    slot: number;
+    title: string;
+    body: string;
+    learnMoreUrl: string | null;
+    isRecurring: boolean;
+    prayedToday: boolean;
+  };
+  const out: Row[] = [];
+
+  for (const s of subs) {
+    const today = todayInZone(s.feedTimezone);
+    // bit 0=Sunday..bit 6=Saturday — match assembleIntercessions.
+    const todayWeekdayBit = 1 << new Date(`${today}T12:00:00Z`).getUTCDay();
+
+    const concrete = await db.select({
+      id: prayerFeedEntriesTable.id,
+      slot: prayerFeedEntriesTable.slot,
+      title: prayerFeedEntriesTable.title,
+      body: prayerFeedEntriesTable.body,
+      learnMoreUrl: prayerFeedEntriesTable.learnMoreUrl,
+    })
+      .from(prayerFeedEntriesTable)
+      .where(and(
+        eq(prayerFeedEntriesTable.feedId, s.feedId),
+        eq(prayerFeedEntriesTable.entryDate, today),
+        eq(prayerFeedEntriesTable.state, "published"),
+      ));
+
+    const recurring = await db.select({
+      id: prayerFeedRecurringEntriesTable.id,
+      slot: prayerFeedRecurringEntriesTable.slot,
+      title: prayerFeedRecurringEntriesTable.title,
+      body: prayerFeedRecurringEntriesTable.body,
+      learnMoreUrl: prayerFeedRecurringEntriesTable.learnMoreUrl,
+    })
+      .from(prayerFeedRecurringEntriesTable)
+      .where(and(
+        eq(prayerFeedRecurringEntriesTable.feedId, s.feedId),
+        eq(prayerFeedRecurringEntriesTable.state, "live"),
+        sql`(${prayerFeedRecurringEntriesTable.weekdaysMask} & ${todayWeekdayBit}) <> 0`,
+      ));
+
+    // Merge — concrete wins on conflicting (feed, slot) keys.
+    const bySlot = new Map<number, { id: number; slot: number; title: string; body: string; learnMoreUrl: string | null; isRecurring: boolean }>();
+    for (const r of recurring) {
+      bySlot.set(r.slot, { ...r, isRecurring: true });
+    }
+    for (const r of concrete) {
+      bySlot.set(r.slot, { ...r, isRecurring: false });
+    }
+
+    // "Have I prayed any of today's entries on this feed?" — used by
+    // the personal feed card to grey out a feed once the user finishes
+    // its intercessions for the day.
+    const concreteIds = concrete.map((c) => c.id);
+    let prayedConcreteIds = new Set<number>();
+    if (concreteIds.length > 0) {
+      const prayed = await db.select({ entryId: prayerFeedPrayersTable.entryId })
+        .from(prayerFeedPrayersTable)
+        .where(and(
+          eq(prayerFeedPrayersTable.userId, user.id),
+          inArray(prayerFeedPrayersTable.entryId, concreteIds),
+        ));
+      prayedConcreteIds = new Set(prayed.map((p) => p.entryId));
+    }
+
+    for (const m of [...bySlot.values()].sort((a, b) => a.slot - b.slot)) {
+      out.push({
+        id: m.id,
+        feedId: s.feedId,
+        feedSlug: s.feedSlug,
+        feedTitle: s.feedTitle,
+        feedCoverEmoji: s.feedCoverEmoji ?? null,
+        slot: m.slot,
+        title: m.title,
+        body: m.body,
+        learnMoreUrl: m.learnMoreUrl,
+        isRecurring: m.isRecurring,
+        prayedToday: !m.isRecurring && prayedConcreteIds.has(m.id),
+      });
+    }
+  }
+
+  res.json({ entries: out });
+});
+
+// GET /api/groups/:slug/prayer-feeds — feeds bound to this group, each
+// with today's intercessions. Same merge semantics as /today above
+// (concrete wins on slot collisions). Mirrors the personal-side endpoint
+// so the community detail page can render a feed card section.
+router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const groupSlug = String(req.params.slug);
+
+  const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, groupSlug));
+  if (!group) { res.status(404).json({ error: "Group not found" }); return; }
+
+  // Membership check — only members of this group see its feed list.
+  const [membership] = await db.select({ id: groupMembersTable.id })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, group.id),
+      eq(groupMembersTable.userId, user.id),
+    ));
+  if (!membership) { res.status(403).json({ error: "Not a member" }); return; }
+
+  // Feeds bound to this group via prayer_feed_groups.
+  const bound = await db
+    .select({
+      feedId: prayerFeedsTable.id,
+      feedSlug: prayerFeedsTable.slug,
+      feedTitle: prayerFeedsTable.title,
+      feedCoverEmoji: prayerFeedsTable.coverEmoji,
+      feedTimezone: prayerFeedsTable.timezone,
+      feedSubscriberCount: prayerFeedsTable.subscriberCount,
+    })
+    .from(prayerFeedGroupsTable)
+    .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedGroupsTable.feedId))
+    .where(and(
+      eq(prayerFeedGroupsTable.groupId, group.id),
+      eq(prayerFeedsTable.state, "live"),
+    ));
+
+  type FeedOut = {
+    feedId: number;
+    feedSlug: string;
+    feedTitle: string;
+    feedCoverEmoji: string | null;
+    subscriberCount: number;
+    todayEntries: Array<{ id: number; slot: number; title: string; isRecurring: boolean }>;
+  };
+  const feeds: FeedOut[] = [];
+
+  for (const f of bound) {
+    const today = todayInZone(f.feedTimezone);
+    const todayWeekdayBit = 1 << new Date(`${today}T12:00:00Z`).getUTCDay();
+
+    const concrete = await db.select({
+      id: prayerFeedEntriesTable.id,
+      slot: prayerFeedEntriesTable.slot,
+      title: prayerFeedEntriesTable.title,
+    })
+      .from(prayerFeedEntriesTable)
+      .where(and(
+        eq(prayerFeedEntriesTable.feedId, f.feedId),
+        eq(prayerFeedEntriesTable.entryDate, today),
+        eq(prayerFeedEntriesTable.state, "published"),
+      ));
+    const recurring = await db.select({
+      id: prayerFeedRecurringEntriesTable.id,
+      slot: prayerFeedRecurringEntriesTable.slot,
+      title: prayerFeedRecurringEntriesTable.title,
+    })
+      .from(prayerFeedRecurringEntriesTable)
+      .where(and(
+        eq(prayerFeedRecurringEntriesTable.feedId, f.feedId),
+        eq(prayerFeedRecurringEntriesTable.state, "live"),
+        sql`(${prayerFeedRecurringEntriesTable.weekdaysMask} & ${todayWeekdayBit}) <> 0`,
+      ));
+
+    const bySlot = new Map<number, { id: number; slot: number; title: string; isRecurring: boolean }>();
+    for (const r of recurring) bySlot.set(r.slot, { ...r, isRecurring: true });
+    for (const r of concrete) bySlot.set(r.slot, { ...r, isRecurring: false });
+
+    feeds.push({
+      feedId: f.feedId,
+      feedSlug: f.feedSlug,
+      feedTitle: f.feedTitle,
+      feedCoverEmoji: f.feedCoverEmoji ?? null,
+      subscriberCount: f.feedSubscriberCount ?? 0,
+      todayEntries: [...bySlot.values()].sort((a, b) => a.slot - b.slot),
+    });
+  }
+
+  res.json({ feeds });
+});
+
 // GET /api/prayer-feeds/mine — feeds the caller created
 router.get("/prayer-feeds/mine", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
