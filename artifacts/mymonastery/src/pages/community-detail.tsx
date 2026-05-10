@@ -2065,7 +2065,7 @@ export default function CommunityDetailPage() {
                           ? f.todayEntries[0].title
                           : `${count} intercessions today`;
                       return (
-                        <Link key={`feed-${f.feedId}`} href={`/feeds/${f.feedSlug}`} className="block">
+                        <Link key={`feed-${f.feedId}`} href={`/prayer-feeds/${f.feedSlug}`} className="block">
                           <div
                             className="rounded-xl px-4 py-3 transition-colors hover:bg-[rgba(46,107,64,0.18)] relative pr-16"
                             style={{

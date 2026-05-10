@@ -368,7 +368,7 @@ function FeedCard({
       ? feed.entries[0].title
       : `${count} intercessions today`;
   return (
-    <BarCard href={`/feeds/${feed.feedSlug}`} accent="#2E6B40">
+    <BarCard href={`/prayer-feeds/${feed.feedSlug}`} accent="#2E6B40">
       <div className="relative pr-16">
         <span className="text-sm font-semibold truncate block" style={{ color: "#F0EDE6" }}>
           {cover} {feed.feedTitle}
