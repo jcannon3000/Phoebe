@@ -117,6 +117,14 @@ interface PrayerSlide {
   // even if the viewer bails out of the slideshow before `handleDone`.
   momentToken?: string | null;
   myUserToken?: string | null;
+  // intercession specific — feed-entry origin metadata. Set when the
+  // slide came from a prayer feed (prayerFeedEntriesTable / its
+  // recurring sibling), so the Amen handler can POST to the feed's
+  // /pray endpoint and the slideshow tap shows up on the
+  // /prayer-feeds/today + community-feed counts.
+  feedSlug?: string | null;
+  feedEntryDate?: string | null;
+  feedEntrySlot?: number | null;
   // prayer-for specific
   prayerForId?: number;
   recipientName?: string;
@@ -1685,10 +1693,15 @@ export default function PrayerModePage() {
       // back to the title untouched.
       feedTag: e.feedTitle || null,
       learnMoreUrl: e.learnMoreUrl?.trim() || null,
-      // Feed entries don't carry a momentToken/userToken (different
-      // table), so the in-slide check-in path falls back to the
-      // generic Amen handler — that one stamps a prayer_feed_prayers
-      // row server-side keyed on the feed entry id.
+      // Carry the feed origin so the Amen handler can POST to
+      // /api/prayer-feeds/:slug/entries/:date/pray on tap. We
+      // synthesize today's date here (UTC) instead of trusting
+      // the server's per-feed timezone — the pray endpoint
+      // re-checks tz on its end and 400s if mismatched, so this
+      // is a soft hint, not a contract.
+      feedSlug: e.feedSlug,
+      feedEntryDate: new Date().toISOString().slice(0, 10),
+      feedEntrySlot: e.slot,
       alreadyPrayedToday: e.prayedToday === true,
     })),
     // Other people's prayer requests come before the user's own private
@@ -2132,6 +2145,34 @@ export default function PrayerModePage() {
           })
           .catch(() => {
             /* swallow — best-effort, handleDone will retry if still pending */
+          });
+      }
+    }
+    // Feed-entry intercession (came from prayerFeedEntriesTable, not
+    // sharedMomentsTable — no momentToken). Log to the feed's pray
+    // endpoint so the prayer count + roster on the feed detail page
+    // and the community detail card both reflect this slideshow tap.
+    if (
+      current
+      && current.kind === "intercession"
+      && current.feedSlug
+      && current.feedEntryDate
+      && typeof current.feedEntrySlot === "number"
+    ) {
+      const key = `feed:${current.feedSlug}:${current.feedEntryDate}:${current.feedEntrySlot}`;
+      if (!loggedIntercessionsRef.current.has(key)) {
+        loggedIntercessionsRef.current.add(key);
+        apiRequest(
+          "POST",
+          `/api/prayer-feeds/${current.feedSlug}/entries/${current.feedEntryDate}/pray?slot=${current.feedEntrySlot}`,
+          {},
+        )
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/today"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+          })
+          .catch(() => {
+            /* swallow — best-effort */
           });
       }
     }

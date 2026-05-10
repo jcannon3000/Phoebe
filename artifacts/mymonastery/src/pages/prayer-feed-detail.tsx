@@ -311,118 +311,15 @@ export default function PrayerFeedDetailPage() {
           </div>
         )}
 
-        {/* Today section — three intentions, each with its own pray
-            button and roster. We render one card per published slot
-            and keep the empty-state copy if no slots are live yet. */}
-        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
-          Today · {today ? prettyDate(today) : ""}
-        </p>
-
-        {todayEntries.length > 0 ? (
-          <div className="space-y-3 mb-6">
-            {todayEntries.map(entry => {
-              const roster = rosterBySlot[entry.slot];
-              const prayedTodayCount = roster?.prayCount ?? entry.prayCount ?? 0;
-              const prayers = roster?.prayers ?? [];
-              const didIPrayToday = prayers.some(
-                p => p.email.toLowerCase() === userEmail,
-              );
-              return (
-                <div
-                  key={entry.id}
-                  className="rounded-2xl p-5"
-                  style={{ background: "#0F2622", border: "1px solid rgba(62,124,122,0.35)" }}
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(168,197,160,0.7)" }}>
-                    {SLOT_LABELS[entry.slot] ?? `Slot ${entry.slot}`}
-                  </p>
-                  <h2
-                    className="text-lg font-semibold leading-snug mb-2"
-                    style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-                  >
-                    {entry.title}
-                  </h2>
-                  {entry.body && (
-                    <p
-                      className="text-sm leading-relaxed whitespace-pre-line"
-                      style={{ color: "rgba(240,237,230,0.88)" }}
-                    >
-                      {entry.body}
-                    </p>
-                  )}
-                  {entry.scriptureRef && (
-                    <p
-                      className="text-xs italic mt-3"
-                      style={{ color: "#8FAF96", fontFamily: "Georgia, 'Times New Roman', serif" }}
-                    >
-                      — {entry.scriptureRef}
-                    </p>
-                  )}
-
-                  {/* Pray action + count for this slot */}
-                  <div className="mt-5 flex items-center gap-3 flex-wrap">
-                    {didIPrayToday ? (
-                      <span className="text-sm font-medium" style={{ color: "#A8C5A0" }}>
-                        🙏🏽 You prayed
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => pray.mutate(entry.slot)}
-                        disabled={pray.isPending || (!isSubscribed && !isCreator)}
-                        className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
-                        style={{ background: "#3E7C7A", color: "#F0EDE6" }}
-                      >
-                        {pray.isPending && pray.variables === entry.slot ? "…" : "Pray 🙏🏽"}
-                      </button>
-                    )}
-                    <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)" }}>
-                      {prayedTodayCount} prayed today
-                    </span>
-                    {!isSubscribed && !isCreator && (
-                      <span className="text-[11px] italic" style={{ color: "rgba(143,175,150,0.7)" }}>
-                        Subscribe to join in
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Who-prayed chips for this slot */}
-                  {prayers.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      {prayers.slice(0, 12).map((p, i) => (
-                        <div
-                          key={`${p.email}-${i}`}
-                          className="flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-0.5"
-                          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.28)" }}
-                        >
-                          {p.avatarUrl ? (
-                            <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
-                          ) : (
-                            <div
-                              className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold"
-                              style={{ background: "rgba(168,197,160,0.2)", color: "#A8C5A0" }}
-                            >
-                              {(p.name || p.email || "?").trim().charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <span className="text-[11px]" style={{ color: "#F0EDE6" }}>
-                            {p.name || p.email.split("@")[0]}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div
-            className="rounded-2xl p-5 mb-6 text-sm italic"
-            style={{ background: "rgba(62,124,122,0.06)", border: "1px solid rgba(62,124,122,0.18)", color: "#8FAF96" }}
-          >
-            No intentions published for today yet — check back soon.
-          </div>
-        )}
+        {/* The big "Today" card with a Pray button used to live here.
+            Per user direction this page is now a pure schedule view —
+            praying happens in the slideshow, so a duplicate Pray
+            affordance + "N prayed today" count was redundant. The
+            This-week list below already shows today's filled slots
+            (highlighted) so the schedule remains glanceable.
+            (rosterBySlot / pray mutation / didIPrayToday are still
+            referenced by the back-issues block below for read-only
+            "X prayed" counts on archived days.) */}
 
         {/* This-week calendar — 7 days × 3 slots. Today is highlighted,
             other days show the title for any slots that have been
