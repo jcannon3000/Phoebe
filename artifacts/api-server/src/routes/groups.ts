@@ -565,25 +565,18 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
   if (!beta) { res.status(403).json({ error: "Metrics are beta only for now" }); return; }
 
   try {
-    // Bucket "today" / "this week" in the requesting admin's local
-    // timezone — matches how moment_posts.window_date is *written*
-    // (todayDateInTz in moments.ts) and how prayer.ts dedupes amens.
-    // Doing it in UTC here was the bug that made evening prayers for
-    // non-UTC users land in the wrong day bucket.
-    const [adminUser] = await db
-      .select({ timezone: usersTable.timezone })
-      .from(usersTable)
-      .where(eq(usersTable.id, user.id));
-    const tz = adminUser?.timezone || "UTC";
-    const ymdInTz = (d: Date): string => {
-      try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d); }
-      catch { return d.toISOString().slice(0, 10); }
-    };
+    // Bucket "today" / "this week" in UTC so that timestamps shown in
+    // the DB (which are stored as UTC) match what the metrics count.
+    // Using the admin's local timezone caused prayers logged after
+    // midnight UTC but before midnight local to land in the wrong
+    // day bucket — e.g. a 03:04 UTC prayer shows as "May 9" in the
+    // DB but was counted as "May 8" for a New York admin.
     const nowDate = new Date();
-    const todayStr = ymdInTz(nowDate);
+    const todayStr = nowDate.toISOString().slice(0, 10);
     const weekStartDate = new Date(nowDate);
     weekStartDate.setUTCDate(weekStartDate.getUTCDate() - 6);
-    const weekStartStr = ymdInTz(weekStartDate);
+    const weekStartStr = weekStartDate.toISOString().slice(0, 10);
+    const tz = "UTC";
 
     // A "prayer event" is one of two things logged by a member of this
     // community:
@@ -632,6 +625,8 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       --
       -- Two events <15 min apart for the same user collapse to one,
       -- so tapping in / out / in doesn't inflate the count.
+      -- Two sessions more than 15 min apart each count separately —
+      -- e.g. praying in the morning and again in the evening = 2.
       -- Briefly opening an office without reaching 3 slides is NOT
       -- counted — neither as a session nor as "this user prayed
       -- today". The semantics: a person who "prayed today" actually
