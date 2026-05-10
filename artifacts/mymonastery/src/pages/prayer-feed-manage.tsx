@@ -264,10 +264,13 @@ export default function PrayerFeedManagePage() {
   // without making the admin hunt for a separate composer.
   // POSTs when no `id`, PUTs when one is supplied — the same modal can
   // edit an existing template or create a new one.
+  // Slot is intentionally NOT sent on POST: the server picks the next
+  // free slot. Earlier we passed the cell's slot, which let a brand
+  // new template silently overwrite an existing one when the cell's
+  // slot already held a template that didn't fire on this day.
   const saveRecurring = useMutation({
     mutationFn: (e: {
       id: number | null;
-      slot: number;
       recurrenceKind: "daily" | "weekly";
       weekdaysMask: number;
       title: string;
@@ -276,7 +279,6 @@ export default function PrayerFeedManagePage() {
       state: "live" | "draft";
     }) => {
       const body = {
-        slot: e.slot,
         recurrenceKind: e.recurrenceKind,
         weekdaysMask: e.weekdaysMask,
         title: e.title,
@@ -404,13 +406,11 @@ export default function PrayerFeedManagePage() {
     if (draft.recurrence.kind !== "once") {
       // Promoting to (or updating) a recurring template — saveRecurring
       // routes to the recurring endpoint. POSTs when this is a new
-      // template, PUTs when we're editing an existing one (the cell
-      // was already template-backed). Concrete entries on overlapping
-      // dates still win on those specific dates, so the admin can
-      // override the template later.
+      // template (server auto-assigns slot), PUTs when we're editing
+      // an existing one. Concrete entries still win on (date, slot)
+      // collisions, so the admin can override the template later.
       await saveRecurring.mutateAsync({
         id: draft.editingRecurringId,
-        slot: editorTarget.slot,
         recurrenceKind: draft.recurrence.kind,
         weekdaysMask: draft.recurrence.kind === "daily" ? 127 : draft.recurrence.mask,
         title: draft.title.trim(),

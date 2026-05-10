@@ -724,83 +724,36 @@ router.post("/prayer-feeds/:slug/recurring", requireBeta, async (req, res): Prom
   // mask check is a single conditional regardless of kind.
   const weekdaysMask = data.recurrenceKind === "daily" ? 127 : data.weekdaysMask;
 
-  // Slot resolution: the client may omit slot entirely (newer UI
-  // doesn't show a slot picker — it's just "max 7 per day"). When
-  // omitted, pick the lowest slot 1..7 not yet taken by another
-  // recurring template on this feed. When all 7 are taken, 409.
-  let slot: number;
-  if (typeof data.slot === "number") {
-    slot = data.slot;
-  } else {
-    const taken = await db
-      .select({ slot: prayerFeedRecurringEntriesTable.slot })
-      .from(prayerFeedRecurringEntriesTable)
-      .where(eq(prayerFeedRecurringEntriesTable.feedId, feed.id));
-    const takenSet = new Set(taken.map((t) => t.slot));
-    const next = [1, 2, 3, 4, 5, 6, 7].find((s) => !takenSet.has(s));
-    if (next === undefined) {
-      res.status(409).json({ error: "Feed already has 7 recurring templates." });
-      return;
-    }
-    slot = next;
-  }
-
-  // Upsert by (feed, slot) — at most one template per slot. Earlier
-  // we POST'd unconditionally, which let admins accidentally stack
-  // multiple templates on the same slot (e.g. by toggling Weekly
-  // inside the per-cell editor on a date that already had a
-  // template). Subscribers then saw the union of every overlapping
-  // template's mask, so days the admin never picked still fired.
-  // The single-template invariant matches the natural mental model:
-  // "this slot's recurrence is X" — one source of truth per slot.
-  // Day-specific overrides still happen via concrete entries, which
-  // win on (date, slot) collisions.
-  // Also collapse any pre-existing duplicates at this slot so old
-  // accidental rows from before this change get cleaned up the next
-  // time an admin saves.
-  const existingRows = await db
-    .select({ id: prayerFeedRecurringEntriesTable.id })
+  // Slot is server-managed. We ALWAYS pick the lowest free slot 1..7
+  // and ignore any value the client sent — earlier the per-cell
+  // editor passed the cell's slot, and if the cell happened to be
+  // empty on the chosen date but the same slot held another feed's
+  // recurring template, the upsert path silently overwrote that
+  // template. Auto-picking here means a fresh POST never touches an
+  // existing template; updates always go through PUT /:id.
+  // (PUT handles edits-in-place; POST is strict create.)
+  const taken = await db
+    .select({ slot: prayerFeedRecurringEntriesTable.slot })
     .from(prayerFeedRecurringEntriesTable)
-    .where(and(
-      eq(prayerFeedRecurringEntriesTable.feedId, feed.id),
-      eq(prayerFeedRecurringEntriesTable.slot, slot),
-    ))
-    .orderBy(asc(prayerFeedRecurringEntriesTable.createdAt));
-
-  let row;
-  if (existingRows.length > 0) {
-    const keepId = existingRows[0].id;
-    // Update the oldest row with the new payload, drop the rest.
-    [row] = await db.update(prayerFeedRecurringEntriesTable)
-      .set({
-        recurrenceKind: data.recurrenceKind,
-        weekdaysMask,
-        title: data.title,
-        body: data.body,
-        learnMoreUrl: data.learnMoreUrl ?? null,
-        state: data.state,
-        updatedAt: new Date(),
-      })
-      .where(eq(prayerFeedRecurringEntriesTable.id, keepId))
-      .returning();
-    if (existingRows.length > 1) {
-      const dupIds = existingRows.slice(1).map((r) => r.id);
-      await db.delete(prayerFeedRecurringEntriesTable)
-        .where(inArray(prayerFeedRecurringEntriesTable.id, dupIds));
-    }
-  } else {
-    [row] = await db.insert(prayerFeedRecurringEntriesTable).values({
-      feedId: feed.id,
-      slot,
-      recurrenceKind: data.recurrenceKind,
-      weekdaysMask,
-      title: data.title,
-      body: data.body,
-      learnMoreUrl: data.learnMoreUrl ?? null,
-      state: data.state,
-      createdByUserId: user.id,
-    }).returning();
+    .where(eq(prayerFeedRecurringEntriesTable.feedId, feed.id));
+  const takenSet = new Set(taken.map((t) => t.slot));
+  const slot = [1, 2, 3, 4, 5, 6, 7].find((s) => !takenSet.has(s));
+  if (slot === undefined) {
+    res.status(409).json({ error: "Feed already has 7 recurring templates." });
+    return;
   }
+
+  const [row] = await db.insert(prayerFeedRecurringEntriesTable).values({
+    feedId: feed.id,
+    slot,
+    recurrenceKind: data.recurrenceKind,
+    weekdaysMask,
+    title: data.title,
+    body: data.body,
+    learnMoreUrl: data.learnMoreUrl ?? null,
+    state: data.state,
+    createdByUserId: user.id,
+  }).returning();
   res.status(201).json({ recurring: row });
 });
 
