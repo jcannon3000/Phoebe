@@ -782,15 +782,12 @@ function isWithinTickWindow(
   return Math.abs(now - target) <= 15;
 }
 
-// Kill switch for the office-reminder fan-out. We just flipped the
-// default morning pref to 'devotion' AND backfilled existing 'none'
-// rows, so every user is technically opted in — but the new Settings
-// UI that lets them turn it off ships with the next App Store
-// version, and we don't want to push someone before they have the
-// in-app way to opt out. Set OFFICE_REMINDERS_ENABLED=1 in Railway
-// the moment the App Store rollout completes and pushes start
-// flowing. Until then the function is a no-op.
-const OFFICE_REMINDERS_ENABLED = process.env["OFFICE_REMINDERS_ENABLED"] === "1";
+// (Removed: an OFFICE_REMINDERS_ENABLED env-var kill switch that
+// gated the office-reminder fan-out until the App Store rollout
+// completed. The new app is live on the App Store and every user
+// now has the in-app Settings → Daily reminders surface to opt
+// out — the gate has done its job and the cron should fan reminders
+// out to anyone with a non-"none" morning or evening pref.)
 
 export async function runParishOfficeReminderSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // Generalized — fires for any user with at least one non-"none"
@@ -801,10 +798,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
   // the user's office-reminder prefs full stop. When a parish is
   // attached we use parish title + timezone in the push; otherwise
   // we fall back to "your community" + the user's own timezone.
-  if (!OFFICE_REMINDERS_ENABLED && !opts.forceNow) {
-    logger.info("[office-reminder] OFFICE_REMINDERS_ENABLED unset — skipping fan-out");
-    return;
-  }
+  void opts; // kept for callers that still pass { forceNow }; behaviour is identical now that the gate is gone.
   try {
     const rows = await db
       .select({
