@@ -61,6 +61,12 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   // Used by the goal-cleanup job to remove recurring calendar events for
   // members who never renew within 2 days of reaching the goal.
   commitmentGoalReachedAt: timestamp("commitment_goal_reached_at", { withTimezone: true }),
+  // When the CURRENT cycle started — original creation or most recent
+  // renewal. Combined with goalDays, defines the window `[cycleStartedAt,
+  // cycleStartedAt + goalDays)` that an intercession is "live" for.
+  // Past the end of the window, the moment is hidden from list /
+  // dashboard / slideshow surfaces regardless of bloom count.
+  commitmentCycleStartedAt: timestamp("commitment_cycle_started_at", { withTimezone: true }),
   // Toggle: when true, any member of the practice can invite new people.
   // When false, only the creator can. Default is open.
   allowMemberInvites: boolean("allow_member_invites").notNull().default(true),

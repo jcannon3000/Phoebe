@@ -308,6 +308,7 @@ router.get("/people", async (req, res): Promise<void> => {
               templateType: sharedMomentsTable.templateType,
               state: sharedMomentsTable.state,
               commitmentGoalReachedAt: sharedMomentsTable.commitmentGoalReachedAt,
+              commitmentCycleStartedAt: sharedMomentsTable.commitmentCycleStartedAt,
               goalDays: sharedMomentsTable.goalDays,
               totalBlooms: sharedMomentsTable.totalBlooms,
             })
@@ -320,11 +321,12 @@ router.get("/people", async (req, res): Promise<void> => {
             if (m.templateType !== "intercession") return false;
             const reachedAt = m.commitmentGoalReachedAt;
             if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > graceMs) return true;
-            // Mirror the read filter in routes/moments.ts: a completed
-            // intercession that hasn't been extended has currentStreak=0;
-            // an extended one has currentStreak restored to the prior
-            // goalDays. Use that to distinguish.
-            if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && m.currentStreak === 0) return true;
+            // Time-window: hide once now > cycleStartedAt + goalDays.
+            // Mirrors the read filter in routes/moments.ts.
+            if (!reachedAt && m.goalDays > 0 && m.commitmentCycleStartedAt) {
+              const cycleEndMs = new Date(m.commitmentCycleStartedAt).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
+              if (nowMs > cycleEndMs) return true;
+            }
             return false;
           };
           const sharedMoments = sharedMomentsRaw.filter(
@@ -466,6 +468,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         state: sharedMomentsTable.state,
         goalDays: sharedMomentsTable.goalDays,
         commitmentGoalReachedAt: sharedMomentsTable.commitmentGoalReachedAt,
+        commitmentCycleStartedAt: sharedMomentsTable.commitmentCycleStartedAt,
         createdAt: sharedMomentsTable.createdAt,
       }).from(sharedMomentsTable).where(inArray(sharedMomentsTable.id, sharedMomentIds));
 
@@ -476,7 +479,10 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         if (m.templateType !== "intercession") return false;
         const reachedAt = m.commitmentGoalReachedAt;
         if (reachedAt && (now - new Date(reachedAt).getTime()) > graceMs) return true;
-        if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && m.currentStreak === 0) return true;
+        if (!reachedAt && m.goalDays > 0 && m.commitmentCycleStartedAt) {
+          const cycleEndMs = new Date(m.commitmentCycleStartedAt).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
+          if (now > cycleEndMs) return true;
+        }
         return false;
       };
 

@@ -266,6 +266,15 @@ export async function migrate() {
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_goal_tier INTEGER NOT NULL DEFAULT 1`);
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_tend_freely BOOLEAN NOT NULL DEFAULT false`);
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_goal_reached_at TIMESTAMPTZ`);
+    // commitment_cycle_started_at: when the current cycle began.
+    // Original creation OR most recent renewal. Used by the read filter
+    // to time-window intercession visibility — a moment whose
+    // (cycleStartedAt + goalDays) is in the past gets hidden from
+    // list / dashboard / slideshow regardless of bloom count.
+    // Backfill existing rows from created_at so legacy intercessions
+    // have a sensible window without anyone having to touch them.
+    await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_cycle_started_at TIMESTAMPTZ`);
+    await run(client, `UPDATE shared_moments SET commitment_cycle_started_at = created_at WHERE commitment_cycle_started_at IS NULL`);
 
     // Fix constraints that differ from old migration to current schema
     await run(client, `ALTER TABLE shared_moments ALTER COLUMN ritual_id DROP NOT NULL`);

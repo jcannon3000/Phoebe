@@ -807,6 +807,9 @@ router.post("/moments", async (req, res): Promise<void> => {
     timeOfDay: isSpiritual ? (timeOfDay ?? null) : null,
     momentToken,
     windowMinutes: isBcp ? 1440 : (isSpiritual ? 1440 : 240),
+    // Anchor the cycle window at creation. The read filter hides
+    // intercessions once now > cycleStartedAt + goalDays.
+    commitmentCycleStartedAt: new Date(),
     ...(frequencyType !== undefined ? { frequencyType } : {}),
     ...(frequencyDaysPerWeek !== undefined ? { frequencyDaysPerWeek } : {}),
     ...(practiceDays !== undefined ? { practiceDays } : {}),
@@ -1507,20 +1510,26 @@ router.get("/moments", async (req, res): Promise<void> => {
       .where(inArray(sharedMomentsTable.id, momentIds)))
       .filter(m => {
         if (m.ritualId !== null || m.state === "archived") return false;
-        // Intercessions: hide once finished (with a 2-day grace period
-        // after the goal-reached stamp). Mirrors the cleanup cron.
-        // After a goal hit, currentStreak is reset to 0; when the
-        // admin extends via PATCH /goal we restore currentStreak to
-        // the previous goalDays. So `currentStreak == 0 &&
-        // totalBlooms > 0` after reachedAt has been cleared means
-        // "completed and not extended" — hide. If currentStreak is
-        // non-zero (either fresh streak or restored-after-extend),
-        // the moment is in an active cycle.
+        // Intercessions: hide once the current cycle window expires.
+        // The window is [cycleStartedAt, cycleStartedAt + goalDays).
+        // Past the end → hide regardless of bloom count, streak, or
+        // anything else. A renewal restarts the window by writing
+        // a fresh cycleStartedAt; an unextended intercession ages
+        // out naturally without any cleanup job needing to fire.
+        //
+        // The reachedAt grace check stays so the 2-day window after
+        // hitting the goal keeps the moment visible long enough for
+        // the admin to see the Extend popup, even if the cycle is
+        // technically over.
         if (m.templateType === "intercession") {
           const mAny = m as Record<string, unknown>;
           const reachedAt = mAny.commitmentGoalReachedAt as Date | null;
+          const cycleStartedAt = mAny.commitmentCycleStartedAt as Date | null;
           if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return false;
-          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && m.currentStreak === 0) return false;
+          if (!reachedAt && m.goalDays > 0 && cycleStartedAt) {
+            const cycleEndMs = new Date(cycleStartedAt).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
+            if (now.getTime() > cycleEndMs) return false;
+          }
         }
         return true;
       });
@@ -3773,40 +3782,40 @@ router.patch("/moments/:id/goal", async (req, res): Promise<void> => {
     updates.commitmentSessionsGoal = null;
     updates.commitmentTendFreely = true;
     updates.commitmentGoalReachedAt = null;
+    // Tend-freely keeps the moment visible indefinitely — restart
+    // the cycle window from "now" too, so any later goal-driven
+    // renewal starts from a clean baseline.
+    updates.commitmentCycleStartedAt = new Date();
     if (moment.templateType === "intercession") {
       updates.goalDays = 0;
       updates.state = "active";
     }
   } else if (parsed.data.commitmentSessionsGoal !== null) {
-    // Setting a new goal — increment tier, reset sessions logged, set new goal.
-    // Also clear commitmentGoalReachedAt so the cleanup job won't fire.
+    // Extending the commitment — bump the goal target, clear the
+    // goal-reached stamp (so cleanup stands down), bump the tier
+    // counter for any tier-aware UI, and force state back to active.
     //
-    // For intercessions, the goal-hit code resets currentStreak to 0
-    // the moment the streak first crosses goalDays. By the time the
-    // admin sees the goal-reached popup the streak is already 0, so
-    // re-displaying "7/14" after extending needs us to restore it.
-    // The streak at the moment of the goal hit is exactly the OLD
-    // goalDays value (that's the value that triggered the hit), so we
-    // copy it forward into currentStreak — no need for a separate
-    // "streak at hit" column. totalBlooms / longestStreak / all other
-    // stats stay untouched: the renewal is conceptually a single
-    // ongoing engagement, not a new cycle.
+    // Crucially: leave commitmentSessionsLogged, currentStreak,
+    // totalBlooms, and every other stat ALONE. Extending is "we're
+    // still on this commitment, not done yet" — display should go
+    // from "7/7" to "7/14" with the 7 preserved. The card uses
+    // commitmentSessionsLogged / commitmentSessionsGoal for the
+    // progress label, so leaving sessionsLogged at its accumulated
+    // value is what makes the "7/14" UX work.
     updates.commitmentSessionsGoal = parsed.data.commitmentSessionsGoal;
-    updates.commitmentSessionsLogged = 0;
     updates.commitmentGoalTier = (((moment as Record<string, unknown>).commitmentGoalTier as number) ?? 1) + 1;
     updates.commitmentTendFreely = false;
     updates.commitmentGoalReachedAt = null;
+    // Start a new cycle window from "now" — the read filter hides
+    // intercessions once now > cycleStartedAt + goalDays, and a
+    // renewal restarts that window.
+    updates.commitmentCycleStartedAt = new Date();
     if (moment.templateType === "intercession") {
-      const prevGoalDays = moment.goalDays ?? 0;
-      // Bump goalDays to the new commitment — if the admin asked for
-      // "14 more days" the frontend already passes the absolute new
-      // value (current + extension) so we just store it.
+      // Bump goalDays to match the new commitment — the frontend
+      // sends the absolute new value (e.g. 14, not "+7"), so we
+      // just store it. Mirrors commitmentSessionsGoal so the two
+      // stay in lockstep for intercessions.
       updates.goalDays = parsed.data.commitmentSessionsGoal;
-      // Restore the streak that triggered the goal hit so the UI
-      // resumes at "prevGoalDays / newGoalDays" instead of "0 / new".
-      if (prevGoalDays > 0) {
-        updates.currentStreak = prevGoalDays;
-      }
       updates.state = "active";
     }
   }
