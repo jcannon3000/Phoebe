@@ -1509,22 +1509,14 @@ router.get("/moments", async (req, res): Promise<void> => {
         if (m.ritualId !== null || m.state === "archived") return false;
         // Intercessions: hide once finished (with a 2-day grace period
         // after the goal-reached stamp). Mirrors the cleanup cron.
-        // We treat `commitmentGoalTier > totalBlooms` as "a new cycle
-        // has started since the last completion" — that's how a
-        // renewal (via PATCH /goal or via extending goalDays on
-        // PATCH /moments/:id) brings the moment back into view. Both
-        // those handlers bump tier; totalBlooms only increments when
-        // a cycle is actually completed.
+        // A renewal via PATCH /goal explicitly resets totalBlooms back
+        // to 0 — that's what brings a freshly-extended intercession
+        // back into view through this same filter.
         if (m.templateType === "intercession") {
           const mAny = m as Record<string, unknown>;
           const reachedAt = mAny.commitmentGoalReachedAt as Date | null;
-          const tier = (mAny.commitmentGoalTier as number) ?? 1;
-          const isRenewedActiveCycle = tier > m.totalBlooms;
           if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return false;
-          // Legacy / cleaned-up completed intercessions: hide unless
-          // the admin has started a new cycle (tier bumped past
-          // totalBlooms).
-          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && !isRenewedActiveCycle) return false;
+          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return false;
         }
         return true;
       });
@@ -3661,28 +3653,6 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   if (d.allowMemberInvites !== undefined) updates.allowMemberInvites = d.allowMemberInvites;
   if (d.customEmoji !== undefined) updates.customEmoji = d.customEmoji;
 
-  // If the admin is extending goalDays on an intercession that has
-  // already completed at least one cycle, treat the edit as a renewal:
-  // start a new cycle. Without this the moment stays filtered out of
-  // /api/moments (the "completed intercession" rule hides it) and
-  // members never see it again even though the goal is now bigger.
-  // Mirrors what PATCH /goal does for the progressive sessions goal:
-  // reset progress + bump the tier counter, leave totalBlooms (history)
-  // alone. The filter uses tier > totalBlooms as the "active cycle"
-  // signal so bumping tier is what brings the moment back into view.
-  if (
-    d.goalDays !== undefined
-    && moment.templateType === "intercession"
-    && moment.totalBlooms > 0
-  ) {
-    const prevTier = (moment as Record<string, unknown>).commitmentGoalTier as number ?? 1;
-    updates.commitmentGoalTier = prevTier + 1;
-    updates.currentStreak = 0;
-    updates.commitmentSessionsLogged = 0;
-    updates.commitmentGoalReachedAt = null;
-    updates.state = "active";
-  }
-
   if (Object.keys(updates).length === 0) {
     res.json({ ok: true });
     return;
@@ -3792,17 +3762,40 @@ router.patch("/moments/:id/goal", async (req, res): Promise<void> => {
   if (parsed.data.commitmentTendFreely) {
     // "Tend freely" — clear the goal, mark tend-freely. Clearing
     // commitmentGoalReachedAt cancels the 2-day calendar cleanup.
+    // Also reset totalBlooms + currentStreak for intercessions so the
+    // moments-list filter doesn't keep hiding the moment as "already
+    // completed" after the renewal lands.
     updates.commitmentSessionsGoal = null;
     updates.commitmentTendFreely = true;
     updates.commitmentGoalReachedAt = null;
+    if (moment.templateType === "intercession") {
+      updates.totalBlooms = 0;
+      updates.currentStreak = 0;
+      updates.state = "active";
+    }
   } else if (parsed.data.commitmentSessionsGoal !== null) {
     // Setting a new goal — increment tier, reset sessions logged, set new goal.
     // Also clear commitmentGoalReachedAt so the cleanup job won't fire.
+    // For intercessions, the moments-list filter hides any moment with
+    // totalBlooms > 0 and no reachedAt — so a renewal also has to reset
+    // totalBlooms (and currentStreak / goalDays for the new cycle) or
+    // the moment disappears from the list as soon as cleanup runs.
+    // The lifetime bloom history is lost on renewal — acceptable for
+    // now; if we want to preserve it later we can add a lifetimeBlooms
+    // column and copy totalBlooms into it here.
     updates.commitmentSessionsGoal = parsed.data.commitmentSessionsGoal;
     updates.commitmentSessionsLogged = 0;
     updates.commitmentGoalTier = (((moment as Record<string, unknown>).commitmentGoalTier as number) ?? 1) + 1;
     updates.commitmentTendFreely = false;
     updates.commitmentGoalReachedAt = null;
+    if (moment.templateType === "intercession") {
+      updates.totalBlooms = 0;
+      updates.currentStreak = 0;
+      // Resize goalDays to the new commitment so the "X days" UI and
+      // the streak-based goal-hit check both reflect the renewal.
+      updates.goalDays = parsed.data.commitmentSessionsGoal;
+      updates.state = "active";
+    }
   }
 
   if (Object.keys(updates).length > 0) {

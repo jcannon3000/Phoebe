@@ -310,7 +310,6 @@ router.get("/people", async (req, res): Promise<void> => {
               commitmentGoalReachedAt: sharedMomentsTable.commitmentGoalReachedAt,
               goalDays: sharedMomentsTable.goalDays,
               totalBlooms: sharedMomentsTable.totalBlooms,
-              commitmentGoalTier: sharedMomentsTable.commitmentGoalTier,
             })
             .from(sharedMomentsTable)
             .where(inArray(sharedMomentsTable.id, sharedMomentIds));
@@ -320,13 +319,8 @@ router.get("/people", async (req, res): Promise<void> => {
           const isExpiredIntercession = (m: typeof sharedMomentsRaw[number]) => {
             if (m.templateType !== "intercession") return false;
             const reachedAt = m.commitmentGoalReachedAt;
-            const tier = m.commitmentGoalTier ?? 1;
-            const isRenewedActiveCycle = tier > m.totalBlooms;
             if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > graceMs) return true;
-            // Legacy / cleaned-up completed intercessions: treat as expired
-            // unless the admin has bumped the tier past totalBlooms (a fresh
-            // cycle is in progress — see read filter in routes/moments.ts).
-            if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && !isRenewedActiveCycle) return true;
+            if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return true;
             return false;
           };
           const sharedMoments = sharedMomentsRaw.filter(
@@ -468,7 +462,6 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         state: sharedMomentsTable.state,
         goalDays: sharedMomentsTable.goalDays,
         commitmentGoalReachedAt: sharedMomentsTable.commitmentGoalReachedAt,
-        commitmentGoalTier: sharedMomentsTable.commitmentGoalTier,
         createdAt: sharedMomentsTable.createdAt,
       }).from(sharedMomentsTable).where(inArray(sharedMomentsTable.id, sharedMomentIds));
 
@@ -478,10 +471,8 @@ router.get("/people/:email", async (req, res): Promise<void> => {
       const isExpiredIntercession = (m: typeof allMoments[number]) => {
         if (m.templateType !== "intercession") return false;
         const reachedAt = m.commitmentGoalReachedAt;
-        const tier = m.commitmentGoalTier ?? 1;
-        const isRenewedActiveCycle = tier > m.totalBlooms;
         if (reachedAt && (now - new Date(reachedAt).getTime()) > graceMs) return true;
-        if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && !isRenewedActiveCycle) return true;
+        if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return true;
         return false;
       };
 
