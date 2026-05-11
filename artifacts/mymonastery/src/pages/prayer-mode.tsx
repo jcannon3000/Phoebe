@@ -1844,6 +1844,8 @@ export default function PrayerModePage() {
   // Keeping initialisation in an effect (not the useState initialiser)
   // ensures we don't read `slides` while it's still empty.
   const [index, setIndex] = useState<number>(-1);
+  const swipeTouchStartXRef = useRef<number | null>(null);
+  const swipeTouchStartYRef = useRef<number | null>(null);
 
   // Snapshot of the slide list captured the first time data is ready.
   // Once a session starts we navigate against this frozen copy so a
@@ -2075,6 +2077,47 @@ export default function PrayerModePage() {
       }
       setSlideVisible(true);
     }, 220);
+  };
+
+  // Navigate back one slide without recording an amen. Mirrors the
+  // fade transition used by skipToNext / advance.
+  const goBack = () => {
+    if (phase === "closing") {
+      // Let the user step back from the closing slide to their last prayer.
+      setSlideVisible(false);
+      setTimeout(() => {
+        setPhase("prayer");
+        setSlideVisible(true);
+      }, 220);
+      return;
+    }
+    if (index <= 0) return;
+    setSlideVisible(false);
+    setTimeout(() => {
+      setIndex(index - 1);
+      setSlideVisible(true);
+    }, 220);
+  };
+
+  // Swipe left → advance (skip forward), swipe right → goBack.
+  // The amen hold button is the intentional "I prayed this" action;
+  // swiping forward is a navigation gesture (same as "Not today").
+  // We only fire when horizontal movement dominates vertical so
+  // we don't interfere with any scroll areas inside a slide.
+  const handleSwipeTouchStart = (e: React.TouchEvent) => {
+    swipeTouchStartXRef.current = e.touches[0].clientX;
+    swipeTouchStartYRef.current = e.touches[0].clientY;
+  };
+  const handleSwipeTouchEnd = (e: React.TouchEvent) => {
+    if (swipeTouchStartXRef.current === null || swipeTouchStartYRef.current === null) return;
+    const dx = e.changedTouches[0].clientX - swipeTouchStartXRef.current;
+    const dy = e.changedTouches[0].clientY - swipeTouchStartYRef.current;
+    swipeTouchStartXRef.current = null;
+    swipeTouchStartYRef.current = null;
+    if (Math.abs(dy) > Math.abs(dx)) return; // primarily vertical — ignore
+    if (Math.abs(dx) < 50) return;            // too short — ignore
+    if (dx < 0) skipToNext();                 // swipe left = forward (skip)
+    else goBack();                            // swipe right = back
   };
 
   const advance = () => {
@@ -2359,6 +2402,8 @@ export default function PrayerModePage() {
       // the .closing-pulse class (see index.css). Other phases keep
       // the static background.
       className={phase === "closing" ? "closing-pulse" : undefined}
+      onTouchStart={handleSwipeTouchStart}
+      onTouchEnd={handleSwipeTouchEnd}
       style={{
         background: phase === "closing" ? undefined : "#0C1F12",
         minHeight: "100dvh",

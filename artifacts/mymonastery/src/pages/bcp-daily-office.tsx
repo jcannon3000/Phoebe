@@ -272,6 +272,8 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
   const mainRef = useRef<HTMLElement | null>(null);
+  const swipeTouchStartXRef = useRef<number | null>(null);
+  const swipeTouchStartYRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
   const [, setViewerLocation] = useLocation();
   // Once-per-mount guard so a user who navigates BACK to the
@@ -475,6 +477,25 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     setSlideIdx(prevIdx);
   }
 
+  // Swipe left → next, swipe right → prev. We check that horizontal
+  // movement dominates vertical so we don't hijack scroll gestures on
+  // long-body slides (psalms, lessons, canticles). Threshold of 50px
+  // filters out small palm tremors.
+  function handleSwipeTouchStart(e: React.TouchEvent) {
+    swipeTouchStartXRef.current = e.touches[0].clientX;
+    swipeTouchStartYRef.current = e.touches[0].clientY;
+  }
+  function handleSwipeTouchEnd(e: React.TouchEvent) {
+    if (swipeTouchStartXRef.current === null || swipeTouchStartYRef.current === null) return;
+    const dx = e.changedTouches[0].clientX - swipeTouchStartXRef.current;
+    const dy = e.changedTouches[0].clientY - swipeTouchStartYRef.current;
+    swipeTouchStartXRef.current = null;
+    swipeTouchStartYRef.current = null;
+    if (Math.abs(dy) > Math.abs(dx)) return; // primarily vertical — let scroll handle it
+    if (Math.abs(dx) < 50) return;            // too small — ignore
+    if (dx < 0) next();
+    else prev();
+  }
 
   // Amen flow on intercession slides — fires the right endpoint for
   // the slide's source so the amen counts toward the recipient's
@@ -560,6 +581,8 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
 
   return (
     <div
+      onTouchStart={handleSwipeTouchStart}
+      onTouchEnd={handleSwipeTouchEnd}
       style={{
         height: "100dvh",
         overflow: "hidden",
