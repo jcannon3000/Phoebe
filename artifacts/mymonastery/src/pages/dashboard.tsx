@@ -3927,6 +3927,23 @@ export default function Dashboard() {
       const next = computeNextGatheringDate(r);
       const item: DashboardItem = { kind: "gathering", data: r };
       if (!next) {
+        // No computable next date — either the gathering is
+        // unscheduled (no dayPreference, no planned meetup) OR it
+        // was a one-time event that has already passed. We can
+        // tell the difference by checking dayPreference: if it
+        // exists and is in the past, the event already happened
+        // and should disappear from the dashboard instead of
+        // ending up in "Upcoming" with no date. Unscheduled
+        // gatherings (no dayPreference) still park in monthItems
+        // so the creator can finish setup from the card.
+        const dp = (r as { dayPreference?: string | null }).dayPreference;
+        if (dp) {
+          let anchor: Date | null = null;
+          try { anchor = parseISO(dp); } catch { /* ignore */ }
+          if (anchor && Number.isFinite(anchor.getTime()) && anchor.getTime() < _now.getTime()) {
+            continue;
+          }
+        }
         monthItems.push(item);
         continue;
       }
