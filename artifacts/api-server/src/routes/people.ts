@@ -320,7 +320,11 @@ router.get("/people", async (req, res): Promise<void> => {
             if (m.templateType !== "intercession") return false;
             const reachedAt = m.commitmentGoalReachedAt;
             if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > graceMs) return true;
-            if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return true;
+            // Mirror the read filter in routes/moments.ts: a completed
+            // intercession that hasn't been extended has currentStreak=0;
+            // an extended one has currentStreak restored to the prior
+            // goalDays. Use that to distinguish.
+            if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && m.currentStreak === 0) return true;
             return false;
           };
           const sharedMoments = sharedMomentsRaw.filter(
@@ -472,7 +476,7 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         if (m.templateType !== "intercession") return false;
         const reachedAt = m.commitmentGoalReachedAt;
         if (reachedAt && (now - new Date(reachedAt).getTime()) > graceMs) return true;
-        if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return true;
+        if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && m.currentStreak === 0) return true;
         return false;
       };
 
