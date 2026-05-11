@@ -338,10 +338,17 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             : 0;
         setSlideIdx(initialIdx);
         // ?seamlessReturn=1 is appended by the prayer-mode handoff
-        // when it bounces us back. Stamp our ref so the closing
-        // collect's "Amen" routes to the celebration summary.
+        // when it bounces us back. Stamp both refs: seamlessReturn so
+        // the closing collect's "Amen" routes to the celebration
+        // summary, and portalHandedOff so the auto-fire effect and
+        // next()/prev() skip-logic treat the portal as already-visited.
+        // Without the second stamp the component remount (navigate away
+        // → navigate back) resets portalHandedOffRef to false, and
+        // swiping back to the portal slide fires the intercessions
+        // handoff a second time.
         if (search.get("seamlessReturn") === "1") {
           seamlessReturnRef.current = true;
+          portalHandedOffRef.current = true;
         }
         if (search.has("slide") || search.has("mode") || search.has("returnTo") || search.has("seamlessReturn")) {
           try {
