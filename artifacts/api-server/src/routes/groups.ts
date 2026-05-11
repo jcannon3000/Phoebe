@@ -2016,6 +2016,20 @@ router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => 
   if (!result) { res.status(403).json({ error: "Not a member of this group" }); return; }
   const { group, member } = result;
 
+  // Hidden admins are invisible-by-design members. Posting a community-
+  // scoped prayer would either fan out a "{HiddenAdmin} is asking for
+  // your prayers" push to the whole group (immediately revealing their
+  // existence + name) OR land in the community feed (same leak via the
+  // wall). Block the POST entirely; the hidden admin can still post a
+  // global prayer via POST /prayer-requests if they want their own
+  // garden to see it — that path scopes the audience via
+  // getGardenUserIds, which already excludes the hidden-admin's
+  // hidden-admin groups from `myGroupIds`.
+  if (member.role === "hidden_admin") {
+    res.status(403).json({ error: "Hidden admins can't post community prayer requests in this group." });
+    return;
+  }
+
   const schema = z.object({
     body: z.string().trim().min(1, "Request cannot be empty").max(2000),
     isAnonymous: z.boolean().optional(),
@@ -2046,17 +2060,27 @@ router.post("/groups/:slug/prayer-requests", async (req, res): Promise<void> => 
   // links to the prayer's slide page. Pending invitees stay quiet
   // (they aren't members yet); anonymous requests collapse the title
   // to "Someone …". Fire-and-forget so a slow APNs round-trip can't
-  // delay the HTTP response.
+  // delay the HTTP response. Hidden admins of this group are
+  // excluded from the recipient set: they're invisible-by-design
+  // observers, and pushing a community prayer to them would leak
+  // their existence (the deep-link slide page would show in their
+  // app even though no other member can see them as a peer).
   (async () => {
     try {
       const memberRows = await db.select({
         userId: groupMembersTable.userId,
         joinedAt: groupMembersTable.joinedAt,
+        role: groupMembersTable.role,
       })
         .from(groupMembersTable)
         .where(eq(groupMembersTable.groupId, group.id));
       const recipientIds = memberRows
-        .filter(r => r.joinedAt && r.userId != null && r.userId !== user.id)
+        .filter(r =>
+          r.joinedAt &&
+          r.userId != null &&
+          r.userId !== user.id &&
+          r.role !== "hidden_admin",
+        )
         .map(r => r.userId as number);
       if (recipientIds.length === 0) return;
       const authorName = member.name ?? user.name ?? "Someone";
