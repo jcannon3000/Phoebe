@@ -1970,17 +1970,10 @@ function PrayerOfficeCard() {
   const devotionMode: LiturgyMode = isMorning ? "morning-devotion" : "early-evening-devotion";
   const officeMode: LiturgyMode = isMorning ? "morning" : "evening";
   const devotionLabel = isMorning ? "Morning Devotion" : "Evening Devotion";
-  const devotionBase = "/bcp/daily-devotions";
-  const officeLabel = isMorning ? "Morning Prayer" : "Evening Prayer";
-  const officeBase = "/bcp/daily-office";
+  const officeLabel = isMorning ? "Morning Office" : "Evening Office";
   const eyebrow = isMorning ? "🌅 This morning" : "🌙 This evening";
-
-  // Pull office-prefs to drive (a) which form is the BIG CTA — the
-  // user's last-prayed for the current side wins; falls back to the
-  // shorter Devotion if they've never prayed the office side at all
-  // — and (b) the office streak rendered under the View pill. Both
-  // come from /api/me/office-prefs in a single round-trip. Cached
-  // for 60s so re-renders don't refetch on every hover/scroll tick.
+  // Office-streak pill above the CTA. Same data source as before,
+  // just the prefs lookup — no longer used to pick a "big" CTA.
   const { data: officePrefs } = useQuery<{
     lastPrayedMorning: "office" | "devotion" | null;
     lastPrayedEvening: "office" | "devotion" | null;
@@ -1990,28 +1983,13 @@ function PrayerOfficeCard() {
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
   });
-  const lastPrayedSide = isMorning
-    ? (officePrefs?.lastPrayedMorning ?? "devotion")
-    : (officePrefs?.lastPrayedEvening ?? "devotion");
   const officeStreak = officePrefs?.officeStreak ?? 0;
-  // Big CTA = whichever form the user prayed last (or devotion as
-  // the friendlier default for first-time users). Small link = the
-  // other.
-  const bigIsOffice = lastPrayedSide === "office";
-  const bigLabel = bigIsOffice ? officeLabel : devotionLabel;
-  const bigMode: LiturgyMode = bigIsOffice ? officeMode : devotionMode;
-  const bigBase = bigIsOffice ? officeBase : devotionBase;
-  const smallLabel = bigIsOffice ? devotionLabel : officeLabel;
-  const smallMode: LiturgyMode = bigIsOffice ? devotionMode : officeMode;
-  const smallBase = bigIsOffice ? devotionBase : officeBase;
 
-  // Read per-mode "did the user start / finish this today" state from
-  // localStorage. We re-read on visibility change so the card flips to
-  // "Pray again" the moment the user returns to the dashboard after
-  // finishing an office (instead of waiting for a hard refresh). A
-  // bump counter on focus + visibility forces a re-read without
-  // needing to subscribe to localStorage (which doesn't fire same-tab
-  // storage events). The reader is cheap — two localStorage gets.
+  // Read per-mode "did the user start / finish this today" state
+  // from localStorage so each option in the chooser can label itself
+  // appropriately (Pray / Continue / Pray again). Re-read on focus
+  // so a return-trip after praying flips the label without needing
+  // a hard refresh.
   const [stateTick, setStateTick] = useState(0);
   useEffect(() => {
     const bump = () => setStateTick((t) => t + 1);
@@ -2024,96 +2002,110 @@ function PrayerOfficeCard() {
     };
   }, []);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _stateTick = stateTick; // reads below depend on this for re-render
-  const bigState = readOfficeProgress(bigMode);
-  const smallState = readOfficeProgress(smallMode);
+  const _stateTick = stateTick;
 
-  // CTA copy + URL:
-  //   • done       → "Pray again" + ?reset=1 (fresh start, but the
-  //                  completed flag stays so re-renders keep saying done)
-  //   • in-progress → "Continue …" (no URL param; the viewer's load
-  //                   effect picks up the saved slideIdx)
-  //   • fresh      → "Pray the …"
-  const bigCtaCopy =
-    bigState.kind === "done"
-      ? "Pray again"
-      : bigState.kind === "in-progress"
-        ? `Continue ${bigIsOffice ? "the " : ""}${bigLabel}`
-        : `Pray ${bigIsOffice ? "the full " : "the "}${bigLabel}`;
-  const bigHref = `${bigBase}?mode=${encodeURIComponent(bigMode)}${bigState.kind === "done" ? "&reset=1" : ""}`;
-  const smallCtaCopy =
-    smallState.kind === "done"
-      ? `or pray ${bigIsOffice ? `the ${smallLabel}` : `the full ${smallLabel} Office`} again`
-      : smallState.kind === "in-progress"
-        ? `or continue ${bigIsOffice ? `the ${smallLabel}` : `the full ${smallLabel} Office`}`
-        : `or pray ${bigIsOffice ? `the ${smallLabel}` : `the full ${smallLabel} Office`}`;
-  const smallHref = `${smallBase}?mode=${encodeURIComponent(smallMode)}${smallState.kind === "done" ? "&reset=1" : ""}`;
+  const devotionState = readOfficeProgress(devotionMode);
+  const officeStateLocal = readOfficeProgress(officeMode);
+  const verbFor = (state: { kind: string }) =>
+    state.kind === "done" ? "Pray again" : state.kind === "in-progress" ? "Continue" : "Start";
+
+  // Single chooser sheet. The card has ONE CTA — "Start today's
+  // prayer" — that opens this sheet with three depth options:
+  //   • Prayer List — the personal slideshow, no liturgical wrapping.
+  //   • Devotion — BCP short form, includes the prayer list at the end.
+  //   • Office — BCP full Daily Office, includes the prayer list at
+  //     the end.
+  // Time-of-day labels and links flip morning vs evening; the prayer
+  // list option stays the same either way (it's the same prayers).
+  const [chooserOpen, setChooserOpen] = useState(false);
+
+  type Option = {
+    title: string;
+    sub: string;
+    href: string;
+    verb: string;
+  };
+  const options: Option[] = [
+    {
+      title: "Prayer List",
+      sub: "Your personal slideshow",
+      href: "/prayer-mode",
+      verb: "Start",
+    },
+    {
+      title: devotionLabel,
+      sub: "From the BCP · with prayer list",
+      href: `/bcp/daily-devotions?mode=${encodeURIComponent(devotionMode)}${devotionState.kind === "done" ? "&reset=1" : ""}`,
+      verb: verbFor(devotionState),
+    },
+    {
+      title: officeLabel,
+      sub: "From the BCP · with prayer list",
+      href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
+      verb: verbFor(officeStateLocal),
+    },
+  ];
 
   return (
-    <div
-      className="relative flex rounded-xl overflow-hidden"
-      style={{
-        background: "rgba(46,107,64,0.08)",
-        border: "1px solid rgba(46,107,64,0.20)",
-      }}
-    >
-      <div className="flex-1 px-4 pt-2 pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-widest"
-            style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
-          >
-            {eyebrow}
-          </p>
-          <Link
-            href="/offices"
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
-            style={{
-              background: "rgba(46,107,64,0.22)",
-              color: "#A8C5A0",
-              border: "1px solid rgba(46,107,64,0.4)",
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            View
-          </Link>
-        </div>
-        {/* Headline (top-aligned) + streak pill (pushed down with
-            mt-2). items-start lets the two columns sit at different
-            vertical heights — the headline rides the top of the row
-            so it's tight against the eyebrow above; the streak sits
-            lower so it doesn't compete with the View pill above it.
-            mb-2 on the row gives breathing room below the streak
-            before the subtitle. Streak hidden when 0. */}
-        <div className="flex items-start justify-between gap-2 mb-0.5">
-          <p
-            className="text-base font-semibold"
-            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-          >
-            Pray with your community
-          </p>
-          {officeStreak > 0 && (
-            <span
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0 mt-2"
+    <>
+      <div
+        className="relative flex rounded-xl overflow-hidden"
+        style={{
+          background: "rgba(46,107,64,0.08)",
+          border: "1px solid rgba(46,107,64,0.20)",
+        }}
+      >
+        <div className="flex-1 px-4 pt-2 pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+            >
+              {eyebrow}
+            </p>
+            <Link
+              href="/offices"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
               style={{
-                background: "rgba(168,197,160,0.12)",
-                color: "rgba(168,197,160,0.95)",
-                border: "1px solid rgba(168,197,160,0.3)",
+                background: "rgba(46,107,64,0.22)",
+                color: "#A8C5A0",
+                border: "1px solid rgba(46,107,64,0.4)",
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
-              🔥 {officeStreak}
-            </span>
-          )}
-        </div>
-        <p
-          className="text-sm"
-          style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-        >
-          From the Book of Common Prayer
-        </p>
-        <Link href={bigHref}>
-          <div
+              View
+            </Link>
+          </div>
+          <div className="flex items-start justify-between gap-2 mb-0.5">
+            <p
+              className="text-base font-semibold"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+            >
+              Pray with your community
+            </p>
+            {officeStreak > 0 && (
+              <span
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0 mt-2"
+                style={{
+                  background: "rgba(168,197,160,0.12)",
+                  color: "rgba(168,197,160,0.95)",
+                  border: "1px solid rgba(168,197,160,0.3)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                🔥 {officeStreak}
+              </span>
+            )}
+          </div>
+          <p
+            className="text-sm"
+            style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+          >
+            From the Book of Common Prayer
+          </p>
+          <button
+            type="button"
+            onClick={() => setChooserOpen(true)}
             className="mt-3 w-full rounded-xl text-center cursor-pointer"
             style={{
               background: "rgba(46,107,64,0.22)",
@@ -2125,35 +2117,91 @@ function PrayerOfficeCard() {
               border: "1px solid rgba(46,107,64,0.45)",
             }}
           >
-            {bigCtaCopy} <span aria-hidden>→</span>
-          </div>
-        </Link>
-        {/* Spacing lives on the Link wrapper, not the <span>: the
-            inline `margin: 0` style on the previous <p> was clobbering
-            Tailwind's mt-* and collapsing the gap between the big
-            CTA and this link. mt-2 keeps them tight as a primary/
-            secondary pair. */}
-        <Link href={smallHref} className="block mt-2 text-center">
-          <span
-            className="text-[12px] cursor-pointer"
-            style={{
-              color: "rgba(143,175,150,0.7)",
-              fontFamily: "'Space Grotesk', sans-serif",
-              textDecoration: "underline",
-              textDecorationColor: "rgba(143,175,150,0.3)",
-              textUnderlineOffset: 3,
-            }}
-          >
-            {/* Small link follows the same fresh/continue/again pattern
-                as the big CTA. When the small is the OFFICE form (i.e.
-                the user last prayed a Devotion), it's labelled
-                "Morning/Evening Prayer Office" to distinguish from the
-                short Devotion. */}
-            {smallCtaCopy}
-          </span>
-        </Link>
+            Start today's prayer <span aria-hidden>→</span>
+          </button>
+        </div>
       </div>
-    </div>
+
+      {chooserOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 py-6"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+          onClick={() => setChooserOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-5"
+            style={{ background: "#0A1F12", border: "1px solid rgba(46,107,64,0.4)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p
+                className="text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: "rgba(200,212,192,0.5)" }}
+              >
+                {eyebrow}
+              </p>
+              <button
+                type="button"
+                onClick={() => setChooserOpen(false)}
+                className="text-xl leading-none"
+                style={{ color: "#8FAF96" }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p
+              className="text-base font-semibold mb-3"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              Start today's prayer
+            </p>
+            <div className="space-y-2">
+              {options.map((opt) => (
+                <Link key={opt.href} href={opt.href}>
+                  <div
+                    className="w-full rounded-xl p-3 cursor-pointer transition-opacity hover:opacity-90"
+                    onClick={() => setChooserOpen(false)}
+                    style={{
+                      background: "rgba(46,107,64,0.12)",
+                      border: "1px solid rgba(46,107,64,0.3)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-sm font-semibold truncate"
+                          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+                        >
+                          {opt.title}
+                        </p>
+                        <p
+                          className="text-[11px] mt-0.5"
+                          style={{ color: "rgba(143,175,150,0.75)", margin: 0 }}
+                        >
+                          {opt.sub}
+                        </p>
+                      </div>
+                      <span
+                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0"
+                        style={{
+                          background: "rgba(46,107,64,0.3)",
+                          color: "#C8D4C0",
+                          border: "1px solid rgba(46,107,64,0.5)",
+                          fontFamily: "'Space Grotesk', sans-serif",
+                        }}
+                      >
+                        {opt.verb} →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
