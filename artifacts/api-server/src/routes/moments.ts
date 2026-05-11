@@ -1509,15 +1509,22 @@ router.get("/moments", async (req, res): Promise<void> => {
         if (m.ritualId !== null || m.state === "archived") return false;
         // Intercessions: hide once finished (with a 2-day grace period
         // after the goal-reached stamp). Mirrors the cleanup cron.
+        // We treat `commitmentGoalTier > totalBlooms` as "a new cycle
+        // has started since the last completion" — that's how a
+        // renewal (via PATCH /goal or via extending goalDays on
+        // PATCH /moments/:id) brings the moment back into view. Both
+        // those handlers bump tier; totalBlooms only increments when
+        // a cycle is actually completed.
         if (m.templateType === "intercession") {
           const mAny = m as Record<string, unknown>;
           const reachedAt = mAny.commitmentGoalReachedAt as Date | null;
+          const tier = (mAny.commitmentGoalTier as number) ?? 1;
+          const isRenewedActiveCycle = tier > m.totalBlooms;
           if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return false;
-          // Legacy intercessions that hit their goal before the stamping
-          // code was deployed: totalBlooms > 0 with no commitmentGoalReachedAt
-          // means a completed cycle that just predates the stamping logic.
-          // Hide them — no grace because we don't have a completion timestamp.
-          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0) return false;
+          // Legacy / cleaned-up completed intercessions: hide unless
+          // the admin has started a new cycle (tier bumped past
+          // totalBlooms).
+          if (!reachedAt && m.goalDays > 0 && m.totalBlooms > 0 && !isRenewedActiveCycle) return false;
         }
         return true;
       });
@@ -3653,6 +3660,28 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   if (d.contemplativeDurationMinutes !== undefined) updates.contemplativeDurationMinutes = d.contemplativeDurationMinutes;
   if (d.allowMemberInvites !== undefined) updates.allowMemberInvites = d.allowMemberInvites;
   if (d.customEmoji !== undefined) updates.customEmoji = d.customEmoji;
+
+  // If the admin is extending goalDays on an intercession that has
+  // already completed at least one cycle, treat the edit as a renewal:
+  // start a new cycle. Without this the moment stays filtered out of
+  // /api/moments (the "completed intercession" rule hides it) and
+  // members never see it again even though the goal is now bigger.
+  // Mirrors what PATCH /goal does for the progressive sessions goal:
+  // reset progress + bump the tier counter, leave totalBlooms (history)
+  // alone. The filter uses tier > totalBlooms as the "active cycle"
+  // signal so bumping tier is what brings the moment back into view.
+  if (
+    d.goalDays !== undefined
+    && moment.templateType === "intercession"
+    && moment.totalBlooms > 0
+  ) {
+    const prevTier = (moment as Record<string, unknown>).commitmentGoalTier as number ?? 1;
+    updates.commitmentGoalTier = prevTier + 1;
+    updates.currentStreak = 0;
+    updates.commitmentSessionsLogged = 0;
+    updates.commitmentGoalReachedAt = null;
+    updates.state = "active";
+  }
 
   if (Object.keys(updates).length === 0) {
     res.json({ ok: true });
