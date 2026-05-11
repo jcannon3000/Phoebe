@@ -38,6 +38,13 @@ type Metrics = {
   timesPrayedToday: number;
   timesPrayedThisWeek: number;
 
+  // "offices" = distinct (user, day, side) tuples for Daily Office
+  // / Devotion sessions. Max two per person per day (morning +
+  // evening); sessions that reached <3 slides don't count.
+  officesTotal: number;
+  officesToday: number;
+  officesThisWeek: number;
+
   // "Time praying" — total seconds members have spent in the
   // slideshow / Office / Devotion viewers. Tracked per-session and
   // capped per-session in the POST /prayer-sessions route, so a
@@ -216,6 +223,26 @@ export function MetricsDashboard({ slug }: { slug: string }) {
         <StatTile label="Today" value={data.timesPrayedToday} />
         <StatTile label="This week" value={data.timesPrayedThisWeek} />
         <StatTile label="All time" value={data.timesPrayedTotal} />
+      </div>
+
+      {/* Offices — Daily Office / Devotion sessions, deduped to one
+          per (person, day, side). A "side" is morning or evening,
+          so the daily ceiling for any one person is 2. Surfaces
+          this separate from Times prayed because tracking the
+          office cadence is a meaningfully different signal than
+          tracking any prayer activity. */}
+      <SectionHeader label="Offices" />
+      <p
+        className="text-[11px] leading-relaxed mb-3"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
+      >
+        Daily Office / Devotion completions. Up to two per person
+        per day (morning + evening). Reaching ≥3 slides counts.
+      </p>
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        <StatTile label="Today" value={data.officesToday} />
+        <StatTile label="This week" value={data.officesThisWeek} />
+        <StatTile label="All time" value={data.officesTotal} />
       </div>
 
       {/* Time praying section was removed from the metrics dashboard

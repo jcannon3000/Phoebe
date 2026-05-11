@@ -675,6 +675,40 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       -- People ≤ Times always holds.
       prayer_days AS (
         SELECT DISTINCT user_id, day FROM prayer_events
+      ),
+      -- Offices: one session per (user, day, side). A side is
+      -- "morning" (morning-prayer + morning-devotion) or "evening"
+      -- (evening-prayer + early-evening-devotion) so the max count
+      -- for any one person per day is 2 — once for the morning
+      -- office, once for the evening. Same ≥3-slides + 15-min-dedup
+      -- semantics as the unified prayer event above (the dedup is
+      -- folded into the DISTINCT at the day+side grain). Surfaces
+      -- a "Offices" row in the metrics dashboard separate from
+      -- the broader Times prayed count.
+      office_session_candidates AS (
+        SELECT
+          ps.user_id,
+          ps.ended_at AS occurred_at,
+          CASE
+            WHEN ps.surface IN ('morning-prayer', 'morning-devotion') THEN 'morning'
+            ELSE 'evening'
+          END AS side
+        FROM prayer_sessions ps
+        WHERE ps.user_id IN (SELECT user_id FROM members)
+          AND ps.surface IN (
+            'morning-prayer',
+            'evening-prayer',
+            'morning-devotion',
+            'early-evening-devotion'
+          )
+          AND (ps.slides_completed IS NULL OR ps.slides_completed >= 3)
+      ),
+      office_days AS (
+        SELECT DISTINCT
+          user_id,
+          side,
+          to_char((occurred_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day
+        FROM office_session_candidates
       )
       SELECT
         (SELECT COUNT(*) FROM members)::int AS total_members,
@@ -696,6 +730,13 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $2)::int AS prayed_today,
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days WHERE day >= $3)::int AS prayed_week,
         (SELECT COUNT(DISTINCT user_id) FROM prayer_days)::int AS prayed_all_time,
+
+        -- Offices: count of (user, day, side) tuples. Caps at 2 per
+        -- person per day (morning + evening). Window-scoped same as
+        -- the Times prayed columns.
+        (SELECT COUNT(*) FROM office_days WHERE day >= $2)::int AS offices_today,
+        (SELECT COUNT(*) FROM office_days WHERE day >= $3)::int AS offices_week,
+        (SELECT COUNT(*) FROM office_days)::int AS offices_total,
 
         -- "Time praying" — sum of duration_seconds across every
         -- prayer_sessions row whose user is in this community. Sessions
@@ -734,6 +775,14 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       timesPrayedTotal: Number(row.times_prayed_total ?? 0),
       timesPrayedToday: Number(row.times_prayed_today ?? 0),
       timesPrayedThisWeek: Number(row.times_prayed_week ?? 0),
+
+      // "offices" — count of (user, day, side) tuples for Daily
+      // Office / Devotion sessions. Max two per person per day
+      // (morning + evening). Reaches ≥3 slides counts; "tap and
+      // bail" does not.
+      officesTotal: Number(row.offices_total ?? 0),
+      officesToday: Number(row.offices_today ?? 0),
+      officesThisWeek: Number(row.offices_week ?? 0),
 
       // "Time praying" — total seconds spent in the slideshow / Office
       // / Devotion viewers across every joined community member.
