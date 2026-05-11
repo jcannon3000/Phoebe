@@ -2040,7 +2040,7 @@ function PrayerOfficeCard() {
             lower so it doesn't compete with the View pill above it.
             mb-2 on the row gives breathing room below the streak
             before the subtitle. Streak hidden when 0. */}
-        <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-start justify-between gap-2 mb-0.5">
           <p
             className="text-base font-semibold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
