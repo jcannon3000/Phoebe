@@ -63,7 +63,7 @@ function initials(name: string): string {
 // timer) when slideKey changes; here that's a no-op because the
 // slide is the page itself, but we keep the prop for parity.
 function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdvance: () => void }) {
-  const HOLD_MS = 7000;
+  const HOLD_MS = 4000;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

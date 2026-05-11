@@ -210,7 +210,7 @@ function AmenButton({ slideKey, onAdvance }: {
   slideKey: string | number;
   onAdvance: () => void;
 }) {
-  const HOLD_MS = 7000;
+  const HOLD_MS = 4000;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
