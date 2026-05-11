@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 
 export default function ForgotPassword() {
   const [, setLocation] = useLocation();
@@ -17,14 +18,24 @@ export default function ForgotPassword() {
     }
     setSubmitting(true);
     try {
-      await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
+      // apiRequest throws on 4xx/5xx with the server's specific
+      // message attached. Raw fetch() didn't — a 429 rate-limit
+      // silently fell into the success branch, and any HTTP
+      // failure short of a network drop never surfaced to the
+      // user.
+      await apiRequest("POST", "/api/auth/forgot-password", { email: email.trim() });
       setSent(true);
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // 429 rate limit: surface the server's friendly cooldown
+        // message ("Too many password reset requests…"). 400
+        // validation errors: surface them too. Anything else falls
+        // back to the generic line.
+        setError(err.message || "Something went wrong. Please try again.");
+      } else {
+        // True network failure — fetch itself threw.
+        setError("Couldn't reach Phoebe. Check your connection and try again.");
+      }
     } finally {
       setSubmitting(false);
     }
