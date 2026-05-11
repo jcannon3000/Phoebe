@@ -248,6 +248,84 @@ export async function sendDailyBellIcsInvite(opts: {
   }
 }
 
+// ─── Password reset email ───────────────────────────────────────────────────
+// Mirrors sendMagicLinkEmail's styling so password reset emails look like the
+// rest of Phoebe's transactional mail — not a bare <p> tag link. Renders the
+// recipient's name in the greeting so it doesn't read as a generic broadcast.
+export async function sendPasswordResetEmail(opts: {
+  to: string;
+  name: string;
+  resetUrl: string;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) {
+    console.warn("Gmail client unavailable — skipping password reset email");
+    return false;
+  }
+
+  const subject = "Reset your Phoebe password";
+  const safeName = (opts.name ?? "").trim() || "there";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
+          <tr>
+            <td>
+              <div style="margin-bottom:28px;">
+                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+              </div>
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
+                Reset your password
+              </h1>
+              <p style="margin:0 0 28px;font-size:15px;color:#6b6460;line-height:1.6;">
+                Hi ${safeName}, click below to choose a new password. This link expires in 1 hour.
+              </p>
+              <a href="${opts.resetUrl}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">
+                Reset password →
+              </a>
+              <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
+                If you didn't request a password reset, you can ignore this email — your password won't change.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const text = [
+    `Hi ${safeName},`,
+    "",
+    "Click this link to choose a new password (expires in 1 hour):",
+    opts.resetUrl,
+    "",
+    "If you didn't request a password reset, you can ignore this email — your password won't change.",
+    "",
+    "— Phoebe",
+  ].join("\n");
+
+  try {
+    const raw = encodeMimeMessage({ to: opts.to, subject, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    console.error("Failed to send password reset email:", err);
+    return false;
+  }
+}
+
 export async function sendMagicLinkEmail(
   to: string,
   magicLink: string,

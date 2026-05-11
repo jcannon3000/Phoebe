@@ -1,5 +1,5 @@
 import { getFrontendUrl, getInviteBaseUrl } from "../lib/urls";
-import { sendEmail } from "../lib/email";
+import { sendPasswordResetEmail } from "../lib/email";
 import { Router, type IRouter } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
@@ -665,7 +665,35 @@ router.post(
 });
 
 // ─── POST /api/auth/forgot-password ──────────────────────────────────────────
-router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+// Rate-limited tightly. The endpoint always returns ok: true to prevent email
+// enumeration, which makes it a tempting target for two abuses:
+//   • Email-bombing — flooding a known user's inbox with reset links
+//   • Token-rotation — repeatedly invalidating a user's outstanding reset
+//     token (each successful call overwrites resetToken on the row)
+// Three caps:
+//   • Per-IP: 10 / hour (typical user issues 1, abusers issue many)
+//   • Per-email: 5 / hour (a real user typo-ing into a different address
+//     can still recover; an abuser knowing one email can't bomb it)
+//   • Global: keeps the Gmail send quota safe
+router.post(
+  "/auth/forgot-password",
+  rateLimit({
+    name: "auth_forgot_password_ip",
+    max: 10,
+    windowMs: 60 * 60 * 1000,
+    message: "Too many password reset requests from your network. Please try again later.",
+  }),
+  rateLimit({
+    name: "auth_forgot_password_email",
+    max: 5,
+    windowMs: 60 * 60 * 1000,
+    keyFn: (req) => {
+      const e = (req.body as { email?: string } | undefined)?.email;
+      return typeof e === "string" && e.length > 0 ? e.trim().toLowerCase() : null;
+    },
+    message: "Too many password reset requests for this account. Please try again later.",
+  }),
+  async (req, res): Promise<void> => {
   const { email } = req.body as { email?: string };
   if (!email || !email.includes("@")) {
     res.status(400).json({ error: "A valid email address is required." }); return;
@@ -674,7 +702,12 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
   const normalizedEmail = email.trim().toLowerCase();
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, normalizedEmail));
 
-  // Always return success to prevent email enumeration
+  // Always return success to prevent email enumeration. Two cases bail
+  // here without sending mail: (a) no account, (b) account exists but
+  // was created via OAuth and has no passwordHash — the reset flow would
+  // create a half-state where they can password-login an account they
+  // only ever used Google for, which is surprising. They should keep
+  // using Google sign-in.
   if (!user || !user.passwordHash) {
     res.json({ ok: true }); return;
   }
@@ -688,16 +721,19 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
 
   const resetUrl = `${getInviteBaseUrl()}/reset-password?token=${token}`;
 
-  // Try to send email; fall back to logging locally
-  try {
-    await sendEmail({
-      to: normalizedEmail,
-      subject: "Reset your Phoebe password",
-      text: `Hi ${user.name},\n\nClick the link below to reset your password. It expires in 1 hour.\n\n${resetUrl}\n\nIf you didn't request this, you can ignore this email.\n\n— Phoebe`,
-      html: `<p>Hi ${user.name},</p><p>Click the link below to reset your password. It expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p><p>— Phoebe</p>`,
-    });
-  } catch {
-    console.info(`[forgot-password] Reset link for ${normalizedEmail}: ${resetUrl}`);
+  // sendPasswordResetEmail returns false on failure (it doesn't throw),
+  // so a try/catch alone would silently miss misconfiguration. Log the
+  // link to the server console as a fallback — useful in dev and in
+  // production when the Gmail OAuth refresh token has lapsed. The user
+  // still sees ok: true (no enumeration leak); ops can recover the link
+  // from logs to forward manually if the situation demands.
+  const sent = await sendPasswordResetEmail({
+    to: normalizedEmail,
+    name: user.name,
+    resetUrl,
+  });
+  if (!sent) {
+    console.info(`[forgot-password] Email send failed; reset link for ${normalizedEmail}: ${resetUrl}`);
   }
 
   res.json({ ok: true });

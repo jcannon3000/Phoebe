@@ -233,19 +233,7 @@ export default function Onboarding() {
                     </button>
                   </div>
                   {error && (
-                    <div>
-                      <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>
-                      <div className="text-right mt-1">
-                        <button
-                          type="button"
-                          onClick={() => setLocation("/forgot-password")}
-                          className="text-xs"
-                          style={{ color: "#8FAF96" }}
-                        >
-                          Forgot password?
-                        </button>
-                      </div>
-                    </div>
+                    <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>
                   )}
                   <button
                     type="submit"
@@ -256,6 +244,19 @@ export default function Onboarding() {
                       <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
                     ) : "Sign in"}
                   </button>
+                  {/* Always-visible reset link below the sign-in button —
+                      a user who's forgotten their password shouldn't have to
+                      fail a login attempt before the link appears. */}
+                  <div className="text-center mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/forgot-password")}
+                      className="text-xs"
+                      style={{ color: "#8FAF96" }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                 </motion.form>
               )}
 
