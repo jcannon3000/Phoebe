@@ -707,8 +707,15 @@ router.post(
   // was created via OAuth and has no passwordHash — the reset flow would
   // create a half-state where they can password-login an account they
   // only ever used Google for, which is surprising. They should keep
-  // using Google sign-in.
-  if (!user || !user.passwordHash) {
+  // using Google sign-in. Logged at info so ops can diagnose "I never
+  // got my reset email" reports — the user still sees the generic ok:
+  // true, so no enumeration leak.
+  if (!user) {
+    console.info(`[forgot-password] No account for ${normalizedEmail} — silent no-op`);
+    res.json({ ok: true }); return;
+  }
+  if (!user.passwordHash) {
+    console.info(`[forgot-password] Account ${normalizedEmail} has no passwordHash (OAuth-only signup) — silent no-op`);
     res.json({ ok: true }); return;
   }
 
@@ -732,8 +739,10 @@ router.post(
     name: user.name,
     resetUrl,
   });
-  if (!sent) {
-    console.info(`[forgot-password] Email send failed; reset link for ${normalizedEmail}: ${resetUrl}`);
+  if (sent) {
+    console.info(`[forgot-password] Reset email sent to ${normalizedEmail}`);
+  } else {
+    console.warn(`[forgot-password] Email send FAILED for ${normalizedEmail}; reset link: ${resetUrl}`);
   }
 
   res.json({ ok: true });
