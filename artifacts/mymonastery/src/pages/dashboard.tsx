@@ -10,7 +10,9 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
-import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
+// Office-progress reading + LiturgyMode now live on /prayer-chooser
+// (the new dedicated screen) — the dashboard card itself only renders
+// the time-of-day eyebrow + CTA copy and links into the chooser.
 
 import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek, endOfWeek, addWeeks, differenceInCalendarDays } from "date-fns";
 
@@ -1967,10 +1969,6 @@ function NewPrayerRequestsCard({
 // Office picker uses for "today's office."
 function PrayerOfficeCard() {
   const isMorning = new Date().getHours() < 12;
-  const devotionMode: LiturgyMode = isMorning ? "morning-devotion" : "early-evening-devotion";
-  const officeMode: LiturgyMode = isMorning ? "morning" : "evening";
-  const devotionLabel = isMorning ? "Morning Devotion" : "Evening Devotion";
-  const officeLabel = isMorning ? "Morning Office" : "Evening Office";
   const eyebrow = isMorning ? "🌅 This morning" : "🌙 This evening";
   // Office-streak pill above the CTA. Same data source as before,
   // just the prefs lookup — no longer used to pick a "big" CTA.
@@ -1985,75 +1983,21 @@ function PrayerOfficeCard() {
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
 
-  // Read per-mode "did the user start / finish this today" state
-  // from localStorage so each option in the chooser can label itself
-  // appropriately (Pray / Continue / Pray again). Re-read on focus
-  // so a return-trip after praying flips the label without needing
-  // a hard refresh.
-  const [stateTick, setStateTick] = useState(0);
-  useEffect(() => {
-    const bump = () => setStateTick((t) => t + 1);
-    const onVis = () => { if (document.visibilityState === "visible") bump(); };
-    document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("focus", bump);
-    return () => {
-      document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("focus", bump);
-    };
-  }, []);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _stateTick = stateTick;
-
-  const devotionState = readOfficeProgress(devotionMode);
-  const officeStateLocal = readOfficeProgress(officeMode);
-  const verbFor = (state: { kind: string }) =>
-    state.kind === "done" ? "Pray again" : state.kind === "in-progress" ? "Continue" : "Start";
-
-  // Single chooser sheet. The card has ONE CTA — "Start today's
-  // prayer" — that opens this sheet with three depth options:
-  //   • Prayer List — the personal slideshow, no liturgical wrapping.
-  //   • Devotion — BCP short form, includes the prayer list at the end.
-  //   • Office — BCP full Daily Office, includes the prayer list at
-  //     the end.
-  // Time-of-day labels and links flip morning vs evening; the prayer
-  // list option stays the same either way (it's the same prayers).
-  const [chooserOpen, setChooserOpen] = useState(false);
-
-  type Option = {
-    title: string;
-    sub: string;
-    href: string;
-    verb: string;
-  };
-  const options: Option[] = [
-    {
-      title: "Prayer List",
-      sub: "Your personal slideshow",
-      href: "/prayer-mode",
-      verb: "Start",
-    },
-    {
-      title: devotionLabel,
-      sub: "From the BCP · with prayer list",
-      href: `/bcp/daily-devotions?mode=${encodeURIComponent(devotionMode)}${devotionState.kind === "done" ? "&reset=1" : ""}`,
-      verb: verbFor(devotionState),
-    },
-    {
-      title: officeLabel,
-      sub: "From the BCP · with prayer list",
-      href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
-      verb: verbFor(officeStateLocal),
-    },
-  ];
+  // CTA copy + destination. The button used to open an inline modal
+  // chooser; per user direction it now navigates to a dedicated
+  // /prayer-chooser screen so the depth options live on a proper
+  // route (back-button behaviour, deep-linkable, sound effect on
+  // entry). Time-of-day decides the copy on the home button — the
+  // /prayer-chooser screen carries the same split for its headline.
+  const ctaCopy = isMorning ? "Start this morning's prayer" : "Start this evening's prayer";
 
   return (
-    <>
-      <div
-        className="relative flex rounded-xl overflow-hidden"
-        style={{
-          background: "rgba(46,107,64,0.08)",
-          border: "1px solid rgba(46,107,64,0.20)",
-        }}
+    <div
+      className="relative flex rounded-xl overflow-hidden"
+      style={{
+        background: "rgba(46,107,64,0.08)",
+        border: "1px solid rgba(46,107,64,0.20)",
+      }}
       >
         <div className="flex-1 px-4 pt-2 pb-3">
           <div className="flex items-start justify-between gap-2">
@@ -2103,105 +2047,26 @@ function PrayerOfficeCard() {
           >
             From the Book of Common Prayer
           </p>
-          <button
-            type="button"
-            onClick={() => setChooserOpen(true)}
-            className="mt-3 w-full rounded-xl text-center cursor-pointer"
-            style={{
-              background: "rgba(46,107,64,0.22)",
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 14,
-              fontWeight: 500,
-              padding: "9px 12px",
-              border: "1px solid rgba(46,107,64,0.45)",
-            }}
-          >
-            Start today's prayer <span aria-hidden>→</span>
-          </button>
-        </div>
+          <Link href="/prayer-chooser">
+              <div
+                role="button"
+                tabIndex={0}
+                className="mt-3 w-full rounded-xl text-center cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.22)",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  padding: "9px 12px",
+                  border: "1px solid rgba(46,107,64,0.45)",
+                }}
+              >
+                {ctaCopy} <span aria-hidden>→</span>
+              </div>
+            </Link>
       </div>
-
-      {chooserOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 py-6"
-          style={{ background: "rgba(0,0,0,0.55)" }}
-          onClick={() => setChooserOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl p-5"
-            style={{ background: "#0A1F12", border: "1px solid rgba(46,107,64,0.4)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <p
-                className="text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: "rgba(200,212,192,0.5)" }}
-              >
-                {eyebrow}
-              </p>
-              <button
-                type="button"
-                onClick={() => setChooserOpen(false)}
-                className="text-xl leading-none"
-                style={{ color: "#8FAF96" }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <p
-              className="text-base font-semibold mb-3"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Start today's prayer
-            </p>
-            <div className="space-y-2">
-              {options.map((opt) => (
-                <Link key={opt.href} href={opt.href}>
-                  <div
-                    className="w-full rounded-xl p-3 cursor-pointer transition-opacity hover:opacity-90"
-                    onClick={() => setChooserOpen(false)}
-                    style={{
-                      background: "rgba(46,107,64,0.12)",
-                      border: "1px solid rgba(46,107,64,0.3)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className="text-sm font-semibold truncate"
-                          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-                        >
-                          {opt.title}
-                        </p>
-                        <p
-                          className="text-[11px] mt-0.5"
-                          style={{ color: "rgba(143,175,150,0.75)", margin: 0 }}
-                        >
-                          {opt.sub}
-                        </p>
-                      </div>
-                      <span
-                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0"
-                        style={{
-                          background: "rgba(46,107,64,0.3)",
-                          color: "#C8D4C0",
-                          border: "1px solid rgba(46,107,64,0.5)",
-                          fontFamily: "'Space Grotesk', sans-serif",
-                        }}
-                      >
-                        {opt.verb} →
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 }
 

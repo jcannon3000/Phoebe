@@ -86,6 +86,7 @@ import LetterNew from "./pages/Letters/LetterNew";
 import LetterSplash from "./pages/Letters/LetterSplash";
 import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
+import PrayerChooserPage from "./pages/prayer-chooser";
 import GatheringsPage from "./pages/gatherings";
 import MomentNew from "./pages/moment-new";
 import MomentDetail from "./pages/moment-detail";
@@ -313,6 +314,7 @@ function Router() {
       <Route path="/" component={Onboarding} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/prayer-chooser" component={PrayerChooserPage} />
       <Route path="/dashboard" component={Dashboard} />
       {/* Phoebe Parish — simplified tier. /parish is the dashboard
           for parish-only users; /parish/onboarding is the parish
