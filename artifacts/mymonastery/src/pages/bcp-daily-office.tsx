@@ -37,6 +37,54 @@ export type LiturgyMode =
   | "morning-devotion"
   | "early-evening-devotion";
 
+// ── Per-day localStorage progress ───────────────────────────────────────────
+// Mirrors prayer-mode's resume-where-you-left-off pattern. The home-screen
+// PrayerOfficeCard reads these keys to flip its CTA between:
+//   • Pray the Morning Devotion → (fresh)
+//   • Continue the Morning Devotion → (slideIdx > 0, not done)
+//   • Pray again (done today)
+// Keys are scoped per mode + local-date so a stale yesterday entry can't
+// resume into today's office. The dashboard reader below uses the same
+// keys / today-bucketing logic.
+
+function officeTodayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+export function officeProgressKey(mode: LiturgyMode, todayKey: string = officeTodayKey()): string {
+  return `phoebe:office-progress:${mode}:${todayKey}`;
+}
+export function officeCompletedKey(mode: LiturgyMode, todayKey: string = officeTodayKey()): string {
+  return `phoebe:office-completed:${mode}:${todayKey}`;
+}
+
+/** Read today's progress for a single office mode. Safe in SSR-ish contexts
+ *  (returns the default shape if localStorage isn't available). */
+export type OfficeProgressState =
+  | { kind: "fresh" }
+  | { kind: "in-progress"; slideIdx: number; total: number }
+  | { kind: "done" };
+
+export function readOfficeProgress(mode: LiturgyMode): OfficeProgressState {
+  if (typeof window === "undefined") return { kind: "fresh" };
+  const today = officeTodayKey();
+  try {
+    if (localStorage.getItem(officeCompletedKey(mode, today))) return { kind: "done" };
+    const raw = localStorage.getItem(officeProgressKey(mode, today));
+    if (!raw) return { kind: "fresh" };
+    const parsed = JSON.parse(raw) as { slideIdx?: number; total?: number };
+    if (typeof parsed.slideIdx === "number" && parsed.slideIdx > 0 && typeof parsed.total === "number") {
+      // If they're parked on the last slide but haven't tapped Amen the
+      // closing collect, treat as in-progress — the "done" flag is set
+      // only by the explicit completion handler below.
+      return { kind: "in-progress", slideIdx: parsed.slideIdx, total: parsed.total };
+    }
+    return { kind: "fresh" };
+  } catch {
+    return { kind: "fresh" };
+  }
+}
+
 interface OfficeViewerProps {
   // Backward-compat: callers that already passed `office` keep working.
   // New callers (Daily Devotions) pass `mode`.
@@ -306,6 +354,26 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
       slidesReachedRef.current = slideIdx + 1;
     }
   }, [slideIdx]);
+
+  // Persist progress per-mode/per-day so the dashboard PrayerOfficeCard
+  // can render "Continue Morning Devotion →" when the user bails partway.
+  // Skips slideIdx 0 (a fresh open shouldn't write a no-op entry that
+  // makes the card flicker into "Continue" with nothing to continue) and
+  // skips while slides haven't loaded yet (total would be 0). The
+  // "completed" flag is set in handleEnd below — once set, this effect
+  // still writes the progress key (slideIdx may advance further on a
+  // second pass), but the completed flag wins for the dashboard's
+  // "Pray again" copy until midnight.
+  useEffect(() => {
+    if (slides.length === 0) return;
+    if (slideIdx <= 0) return;
+    try {
+      localStorage.setItem(
+        officeProgressKey(resolvedMode),
+        JSON.stringify({ slideIdx, total: slides.length }),
+      );
+    } catch { /* non-fatal */ }
+  }, [slideIdx, slides.length, resolvedMode]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -332,10 +400,31 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
         // resume at the saved slide index.
         const search = new URLSearchParams(window.location.search);
         const slideParam = parseInt(search.get("slide") ?? "", 10);
-        const initialIdx =
-          Number.isFinite(slideParam) && slideParam >= 0 && slideParam < fetched.length
-            ? slideParam
-            : 0;
+        const resetFlow = search.get("reset") === "1";
+        // Resolve initial slide index. Priority:
+        //   1. ?slide=N — seamless return from intercessions portal
+        //   2. ?reset=1 — dashboard "Pray again" CTA; wipes today's
+        //      in-progress key so subsequent advances start clean.
+        //      We DON'T wipe the completed flag — they've already
+        //      prayed a full pass today, so the dashboard card should
+        //      stay in "Pray again" copy even after this second pass.
+        //   3. localStorage in-progress entry — pick up where they left
+        //      off. Only honored when not done (completed flag absent)
+        //      and the saved index is within bounds of the fresh slide
+        //      list (defensive against a server-side liturgy change).
+        //   4. 0 — fresh start.
+        let initialIdx = 0;
+        if (Number.isFinite(slideParam) && slideParam >= 0 && slideParam < fetched.length) {
+          initialIdx = slideParam;
+        } else if (resetFlow) {
+          try { localStorage.removeItem(officeProgressKey(resolvedMode)); } catch { /* non-fatal */ }
+          initialIdx = 0;
+        } else {
+          const state = readOfficeProgress(resolvedMode);
+          if (state.kind === "in-progress" && state.slideIdx < fetched.length) {
+            initialIdx = state.slideIdx;
+          }
+        }
         setSlideIdx(initialIdx);
         // ?seamlessReturn=1 is appended by the prayer-mode handoff
         // when it bounces us back. Stamp both refs: seamlessReturn so
@@ -350,7 +439,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           seamlessReturnRef.current = true;
           portalHandedOffRef.current = true;
         }
-        if (search.has("slide") || search.has("mode") || search.has("returnTo") || search.has("seamlessReturn")) {
+        if (search.has("slide") || search.has("mode") || search.has("returnTo") || search.has("seamlessReturn") || search.has("reset")) {
           try {
             window.history.replaceState(null, "", window.location.pathname);
           } catch { /* non-fatal */ }
@@ -576,9 +665,17 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
       setSlideIdx(slideIdx + 1);
       return;
     }
-    // End of office: route to the deferred celebration summary if
-    // we came through the seamless intercessions handoff, otherwise
-    // exit cleanly.
+    // End of office: stamp the "completed today" flag so the dashboard
+    // PrayerOfficeCard's big CTA flips to "Pray again" for the rest of
+    // the day. We also clear the in-progress key — the office isn't
+    // resumable anymore (they just finished it), but a fresh open will
+    // still see the completed flag and decide what copy to show.
+    try {
+      localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+      localStorage.removeItem(officeProgressKey(resolvedMode));
+    } catch { /* non-fatal */ }
+    // Route to the deferred celebration summary if we came through the
+    // seamless intercessions handoff, otherwise exit cleanly.
     if (seamlessReturnRef.current) {
       setViewerLocation("/prayer-mode?closingOnly=1");
     } else {
@@ -1849,6 +1946,15 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             // instead — "N from your parish prayed today / this
             // week". Otherwise the final-slide tap just exits.
             const handleEnd = () => {
+              // Mark today's pass complete so the dashboard PrayerOfficeCard
+              // flips to "Pray again" copy for the rest of the day. Same
+              // stamp the Amen-path uses in amen() above — kept in both
+              // places because either button can be the final tap (Amen
+              // for prayer-shaped closings, Done for non-prayer ones).
+              try {
+                localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+                localStorage.removeItem(officeProgressKey(resolvedMode));
+              } catch { /* non-fatal */ }
               if (parishOnly) {
                 setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
               } else if (seamlessReturnRef.current) {

@@ -10,6 +10,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
+import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
 
 import { format, isToday, parseISO, addDays, isBefore, startOfDay, startOfWeek, endOfWeek, addWeeks, differenceInCalendarDays } from "date-fns";
 
@@ -1966,14 +1967,12 @@ function NewPrayerRequestsCard({
 // Office picker uses for "today's office."
 function PrayerOfficeCard() {
   const isMorning = new Date().getHours() < 12;
+  const devotionMode: LiturgyMode = isMorning ? "morning-devotion" : "early-evening-devotion";
+  const officeMode: LiturgyMode = isMorning ? "morning" : "evening";
   const devotionLabel = isMorning ? "Morning Devotion" : "Evening Devotion";
-  const devotionHref = isMorning
-    ? "/bcp/daily-devotions?mode=morning-devotion"
-    : "/bcp/daily-devotions?mode=early-evening-devotion";
+  const devotionBase = "/bcp/daily-devotions";
   const officeLabel = isMorning ? "Morning Prayer" : "Evening Prayer";
-  const officeHref = isMorning
-    ? "/bcp/daily-office?mode=morning"
-    : "/bcp/daily-office?mode=evening";
+  const officeBase = "/bcp/daily-office";
   const eyebrow = isMorning ? "🌅 This morning" : "🌙 This evening";
 
   // Pull office-prefs to drive (a) which form is the BIG CTA — the
@@ -2000,9 +1999,55 @@ function PrayerOfficeCard() {
   // other.
   const bigIsOffice = lastPrayedSide === "office";
   const bigLabel = bigIsOffice ? officeLabel : devotionLabel;
-  const bigHref = bigIsOffice ? officeHref : devotionHref;
+  const bigMode: LiturgyMode = bigIsOffice ? officeMode : devotionMode;
+  const bigBase = bigIsOffice ? officeBase : devotionBase;
   const smallLabel = bigIsOffice ? devotionLabel : officeLabel;
-  const smallHref = bigIsOffice ? devotionHref : officeHref;
+  const smallMode: LiturgyMode = bigIsOffice ? devotionMode : officeMode;
+  const smallBase = bigIsOffice ? devotionBase : officeBase;
+
+  // Read per-mode "did the user start / finish this today" state from
+  // localStorage. We re-read on visibility change so the card flips to
+  // "Pray again" the moment the user returns to the dashboard after
+  // finishing an office (instead of waiting for a hard refresh). A
+  // bump counter on focus + visibility forces a re-read without
+  // needing to subscribe to localStorage (which doesn't fire same-tab
+  // storage events). The reader is cheap — two localStorage gets.
+  const [stateTick, setStateTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setStateTick((t) => t + 1);
+    const onVis = () => { if (document.visibilityState === "visible") bump(); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", bump);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", bump);
+    };
+  }, []);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _stateTick = stateTick; // reads below depend on this for re-render
+  const bigState = readOfficeProgress(bigMode);
+  const smallState = readOfficeProgress(smallMode);
+
+  // CTA copy + URL:
+  //   • done       → "Pray again" + ?reset=1 (fresh start, but the
+  //                  completed flag stays so re-renders keep saying done)
+  //   • in-progress → "Continue …" (no URL param; the viewer's load
+  //                   effect picks up the saved slideIdx)
+  //   • fresh      → "Pray the …"
+  const bigCtaCopy =
+    bigState.kind === "done"
+      ? "Pray again"
+      : bigState.kind === "in-progress"
+        ? `Continue ${bigIsOffice ? "the " : ""}${bigLabel}`
+        : `Pray ${bigIsOffice ? "the full " : "the "}${bigLabel}`;
+  const bigHref = `${bigBase}?mode=${encodeURIComponent(bigMode)}${bigState.kind === "done" ? "&reset=1" : ""}`;
+  const smallCtaCopy =
+    smallState.kind === "done"
+      ? `or pray ${bigIsOffice ? `the ${smallLabel}` : `the full ${smallLabel} Office`} again`
+      : smallState.kind === "in-progress"
+        ? `or continue ${bigIsOffice ? `the ${smallLabel}` : `the full ${smallLabel} Office`}`
+        : `or pray ${bigIsOffice ? `the ${smallLabel}` : `the full ${smallLabel} Office`}`;
+  const smallHref = `${smallBase}?mode=${encodeURIComponent(smallMode)}${smallState.kind === "done" ? "&reset=1" : ""}`;
 
   return (
     <div
@@ -2080,7 +2125,7 @@ function PrayerOfficeCard() {
               border: "1px solid rgba(46,107,64,0.45)",
             }}
           >
-            Pray {bigIsOffice ? "the full " : "the "}{bigLabel} <span aria-hidden>→</span>
+            {bigCtaCopy} <span aria-hidden>→</span>
           </div>
         </Link>
         {/* Spacing lives on the Link wrapper, not the <span>: the
@@ -2099,12 +2144,12 @@ function PrayerOfficeCard() {
               textUnderlineOffset: 3,
             }}
           >
-            {/* When the small link is the OFFICE form (i.e. the user
-                last prayed a Devotion), call it "Morning/Evening
-                Prayer Office" so it's clear it's the full BCP office,
-                not the short Devotion. When the small is the
-                Devotion, the existing label is unambiguous. */}
-            or pray {bigIsOffice ? `the ${smallLabel}` : `the full ${smallLabel} Office`}
+            {/* Small link follows the same fresh/continue/again pattern
+                as the big CTA. When the small is the OFFICE form (i.e.
+                the user last prayed a Devotion), it's labelled
+                "Morning/Evening Prayer Office" to distinguish from the
+                short Devotion. */}
+            {smallCtaCopy}
           </span>
         </Link>
       </div>
