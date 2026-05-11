@@ -251,7 +251,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   // slides) from "tap-and-bail" (<3). The ref is updated each time
   // slideIdx advances (effect below).
   const slidesReachedRef = useRef(0);
-  usePrayerSession(resolvedMode as PrayerSurface, slidesReachedRef);
+  // Map LiturgyMode → PrayerSurface: "morning"→"morning-prayer",
+  // "evening"→"evening-prayer". The devotion modes already match.
+  const officeSurface: PrayerSurface =
+    resolvedMode === "morning" ? "morning-prayer"
+    : resolvedMode === "evening" ? "evening-prayer"
+    : (resolvedMode as PrayerSurface);
+  usePrayerSession(officeSurface, slidesReachedRef);
   // The Daily Devotions are explicitly the personal short forms
   // (BCP pp. 137 / 139). The full Daily Office's missal-page layout
   // (top-aligned, left-aligned, role-labelled) reads as overkill

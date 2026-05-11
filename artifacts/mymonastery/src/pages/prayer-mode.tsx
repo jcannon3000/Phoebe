@@ -2104,6 +2104,14 @@ export default function PrayerModePage() {
     const current = displaySlides[index];
     if (current && current.kind === "request" && typeof current.requestId === "number") {
       const rid = current.requestId;
+      // Clear the "someone is asking for your prayers" push for this
+      // specific request — the amen is the user's response, so the
+      // notification has done its job and shouldn't sit on the lock screen.
+      try {
+        window.dispatchEvent(
+          new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${rid}` } })
+        );
+      } catch { /* non-fatal */ }
       apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
         .then(() => {
           // Two invalidations:

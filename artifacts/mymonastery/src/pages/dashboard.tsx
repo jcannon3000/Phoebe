@@ -300,7 +300,7 @@ function computeNextGatheringDate(r: {
     : cadence === "one-time" || cadence === "once" ? 0
     : 7; // weekly is the default
 
-  if (stepDays === 0) return anchor; // one-time gatherings just stay pinned to their moment
+  if (stepDays === 0) return null; // one-time gathering already passed — no future date
 
   const out = new Date(anchor);
   if (stepDays === null) {
@@ -3930,7 +3930,10 @@ export default function Dashboard() {
         monthItems.push(item);
         continue;
       }
+      // Skip past events entirely — one-time gatherings that have
+      // already happened should not appear on the dashboard.
       const nextMs = startOfDay(next).getTime();
+      if (nextMs < _todayMs) continue;
       if (nextMs === todayStart) todayItems.push(item);
       else if (nextMs === tomorrowStart) tomorrowItems.push(item);
       else if (nextMs < sevenDaysOutMs) weekItems.push(item);

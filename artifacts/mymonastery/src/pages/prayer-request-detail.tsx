@@ -147,6 +147,13 @@ export default function PrayerRequestDetailPage() {
       // haptic + the chapel chime. Keeps the deep-link slide feeling
       // like a slide, not a settings row.
       try { triggerAmenFeedback(); } catch { /* non-fatal */ }
+      // Clear the push notification for this request — the user has
+      // responded, so it shouldn't linger on the lock screen.
+      try {
+        window.dispatchEvent(
+          new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${id}` } })
+        );
+      } catch { /* non-fatal */ }
       setAmened(true);
       queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
