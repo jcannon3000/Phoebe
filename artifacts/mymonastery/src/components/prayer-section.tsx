@@ -68,6 +68,7 @@ export function PrayerSection({
   const [showModal, setShowModal] = useState(false);
   const [pendingBody, setPendingBody] = useState("");
   const [durationDays, setDurationDays] = useState<3 | 7>(7);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [wordInputs, setWordInputs] = useState<Record<number, string>>({});
   const [showAll, setShowAll] = useState(false);
@@ -96,7 +97,11 @@ export function PrayerSection({
       setInputValue("");
       setPendingBody("");
       setDurationDays(3);
+      setSubmitError(null);
       setShowModal(false);
+    },
+    onError: (err: unknown) => {
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     },
   });
 
@@ -654,6 +659,12 @@ export function PrayerSection({
                 ? "Your community will hold this for three days. On the third day it will quietly be released. 🌿"
                 : "Your community will hold this for a full week. After seven days it will quietly be released. 🌿"}
             </p>
+
+            {submitError && (
+              <p className="text-xs mb-3 text-center" style={{ color: "#F87171" }}>
+                {submitError}
+              </p>
+            )}
 
             {/* Submit button */}
             <button
