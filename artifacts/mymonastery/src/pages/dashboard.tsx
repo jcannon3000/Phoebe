@@ -1983,13 +1983,58 @@ function PrayerOfficeCard() {
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
 
+  // "Prayed today" is true when any of the day-scoped completion
+  // flags written by the slideshow or office viewers is set:
+  //   • phoebe:slideshow-completed:{day} — written by prayer-mode's
+  //     handleDone after the user walks the full intercession list.
+  //   • phoebe:office-completed:{mode}:{day} — written by
+  //     bcp-daily-office for each of the four office/devotion modes
+  //     when the user Amens the closing collect.
+  // Bump a tick on focus + visibility so returning to the dashboard
+  // after praying flips the CTA copy without needing a hard refresh
+  // (localStorage doesn't fire same-tab storage events).
+  const [stateTick, setStateTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setStateTick((t) => t + 1);
+    const onVis = () => { if (document.visibilityState === "visible") bump(); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", bump);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", bump);
+    };
+  }, []);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _stateTick = stateTick; // reads below depend on this for re-render
+
+  const prayedToday = (() => {
+    if (typeof window === "undefined") return false;
+    const d = new Date();
+    const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    try {
+      if (localStorage.getItem(`phoebe:slideshow-completed:${todayKey}`)) return true;
+      const officeModes = ["morning", "evening", "morning-devotion", "early-evening-devotion"];
+      for (const mode of officeModes) {
+        if (localStorage.getItem(`phoebe:office-completed:${mode}:${todayKey}`)) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  })();
+
   // CTA copy + destination. The button used to open an inline modal
   // chooser; per user direction it now navigates to a dedicated
   // /prayer-chooser screen so the depth options live on a proper
   // route (back-button behaviour, deep-linkable, sound effect on
-  // entry). Time-of-day decides the copy on the home button — the
-  // /prayer-chooser screen carries the same split for its headline.
-  const ctaCopy = isMorning ? "Start this morning's prayer" : "Start this evening's prayer";
+  // entry). Once the user has prayed something today the copy flips
+  // to "Pray again"; the chooser screen still presents the full menu
+  // of depth options so they can pick anything to re-pray.
+  const ctaCopy = prayedToday
+    ? "Pray again"
+    : isMorning
+      ? "Start this morning's prayer"
+      : "Start this evening's prayer";
 
   return (
     <div

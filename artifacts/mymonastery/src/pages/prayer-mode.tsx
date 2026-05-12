@@ -2383,6 +2383,19 @@ export default function PrayerModePage() {
       /* non-fatal */
     }
 
+    // Mark "intercession slideshow completed today" in localStorage so
+    // the home-screen CTA can flip from "Start this morning's prayer"
+    // to "Pray again" once the user has walked the list. Scoped per
+    // local calendar day so it resets at midnight. Mirrors the
+    // office-completed flag that bcp-daily-office writes when a user
+    // finishes the closing collect; the dashboard reads both and
+    // shows "Pray again" if either is set.
+    try {
+      localStorage.setItem(`phoebe:slideshow-completed:${slideshowTodayKey}`, "1");
+    } catch {
+      /* non-fatal */
+    }
+
     // Clear today's morning/evening bell from the iOS notification
     // center. The bell push is a "time to pray for your friends"
     // nudge — once the user has actually prayed, the lock-screen
