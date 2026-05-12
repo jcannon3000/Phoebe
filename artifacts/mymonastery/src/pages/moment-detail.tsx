@@ -639,9 +639,21 @@ export default function MomentDetail() {
   // Standalone moments: creator can invite. Group-attached moments:
   // only the group's admin can invite. (parentGroupData is fetched
   // above the early returns to keep hook order stable.)
+  // Intercessions are special: every intercession is community-based,
+  // so its audience is whoever is a member of the attached group(s).
+  // There's no per-person invite step — the "+ Invite" affordance was
+  // confusing because tapping it implied a parallel invite-list that
+  // overlapped with group membership. Hidden for intercessions
+  // regardless of role; admins manage the audience by managing the
+  // community roster itself.
   const isGroupAdmin =
     parentGroupData?.myRole === "admin" || parentGroupData?.myRole === "hidden_admin";
-  const canInvite = momentGroup ? isGroupAdmin : isCreator;
+  const isIntercessionMoment = data.moment.templateType === "intercession";
+  const canInvite = isIntercessionMoment
+    ? false
+    : momentGroup
+      ? isGroupAdmin
+      : isCreator;
 
   const parsedPracticeDays = parsePracticeDays(moment.practiceDays);
   const isIntercession = moment.templateType === "intercession";
