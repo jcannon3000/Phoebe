@@ -15,6 +15,9 @@ export const meetupsTable = pgTable("meetups", {
   location: text("location"),
   googleCalendarEventId: text("google_calendar_event_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Stamped when the day-before reminder push has been sent for this meetup.
+  // Null means the reminder hasn't fired yet.
+  reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
 });
 
 export const insertMeetupSchema = createInsertSchema(meetupsTable).omit({ id: true, createdAt: true });

@@ -326,6 +326,8 @@ export async function migrate() {
     // Added to the schema after the table was first created, so existing
     // deployments need this ALTER to unblock meetup selects.
     await run(client, `ALTER TABLE meetups ADD COLUMN IF NOT EXISTS location TEXT`);
+    // Dedup stamp for the day-before gathering reminder push.
+    await run(client, `ALTER TABLE meetups ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ`);
 
     // Fix missing ON DELETE CASCADE on existing FK constraints (safe to re-run)
     await run(client, `ALTER TABLE rituals DROP CONSTRAINT IF EXISTS rituals_owner_id_fkey`);

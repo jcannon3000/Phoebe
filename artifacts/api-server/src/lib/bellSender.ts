@@ -9,6 +9,10 @@ import {
   lectioReflectionsTable,
   lectionaryReadingsTable,
   prayerFeedsTable,
+  meetupsTable,
+  ritualsTable,
+  groupMembersTable,
+  groupsTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -19,6 +23,7 @@ import {
   sendPrayerRenewalNudgePush,
   sendParishOfficeReminderPush,
   sendParishEveningRecapPush,
+  sendGatheringTomorrowPush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
@@ -952,6 +957,84 @@ export async function runParishEveningRecapSender(opts: { forceNow?: boolean } =
 
 // ─── Scheduler ──────────────────────────────────────────────────────────────
 
+// ─── Day-before gathering reminder ─────────────────────────────────────────
+//
+// Runs on every scheduler tick. Finds community meetups (ritual.groupId set)
+// whose scheduledDate is tomorrow (UTC date) and haven't had a reminder sent
+// yet. Pushes every joined group member once, then stamps reminder_sent_at.
+// Uses UTC date comparison — no per-gathering timezone; close enough given
+// gatherings are multi-day events and the push fires early in the UTC day.
+export async function runGatheringReminderSender(): Promise<void> {
+  try {
+    // Tomorrow's date as YYYY-MM-DD in UTC.
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+    // Meetups whose scheduled_date starts with tomorrow's date string,
+    // belong to a community gathering (ritual.group_id IS NOT NULL),
+    // and haven't had a reminder sent yet.
+    const rows = await db
+      .select({
+        meetupId: meetupsTable.id,
+        meetupLocation: meetupsTable.location,
+        ritualId: ritualsTable.id,
+        ritualName: ritualsTable.name,
+        ritualLocation: ritualsTable.location,
+        groupId: ritualsTable.groupId,
+      })
+      .from(meetupsTable)
+      .innerJoin(ritualsTable, eq(ritualsTable.id, meetupsTable.ritualId))
+      .where(and(
+        sql`${meetupsTable.scheduledDate} LIKE ${tomorrowStr + "%"}`,
+        sql`${meetupsTable.reminderSentAt} IS NULL`,
+        sql`${meetupsTable.status} = 'planned'`,
+        isNotNull(ritualsTable.groupId),
+      ));
+
+    for (const row of rows) {
+      if (!row.groupId) continue;
+
+      const [group] = await db
+        .select({ slug: groupsTable.slug })
+        .from(groupsTable)
+        .where(eq(groupsTable.id, row.groupId));
+      if (!group) continue;
+
+      const members = await db
+        .select({ userId: groupMembersTable.userId })
+        .from(groupMembersTable)
+        .where(and(
+          eq(groupMembersTable.groupId, row.groupId),
+          sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        ));
+
+      const location = row.meetupLocation ?? row.ritualLocation ?? null;
+
+      await Promise.allSettled(
+        members
+          .filter(m => typeof m.userId === "number")
+          .map(m => sendGatheringTomorrowPush(m.userId as number, {
+            meetupId: row.meetupId,
+            ritualId: row.ritualId,
+            groupSlug: group.slug,
+            gatheringName: row.ritualName,
+            location,
+          }))
+      );
+
+      await db
+        .update(meetupsTable)
+        .set({ reminderSentAt: new Date() })
+        .where(eq(meetupsTable.id, row.meetupId));
+
+      logger.info({ meetupId: row.meetupId, ritualName: row.ritualName }, "[gathering-reminder] sent day-before push");
+    }
+  } catch (err) {
+    logger.error({ err }, "[gathering-reminder] sender failed");
+  }
+}
+
 let bellInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startBellScheduler(): void {
@@ -980,6 +1063,9 @@ export function startBellScheduler(): void {
     runParishEveningRecapSender().catch((err) =>
       logger.error({ err }, "[parish-evening] initial run failed"),
     );
+    runGatheringReminderSender().catch((err) =>
+      logger.error({ err }, "[gathering-reminder] initial run failed"),
+    );
   }, 45_000);
 
   bellInterval = setInterval(
@@ -1004,6 +1090,9 @@ export function startBellScheduler(): void {
       );
       runParishEveningRecapSender().catch((err) =>
         logger.error({ err }, "[parish-evening] scheduled run failed"),
+      );
+      runGatheringReminderSender().catch((err) =>
+        logger.error({ err }, "[gathering-reminder] scheduled run failed"),
       );
     },
     15 * 60 * 1000,

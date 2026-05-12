@@ -935,6 +935,42 @@ export function sendThirdAmenTodayPush(
   });
 }
 
+// Fires to all joined group members (except the creator) when an admin
+// creates a new community gathering. Names the creator so members know
+// who organised it. Tap lands on the community page.
+export function sendNewGatheringPush(
+  userId: number,
+  opts: { ritualId: number; groupSlug: string; gatheringName: string; creatorName: string },
+) {
+  const firstName = (opts.creatorName || "Someone").split(/\s+/)[0] || "Someone";
+  return sendPushToUser(userId, {
+    title: opts.gatheringName,
+    body: `${firstName} scheduled a gathering.`,
+    path: `/communities/${opts.groupSlug}`,
+    threadId: `gathering-${opts.ritualId}`,
+    collapseId: `new-gathering-${opts.ritualId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
+// Day-before reminder for a community gathering. Fires once per meetup,
+// deduplicated via meetups.reminder_sent_at. Location-aware body so
+// members know where to show up without opening the app.
+export function sendGatheringTomorrowPush(
+  userId: number,
+  opts: { meetupId: number; ritualId: number; groupSlug: string; gatheringName: string; location: string | null },
+) {
+  const body = opts.location ? `See you at ${opts.location}.` : "See you there.";
+  return sendPushToUser(userId, {
+    title: `${opts.gatheringName} is tomorrow`,
+    body,
+    path: `/communities/${opts.groupSlug}`,
+    threadId: `gathering-${opts.ritualId}`,
+    collapseId: `gathering-tomorrow-${opts.meetupId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // (`sendLetterWindowOpenPush` removed — for one-to-one correspondences
 // the moment a letter arrives IS the moment the recipient's write
 // window opens, so we just branch sendNewLetterPush below by group

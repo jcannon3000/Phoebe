@@ -1,9 +1,10 @@
 import { getInviteBaseUrl } from "../lib/urls";
 import { Router, type IRouter } from "express";
-import { eq, desc, or, sql, and } from "drizzle-orm";
+import { eq, desc, or, sql, and, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { db, ritualsTable, meetupsTable, ritualMessagesTable, scheduleResponsesTable, inviteTokensTable, usersTable, momentUserTokensTable, ritualTimeSuggestionsTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, ritualMessagesTable, scheduleResponsesTable, inviteTokensTable, usersTable, momentUserTokensTable, ritualTimeSuggestionsTable, groupMembersTable, groupsTable } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent } from "../lib/calendar";
+import { sendNewGatheringPush } from "../lib/pushSender";
 import {
   CreateRitualBody,
   ListRitualsResponse,
@@ -165,6 +166,33 @@ router.post("/rituals", async (req, res): Promise<void> => {
       lastMeetupDate: enriched.lastMeetupDate,
       nextMeetupDate: enriched.nextMeetupDate,
     };
+
+    // Fan out new-gathering push to all joined group members (not the creator).
+    if (groupId) {
+      const [group] = await db.select({ slug: groupsTable.slug }).from(groupsTable).where(eq(groupsTable.id, groupId));
+      const [creator] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, ritual.ownerId));
+      if (group) {
+        const members = await db
+          .select({ userId: groupMembersTable.userId })
+          .from(groupMembersTable)
+          .where(and(
+            eq(groupMembersTable.groupId, groupId),
+            sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+            ne(groupMembersTable.userId, ritual.ownerId),
+          ));
+        const creatorName = creator?.name ?? "Someone";
+        members.forEach(m => {
+          if (typeof m.userId === "number") {
+            sendNewGatheringPush(m.userId, {
+              ritualId: ritual.id,
+              groupSlug: group.slug,
+              gatheringName: ritual.name,
+              creatorName,
+            }).catch(err => req.log.warn({ err }, "[gathering] new-gathering push failed"));
+          }
+        });
+      }
+    }
 
     // Fire-and-forget: generate welcome message (non-blocking)
     getWelcomeMessage(ctx)
