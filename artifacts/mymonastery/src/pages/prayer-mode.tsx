@@ -200,20 +200,20 @@ interface CircleIntention {
 // composer without reimplementing the public/private toggle, the
 // ×-clear button, and the friendly error mapping.
 
-// 7-second pause-before-Amen. When a slide first appears the button
+// 4-second pause-before-Amen. When a slide first appears the button
 // shows a dim green pill with a left-to-right progress wash and no
-// label. After 7 seconds the wash hits 100%, the button brightens,
+// label. After 4 seconds the wash hits 100%, the button brightens,
 // "Amen →" fades up, and a soft "light" haptic fires — distinct from
 // the medium-impact haptic that triggers on the tap itself, so the
 // reveal and the press feel like two different events.
 //
 // Why: tappers were ripping through the slideshow in a few seconds
 // without actually pausing on each prayer. The forced wait turns
-// each slide into a real moment of attention. Bumped from 3s → 7s
-// after testing showed 3 was too short to actually settle into the
-// prayer — eyes finished reading and the hand was already on the
-// button. 7s gives enough room for a breath and a second pass through
-// the words. The CSS keyframe duration in index.css is kept in sync.
+// each slide into a real moment of attention. Landed on 4s after
+// 7s tested too long (users hovered, waiting on a button that felt
+// stuck) and 3s too short (eyes finished reading and the hand was
+// already on the button). The CSS keyframe duration in index.css
+// is kept in sync — if one changes, change the other.
 //
 // Accepts a `slideKey` prop so the parent can force a remount-style
 // reset when the slide changes (we use the slide index).
@@ -742,33 +742,6 @@ function SlideContent({
             🌿 {slide.feedTag}
           </span>
         )}
-        {/* Community pills — every group this intercession is attached
-            to. Mirrors the row on the moment-detail page so a slide for
-            a multi-community intercession shows which communities are
-            carrying it. Non-tappable here (the slideshow shouldn't bounce
-            you out of prayer to a community home page); the chips are
-            informational. Hidden for feed-scoped intercessions (groups
-            is empty) so the row only appears when there's something to
-            show. */}
-        {slide.kind === "intercession" && slide.groups && slide.groups.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 justify-center mt-1">
-            {slide.groups.map((g) => (
-              <span
-                key={g.id}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold"
-                style={{
-                  background: "rgba(46,107,64,0.18)",
-                  color: "#A8C5A0",
-                  border: "1px solid rgba(46,107,64,0.32)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                {g.emoji && <span aria-hidden>{g.emoji}</span>}
-                <span>{g.name}</span>
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       <p
@@ -790,11 +763,38 @@ function SlideContent({
         </p>
       )}
 
-      {slide.attribution && (
+      {/* For intercessions with explicit group attachments, render one
+          pill per community in place of the plaintext "with {group}"
+          attribution. Mirrors the row on the moment-detail page so a
+          slide for a multi-community intercession shows which
+          communities are carrying it. Non-tappable here — the
+          slideshow shouldn't bounce the user out of prayer mode to a
+          community home page; the chips are informational. Falls back
+          to the plaintext attribution when there are no groups (feed-
+          scoped intercessions, prayer requests, etc.). */}
+      {slide.kind === "intercession" && slide.groups && slide.groups.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 justify-center">
+          {slide.groups.map((g) => (
+            <span
+              key={g.id}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                color: "#A8C5A0",
+                border: "1px solid rgba(46,107,64,0.32)",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {g.emoji && <span aria-hidden>{g.emoji}</span>}
+              <span>{g.name}</span>
+            </span>
+          ))}
+        </div>
+      ) : slide.attribution ? (
         <p className="text-sm" style={{ color: "#8FAF96" }}>
           {slide.attribution}
         </p>
-      )}
+      ) : null}
 
       {slide.kind === "intercession" && (
         <>
