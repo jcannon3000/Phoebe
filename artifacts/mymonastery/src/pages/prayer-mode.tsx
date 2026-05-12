@@ -52,6 +52,10 @@ type Moment = {
   myUserToken: string | null;
   momentToken: string | null;
   group?: { id: number; name: string; slug: string; emoji: string | null } | null;
+  // Multi-group intercessions: every additional community the moment
+  // was attached to via the moment_groups junction. Combined with
+  // `group` on the slide to render one pill per community.
+  additionalGroups?: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
 };
 
 interface PrayerRequest {
@@ -117,6 +121,13 @@ interface PrayerSlide {
   // even if the viewer bails out of the slideshow before `handleDone`.
   momentToken?: string | null;
   myUserToken?: string | null;
+  // intercession specific — every community this intercession is
+  // attached to (primary + additional). Rendered as a row of pills
+  // under the title so a slide for "For the Mission of the Church"
+  // shows which communities are carrying it. Empty/undefined for
+  // feed-scoped or single-community intercessions where the chip
+  // would be redundant.
+  groups?: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
   // intercession specific — feed-entry origin metadata. Set when the
   // slide came from a prayer feed (prayerFeedEntriesTable / its
   // recurring sibling), so the Amen handler can POST to the feed's
@@ -730,6 +741,33 @@ function SlideContent({
           >
             🌿 {slide.feedTag}
           </span>
+        )}
+        {/* Community pills — every group this intercession is attached
+            to. Mirrors the row on the moment-detail page so a slide for
+            a multi-community intercession shows which communities are
+            carrying it. Non-tappable here (the slideshow shouldn't bounce
+            you out of prayer to a community home page); the chips are
+            informational. Hidden for feed-scoped intercessions (groups
+            is empty) so the row only appears when there's something to
+            show. */}
+        {slide.kind === "intercession" && slide.groups && slide.groups.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 justify-center mt-1">
+            {slide.groups.map((g) => (
+              <span
+                key={g.id}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold"
+                style={{
+                  background: "rgba(46,107,64,0.18)",
+                  color: "#A8C5A0",
+                  border: "1px solid rgba(46,107,64,0.32)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {g.emoji && <span aria-hidden>{g.emoji}</span>}
+                <span>{g.name}</span>
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
@@ -1645,6 +1683,22 @@ export default function PrayerModePage() {
         : attributionLabel
           ? `with ${attributionLabel}`
           : "";
+      // Build the combined groups list (primary + additionals). De-dupe
+      // by id in case the primary appears again in additionalGroups
+      // (defensive — the server shouldn't send duplicates, but a stale
+      // join could slip through). Empty list when the intercession has
+      // no group at all (feed-scoped) — the slide hides the pill row
+      // in that case.
+      const _allGroups = [
+        ...(m.group ? [m.group] : []),
+        ...(m.additionalGroups ?? []),
+      ];
+      const _seenGroupIds = new Set<number>();
+      const groups = _allGroups.filter((g) => {
+        if (_seenGroupIds.has(g.id)) return false;
+        _seenGroupIds.add(g.id);
+        return true;
+      });
       return {
         kind: "intercession" as const,
         text: title,
@@ -1658,6 +1712,7 @@ export default function PrayerModePage() {
         communityFaces,
         feedTag,
         learnMoreUrl: m.learnMoreUrl?.trim() || null,
+        groups,
       };
     }),
     // Circle intentions — one slide per active intention in every prayer
