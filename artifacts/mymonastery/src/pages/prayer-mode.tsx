@@ -1591,10 +1591,10 @@ export default function PrayerModePage() {
         .filter((r) => {
           if (r.isAnswered) return false;
           if (r.closedAt) return false;
-          // Own requests are shown in the slideshow per user direction —
-          // the user wants to see their own asks alongside everyone
-          // else's. Amen on an own slide is a no-op (the API rejects),
-          // but the slide still surfaces what the user asked.
+          // Skip the viewer's own requests — there's nothing to pray
+          // for yourself in the slideshow, and surfacing them was
+          // creating a "why am I being asked to pray for me" loop.
+          if (r.isOwnRequest === true) return false;
           if (r.myAmenedEver === true) return false;
           if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
           return true;
@@ -1769,11 +1769,12 @@ export default function PrayerModePage() {
     ...prayerRequests
       .filter((r) => {
         if (r.isAnswered) return false;
-        // Own requests are now shown in the slideshow per user
-        // direction (was previously filtered out for default-kind
-        // asks). The user wants to see their own ask alongside
-        // everyone else's so they can sit with what they're
-        // carrying. Amen-on-own is a no-op at the API.
+        // Skip the viewer's own requests — you don't need to be
+        // asked to pray for yourself in the daily slideshow.
+        // Comments / words of comfort from others are still visible
+        // on the request's own detail page; this just keeps the
+        // slideshow about holding others.
+        if (r.isOwnRequest === true) return false;
         // Defense in depth: the personal feed already drops others'
         // expired requests at the SQL layer, but a stale cache (e.g.
         // an expiry crossing while the user is mid-session) could let
