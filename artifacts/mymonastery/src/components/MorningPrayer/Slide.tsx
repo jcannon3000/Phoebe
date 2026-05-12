@@ -101,13 +101,12 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
         <div style={{ ...containerStyle, background: isEvening ? EP_BG : SOIL }}>
           <div
             style={{
-              margin: "auto 0",
               display: "flex",
               flexDirection: "column",
               gap: 16,
             }}
           >
-            <div style={{ fontSize: 48, textAlign: "center" }}>{slide.emoji}</div>
+            <div style={{ fontSize: 48 }}>{slide.emoji}</div>
             <h1
               style={{
                 fontSize: 26,
@@ -115,7 +114,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 color: isEvening ? EP_TEXT : CREAM,
                 fontFamily: "Space Grotesk, sans-serif",
                 margin: 0,
-                textAlign: "center",
                 lineHeight: 1.3,
               }}
             >
@@ -129,7 +127,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                   fontStyle: "italic",
                   fontFamily: "Georgia, serif",
                   margin: 0,
-                  textAlign: "center",
                 }}
               >
                 {seasonLabel}
@@ -141,7 +138,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                   fontSize: 14,
                   color: EP_MUTED,
                   margin: 0,
-                  textAlign: "center",
                   fontFamily: "Georgia, serif",
                   fontStyle: "italic",
                 }}
@@ -154,7 +150,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 fontSize: 14,
                 color: isEvening ? EP_MUTED : SAGE,
                 margin: 0,
-                textAlign: "center",
                 fontFamily: "Space Grotesk, sans-serif",
               }}
             >
@@ -165,7 +160,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
             style={{
               fontSize: 13,
               color: isEvening ? "rgba(200,212,192,0.4)" : "rgba(247,240,230,0.4)",
-              textAlign: "center",
               margin: "24px 0 0",
               fontFamily: "Space Grotesk, sans-serif",
             }}
@@ -192,11 +186,9 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
         <div style={{ ...containerStyle, background: isEvening ? EP_BG : SOIL }}>
           <div
             style={{
-              margin: "auto 0",
               display: "flex",
               flexDirection: "column",
               gap: 20,
-              alignItems: "center",
             }}
           >
             <h1
@@ -206,7 +198,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 color: isEvening ? EP_TEXT : CREAM,
                 fontFamily: "Space Grotesk, sans-serif",
                 margin: 0,
-                textAlign: "center",
               }}
             >
               {closingTitle}
@@ -218,7 +209,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                   color: isEvening ? EP_ACCENT : AMBER,
                   fontFamily: "Space Grotesk, sans-serif",
                   margin: 0,
-                  textAlign: "center",
                 }}
               >
                 {dateStr}
@@ -234,7 +224,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                     color: accentColor,
                     textTransform: "uppercase",
                     letterSpacing: "0.12em",
-                    textAlign: "center",
                     fontFamily: "Space Grotesk, sans-serif",
                     margin: "0 0 12px",
                   }}
@@ -284,7 +273,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                   style={{
                     fontSize: 16,
                     color: accentColor,
-                    textAlign: "center",
                     fontFamily: "Space Grotesk, sans-serif",
                     margin: 0,
                   }}
@@ -327,6 +315,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                   fontFamily: "Space Grotesk, sans-serif",
                   cursor: "pointer",
                   padding: "4px 0",
+                  textAlign: "left",
                 }}
               >
                 ← Back to practice
@@ -357,7 +346,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
           color: textColor,
           margin: 0,
           whiteSpace: "pre-wrap",
-          textAlign: isEvening ? "center" : undefined,
         }
       : {
           fontFamily: "Space Grotesk, sans-serif",
@@ -366,7 +354,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
           color: textColor,
           margin: 0,
           whiteSpace: "pre-wrap",
-          textAlign: isEvening ? "center" : undefined,
         };
 
     return (
@@ -381,7 +368,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               textTransform: "uppercase",
               fontFamily: "Space Grotesk, sans-serif",
               margin: "0 0 12px",
-              textAlign: isEvening ? "center" : undefined,
             }}
           >
             {slide.eyebrow}
@@ -389,7 +375,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
         )}
 
         {/* Emoji */}
-        <div style={{ fontSize: 36, marginBottom: 16, textAlign: isEvening ? "center" : undefined }}>{slide.emoji}</div>
+        <div style={{ fontSize: 36, marginBottom: 16 }}>{slide.emoji}</div>
 
         {/* Title (lesson reference, collect label) */}
         {slide.title && (
@@ -400,7 +386,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               fontFamily: "Space Grotesk, sans-serif",
               fontWeight: 600,
               margin: "0 0 12px",
-              textAlign: isEvening ? "center" : undefined,
             }}
           >
             {slide.title}
@@ -417,7 +402,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 fontStyle: "italic",
                 fontFamily: "Georgia, serif",
                 margin: "0 0 16px",
-                textAlign: isEvening ? "center" : undefined,
               }}
             >
               {slide.metadata.prompt as string}
@@ -433,7 +417,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               fontStyle: "italic",
               fontFamily: "Georgia, serif",
               margin: "0 0 12px",
-              textAlign: isEvening ? "center" : undefined,
             }}
           >
             {slide.metadata.psalmTitle as string}
@@ -449,7 +432,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               fontStyle: "italic",
               fontFamily: "Georgia, serif",
               margin: "0 0 16px",
-              textAlign: isEvening ? "center" : undefined,
             }}
           >
             {slide.metadata.readingNote as string}
@@ -473,7 +455,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
             <CallAndResponse lines={slide.callAndResponseLines} theme={theme} />
           ) : isLesson ? (
             /* Lesson slides — show reference prominently, no raw content */
-            <div style={{ textAlign: isEvening ? "center" : undefined }}>
+            <div>
               <p style={{
                 fontSize: 22,
                 fontWeight: 700,
@@ -504,7 +486,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 color: mutedColor,
                 margin: "12px 0 0",
                 fontFamily: "Space Grotesk, sans-serif",
-                textAlign: isEvening ? "center" : undefined,
               }}
             >
               {slide.metadata.prompt as string}
@@ -533,7 +514,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
             style={{
               fontSize: 13,
               color: accentColor,
-              textAlign: "center",
               fontFamily: "Space Grotesk, sans-serif",
               margin: "8px 0 0",
               letterSpacing: "0.03em",
@@ -551,7 +531,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               color: highlightColor,
               margin: "12px 0 0",
               fontFamily: "Space Grotesk, sans-serif",
-              textAlign: isEvening ? "center" : undefined,
             }}
           >
             {slide.bcpReference}

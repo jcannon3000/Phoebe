@@ -815,23 +815,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             // centers its glowing "Intercessions" headline. The
             // psalm_gloria doxology slide also centers — it's a
             // single short italic seal, not a missal column.
-            const centered =
-              !isVerseType && (
-                currentSlide.type === "intercessions"
-                || currentSlide.type === "intercessions_portal"
-                || currentSlide.type === "psalm_title"
-                || currentSlide.type === "canticle_title"
-                || currentSlide.type === "lesson_title"
-                || currentSlide.type === "psalm_gloria"
-                || (!isLongType && isShortEnough)
-              );
             return {
               display: "flex",
               flexDirection: "column",
               minHeight: "100%",
-              justifyContent: centered ? "center" : "flex-start",
-              textAlign: centered ? ("center" as const) : ("left" as const),
-              alignItems: centered ? "center" : undefined,
+              justifyContent: "flex-start",
+              textAlign: "left" as const,
+              alignItems: undefined,
               gap: 20,
             };
           })()}
@@ -855,10 +845,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
                 width: "100%",
-                textAlign: "center",
                 gap: 16,
               }}
             >
@@ -914,11 +901,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
                     width: "100%",
-                    minHeight: 240,
-                    textAlign: "center",
                     gap: 16,
                   }}
                 >
@@ -981,11 +964,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
                     width: "100%",
-                    minHeight: 240,
-                    textAlign: "center",
                     gap: 16,
                   }}
                 >
@@ -1052,11 +1031,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
                     width: "100%",
-                    minHeight: 240,
-                    textAlign: "center",
                     gap: 16,
                   }}
                 >

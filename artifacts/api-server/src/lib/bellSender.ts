@@ -4,6 +4,7 @@ import {
   bellNotificationsTable,
   prayerRequestAmensTable,
   prayerRequestsTable,
+  prayerSessionsTable,
   sharedMomentsTable,
   momentUserTokensTable,
   lectioReflectionsTable,
@@ -831,22 +832,49 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       const today = todayInZone(tz);
       const communityTitle = r.parishTitle ?? "your community";
 
+      // Shared: approximate UTC start of today in user-tz (covers UTC-14).
+      const sinceUtc = new Date(`${today}T00:00:00Z`);
+      sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
+
       // Morning side
       if (r.morningPref !== "none" && r.morningSentDate !== today) {
         const targetTime = r.morningTime || DEFAULT_MORNING_TIME;
         if (opts.forceNow || isWithinTickWindow(tz, targetTime)) {
-          try {
-            await sendParishOfficeReminderPush(r.userId, {
-              side: "morning",
-              pref: r.morningPref as "office" | "devotion",
-              parishTitle: communityTitle,
-            });
+          const morningSessions = await db
+            .select({ endedAt: prayerSessionsTable.endedAt })
+            .from(prayerSessionsTable)
+            .where(
+              and(
+                eq(prayerSessionsTable.userId, r.userId),
+                inArray(prayerSessionsTable.surface, ["morning-prayer", "morning-devotion"]),
+                gte(prayerSessionsTable.endedAt, sinceUtc),
+              ),
+            );
+          const prayedMorningToday = morningSessions.some(s => {
+            if (!s.endedAt) return false;
+            return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today;
+          });
+          if (!prayedMorningToday) {
+            try {
+              await sendParishOfficeReminderPush(r.userId, {
+                side: "morning",
+                pref: r.morningPref as "office" | "devotion",
+                parishTitle: communityTitle,
+              });
+              await db
+                .update(usersTable)
+                .set({ parishOfficeMorningSentDate: today })
+                .where(eq(usersTable.id, r.userId));
+            } catch (err) {
+              logger.warn({ err, userId: r.userId }, "[office-reminder] morning push failed");
+            }
+          } else {
+            // Stamp sent-date so we don't re-evaluate on later ticks today.
             await db
               .update(usersTable)
               .set({ parishOfficeMorningSentDate: today })
               .where(eq(usersTable.id, r.userId));
-          } catch (err) {
-            logger.warn({ err, userId: r.userId }, "[office-reminder] morning push failed");
+            logger.info({ userId: r.userId }, "[office-reminder] morning skip — already prayed");
           }
         }
       }
@@ -855,18 +883,40 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       if (r.eveningPref !== "none" && r.eveningSentDate !== today) {
         const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
         if (opts.forceNow || isWithinTickWindow(tz, eveningTarget)) {
-          try {
-            await sendParishOfficeReminderPush(r.userId, {
-              side: "evening",
-              pref: r.eveningPref as "office" | "devotion",
-              parishTitle: communityTitle,
-            });
+          const eveningSessions = await db
+            .select({ endedAt: prayerSessionsTable.endedAt })
+            .from(prayerSessionsTable)
+            .where(
+              and(
+                eq(prayerSessionsTable.userId, r.userId),
+                inArray(prayerSessionsTable.surface, ["evening-prayer", "early-evening-devotion"]),
+                gte(prayerSessionsTable.endedAt, sinceUtc),
+              ),
+            );
+          const prayedEveningToday = eveningSessions.some(s => {
+            if (!s.endedAt) return false;
+            return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today;
+          });
+          if (!prayedEveningToday) {
+            try {
+              await sendParishOfficeReminderPush(r.userId, {
+                side: "evening",
+                pref: r.eveningPref as "office" | "devotion",
+                parishTitle: communityTitle,
+              });
+              await db
+                .update(usersTable)
+                .set({ parishOfficeEveningSentDate: today })
+                .where(eq(usersTable.id, r.userId));
+            } catch (err) {
+              logger.warn({ err, userId: r.userId }, "[office-reminder] evening push failed");
+            }
+          } else {
             await db
               .update(usersTable)
               .set({ parishOfficeEveningSentDate: today })
               .where(eq(usersTable.id, r.userId));
-          } catch (err) {
-            logger.warn({ err, userId: r.userId }, "[office-reminder] evening push failed");
+            logger.info({ userId: r.userId }, "[office-reminder] evening skip — already prayed");
           }
         }
       }
