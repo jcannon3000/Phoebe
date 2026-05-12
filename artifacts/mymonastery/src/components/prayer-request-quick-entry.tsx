@@ -17,6 +17,8 @@ export function PrayerRequestQuickEntry() {
   const [durationDays, setDurationDays] = useState<3 | 7>(7);
   const placeholder = usePrayerRequestPlaceholder(inputValue);
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const submitMutation = useMutation({
     mutationFn: ({ body, durationDays: days }: { body: string; durationDays: number }) =>
       apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays: days }),
@@ -26,7 +28,11 @@ export function PrayerRequestQuickEntry() {
       setInputValue("");
       setPendingBody("");
       setDurationDays(3);
+      setSubmitError(null);
       setShowModal(false);
+    },
+    onError: (err: unknown) => {
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     },
   });
 
@@ -130,6 +136,12 @@ export function PrayerRequestQuickEntry() {
                 ? "Your community will hold this for three days. On the third day it will quietly be released. 🌿"
                 : "Your community will hold this for a full week. After seven days it will quietly be released. 🌿"}
             </p>
+
+            {submitError && (
+              <p className="text-xs mb-3 text-center" style={{ color: "#F87171" }}>
+                {submitError}
+              </p>
+            )}
 
             <button
               type="button"

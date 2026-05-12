@@ -669,10 +669,12 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [done, setDone] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   async function handleSubmit() {
     if (!text.trim()) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const body = text.trim();
       if (!preview) {
@@ -685,8 +687,9 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
       setSubmittedBody(body);
       setSubmitted(true);
       setDone(true);
-    } catch {
+    } catch (err) {
       setSubmitting(false);
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
   }
 
@@ -864,6 +867,12 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
           />
         </div>
       </div>
+
+      {submitError && (
+        <p className="text-xs text-center mb-3" style={{ color: "#F87171", fontFamily: C.font }}>
+          {submitError}
+        </p>
+      )}
 
       <button
         onClick={handleSubmit}
