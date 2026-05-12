@@ -1307,53 +1307,62 @@ router.get("/moments/past-intercessions", async (req, res): Promise<void> => {
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
     if (!me) { res.status(404).json({ error: "User not found" }); return; }
 
-    // Groups where I'm an admin → I can see those groups' archived
-    // intercessions.
-    const adminGroupRows = await db
+    // All groups the viewer belongs to (any role) — every member sees
+    // the community's past intercessions, faded, just like how past
+    // "Prayers for You" cards show for everyone.
+    const memberGroupRows = await db
       .select({ groupId: groupMembersTable.groupId })
       .from(groupMembersTable)
-      .where(
-        and(
-          eq(groupMembersTable.userId, sessionUserId),
-          eq(groupMembersTable.role, "admin"),
-        ),
-      );
-    const adminGroupIds = [...new Set(adminGroupRows.map((r) => r.groupId))];
+      .where(eq(groupMembersTable.userId, sessionUserId));
+    const memberGroupIds = [...new Set(memberGroupRows.map((r) => r.groupId))];
 
-    // Beta admin → I can see archived feed-scoped intercessions for
-    // platform-owned feeds.
+    // Beta admin → also see archived feed-scoped intercessions for
+    // platform-owned feeds (e.g. Phoebe Climate).
     const [betaRow] = await db
       .select({ isAdmin: betaUsersTable.isAdmin })
       .from(betaUsersTable)
       .where(eq(betaUsersTable.email, (me.email ?? "").toLowerCase()));
     const isBetaAdmin = !!betaRow?.isAdmin;
 
-    if (adminGroupIds.length === 0 && !isBetaAdmin) {
+    if (memberGroupIds.length === 0 && !isBetaAdmin) {
       res.json({ intercessions: [] });
       return;
     }
 
-    // Pull every archived intercession in scope. We collect the
-    // candidate set in two queries (group-owned + feed-owned) and
-    // filter further if needed.
+    // "Past" = archived OR cycle-window expired. We fetch all intercessions
+    // for the user's groups (active + archived) and filter in JS so we
+    // catch both states with a single query.
+    const now = new Date();
+    const graceMs = 2 * 24 * 60 * 60 * 1000;
+
+    function isExpiredIntercession(m: typeof sharedMomentsTable.$inferSelect): boolean {
+      if (m.state === "archived") return true;
+      const mAny = m as Record<string, unknown>;
+      const reachedAt = mAny.commitmentGoalReachedAt as Date | null;
+      if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return true;
+      const cycleStartedAt = mAny.commitmentCycleStartedAt as Date | null;
+      if (!reachedAt && m.goalDays > 0 && cycleStartedAt) {
+        const cycleEndMs = new Date(cycleStartedAt).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
+        if (now.getTime() > cycleEndMs) return true;
+      }
+      return false;
+    }
+
     const candidateRows: Array<typeof sharedMomentsTable.$inferSelect> = [];
-    if (adminGroupIds.length > 0) {
+    if (memberGroupIds.length > 0) {
       const rows = await db
         .select()
         .from(sharedMomentsTable)
         .where(
           and(
             eq(sharedMomentsTable.templateType, "intercession"),
-            eq(sharedMomentsTable.state, "archived"),
-            inArray(sharedMomentsTable.groupId, adminGroupIds),
+            inArray(sharedMomentsTable.groupId, memberGroupIds),
           ),
         );
-      candidateRows.push(...rows);
+      candidateRows.push(...rows.filter(isExpiredIntercession));
     }
     if (isBetaAdmin) {
-      // Platform-owned feeds (creatorUserId = null) — currently just
-      // phoebe-climate. Limit to those so a beta admin can't snoop on
-      // a user-owned feed they don't actually administer.
+      // Platform-owned feeds (creatorUserId = null).
       const platformFeeds = await db
         .select({ id: prayerFeedsTable.id })
         .from(prayerFeedsTable)
@@ -1366,11 +1375,10 @@ router.get("/moments/past-intercessions", async (req, res): Promise<void> => {
           .where(
             and(
               eq(sharedMomentsTable.templateType, "intercession"),
-              eq(sharedMomentsTable.state, "archived"),
               inArray(sharedMomentsTable.prayerFeedId, platformFeedIds),
             ),
           );
-        candidateRows.push(...rows);
+        candidateRows.push(...rows.filter(isExpiredIntercession));
       }
     }
 
