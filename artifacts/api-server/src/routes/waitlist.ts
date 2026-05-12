@@ -2,7 +2,6 @@ import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db, waitlistTable, betaUsersTable, usersTable } from "@workspace/db";
 import { z } from "zod/v4";
-import { sendEmail } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -81,49 +80,9 @@ router.post("/waitlist", async (req, res): Promise<void> => {
   }
 });
 
-async function notifyAdminOfWaitlistSignup(entry: {
+async function notifyAdminOfWaitlistSignup(_entry: {
   email: string; name: string; reason: string | null; source: string;
-}): Promise<void> {
-  // Recipient: ADMIN_NOTIFICATION_EMAIL env var, OR every beta_users row
-  // with is_admin=true. Skipped entirely if neither is available.
-  const recipients: string[] = [];
-  const envRecipient = process.env.ADMIN_NOTIFICATION_EMAIL?.trim();
-  if (envRecipient) recipients.push(envRecipient);
-  if (recipients.length === 0) {
-    try {
-      const admins = await db.select({ email: betaUsersTable.email })
-        .from(betaUsersTable).where(eq(betaUsersTable.isAdmin, true));
-      for (const a of admins) recipients.push(a.email);
-    } catch {
-      // beta_users missing — give up silently
-    }
-  }
-  if (recipients.length === 0) return;
-
-  const subject = `🌿 New Phoebe waitlist signup: ${entry.name}`;
-  const reasonBlock = entry.reason
-    ? `<p style="margin:16px 0 0;color:#555;font-style:italic">"${escapeHtml(entry.reason)}"</p>`
-    : "";
-  const html = `
-    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#222">
-      <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#888;margin:0 0 8px">Phoebe waitlist</p>
-      <h1 style="font-size:18px;margin:0 0 12px">${escapeHtml(entry.name)}</h1>
-      <p style="margin:0 0 4px"><strong>Email:</strong> <a href="mailto:${escapeHtml(entry.email)}">${escapeHtml(entry.email)}</a></p>
-      <p style="margin:0;color:#666"><strong>Source:</strong> ${escapeHtml(entry.source)}</p>
-      ${reasonBlock}
-    </div>
-  `;
-  const text = [
-    `New Phoebe waitlist signup`,
-    ``,
-    `Name: ${entry.name}`,
-    `Email: ${entry.email}`,
-    `Source: ${entry.source}`,
-    entry.reason ? `\nReason:\n${entry.reason}` : "",
-  ].join("\n");
-
-  await Promise.all(recipients.map(to => sendEmail({ to, subject, html, text })));
-}
+}): Promise<void> { return; }
 
 function escapeHtml(s: string): string {
   return s

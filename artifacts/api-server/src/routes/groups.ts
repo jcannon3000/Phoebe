@@ -25,7 +25,6 @@ import {
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
-import { sendEmail, sendDailyBellIcsInvite } from "../lib/email";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
 import {
@@ -1398,106 +1397,19 @@ router.post(
 // Exported so auth/register can call it after a community-invite signup
 // (the join is performed inside register, not via this endpoint).
 export async function notifyAdminsOfNewMember(
-  groupId: number,
-  groupName: string,
-  joiner: { name: string; email: string },
-  groupSlug?: string,
-): Promise<void> {
-  // Resolve admin emails for the group via the user records linked to
-  // joined admin members. Pending invites are skipped (they haven't joined
-  // yet themselves).
-  const adminMembers = await db.select({
-    userId: groupMembersTable.userId,
-  })
-    .from(groupMembersTable)
-    .where(and(
-      eq(groupMembersTable.groupId, groupId),
-      inArray(groupMembersTable.role, ["admin", "hidden_admin"]),
-    ));
-  const userIds = adminMembers.map(a => a.userId).filter((id): id is number => id != null);
-  if (userIds.length === 0) return;
+  _groupId: number,
+  _groupName: string,
+  _joiner: { name: string; email: string },
+  _groupSlug?: string,
+): Promise<void> { return; }
 
-  const adminUsers = await db.select({
-    email: usersTable.email,
-    name: usersTable.name,
-  })
-    .from(usersTable)
-    .where(inArray(usersTable.id, userIds));
-  if (adminUsers.length === 0) return;
-
-  const subject = `🌿 ${joiner.name} joined ${groupName}`;
-  const safeName = escapeHtml(joiner.name);
-  const safeEmail = escapeHtml(joiner.email);
-  const safeGroup = escapeHtml(groupName);
-  const html = `
-    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#222">
-      <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#888;margin:0 0 8px">Phoebe community</p>
-      <h1 style="font-size:18px;margin:0 0 12px">${safeName} joined ${safeGroup}</h1>
-      <p style="margin:0 0 4px"><strong>Email:</strong> <a href="mailto:${safeEmail}">${safeEmail}</a></p>
-      <p style="margin:16px 0 0;color:#666">They accepted your invite and are now a member of ${safeGroup}.</p>
-    </div>
-  `;
-  const text = [
-    `${joiner.name} joined ${groupName}`,
-    ``,
-    `Email: ${joiner.email}`,
-    ``,
-    `They accepted your invite and are now a member of ${groupName}.`,
-  ].join("\n");
-
-  await Promise.all(adminUsers.map(a => sendEmail({ to: a.email, subject, html, text })));
-}
-
-// Mirror of notifyAdminsOfNewMember, for prayer requests. Called from the
-// POST /groups/:slug/prayer-requests handler so admins get the out-of-band
-// nudge even if they don't open the app for a while.
 async function notifyAdminsOfNewPrayerRequest(
-  groupId: number,
-  groupName: string,
-  body: string,
-  authorName: string | null,
-  isAnonymous: boolean,
-): Promise<void> {
-  const adminMembers = await db.select({ userId: groupMembersTable.userId })
-    .from(groupMembersTable)
-    .where(and(
-      eq(groupMembersTable.groupId, groupId),
-      eq(groupMembersTable.role, "admin"),
-    ));
-  const userIds = adminMembers.map(a => a.userId).filter((id): id is number => id != null);
-  if (userIds.length === 0) return;
-
-  const adminUsers = await db.select({
-    email: usersTable.email,
-    name: usersTable.name,
-  })
-    .from(usersTable)
-    .where(inArray(usersTable.id, userIds));
-  if (adminUsers.length === 0) return;
-
-  const displayAuthor = isAnonymous ? "Someone" : (authorName ?? "A member");
-  const subject = `🙏 New prayer request in ${groupName}`;
-  const safeAuthor = escapeHtml(displayAuthor);
-  const safeBody = escapeHtml(body);
-  const safeGroup = escapeHtml(groupName);
-  const html = `
-    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#222">
-      <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#888;margin:0 0 8px">Phoebe community</p>
-      <h1 style="font-size:18px;margin:0 0 12px">${safeAuthor} shared a prayer in ${safeGroup}</h1>
-      <blockquote style="margin:12px 0;padding:12px 16px;border-left:3px solid #2D5E3F;background:#f6f8f6;color:#333;white-space:pre-wrap">${safeBody}</blockquote>
-      <p style="margin:16px 0 0;color:#666">Open Phoebe to pray for this request.</p>
-    </div>
-  `;
-  const text = [
-    `${displayAuthor} shared a prayer in ${groupName}:`,
-    ``,
-    body,
-    ``,
-    `Open Phoebe to pray for this request.`,
-  ].join("\n");
-
-  await Promise.all(adminUsers.map(a => sendEmail({ to: a.email, subject, html, text })));
-}
+  _groupId: number,
+  _groupName: string,
+  _body: string,
+  _authorName: string | null,
+  _isAnonymous: boolean,
+): Promise<void> { return; }
 
 function escapeHtml(s: string): string {
   return s
@@ -3214,22 +3126,7 @@ async function sendAdminBellInvite(
   // Fallback: raw ICS email so the user at least has a way to add the
   // bell to their calendar manually. We only reach this path if Google
   // returned null — if it succeeded we don't want to spam a second invite.
-  let icsSent = false;
-  if (!calendarEventId) {
-    try {
-      icsSent = await sendDailyBellIcsInvite({
-        to: u.email,
-        userId: u.id,
-        timeZone: tz,
-        startLocalStr,
-        endLocalStr,
-        summary: "🔔 Daily Bell — Phoebe",
-        description,
-      });
-    } catch (err) {
-      console.error(`[bell] admin-invite: ICS fallback failed for user ${u.id}:`, err);
-    }
-  }
+  const icsSent = false;
 
   return {
     calendarEventId,
