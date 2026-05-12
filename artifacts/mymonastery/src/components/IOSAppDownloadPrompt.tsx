@@ -58,6 +58,7 @@ export function IOSAppDownloadPrompt() {
     if (!isIOSWeb()) return;
     if (isLoading) return; // wait for auth to resolve
     if (!user) return;    // not signed in → not the audience yet
+    if (!user.onboardingCompleted) return; // wait until they're on the home screen
     try {
       if (localStorage.getItem(DISMISS_KEY) === "1") return;
     } catch { /* private mode — fall through to show */ }

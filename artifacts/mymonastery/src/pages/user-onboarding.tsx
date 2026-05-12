@@ -361,49 +361,7 @@ type Slide =
   | { kind: "prayer-request" };
 
 const SLIDES: Slide[] = [
-  // 1
-  { kind: "welcome" },
-  // 2 — Profile picture (skippable). Asked early so the rest of onboarding
-  //     and the dashboard show the user's face right away.
   { kind: "profile-picture" },
-  // 3 — "Your community is already here" slide removed per user
-  //     request. The generic parish mock felt redundant once signup
-  //     routes users straight into their actual community; keeping
-  //     this deck focused on practices makes the rhythm clearer.
-  // 3
-  {
-    kind: "info",
-    title: "Prayer, held in common.",
-    body: "Every week your community shares what they're carrying. You can respond with a word or a prayer, and make people feel heard and cared for.",
-    mock: "prayer-requests",
-  },
-  // Daily-rhythm slide. New users almost always ask "but how do I
-  // remember to come back?" — show them the answer concretely:
-  // one push notification a day, surfacing a slideshow of their
-  // community's prayer requests. The mock notification on this
-  // slide is what they'll actually see on their lock screen, so
-  // they recognize it the first time it arrives.
-  {
-    kind: "info",
-    title: "A daily call to prayer.",
-    body: "Once a day, Phoebe rings — a real bell on your phone, then a slideshow opens. Your circle's prayer requests, one slide at a time, three or four minutes total. A daily rhythm of carrying each other.",
-    mock: "daily-push",
-  },
-  // 4
-  {
-    kind: "info",
-    title: "Intercessions from the prayer book.",
-    body: "Phoebe includes the full intercessions and thanksgivings from the Book of Common Prayer. Join others in your community in praying them together.",
-    mock: "bcp",
-  },
-  // 5
-  {
-    kind: "info",
-    title: "Upcoming gatherings.",
-    body: "Your parish's events and traditions live here. See what's happening this week and who's showing up.",
-    mock: "gatherings",
-  },
-  // 7
   {
     kind: "info",
     title: "Phoebe is a safe space.",
@@ -1139,8 +1097,8 @@ export default function UserOnboarding() {
         </div>
       )}
 
-      {/* Back button only on interactive slides */}
-      {isInteractive && (
+      {/* Back button only on interactive slides that aren't the first */}
+      {isInteractive && !isFirst && (
         <div
           className="flex items-center px-5 md:px-8 pb-5 md:pb-8 pt-4 relative z-10"
           style={{ background: "linear-gradient(to top, #091A10 60%, transparent)" }}
