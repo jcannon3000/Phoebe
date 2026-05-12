@@ -72,25 +72,29 @@ export default function PrayerChooserPage() {
   type Option = {
     title: string;
     sub: string;
+    duration: string;
     href: string;
     verb: string;
   };
   const options: Option[] = [
     {
       title: "Intercession Slideshow",
-      sub: "< 5 Min",
+      sub: "Your prayer list, no liturgy",
+      duration: "< 5 Min",
       href: "/prayer-mode",
       verb: "Start",
     },
     {
       title: devotionLabel,
-      sub: "5–10 Min",
+      sub: "From the Book of Common Prayer · with prayer list",
+      duration: "5–10 Min",
       href: `/bcp/daily-devotions?mode=${encodeURIComponent(devotionMode)}${devotionState.kind === "done" ? "&reset=1" : ""}`,
       verb: verbFor(devotionState),
     },
     {
       title: officeLabel,
-      sub: "15–20 Min",
+      sub: "From the Book of Common Prayer · with prayer list",
+      duration: "15–20 Min",
       href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
       verb: verbFor(officeStateLocal),
     },
@@ -186,17 +190,31 @@ export default function PrayerChooserPage() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p
-                          className="text-base font-semibold"
-                          style={{
-                            color: "#F0EDE6",
-                            fontFamily: FONT,
-                            margin: 0,
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {opt.title}
-                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p
+                            className="text-base font-semibold"
+                            style={{
+                              color: "#F0EDE6",
+                              fontFamily: FONT,
+                              margin: 0,
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {opt.title}
+                          </p>
+                          <span
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                            style={{
+                              background: "rgba(46,107,64,0.2)",
+                              color: "rgba(143,175,150,0.9)",
+                              border: "1px solid rgba(46,107,64,0.3)",
+                              fontFamily: FONT,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {opt.duration}
+                          </span>
+                        </div>
                         <p
                           className="text-[12px] mt-1"
                           style={{ color: "rgba(143,175,150,0.85)", margin: 0 }}
