@@ -2030,11 +2030,7 @@ function PrayerOfficeCard() {
   // entry). Once the user has prayed something today the copy flips
   // to "Pray again"; the chooser screen still presents the full menu
   // of depth options so they can pick anything to re-pray.
-  const ctaCopy = prayedToday
-    ? "Pray again"
-    : isMorning
-      ? "Start this morning's prayer"
-      : "Start this evening's prayer";
+  const ctaCopy = prayedToday ? "Pray again" : "Begin prayer";
 
   return (
     <div

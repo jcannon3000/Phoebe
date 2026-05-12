@@ -35,7 +35,7 @@ export default function PrayerChooserPage() {
   const headline = isMorning ? "Start this morning's prayer" : "Start this evening's prayer";
 
   const devotionLabel = isMorning ? "Morning Devotion" : "Evening Devotion";
-  const officeLabel = isMorning ? "Morning Prayer" : "Evening Prayer";
+  const officeLabel = isMorning ? "Morning Office" : "Evening Office";
   const devotionMode: LiturgyMode = isMorning ? "morning-devotion" : "early-evening-devotion";
   const officeMode: LiturgyMode = isMorning ? "morning" : "evening";
 
@@ -78,19 +78,19 @@ export default function PrayerChooserPage() {
   const options: Option[] = [
     {
       title: "Intercession Slideshow",
-      sub: "Your prayer list, no liturgy",
+      sub: "< 5 Min",
       href: "/prayer-mode",
       verb: "Start",
     },
     {
       title: devotionLabel,
-      sub: "From the BCP · with prayer list",
+      sub: "5–10 Min",
       href: `/bcp/daily-devotions?mode=${encodeURIComponent(devotionMode)}${devotionState.kind === "done" ? "&reset=1" : ""}`,
       verb: verbFor(devotionState),
     },
     {
       title: officeLabel,
-      sub: "From the BCP · with prayer list",
+      sub: "15–20 Min",
       href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
       verb: verbFor(officeStateLocal),
     },
