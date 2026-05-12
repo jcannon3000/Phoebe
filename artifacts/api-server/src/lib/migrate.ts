@@ -300,6 +300,29 @@ export async function migrate() {
             AND mp.window_date >= (CURRENT_DATE - INTERVAL '60 days')::date
         )
     `);
+    // Repair 2: intercessions that hit their goal (commitmentGoalReachedAt set)
+    // but the community kept praying past the 2-day Extend grace window.
+    // The grace exists so the admin can see the Extend popup — if there is
+    // recent activity it means people were still praying and the intercession
+    // was unintentionally hidden, not intentionally retired. Clear the
+    // goalReachedAt stamp and open a fresh cycle so it reappears.
+    // Guard: only if non-archived AND has prayer posts in the last 14 days.
+    await run(client, `
+      UPDATE shared_moments sm
+      SET commitment_goal_reached_at = NULL,
+          commitment_cycle_started_at = NOW(),
+          state = 'active'
+      WHERE sm.template_type = 'intercession'
+        AND sm.goal_days > 0
+        AND sm.commitment_goal_reached_at IS NOT NULL
+        AND sm.commitment_goal_reached_at + INTERVAL '2 days' < NOW()
+        AND sm.state != 'archived'
+        AND EXISTS (
+          SELECT 1 FROM moment_posts mp
+          WHERE mp.moment_id = sm.id
+            AND mp.window_date >= (CURRENT_DATE - INTERVAL '14 days')::date
+        )
+    `);
 
     // Fix constraints that differ from old migration to current schema
     await run(client, `ALTER TABLE shared_moments ALTER COLUMN ritual_id DROP NOT NULL`);

@@ -1307,15 +1307,6 @@ router.get("/moments/past-intercessions", async (req, res): Promise<void> => {
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
     if (!me) { res.status(404).json({ error: "User not found" }); return; }
 
-    // All groups the viewer belongs to (any role) — every member sees
-    // the community's past intercessions, faded, just like how past
-    // "Prayers for You" cards show for everyone.
-    const memberGroupRows = await db
-      .select({ groupId: groupMembersTable.groupId })
-      .from(groupMembersTable)
-      .where(eq(groupMembersTable.userId, sessionUserId));
-    const memberGroupIds = [...new Set(memberGroupRows.map((r) => r.groupId))];
-
     // Beta admin → also see archived feed-scoped intercessions for
     // platform-owned feeds (e.g. Phoebe Climate).
     const [betaRow] = await db
@@ -1324,14 +1315,8 @@ router.get("/moments/past-intercessions", async (req, res): Promise<void> => {
       .where(eq(betaUsersTable.email, (me.email ?? "").toLowerCase()));
     const isBetaAdmin = !!betaRow?.isAdmin;
 
-    if (memberGroupIds.length === 0 && !isBetaAdmin) {
-      res.json({ intercessions: [] });
-      return;
-    }
-
-    // "Past" = archived OR cycle-window expired. We fetch all intercessions
-    // for the user's groups (active + archived) and filter in JS so we
-    // catch both states with a single query.
+    // "Past" = archived OR cycle-window expired. Mirror the same logic
+    // the active filter uses so we catch everything the list hides.
     const now = new Date();
     const graceMs = 2 * 24 * 60 * 60 * 1000;
 
@@ -1348,15 +1333,30 @@ router.get("/moments/past-intercessions", async (req, res): Promise<void> => {
       return false;
     }
 
+    // Use moment_user_tokens as the source of truth — if the user has
+    // a token they participated regardless of which group is primary vs
+    // secondary. This catches multi-group intercessions where the user
+    // is only in one of the additional communities.
+    const userTokenRows = await db
+      .select({ momentId: momentUserTokensTable.momentId })
+      .from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.email, me.email ?? ""));
+    const participatedIds = [...new Set(userTokenRows.map((r) => r.momentId))];
+
+    if (participatedIds.length === 0 && !isBetaAdmin) {
+      res.json({ intercessions: [] });
+      return;
+    }
+
     const candidateRows: Array<typeof sharedMomentsTable.$inferSelect> = [];
-    if (memberGroupIds.length > 0) {
+    if (participatedIds.length > 0) {
       const rows = await db
         .select()
         .from(sharedMomentsTable)
         .where(
           and(
             eq(sharedMomentsTable.templateType, "intercession"),
-            inArray(sharedMomentsTable.groupId, memberGroupIds),
+            inArray(sharedMomentsTable.id, participatedIds),
           ),
         );
       candidateRows.push(...rows.filter(isExpiredIntercession));
