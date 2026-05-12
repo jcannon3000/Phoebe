@@ -565,18 +565,35 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
   if (!beta) { res.status(403).json({ error: "Metrics are beta only for now" }); return; }
 
   try {
-    // Bucket "today" / "this week" in UTC so that timestamps shown in
-    // the DB (which are stored as UTC) match what the metrics count.
-    // Using the admin's local timezone caused prayers logged after
-    // midnight UTC but before midnight local to land in the wrong
-    // day bucket — e.g. a 03:04 UTC prayer shows as "May 9" in the
-    // DB but was counted as "May 8" for a New York admin.
+    // Bucket "today" / "this week" in Eastern Time. Phoebe's community
+    // is run out of ET and the admin's intuition about "today" is the
+    // ET calendar day; UTC bucketing (the previous behavior) flipped
+    // the metrics to a fresh day at midnight UTC — i.e. 8pm EDT —
+    // which made "Today=0" appear every evening. Hardcoded rather
+    // than read off the admin's timezone field so every admin sees
+    // the same numbers regardless of where they sign in from.
+    // "America/New_York" handles DST automatically (EDT in summer,
+    // EST in winter).
+    const tz = "America/New_York";
+    const ymdFmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
     const nowDate = new Date();
-    const todayStr = nowDate.toISOString().slice(0, 10);
-    const weekStartDate = new Date(nowDate);
-    weekStartDate.setUTCDate(weekStartDate.getUTCDate() - 6);
-    const weekStartStr = weekStartDate.toISOString().slice(0, 10);
-    const tz = "UTC";
+    const todayStr = ymdFmt.format(nowDate);
+    // Week-start in ET: take today's local Y-M-D, parse it back to a
+    // date, subtract 6 days. The intermediate Date math is UTC-safe
+    // because we only use the date components.
+    const [tyStr, tmStr, tdStr] = todayStr.split("-");
+    const todayUTC = new Date(Date.UTC(
+      parseInt(tyStr, 10),
+      parseInt(tmStr, 10) - 1,
+      parseInt(tdStr, 10),
+    ));
+    todayUTC.setUTCDate(todayUTC.getUTCDate() - 6);
+    const weekStartStr = todayUTC.toISOString().slice(0, 10);
 
     // A "prayer event" is one of two things logged by a member of this
     // community:
