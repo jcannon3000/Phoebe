@@ -90,13 +90,13 @@ export default function OfficesPage() {
         </p>
 
         <SectionLabel>In the morning</SectionLabel>
-        <div className="space-y-3 mb-6">
+        <div className="space-y-4 mb-8">
           <OfficeOption spec={morningOffice} />
           <OfficeOption spec={morningDevotion} />
         </div>
 
         <SectionLabel>In the evening</SectionLabel>
-        <div className="space-y-3 mb-8">
+        <div className="space-y-4 mb-10">
           <OfficeOption spec={eveningOffice} />
           <OfficeOption spec={eveningDevotion} />
         </div>
