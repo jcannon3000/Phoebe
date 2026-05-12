@@ -39,6 +39,9 @@ export function RequestWordField({
   const draftRef = useRef(draft);
   const isPrivateRef = useRef(isPrivate);
   const submittingRef = useRef(submitting);
+  // Tracks the requestId from the PREVIOUS render so the slide-change
+  // effect can flush any unsent draft to the correct (old) request.
+  const prevRequestIdRef = useRef(requestId);
   useEffect(() => { draftRef.current = draft; }, [draft]);
   useEffect(() => { isPrivateRef.current = isPrivate; }, [isPrivate]);
   useEffect(() => { submittingRef.current = submitting; }, [submitting]);
@@ -78,21 +81,23 @@ export function RequestWordField({
   // If the slide changes (new request) reset local state from the new
   // prop. CRITICAL: if the user typed something and never tapped send
   // (they advanced via Amen instead), fire-and-forget the submit
-  // BEFORE we wipe local state. We're firing under the OLD requestId
-  // closure because submitContent has it captured — the new slide's
-  // RequestWordField mounts fresh after this effect returns.
+  // BEFORE we wipe local state.
   useEffect(() => {
+    // Capture the OLD requestId before updating the ref — the flush
+    // must target the request the user was just looking at, not the
+    // new slide. Using `requestId` directly would capture the new value.
+    const prevReqId = prevRequestIdRef.current;
+    prevRequestIdRef.current = requestId;
+
     const pendingDraft = draftRef.current.trim();
-    if (pendingDraft && !submittingRef.current) {
+    if (pendingDraft && !submittingRef.current && prevReqId !== requestId) {
       // Fire-and-forget — the user has already moved on, we don't
       // want to block the slide transition on the network round-trip.
       // The POST is upsert-safe so a stale background submit can't
       // double-write.
-      const pendingPrivate = isPrivateRef.current;
-      const reqId = requestId;
-      apiRequest("POST", `/api/prayer-requests/${reqId}/word`, {
+      apiRequest("POST", `/api/prayer-requests/${prevReqId}/word`, {
         content: pendingDraft,
-        isPrivate: pendingPrivate,
+        isPrivate: isPrivateRef.current,
       }).then(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       }).catch((err) => {

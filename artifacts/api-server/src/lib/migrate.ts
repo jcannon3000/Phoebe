@@ -275,6 +275,31 @@ export async function migrate() {
     // have a sensible window without anyone having to touch them.
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_cycle_started_at TIMESTAMPTZ`);
     await run(client, `UPDATE shared_moments SET commitment_cycle_started_at = created_at WHERE commitment_cycle_started_at IS NULL`);
+    // Repair: the backfill above set cycleStartedAt = created_at for all
+    // existing intercessions. Intercessions created more than goalDays ago
+    // became immediately hidden even if they were actively being prayed.
+    // Fix: for intercessions whose window is past but have had a prayer post
+    // in the last 60 days, reset cycleStartedAt to NOW so the window opens
+    // fresh. Intercessions with no recent activity stay hidden as intended.
+    // Guard: only touch rows still at the original backfill value
+    // (cycleStartedAt = created_at). Once we reset to NOW() — or an
+    // admin extends the cycle — the condition is false and subsequent
+    // restarts leave those rows alone. This prevents the UPDATE from
+    // reopening an intercession the admin deliberately let expire.
+    await run(client, `
+      UPDATE shared_moments sm
+      SET commitment_cycle_started_at = NOW()
+      WHERE sm.template_type = 'intercession'
+        AND sm.goal_days > 0
+        AND sm.commitment_goal_reached_at IS NULL
+        AND sm.commitment_cycle_started_at = sm.created_at
+        AND sm.commitment_cycle_started_at + (sm.goal_days || ' days')::interval < NOW()
+        AND EXISTS (
+          SELECT 1 FROM moment_posts mp
+          WHERE mp.moment_id = sm.id
+            AND mp.window_date >= (CURRENT_DATE - INTERVAL '60 days')::date
+        )
+    `);
 
     // Fix constraints that differ from old migration to current schema
     await run(client, `ALTER TABLE shared_moments ALTER COLUMN ritual_id DROP NOT NULL`);
