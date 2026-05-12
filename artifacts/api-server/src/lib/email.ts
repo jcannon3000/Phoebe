@@ -67,8 +67,6 @@ function encodeMimeMessage(options: {
 
 export async function sendAnnouncementEmail(opts: {
   to: string;
-  fromName: string;
-  groupName: string;
   subject: string;
   body: string;
 }): Promise<boolean> {
@@ -93,13 +91,13 @@ export async function sendAnnouncementEmail(opts: {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
           <tr>
             <td>
-              <div style="margin-bottom:8px;">
-                <span style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#888;">From ${opts.fromName} · ${opts.groupName}</span>
+              <div style="margin-bottom:28px;">
+                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
               </div>
               <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${opts.subject}</h1>
               <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">${safeBody}</p>
               <p style="margin:0;font-size:12px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
-                This message was sent to members of ${opts.groupName} on Phoebe.
+                You're receiving this because you're a member of Phoebe.
               </p>
             </td>
           </tr>
@@ -112,14 +110,12 @@ export async function sendAnnouncementEmail(opts: {
   `.trim();
 
   const text = [
-    `From ${opts.fromName} · ${opts.groupName}`,
-    "",
     opts.subject,
     "",
     opts.body,
     "",
-    `---`,
-    `This message was sent to members of ${opts.groupName} on Phoebe.`,
+    "---",
+    "You're receiving this because you're a member of Phoebe.",
   ].join("\n");
 
   try {

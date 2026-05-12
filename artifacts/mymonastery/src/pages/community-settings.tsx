@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { ExternalLink, Users, Plus, X, Trash2, UserPlus, Megaphone } from "lucide-react";
+import { ExternalLink, Users, Plus, X, Trash2, UserPlus } from "lucide-react";
 import { MetricsDashboard } from "./community-metrics";
 
 const FONT = "'Space Grotesk', sans-serif";
@@ -36,7 +36,7 @@ export default function CommunitySettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { isBeta, rawIsAdmin } = useBetaStatus();
+  const { isBeta } = useBetaStatus();
 
   // Tabs within settings: "settings" (form) and "metrics" (beta only).
   // The /metrics route deep-links to the same page with the tab pre-
@@ -177,22 +177,6 @@ export default function CommunitySettingsPage() {
   // intentions, daily_focus, announcements, etc.; shared_moments
   // (intercessions) keep their own state with groupId set NULL —
   // they don't disappear, they just become un-scoped.
-  const [announceOpen, setAnnounceOpen] = useState(false);
-  const [announceSubject, setAnnounceSubject] = useState("");
-  const [announceBody, setAnnounceBody] = useState("");
-  const [announceSent, setAnnounceSent] = useState<number | null>(null);
-  const announceMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/announce`, {
-      subject: announceSubject.trim(),
-      body: announceBody.trim(),
-    }),
-    onSuccess: (data: { sent: number }) => {
-      setAnnounceSent(data.sent);
-      setAnnounceSubject("");
-      setAnnounceBody("");
-    },
-  });
-
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -653,106 +637,6 @@ export default function CommunitySettingsPage() {
         >
           {saveMutation.isPending ? "Saving…" : saved ? "✓ Saved" : "Save Changes"}
         </button>
-
-        {/* ── Announce (platform admins only) ─────────────────────────────── */}
-        {rawIsAdmin && (
-          <div className="mt-8">
-            {!announceOpen ? (
-              <button
-                type="button"
-                onClick={() => { setAnnounceOpen(true); setAnnounceSent(null); }}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-opacity hover:opacity-90"
-                style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Megaphone size={15} style={{ color: "#A8C5A0" }} />
-                  <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Send announcement</span>
-                </span>
-                <span className="text-sm" style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
-              </button>
-            ) : (
-              <div
-                className="rounded-2xl p-5"
-                style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.3)" }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                    Announce to {group.name}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => { setAnnounceOpen(false); setAnnounceSent(null); }}
-                    style={{ color: "rgba(200,212,192,0.5)" }}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                {announceSent !== null ? (
-                  <div className="text-center py-4">
-                    <p className="text-2xl mb-2">✓</p>
-                    <p className="text-sm font-medium" style={{ color: "#A8C5A0" }}>
-                      Sent to {announceSent} member{announceSent !== 1 ? "s" : ""}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setAnnounceSent(null)}
-                      className="text-xs mt-3 transition-opacity hover:opacity-80"
-                      style={{ color: "rgba(143,175,150,0.6)" }}
-                    >
-                      Send another
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="mb-3">
-                      <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                        Subject
-                      </label>
-                      <input
-                        type="text"
-                        value={announceSubject}
-                        onChange={e => setAnnounceSubject(e.target.value)}
-                        maxLength={200}
-                        placeholder="Sunday bulletin, event reminder…"
-                        className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
-                      />
-                    </div>
-                    <div className="mb-4">
-                      <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                        Message
-                      </label>
-                      <textarea
-                        value={announceBody}
-                        onChange={e => setAnnounceBody(e.target.value)}
-                        maxLength={10000}
-                        rows={5}
-                        placeholder="What do you want your community to know?"
-                        className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none resize-none"
-                        style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
-                      />
-                    </div>
-                    {announceMutation.isError && (
-                      <p className="text-xs mb-3" style={{ color: "#C47A65" }}>
-                        Something went wrong. Try again.
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => announceMutation.mutate()}
-                      disabled={!announceSubject.trim() || !announceBody.trim() || announceMutation.isPending}
-                      className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
-                      style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                    >
-                      {announceMutation.isPending ? "Sending…" : "Send to all members"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── Danger zone ───────────────────────────────────────────────────
             Permanent community deletion. Two-step: tapping "Delete community"

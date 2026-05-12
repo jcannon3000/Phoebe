@@ -4253,9 +4253,9 @@ router.get("/me/pending-join-request-counts", async (req, res): Promise<void> =>
   }
 });
 
-// POST /api/groups/:slug/announce — pilot admins only.
-// Sends a plain email to every fully-joined member of the community.
-router.post("/groups/:slug/announce", async (req, res): Promise<void> => {
+// POST /api/admin/announce — pilot admins only.
+// Sends a platform-wide email to every user in the app.
+router.post("/admin/announce", async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -4273,41 +4273,18 @@ router.post("/groups/:slug/announce", async (req, res): Promise<void> => {
     if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
     const { subject, body } = parsed.data;
 
-    const [group] = await db.select({ id: groupsTable.id, name: groupsTable.name })
-      .from(groupsTable)
-      .where(eq(groupsTable.slug, req.params.slug));
-    if (!group) { res.status(404).json({ error: "Group not found" }); return; }
-
-    const memberRows = await db.select({ userId: groupMembersTable.userId })
-      .from(groupMembersTable)
-      .where(eq(groupMembersTable.groupId, group.id));
-    const userIds = memberRows.map(m => m.userId).filter((id): id is number => id != null);
-    if (userIds.length === 0) { res.json({ sent: 0 }); return; }
-
     const recipients = await db
-      .select({ email: usersTable.email, name: usersTable.name })
-      .from(usersTable)
-      .where(inArray(usersTable.id, userIds));
-
-    const [sender] = await db.select({ name: usersTable.name })
-      .from(usersTable).where(eq(usersTable.id, user.id));
+      .select({ email: usersTable.email })
+      .from(usersTable);
 
     const results = await Promise.allSettled(
-      recipients.map(r =>
-        sendAnnouncementEmail({
-          to: r.email,
-          fromName: sender?.name ?? "Phoebe",
-          groupName: group.name,
-          subject,
-          body,
-        })
-      )
+      recipients.map(r => sendAnnouncementEmail({ to: r.email, subject, body }))
     );
 
     const sent = results.filter(r => r.status === "fulfilled" && r.value === true).length;
-    res.json({ sent });
+    res.json({ sent, total: recipients.length });
   } catch (err) {
-    console.error("POST /api/groups/:slug/announce error:", err);
+    console.error("POST /api/admin/announce error:", err);
     res.status(500).json({ error: "Failed to send announcement" });
   }
 });

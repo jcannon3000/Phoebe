@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Trash2, Shield } from "lucide-react";
+import { Plus, Trash2, Shield, X } from "lucide-react";
 
 type BetaUser = {
   id: number;
@@ -25,6 +25,22 @@ export default function BetaAdminPage() {
   const { isAdmin, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
+  const [announceOpen, setAnnounceOpen] = useState(false);
+  const [announceSubject, setAnnounceSubject] = useState("");
+  const [announceBody, setAnnounceBody] = useState("");
+  const [announceSent, setAnnounceSent] = useState<{ sent: number; total: number } | null>(null);
+  const announceMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/announce", {
+      subject: announceSubject.trim(),
+      body: announceBody.trim(),
+    }),
+    onSuccess: (data: { sent: number; total: number }) => {
+      setAnnounceSent(data);
+      setAnnounceSubject("");
+      setAnnounceBody("");
+    },
+  });
 
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
@@ -141,6 +157,90 @@ export default function BetaAdminPage() {
             Preview →
           </button>
         </div>
+
+        {/* ── Announce ──────────────────────────────────────────────────── */}
+        <div className="mb-8">
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
+            Send Announcement
+          </p>
+          {!announceOpen ? (
+            <button
+              type="button"
+              onClick={() => { setAnnounceOpen(true); setAnnounceSent(null); }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-opacity hover:opacity-90"
+              style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)" }}
+            >
+              <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Email all users…</span>
+              <span className="text-sm" style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
+            </button>
+          ) : (
+            <div className="rounded-2xl p-5" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.3)" }}>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Email all users</p>
+                <button type="button" onClick={() => { setAnnounceOpen(false); setAnnounceSent(null); }} style={{ color: "rgba(200,212,192,0.5)" }}>
+                  <X size={16} />
+                </button>
+              </div>
+              {announceSent !== null ? (
+                <div className="text-center py-4">
+                  <p className="text-2xl mb-2">✓</p>
+                  <p className="text-sm font-medium" style={{ color: "#A8C5A0" }}>
+                    Sent to {announceSent.sent} of {announceSent.total} users
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setAnnounceSent(null)}
+                    className="text-xs mt-3 transition-opacity hover:opacity-80"
+                    style={{ color: "rgba(143,175,150,0.6)" }}
+                  >
+                    Send another
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-3">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>Subject</label>
+                    <input
+                      type="text"
+                      value={announceSubject}
+                      onChange={e => setAnnounceSubject(e.target.value)}
+                      maxLength={200}
+                      placeholder="What's the news?"
+                      className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                      style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>Message</label>
+                    <textarea
+                      value={announceBody}
+                      onChange={e => setAnnounceBody(e.target.value)}
+                      maxLength={10000}
+                      rows={5}
+                      placeholder="Write your announcement…"
+                      className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none resize-none"
+                      style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
+                    />
+                  </div>
+                  {announceMutation.isError && (
+                    <p className="text-xs mb-3" style={{ color: "#E57373" }}>Something went wrong. Try again.</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => announceMutation.mutate()}
+                    disabled={!announceSubject.trim() || !announceBody.trim() || announceMutation.isPending}
+                    className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
+                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                  >
+                    {announceMutation.isPending ? "Sending…" : "Send to all users"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 
         {/* Add user form */}
         <div className="mb-6">
