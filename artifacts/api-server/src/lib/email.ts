@@ -65,6 +65,73 @@ function encodeMimeMessage(options: {
   return Buffer.from(message).toString("base64url");
 }
 
+export async function sendAnnouncementEmail(opts: {
+  to: string;
+  fromName: string;
+  groupName: string;
+  subject: string;
+  body: string;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) return false;
+
+  const safeBody = opts.body
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
+          <tr>
+            <td>
+              <div style="margin-bottom:8px;">
+                <span style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#888;">From ${opts.fromName} · ${opts.groupName}</span>
+              </div>
+              <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${opts.subject}</h1>
+              <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">${safeBody}</p>
+              <p style="margin:0;font-size:12px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
+                This message was sent to members of ${opts.groupName} on Phoebe.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const text = [
+    `From ${opts.fromName} · ${opts.groupName}`,
+    "",
+    opts.subject,
+    "",
+    opts.body,
+    "",
+    `---`,
+    `This message was sent to members of ${opts.groupName} on Phoebe.`,
+  ].join("\n");
+
+  try {
+    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    console.error("Failed to send announcement email:", err);
+    return false;
+  }
+}
+
 export async function sendPasswordResetEmail(opts: {
   to: string;
   name: string;
