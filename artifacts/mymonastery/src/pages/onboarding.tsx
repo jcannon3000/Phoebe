@@ -6,11 +6,13 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 // Modes:
-//   signin — existing accounts log in
-//   signup — open registration. New users land on /welcome to pick
-//            a community to join (Climate is now a prayer feed, not a
-//            separate signup path, so it's no longer offered here).
-type Mode = "signin" | "signup";
+//   signin   — existing accounts log in
+//   waitlist — visitors without a group invite link drop their name +
+//              email on the waitlist. Self-serve signup is reserved for
+//              community-invite onboarding (/communities/join/:slug/:token);
+//              the root page no longer offers it so casual visitors don't
+//              create empty accounts.
+type Mode = "signin" | "waitlist";
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
@@ -25,9 +27,9 @@ export default function Onboarding() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  // Tracks whether the most recent mutation was a fresh signup so we
-  // route to /welcome instead of the dashboard default.
-  const [justSignedUp, setJustSignedUp] = useState(false);
+  // Success state for waitlist submission — replaces the form with a
+  // friendly confirmation message so the user knows they're on the list.
+  const [waitlistDone, setWaitlistDone] = useState<null | "added" | "already" | "has-account">(null);
 
   const searchParams = new URLSearchParams(window.location.search);
   const explicitRedirect = searchParams.get("redirect");
@@ -38,19 +40,15 @@ export default function Onboarding() {
         setLocation(explicitRedirect);
         return;
       }
-      if (justSignedUp) {
-        setLocation("/welcome");
-        return;
-      }
       setLocation("/dashboard");
     }
-  }, [user, isLoading, setLocation, explicitRedirect, justSignedUp]);
+  }, [user, isLoading, setLocation, explicitRedirect]);
 
   function switchMode(m: Mode) {
     setMode(m);
     setError("");
     setPassword("");
-    setJustSignedUp(false);
+    setWaitlistDone(null);
   }
 
   async function handleSignin(e: React.FormEvent) {
@@ -86,11 +84,10 @@ export default function Onboarding() {
     }
   }
 
-  async function handleSignup(e: React.FormEvent) {
+  async function handleWaitlist(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (website.trim().length > 0) {
-      // Honeypot trip — silently fail with a generic message.
       setError("Something went wrong. Please try again.");
       return;
     }
@@ -100,34 +97,27 @@ export default function Onboarding() {
     if (!email.trim() || !email.includes("@")) {
       setError("Enter a valid email address."); return;
     }
-    if (!password || password.length < 6) {
-      setError("Password must be at least 6 characters."); return;
-    }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
-          password,
-          website,
+          source: "homepage",
         }),
       });
       const data = await res.json();
       if (data.ok) {
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur();
-        }
-        window.scrollTo(0, 0);
-        setJustSignedUp(true);
-        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        if (data.alreadyHasAccount) setWaitlistDone("has-account");
+        else if (data.alreadyOnList) setWaitlistDone("already");
+        else setWaitlistDone("added");
       } else {
-        setError(data.error ?? "Something went wrong. Please try again.");
+        setError(data.error ?? "Couldn't save your spot. Please try again.");
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("Couldn't save your spot. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -173,7 +163,7 @@ export default function Onboarding() {
           >
             {/* Mode toggle */}
             <div className="flex rounded-xl p-1 mb-4" style={{ background: "#0F2818" }}>
-              {(["signin", "signup"] as Mode[]).map((m) => (
+              {(["signin", "waitlist"] as Mode[]).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -185,7 +175,7 @@ export default function Onboarding() {
                     boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
                   }}
                 >
-                  {m === "signin" ? "Sign in" : "Sign up"}
+                  {m === "signin" ? "Sign in" : "Join waitlist"}
                 </button>
               ))}
             </div>

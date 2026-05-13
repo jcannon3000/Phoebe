@@ -6,6 +6,8 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
+import { findBcpPrayer } from "@/lib/bcp-prayers";
+import { RequestWordField } from "@/components/RequestWordField";
 
 // ─── Palette (matches church-deck exactly) ───────────────────────────────────
 const C = {
@@ -355,23 +357,44 @@ type InfoSlide = {
   footnote?: string;
 };
 
-// One prayer in the onboarding mini-slideshow. We carry just enough
-// for the slide to render the same visual vocabulary as prayer-mode:
-// the eyebrow ("Community Intercession" / "Prayer Request"), an
-// author/community line, and the prayer text itself.
+// One prayer in the onboarding mini-slideshow. Carries every field the
+// real prayer-mode SlideContent renders so the onboarding slide is
+// visually + functionally identical: eyebrow, title, community pills,
+// avatar stack with "N have prayed this week," BCP enrichment card,
+// and (for requests) the word-of-comfort field.
 type PrayerPayload =
   | {
       kind: "intercession";
+      momentId: number;
+      momentToken: string | null;
+      myUserToken: string | null;
+      // Big italic Georgia line on the slide (the intercession's
+      // headline — intercessionTopic if set, otherwise the moment's
+      // name).
       text: string;
-      // Display under the eyebrow — community name(s) the intercession
-      // is being held in. Null/empty hides the line entirely.
-      attribution: string | null;
+      // Optional small italic subtitle under the headline (the moment's
+      // intention if it differs from the headline). Hidden otherwise so
+      // we don't duplicate the line.
+      intention: string | null;
+      // Custom prayer body — when the user authored their own text
+      // OR when the BCP topic-title lookup misses. The BCP enrichment
+      // card below renders this verbatim with a "FROM THE BOOK OF
+      // COMMON PRAYER" caption when source === "bcp".
+      fullText: string | null;
+      source: "bcp" | "custom" | null;
+      groups: Array<{ id: number; name: string; emoji: string | null }>;
+      communityFaces: Array<{ name: string; email: string; avatarUrl: string | null }>;
+      weekPrayCount: number;
     }
   | {
       kind: "request";
+      requestId: number;
       text: string;
       authorName: string | null;
       authorAvatarUrl: string | null;
+      // Pre-existing word-of-comfort if the viewer has already left
+      // one (re-entering onboarding after a refresh, etc.).
+      myWord: string | null;
     };
 
 type Slide =
@@ -605,6 +628,18 @@ function OnboardingAmenButton({ slideKey, onAdvance }: {
   );
 }
 
+// Same character-length → font-size curve prayer-mode uses for BCP
+// enrichment bodies so long prayers stay readable on phone screens.
+function fitPrayerText(text: string | null | undefined): { size: number; leading: number } {
+  const len = (text ?? "").length;
+  if (len < 100)  return { size: 18, leading: 1.8 };
+  if (len < 220)  return { size: 16, leading: 1.75 };
+  if (len < 360)  return { size: 15, leading: 1.7 };
+  if (len < 520)  return { size: 14, leading: 1.65 };
+  if (len < 720)  return { size: 13, leading: 1.6 };
+  return { size: 12, leading: 1.55 };
+}
+
 function OnboardingPrayerSlide({
   payload,
   isFirstPrayer,
@@ -616,23 +651,66 @@ function OnboardingPrayerSlide({
   slideKey: string | number;
   onAdvance: () => void;
 }) {
+  const queryClient = useQueryClient();
   const eyebrow = payload.kind === "intercession" ? "Community Intercession" : "Prayer Request";
   const authorInitials =
     payload.kind === "request" && payload.authorName
       ? payload.authorName.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")
       : "";
 
+  // BCP enrichment lookup — same fallback as prayer-mode. If the
+  // intercession's title matches a known BCP_PRAYERS entry, render
+  // that prayer's text in the sage card; otherwise fall back to the
+  // custom fullText the moment was created with.
+  const bcpPrayer =
+    payload.kind === "intercession" ? findBcpPrayer(payload.text) : undefined;
+
+  // Fire the amen POST when the user advances. Mirrors prayer-mode's
+  // behaviour so onboarding amens count toward streaks and dedup the
+  // dashboard slideshow (the same prayer won't appear again today).
+  // Best-effort: failures swallow, never block the slide advance.
+  function recordAmen() {
+    if (payload.kind === "request") {
+      const rid = payload.requestId;
+      apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+          queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${rid}`] });
+        })
+        .catch(() => { /* swallow */ });
+      return;
+    }
+    // Intercession amen. Prefer the auto-enrolling /amen endpoint
+    // (works even when the reconcile job hasn't wired a userToken
+    // yet for this brand-new account); fall back to the legacy
+    // token-in-URL post endpoint when we DO have a token.
+    if (payload.momentToken) {
+      const mt = payload.momentToken;
+      const promise = payload.myUserToken
+        ? apiRequest("POST", `/api/moment/${mt}/${payload.myUserToken}/post`, { isCheckin: true })
+        : apiRequest("POST", `/api/moment/${mt}/amen`, {});
+      promise
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/moments"] }))
+        .catch(() => { /* swallow */ });
+    }
+  }
+
+  function handleAdvance() {
+    recordAmen();
+    onAdvance();
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto w-full px-2 gap-5">
-      {/* Author avatar + name (prayer requests only) — mirrors the
-          prayer-mode request slide. Intercessions skip this since they
-          belong to the community at large, not a single person. */}
-      {payload.kind === "request" && payload.authorName && (
-        <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center text-center max-w-xl mx-auto w-full px-2 gap-5">
+      {/* Author block (requests only) — pulsing avatar + name above
+          the body, mirroring prayer-mode. Anchors the slide to a
+          specific person. */}
+      {payload.kind === "request" && (payload.authorName || payload.authorAvatarUrl) && (
+        <div className="flex flex-col items-center gap-3">
           {payload.authorAvatarUrl ? (
             <img
               src={payload.authorAvatarUrl}
-              alt={payload.authorName}
+              alt={payload.authorName ?? "Prayer author"}
               className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
             />
           ) : (
@@ -643,19 +721,24 @@ function OnboardingPrayerSlide({
               {authorInitials}
             </div>
           )}
-          <p className="text-[14px]" style={{ color: "#C8D4C0", fontFamily: C.font }}>
-            {payload.authorName}
-          </p>
+          {payload.authorName && (
+            <p className="text-[14px]" style={{ color: "#C8D4C0", fontFamily: C.font }}>
+              {payload.authorName}
+            </p>
+          )}
         </div>
       )}
 
       <p
         className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-        style={{ color: "rgba(143,175,150,0.55)" }}
+        style={{ color: "rgba(143,175,150,0.45)" }}
       >
         {eyebrow}
       </p>
 
+      {/* The headline — italic Georgia. For intercessions this is the
+          topic ("For the Mission of the Church"). For requests this
+          is the request body itself. */}
       <p
         className="text-[22px] leading-[1.5] font-medium italic"
         style={{
@@ -666,18 +749,164 @@ function OnboardingPrayerSlide({
         {payload.text}
       </p>
 
-      {payload.kind === "intercession" && payload.attribution && (
-        <p className="text-sm" style={{ color: C.sage }}>
-          {payload.attribution}
+      {payload.kind === "intercession" && payload.intention && (
+        <p className="text-sm italic" style={{ color: C.sage, marginTop: "-4px" }}>
+          {payload.intention}
         </p>
       )}
 
-      <OnboardingAmenButton slideKey={slideKey} onAdvance={onAdvance} />
+      {/* Community pills (intercessions only) — one pill per linked
+          community, primary + additionals. Non-tappable here, mirrors
+          prayer-mode. */}
+      {payload.kind === "intercession" && payload.groups.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 justify-center">
+          {payload.groups.map((g) => (
+            <span
+              key={g.id}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                color: "#A8C5A0",
+                border: "1px solid rgba(46,107,64,0.32)",
+                fontFamily: C.font,
+              }}
+            >
+              {g.emoji && <span aria-hidden>{g.emoji}</span>}
+              <span>{g.name}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Avatar stack + "N have prayed this week" — only when there's
+          someone to surface. Onboarding-fresh users with empty rosters
+          fall through to the soft "Your community is holding this." */}
+      {payload.kind === "intercession" && (
+        <>
+          {payload.communityFaces.length > 0 && (
+            <div className="flex items-center -space-x-2" style={{ marginTop: "-2px" }}>
+              {payload.communityFaces.slice(0, 7).map((f) => (
+                <div
+                  key={f.email}
+                  title={f.name}
+                  className="rounded-full overflow-hidden shrink-0"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    border: "2px solid #091A10",
+                    background: "#1A4A2E",
+                  }}
+                >
+                  {f.avatarUrl ? (
+                    <img src={f.avatarUrl} alt={f.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center text-[11px] font-semibold"
+                      style={{ color: "#A8C5A0" }}
+                    >
+                      {f.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-[12px] italic" style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}>
+            {payload.weekPrayCount > 0
+              ? payload.weekPrayCount === 1
+                ? "1 person has prayed this this week."
+                : `${payload.weekPrayCount} people have prayed this this week.`
+              : "Your community is holding this."}
+          </p>
+        </>
+      )}
+
+      {/* BCP enrichment card — known BCP topic match. Same sage tinted
+          surface + italic Space Grotesk body + "FROM THE BOOK OF
+          COMMON PRAYER" caption as prayer-mode. */}
+      {payload.kind === "intercession" && bcpPrayer && (
+        <div
+          className="w-full rounded-2xl px-6 py-5 text-left mt-1"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.15)",
+          }}
+        >
+          {(() => {
+            const fit = fitPrayerText(bcpPrayer.text);
+            return (
+              <p
+                className="italic"
+                style={{
+                  color: "#C8D4C0",
+                  fontFamily: C.font,
+                  fontSize: `${fit.size}px`,
+                  lineHeight: fit.leading,
+                }}
+              >
+                {bcpPrayer.text}
+              </p>
+            );
+          })()}
+          <p
+            className="text-[9px] uppercase tracking-[0.14em] mt-3"
+            style={{ color: "rgba(143,175,150,0.3)" }}
+          >
+            From the Book of Common Prayer
+          </p>
+        </div>
+      )}
+
+      {/* Custom-text fallback card — same look as the BCP card but
+          renders the moment's authored fullText when no BCP match is
+          found. Hidden when there's nothing custom to show. */}
+      {payload.kind === "intercession" && !bcpPrayer && payload.fullText && (
+        <div
+          className="w-full rounded-2xl px-6 py-5 text-left mt-1"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.15)",
+          }}
+        >
+          {(() => {
+            const fit = fitPrayerText(payload.fullText);
+            return (
+              <p
+                className="italic"
+                style={{
+                  color: "#C8D4C0",
+                  fontFamily: C.font,
+                  fontSize: `${fit.size}px`,
+                  lineHeight: fit.leading,
+                }}
+              >
+                {payload.fullText}
+              </p>
+            );
+          })()}
+          {payload.source === "bcp" && (
+            <p
+              className="text-[9px] uppercase tracking-[0.14em] mt-3"
+              style={{ color: "rgba(143,175,150,0.3)" }}
+            >
+              From the Book of Common Prayer
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Word-of-comfort field (requests only) — same pill composer
+          the real prayer-mode slide uses, lifted out into its own
+          component. Submits to POST /prayer-requests/:id/word. */}
+      {payload.kind === "request" && (
+        <RequestWordField requestId={payload.requestId} initialWord={payload.myWord} />
+      )}
+
+      <OnboardingAmenButton slideKey={slideKey} onAdvance={handleAdvance} />
 
       {/* First-prayer helper. Explains why the button is disabled at
-          first — once they tap their first Amen the rest of the prayer
-          slides drop the helper since the user has now learned the
-          mechanic. Fades to nothing once the user is ready. */}
+          first; the subsequent prayer slides drop the line once the
+          user has learned the mechanic. */}
       {isFirstPrayer && (
         <p
           className="text-[12px] italic max-w-xs"
@@ -1157,10 +1386,15 @@ export default function UserOnboarding() {
     templateType?: string | null;
     intercessionTopic?: string | null;
     intercessionFullText?: string | null;
+    intercessionSource?: string | null;
     intention?: string | null;
     name?: string | null;
-    group?: { name?: string | null } | null;
-    additionalGroups?: Array<{ name?: string | null }>;
+    momentToken?: string | null;
+    myUserToken?: string | null;
+    weekPostCount?: number;
+    group?: { id: number; name?: string | null; emoji?: string | null } | null;
+    additionalGroups?: Array<{ id: number; name?: string | null; emoji?: string | null }>;
+    members?: Array<{ name: string; email: string; avatarUrl?: string | null; prayedThisWeek?: boolean }>;
   }> }>({
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
@@ -1174,6 +1408,8 @@ export default function UserOnboarding() {
     ownerName: string | null;
     ownerAvatarUrl: string | null;
     isOwnRequest?: boolean;
+    myWord?: string | null;
+    myAmenedToday?: boolean;
   }>>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
@@ -1183,7 +1419,8 @@ export default function UserOnboarding() {
 
   // Compose the dynamic prayer slides. One intercession (if any) + two
   // prayer requests from the viewer's garden (skipping the viewer's
-  // own, which they haven't even written yet on first onboarding).
+  // own + anything they've already prayed today, so onboarding amens
+  // recorded mid-session don't show again on the dashboard slideshow).
   // Order: intercession first (the community-wide carry), then the
   // two personal asks. Memoized so the SLIDES array stays referentially
   // stable across re-renders while the queries are paused/loading.
@@ -1192,47 +1429,108 @@ export default function UserOnboarding() {
     const intercession = (momentsResp?.moments ?? [])
       .find((m) => m.templateType === "intercession");
     if (intercession) {
-      const text =
-        (intercession.intercessionFullText && intercession.intercessionFullText.trim())
-          || (intercession.intercessionTopic && intercession.intercessionTopic.trim())
-          || (intercession.intention && intercession.intention.trim())
+      // Title — what shows as the big italic Georgia headline.
+      // Prefer the curated intercessionTopic, fall back to the moment
+      // name; either should always be present for a real intercession.
+      const title =
+        (intercession.intercessionTopic && intercession.intercessionTopic.trim())
           || (intercession.name && intercession.name.trim())
           || "";
-      if (text.length > 0) {
-        const groupNames = [
-          ...(intercession.group?.name ? [intercession.group.name] : []),
-          ...(intercession.additionalGroups ?? []).map((g) => g.name).filter((n): n is string => !!n),
+      if (title.length > 0) {
+        // Multi-community attribution: one pill per group, primary
+        // first, then any additional groups linked via moment_groups.
+        // De-duped by id (a primary that also appears in additionals
+        // would otherwise render twice).
+        const allGroups = [
+          ...(intercession.group ? [intercession.group] : []),
+          ...(intercession.additionalGroups ?? []),
         ];
-        const attribution =
-          groupNames.length === 0
-            ? null
-            : groupNames.length === 1
-              ? `with ${groupNames[0]}`
-              : `with ${groupNames[0]} and ${groupNames.length - 1} more`;
+        const seen = new Set<number>();
+        const groups: Array<{ id: number; name: string; emoji: string | null }> = [];
+        for (const g of allGroups) {
+          if (seen.has(g.id)) continue;
+          seen.add(g.id);
+          groups.push({ id: g.id, name: g.name ?? "", emoji: g.emoji ?? null });
+        }
+        // Mirror the face-stack logic from prayer-mode: prefer members
+        // who actually prayed in the last 7 days, cap at 7 faces, and
+        // bias toward avatars when more than 7 are eligible.
+        const MAX_FACES = 7;
+        const hasPrayedFlag = (intercession.members ?? []).some(p => typeof p.prayedThisWeek === "boolean");
+        const otherMembers = (intercession.members ?? []).filter(p => {
+          if (p.email === user?.email) return false;
+          if (!hasPrayedFlag) return true;
+          return p.prayedThisWeek === true;
+        });
+        let communityFaces: Array<{ name: string; email: string; avatarUrl: string | null }> = [];
+        if (otherMembers.length > 0) {
+          if (otherMembers.length <= MAX_FACES) {
+            communityFaces = otherMembers.map(p => ({
+              name: p.name || p.email.split("@")[0],
+              email: p.email,
+              avatarUrl: p.avatarUrl ?? null,
+            }));
+          } else {
+            const withAvatar = otherMembers.filter(p => !!p.avatarUrl);
+            const withoutAvatar = otherMembers.filter(p => !p.avatarUrl);
+            const picked = [
+              ...withAvatar.slice(0, MAX_FACES),
+              ...withoutAvatar.slice(0, Math.max(0, MAX_FACES - withAvatar.length)),
+            ];
+            communityFaces = picked.map(p => ({
+              name: p.name || p.email.split("@")[0],
+              email: p.email,
+              avatarUrl: p.avatarUrl ?? null,
+            }));
+          }
+        }
+        // Suppress the intention subtitle when it's identical to the
+        // title — avoids the "X / X" duplication on intercessions
+        // whose intention IS the topic.
+        const intentionSub =
+          intercession.intention
+          && intercession.intention.trim()
+          && intercession.intention.trim() !== title
+            ? intercession.intention.trim()
+            : null;
         out.push({
           kind: "prayer",
-          payload: { kind: "intercession", text, attribution },
+          payload: {
+            kind: "intercession",
+            momentId: intercession.id,
+            momentToken: intercession.momentToken ?? null,
+            myUserToken: intercession.myUserToken ?? null,
+            text: title,
+            intention: intentionSub,
+            fullText: intercession.intercessionFullText?.trim() || null,
+            source: (intercession.intercessionSource as "bcp" | "custom" | null) ?? null,
+            groups,
+            communityFaces,
+            weekPrayCount: intercession.weekPostCount ?? 0,
+          },
           isFirstPrayer: true,
         });
       }
     }
     const requests = (requestsResp ?? [])
-      .filter((r) => !r.isOwnRequest)
+      .filter((r) => !r.isOwnRequest && !r.myAmenedToday)
       .slice(0, 2);
     for (const r of requests) {
       out.push({
         kind: "prayer",
         payload: {
           kind: "request",
+          requestId: r.id,
           text: r.body,
           authorName: r.ownerName,
           authorAvatarUrl: r.ownerAvatarUrl,
+          myWord: r.myWord ?? null,
         },
         isFirstPrayer: out.length === 0,
       });
     }
     return out;
-  }, [momentsResp, requestsResp]);
+  }, [momentsResp, requestsResp, user?.email]);
 
   // Splice the prayer slideshow between "Phoebe is a safe space" and
   // the closing "Share your first prayer request" beat. If we have no
