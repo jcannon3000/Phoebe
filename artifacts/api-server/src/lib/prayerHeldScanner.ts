@@ -1,5 +1,5 @@
 import { db, prayerHeldNotificationsTable, usersTable } from "@workspace/db";
-import { and, eq, isNull, lt } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt } from "drizzle-orm";
 import { sendHeldInPrayerPush } from "./pushSender";
 import { logger } from "./logger";
 
@@ -21,12 +21,17 @@ const STARTUP_DELAY_MS = 45_000;
 
 /**
  * Scan for pending held-in-prayer notifications whose 2-hour batching
- * window has elapsed, send a push for each, and stamp sent_at so the
- * row never fires again. Idempotent — a crash mid-loop just means the
- * next tick re-tries the unsent rows.
+ * window has elapsed, then send ONE consolidated push per recipient
+ * covering all of their requests' rows for today. A user with two
+ * active requests that both got amens today gets a single warm ping,
+ * not two.
  *
- * Per-row failure isolation: a token-invalid push for one user does NOT
- * skip the remaining rows. We catch around each send and continue.
+ * After sending we stamp sent_at on every claimed row so they never
+ * fire again. Idempotent — a crash mid-loop just means the next tick
+ * re-tries unsent rows.
+ *
+ * Per-recipient failure isolation: a token-invalid push for one user
+ * does NOT skip the rest. We catch around each recipient and continue.
  */
 export async function runPrayerHeldScan(): Promise<void> {
   const cutoff = new Date(Date.now() - BATCH_WINDOW_MS);
@@ -37,6 +42,7 @@ export async function runPrayerHeldScan(): Promise<void> {
       requestId: prayerHeldNotificationsTable.requestId,
       recipientId: prayerHeldNotificationsTable.recipientId,
       dayKey: prayerHeldNotificationsTable.dayKey,
+      firstAmenAt: prayerHeldNotificationsTable.firstAmenAt,
       firstAmenUserId: prayerHeldNotificationsTable.firstAmenUserId,
       amenCount: prayerHeldNotificationsTable.amenCount,
     })
@@ -50,43 +56,74 @@ export async function runPrayerHeldScan(): Promise<void> {
 
   if (pending.length === 0) return;
 
-  logger.info({ count: pending.length }, "[prayerHeldScanner] sending pending notifications");
-
+  // Group rows by recipient so we can send one combined push per user.
+  // A user with two active requests that both got amens today gets a
+  // single "Sara and others prayed for your requests today" push
+  // instead of one per request.
+  const byRecipient = new Map<number, typeof pending>();
   for (const row of pending) {
+    const list = byRecipient.get(row.recipientId);
+    if (list) list.push(row);
+    else byRecipient.set(row.recipientId, [row]);
+  }
+
+  logger.info(
+    { rows: pending.length, recipients: byRecipient.size },
+    "[prayerHeldScanner] sending pending notifications",
+  );
+
+  for (const [recipientId, rows] of byRecipient) {
     try {
-      // Claim the row first — set sent_at before sending so a slow push
-      // doesn't get re-fired on the next tick. If the push itself fails
-      // we log it; better one missed notification than a dupe storm.
-      const claimedAt = new Date();
+      // Claim all rows for this recipient atomically — set sent_at
+      // before sending so a slow push doesn't get re-fired on the next
+      // tick. The WHERE sent_at IS NULL guard means a concurrent
+      // instance can't double-claim.
+      const ids = rows.map((r) => r.id);
       const claimed = await db
         .update(prayerHeldNotificationsTable)
-        .set({ sentAt: claimedAt })
+        .set({ sentAt: new Date() })
         .where(
           and(
-            eq(prayerHeldNotificationsTable.id, row.id),
+            inArray(prayerHeldNotificationsTable.id, ids),
             isNull(prayerHeldNotificationsTable.sentAt),
           ),
         )
         .returning({ id: prayerHeldNotificationsTable.id });
 
-      // Lost the race — another instance (or a retry) already claimed
-      // this row. Skip.
       if (claimed.length === 0) continue;
 
-      // Look up the first pray-er's name for the subtitle.
+      // The "first" pray-er is the one whose amen kicked off the
+      // earliest row of the batch — feels chronologically true and
+      // lets the subtitle name a real person rather than a count.
+      const sortedByFirstAmen = [...rows].sort(
+        (a, b) => a.firstAmenAt.getTime() - b.firstAmenAt.getTime(),
+      );
+      const earliest = sortedByFirstAmen[0];
       const [firstAmenUser] = await db
-        .select({ name: usersTable.name })
+        .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
         .from(usersTable)
-        .where(eq(usersTable.id, row.firstAmenUserId));
+        .where(eq(usersTable.id, earliest.firstAmenUserId));
 
-      await sendHeldInPrayerPush(row.recipientId, {
-        prayerRequestId: row.requestId,
+      const totalAmens = rows.reduce((sum, r) => sum + r.amenCount, 0);
+      const requestCount = rows.length;
+      // dayKey is the same across all rows (we claimed by recipient on
+      // the same scanner tick, and the upsert is keyed by day in the
+      // recipient's tz). Use any row's dayKey for collapseId.
+      const dayKey = earliest.dayKey;
+
+      await sendHeldInPrayerPush(recipientId, {
         firstAmenName: firstAmenUser?.name || "Someone",
-        amenCount: row.amenCount,
-        localYmd: row.dayKey,
+        firstAmenAvatarUrl: firstAmenUser?.avatarUrl ?? null,
+        amenCount: totalAmens,
+        requestCount,
+        // When there's a single request the push deep-links into that
+        // request's detail page; with two or more, it lands on the
+        // requester's own list since no single request is "the one."
+        prayerRequestId: requestCount === 1 ? earliest.requestId : null,
+        localYmd: dayKey,
       });
     } catch (err) {
-      logger.warn({ err, rowId: row.id }, "[prayerHeldScanner] send failed");
+      logger.warn({ err, recipientId }, "[prayerHeldScanner] send failed");
     }
   }
 }

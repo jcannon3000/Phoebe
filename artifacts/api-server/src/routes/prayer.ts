@@ -844,6 +844,11 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   let firstAmenFire = false;
   let thirdTodayFire = false;
   let ownerLocalYmd = "";
+  // Lifted to outer scope so the held-in-prayer upsert downstream can
+  // skip Day 0 of a request (the immediate first-amen push already
+  // covers that day, so we don't queue a second batched push). True
+  // means "today is the very first day this request has been amened."
+  let firstEverAmenWasToday = false;
 
   if (!isOwnerSelfAmen) {
     const [owner] = await db.select({ timezone: usersTable.timezone })
@@ -881,7 +886,6 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
     // pre-count was exactly 2, we just hit 3 → fire.
     const distinctTodayBefore = new Set<number>();
     let sessionAlreadyToday = false;
-    let firstEverAmenWasToday = false;
     for (const r of prior) {
       if (!r.prayedAt) continue;
       const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(r.prayedAt);
@@ -932,9 +936,15 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   // creates a row; subsequent amens within the 2h window bump
   // amen_count (but only if sent_at is still null — once today's push
   // has fired, further amens stop mutating it). The scanner picks up
-  // pending rows ≥2h old and sends them. Skipped for owner self-amens
-  // and for throttled retries (handled by the early-return above).
-  if (!isOwnerSelfAmen && ownerLocalYmd) {
+  // pending rows ≥2h old and sends one combined push per recipient.
+  //
+  // Day 0 is intentionally skipped: when today is the FIRST day the
+  // request has ever received an amen, the immediate "first amen"
+  // push already lands ("The first amen just went up for your
+  // request by Sara") with the same "held in prayer" framing — a
+  // second batched push the same day would be a double-tap. The
+  // daily batched cadence kicks in on day 1 and beyond.
+  if (!isOwnerSelfAmen && ownerLocalYmd && !firstEverAmenWasToday) {
     try {
       await db
         .insert(prayerHeldNotificationsTable)

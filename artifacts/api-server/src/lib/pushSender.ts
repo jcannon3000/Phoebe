@@ -914,40 +914,63 @@ export function sendPrayerRenewalNudgePush(
 }
 
 // Daily "you've been held in prayer today" — coalesced batch push.
-// Fires 2 hours after the first non-owner amen of a request on a given
-// day (in the requester's tz), with the body reflecting however many
-// people prayed during the 2-hour window. One push per request per
-// day, max. See prayerHeldScanner.ts for the trigger logic.
+// Fires 2 hours after the first non-owner amen on a day (in the
+// requester's tz), aggregating across ALL of the requester's active
+// requests so a user with two requests getting amens gets one warm
+// ping, not two. One push per recipient per day, max. See
+// prayerHeldScanner.ts for the trigger logic.
 //
-// Body shapes:
-//   • 1 pray-er:  "Sara prayed for your request."
-//   • 2 pray-ers: "Sara and 1 other prayed for your request."
-//   • N pray-ers: "Sara and {N-1} others prayed for your request."
+// Body shapes (where N = totalAmens across all of the user's requests):
+//   • 1 request, 1 amen:  "Sara prayed for your request."
+//   • 1 request, 2 amens: "Sara and 1 other prayed for your request."
+//   • 1 request, N amens: "Sara and {N-1} others prayed for your request."
+//   • 2+ requests:        "Sara and others prayed for your requests today."
 //
-// Deep-links to /prayer-requests/:id so tapping the push lands on the
-// detail view where the requester sees their amen counts.
+// Deep-links to the single request when there is only one in the batch;
+// otherwise lands on /my-prayer-requests so the requester can see all
+// of their requests at a glance.
 export function sendHeldInPrayerPush(
   recipientUserId: number,
   opts: {
-    prayerRequestId: number;
     firstAmenName: string;
+    firstAmenAvatarUrl: string | null;
     amenCount: number;
+    requestCount: number;
+    prayerRequestId: number | null;
     localYmd: string;
   },
 ) {
   const firstName = (opts.firstAmenName || "Someone").split(/\s+/)[0] || "Someone";
   const body =
-    opts.amenCount <= 1
-      ? `${firstName} prayed for your request.`
-      : opts.amenCount === 2
-        ? `${firstName} and 1 other prayed for your request.`
-        : `${firstName} and ${opts.amenCount - 1} others prayed for your request.`;
+    opts.requestCount >= 2
+      ? `${firstName} and others prayed for your requests today.`
+      : opts.amenCount <= 1
+        ? `${firstName} prayed for your request.`
+        : opts.amenCount === 2
+          ? `${firstName} and 1 other prayed for your request.`
+          : `${firstName} and ${opts.amenCount - 1} others prayed for your request.`;
+  // Single-request deep-link → request detail; multi-request → user's
+  // own list. threadId / collapseId use the recipient + day so iOS
+  // groups the daily ping under one stream.
+  const path =
+    opts.requestCount === 1 && opts.prayerRequestId !== null
+      ? `/prayer-requests/${opts.prayerRequestId}`
+      : `/my-prayer-requests`;
+  const threadId = `held-in-prayer-${recipientUserId}-${opts.localYmd}`;
+  const collapseId = threadId;
+  // Note: opts.firstAmenAvatarUrl is plumbed but not yet surfaced on
+  // the lock screen — iOS requires a Notification Service Extension
+  // and APNs `mutable-content:1 + attachment-url`, neither of which
+  // are wired in this codebase yet. Wiring those would let the
+  // pray-er's avatar render next to the title. Keeping the field on
+  // the helper so adding NSE support later is a 1-line change here.
+  void opts.firstAmenAvatarUrl;
   return sendPushToUser(recipientUserId, {
     title: "You've been held in prayer today 🌿",
     body,
-    path: `/prayer-requests/${opts.prayerRequestId}`,
-    threadId: `prayer-request-${opts.prayerRequestId}`,
-    collapseId: `held-in-prayer-${opts.prayerRequestId}-${opts.localYmd}`,
+    path,
+    threadId,
+    collapseId,
     sound: PHOEBE_SOUND_HIGH,
   });
 }
