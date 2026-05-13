@@ -773,55 +773,26 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           // text. Top-aligned reads as a missal page: title near the
           // top, body flowing down.
           style={(() => {
-            // Centered, vertically-balanced layout for short slides —
-            // matches how the opening acclamation
-            // ("Light and peace, in Jesus Christ our Lord. /
-            //  Thanks be to God.") sits on the page. Long slides
-            // (psalm, lesson reference, canticle, creed, suffrages,
-            // general thanksgiving) stay top-aligned so the reading
-            // flows like a missal page; everything else — opening
-            // sentence, confession, absolution, collect, prayer for
-            // mission, lord's prayer, closing — gets the centered
-            // treatment as long as the body is short enough that
-            // it actually fits comfortably in the middle of the
-            // viewport. Applies equally to the full Daily Office
-            // and the abbreviated Daily Devotions.
-            const longTypes = new Set<string>([
-              "creed",
-              "general_thanksgiving",
-              "suffrages",
-            ]);
-            const isLongType = longTypes.has(currentSlide.type);
-            const bodyLength =
-              (currentSlide.content?.length ?? 0)
-              + (currentSlide.callAndResponseLines?.reduce((acc, l) => acc + l.text.length, 0) ?? 0);
-            const isShortEnough = bodyLength <= 320;
-            // Verse-shape slides — psalm bodies, canticle bodies, and
-            // the chunked invitatory psalm — must always stay left-
-            // aligned and top-anchored so the BCP line indents (the
-            // continuation hemistichs after the `*` caesura) read as
-            // a missal column rather than floating in the middle of
-            // the slide. Without this exclusion they'd hit the short-
-            // enough-to-center fallback below.
-            const verseTypes = new Set<string>([
-              "psalm",
-              "canticle",
-              "invitatory_psalm",
-              "lesson_verses",
-            ]);
-            const isVerseType = verseTypes.has(currentSlide.type);
-            // Title cards (psalm/canticle/lesson headline slides)
-            // center their big headline; the prayer-mode portal
-            // centers its glowing "Intercessions" headline. The
-            // psalm_gloria doxology slide also centers — it's a
-            // single short italic seal, not a missal column.
+            // Title cards (psalm/canticle/lesson headline slides +
+            // the prayer-mode intercessions portal) center their big
+            // headline on the page. Body content (psalms, lessons,
+            // canticles, collects, confessions) stays left-aligned
+            // and top-anchored so the reading flows like a missal
+            // page. Applies equally to the full Daily Office and the
+            // abbreviated Daily Devotions — same slide types, same
+            // renderer.
+            const isTitleCard =
+              currentSlide.type === "intercessions_portal"
+              || currentSlide.type === "psalm_title"
+              || currentSlide.type === "canticle_title"
+              || currentSlide.type === "lesson_title";
             return {
               display: "flex",
               flexDirection: "column",
               minHeight: "100%",
-              justifyContent: "flex-start",
-              textAlign: "left" as const,
-              alignItems: undefined,
+              justifyContent: isTitleCard ? "center" : "flex-start",
+              textAlign: isTitleCard ? ("center" as const) : ("left" as const),
+              alignItems: isTitleCard ? "center" : undefined,
               gap: 20,
             };
           })()}
@@ -845,7 +816,10 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               style={{
                 display: "flex",
                 flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
                 width: "100%",
+                textAlign: "center",
                 gap: 16,
               }}
             >
@@ -901,7 +875,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   style={{
                     display: "flex",
                     flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
                     width: "100%",
+                    minHeight: 240,
+                    textAlign: "center",
                     gap: 16,
                   }}
                 >
@@ -964,7 +942,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   style={{
                     display: "flex",
                     flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
                     width: "100%",
+                    minHeight: 240,
+                    textAlign: "center",
                     gap: 16,
                   }}
                 >
@@ -1031,7 +1013,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   style={{
                     display: "flex",
                     flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
                     width: "100%",
+                    minHeight: 240,
+                    textAlign: "center",
                     gap: 16,
                   }}
                 >
