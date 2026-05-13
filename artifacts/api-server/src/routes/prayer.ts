@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, usersTable, userMutesTable, groupMembersTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { getCorrespondentUserIds } from "../lib/correspondents";
@@ -926,6 +926,35 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
     requestId: id,
     userId: sessionUserId,
   });
+
+  // Daily "you've been held in prayer today" coalesced push — upsert
+  // into prayer_held_notifications. First non-owner amen of the day
+  // creates a row; subsequent amens within the 2h window bump
+  // amen_count (but only if sent_at is still null — once today's push
+  // has fired, further amens stop mutating it). The scanner picks up
+  // pending rows ≥2h old and sends them. Skipped for owner self-amens
+  // and for throttled retries (handled by the early-return above).
+  if (!isOwnerSelfAmen && ownerLocalYmd) {
+    try {
+      await db
+        .insert(prayerHeldNotificationsTable)
+        .values({
+          requestId: id,
+          recipientId: request.ownerId,
+          dayKey: ownerLocalYmd,
+          firstAmenAt: new Date(),
+          firstAmenUserId: sessionUserId,
+          amenCount: 1,
+        })
+        .onConflictDoUpdate({
+          target: [prayerHeldNotificationsTable.requestId, prayerHeldNotificationsTable.dayKey],
+          set: { amenCount: sql`${prayerHeldNotificationsTable.amenCount} + 1` },
+          where: isNull(prayerHeldNotificationsTable.sentAt),
+        });
+    } catch (err) {
+      logger.warn({ err, requestId: id }, "[prayer/amen] held-in-prayer upsert failed");
+    }
+  }
 
   if (firstAmenFire) {
     const [prayer] = await db.select({ name: usersTable.name })

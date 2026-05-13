@@ -913,6 +913,45 @@ export function sendPrayerRenewalNudgePush(
   });
 }
 
+// Daily "you've been held in prayer today" — coalesced batch push.
+// Fires 2 hours after the first non-owner amen of a request on a given
+// day (in the requester's tz), with the body reflecting however many
+// people prayed during the 2-hour window. One push per request per
+// day, max. See prayerHeldScanner.ts for the trigger logic.
+//
+// Body shapes:
+//   • 1 pray-er:  "Sara prayed for your request."
+//   • 2 pray-ers: "Sara and 1 other prayed for your request."
+//   • N pray-ers: "Sara and {N-1} others prayed for your request."
+//
+// Deep-links to /prayer-requests/:id so tapping the push lands on the
+// detail view where the requester sees their amen counts.
+export function sendHeldInPrayerPush(
+  recipientUserId: number,
+  opts: {
+    prayerRequestId: number;
+    firstAmenName: string;
+    amenCount: number;
+    localYmd: string;
+  },
+) {
+  const firstName = (opts.firstAmenName || "Someone").split(/\s+/)[0] || "Someone";
+  const body =
+    opts.amenCount <= 1
+      ? `${firstName} prayed for your request.`
+      : opts.amenCount === 2
+        ? `${firstName} and 1 other prayed for your request.`
+        : `${firstName} and ${opts.amenCount - 1} others prayed for your request.`;
+  return sendPushToUser(recipientUserId, {
+    title: "You've been held in prayer today 🌿",
+    body,
+    path: `/prayer-requests/${opts.prayerRequestId}`,
+    threadId: `prayer-request-${opts.prayerRequestId}`,
+    collapseId: `held-in-prayer-${opts.prayerRequestId}-${opts.localYmd}`,
+    sound: PHOEBE_SOUND_HIGH,
+  });
+}
+
 // "3 people are praying for you today." Fires the moment the third
 // distinct (user, today-in-owner-tz) amen lands. Today is bucketed in
 // the owner's timezone so the count matches what they see in the UI.

@@ -971,6 +971,27 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_id ON prayer_request_amens (request_id)`);
 
+    // Daily "you've been held in prayer today" notification queue.
+    // Created on the first non-owner amen of a request on a given day
+    // (in the recipient's tz); incremented on each subsequent amen
+    // during the 2-hour batching window; claimed by the scanner after
+    // 2h and pushed once. Unique on (request, day) so re-amens after
+    // sent_at don't generate a second notification that day.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_held_notifications (
+        id SERIAL PRIMARY KEY,
+        request_id INTEGER NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day_key TEXT NOT NULL,
+        first_amen_at TIMESTAMPTZ NOT NULL,
+        first_amen_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amen_count INTEGER NOT NULL DEFAULT 1,
+        sent_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_phn_request_day ON prayer_held_notifications (request_id, day_key)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_phn_pending ON prayer_held_notifications (sent_at, first_amen_at)`);
+
     // ── Group service schedules ───────────────────────────────────────────
     // A community can have one recurring service schedule — e.g. "Sunday
     // Services" with multiple times on the same weekday. Rendered as ONE

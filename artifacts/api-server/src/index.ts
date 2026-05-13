@@ -4,6 +4,7 @@ import { logger } from "./lib/logger";
 import { migrate } from "./lib/migrate";
 import { attachWebSocketServer } from "./lib/ws";
 import { startGoalCleanupScheduler } from "./lib/goalCleanup";
+import { startPrayerHeldScanner } from "./lib/prayerHeldScanner";
 // Bell system uses calendar events, not email cron — no scheduler needed
 
 // ─── Crash insurance ─────────────────────────────────────────────────────
@@ -42,6 +43,10 @@ migrate()
     // Hourly job: cancel recurring calendar events for practices whose goal
     // was reached more than 2 days ago and never renewed.
     startGoalCleanupScheduler();
+
+    // Every 10 min: send batched "you've been held in prayer today"
+    // pushes for amens whose 2-hour coalescing window has elapsed.
+    startPrayerHeldScanner();
   })
   .catch((err) => {
     logger.error({ err }, "Failed to run migrations");
