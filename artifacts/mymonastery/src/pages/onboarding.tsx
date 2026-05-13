@@ -250,79 +250,90 @@ export default function Onboarding() {
                 </motion.form>
               )}
 
-              {mode === "signup" && (
-                <motion.form
-                  key="signup"
+              {mode === "waitlist" && (
+                <motion.div
+                  key="waitlist"
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.18 }}
-                  onSubmit={handleSignup}
-                  className="flex flex-col gap-3"
                 >
-                  <input
-                    type="text"
-                    placeholder="Your name"
-                    value={name}
-                    onChange={e => { setName(e.target.value); setError(""); }}
-                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
-                    autoComplete="name"
-                    disabled={submitting}
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email address"
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setError(""); }}
-                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                    style={{ background: "#091A10", color: "#F0EDE6" }}
-                    autoComplete="email"
-                    disabled={submitting}
-                  />
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Password (6+ characters)"
-                      value={password}
-                      onChange={e => { setPassword(e.target.value); setError(""); }}
-                      className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none animate-input-pulse"
-                      style={{ background: "#091A10", color: "#F0EDE6" }}
-                      autoComplete="new-password"
-                      disabled={submitting}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                      style={{ color: "#8FAF96" }}
-                      tabIndex={-1}
+                  {waitlistDone ? (
+                    <div
+                      className="rounded-xl px-4 py-5 text-center"
+                      style={{
+                        background: "rgba(46,107,64,0.12)",
+                        border: "1px solid rgba(46,107,64,0.3)",
+                      }}
                     >
-                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                  {/* Honeypot */}
-                  <input
-                    type="text"
-                    name="website"
-                    value={website}
-                    onChange={e => setWebsite(e.target.value)}
-                    tabIndex={-1}
-                    autoComplete="off"
-                    aria-hidden="true"
-                    style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
-                  />
-                  {error && <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>}
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 btn-sage"
-                  >
-                    {submitting ? (
-                      <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
-                    ) : "Create account"}
-                  </button>
-                </motion.form>
+                      <div className="text-3xl mb-2">🌿</div>
+                      <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6" }}>
+                        {waitlistDone === "has-account"
+                          ? "You already have a Phoebe account — try signing in instead."
+                          : waitlistDone === "already"
+                            ? "You're already on the waitlist. We'll be in touch."
+                            : "You're on the waitlist. We'll be in touch when there's room."}
+                      </p>
+                      {waitlistDone === "has-account" && (
+                        <button
+                          type="button"
+                          onClick={() => switchMode("signin")}
+                          className="text-xs mt-3"
+                          style={{ color: "#8FAF96", textDecoration: "underline" }}
+                        >
+                          Go to sign in
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <form onSubmit={handleWaitlist} className="flex flex-col gap-3">
+                      <input
+                        type="text"
+                        placeholder="Your name"
+                        value={name}
+                        onChange={e => { setName(e.target.value); setError(""); }}
+                        className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                        style={{ background: "#091A10", color: "#F0EDE6" }}
+                        autoComplete="name"
+                        disabled={submitting}
+                      />
+                      <input
+                        type="email"
+                        placeholder="Email address"
+                        value={email}
+                        onChange={e => { setEmail(e.target.value); setError(""); }}
+                        className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                        style={{ background: "#091A10", color: "#F0EDE6" }}
+                        autoComplete="email"
+                        disabled={submitting}
+                      />
+                      {/* Honeypot */}
+                      <input
+                        type="text"
+                        name="website"
+                        value={website}
+                        onChange={e => setWebsite(e.target.value)}
+                        tabIndex={-1}
+                        autoComplete="off"
+                        aria-hidden="true"
+                        style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+                      />
+                      {error && <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>}
+                      <button
+                        type="submit"
+                        disabled={submitting}
+                        className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 btn-sage"
+                      >
+                        {submitting ? (
+                          <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
+                        ) : "Join waitlist"}
+                      </button>
+                      <p className="text-xs text-center mt-1" style={{ color: "rgba(143,175,150,0.7)" }}>
+                        Phoebe is by group invite. If your group leader sent you a link, open it to sign up directly.
+                      </p>
+                    </form>
+                  )}
+                </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
