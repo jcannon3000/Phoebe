@@ -761,26 +761,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           WebkitOverflowScrolling: "touch",
           paddingTop: "max(72px, calc(env(safe-area-inset-top) + 60px))",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 112px)",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <div
           className="max-w-2xl w-full mx-auto"
-          // Top-aligned content with breathing-room padding above the
-          // first element. Earlier this was `justifyContent: "center"`
-          // which floated short slides into the middle of the viewport
-          // — fine for a one-line slide but it made the eyebrow + title
-          // pair drift far below the header on slides with little body
-          // text. Top-aligned reads as a missal page: title near the
-          // top, body flowing down.
           style={(() => {
-            // Title cards (psalm/canticle/lesson headline slides +
-            // the prayer-mode intercessions portal) center their big
-            // headline on the page. Body content (psalms, lessons,
-            // canticles, collects, confessions) stays left-aligned
-            // and top-anchored so the reading flows like a missal
-            // page. Applies equally to the full Daily Office and the
-            // abbreviated Daily Devotions — same slide types, same
-            // renderer.
             const isTitleCard =
               currentSlide.type === "intercessions_portal"
               || currentSlide.type === "psalm_title"
@@ -789,7 +776,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
             return {
               display: "flex",
               flexDirection: "column",
-              minHeight: "100%",
+              // flex-grow fills the scroll container so justifyContent:center
+              // vertically centers title cards in the full viewport.
+              // flex-shrink:0 lets content slides overflow and scroll normally.
+              flexGrow: 1,
+              flexShrink: 0,
               justifyContent: isTitleCard ? "center" : "flex-start",
               textAlign: isTitleCard ? ("center" as const) : ("left" as const),
               alignItems: isTitleCard ? "center" : undefined,
@@ -878,7 +869,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                     alignItems: "center",
                     justifyContent: "center",
                     width: "100%",
-                    minHeight: 240,
                     textAlign: "center",
                     gap: 16,
                   }}
@@ -945,7 +935,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                     alignItems: "center",
                     justifyContent: "center",
                     width: "100%",
-                    minHeight: 240,
                     textAlign: "center",
                     gap: 16,
                   }}
@@ -1016,7 +1005,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                     alignItems: "center",
                     justifyContent: "center",
                     width: "100%",
-                    minHeight: 240,
                     textAlign: "center",
                     gap: 16,
                   }}
