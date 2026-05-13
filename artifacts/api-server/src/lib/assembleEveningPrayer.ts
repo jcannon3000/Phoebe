@@ -368,13 +368,17 @@ export async function assembleEveningPrayer(
   // "Eve of …" entries (Ascension Eve, Pentecost Eve, Trinity Eve)
   // are an exception: the BCP appoints only 2 lessons for First
   // Evensong (OT + NT), and the lectionary file stores them in
-  // lesson1/lesson2 with lesson3 blank. When lesson3 is empty we
-  // fall back to lesson1 so the evening still has a reading.
+  // lesson1/lesson2 with lesson3 blank. On regular days the three
+  // appointed lessons are SPLIT across MP (OT+Epistle) and EP
+  // (Gospel); on Eves both eve lessons are FOR EP exclusively
+  // (morning uses the regular weekday entry). For the single
+  // EP-lesson slot we use lesson2 (NT) rather than lesson1 (OT)
+  // since EP's normal lesson is its NT/Gospel counterpart.
   const lesson3Trimmed = (readings.lesson3 ?? "").trim();
   const hasLesson3 = lesson3Trimmed.length > 0 && !/^-+$/.test(lesson3Trimmed);
-  const lessonForEvening = hasLesson3 ? readings.lesson3 : readings.lesson1;
+  const lessonForEvening = hasLesson3 ? readings.lesson3 : readings.lesson2;
   // Eyebrow + emoji track the lesson actually being shown: the Gospel
-  // cross on Gospel days, the scroll on Eve OT-fallback days.
+  // cross on Gospel days, the scroll on Eve NT-fallback days.
   const lessonKindForEvening = hasLesson3 ? "gospel_evening" : "first_evening";
   // Title card + chunked numbered-verse slides — same shape as MP's
   // lessons. The reference-only fallback fires automatically inside
