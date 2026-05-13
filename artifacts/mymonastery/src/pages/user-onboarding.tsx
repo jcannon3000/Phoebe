@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users, Camera } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { triggerAmenFeedback } from "@/lib/amenFeedback";
 
 // ─── Palette (matches church-deck exactly) ───────────────────────────────────
 const C = {
@@ -354,13 +355,39 @@ type InfoSlide = {
   footnote?: string;
 };
 
+// One prayer in the onboarding mini-slideshow. We carry just enough
+// for the slide to render the same visual vocabulary as prayer-mode:
+// the eyebrow ("Community Intercession" / "Prayer Request"), an
+// author/community line, and the prayer text itself.
+type PrayerPayload =
+  | {
+      kind: "intercession";
+      text: string;
+      // Display under the eyebrow — community name(s) the intercession
+      // is being held in. Null/empty hides the line entirely.
+      attribution: string | null;
+    }
+  | {
+      kind: "request";
+      text: string;
+      authorName: string | null;
+      authorAvatarUrl: string | null;
+    };
+
 type Slide =
   | { kind: "welcome" }
   | { kind: "profile-picture" }
   | InfoSlide
+  | { kind: "lets-pray" }
+  | { kind: "prayer"; payload: PrayerPayload; isFirstPrayer: boolean }
   | { kind: "prayer-request" };
 
-const SLIDES: Slide[] = [
+// The base deck (everything BEFORE we splice in the dynamic prayer
+// slides). The prayer slideshow is woven in at runtime once the
+// intercession + prayer-request fetches resolve — see UserOnboarding
+// below. Keeping the base deck static lets us preserve the existing
+// slide indexes / progress bar math when there's nothing to splice in.
+const BASE_SLIDES: Slide[] = [
   { kind: "profile-picture" },
   {
     kind: "info",
@@ -465,6 +492,200 @@ function InfoSlideView({ slide }: { slide: InfoSlide }) {
       >
         <Mock />
       </motion.div>
+    </div>
+  );
+}
+
+// ─── Let's pray intro slide ──────────────────────────────────────────────────
+// Bridges from the "Phoebe is a safe space" beat into the actual prayer
+// slideshow. Sets expectation: "you're about to pray through what your
+// community is carrying right now, one prayer at a time." Plain Next
+// advances — handled by the global nav bar (this slide is non-interactive).
+
+function LetsPraySlide() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto px-2">
+      <motion.div
+        className="text-6xl mb-6"
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      >
+        🙏🏽
+      </motion.div>
+      <motion.h2
+        className="text-3xl md:text-5xl font-semibold mb-5 leading-tight"
+        style={{ color: C.text, fontFamily: C.font }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.45 }}
+      >
+        Let's pray.
+      </motion.h2>
+      <motion.p
+        className="text-base md:text-lg font-light leading-relaxed"
+        style={{ color: C.sage, fontFamily: C.font }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.45 }}
+      >
+        Here are the prayers your community is carrying right now. Take a moment with each one before you tap Amen.
+      </motion.p>
+    </div>
+  );
+}
+
+// ─── Onboarding prayer slide (interactive) ───────────────────────────────────
+// Mirrors the prayer-mode PrayerSlide visual vocabulary: eyebrow,
+// optional author chip, italic Georgia body. The Amen button enforces
+// the same 4-second pause-before-tap that the real slideshow uses, so
+// the user learns the rhythm here. On the very first prayer slide,
+// helper text fades in under the body to explain why the button is
+// disabled at first — once they tap their first Amen the lesson is
+// over and subsequent slides drop the helper.
+
+function OnboardingAmenButton({ slideKey, onAdvance }: {
+  slideKey: string | number;
+  onAdvance: () => void;
+}) {
+  const HOLD_MS = 4000;
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(false);
+    const t = window.setTimeout(() => setReady(true), HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [slideKey]);
+
+  return (
+    <button
+      onClick={() => {
+        if (!ready) return;
+        triggerAmenFeedback();
+        onAdvance();
+      }}
+      disabled={!ready}
+      aria-disabled={!ready}
+      aria-label={ready ? "Amen" : "Hold a moment"}
+      className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
+      style={{
+        background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
+        border: `1px solid ${ready ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
+        color: "#F0EDE6",
+        cursor: ready ? "pointer" : "default",
+        minWidth: 140,
+        transition: ready
+          ? "background-color 360ms ease-out, border-color 360ms ease-out"
+          : "none",
+      }}
+    >
+      <span
+        aria-hidden
+        key={slideKey}
+        className="absolute left-0 top-0 bottom-0 amen-progress-fill"
+        style={{
+          background: "rgba(46,107,64,0.45)",
+          pointerEvents: "none",
+          opacity: ready ? 0 : 1,
+          transition: "opacity 360ms ease-out",
+        }}
+      />
+      <span
+        style={{
+          position: "relative",
+          opacity: ready ? 1 : 0,
+          transform: ready ? "translateY(0)" : "translateY(2px)",
+          transition: "opacity 280ms ease-out, transform 280ms ease-out",
+          display: "inline-block",
+        }}
+      >
+        Amen →
+      </span>
+    </button>
+  );
+}
+
+function OnboardingPrayerSlide({
+  payload,
+  isFirstPrayer,
+  slideKey,
+  onAdvance,
+}: {
+  payload: PrayerPayload;
+  isFirstPrayer: boolean;
+  slideKey: string | number;
+  onAdvance: () => void;
+}) {
+  const eyebrow = payload.kind === "intercession" ? "Community Intercession" : "Prayer Request";
+  const authorInitials =
+    payload.kind === "request" && payload.authorName
+      ? payload.authorName.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")
+      : "";
+
+  return (
+    <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto w-full px-2 gap-5">
+      {/* Author avatar + name (prayer requests only) — mirrors the
+          prayer-mode request slide. Intercessions skip this since they
+          belong to the community at large, not a single person. */}
+      {payload.kind === "request" && payload.authorName && (
+        <div className="flex flex-col items-center gap-2">
+          {payload.authorAvatarUrl ? (
+            <img
+              src={payload.authorAvatarUrl}
+              alt={payload.authorName}
+              className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
+              style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+            >
+              {authorInitials}
+            </div>
+          )}
+          <p className="text-[14px]" style={{ color: "#C8D4C0", fontFamily: C.font }}>
+            {payload.authorName}
+          </p>
+        </div>
+      )}
+
+      <p
+        className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+        style={{ color: "rgba(143,175,150,0.55)" }}
+      >
+        {eyebrow}
+      </p>
+
+      <p
+        className="text-[22px] leading-[1.5] font-medium italic"
+        style={{
+          color: "#E8E4D8",
+          fontFamily: "Georgia, 'Times New Roman', serif",
+        }}
+      >
+        {payload.text}
+      </p>
+
+      {payload.kind === "intercession" && payload.attribution && (
+        <p className="text-sm" style={{ color: C.sage }}>
+          {payload.attribution}
+        </p>
+      )}
+
+      <OnboardingAmenButton slideKey={slideKey} onAdvance={onAdvance} />
+
+      {/* First-prayer helper. Explains why the button is disabled at
+          first — once they tap their first Amen the rest of the prayer
+          slides drop the helper since the user has now learned the
+          mechanic. Fades to nothing once the user is ready. */}
+      {isFirstPrayer && (
+        <p
+          className="text-[12px] italic max-w-xs"
+          style={{ color: "rgba(143,175,150,0.65)", fontFamily: C.font, marginTop: "-2px" }}
+        >
+          Wait four seconds before you tap Amen — a small pause to actually pray the prayer.
+        </p>
+      )}
     </div>
   );
 }
@@ -924,6 +1145,109 @@ export default function UserOnboarding() {
     if (!isLoading && user?.onboardingCompleted && !isPreview) setLocation(nextDestination);
   }, [user, isLoading, isPreview, nextDestination, setLocation]);
 
+  // Up to one community intercession + two prayer requests to weave
+  // into the onboarding deck so the user gets a feel for the actual
+  // rhythm before landing on the home screen. Both queries are paused
+  // in preview mode (so the /beta preview doesn't yank real data) and
+  // until we have a user. The endpoints return [] gracefully for users
+  // with empty gardens, so a brand-new isolated account just sees the
+  // base deck minus the prayer slideshow.
+  const { data: momentsResp } = useQuery<{ moments?: Array<{
+    id: number;
+    templateType?: string | null;
+    intercessionTopic?: string | null;
+    intercessionFullText?: string | null;
+    intention?: string | null;
+    name?: string | null;
+    group?: { name?: string | null } | null;
+    additionalGroups?: Array<{ name?: string | null }>;
+  }> }>({
+    queryKey: ["/api/moments"],
+    queryFn: () => apiRequest("GET", "/api/moments"),
+    enabled: !!user && !isPreview,
+    staleTime: 30_000,
+  });
+  const { data: requestsResp } = useQuery<Array<{
+    id: number;
+    body: string;
+    ownerId: number;
+    ownerName: string | null;
+    ownerAvatarUrl: string | null;
+    isOwnRequest?: boolean;
+  }>>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    enabled: !!user && !isPreview,
+    staleTime: 30_000,
+  });
+
+  // Compose the dynamic prayer slides. One intercession (if any) + two
+  // prayer requests from the viewer's garden (skipping the viewer's
+  // own, which they haven't even written yet on first onboarding).
+  // Order: intercession first (the community-wide carry), then the
+  // two personal asks. Memoized so the SLIDES array stays referentially
+  // stable across re-renders while the queries are paused/loading.
+  const prayerSlides = useMemo<Slide[]>(() => {
+    const out: Slide[] = [];
+    const intercession = (momentsResp?.moments ?? [])
+      .find((m) => m.templateType === "intercession");
+    if (intercession) {
+      const text =
+        (intercession.intercessionFullText && intercession.intercessionFullText.trim())
+          || (intercession.intercessionTopic && intercession.intercessionTopic.trim())
+          || (intercession.intention && intercession.intention.trim())
+          || (intercession.name && intercession.name.trim())
+          || "";
+      if (text.length > 0) {
+        const groupNames = [
+          ...(intercession.group?.name ? [intercession.group.name] : []),
+          ...(intercession.additionalGroups ?? []).map((g) => g.name).filter((n): n is string => !!n),
+        ];
+        const attribution =
+          groupNames.length === 0
+            ? null
+            : groupNames.length === 1
+              ? `with ${groupNames[0]}`
+              : `with ${groupNames[0]} and ${groupNames.length - 1} more`;
+        out.push({
+          kind: "prayer",
+          payload: { kind: "intercession", text, attribution },
+          isFirstPrayer: true,
+        });
+      }
+    }
+    const requests = (requestsResp ?? [])
+      .filter((r) => !r.isOwnRequest)
+      .slice(0, 2);
+    for (const r of requests) {
+      out.push({
+        kind: "prayer",
+        payload: {
+          kind: "request",
+          text: r.body,
+          authorName: r.ownerName,
+          authorAvatarUrl: r.ownerAvatarUrl,
+        },
+        isFirstPrayer: out.length === 0,
+      });
+    }
+    return out;
+  }, [momentsResp, requestsResp]);
+
+  // Splice the prayer slideshow between "Phoebe is a safe space" and
+  // the closing "Share your first prayer request" beat. If we have no
+  // prayer data at all (empty garden + no intercessions, or the
+  // queries haven't resolved yet), the base deck renders unchanged.
+  const SLIDES = useMemo<Slide[]>(() => {
+    if (prayerSlides.length === 0) return BASE_SLIDES;
+    return [
+      ...BASE_SLIDES.slice(0, BASE_SLIDES.length - 1), // profile-picture + safe-space
+      { kind: "lets-pray" },
+      ...prayerSlides,
+      BASE_SLIDES[BASE_SLIDES.length - 1], // prayer-request (final)
+    ];
+  }, [prayerSlides]);
+
   const completeOnboarding = useCallback(async () => {
     if (isPreview) {
       setLocation("/beta");
@@ -943,7 +1267,7 @@ export default function UserOnboarding() {
 
   const next = useCallback(
     () => setIndex(i => Math.min(i + 1, SLIDES.length - 1)),
-    [],
+    [SLIDES.length],
   );
   const prev = useCallback(() => setIndex(i => Math.max(i - 1, 0)), []);
 
@@ -963,13 +1287,19 @@ export default function UserOnboarding() {
         !!target?.isContentEditable;
       if (isEditable) return;
 
-      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
+      if (e.key === "ArrowRight" || e.key === " ") {
+        // Same rationale as the swipe handler: forward-nav must not
+        // bypass the 4-second pause on a prayer slide.
+        const currentSlide = SLIDES[Math.min(index, SLIDES.length - 1)];
+        if (currentSlide?.kind === "prayer") { e.preventDefault(); return; }
+        e.preventDefault(); next();
+      }
       else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
       else if (e.key === "Escape") completeOnboarding();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [next, prev, completeOnboarding]);
+  }, [next, prev, completeOnboarding, index, SLIDES]);
 
   // Touch/swipe support
   const touchStartX = useRef<number | null>(null);
@@ -985,20 +1315,35 @@ export default function UserOnboarding() {
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0) next();
-      else prev();
+      // Forward-swipe on a prayer slide would bypass the 4-second
+      // pause-before-Amen — the whole point of the slide. Block it
+      // and let the AmenButton be the only path forward. Back-swipe
+      // is still fine (reviewing a previous prayer doesn't violate
+      // the pause).
+      const currentSlide = SLIDES[Math.min(index, SLIDES.length - 1)];
+      if (dx < 0) {
+        if (currentSlide?.kind !== "prayer") next();
+      } else {
+        prev();
+      }
     }
     touchStartX.current = null;
     touchStartY.current = null;
-  }, [next, prev]);
+  }, [next, prev, index, SLIDES]);
 
   if (isLoading || !user) return null;
 
-  const slide = SLIDES[index];
-  const isFirst = index === 0;
+  // Clamp the cursor if the SLIDES array shrinks under us (e.g. queries
+  // resolved with no prayer data and we re-rendered with fewer slides).
+  // Without this the user could be parked on an index that no longer
+  // exists, blanking the page until they hit Back.
+  const safeIndex = Math.min(index, SLIDES.length - 1);
+  const slide = SLIDES[safeIndex];
+  const isFirst = safeIndex === 0;
   const isInteractive =
     slide.kind === "prayer-request" ||
-    slide.kind === "profile-picture";
+    slide.kind === "profile-picture" ||
+    slide.kind === "prayer";
 
   function renderSlide() {
     switch (slide.kind) {
@@ -1008,6 +1353,17 @@ export default function UserOnboarding() {
         return <ProfilePictureSlide onNext={next} />;
       case "info":
         return <InfoSlideView slide={slide} />;
+      case "lets-pray":
+        return <LetsPraySlide />;
+      case "prayer":
+        return (
+          <OnboardingPrayerSlide
+            payload={slide.payload}
+            isFirstPrayer={slide.isFirstPrayer}
+            slideKey={safeIndex}
+            onAdvance={next}
+          />
+        );
       case "prayer-request":
         return <PrayerRequestSlide onComplete={completeOnboarding} preview={isPreview} />;
     }
@@ -1036,7 +1392,7 @@ export default function UserOnboarding() {
           <motion.div
             className="h-full rounded-full"
             style={{ background: C.sage }}
-            animate={{ width: `${((index + 1) / SLIDES.length) * 100}%` }}
+            animate={{ width: `${((safeIndex + 1) / SLIDES.length) * 100}%` }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           />
         </div>
@@ -1049,9 +1405,9 @@ export default function UserOnboarding() {
               onClick={() => setIndex(i)}
               className="rounded-full transition-all"
               style={{
-                width: i === index ? 20 : 6,
+                width: i === safeIndex ? 20 : 6,
                 height: 6,
-                background: i <= index ? C.sage : "rgba(200,212,192,0.2)",
+                background: i <= safeIndex ? C.sage : "rgba(200,212,192,0.2)",
               }}
               aria-label={`Go to slide ${i + 1}`}
             />
@@ -1059,7 +1415,7 @@ export default function UserOnboarding() {
         </div>
 
         <span className="text-xs tabular-nums shrink-0" style={{ color: C.sage, opacity: 0.6 }}>
-          {index + 1} / {SLIDES.length}
+          {safeIndex + 1} / {SLIDES.length}
         </span>
       </div>
 
@@ -1067,7 +1423,7 @@ export default function UserOnboarding() {
       <div className="flex-1 flex items-center justify-center px-5 md:px-16 py-8 md:py-12 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div
-            key={index}
+            key={safeIndex}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
