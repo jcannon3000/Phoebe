@@ -394,7 +394,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
 
         {/* Contextual prompt (creed, confession) */}
         {(slide.type === "creed" || slide.type === "confession") &&
-          slide.metadata?.prompt && (
+          !!slide.metadata?.prompt && (
             <p
               style={{
                 fontSize: 15,
@@ -409,7 +409,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
           )}
 
         {/* Psalm title */}
-        {slide.type === "psalm" && slide.metadata?.psalmTitle && (
+        {slide.type === "psalm" && !!slide.metadata?.psalmTitle && (
           <p
             style={{
               fontSize: 14,
@@ -424,7 +424,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
         )}
 
         {/* Reading note for lessons */}
-        {isLesson && slide.metadata?.readingNote && (
+        {isLesson && !!slide.metadata?.readingNote && (
           <p
             style={{
               fontSize: 14,
@@ -463,7 +463,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 fontFamily: "Space Grotesk, sans-serif",
                 margin: "16px 0",
               }}>
-                {slide.metadata?.reference as string ?? slide.content}
+                {(slide.metadata?.reference as string | undefined) ?? slide.content}
               </p>
               <p style={{
                 fontSize: 15,
@@ -479,7 +479,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
             <p style={textStyle}>{slide.content}</p>
           )}
 
-          {slide.type === "general_thanksgiving" && slide.metadata?.prompt && (
+          {slide.type === "general_thanksgiving" && !!slide.metadata?.prompt && (
             <p
               style={{
                 fontSize: 13,
