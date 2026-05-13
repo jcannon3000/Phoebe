@@ -30,6 +30,14 @@ export interface LiturgicalDay {
   antiphonKey: string;
   invitatorySeason: string;
   lectionaryWeekKey: string;
+  // BCP "Eve of …" entries (Ascension Eve, Pentecost Eve, Trinity Eve)
+  // are evening-only overrides — Morning Prayer on those calendar days
+  // belongs to the regular weekday entry, since the Eve is liturgically
+  // the first Evensong of the upcoming feast. When today is an Eve we
+  // store the override key here; otherwise null. The morning office
+  // ignores this field; the evening office uses it in preference to
+  // `lectionaryWeekKey`.
+  eveLectionaryKey: string | null;
   sundayLabel: string;
   weekdayLabel: string;
   useAlleluia: boolean;
@@ -619,11 +627,11 @@ function getLectionaryWeekKey(
   const trinityEve = addDays(trinitySunday, -1);
 
   if (sameDay(date, ashWed)) return "ash_wednesday";
-  if (sameDay(date, ascensionEve)) return "ascension_eve";
-  if (sameDay(date, pentecostEve)) return "pentecost_eve";
   if (sameDay(date, pentecost)) return "pentecost";
-  if (sameDay(date, trinityEve)) return "trinity_eve";
   if (sameDay(date, trinitySunday)) return "trinity_sunday";
+  // Note: ascension_eve / pentecost_eve / trinity_eve are evening-only
+  // overrides — see getEveLectionaryKey below. Falling through here
+  // means the weekday entry (e.g. easter_6_wednesday) handles morning.
 
   // Last Week after the Epiphany — the lectionary covers Sun/Mon/Tue
   // before Ash Wed, then Thu/Fri/Sat after Ash Wed (the days between
@@ -651,6 +659,34 @@ function getLectionaryWeekKey(
     case "season_after_pentecost":
       return `proper_${properNumber ?? 1}_${dayName}`;
   }
+}
+
+// ── Eve Lectionary Key (evening-only override) ────────────────────────────────
+//
+// "Eve of …" entries in the BCP 1979 Daily Office Lectionary refer to
+// the evening office (First Evensong) of the day before a holy day, not
+// to the full 24-hour day. Morning Prayer on those calendar dates uses
+// the regular weekday entry (e.g. Wed in Easter 6 for May 13, 2026,
+// which serves Psalm 119:97-120). Only Evening Prayer should pull from
+// the eve entry. Returns the eve key when today is such a date, else
+// null. The morning office never touches this; the evening office
+// prefers it over the weekday key.
+function getEveLectionaryKey(date: Date): string | null {
+  const year = date.getFullYear();
+  const easter = computeEaster(year);
+  const ascensionDay = addDays(easter, 39);
+  const ascensionEve = addDays(ascensionDay, -1);
+  const pentecost = addDays(easter, 49);
+  const pentecostEve = addDays(pentecost, -1);
+  const trinitySunday = addDays(pentecost, 7);
+  const trinityEve = addDays(trinitySunday, -1);
+  const sameDay = (a: Date, b: Date) =>
+    startOfDay(a).getTime() === startOfDay(b).getTime();
+
+  if (sameDay(date, ascensionEve)) return "ascension_eve";
+  if (sameDay(date, pentecostEve)) return "pentecost_eve";
+  if (sameDay(date, trinityEve)) return "trinity_eve";
+  return null;
 }
 
 // ── Labels ─────────────────────────────────────────────────────────────────────
@@ -800,6 +836,7 @@ export function getOfficeDay(date: Date): LiturgicalDay {
     dayOfWeek,
     properNumber,
   );
+  const eveLectionaryKey = getEveLectionaryKey(d);
   const sundayLabel = getSundayLabel(
     season,
     weekInSeason,
@@ -831,6 +868,7 @@ export function getOfficeDay(date: Date): LiturgicalDay {
     antiphonKey,
     invitatorySeason,
     lectionaryWeekKey,
+    eveLectionaryKey,
     sundayLabel,
     weekdayLabel,
     useAlleluia,

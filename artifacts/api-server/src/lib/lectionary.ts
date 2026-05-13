@@ -20,7 +20,13 @@ export function getLectionaryReadings(
   officeDay: LiturgicalDay,
   office: "morning" | "evening" = "morning",
 ): LectionaryReadings {
-  const key = officeDay.lectionaryWeekKey;
+  // "Eve of …" entries (Ascension Eve, Pentecost Eve, Trinity Eve) are
+  // evening-only overrides — Morning Prayer on those dates uses the
+  // regular weekday entry. eveLectionaryKey is non-null exactly on those
+  // dates; we prefer it for evening, ignore it for morning.
+  const key = office === "evening" && officeDay.eveLectionaryKey
+    ? officeDay.eveLectionaryKey
+    : officeDay.lectionaryWeekKey;
   const entry = lectionary[key];
 
   if (!entry) {
