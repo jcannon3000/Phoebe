@@ -1381,6 +1381,14 @@ export default function UserOnboarding() {
   // until we have a user. The endpoints return [] gracefully for users
   // with empty gardens, so a brand-new isolated account just sees the
   // base deck minus the prayer slideshow.
+  // Both queries are tuned for onboarding's specific shape: fetch
+  // once, then leave alone. The dashboard / prayer-list refetch
+  // aggressively on focus, but mid-onboarding a refetch is poison —
+  // if the SLIDES array grows or reorders while the user is partway
+  // through, the current slide swaps content under them (visible as
+  // a flash + reload). refetchOnWindowFocus + refetchOnMount = false
+  // pin the data to whatever the first fetch returned for the
+  // duration of this onboarding session.
   const { data: momentsResp } = useQuery<{ moments?: Array<{
     id: number;
     templateType?: string | null;
@@ -1399,7 +1407,10 @@ export default function UserOnboarding() {
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
     enabled: !!user && !isPreview,
-    staleTime: 30_000,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
   const { data: requestsResp } = useQuery<Array<{
     id: number;
@@ -1414,7 +1425,10 @@ export default function UserOnboarding() {
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     enabled: !!user && !isPreview,
-    staleTime: 30_000,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
   // Compose the dynamic prayer slides. One intercession (if any) + two
@@ -1424,7 +1438,7 @@ export default function UserOnboarding() {
   // Order: intercession first (the community-wide carry), then the
   // two personal asks. Memoized so the SLIDES array stays referentially
   // stable across re-renders while the queries are paused/loading.
-  const prayerSlides = useMemo<Slide[]>(() => {
+  const computedPrayerSlides = useMemo<Slide[]>(() => {
     const out: Slide[] = [];
     const intercession = (momentsResp?.moments ?? [])
       .find((m) => m.templateType === "intercession");
@@ -1532,19 +1546,53 @@ export default function UserOnboarding() {
     return out;
   }, [momentsResp, requestsResp, user?.email]);
 
+  // Freeze the prayer slideshow the moment we first compute a
+  // non-empty array. After that we don't allow it to change for the
+  // rest of the session, even if the underlying queries re-fetch or
+  // a stale-cache write reorders the data. Without this freeze the
+  // SLIDES array could grow under the user mid-onboarding, swapping
+  // the slide they're currently looking at — the "flash + reload"
+  // bug. Starts as null so we can tell "haven't captured yet" apart
+  // from "captured an empty array (no prayer data exists)."
+  const [frozenPrayerSlides, setFrozenPrayerSlides] = useState<Slide[] | null>(null);
+  useEffect(() => {
+    if (frozenPrayerSlides !== null) return;
+    // Only freeze once both queries have actually returned. Until
+    // then computedPrayerSlides is just [] from missing inputs, not
+    // a real "this user has nothing" answer — freezing too early
+    // would lock the slideshow at empty forever.
+    if (!momentsResp || !requestsResp) return;
+    setFrozenPrayerSlides(computedPrayerSlides);
+    // If the user already raced past safe-space and landed on the
+    // base-deck prayer-request slide before the freeze captured,
+    // shift their index forward by the number of newly-inserted
+    // slides (1 lets-pray + N prayer slides) so they stay on the
+    // same slide. Without this, their slide silently swaps from
+    // prayer-request to "Let's pray" — visually a flash + reload.
+    if (computedPrayerSlides.length > 0) {
+      setIndex((i) => {
+        const lastBaseIdx = BASE_SLIDES.length - 1;
+        if (i === lastBaseIdx) return i + 1 + computedPrayerSlides.length;
+        return i;
+      });
+    }
+  }, [frozenPrayerSlides, momentsResp, requestsResp, computedPrayerSlides]);
+
   // Splice the prayer slideshow between "Phoebe is a safe space" and
-  // the closing "Share your first prayer request" beat. If we have no
-  // prayer data at all (empty garden + no intercessions, or the
-  // queries haven't resolved yet), the base deck renders unchanged.
+  // the closing "Share your first prayer request" beat. Before the
+  // freeze captures, render the base deck unchanged so the user can
+  // start moving through profile-picture / safe-space without seeing
+  // SLIDES grow under them when the queries land.
   const SLIDES = useMemo<Slide[]>(() => {
-    if (prayerSlides.length === 0) return BASE_SLIDES;
+    const slides = frozenPrayerSlides;
+    if (!slides || slides.length === 0) return BASE_SLIDES;
     return [
       ...BASE_SLIDES.slice(0, BASE_SLIDES.length - 1), // profile-picture + safe-space
       { kind: "lets-pray" },
-      ...prayerSlides,
+      ...slides,
       BASE_SLIDES[BASE_SLIDES.length - 1], // prayer-request (final)
     ];
-  }, [prayerSlides]);
+  }, [frozenPrayerSlides]);
 
   const completeOnboarding = useCallback(async () => {
     if (isPreview) {
