@@ -136,6 +136,39 @@ router.post("/prayer-streak/log", async (req: Request, res: Response): Promise<v
   }
 });
 
+// GET /prayer-streak/community-prayed-week — returns garden members who
+// have prayed at least once in the last 7 days, derived from
+// users.prayer_streak_last_date. Used by the home card to show who's
+// been active in prayer this week.
+router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Response): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const { getGardenUserIds } = await import("../lib/garden.js");
+    const gardenIds = await getGardenUserIds(sessionUser.id);
+    if (gardenIds.length === 0) { res.json({ people: [] }); return; }
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const cutoff = sevenDaysAgo.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    const people = await db
+      .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl, prayerStreakLastDate: usersTable.prayerStreakLastDate })
+      .from(usersTable)
+      .where(inArray(usersTable.id, gardenIds));
+
+    const active = people
+      .filter(p => p.prayerStreakLastDate && p.prayerStreakLastDate >= cutoff)
+      .slice(0, 12)
+      .map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
+
+    res.json({ people: active });
+  } catch (err) {
+    console.error("[prayer-streak:community-prayed-week] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // GET /prayer-streak/co-prayers-week — returns the distinct people the
 // caller has prayed for in the last 7 days, derived from
 // prayer_request_amens joined back to prayer_requests for the owner.

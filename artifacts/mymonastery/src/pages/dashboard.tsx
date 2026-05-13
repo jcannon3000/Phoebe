@@ -1983,6 +1983,13 @@ function PrayerOfficeCard() {
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
 
+  const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[] }>({
+    queryKey: ["/api/prayer-streak/community-prayed-week"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
+    staleTime: 5 * 60_000,
+  });
+  const communityPrayed = communityPrayedData?.people ?? [];
+
   // "Prayed today" is true when any of the day-scoped completion
   // flags written by the slideshow or office viewers is set:
   //   • phoebe:slideshow-completed:{day} — written by prayer-mode's
@@ -2082,12 +2089,38 @@ function PrayerOfficeCard() {
               </span>
             )}
           </div>
-          <p
-            className="text-sm"
-            style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-          >
-            From the Book of Common Prayer
-          </p>
+          {communityPrayed.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex -space-x-2">
+                {communityPrayed.slice(0, 5).map((p) => (
+                  p.avatarUrl ? (
+                    <img
+                      key={p.id}
+                      src={p.avatarUrl}
+                      alt={p.name}
+                      title={p.name}
+                      className="w-6 h-6 rounded-full object-cover"
+                      style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
+                    />
+                  ) : (
+                    <div
+                      key={p.id}
+                      title={p.name}
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold"
+                      style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid rgba(12,31,18,0.9)" }}
+                    >
+                      {p.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")}
+                    </div>
+                  )
+                ))}
+              </div>
+              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {communityPrayed.length === 1
+                  ? `${communityPrayed[0]!.name.split(" ")[0]} prayed this week`
+                  : `${communityPrayed.length} praying this week`}
+              </span>
+            </div>
+          )}
           <Link href="/prayer-chooser">
               <div
                 role="button"
