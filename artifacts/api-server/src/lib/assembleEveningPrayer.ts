@@ -364,12 +364,23 @@ export async function assembleEveningPrayer(
   // lesson2 (Epistle), and EP shows lesson3 (Gospel) only — no
   // duplication of MP's lessons here. Earlier the server emitted
   // lesson1+lesson2 in EP too, which mirrored MP and read as a bug.
-  const lesson3 = readings.lesson3;
+  //
+  // "Eve of …" entries (Ascension Eve, Pentecost Eve, Trinity Eve)
+  // are an exception: the BCP appoints only 2 lessons for First
+  // Evensong (OT + NT), and the lectionary file stores them in
+  // lesson1/lesson2 with lesson3 blank. When lesson3 is empty we
+  // fall back to lesson1 so the evening still has a reading.
+  const lesson3Trimmed = (readings.lesson3 ?? "").trim();
+  const hasLesson3 = lesson3Trimmed.length > 0 && !/^-+$/.test(lesson3Trimmed);
+  const lessonForEvening = hasLesson3 ? readings.lesson3 : readings.lesson1;
+  // Eyebrow + emoji track the lesson actually being shown: the Gospel
+  // cross on Gospel days, the scroll on Eve OT-fallback days.
+  const lessonKindForEvening = hasLesson3 ? "gospel_evening" : "first_evening";
   // Title card + chunked numbered-verse slides — same shape as MP's
   // lessons. The reference-only fallback fires automatically inside
-  // buildLessonSlides if the Gospel happens to land on a deuteron-
+  // buildLessonSlides if the lesson happens to land on a deuteron-
   // ical pericope (rare, but defensible).
-  for (const s of buildLessonSlides(lesson3, "gospel_evening", id)) {
+  for (const s of buildLessonSlides(lessonForEvening, lessonKindForEvening, id)) {
     slides.push(s);
   }
 
