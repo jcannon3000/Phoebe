@@ -832,6 +832,42 @@ export function sendCommunityJoinAcceptedPush(
   });
 }
 
+// "You prayed with N other people." Fires once, to every participant
+// of an intercession, the moment the practice's goal is reached. Only
+// goes to people who actually had a check-in — silent for members who
+// joined the practice but never prayed. Body shapes:
+//
+//   • 0 others: "You completed this prayer." (edge: solo intercession)
+//   • 1 other:  "You prayed with 1 other person."
+//   • N others: "You prayed with N other people."
+//
+// Title is the intercession's name so the lock-screen carries the
+// specific prayer, not a generic banner. Tap → /moments/:id (the
+// intercession's detail / closing slide).
+export function sendIntercessionGoalReachedPush(
+  recipientUserId: number,
+  opts: {
+    momentId: number;
+    intercessionName: string;
+    otherPrayerCount: number;
+  },
+) {
+  const body =
+    opts.otherPrayerCount <= 0
+      ? "You completed this prayer."
+      : opts.otherPrayerCount === 1
+        ? "You prayed with 1 other person."
+        : `You prayed with ${opts.otherPrayerCount} other people.`;
+  return sendPushToUser(recipientUserId, {
+    title: opts.intercessionName || "Prayer complete",
+    body,
+    path: `/moments/${opts.momentId}`,
+    threadId: `moment-${opts.momentId}`,
+    collapseId: `goal-reached-${opts.momentId}`,
+    sound: PHOEBE_SOUND_HIGH,
+  });
+}
+
 // Fires for all group members except the creator. Copy branches by
 // templateType so a new intercession reads differently from a new
 // lectio-divina practice.

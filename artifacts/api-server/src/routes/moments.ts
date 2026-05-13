@@ -15,14 +15,7 @@ import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, creat
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import { reconcileGroupPracticeMembers, reconcileFeedPracticeMembers } from "./groups";
 import { getGardenUserIds } from "../lib/garden";
-// Inline stub for new-group-moment push notifications. The real implementation
-// lives in ../lib/pushSender in the device-tokens branch of work; until that
-// file is committed, this stub keeps production builds green. Fire-and-forget
-// call site below already swallows errors, so a no-op is safe.
-async function sendNewGroupMomentPush(
-  _userId: number,
-  _payload: { groupSlug: string; momentName: string; templateType: string; creatorName: string },
-): Promise<void> { /* no-op until pushSender is committed */ }
+import { sendNewGroupMomentPush, sendIntercessionGoalReachedPush } from "../lib/pushSender";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
@@ -436,6 +429,58 @@ async function evaluateWindow(momentId: number, windowDate: string) {
           ...((justCrossedGoal || intercessionGoalHit) ? { commitmentGoalReachedAt: new Date() } : {}),
         } as Record<string, unknown>)
         .where(eq(sharedMomentsTable.id, momentId));
+
+      // Goal-reached push for intercessions: every participant who
+      // actually prayed (any moment_post with isCheckin=1) gets a
+      // "you prayed with N other people" notification. Fires exactly
+      // once — gated on !prevReachedAt so re-evaluating an already-
+      // completed window doesn't re-ping. Fire-and-forget so a slow
+      // push doesn't block the window update.
+      if (intercessionGoalHit) {
+        (async () => {
+          try {
+            // Distinct check-in userTokens for this intercession,
+            // joined back to moment_user_tokens to recover the email,
+            // and from email to users.id. Members with zero check-ins
+            // never enter this list — silent for non-participants.
+            const checkinRows = await db
+              .select({ userToken: momentPostsTable.userToken })
+              .from(momentPostsTable)
+              .where(and(
+                eq(momentPostsTable.momentId, momentId),
+                eq(momentPostsTable.isCheckin, 1),
+              ));
+            const tokenSet = new Set(checkinRows.map(r => r.userToken));
+            if (tokenSet.size === 0) return;
+
+            const tokenRows = await db
+              .select({ userToken: momentUserTokensTable.userToken, email: momentUserTokensTable.email })
+              .from(momentUserTokensTable)
+              .where(eq(momentUserTokensTable.momentId, momentId));
+            const emailsThatPrayed = tokenRows
+              .filter(t => tokenSet.has(t.userToken))
+              .map(t => t.email.toLowerCase());
+            if (emailsThatPrayed.length === 0) return;
+
+            const userRows = await db
+              .select({ id: usersTable.id, email: usersTable.email })
+              .from(usersTable)
+              .where(inArray(usersTable.email, emailsThatPrayed));
+
+            const totalPrayers = userRows.length;
+            for (const u of userRows) {
+              const otherCount = totalPrayers - 1;
+              sendIntercessionGoalReachedPush(u.id, {
+                momentId,
+                intercessionName: moment.name,
+                otherPrayerCount: otherCount,
+              }).catch((err) => console.warn("[moments] goal-reached push failed:", err));
+            }
+          } catch (err) {
+            console.warn("[moments] goal-reached push dispatch failed:", err);
+          }
+        })();
+      }
     }
   } else if (status === "wither") {
     const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
