@@ -63,7 +63,7 @@ export const en = {
     subtitle_justice: "Name the ache. Your community will pray with you for what's broken.",
     placeholder_default: "A big decision at work… a family member who's been on my heart…",
     placeholder_life_event: "Starting a new job next Monday… my dad just went into hospice…",
-    placeholder_justice: "The encampment sweep last night… the verdict that came down today…",
+    placeholder_justice: "A neighbor without housing… a hard ruling today…",
     duration_question: "How long should we carry it? 🌿",
     duration_subtitle: "Choose a watch. You can renew or release it any time.",
     duration_3_days: "3 days",

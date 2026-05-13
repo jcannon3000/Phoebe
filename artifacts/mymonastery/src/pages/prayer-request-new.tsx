@@ -48,7 +48,7 @@ const KIND_COPY: Record<RequestKind, {
     emoji: "⚖️",
     title: "What injustice are you holding?",
     subtitle: "Name the ache. Your community will pray with you for what's broken.",
-    placeholder: "The encampment sweep last night… the verdict that came down today…",
+    placeholder: "A neighbor without housing… a hard ruling today…",
   },
 };
 
