@@ -14,6 +14,14 @@ export interface LectionaryReadings {
   lesson2: string;        // Epistle
   lesson3: string;        // Gospel
   weekKey: string;        // The key used for lookup
+  // True when this office is being served from an "Eve of …" override
+  // (Ascension Eve, Pentecost Eve, Trinity Eve). EP uses this to
+  // decide whether to fall back to lesson2 when lesson3 is blank —
+  // on eves lesson1+lesson2 are EXCLUSIVELY for EP, so falling back
+  // is correct. On regular days where lesson3 is blank (e.g. Palm
+  // Sunday), MP already shows both lessons; falling back would
+  // duplicate the Epistle, so we skip the EP lesson entirely.
+  isEveOverride: boolean;
 }
 
 export function getLectionaryReadings(
@@ -24,8 +32,9 @@ export function getLectionaryReadings(
   // evening-only overrides — Morning Prayer on those dates uses the
   // regular weekday entry. eveLectionaryKey is non-null exactly on those
   // dates; we prefer it for evening, ignore it for morning.
-  const key = office === "evening" && officeDay.eveLectionaryKey
-    ? officeDay.eveLectionaryKey
+  const isEveOverride = office === "evening" && !!officeDay.eveLectionaryKey;
+  const key = isEveOverride
+    ? (officeDay.eveLectionaryKey as string)
     : officeDay.lectionaryWeekKey;
   const entry = lectionary[key];
 
@@ -41,6 +50,7 @@ export function getLectionaryReadings(
       lesson2: "Romans 8:1-11",
       lesson3: "John 14:1-14",
       weekKey: key,
+      isEveOverride,
     };
   }
 
@@ -52,5 +62,6 @@ export function getLectionaryReadings(
     lesson2: isYear1 ? entry.lesson2_y1 : entry.lesson2_y2,
     lesson3: isYear1 ? entry.lesson3_y1 : entry.lesson3_y2,
     weekKey: key,
+    isEveOverride,
   };
 }

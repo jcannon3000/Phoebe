@@ -374,9 +374,19 @@ export async function assembleEveningPrayer(
   // (morning uses the regular weekday entry). For the single
   // EP-lesson slot we use lesson2 (NT) rather than lesson1 (OT)
   // since EP's normal lesson is its NT/Gospel counterpart.
+  //
+  // Gated on isEveOverride so the fallback does NOT fire on regular
+  // days that happen to have lesson3 blank (e.g. Palm Sunday, which
+  // appoints lesson1+lesson2 for MP only — falling back would
+  // duplicate the Epistle MP just read).
   const lesson3Trimmed = (readings.lesson3 ?? "").trim();
   const hasLesson3 = lesson3Trimmed.length > 0 && !/^-+$/.test(lesson3Trimmed);
-  const lessonForEvening = hasLesson3 ? readings.lesson3 : readings.lesson2;
+  const useEveFallback = !hasLesson3 && readings.isEveOverride;
+  const lessonForEvening = hasLesson3
+    ? readings.lesson3
+    : useEveFallback
+      ? readings.lesson2
+      : "";
   // Eyebrow + emoji track the lesson actually being shown: the Gospel
   // cross on Gospel days, the scroll on Eve NT-fallback days.
   const lessonKindForEvening = hasLesson3 ? "gospel_evening" : "first_evening";
