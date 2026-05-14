@@ -613,7 +613,15 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         -- buckets, and their prayer requests are not community feed
         -- items. Excluded here so every downstream metric naturally
         -- treats them as invisible.
-        SELECT u.id AS user_id, LOWER(u.email) AS email_lower
+        --
+        -- is_admin flags the (visible) admin role so downstream rollups
+        -- can cap an admin's contribution to "Times prayed" — see
+        -- ADMIN_DAILY_PRAYER_CAP in prayer_events below. This prevents
+        -- an admin from inflating the community's stats by tapping
+        -- amen dozens of times; their care for the community shows up,
+        -- but a single admin can't dominate the rollup.
+        SELECT u.id AS user_id, LOWER(u.email) AS email_lower,
+               (gm.role = 'admin') AS is_admin
         FROM users u
         JOIN group_members gm ON gm.user_id = u.id
         WHERE gm.group_id = $1
@@ -674,18 +682,36 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       ),
       session_with_lag AS (
         SELECT
-          user_id, occurred_at,
-          to_char((occurred_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day,
-          LAG(occurred_at) OVER (
-            PARTITION BY user_id ORDER BY occurred_at
-          ) AS prev_at
-        FROM session_candidates
+          sc.user_id, sc.occurred_at,
+          to_char((sc.occurred_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') AS day,
+          LAG(sc.occurred_at) OVER (
+            PARTITION BY sc.user_id ORDER BY sc.occurred_at
+          ) AS prev_at,
+          m.is_admin
+        FROM session_candidates sc
+        JOIN members m ON m.user_id = sc.user_id
       ),
-      prayer_events AS (
-        SELECT user_id, day
+      -- After 15-min dedup, number each event within (user, day) so
+      -- we can cap admins at 3 prayer events per day. Non-admins keep
+      -- their full count; an admin's 4th+ daily event drops out of
+      -- "Times prayed" rollups. "Prayed today/week/all-time" still
+      -- counts the admin as 1 person/day because that bucket is a
+      -- DISTINCT (user, day) on prayer_events — capping doesn't
+      -- remove their first event, just the inflated tail.
+      prayer_events_raw AS (
+        SELECT
+          user_id, day, occurred_at, is_admin,
+          ROW_NUMBER() OVER (
+            PARTITION BY user_id, day ORDER BY occurred_at
+          ) AS daily_idx
         FROM session_with_lag
         WHERE prev_at IS NULL
            OR occurred_at - prev_at > INTERVAL '15 minutes'
+      ),
+      prayer_events AS (
+        SELECT user_id, day
+        FROM prayer_events_raw
+        WHERE is_admin = false OR daily_idx <= 3
       ),
       -- People praying = distinct users with at least one prayer
       -- event. Same source as Times prayed, just deduped, so
