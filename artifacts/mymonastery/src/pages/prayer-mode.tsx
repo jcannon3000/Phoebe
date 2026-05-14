@@ -1091,6 +1091,247 @@ function StreakCelebration({ streak }: { streak: number }) {
   );
 }
 
+// ─── Office habit slide ───────────────────────────────────────────────────
+// Shown ONLY when the user finished an office (closingOnly=1 path),
+// after the "you prayed for N people this week" closing slide. Surfaces
+// today's morning/evening office status as two checkbox-style rows and
+// a 7-day rhythm grid below so the user can see the daily-prayer habit
+// taking shape. Encouraging copy frames it as a rhythm to lean into,
+// not a streak to defend.
+//
+// Completion data is read straight from localStorage — the same
+// `phoebe:office-completed:{mode}:{day}` keys the office viewer writes
+// when the user Amens the closing collect. Each "side" (morning / evening)
+// counts as done if EITHER the full Office or the Devotion was prayed
+// that day. No server fetch needed.
+function HabitSlide({
+  onDone,
+  visible,
+}: {
+  onDone: () => void;
+  visible: boolean;
+}) {
+  // Build the past-7-days grid, oldest → newest left-to-right. Today
+  // sits at the right edge so the eye tracks rhythm into the present.
+  const days = (() => {
+    const out: { dateKey: string; label: string; isToday: boolean; morning: boolean; evening: boolean }[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const label = ["S", "M", "T", "W", "T", "F", "S"][d.getDay()];
+      let morning = false;
+      let evening = false;
+      try {
+        morning =
+          !!localStorage.getItem(`phoebe:office-completed:morning:${dateKey}`)
+          || !!localStorage.getItem(`phoebe:office-completed:morning-devotion:${dateKey}`);
+        evening =
+          !!localStorage.getItem(`phoebe:office-completed:evening:${dateKey}`)
+          || !!localStorage.getItem(`phoebe:office-completed:early-evening-devotion:${dateKey}`);
+      } catch { /* localStorage blocked — leave both false */ }
+      out.push({ dateKey, label, isToday: i === 0, morning, evening });
+    }
+    return out;
+  })();
+
+  const today = days[days.length - 1];
+  const morningDone = today?.morning ?? false;
+  const eveningDone = today?.evening ?? false;
+  const daysWithEither = days.filter(d => d.morning || d.evening).length;
+
+  // Encouragement copy keys off this morning's + evening's state. We
+  // don't shame partial days — every line is forward-leaning.
+  const encouragement = (() => {
+    if (morningDone && eveningDone) return "You prayed both offices today. This is the rhythm.";
+    if (morningDone) return "Morning is held. Evening Prayer waits when you're ready.";
+    if (eveningDone) return "Evening is held. Tomorrow begins again with Morning Prayer.";
+    return "One office a day grows the rhythm — both deepens it.";
+  })();
+
+  const Row = ({ label, emoji, done }: { label: string; emoji: string; done: boolean }) => (
+    <div
+      className="flex items-center justify-between w-full px-4 py-3 rounded-xl"
+      style={{
+        background: done ? "rgba(46,107,64,0.20)" : "rgba(46,107,64,0.08)",
+        border: `1px solid ${done ? "rgba(111,175,133,0.45)" : "rgba(46,107,64,0.22)"}`,
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <span style={{ fontSize: 22 }}>{emoji}</span>
+        <span
+          className="font-semibold text-[15px]"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {label}
+        </span>
+      </div>
+      {done ? (
+        <span
+          className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full"
+          style={{
+            background: "rgba(111,175,133,0.25)",
+            color: "#C8D4C0",
+            border: "1px solid rgba(111,175,133,0.55)",
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
+        >
+          Completed ✓
+        </span>
+      ) : (
+        <span
+          className="text-[12px] font-medium"
+          style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Not yet
+        </span>
+      )}
+    </div>
+  );
+
+  return (
+    <div
+      className="w-full flex flex-col items-center text-center"
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.4s ease",
+        gap: 22,
+        maxWidth: 380,
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex flex-col items-center"
+      >
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Today
+        </p>
+        <p
+          className="text-[22px] font-semibold leading-tight mt-1"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Your prayer rhythm
+        </p>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="w-full flex flex-col gap-2"
+      >
+        <Row label="Morning Prayer" emoji="🌅" done={morningDone} />
+        <Row label="Evening Prayer" emoji="🌙" done={eveningDone} />
+      </motion.div>
+
+      {/* Past 7 days grid — two rows (morning, evening) × 7 columns.
+          Filled dot = office completed that day. Today sits at the
+          right edge. */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="w-full"
+      >
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3"
+          style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Past 7 days
+        </p>
+        <div
+          className="grid w-full gap-2"
+          style={{ gridTemplateColumns: "auto repeat(7, 1fr)" }}
+        >
+          <span />
+          {days.map((d) => (
+            <span
+              key={`label-${d.dateKey}`}
+              className="text-[10px] font-semibold text-center"
+              style={{
+                color: d.isToday ? "#C8D4C0" : "rgba(143,175,150,0.55)",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {d.label}
+            </span>
+          ))}
+          <span
+            className="text-[10px] text-right pr-1"
+            style={{ color: "rgba(143,175,150,0.65)", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            🌅
+          </span>
+          {days.map((d) => (
+            <div key={`m-${d.dateKey}`} className="flex justify-center">
+              <span
+                className="block rounded-full"
+                style={{
+                  width: 14,
+                  height: 14,
+                  background: d.morning ? "#6FAF85" : "rgba(46,107,64,0.18)",
+                  border: `1px solid ${d.morning ? "rgba(111,175,133,0.7)" : "rgba(46,107,64,0.3)"}`,
+                }}
+              />
+            </div>
+          ))}
+          <span
+            className="text-[10px] text-right pr-1"
+            style={{ color: "rgba(143,175,150,0.65)", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            🌙
+          </span>
+          {days.map((d) => (
+            <div key={`e-${d.dateKey}`} className="flex justify-center">
+              <span
+                className="block rounded-full"
+                style={{
+                  width: 14,
+                  height: 14,
+                  background: d.evening ? "#8B9DC3" : "rgba(46,107,64,0.18)",
+                  border: `1px solid ${d.evening ? "rgba(139,157,195,0.7)" : "rgba(46,107,64,0.3)"}`,
+                }}
+              />
+            </div>
+          ))}
+        </div>
+        {daysWithEither > 0 && (
+          <p
+            className="text-[11px] mt-3"
+            style={{ color: "rgba(143,175,150,0.75)", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            {daysWithEither} {daysWithEither === 1 ? "day" : "days"} of prayer this week
+          </p>
+        )}
+      </motion.div>
+
+      <motion.p
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+        className="text-[14px] leading-relaxed"
+        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+      >
+        {encouragement}
+      </motion.p>
+
+      <button
+        onClick={onDone}
+        className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+      >
+        Done
+      </button>
+    </div>
+  );
+}
+
 // ─── Closing slide ─────────────────────────────────────────────────────────
 // Shown after the user finishes the prayer-list. Headline metric is
 // "You prayed with N people" — community count, not streak. The streak
@@ -1114,6 +1355,7 @@ function ClosingSlide({
   visible,
   showSetReminder = false,
   reminderSide = "morning",
+  doneLabel = "Done",
 }: {
   celebration: { streak: number } | null;
   /** Still accepted for symmetry with the celebration animation, but no
@@ -1129,6 +1371,9 @@ function ClosingSlide({
   /** Which office side the user likely just prayed (morning/evening).
    *  Drives the CTA copy and the deep-link target. */
   reminderSide?: "morning" | "evening";
+  /** Label for the primary button. "Done" exits; "Continue" advances
+   *  to the follow-on habit slide on the closingOnly path. */
+  doneLabel?: string;
 }) {
   void _streak;
   const visibleAvatars = coPrayers.slice(0, 5);
@@ -1264,7 +1509,7 @@ function ClosingSlide({
         className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
         style={{ background: "#2D5E3F", color: "#F0EDE6" }}
       >
-        Done
+        {doneLabel}
       </button>
 
       {/* "Set reminder" CTA — fires when the user just finished an
@@ -2354,7 +2599,7 @@ export default function PrayerModePage() {
     ? officePrefsQuery.data?.morning
     : officePrefsQuery.data?.evening;
   const showSetReminder = closingOnly && sidePref === "none";
-  const [phase, setPhase] = useState<"prayer" | "closing">(() => closingOnly ? "closing" : "prayer");
+  const [phase, setPhase] = useState<"prayer" | "closing" | "habit">(() => closingOnly ? "closing" : "prayer");
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
   // Track which intercessions the viewer has already "amened" this
@@ -2972,11 +3217,19 @@ export default function PrayerModePage() {
             celebration={celebration}
             streak={celebration?.streak ?? streakData?.streak ?? 0}
             coPrayers={coPrayersData?.people ?? []}
-            onDone={handleDone}
+            // On the closingOnly path (user came from finishing an
+            // office), the closing slide's primary button advances to
+            // the habit-rhythm slide instead of exiting. On the
+            // standalone slideshow path it still exits.
+            onDone={closingOnly ? () => setPhase("habit") : handleDone}
             visible={slideVisible}
             showSetReminder={showSetReminder}
             reminderSide={reminderSide}
+            doneLabel={closingOnly ? "Continue" : "Done"}
           />
+        )}
+        {phase === "habit" && (
+          <HabitSlide onDone={handleDone} visible={slideVisible} />
         )}
       </div>
 
