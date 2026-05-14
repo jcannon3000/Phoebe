@@ -31,12 +31,19 @@ import { getGardenUserIds } from "./garden";
 
 export async function getUnprayedCount(userId: number): Promise<number> {
   const gardenIds = await getGardenUserIds(userId);
-  // No garden gates the prayer-request slice off; community
-  // intercessions are still counted below since they're attached
-  // to a community the user joined, not the broader garden.
+  // Prayer requests only. Intercessions used to be folded in here
+  // (and into the home-screen "X prayer requests waiting" card),
+  // but the moment_posts isCheckin lag meant the count didn't drop
+  // cleanly after the slideshow — users walked through the deck
+  // and still saw a non-zero badge / card. The dashboard
+  // newPrayersCount mirrors this, so badge ↔ home card stay in
+  // agreement.
   const requestCount = await countUnprayedRequests(userId, gardenIds);
-  const intercessionCount = await countUnprayedIntercessions(userId);
-  return requestCount + intercessionCount;
+  // Keep the intercession helper available for future surfaces
+  // (Phoebe Parish dashboard, debug endpoints) but skip its
+  // contribution to the badge count.
+  void countUnprayedIntercessions;
+  return requestCount;
 }
 
 async function countUnprayedRequests(userId: number, gardenIds: number[]): Promise<number> {

@@ -3896,21 +3896,18 @@ export default function Dashboard() {
   // tz, which is the bug they reported. Reciprocity gate dropped —
   // see pendingPrayerCount note above.
   const newPrayersCount = useMemo(() => {
-    const requestCount = (dashPrayerRequests ?? []).filter(
+    // ONLY prayer requests count toward the top "X prayer requests
+    // waiting" card. Intercessions used to be mixed in here, but
+    // they don't drop out of the count cleanly after the slideshow
+    // (the moment_posts isCheckin isn't always reflected in
+    // myLoggedToday on refetch) — so a user who prayed the
+    // slideshow still saw "4 prayer requests waiting" with no way
+    // to clear it. Intercessions live on the dashboard via their
+    // own surface; the request count card is requests-only.
+    return (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
     ).length;
-    // Community intercessions the viewer hasn't prayed for today count
-    // toward "new prayers" the same way a fresh prayer request does. A
-    // group admin scheduling an intercession should land as a visible
-    // new prayer on the home screen, not just a push notification.
-    // The /prayer-mode?queue=new slideshow target includes both kinds
-    // (see queueMode === "new" in prayer-mode.tsx) so the count + the
-    // tap target are now in agreement.
-    const intercessionCount = (momentsData?.moments ?? []).filter(
-      m => m.templateType === "intercession" && !m.myLoggedToday,
-    ).length;
-    return requestCount + intercessionCount;
-  }, [dashPrayerRequests, momentsData]);
+  }, [dashPrayerRequests]);
 
   // Faces stack for the "X prayer requests waiting" card. Lifted to
   // parent scope so we can render the card lower in the page (under
