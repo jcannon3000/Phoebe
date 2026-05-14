@@ -3657,10 +3657,18 @@ export default function Dashboard() {
   // tz, which is the bug they reported. Reciprocity gate dropped —
   // see pendingPrayerCount note above.
   const newPrayersCount = useMemo(() => {
-    return (dashPrayerRequests ?? []).filter(
+    const requestCount = (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
     ).length;
-  }, [dashPrayerRequests]);
+    // Community intercessions the viewer hasn't prayed for today count
+    // toward "new prayers" the same way a fresh prayer request does. A
+    // group admin scheduling an intercession should land as a visible
+    // new prayer on the home screen, not just a push notification.
+    const intercessionCount = (momentsData?.moments ?? []).filter(
+      m => m.templateType === "intercession" && !m.myLoggedToday,
+    ).length;
+    return requestCount + intercessionCount;
+  }, [dashPrayerRequests, momentsData]);
 
   // Detect new unread letters. Runs once per session. The localStorage key
   // stores the *set* of correspondence ids that were already shown unread

@@ -577,7 +577,7 @@ router.post("/rituals/:id/moments", async (req, res): Promise<void> => {
 
   const memberTokenRows = uniqueMembers.map(m => ({
     momentId: moment.id,
-    email: m.email,
+    email: m.email.toLowerCase(),
     name: m.name,
     userToken: generateToken(),
   }));
@@ -900,7 +900,7 @@ router.post("/moments", async (req, res): Promise<void> => {
 
   const memberTokenRows = uniqueMembers.map(m => ({
     momentId: moment.id,
-    email: m.email,
+    email: m.email.toLowerCase(),
     name: m.name,
     userToken: generateToken(),
   }));
@@ -1385,7 +1385,7 @@ router.get("/moments/past-intercessions", async (req, res): Promise<void> => {
     const userTokenRows = await db
       .select({ momentId: momentUserTokensTable.momentId })
       .from(momentUserTokensTable)
-      .where(eq(momentUserTokensTable.email, me.email ?? ""));
+      .where(sql`LOWER(${momentUserTokensTable.email}) = LOWER(${me.email ?? ""})`);
     const participatedIds = [...new Set(userTokenRows.map((r) => r.momentId))];
 
     if (participatedIds.length === 0 && !isBetaAdmin) {
@@ -1549,9 +1549,14 @@ router.get("/moments", async (req, res): Promise<void> => {
       console.error("[GET /api/moments] pre-reconcile failed:", err);
     }
 
-    // Find all moment_user_tokens for this user's email
+    // Find all moment_user_tokens for this user's email. Compared
+    // case-insensitively because moment_user_tokens.email is written
+    // straight from group_members.email (preserved-case from invites),
+    // while users.email may have been normalised differently at signup.
+    // A casing mismatch here makes community intercessions silently
+    // invisible to the recipient even though their token row exists.
     const userTokenRows = await db.select().from(momentUserTokensTable)
-      .where(eq(momentUserTokensTable.email, user.email));
+      .where(sql`LOWER(${momentUserTokensTable.email}) = LOWER(${user.email})`);
 
     const momentIds = [...new Set(userTokenRows.map(t => t.momentId))];
     if (momentIds.length === 0) { res.json({ moments: [] }); return; }
@@ -2179,7 +2184,7 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
 
   // Auth: must be a participant
   const myTokenRow = await db.select().from(momentUserTokensTable)
-    .where(and(eq(momentUserTokensTable.momentId, momentId), eq(momentUserTokensTable.email, user.email)));
+    .where(and(eq(momentUserTokensTable.momentId, momentId), sql`LOWER(${momentUserTokensTable.email}) = LOWER(${user.email})`));
   if (myTokenRow.length === 0) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const allMembers = await db.select().from(momentUserTokensTable)
@@ -2611,7 +2616,7 @@ router.post("/moments/:id/invite", async (req, res): Promise<void> => {
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
   const [myTokenRow] = await db.select().from(momentUserTokensTable)
-    .where(and(eq(momentUserTokensTable.momentId, momentId), eq(momentUserTokensTable.email, user.email)));
+    .where(and(eq(momentUserTokensTable.momentId, momentId), sql`LOWER(${momentUserTokensTable.email}) = LOWER(${user.email})`));
   if (!myTokenRow) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
@@ -2840,7 +2845,7 @@ router.post("/moments/:id/seed-post", async (req, res): Promise<void> => {
 
   // Must be a participant
   const [myTokenRow] = await db.select().from(momentUserTokensTable)
-    .where(and(eq(momentUserTokensTable.momentId, momentId), eq(momentUserTokensTable.email, user.email)));
+    .where(and(eq(momentUserTokensTable.momentId, momentId), sql`LOWER(${momentUserTokensTable.email}) = LOWER(${user.email})`));
   if (!myTokenRow) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const { photoUrl, reflectionText } = parsed.data;
@@ -4036,7 +4041,7 @@ router.get("/connections", async (req, res): Promise<void> => {
     // — fetch with createdAt from the moment so we can sort by most recent practice
     const userTokenRows = await db.select({ momentId: momentUserTokensTable.momentId })
       .from(momentUserTokensTable)
-      .where(eq(momentUserTokensTable.email, user.email));
+      .where(sql`LOWER(${momentUserTokensTable.email}) = LOWER(${user.email})`);
 
     const momentIds = [...new Set(userTokenRows.map(r => r.momentId))];
     if (momentIds.length > 0) {

@@ -871,13 +871,13 @@ export function sendIntercessionGoalReachedPush(
 // Fires for all group members except the creator. Copy branches by
 // templateType so a new intercession reads differently from a new
 // lectio-divina practice.
-export function sendNewGroupMomentPush(
+export async function sendNewGroupMomentPush(
   userId: number,
   opts: { groupSlug: string; momentName: string; templateType: string; creatorName: string }
 ) {
   const verb = (() => {
     switch (opts.templateType) {
-      case "intercession": return "started an intercession";
+      case "intercession": return "is asking your prayers";
       case "lectio-divina": return "started a Lectio Divina practice";
       case "fasting":      return "started a fast";
       case "morning-prayer":
@@ -888,10 +888,27 @@ export function sendNewGroupMomentPush(
       default:             return "started a practice";
     }
   })();
+  // Intercessions are treated as prayer requests on the client: the
+  // recipient should be able to tap the push, land directly on the
+  // prayer slideshow, and pray the new intercession without first
+  // navigating to a community page. The app-icon badge also reflects
+  // the latest unprayed count so the request is visible at a glance
+  // before the user opens the app.
+  const isIntercession = opts.templateType === "intercession";
+  let badge: number | undefined;
+  if (isIntercession) {
+    try {
+      const { getUnprayedCount } = await import("./unprayedCount");
+      badge = await getUnprayedCount(userId);
+    } catch (err) {
+      logger.warn({ err, userId }, "[push] failed to compute unprayed badge for intercession");
+    }
+  }
   return sendPushToUser(userId, {
     title: opts.momentName || "Phoebe",
     body: `${opts.creatorName} ${verb}.`,
-    path: `/communities/${opts.groupSlug}`,
+    path: isIntercession ? `/prayer-mode` : `/communities/${opts.groupSlug}`,
+    badge,
     threadId: `group-moment-${opts.groupSlug}`,
     sound: PHOEBE_SOUND_MID,
   });

@@ -136,7 +136,7 @@ function initials(name: string): string {
 // back button). When unfocused, the card list is clamped to ~3.5 cards
 // tall with a fade-out gradient so overflow is obviously scrollable. When
 // focused, the clamp + fade lift and every card is shown at full height.
-type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from" | "past-intercessions";
+type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from";
 
 // Backlog row from GET /api/moments/past-intercessions — community
 // intercessions the viewer admins that have been retired (state =
@@ -1474,12 +1474,18 @@ export default function PrayerListPage() {
             prayer list reads as a personal inbox of asks the user owes
             engagement on, and intercessions are a different shape (ongoing
             community practices, not one-off asks). Keeping them last lets
-            the personal stuff lead. */}
-        {(intercessionsSorted.length > 0 || feedsToday.length > 0) && (focused === null || focused === "intercessions") && (
+            the personal stuff lead.
+            Past (archived / cycle-expired) intercessions land at the
+            bottom of the same section, faded — mirrors how past
+            "Prayers for You" cards sit in their section. Surfacing
+            them inline keeps the community's history of carries in
+            view without a separate header to scroll past. */}
+        {(intercessionsSorted.length > 0 || feedsToday.length > 0 || pastIntercessions.length > 0)
+          && (focused === null || focused === "intercessions") && (
           <SectionShell
             id="intercessions"
             label="Community intercessions"
-            count={intercessionsSorted.length + feedsToday.length}
+            count={intercessionsSorted.length + feedsToday.length + pastIntercessions.length}
             focused={focused}
             onFocus={setFocused}
           >
@@ -1493,25 +1499,8 @@ export default function PrayerListPage() {
             {intercessionsSorted.map((m) => (
               <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
             ))}
-          </SectionShell>
-        )}
-
-        {/* Past community intercessions — admin-only backlog of
-            archived intercessions, surfaced faded so an admin can
-            see the history of what their community has been
-            carrying without those moments cluttering the active
-            list. The endpoint returns [] for non-admins, so the
-            section auto-hides for everyone else. */}
-        {pastIntercessions.length > 0 && (focused === null || focused === "past-intercessions") && (
-          <SectionShell
-            id="past-intercessions"
-            label="Past community intercessions"
-            count={pastIntercessions.length}
-            focused={focused}
-            onFocus={setFocused}
-          >
             {pastIntercessions.map((p) => (
-              <PastIntercessionCard key={p.id} p={p} />
+              <PastIntercessionCard key={`past-${p.id}`} p={p} />
             ))}
           </SectionShell>
         )}
@@ -1519,6 +1508,8 @@ export default function PrayerListPage() {
         {/* Empty state — only when every section is empty, otherwise the
             existing sections carry their own weight. */}
         {intercessionsSorted.length === 0
+          && feedsToday.length === 0
+          && pastIntercessions.length === 0
           && allRequests.length === 0
           && activePrayersFor.length === 0
           && prayersForMe.length === 0

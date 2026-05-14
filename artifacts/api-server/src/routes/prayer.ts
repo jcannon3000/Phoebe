@@ -406,20 +406,41 @@ const ACTIVE_PRAYER_REQUEST_CAP = 3;
 
 router.post("/prayer-requests", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!sessionUserId) {
+    logger.warn({
+      ua: req.headers["user-agent"],
+      hasBody: req.body != null,
+    }, "[prayer-requests:post] rejected — no session");
+    res.status(401).json({ error: "Please sign in again — your session has expired." });
+    return;
+  }
 
   const schema = z.object({
     body: z.string().min(1).max(1000),
     isAnonymous: z.boolean().optional().default(false),
+    // Older iOS bundles (pre-3.3) might omit durationDays or send strings;
+    // schema stays permissive — any missing/invalid value falls back to
+    // the 7-day default rather than 400ing the submission.
     durationDays: z.number().int().min(1).max(30).optional().default(7),
     // Author's framing at submission. Drives the optional pill on cards /
-    // slideshow. Default "request" renders no pill. Community intercessions
-    // are not prayer requests — they live in shared_moments via
-    // /moment/new?template=intercession, so they never reach this endpoint.
+    // slideshow. Default "request" renders no pill. Older iOS bundles
+    // don't send this; defaults to "request" so they're never rejected.
+    // Community intercessions are not prayer requests — they live in
+    // shared_moments via /moment/new?template=intercession, so they
+    // never reach this endpoint.
     kind: z.enum(["request", "life-event", "justice"]).optional().default("request"),
   });
   const parsed = schema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  if (!parsed.success) {
+    logger.warn({
+      ua: req.headers["user-agent"],
+      userId: sessionUserId,
+      err: parsed.error.flatten(),
+      body: req.body,
+    }, "[prayer-requests:post] rejected — schema mismatch");
+    res.status(400).json({ error: "Please share a non-empty prayer request." });
+    return;
+  }
 
   const active = await db.select({ id: prayerRequestsTable.id })
     .from(prayerRequestsTable)
