@@ -97,6 +97,12 @@ interface MomentDetail {
   // the last 7 calendar days, null if none.
   weekLogs?: Array<{ name: string; email: string; avatarUrl: string | null; loggedAt: string | null }>;
   isCreator: boolean;
+  // True when the viewer can edit / archive / delete the practice.
+  // Currently: creator OR admin of the primary group. Falls back to
+  // isCreator when the server hasn't been redeployed with the
+  // canManage field yet (e.g. older API build), preserving the legacy
+  // behavior for stale clients.
+  canManage?: boolean;
   group?: { id: number; name: string; slug: string; emoji: string | null } | null;
   calendarEventMissing?: boolean;
   fastingWaterStats?: {
@@ -635,6 +641,9 @@ export default function MomentDetail() {
   if (data.moment.templateType === "lectio-divina") return null;
 
   const { moment, members, memberCount, myStreak, myUserToken, myPersonalTime, myPersonalTimezone, windows, seedPosts, todayPostCount, todayLogs, weekLogs, isCreator, group: momentGroup } = data;
+  // Treat manage permission as a superset of isCreator so the UI keeps
+  // working against an older API build that doesn't return canManage.
+  const canManage = data.canManage ?? isCreator;
 
   // Standalone moments: creator can invite. Group-attached moments:
   // only the group's admin can invite. (parentGroupData is fetched
@@ -1317,8 +1326,8 @@ export default function MomentDetail() {
                   </p>
                 </div>
 
-                {/* Creator gets renewal controls */}
-                {isCreator && card && (
+                {/* Creator or primary-group admin gets renewal controls */}
+                {canManage && card && (
                   <div className="rounded-2xl p-5 mb-3" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                     <p className="text-sm font-medium text-muted-foreground mb-3" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                       Ready to go further? 🌿
@@ -1403,8 +1412,8 @@ export default function MomentDetail() {
                   </div>
                 )}
 
-                {/* Non-creator: just show progress indicator */}
-                {!isCreator && (
+                {/* Non-manager: just show progress indicator */}
+                {!canManage && (
                   <div className="rounded-2xl p-5 mb-3 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                     <p className="text-sm text-muted-foreground" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
                       🌿 Goal complete · waiting for the group leader to set the next step
@@ -1443,7 +1452,7 @@ export default function MomentDetail() {
                   <p className="text-xs text-muted-foreground">
                     You showed up {myStreak ?? sessionsGoal} {unitLabelPlural}. 🌸
                   </p>
-                  {isCreator && (
+                  {canManage && (
                     <button
                       onClick={() => { setRenewCustom(String(sessionsGoal)); setRenewModalOpen(true); }}
                       className="px-3 py-1 rounded-full text-[11px] font-semibold bg-[#5C7A5F] text-white hover:bg-[#5a7a60] transition-colors"
@@ -1614,8 +1623,8 @@ export default function MomentDetail() {
               transition={{ duration: 0.18 }}
               className="mt-4 space-y-3"
             >
-              {/* Edit practice — creator only */}
-              {isCreator && !editingPractice && (
+              {/* Edit practice — creator or primary-group admin */}
+              {canManage && !editingPractice && (
                 <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   <div>
                     <p className="text-sm font-medium text-foreground">Edit practice</p>
@@ -1636,7 +1645,7 @@ export default function MomentDetail() {
                   </button>
                 </div>
               )}
-              {isCreator && editingPractice && (
+              {canManage && editingPractice && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.97 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -1929,8 +1938,8 @@ export default function MomentDetail() {
                   much surface area for abuse and dilutes the trust the
                   small-group format depends on. */}
 
-              {/* Non-creator: Leave only */}
-              {!isCreator && (
+              {/* Non-manager: Leave only */}
+              {!canManage && (
                 <>
                   {!showLeaveConfirm ? (
                     <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
@@ -1975,8 +1984,8 @@ export default function MomentDetail() {
                 </>
               )}
 
-              {/* Creator: Delete */}
-              {isCreator && (
+              {/* Creator or primary-group admin: Delete */}
+              {canManage && (
                 <>
                   {!showDeleteConfirm ? (
                     <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>

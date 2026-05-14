@@ -2359,6 +2359,17 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     ? allMembers.reduce((min, m) => m.id < min.id ? m : min, allMembers[0])
     : null;
   const isCreator = myTokenRow[0]?.email.toLowerCase() === creatorToken?.email.toLowerCase();
+  // Drives the edit / archive / delete UI. Mirrors the server-side
+  // canManageMoment helper: creator OR admin of the primary group.
+  // For a community intercession scheduled inside a parish, every
+  // admin of that parish gets the edit affordance, not just whoever
+  // happened to tap "create."
+  const canManage = await canManageMoment({
+    userId: sessionUserId,
+    userEmail: user.email,
+    momentId,
+    primaryGroupId: moment.groupId,
+  });
 
   // Check if the creator's calendar event was deleted
   let calendarEventMissing = false;
@@ -2523,6 +2534,7 @@ router.get("/moments/:id", async (req, res): Promise<void> => {
     todayLogs,
     weekLogs,
     isCreator,
+    canManage,
     myStreak,
     groupStreak,
     groupBest,
