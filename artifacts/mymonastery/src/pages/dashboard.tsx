@@ -2195,13 +2195,21 @@ function PrayerOfficeCard() {
   });
   const communityPrayed = communityPrayedData?.people ?? [];
 
-  // "Prayed today" is true when any of the day-scoped completion
-  // flags written by the slideshow or office viewers is set:
-  //   • phoebe:slideshow-completed:{day} — written by prayer-mode's
-  //     handleDone after the user walks the full intercession list.
+  // "Prayed today" is scoped to the CURRENT half of the day. After
+  // noon the CTA flips to "Evening Prayer" — at that boundary the
+  // morning's completion flag stops counting, so a user who prayed
+  // Morning Prayer sees a fresh "Begin prayer" CTA in the evening
+  // until they've prayed an evening office. Without this scope, the
+  // pill stayed stuck on "Prayer completed ✓" for the rest of the day
+  // even though the active CTA had moved on.
+  //
+  // Completion flags read here:
   //   • phoebe:office-completed:{mode}:{day} — written by
-  //     bcp-daily-office for each of the four office/devotion modes
-  //     when the user Amens the closing collect.
+  //     bcp-daily-office for each of the four office/devotion modes.
+  // The slideshow-completed flag is intentionally NOT read — it's a
+  // separate surface (Community Intercessions) and tapping through it
+  // shouldn't suppress the office CTA on either side.
+  //
   // Bump a tick on focus + visibility so returning to the dashboard
   // after praying flips the CTA copy without needing a hard refresh
   // (localStorage doesn't fire same-tab storage events).
@@ -2223,10 +2231,13 @@ function PrayerOfficeCard() {
     if (typeof window === "undefined") return false;
     const d = new Date();
     const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // Same noon threshold as isMorning above — keeps the "what counts
+    // as prayed" in lockstep with the CTA's morning/evening side.
+    const sideModes = isMorning
+      ? ["morning", "morning-devotion"]
+      : ["evening", "early-evening-devotion"];
     try {
-      if (localStorage.getItem(`phoebe:slideshow-completed:${todayKey}`)) return true;
-      const officeModes = ["morning", "evening", "morning-devotion", "early-evening-devotion"];
-      for (const mode of officeModes) {
+      for (const mode of sideModes) {
         if (localStorage.getItem(`phoebe:office-completed:${mode}:${todayKey}`)) return true;
       }
       return false;
