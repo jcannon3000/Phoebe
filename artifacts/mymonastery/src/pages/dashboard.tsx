@@ -2059,7 +2059,7 @@ function PrayerOfficeCard() {
               {eyebrow}
             </p>
             <Link
-              href="/offices"
+              href="/settings"
               className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
               style={{
                 background: "rgba(46,107,64,0.22)",
@@ -2068,7 +2068,7 @@ function PrayerOfficeCard() {
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
-              View
+              Reminders
             </Link>
           </div>
           <div className="flex items-start justify-between gap-2 mb-0.5">
