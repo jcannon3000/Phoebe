@@ -2272,7 +2272,7 @@ function PrayerOfficeCard() {
         border: "1px solid rgba(46,107,64,0.4)",
       }}
       >
-        <div className="flex-1 px-4 pt-[14px] pb-[17px]">
+        <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <div className="flex items-start justify-between gap-2">
             <p
               className="text-[11px] font-semibold uppercase tracking-widest"
@@ -2306,7 +2306,12 @@ function PrayerOfficeCard() {
                 ? "1 person prayed with you this week"
                 : `${withAvatars.length} people prayed with you this week`;
             return (
-              <div className="mt-[4px] flex items-start justify-between gap-3">
+              // items-center vertically centers the right-side avatar
+              // stack against the title + sub-count block on the left
+              // so the avatars sit between the title and the count
+              // line rather than crowding the title. Matches the
+              // visual rhythm of the parish-weekly card above.
+              <div className="mt-[10px] flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p
                     className="text-2xl font-semibold"
@@ -2316,7 +2321,7 @@ function PrayerOfficeCard() {
                   </p>
                   {countCopy && (
                     <p
-                      className="text-[11px] mt-[6px]"
+                      className="text-[11px] mt-[10px]"
                       style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
                     >
                       {countCopy}
