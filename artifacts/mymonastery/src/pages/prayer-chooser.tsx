@@ -83,14 +83,14 @@ export default function PrayerChooserPage() {
   const options: Option[] = [
     {
       title: devotionLabel,
-      sub: "From the Book of Common Prayer · with prayer list",
+      sub: "From the Book of Common Prayer",
       duration: "5–10 Min",
       href: `/bcp/daily-devotions?mode=${encodeURIComponent(devotionMode)}${devotionState.kind === "done" ? "&reset=1" : ""}`,
       verb: verbFor(devotionState),
     },
     {
       title: officeLabel,
-      sub: "From the Book of Common Prayer · with prayer list",
+      sub: "From the Book of Common Prayer",
       duration: "15–20 Min",
       href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
       verb: verbFor(officeStateLocal),
