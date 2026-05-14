@@ -143,8 +143,14 @@ function ViewPill() {
 }
 
 function AvatarStack({ entries, max = 6 }: { entries: ParishWeeklyEntry[]; max?: number }) {
-  const shown = entries.slice(0, max);
-  const extra = entries.length - shown.length;
+  // Only render entries with a real profile picture — group emojis
+  // and feed cover emojis are filtered out per user direction so
+  // the stack reads as "the people my prayers are with" rather than
+  // as a generic icon row.
+  const withAvatars = entries.filter((e) => !!e.avatarUrl);
+  const shown = withAvatars.slice(0, max);
+  const extra = withAvatars.length - shown.length;
+  if (shown.length === 0) return null;
   return (
     <div className="flex items-center">
       <div className="flex -space-x-2">

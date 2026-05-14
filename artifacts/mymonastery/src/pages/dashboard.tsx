@@ -340,6 +340,11 @@ type DashboardItem =
   | { kind: "moment"; data: Moment; nextWindow?: string }
   | { kind: "gathering"; data: any; badge?: string }
   | { kind: "service"; data: ServiceSchedule; nextDate: Date; isOnDate: boolean }
+  // Consolidated view of multiple service schedules on the same
+  // weekday — when a user belongs to several communities that all
+  // worship on Sunday, one card replaces N cards and surfaces all
+  // their times in a single tap.
+  | { kind: "services"; schedules: ServiceSchedule[]; nextDate: Date; isOnDate: boolean }
   | { kind: "feed"; data: SubscribedFeed };
 
 // Shape returned by GET /api/prayer-feeds/subscribed — one row per feed I
@@ -2074,88 +2079,45 @@ function PrayerOfficeCard() {
             </Link>
           </div>
           {/* Title sits with a tight gap above (eyebrow → title) and
-              a slightly larger one below (title → avatars) so the
-              title reads as the centerpiece without the eyebrow
-              floating away. text-xl per user direction. */}
-          {/* Title + community-prayed row. On wide web (md+) the two
-              sit side-by-side: title on the left, avatar stack + count
-              floated to the right. On mobile web AND inside the
-              Capacitor iOS app the row stays stacked (title on its
-              own line, avatars below). Native detection forces the
-              stacked layout even on iPad/landscape where the md:
-              breakpoint would otherwise kick in. */}
+              a slightly larger one below (title → avatars). The
+              community-prayed row ALWAYS sits below the title now —
+              mirrors the parish-weekly card's vertical stack so the
+              two cards read with the same rhythm. Only people who
+              have an avatar render; initials-fallback rows are
+              filtered out per user direction. */}
+          <div className="mt-[4px]">
+            <p
+              className="text-2xl font-semibold"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
+            >
+              {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
+            </p>
+          </div>
           {(() => {
-            // Reads window.location.protocol synchronously — Capacitor
-            // serves the bundle from capacitor://localhost; web serves
-            // from https://. Cheaper than importing the Capacitor API.
-            const isNativeApp =
-              typeof window !== "undefined" &&
-              window.location.protocol === "capacitor:";
-            const communityPrayedBlock = communityPrayed.length > 0 ? (
-              <div className="flex items-center gap-1.5">
-                <div className="flex -space-x-2">
-                  {communityPrayed.slice(0, 5).map((p) => (
-                    p.avatarUrl ? (
+            const withAvatars = communityPrayed.filter((p) => !!p.avatarUrl);
+            if (withAvatars.length === 0) return null;
+            return (
+              <div className="mt-[10px]">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex -space-x-2">
+                    {withAvatars.slice(0, 5).map((p) => (
                       <img
                         key={p.id}
-                        src={p.avatarUrl}
+                        src={p.avatarUrl as string}
                         alt={p.name}
                         title={p.name}
                         className="w-6 h-6 rounded-full object-cover"
                         style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
                       />
-                    ) : (
-                      <div
-                        key={p.id}
-                        title={p.name}
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold"
-                        style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid rgba(12,31,18,0.9)" }}
-                      >
-                        {p.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")}
-                      </div>
-                    )
-                  ))}
-                </div>
-                <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {communityPrayed.length === 1
-                    ? "1 person prayed with you this week"
-                    : `${communityPrayed.length} people prayed with you this week`}
-                </span>
-              </div>
-            ) : null;
-            return (
-              <>
-                <div
-                  className={
-                    isNativeApp
-                      ? "mt-[4px]"
-                      : "mt-[4px] md:flex md:items-center md:justify-between md:gap-4"
-                  }
-                >
-                  <p
-                    className="text-2xl font-semibold"
-                    style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
-                  >
-                    {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
-                  </p>
-                  {/* Wide-web slot — md+, web only. Capacitor app
-                      skips this branch entirely via isNativeApp. */}
-                  {!isNativeApp && communityPrayedBlock && (
-                    <div className="hidden md:block shrink-0">
-                      {communityPrayedBlock}
-                    </div>
-                  )}
-                </div>
-                {/* Mobile / native slot — sits below the title. On
-                    web, hidden once we cross md (the wide slot
-                    above takes over); in the Capacitor app this
-                    is the only path that renders. */}
-                {communityPrayedBlock && (
-                  <div className={isNativeApp ? "mt-[10px]" : "mt-[10px] md:hidden"}>
-                    {communityPrayedBlock}
+                    ))}
                   </div>
-                )}
-              </>
+                  <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {withAvatars.length === 1
+                      ? "1 person prayed with you this week"
+                      : `${withAvatars.length} people prayed with you this week`}
+                  </span>
+                </div>
+              </div>
             );
           })()}
           {prayedToday ? (
@@ -3048,6 +3010,17 @@ function TimeSection({
           nextDate={item.nextDate}
           isOnDate={item.isOnDate}
           onOpen={() => onOpenService(item.data, item.nextDate)}
+          keyPrefix={label}
+        />,
+      );
+    } else if (item.kind === "services") {
+      renderedNodes.push(
+        <ConsolidatedServiceCard
+          key={`${label}-ss-${item.schedules.map((s) => s.id).join("-")}`}
+          schedules={item.schedules}
+          nextDate={item.nextDate}
+          isOnDate={item.isOnDate}
+          onOpen={() => onOpenConsolidatedServices(item.schedules, item.nextDate)}
           keyPrefix={label}
         />,
       );
@@ -4060,12 +4033,26 @@ export default function Dashboard() {
     const todayStart = _todayMs;
     const tomorrowStart = todayStart + _oneDayMs;
     const sevenDaysOutMs = thisWeekEndExclusiveMsTop;
+    // Group schedules by dayOfWeek first. If a user is in multiple
+    // communities that worship the same day (Sunday is the common
+    // case), we render ONE consolidated card instead of one per
+    // community — the dashboard had 3-4 near-identical worship
+    // cards stacked on top of each other for multi-community users,
+    // which read as noise.
+    const schedulesByDow = new Map<number, ServiceSchedule[]>();
     for (const s of serviceSchedules) {
       if (!s.times.length) continue;
-      const next = nextOccurrenceDate(s.dayOfWeek);
+      const arr = schedulesByDow.get(s.dayOfWeek) ?? [];
+      arr.push(s);
+      schedulesByDow.set(s.dayOfWeek, arr);
+    }
+    for (const [dow, list] of schedulesByDow.entries()) {
+      const next = nextOccurrenceDate(dow);
       const nextMs = next.getTime();
       const isOnDate = nextMs === todayStart;
-      const item: DashboardItem = { kind: "service", data: s, nextDate: next, isOnDate };
+      const item: DashboardItem = list.length === 1
+        ? { kind: "service", data: list[0]!, nextDate: next, isOnDate }
+        : { kind: "services", schedules: list, nextDate: next, isOnDate };
       if (isOnDate) todayItems.push(item);
       else if (nextMs === tomorrowStart) tomorrowItems.push(item);
       else if (nextMs < sevenDaysOutMs) weekItems.push(item);
