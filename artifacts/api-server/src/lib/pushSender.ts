@@ -501,22 +501,26 @@ async function getApnsJwt(): Promise<string> {
 // Thin helpers for common notification kinds. Callers don't need to
 // know payload conventions; they just call by name.
 
-// Morning monastery bell (7 AM local). The copy is deliberately
+// Morning bell (9 AM local). The copy is deliberately
 // relational — "your friends" — because the whole app frames prayer as
 // carrying other people, not as a solo practice. Body is a gentle
 // invitation rather than a metric; we deliberately avoid a per-user
 // "N prayers waiting" count so the push says the same thing to
 // everyone and stays readable when the count would be 0.
+//
+// Lands on /prayer-chooser — the time-of-day picker (Community
+// Intercessions / Devotion / Office) — not the slideshow directly,
+// so the user gets to pick how deep they want to go today.
 export function sendBellPush(userId: number) {
   return sendPushToUser(userId, {
     title: "Time to pray for your friends",
-    body: "Open to begin praying for them and the world.",
-    path: "/prayer-mode",
+    body: "Open to choose how to pray with your community today.",
+    path: "/prayer-chooser",
     threadId: "bell",
     sound: PHOEBE_SOUND_LOW,
     // Time-sensitive so the bell breaks through Focus modes the
     // way Duolingo's daily streak reminder does — a user who's
-    // gone heads-down still gets the appointed prompt at 7 AM
+    // gone heads-down still gets the appointed prompt at 9 AM
     // local. Requires the matching iOS entitlement
     // (com.apple.developer.usernotifications.time-sensitive) AND
     // the per-app "Time Sensitive Notifications" toggle in iOS

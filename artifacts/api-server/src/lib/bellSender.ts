@@ -57,8 +57,8 @@ function todayDateInTz(timezone: string): string {
 
 // ─── Main bell sender ───────────────────────────────────────────────────────
 //
-// Push-only. Fires for every user at 07:00 local in their timezone — the
-// first of two daily nudges (07:00 / 20:00). This morning slot fires
+// Push-only. Fires for every user at 09:00 local in their timezone — the
+// first of two daily nudges (09:00 / 20:00). This morning slot fires
 // unconditionally; the evening slot is gentler and skips users who have
 // already prayed today. The midday (14:00) slot was removed per user
 // direction — two nudges felt right; three was noisy. The time is global — the
@@ -69,20 +69,16 @@ function todayDateInTz(timezone: string): string {
 // De-duped via a `bell_notifications` row keyed on (userId, todayStr).
 // `forceNow: true` bypasses both the time-window check and the dedup —
 // used by the /api/bell/fire-now debug endpoint.
+//
+// Deep-links to /prayer-chooser, the time-of-day picker (Community
+// Intercessions / Devotion / Office) — landing the user on the
+// "choose how to pray today" screen rather than dropping straight
+// into the slideshow.
 
-const DAILY_BELL_HOUR = 7;
+const DAILY_BELL_HOUR = 9;
 const DAILY_BELL_MINUTE = 0;
 
 export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<void> {
-  // Daily slideshow push is OFF per user direction — the slideshow is
-  // no longer the daily ritual; users open the app to respond to
-  // their community's requests + optionally pray an office.
-  // Office reminder pushes (per-user opt-in for Morning / Evening
-  // Prayer or the Devotion) live in their own runner. Returning
-  // early here keeps the rest of the bell scheduler (renewal nudge,
-  // letter delivery, etc.) running without firing the slideshow
-  // push that we no longer want.
-  if (!opts.forceNow) return;
 
   // Single bell for all users now. Climate-enrolled users used to be
   // disjoined here so a parallel runClimateDailySender could fire a
