@@ -144,6 +144,7 @@ import ParishSettings from "./pages/parish-settings";
 import ParishCelebration from "./pages/parish-celebration";
 import ParishAdmin from "./pages/parish-admin";
 import ParishConcernsPage from "./pages/parish-concerns";
+import ParishIntercessionsPage from "./pages/parish-intercessions";
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
 
@@ -331,6 +332,7 @@ function Router() {
       <Route path="/parish/celebration" component={ParishCelebration} />
       <Route path="/parish/admin" component={ParishAdmin} />
       <Route path="/parish/concerns" component={ParishConcernsPage} />
+      <Route path="/parish/intercessions" component={ParishIntercessionsPage} />
       <Route path="/gatherings" component={GatheringsPage} />
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />

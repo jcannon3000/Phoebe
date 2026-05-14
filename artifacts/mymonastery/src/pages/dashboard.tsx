@@ -1970,7 +1970,7 @@ function NewPrayerRequestsCard({
 // Office picker uses for "today's office."
 function PrayerOfficeCard() {
   const isMorning = new Date().getHours() < 12;
-  const eyebrow = isMorning ? "🌅 This morning" : "🌙 This evening";
+  const eyebrow = isMorning ? "This morning" : "This evening";
   // Office-streak pill above the CTA. Same data source as before,
   // just the prefs lookup — no longer used to pick a "big" CTA.
   const { data: officePrefs } = useQuery<{
@@ -2076,7 +2076,7 @@ function PrayerOfficeCard() {
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
             >
-              Pray with your community
+              {isMorning ? "Pray Morning Prayer" : "Pray Evening Prayer"}
             </p>
             {officeStreak > 0 && (
               <span

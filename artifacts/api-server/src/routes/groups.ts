@@ -710,6 +710,15 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         WHERE prev_at IS NULL
            OR occurred_at - prev_at > INTERVAL '15 minutes'
       ),
+      -- ADMIN_DAILY_PRAYER_CAP = 3. A visible group admin contributes
+      -- at most 3 prayer events per day to "Times prayed"; their first
+      -- through third events of the day count, the 4th onwards drop
+      -- out so a hyper-engaged admin can't single-handedly inflate
+      -- the community's rollup. Non-admins keep their full count
+      -- (after the 15-min dedup above). "People praying" is derived
+      -- from this same source so it stays consistent — but it's a
+      -- DISTINCT (user, day), so the cap doesn't remove an admin's
+      -- presence in that bucket; they still count as 1 person/day.
       prayer_events AS (
         SELECT user_id, day
         FROM prayer_events_raw
