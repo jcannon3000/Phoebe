@@ -2050,7 +2050,7 @@ function PrayerOfficeCard() {
         border: "1px solid rgba(46,107,64,0.20)",
       }}
       >
-        <div className="flex-1 px-4 pt-2 pb-2.5">
+        <div className="flex-1 px-4 pt-[10px] pb-[12px]">
           <div className="flex items-start justify-between gap-2">
             <p
               className="text-[11px] font-semibold uppercase tracking-widest"
@@ -2085,7 +2085,7 @@ function PrayerOfficeCard() {
             </p>
           </div>
           {communityPrayed.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-1">
+            <div className="flex items-center gap-1.5 mt-[5px]">
               <div className="flex -space-x-2">
                 {communityPrayed.slice(0, 5).map((p) => (
                   p.avatarUrl ? (
@@ -2123,7 +2123,7 @@ function PrayerOfficeCard() {
             // any phone size. Status pill has the lighter sage fill
             // and no border lift so it reads as a settled win; the
             // action pill keeps the standard sage-accent + arrow.
-            <div className="mt-2 flex items-stretch gap-2">
+            <div className="mt-[10px] flex items-stretch gap-2">
               <div
                 aria-label="Prayer completed today"
                 className="flex-1 rounded-xl text-center"
@@ -2133,7 +2133,7 @@ function PrayerOfficeCard() {
                   fontFamily: "'Space Grotesk', sans-serif",
                   fontSize: 13,
                   fontWeight: 500,
-                  padding: "9px 12px",
+                  padding: "11px 12px",
                   border: "1px solid rgba(46,107,64,0.22)",
                 }}
               >
@@ -2150,7 +2150,7 @@ function PrayerOfficeCard() {
                     fontFamily: "'Space Grotesk', sans-serif",
                     fontSize: 13,
                     fontWeight: 500,
-                    padding: "9px 12px",
+                    padding: "11px 12px",
                     border: "1px solid rgba(46,107,64,0.45)",
                   }}
                 >
@@ -2163,14 +2163,14 @@ function PrayerOfficeCard() {
               <div
                 role="button"
                 tabIndex={0}
-                className="mt-2 w-full rounded-xl text-center cursor-pointer"
+                className="mt-[10px] w-full rounded-xl text-center cursor-pointer"
                 style={{
                   background: "rgba(46,107,64,0.22)",
                   color: "#F0EDE6",
                   fontFamily: "'Space Grotesk', sans-serif",
                   fontSize: 14,
                   fontWeight: 500,
-                  padding: "9px 12px",
+                  padding: "11px 12px",
                   border: "1px solid rgba(46,107,64,0.45)",
                 }}
               >
