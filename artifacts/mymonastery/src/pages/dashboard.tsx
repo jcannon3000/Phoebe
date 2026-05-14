@@ -2124,8 +2124,8 @@ function PrayerOfficeCard() {
               </div>
               <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
                 {communityPrayed.length === 1
-                  ? `${communityPrayed[0]!.name.split(" ")[0]} prayed this week`
-                  : `${communityPrayed.length} praying this week`}
+                  ? "1 person prayed with you this week"
+                  : `${communityPrayed.length} people prayed with you this week`}
               </span>
             </div>
           )}
