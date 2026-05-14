@@ -156,12 +156,48 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
 
   const totalTargets = tokens.length + webSubs.length;
   if (totalTargets === 0) {
-    // Visible log so we can tell from Railway whether a push was
-    // intended but had no target. "Tried to send to user X but they
-    // have no active device tokens" almost always means the client
-    // POST to /api/push/device-token failed silently on first launch.
+    // Two distinct "no tokens" cases worth separating in the log so we
+    // can triage silenced users from Railway without a DB session:
+    //   1. The user has NEVER registered (zero rows ever inserted).
+    //      Usually means push permission denied, or device-token POST
+    //      failed on first launch and never retried.
+    //   2. The user HAS registered but every row is invalidated_at != NULL
+    //      (APNs returned 410 / BadDeviceToken at some point). They
+    //      need to reopen the app on iOS 3.3+ to trigger the on-resume
+    //      re-register flow. Pre-3.3 bundles stay silenced forever.
+    let stoneStateRow: { ever: number; live: number } | null = null;
+    try {
+      const counts = await db.execute<{ ever: number; live: number }>(sql`
+        SELECT
+          (SELECT COUNT(*)::int FROM device_tokens WHERE user_id = ${userId}) AS ever,
+          (SELECT COUNT(*)::int FROM device_tokens WHERE user_id = ${userId} AND invalidated_at IS NULL) AS live
+      `);
+      stoneStateRow = (counts.rows?.[0] as { ever: number; live: number } | undefined) ?? null;
+    } catch { /* diagnostic only — non-fatal */ }
+    const everCount = stoneStateRow?.ever ?? 0;
+    const liveCount = stoneStateRow?.live ?? 0;
+    let userEmail: string | null = null;
+    try {
+      const { usersTable } = await import("@workspace/db");
+      const [u] = await db.select({ email: usersTable.email })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId));
+      userEmail = u?.email ?? null;
+    } catch { /* diagnostic only — non-fatal */ }
     logger.info(
-      { userId, title: payload.title },
+      {
+        userId,
+        userEmail,
+        title: payload.title,
+        deviceTokensEver: everCount,
+        deviceTokensLive: liveCount,
+        reason:
+          everCount === 0
+            ? "never-registered"
+            : liveCount === 0
+              ? "all-invalidated"
+              : "unknown",
+      },
       "[push] no active device tokens or web subs — skipping send"
     );
     return { attempted: 0, succeeded: 0, invalidated: 0 };
@@ -177,13 +213,30 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
 
   for (const t of tokens) {
     if (t.platform !== "ios") continue; // Android-native path to be added later
-    const outcome = await sendOneApns(t.token, payload);
+    // One retry on transient errors (5xx or network blip). APNs returns
+    // 200 on success, 410/400-BadDeviceToken on invalid token (no point
+    // retrying), and 5xx on its own infrastructure trouble. Without the
+    // retry every 5xx silently lost a push — Apple's SLA is good but
+    // not perfect, and Phoebe's tiny volume means even one drop is a
+    // visible "I didn't get the notification" complaint.
+    let outcome = await sendOneApns(t.token, payload);
+    if (outcome === "error") {
+      await new Promise(r => setTimeout(r, 800));
+      outcome = await sendOneApns(t.token, payload);
+    }
     if (outcome === "ok") result.succeeded += 1;
     else if (outcome === "invalid") invalidTokenIds.push(t.id);
   }
 
   for (const sub of webSubs) {
-    const outcome = await sendOneWebPush(sub, payload);
+    // Same retry pattern for web push. webpush.sendNotification returns
+    // an Error subclass with statusCode on 4xx/5xx; sendOneWebPush
+    // collapses that to "ok" / "invalid" / "error".
+    let outcome = await sendOneWebPush(sub, payload);
+    if (outcome === "error") {
+      await new Promise(r => setTimeout(r, 800));
+      outcome = await sendOneWebPush(sub, payload);
+    }
     if (outcome === "ok") result.succeeded += 1;
     else if (outcome === "invalid") invalidWebSubIds.push(sub.id);
   }
