@@ -1401,7 +1401,12 @@ export default function CommunityDetailPage() {
   // Pilot (beta) flag — used to gate admin-only invite-by-email form on the
   // Members tab. A community admin who is also a pilot user gets the form;
   // non-pilot admins still have the shareable invite-link modal.
-  const { isBeta } = useBetaStatus();
+  // rawIsBeta = beta_users membership regardless of the in-app
+  // beta-view toggle. We use raw for "this user is actually a pilot"
+  // capability checks (e.g. designating hidden admins) so toggling
+  // the beta view off doesn't hide the pilot affordances they're
+  // allowed to use.
+  const { isBeta, rawIsBeta } = useBetaStatus();
 
   if (authLoading || !user) return null;
   if (!groupData) return (
@@ -2726,7 +2731,7 @@ export default function CommunityDetailPage() {
                 inviteEmail={inviteEmail}
                 inviteError={inviteError}
                 pendingRole={pendingRole}
-                isBeta={isBeta}
+                isBeta={rawIsBeta}
                 isPending={addMemberMutation.isPending}
                 setInviteName={setInviteName}
                 setInviteEmail={setInviteEmail}
@@ -2846,8 +2851,10 @@ export default function CommunityDetailPage() {
                       )}
                       {/* Pilot-only hidden-admin toggle — works on SELF too,
                           so pilots can self-designate. Server pilot-gates
-                          it regardless. */}
-                      {isBeta && !isHiddenAdmin && (
+                          it regardless. Gated on rawIsBeta (not isBeta)
+                          so the option stays visible even when the user
+                          has the beta view toggled off. */}
+                      {rawIsBeta && !isHiddenAdmin && (
                         <button
                           onClick={(e) => {
                             e.preventDefault();
@@ -2868,7 +2875,7 @@ export default function CommunityDetailPage() {
                           {changingThisRow ? "…" : "Hidden"}
                         </button>
                       )}
-                      {isBeta && isHiddenAdmin && (
+                      {rawIsBeta && isHiddenAdmin && (
                         <button
                           onClick={(e) => {
                             e.preventDefault();
