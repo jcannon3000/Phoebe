@@ -232,58 +232,91 @@ export function ParishWeeklyCard() {
           </div>
         </div>
 
-        {allPrayed ? (
-          <>
-            <p
-              className="text-base font-semibold mb-[4px]"
-              style={{ color: "#F0EDE6", fontFamily: FONT }}
+        {(() => {
+          // Capacitor app always uses the stacked layout regardless
+          // of viewport (iPad in landscape would otherwise trigger
+          // md:). Detection reads window.location.protocol — the
+          // bundle is served from capacitor://localhost inside the
+          // native shell vs https:// on web.
+          const isNativeApp =
+            typeof window !== "undefined" &&
+            window.location.protocol === "capacitor:";
+          const entries = allPrayed ? (data?.prayed ?? []) : (data?.unprayed ?? []);
+          const stack = entries.length > 0 ? (
+            <AvatarStack entries={entries} max={allPrayed ? 10 : 6} />
+          ) : null;
+          const beginPill = !allPrayed && (data?.unprayed.length ?? 0) > 0 ? (
+            <span
+              className="text-[11px] font-semibold px-3 py-[3px] rounded-full shrink-0"
+              style={{
+                background: "rgba(46,107,64,0.35)",
+                color: "#C8D4C0",
+                border: "1px solid rgba(46,107,64,0.55)",
+                fontFamily: FONT,
+              }}
             >
-              {headline}
-            </p>
-            <p
-              className="text-[12px] mb-[14px]"
-              style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
-            >
-              Everything your community is carrying has been prayed for.
-            </p>
-            <div className="mt-[20px]">
-              <AvatarStack entries={data?.prayed ?? []} max={10} />
-            </div>
-          </>
-        ) : (
-          <>
-            <p
-              className="text-base font-semibold mb-[4px]"
-              style={{ color: "#F0EDE6", fontFamily: FONT }}
-            >
-              {headline}
-            </p>
-            <p
-              className="text-[12px] mb-[14px]"
-              style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
-            >
-              {(data?.prayed.length ?? 0) === 0
-                ? "Your community is asking your prayers."
-                : `You've prayed for ${data?.prayed.length} so far this week.`}
-            </p>
-            {(data?.unprayed.length ?? 0) > 0 && (
-              <div className="mt-[20px] flex items-center justify-between gap-3">
-                <AvatarStack entries={data?.unprayed ?? []} max={6} />
-                <span
-                  className="text-[11px] font-semibold px-3 py-[3px] rounded-full shrink-0"
-                  style={{
-                    background: "rgba(46,107,64,0.35)",
-                    color: "#C8D4C0",
-                    border: "1px solid rgba(46,107,64,0.55)",
-                    fontFamily: FONT,
-                  }}
-                >
-                  Begin →
-                </span>
+              Begin →
+            </span>
+          ) : null;
+          const headlineBlock = (
+            <>
+              <p
+                className="text-base font-semibold mb-[4px]"
+                style={{ color: "#F0EDE6", fontFamily: FONT }}
+              >
+                {headline}
+              </p>
+              <p
+                className="text-[12px]"
+                style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
+              >
+                {allPrayed
+                  ? "Everything your community is carrying has been prayed for."
+                  : (data?.prayed.length ?? 0) === 0
+                    ? "Your community is asking your prayers."
+                    : `You've prayed for ${data?.prayed.length} so far this week.`}
+              </p>
+            </>
+          );
+          if (isNativeApp) {
+            // Stacked layout — title + sub on top, stack underneath,
+            // Begin pill (if any) inline with the stack at the bottom.
+            return (
+              <>
+                {headlineBlock}
+                {stack && (
+                  <div className="mt-[20px] flex items-center justify-between gap-3">
+                    {stack}
+                    {beginPill}
+                  </div>
+                )}
+              </>
+            );
+          }
+          // Web — wide screens (md+) place the avatar stack on the
+          // right, aligned with the title; narrow screens fall back
+          // to the stacked layout. The Begin pill rides with the
+          // stack in both cases.
+          return (
+            <>
+              <div className="md:flex md:items-start md:justify-between md:gap-6">
+                <div className="md:flex-1 md:min-w-0">{headlineBlock}</div>
+                {stack && (
+                  <div className="hidden md:flex md:items-center md:gap-3 md:shrink-0 md:mt-1">
+                    {stack}
+                    {beginPill}
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        )}
+              {stack && (
+                <div className="mt-[20px] flex items-center justify-between gap-3 md:hidden">
+                  {stack}
+                  {beginPill}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
     </Link>
   );
