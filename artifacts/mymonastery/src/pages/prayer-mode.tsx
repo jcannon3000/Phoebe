@@ -1349,10 +1349,20 @@ export default function PrayerModePage() {
   // and shows ONLY prayer requests this viewer has never amen'd. The
   // card promised "tap to respond" — we honour that literally instead
   // of dropping them into the full daily walk.
+  // queue=parish-weekly → beta experiment. Scoped exclusively to the
+  // unprayed slice of /api/me/parish-weekly: people in the viewer's
+  // parish groups with an active prayer request whom the viewer
+  // hasn't amen'd yet this week (Sunday → Saturday in their tz).
+  // One slide per person, ordered oldest-request-first. No
+  // intercessions, no circle intentions, no own prayers-for, no
+  // ask-request nudge — same focused shape as queue=new, but the
+  // unit is the person, not the request.
   const queueMode = (() => {
     if (typeof window === "undefined") return null;
     const v = new URLSearchParams(window.location.search).get("queue");
-    return v === "new" ? "new" : null;
+    if (v === "new") return "new";
+    if (v === "parish-weekly") return "parish-weekly";
+    return null;
   })();
   const finishHref = returnToHref ?? "/dashboard";
 
@@ -1369,6 +1379,37 @@ export default function PrayerModePage() {
     enabled: !!user,
   });
   const prayerRequests = prayerRequestsQuery.data ?? [];
+
+  // Parish-weekly data — beta experiment. Only fetched when the
+  // slideshow was opened via queue=parish-weekly so non-beta users
+  // never pay the round trip. Used to override the slide list with
+  // the person-keyed unprayed slice below.
+  type ParishWeeklyEntry = {
+    userId: number;
+    name: string | null;
+    avatarUrl: string | null;
+    request: {
+      id: number;
+      body: string;
+      isAnonymous: boolean;
+      kind: string | null;
+      expiresAt: string | null;
+      createdAt: string;
+    };
+    prayedAt: string | null;
+  };
+  const parishWeeklyQuery = useQuery<{
+    weekStartYmd: string;
+    weekEndYmd: string;
+    unprayed: ParishWeeklyEntry[];
+    prayed: ParishWeeklyEntry[];
+  }>({
+    queryKey: ["/api/me/parish-weekly"],
+    queryFn: () => apiRequest("GET", "/api/me/parish-weekly"),
+    enabled: !!user && queueMode === "parish-weekly",
+    staleTime: 60_000,
+  });
+  const parishWeeklyData = parishWeeklyQuery.data;
 
   const myPrayersForQuery = useQuery<MyActivePrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
@@ -1586,7 +1627,25 @@ export default function PrayerModePage() {
   // (intercessions, circle intentions, prayers-for, ask-request) is
   // omitted — the home-screen card sent the user here to clear a
   // specific queue, not to walk the whole daily list.
-  const slides: PrayerSlide[] = queueMode === "new"
+  //
+  // queueMode === "parish-weekly" (beta) is similarly focused, but
+  // keyed by PERSON not request: one slide per parish member who
+  // has an active request the viewer hasn't amen'd this week. Same
+  // request-slide shape under the hood, just sourced from a
+  // weekly-scoped backend query instead of the all-time request feed.
+  const slides: PrayerSlide[] = queueMode === "parish-weekly"
+    ? (parishWeeklyData?.unprayed ?? []).map((e): PrayerSlide => ({
+        kind: "request",
+        text: e.request.body,
+        attribution: "",
+        requestId: e.request.id,
+        myWord: null,
+        authorName: e.name,
+        authorAvatarUrl: e.avatarUrl,
+        requestKind: e.request.kind ?? null,
+        alreadyPrayedToday: false,
+      }))
+    : queueMode === "new"
     ? prayerRequests
         .filter((r) => {
           if (r.isAnswered) return false;
@@ -1929,7 +1988,7 @@ export default function PrayerModePage() {
     // sent the user in to handle a specific queue, so resume-progress
     // and alreadyPrayedToday-skip don't apply (all queue slides are
     // un-prayed by construction; no localStorage to honor).
-    if (!seamlessFlow && !resetFlow && queueMode !== "new") {
+    if (!seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly") {
       try {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {

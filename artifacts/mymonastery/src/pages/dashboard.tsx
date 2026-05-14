@@ -10,6 +10,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
+import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
 // Office-progress reading + LiturgyMode now live on /prayer-chooser
 // (the new dedicated screen) — the dashboard card itself only renders
 // the time-of-day eyebrow + CTA copy and links into the chooser.
@@ -4312,10 +4313,22 @@ export default function Dashboard() {
             const ownActiveCount = ownActive.length;
             return (
               <>
-                {newPrayersCount > 0 && (
+                {/* Beta experiment: the Parish Weekly card replaces
+                    the count-based NewPrayerRequestsCard. Always
+                    visible (when the parish has any active request)
+                    so the prayer-for-community rhythm sits next to
+                    the Office instead of disappearing on quiet days.
+                    Non-beta keeps the legacy count card. */}
+                {isBeta ? (
                   <div className="mt-5">
-                    <NewPrayerRequestsCard count={newPrayersCount} faces={faces} />
+                    <ParishWeeklyCard />
                   </div>
+                ) : (
+                  newPrayersCount > 0 && (
+                    <div className="mt-5">
+                      <NewPrayerRequestsCard count={newPrayersCount} faces={faces} />
+                    </div>
+                  )
                 )}
                 <div className="mt-3">
                   <PrayerOfficeCard />

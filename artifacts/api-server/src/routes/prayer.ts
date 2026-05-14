@@ -1049,4 +1049,25 @@ router.get("/prayer-requests/:id/amens", async (req, res): Promise<void> => {
   res.json({ today: distinctUsersToday.size, allTime: distinctUserDays.size });
 });
 
+// GET /api/me/parish-weekly — beta experiment.
+// People in the viewer's parish groups who have an active prayer
+// request, split into "I haven't prayed for them this week" vs "I
+// have." Drives the new weekly home card + slideshow scope.
+//
+// Always returns a response (no beta gate on the server) so the
+// client can branch entirely on its own beta flag. Calling for a
+// non-beta user just costs one round trip of cheap queries.
+router.get("/me/parish-weekly", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const { getParishWeekly } = await import("../lib/parishWeekly");
+    const result = await getParishWeekly(sessionUserId);
+    res.json(result);
+  } catch (err) {
+    console.error("[/me/parish-weekly] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 export default router;
