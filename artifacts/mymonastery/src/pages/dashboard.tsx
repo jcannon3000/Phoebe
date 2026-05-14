@@ -1896,7 +1896,14 @@ function NewPrayerRequestsCard({
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              🙏🏽 {headline}
+              {headline}
+            </span>
+            <span
+              aria-hidden
+              className="text-base shrink-0"
+              style={{ fontFamily: "'Space Grotesk', sans-serif", lineHeight: 1 }}
+            >
+              🙏🏽
             </span>
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-3">
@@ -2050,7 +2057,7 @@ function PrayerOfficeCard() {
         border: "1px solid rgba(46,107,64,0.20)",
       }}
       >
-        <div className="flex-1 px-4 pt-3 pb-2.5">
+        <div className="flex-1 px-4 pt-2 pb-2.5">
           <div className="flex items-start justify-between gap-2">
             <p
               className="text-[11px] font-semibold uppercase tracking-widest"
@@ -2081,7 +2088,7 @@ function PrayerOfficeCard() {
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
             >
-              {isMorning ? "Morning Prayer" : "Evening Prayer"}
+              {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
             </p>
           </div>
           {communityPrayed.length > 0 && (
