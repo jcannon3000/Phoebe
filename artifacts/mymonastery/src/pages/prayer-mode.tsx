@@ -1382,22 +1382,67 @@ export default function PrayerModePage() {
 
   // Parish-weekly data — beta experiment. Only fetched when the
   // slideshow was opened via queue=parish-weekly so non-beta users
-  // never pay the round trip. Used to override the slide list with
-  // the person-keyed unprayed slice below.
-  type ParishWeeklyEntry = {
-    userId: number;
-    name: string | null;
-    avatarUrl: string | null;
-    request: {
-      id: number;
-      body: string;
-      isAnonymous: boolean;
-      kind: string | null;
-      expiresAt: string | null;
-      createdAt: string;
-    };
-    prayedAt: string | null;
-  };
+  // never pay the round trip. Returns a unified list across three
+  // sources (prayer requests, community intercessions, feed entries);
+  // we map each entry to the appropriate slide kind below.
+  type ParishWeeklyEntry =
+    | {
+        kind: "request";
+        id: string;
+        title: string;
+        subtitle: string | null;
+        avatarUrl: string | null;
+        emoji: string | null;
+        prayedAt: string | null;
+        userId: number;
+        request: {
+          id: number;
+          body: string;
+          isAnonymous: boolean;
+          kind: string | null;
+          expiresAt: string | null;
+          createdAt: string;
+        };
+      }
+    | {
+        kind: "intercession";
+        id: string;
+        title: string;
+        subtitle: string | null;
+        avatarUrl: string | null;
+        emoji: string | null;
+        prayedAt: string | null;
+        intercession: {
+          momentId: number;
+          momentToken: string | null;
+          intercessionTopic: string | null;
+          intercessionFullText: string | null;
+          intention: string | null;
+          groupName: string | null;
+          groupSlug: string | null;
+          groupEmoji: string | null;
+        };
+      }
+    | {
+        kind: "feed-entry";
+        id: string;
+        title: string;
+        subtitle: string | null;
+        avatarUrl: string | null;
+        emoji: string | null;
+        prayedAt: string | null;
+        feedEntry: {
+          entryId: number;
+          feedId: number;
+          feedSlug: string;
+          feedTitle: string;
+          feedCoverEmoji: string | null;
+          slot: number;
+          body: string;
+          learnMoreUrl: string | null;
+          isRecurring: boolean;
+        };
+      };
   const parishWeeklyQuery = useQuery<{
     weekStartYmd: string;
     weekEndYmd: string;
@@ -1634,17 +1679,71 @@ export default function PrayerModePage() {
   // request-slide shape under the hood, just sourced from a
   // weekly-scoped backend query instead of the all-time request feed.
   const slides: PrayerSlide[] = queueMode === "parish-weekly"
-    ? (parishWeeklyData?.unprayed ?? []).map((e): PrayerSlide => ({
-        kind: "request",
-        text: e.request.body,
-        attribution: "",
-        requestId: e.request.id,
-        myWord: null,
-        authorName: e.name,
-        authorAvatarUrl: e.avatarUrl,
-        requestKind: e.request.kind ?? null,
-        alreadyPrayedToday: false,
-      }))
+    ? (parishWeeklyData?.unprayed ?? []).map((e): PrayerSlide | null => {
+        if (e.kind === "request") {
+          return {
+            kind: "request",
+            text: e.request.body,
+            attribution: "",
+            requestId: e.request.id,
+            myWord: null,
+            authorName: e.title,
+            authorAvatarUrl: e.avatarUrl,
+            requestKind: e.request.kind ?? null,
+            alreadyPrayedToday: false,
+          };
+        }
+        if (e.kind === "intercession") {
+          return {
+            kind: "intercession",
+            text: e.intercession.intercessionFullText
+              || e.intercession.intention
+              || e.intercession.intercessionTopic
+              || e.title,
+            attribution: e.intercession.groupName ?? "",
+            momentId: e.intercession.momentId,
+            momentToken: e.intercession.momentToken ?? null,
+            intercessionTopic: e.intercession.intercessionTopic ?? null,
+            intercessionFullText: e.intercession.intercessionFullText ?? null,
+            intercessionSource: null,
+            communityChips: e.intercession.groupName
+              ? [{
+                  groupName: e.intercession.groupName,
+                  groupSlug: e.intercession.groupSlug ?? "",
+                  groupEmoji: e.intercession.groupEmoji,
+                }]
+              : null,
+            feedSlug: null,
+            feedTitle: null,
+            feedCoverEmoji: null,
+            learnMoreUrl: null,
+            authorName: null,
+            authorAvatarUrl: null,
+            authorEmoji: e.intercession.groupEmoji ?? "🙏🏽",
+            alreadyPrayedToday: false,
+          } as PrayerSlide;
+        }
+        // feed-entry
+        return {
+          kind: "intercession",
+          text: e.feedEntry.body,
+          attribution: e.feedEntry.feedTitle,
+          momentId: e.feedEntry.entryId,
+          momentToken: null,
+          intercessionTopic: e.title,
+          intercessionFullText: e.feedEntry.body,
+          intercessionSource: null,
+          communityChips: null,
+          feedSlug: e.feedEntry.feedSlug,
+          feedTitle: e.feedEntry.feedTitle,
+          feedCoverEmoji: e.feedEntry.feedCoverEmoji,
+          learnMoreUrl: e.feedEntry.learnMoreUrl,
+          authorName: null,
+          authorAvatarUrl: null,
+          authorEmoji: e.feedEntry.feedCoverEmoji ?? "🌱",
+          alreadyPrayedToday: false,
+        } as PrayerSlide;
+      }).filter((s): s is PrayerSlide => s !== null)
     : queueMode === "new"
     ? prayerRequests
         .filter((r) => {

@@ -5,77 +5,124 @@ import { apiRequest } from "@/lib/queryClient";
 
 // Parish Weekly Prayer List — beta home card.
 //
-// Shifts the unit of engagement from "amen tap" to "person in your
-// parish prayed for at least once this week." Renders the people in
-// the viewer's parish groups who have an active prayer request,
-// split into:
+// One card, one rhythm: pray for each "thing your community is
+// carrying this week" exactly once. Three sources merge in:
 //
-//   1. Unprayed — viewer hasn't tapped amen on their request this
-//      week (Sunday → Saturday in viewer's tz). Shown with name +
-//      avatar; tapping the card opens the slideshow scoped to this
-//      list.
-//   2. Prayed — viewer already prayed for them this week. Surfaced
-//      as a compact avatar stack at the bottom of the card so the
-//      "you've held these people" feeling is visible.
+//   • Prayer requests from people in your groups (avatar = person)
+//   • Community intercessions you're part of (emoji = group emoji)
+//   • Today's prayer-feed entries (emoji = feed cover)
 //
-// Empty state (everyone prayed): the card stays on the home screen
-// with a quiet completion message ("You've held your parish this
-// week 🌿") and the full avatar stack underneath. Never disappears —
-// that was the whole point of bringing the weekly list back into
-// permanent home-screen real estate alongside the office card.
+// Empty state (everyone/everything prayed): "You've held your parish
+// this week 🌿" — card stays visible alongside the Office card so
+// the weekly rhythm doesn't quietly vanish on a quiet day.
 
-type ParishEntry = {
-  userId: number;
-  name: string | null;
-  avatarUrl: string | null;
-  request: {
-    id: number;
-    body: string;
-    isAnonymous: boolean;
-    kind: string | null;
-    expiresAt: string | null;
-    createdAt: string;
-  };
-  prayedAt: string | null;
-};
+type ParishWeeklyEntry =
+  | {
+      kind: "request";
+      id: string;
+      title: string;
+      subtitle: string | null;
+      avatarUrl: string | null;
+      emoji: string | null;
+      prayedAt: string | null;
+      userId: number;
+      request: {
+        id: number;
+        body: string;
+        isAnonymous: boolean;
+        kind: string | null;
+        expiresAt: string | null;
+        createdAt: string;
+      };
+    }
+  | {
+      kind: "intercession";
+      id: string;
+      title: string;
+      subtitle: string | null;
+      avatarUrl: string | null;
+      emoji: string | null;
+      prayedAt: string | null;
+      intercession: {
+        momentId: number;
+        momentToken: string | null;
+      };
+    }
+  | {
+      kind: "feed-entry";
+      id: string;
+      title: string;
+      subtitle: string | null;
+      avatarUrl: string | null;
+      emoji: string | null;
+      prayedAt: string | null;
+      feedEntry: {
+        entryId: number;
+        feedId: number;
+        feedSlug: string;
+        feedTitle: string;
+        feedCoverEmoji: string | null;
+      };
+    };
 
 type ParishWeeklyData = {
   weekStartYmd: string;
   weekEndYmd: string;
-  unprayed: ParishEntry[];
-  prayed: ParishEntry[];
+  unprayed: ParishWeeklyEntry[];
+  prayed: ParishWeeklyEntry[];
 };
 
 const FONT = "'Space Grotesk', sans-serif";
 
-function AvatarStack({ entries, max = 6 }: { entries: ParishEntry[]; max?: number }) {
+function EntryAvatar({ entry, size = 28 }: { entry: ParishWeeklyEntry; size?: number }) {
+  if (entry.avatarUrl) {
+    return (
+      <div
+        className="rounded-full overflow-hidden shrink-0"
+        style={{
+          width: size,
+          height: size,
+          border: "1.5px solid #0F2818",
+          background: "rgba(46,107,64,0.35)",
+        }}
+        title={entry.title}
+      >
+        <img src={entry.avatarUrl} alt={entry.title} className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+  // Emoji or initial fallback. Emoji wins (intercession/feed); request
+  // entries without an avatar fall back to the first letter of the
+  // person's name.
+  const initial = entry.emoji ?? (entry.title?.slice(0, 1).toUpperCase() ?? "?");
+  return (
+    <div
+      className="rounded-full flex items-center justify-center shrink-0"
+      style={{
+        width: size,
+        height: size,
+        background: "rgba(46,107,64,0.35)",
+        border: "1.5px solid #0F2818",
+        color: "#F0EDE6",
+        fontFamily: FONT,
+        fontSize: entry.emoji ? Math.floor(size * 0.55) : Math.floor(size * 0.4),
+        fontWeight: 600,
+      }}
+      title={entry.title}
+    >
+      {initial}
+    </div>
+  );
+}
+
+function AvatarStack({ entries, max = 6 }: { entries: ParishWeeklyEntry[]; max?: number }) {
   const shown = entries.slice(0, max);
   const extra = entries.length - shown.length;
   return (
     <div className="flex items-center">
       <div className="flex -space-x-2">
         {shown.map((e) => (
-          <div
-            key={e.userId}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold overflow-hidden shrink-0"
-            style={{
-              background: e.avatarUrl ? "transparent" : "rgba(46,107,64,0.35)",
-              border: "1.5px solid #0F2818",
-              color: "#F0EDE6",
-              fontFamily: FONT,
-            }}
-            title={e.name ?? ""}
-          >
-            {e.avatarUrl ? (
-              <img
-                src={e.avatarUrl}
-                alt={e.name ?? ""}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              (e.name ?? "?").slice(0, 1).toUpperCase()
-            )}
-          </div>
+          <EntryAvatar key={e.id} entry={e} />
         ))}
       </div>
       {extra > 0 && (
@@ -97,23 +144,30 @@ export function ParishWeeklyCard() {
     staleTime: 60_000,
   });
 
-  // While loading, don't render anything (avoid layout shift). When
-  // there's nobody in any of the viewer's parish groups with an
-  // active request, the card stays hidden — the dashboard's Daily
-  // Prayer card already covers the office side. The card's value is
-  // proportional to having real people in it; an empty parish (zero
-  // active requests across the whole group) reads as "no signal,"
-  // not "you're done."
-  const totalPeople = (data?.unprayed.length ?? 0) + (data?.prayed.length ?? 0);
+  const totalEntries = (data?.unprayed.length ?? 0) + (data?.prayed.length ?? 0);
   const allPrayed = useMemo(
-    () => (data?.unprayed.length ?? 0) === 0 && totalPeople > 0,
-    [data, totalPeople],
+    () => (data?.unprayed.length ?? 0) === 0 && totalEntries > 0,
+    [data, totalEntries],
   );
 
   if (isLoading) return null;
-  if (totalPeople === 0) return null;
+  // Empty parish/feeds → hide the card. "No signal" rather than "you're done."
+  if (totalEntries === 0) return null;
 
   const next = data?.unprayed[0];
+
+  // Headline copy varies by composition of the unprayed list:
+  //   • All requests, one person → "Pray for Sara"
+  //   • Mixed sources → "N prayers waiting this week"
+  const unprayedRequestsOnly = (data?.unprayed ?? []).every(e => e.kind === "request");
+  const headline = (() => {
+    if (allPrayed) return "You've held your parish this week 🌿";
+    const n = data?.unprayed.length ?? 0;
+    if (n === 1 && unprayedRequestsOnly && next?.kind === "request") {
+      return `Pray for ${next.title}`;
+    }
+    return `${n} ${n === 1 ? "prayer" : "prayers"} waiting this week`;
+  })();
 
   return (
     <Link href="/prayer-mode?queue=parish-weekly">
@@ -124,7 +178,6 @@ export function ParishWeeklyCard() {
           border: `1px solid ${allPrayed ? "rgba(46,107,64,0.28)" : "rgba(46,107,64,0.4)"}`,
         }}
       >
-        {/* Eyebrow + week range */}
         <div className="flex items-center justify-between mb-2">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.14em]"
@@ -141,7 +194,7 @@ export function ParishWeeklyCard() {
               fontFamily: FONT,
             }}
           >
-            {(data?.prayed.length ?? 0)} / {totalPeople}
+            {(data?.prayed.length ?? 0)} / {totalEntries}
           </span>
         </div>
 
@@ -151,13 +204,13 @@ export function ParishWeeklyCard() {
               className="text-base font-semibold mb-1"
               style={{ color: "#F0EDE6", fontFamily: FONT }}
             >
-              You've held your parish this week 🌿
+              {headline}
             </p>
             <p
               className="text-[12px] mb-3"
               style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
             >
-              Everyone with an active request has been carried.
+              Everything your community is carrying has been prayed for.
             </p>
             <div className="mt-3">
               <AvatarStack entries={data?.prayed ?? []} max={10} />
@@ -169,9 +222,7 @@ export function ParishWeeklyCard() {
               className="text-base font-semibold mb-1"
               style={{ color: "#F0EDE6", fontFamily: FONT }}
             >
-              {(data?.unprayed.length ?? 0) === 1
-                ? `Pray for ${next?.name ?? "your parish"}`
-                : `Pray for ${data?.unprayed.length ?? 0} people in your parish`}
+              {headline}
             </p>
             <p
               className="text-[12px] mb-3"
