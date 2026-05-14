@@ -1860,35 +1860,44 @@ function ServiceCard({
 
 function CyclingCommunityLabel({ schedules }: { schedules: ServiceSchedule[] }) {
   const [idx, setIdx] = useState(0);
+  // Each community holds for HOLD_MS before the rotation advances.
+  // The crossfade itself takes 2*FADE_MS (out + in) and runs inside
+  // that hold, so the on-screen settle time per community is ≈
+  // HOLD_MS - FADE_MS — 5s hold + 0.9s fade reads as a gentle
+  // breathing rotation instead of a flicker.
+  const HOLD_MS = 5000;
+  const FADE_MS = 900;
   useEffect(() => {
     if (schedules.length <= 1) return;
     const t = setInterval(() => {
       setIdx((i) => (i + 1) % schedules.length);
-    }, 2400);
+    }, HOLD_MS);
     return () => clearInterval(t);
   }, [schedules.length]);
   const current = schedules[idx % schedules.length];
   if (!current) return null;
   return (
     <span
-      className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-      style={{
-        color: "#C8D4C0",
-        letterSpacing: "0.08em",
-        // CSS fade tied to the index — keying on idx remounts the
-        // span so the opacity animation re-runs on each tick.
-      }}
-      key={current.id}
+      className="text-[10px] font-semibold uppercase shrink-0 mt-1 relative"
+      style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
     >
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="inline-block"
-      >
-        {current.groupEmoji ?? "⛪"} {current.groupName}
-      </motion.span>
+      {/* AnimatePresence mode="wait" plays the exit animation of the
+          outgoing community label fully BEFORE the next one fades in.
+          Without it the two would overlap and read as a pop instead
+          of a crossfade. easeInOut on the longer 0.9s duration makes
+          the rise + fall feel like breathing. */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={current.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: FADE_MS / 1000, ease: "easeInOut" }}
+          className="inline-block"
+        >
+          {current.groupEmoji ?? "⛪"} {current.groupName}
+        </motion.span>
+      </AnimatePresence>
     </span>
   );
 }
@@ -1934,7 +1943,7 @@ function ConsolidatedServiceCard({
         <div className="flex-1 px-4 pt-3 pb-3">
           <div className="flex items-start justify-between gap-3">
             <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-              🙌🏽 Worship
+              🙌🏽 {DAY_OF_WEEK_NAMES[schedules[0]?.dayOfWeek ?? 0] ?? "Sunday"} Worship
             </span>
             <CyclingCommunityLabel schedules={schedules} />
           </div>
@@ -1987,10 +1996,10 @@ function ConsolidatedServiceDetailModal({
           <div className="sticky top-0 flex items-start justify-between gap-3 px-5 pt-5 pb-3" style={{ background: "#0F2618" }}>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.55)" }}>
-                {dayName} • {schedules.length} {schedules.length === 1 ? "community" : "communities"}
+                {schedules.length} {schedules.length === 1 ? "community" : "communities"}
               </p>
               <h2 className="text-xl font-bold mt-1" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
-                Worship
+                {dayName} Worship
               </h2>
               <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{dateLabel}</p>
             </div>
