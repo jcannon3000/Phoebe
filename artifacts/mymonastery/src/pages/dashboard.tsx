@@ -2293,40 +2293,48 @@ function PrayerOfficeCard() {
               Reminders
             </Link>
           </div>
-          {/* Title on the LEFT, avatar stack + count on the RIGHT,
-              same row. The two read as one band — copy on one side,
-              who's-praying-with-me on the other. Only people with a
-              real profile picture appear in the stack; initials are
-              filtered out per user direction. */}
+          {/* LEFT  column = title + "N people prayed with you this week"
+              RIGHT column = avatar stack only (no copy beside it).
+              Same vertical rhythm as the parish-weekly card above.
+              Profile pictures only — entries without an avatar are
+              filtered out. */}
           {(() => {
             const withAvatars = communityPrayed.filter((p) => !!p.avatarUrl);
+            const countCopy = withAvatars.length === 0
+              ? null
+              : withAvatars.length === 1
+                ? "1 person prayed with you this week"
+                : `${withAvatars.length} people prayed with you this week`;
             return (
-              <div className="mt-[4px] flex items-center justify-between gap-3">
-                <p
-                  className="text-2xl font-semibold"
-                  style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
-                >
-                  {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
-                </p>
+              <div className="mt-[4px] flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-2xl font-semibold"
+                    style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
+                  >
+                    {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
+                  </p>
+                  {countCopy && (
+                    <p
+                      className="text-[11px] mt-[6px]"
+                      style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+                    >
+                      {countCopy}
+                    </p>
+                  )}
+                </div>
                 {withAvatars.length > 0 && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="flex -space-x-2">
-                      {withAvatars.slice(0, 5).map((p) => (
-                        <img
-                          key={p.id}
-                          src={p.avatarUrl as string}
-                          alt={p.name}
-                          title={p.name}
-                          className="w-6 h-6 rounded-full object-cover"
-                          style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      {withAvatars.length === 1
-                        ? "1 person prayed with you this week"
-                        : `${withAvatars.length} people prayed with you this week`}
-                    </span>
+                  <div className="flex items-center -space-x-2 shrink-0">
+                    {withAvatars.slice(0, 5).map((p) => (
+                      <img
+                        key={p.id}
+                        src={p.avatarUrl as string}
+                        alt={p.name}
+                        title={p.name}
+                        className="w-6 h-6 rounded-full object-cover"
+                        style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
+                      />
+                    ))}
                   </div>
                 )}
               </div>

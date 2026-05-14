@@ -205,13 +205,13 @@ export function ParishWeeklyCard() {
   return (
     <Link href="/prayer-mode?queue=parish-weekly">
       <div
-        className="w-full rounded-2xl px-4 py-[20px] cursor-pointer transition-opacity hover:opacity-95"
+        className="w-full rounded-2xl px-4 pt-[12px] pb-[20px] cursor-pointer transition-opacity hover:opacity-95"
         style={{
           background: allPrayed ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.16)",
           border: `1px solid ${allPrayed ? "rgba(46,107,64,0.28)" : "rgba(46,107,64,0.4)"}`,
         }}
       >
-        <div className="flex items-center justify-between mb-[7px] gap-2">
+        <div className="flex items-center justify-between mb-[10px] gap-2">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, margin: 0 }}
