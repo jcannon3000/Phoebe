@@ -1851,6 +1851,212 @@ function ServiceCard({
   );
 }
 
+// ─── Consolidated worship card ──────────────────────────────────────────────
+// When a user is in multiple communities that worship the same day,
+// we collapse all of their service schedules into ONE card titled
+// "Worship". The bottom line reads "See times for your communities."
+// The top-right cycles through each community's name with a soft
+// fade so the user can see who's included without expanding the card.
+
+function CyclingCommunityLabel({ schedules }: { schedules: ServiceSchedule[] }) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (schedules.length <= 1) return;
+    const t = setInterval(() => {
+      setIdx((i) => (i + 1) % schedules.length);
+    }, 2400);
+    return () => clearInterval(t);
+  }, [schedules.length]);
+  const current = schedules[idx % schedules.length];
+  if (!current) return null;
+  return (
+    <span
+      className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+      style={{
+        color: "#C8D4C0",
+        letterSpacing: "0.08em",
+        // CSS fade tied to the index — keying on idx remounts the
+        // span so the opacity animation re-runs on each tick.
+      }}
+      key={current.id}
+    >
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="inline-block"
+      >
+        {current.groupEmoji ?? "⛪"} {current.groupName}
+      </motion.span>
+    </span>
+  );
+}
+
+function ConsolidatedServiceCard({
+  schedules,
+  nextDate,
+  isOnDate,
+  onOpen,
+  keyPrefix,
+}: {
+  schedules: ServiceSchedule[];
+  nextDate: Date;
+  isOnDate: boolean;
+  onOpen: () => void;
+  keyPrefix: string;
+}) {
+  const colors = CATEGORY_COLORS.gatherings;
+  void nextDate;
+  return (
+    <div
+      key={`${keyPrefix}-services-${schedules.map((s) => s.id).join("-")}`}
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      className="block w-full text-left"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isOnDate ? colors.pulseClass : ""}`}
+        style={{
+          background: colors.bg,
+          border: "1px solid rgba(111,175,133,0.35)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div
+          className={`w-1 flex-shrink-0 ${isOnDate ? colors.barPulseClass : ""}`}
+          style={{ background: isOnDate ? undefined : colors.bar }}
+        />
+        <div className="flex-1 px-4 pt-3 pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+              🙌🏽 Worship
+            </span>
+            <CyclingCommunityLabel schedules={schedules} />
+          </div>
+          <p
+            className="text-[12px] mt-1"
+            style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            See times for your communities →
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ─── Consolidated worship modal ─────────────────────────────────────────────
+// Opened from ConsolidatedServiceCard. Lists every service time in every
+// community's schedule, grouped by community.
+
+function ConsolidatedServiceDetailModal({
+  schedules,
+  nextDate,
+  onClose,
+}: {
+  schedules: ServiceSchedule[];
+  nextDate: Date;
+  onClose: () => void;
+}) {
+  const dayOfWeek = schedules[0]?.dayOfWeek ?? 0;
+  const dayName = DAY_OF_WEEK_NAMES[dayOfWeek] ?? "Sunday";
+  const dateLabel = isToday(nextDate) ? "Today" : format(nextDate, "EEEE, MMM d");
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-6 pt-16"
+        style={{ background: "rgba(8,16,10,0.8)" }}
+      >
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 20, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto"
+          style={{ background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)" }}
+        >
+          <div className="sticky top-0 flex items-start justify-between gap-3 px-5 pt-5 pb-3" style={{ background: "#0F2618" }}>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.55)" }}>
+                {dayName} • {schedules.length} {schedules.length === 1 ? "community" : "communities"}
+              </p>
+              <h2 className="text-xl font-bold mt-1" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
+                Worship
+              </h2>
+              <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{dateLabel}</p>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="shrink-0 rounded-full p-1.5 transition-opacity hover:opacity-80"
+              style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="px-5 pb-5 pt-1 flex flex-col gap-5">
+            {schedules.map((schedule) => (
+              <div key={schedule.id}>
+                <Link
+                  href={`/communities/${schedule.groupSlug}`}
+                  onClick={onClose}
+                >
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-widest mb-2 transition-opacity hover:opacity-80 cursor-pointer"
+                    style={{ color: "rgba(200,212,192,0.7)" }}
+                  >
+                    {schedule.groupEmoji ?? "⛪"} {schedule.groupName}
+                  </p>
+                </Link>
+                {schedule.location && schedule.location.trim() && (
+                  <p className="text-[12px] mb-2" style={{ color: "#C8D4C0" }}>
+                    📍 {schedule.location.trim()}
+                  </p>
+                )}
+                {schedule.times.length === 0 ? (
+                  <p className="text-sm" style={{ color: "#8FAF96" }}>No service times yet.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {schedule.times.map((t, idx) => (
+                      <li
+                        key={idx}
+                        className="rounded-xl px-4 py-3 flex items-start justify-between gap-3"
+                        style={{ background: "rgba(111,175,133,0.10)", border: "1px solid rgba(111,175,133,0.2)" }}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+                            {formatServiceTime(t.time)}
+                          </p>
+                          {t.label && (
+                            <p className="text-[13px] mt-0.5" style={{ color: "#C8D4C0" }}>{t.label}</p>
+                          )}
+                          {t.location && (
+                            <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📍 {t.location}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 // ─── Prayer-list fallback card ──────────────────────────────────────────────
 // Shown in the Today section when nothing else is pending there but the user
 // still has prayers queued in their slideshow. Gives them a clear next step
@@ -2942,6 +3148,7 @@ function TimeSection({
   userEmail,
   userName,
   onOpenService,
+  onOpenConsolidatedServices,
   onOpenGathering,
   trailingCards,
 }: {
@@ -2950,6 +3157,7 @@ function TimeSection({
   userEmail: string;
   userName: string;
   onOpenService: (schedule: ServiceSchedule, nextDate: Date) => void;
+  onOpenConsolidatedServices: (schedules: ServiceSchedule[], nextDate: Date) => void;
   onOpenGathering: (r: any) => void;
   // Extra cards to render after the typed items (e.g. the PrayerListCard
   // when the user already finished today's list and we want to preview
@@ -3331,6 +3539,11 @@ export default function Dashboard() {
   // Service-schedule modal: which schedule (and computed next occurrence) is
   // currently showing its full list of service times.
   const [openService, setOpenService] = useState<{ schedule: ServiceSchedule; nextDate: Date } | null>(null);
+  // Consolidated-services modal — multiple worship schedules surfaced
+  // as one home card open into a single modal listing every community's
+  // times.
+  const [openConsolidatedServices, setOpenConsolidatedServices] =
+    useState<{ schedules: ServiceSchedule[]; nextDate: Date } | null>(null);
   // Gathering-detail modal: tapping a GatheringCard pops this up instead
   // of navigating to the full ritual page. Same pattern as openService.
   const [openGathering, setOpenGathering] = useState<any | null>(null);
@@ -4418,6 +4631,7 @@ export default function Dashboard() {
                   userEmail={userEmail}
                   userName={userName}
                   onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                  onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })}
                   onOpenGathering={(r) => setOpenGathering(r)}
                 />
 
@@ -4433,16 +4647,17 @@ export default function Dashboard() {
                   userEmail={userEmail}
                   userName={userName}
                   onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                  onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })}
                   onOpenGathering={(r) => setOpenGathering(r)}
                 />
 
                 {/* 3. This week — events from after Tomorrow through
                     end-of-day on the upcoming Sunday. Items past
                     Sunday fall into Upcoming. */}
-                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
 
                 {/* 4. Upcoming — everything past the upcoming Sunday. */}
-                <TimeSection label="Upcoming" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                <TimeSection label="Upcoming" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
 
                 {/* Prayer request compose — only the field moves
                     down here, below the events sections. The count
@@ -4599,6 +4814,14 @@ export default function Dashboard() {
           schedule={openService.schedule}
           nextDate={openService.nextDate}
           onClose={() => setOpenService(null)}
+        />
+      )}
+
+      {openConsolidatedServices && (
+        <ConsolidatedServiceDetailModal
+          schedules={openConsolidatedServices.schedules}
+          nextDate={openConsolidatedServices.nextDate}
+          onClose={() => setOpenConsolidatedServices(null)}
         />
       )}
 
