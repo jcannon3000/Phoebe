@@ -3758,6 +3758,10 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   });
   if (!canManage) { res.status(403).json({ error: "Forbidden" }); return; }
 
+  // Still needed downstream for calendar re-sync on schedule changes.
+  const allTokens = await db.select().from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, momentId));
+
   const parsed = EditMomentSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return; }
 
@@ -3955,12 +3959,14 @@ router.patch("/moments/:id/archive", async (req, res): Promise<void> => {
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
 
-  // Get all member tokens — used both for auth check and calendar cleanup
-  const allMemberTokens = await db.select().from(momentUserTokensTable)
-    .where(eq(momentUserTokensTable.momentId, momentId));
-
-  const isMember = allMemberTokens.some(t => t.email === user.email);
-  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+  // Archive = management action. Creator OR primary-group admin.
+  const canManage = await canManageMoment({
+    userId: sessionUserId,
+    userEmail: user.email,
+    momentId,
+    primaryGroupId: moment.groupId,
+  });
+  if (!canManage) { res.status(403).json({ error: "Forbidden" }); return; }
 
   await db.update(sharedMomentsTable)
     .set({ state: "archived" })
@@ -3984,11 +3990,14 @@ router.patch("/moments/:id/unarchive", async (req, res): Promise<void> => {
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
   if (moment.state !== "archived") { res.status(400).json({ error: "Not archived" }); return; }
 
-  const allMemberTokens = await db.select().from(momentUserTokensTable)
-    .where(eq(momentUserTokensTable.momentId, momentId));
-
-  const isMember = allMemberTokens.some(t => t.email === user.email);
-  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+  // Unarchive = management action. Creator OR primary-group admin.
+  const canManage = await canManageMoment({
+    userId: sessionUserId,
+    userEmail: user.email,
+    momentId,
+    primaryGroupId: moment.groupId,
+  });
+  if (!canManage) { res.status(403).json({ error: "Forbidden" }); return; }
 
   // Restore to active state and clear goal-reached so it shows on the dashboard
   await db.update(sharedMomentsTable)
@@ -4012,12 +4021,22 @@ router.delete("/moments/:id", async (req, res): Promise<void> => {
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
 
-  // Get all member tokens — used both for auth check and calendar cleanup
+  // Delete = management action. Creator OR primary-group admin.
+  // Admins of secondary (junction) groups don't get full delete —
+  // they can only detach their own group via
+  // DELETE /moments/:id/groups/:groupId.
+  const canManage = await canManageMoment({
+    userId: sessionUserId,
+    userEmail: user.email,
+    momentId,
+    primaryGroupId: moment.groupId,
+  });
+  if (!canManage) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  // Member tokens are still needed below for calendar cleanup +
+  // connection-cache persistence, just no longer drive the auth check.
   const allMemberTokens = await db.select().from(momentUserTokensTable)
     .where(eq(momentUserTokensTable.momentId, momentId));
-
-  const isMember = allMemberTokens.some(t => t.email === user.email);
-  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
 
   try {
     // Save connections to cache before deleting (so they persist in the recommender)
