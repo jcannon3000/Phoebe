@@ -76,6 +76,9 @@ export async function buildIntercessionsSlide(
               isNull(prayerRequestsTable.expiresAt),
               gt(prayerRequestsTable.expiresAt, new Date()),
             ),
+            // Parish "pastoral concerns" are private to the requester
+            // + parish admin and never enter the office intercessions.
+            isNull(prayerRequestsTable.parishFeedId),
           ),
         )
         .limit(20)
@@ -286,6 +289,10 @@ export async function buildIntercessionSlides(
               isNull(prayerRequestsTable.expiresAt),
               gt(prayerRequestsTable.expiresAt, new Date()),
             ),
+            // Parish-scoped pastoral concerns never enter the prayer-
+            // mode slideshow — they're admin-only and live in the
+            // parish concerns inbox.
+            isNull(prayerRequestsTable.parishFeedId),
           ),
         )
         .limit(20)

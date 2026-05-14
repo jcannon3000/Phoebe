@@ -248,6 +248,15 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
     isNull(prayerRequestsTable.closedAt),
     freshOrMine,
+    // Parish-scoped "pastoral concerns" are private to the requester
+    // + parish admin and must not appear in the garden / slideshow.
+    // We allow the owner to keep seeing their own (they can revisit /
+    // edit on the parish dashboard), but for everyone else this hides
+    // them.
+    or(
+      isNull(prayerRequestsTable.parishFeedId),
+      eq(prayerRequestsTable.ownerId, sessionUserId),
+    ),
   ];
   if (mutedIds.length > 0) baseFilters.push(notInArray(prayerRequestsTable.ownerId, mutedIds));
   const requests = await db.select().from(prayerRequestsTable)

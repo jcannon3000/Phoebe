@@ -11,4 +11,4 @@
  * Keep this in sync with the server flag — flipping one without the
  * other puts the two halves of the app in disagreement.
  */
-export const PHOEBE_PARISH_ENABLED = false;
+export const PHOEBE_PARISH_ENABLED = true;

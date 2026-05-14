@@ -9,6 +9,14 @@ export const prayerRequestsTable = pgTable("prayer_requests", {
   // prayer wall; when null it's a personal request. Nullable to keep
   // existing rows valid through the migration.
   groupId: integer("group_id").references(() => groupsTable.id, { onDelete: "cascade" }),
+  // Optional parish scope — a "pastoral concern" submitted from the
+  // Phoebe Parish flow. When set, the request is visible ONLY to the
+  // requester themselves and the parish admin(s); it never enters the
+  // garden, slideshow, or any other parishioner's prayer list. FK is
+  // enforced in the migration SQL (not via .references() here) to
+  // avoid a circular import with prayer_feeds. Mutually exclusive
+  // with groupId in practice — a row should set at most one scope.
+  parishFeedId: integer("parish_feed_id"),
   body: text("body").notNull(),
   // The author's framing when they submitted: "request" (default), "life-event",
   // or "justice". Drives the optional pill on cards / slideshow ("Life event"

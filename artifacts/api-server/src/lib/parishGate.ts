@@ -132,3 +132,22 @@ export async function isParishOnlyUser(userId: number): Promise<boolean> {
 export function isParishFeed(feed: { kind?: string | null }): boolean {
   return feed.kind === "parish";
 }
+
+// Beta gate for the parish flow. While Parish is in beta, only users
+// with a beta_users row can subscribe to a parish — keeping the new
+// pastoral surface in front of a small, observed cohort. Existing
+// parish-only users (if any pre-date the gate) aren't kicked out;
+// the gate is at the entry point (subscribe / onboarding), not on
+// teardown of access tiers.
+export async function isUserBeta(userId: number): Promise<boolean> {
+  const [user] = await db
+    .select({ email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  if (!user) return false;
+  const [row] = await db
+    .select({ email: betaUsersTable.email })
+    .from(betaUsersTable)
+    .where(eq(betaUsersTable.email, user.email.toLowerCase()));
+  return !!row;
+}

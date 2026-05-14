@@ -16,9 +16,9 @@
  * and tap into Morning Prayer. No nav drawer, no badges to chase.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -308,6 +308,12 @@ export default function ParishDashboard() {
           />
         </div>
 
+        {/* Private prayer concern — visible only to the parish admin
+            (the priest / pastor). The card is intentionally quieter
+            than the office buttons: this is for when something is
+            on your heart, not the daily rhythm. */}
+        {data?.parish && <PrayerConcernCard parishId={data.parish.id} />}
+
         {/* Footer — quiet links */}
         <div className="flex flex-col items-center gap-2 mt-8">
           <Link href="/bcp">
@@ -316,6 +322,160 @@ export default function ParishDashboard() {
             </span>
           </Link>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Inline composer for a private pastoral concern. The submission goes
+// only to the parish admin — the body of the form makes that explicit
+// so a parishioner doesn't worry the whole congregation is reading
+// what they share. Empty / loading / submitted states all render in
+// place to avoid a navigation away from the dashboard.
+function PrayerConcernCard({ parishId }: { parishId: number }) {
+  const [body, setBody] = useState("");
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const submit = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/parish/concerns", { parishId, body: body.trim() }),
+    onSuccess: () => {
+      setDone(true);
+      setBody("");
+    },
+  });
+
+  if (done) {
+    return (
+      <div
+        style={{
+          background: "rgba(46,107,64,0.10)",
+          border: "1px solid rgba(46,107,64,0.25)",
+          borderRadius: 16,
+          padding: "16px",
+          marginTop: 16,
+          textAlign: "center",
+        }}
+      >
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 14, color: WARM_TEXT, margin: 0 }}>
+          🌿 Shared with your parish admin.
+        </p>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: SAGE, margin: "6px 0 0" }}>
+          They'll be holding this for you.
+        </p>
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          marginTop: 16,
+          background: "rgba(46,107,64,0.10)",
+          border: "1px solid rgba(46,107,64,0.25)",
+          borderRadius: 16,
+          padding: "16px",
+          width: "100%",
+          textAlign: "left",
+          cursor: "pointer",
+          fontFamily: SPACE_GROTESK,
+        }}
+      >
+        <p style={{ fontSize: 14, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>
+          🤲 Share something on your heart
+        </p>
+        <p style={{ fontSize: 12, color: SAGE, margin: "4px 0 0" }}>
+          Private — goes only to your parish admin.
+        </p>
+      </button>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        background: "rgba(143,175,150,0.10)",
+        border: "1px solid rgba(46,107,64,0.3)",
+        borderRadius: 16,
+        padding: "16px",
+      }}
+    >
+      <p
+        style={{
+          fontFamily: SPACE_GROTESK,
+          fontSize: 11,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "rgba(143,175,150,0.7)",
+          margin: 0,
+          marginBottom: 8,
+        }}
+      >
+        Private — to your parish admin
+      </p>
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={4}
+        maxLength={2000}
+        placeholder="What's on your heart? 🌿"
+        style={{
+          width: "100%",
+          background: "transparent",
+          color: WARM_TEXT,
+          fontFamily: SPACE_GROTESK,
+          fontSize: 14,
+          lineHeight: 1.5,
+          border: "none",
+          outline: "none",
+          resize: "none",
+          padding: 0,
+        }}
+      />
+      {submit.isError && (
+        <p style={{ fontSize: 12, color: "#F87171", fontFamily: SPACE_GROTESK, margin: "6px 0 0" }}>
+          Couldn't send. Try again?
+        </p>
+      )}
+      <div className="flex justify-end gap-2 mt-3">
+        <button
+          onClick={() => { setOpen(false); setBody(""); }}
+          disabled={submit.isPending}
+          style={{
+            background: "rgba(143,175,150,0.12)",
+            color: SAGE,
+            border: "none",
+            borderRadius: 999,
+            padding: "8px 16px",
+            fontSize: 13,
+            fontFamily: SPACE_GROTESK,
+            cursor: "pointer",
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => submit.mutate()}
+          disabled={!body.trim() || submit.isPending}
+          style={{
+            background: "#2D5E3F",
+            color: WARM_TEXT,
+            border: "none",
+            borderRadius: 999,
+            padding: "8px 18px",
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: SPACE_GROTESK,
+            cursor: "pointer",
+            opacity: !body.trim() || submit.isPending ? 0.4 : 1,
+          }}
+        >
+          {submit.isPending ? "Sharing…" : "Share with admin"}
+        </button>
       </div>
     </div>
   );

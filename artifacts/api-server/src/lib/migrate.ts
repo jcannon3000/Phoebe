@@ -1530,6 +1530,24 @@ export async function migrate() {
     // Per-user daily dedup for the "How can we pray for you?" email.
     // YYYY-MM-DD UTC. NULL = never received.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_prayer_invite_email_date TEXT`);
+    // Parish-scoped "pastoral concern" prayer requests. When set, the
+    // request is visible only to the requester + parish admin(s); never
+    // surfaces in garden / slideshow / other parishioners' lists.
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS parish_feed_id INTEGER`);
+    await run(
+      client,
+      `DO $$ BEGIN
+         IF NOT EXISTS (
+           SELECT 1 FROM information_schema.table_constraints
+           WHERE constraint_name = 'prayer_requests_parish_feed_fk'
+         ) THEN
+           ALTER TABLE prayer_requests
+             ADD CONSTRAINT prayer_requests_parish_feed_fk
+             FOREIGN KEY (parish_feed_id) REFERENCES prayer_feeds(id)
+             ON DELETE CASCADE;
+         END IF;
+       END $$;`,
+    );
     await run(client, `
       CREATE TABLE IF NOT EXISTS group_join_requests (
         id SERIAL PRIMARY KEY,

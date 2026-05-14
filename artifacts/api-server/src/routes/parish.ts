@@ -27,11 +27,13 @@ import {
   prayerFeedsTable,
   prayerFeedEntriesTable,
   prayerFeedSubscriptionsTable,
+  prayerRequestsTable,
   usersTable,
   betaUsersTable,
   prayerSessionsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
+import { isUserBeta } from "../lib/parishGate";
 
 const router: IRouter = Router();
 
@@ -92,6 +94,16 @@ const SubscribeSchema = z.object({
 router.post("/parish/subscribe", async (req, res) => {
   const session = getUser(req);
   if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  // Beta-only gate while Parish is in private beta. Non-beta users
+  // never become parish-only — they fall through to the regular
+  // full-app experience. Beta admins (is_admin=true) also qualify
+  // since the helper checks beta_users membership regardless of role.
+  if (!(await isUserBeta(session.id))) {
+    res.status(403).json({ error: "Parish is currently in private beta." });
+    return;
+  }
+
   const parsed = SubscribeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "parishId required" });
@@ -624,5 +636,173 @@ router.get("/parish/admin/metrics", async (req, res) => {
 });
 
 void prayerSessionsTable;
+
+// ─── Parish "pastoral concerns" ────────────────────────────────────────
+//
+// A parishioner submits a prayer request privately to their parish
+// admin. The request is stored in the normal prayer_requests table with
+// parish_feed_id set — that scoping is what hides it from every other
+// visibility query in the system (garden, slideshow, office). The
+// parish admin sees a dedicated inbox at /parish/concerns and can
+// respond pastorally; nothing else ever surfaces these to the rest of
+// the community.
+
+const SubmitConcernSchema = z.object({
+  parishId: z.number().int(),
+  body: z.string().min(1).max(2000),
+  isAnonymous: z.boolean().optional().default(false),
+});
+
+router.post("/parish/concerns", async (req, res) => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = SubmitConcernSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { parishId, body, isAnonymous } = parsed.data;
+
+  try {
+    // The submitter must be subscribed to the parish they're writing
+    // to. We check the canonical pointer (users.parish_feed_id) rather
+    // than the subscription row so a user who's parked on a different
+    // parish can't post into a sibling congregation's inbox.
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.id));
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    if (user.parishFeedId !== parishId) {
+      res.status(403).json({ error: "Not subscribed to this parish." });
+      return;
+    }
+
+    // Verify the parish itself exists + is live.
+    const [parish] = await db
+      .select()
+      .from(prayerFeedsTable)
+      .where(and(
+        eq(prayerFeedsTable.id, parishId),
+        eq(prayerFeedsTable.kind, "parish"),
+      ));
+    if (!parish) { res.status(404).json({ error: "Parish not found" }); return; }
+
+    const [created] = await db.insert(prayerRequestsTable).values({
+      ownerId: session.id,
+      parishFeedId: parishId,
+      body,
+      isAnonymous,
+      createdByName: user.name ?? null,
+      // Concerns don't auto-expire — the parish admin can mark them
+      // resolved manually. Leaving expiresAt null mirrors the
+      // existing "no expiry" path used by long-running asks.
+      expiresAt: null,
+    }).returning();
+
+    res.status(201).json({ ok: true, id: created.id });
+  } catch (err) {
+    console.error("[parish] submit concern failed:", err);
+    res.status(500).json({ error: "Failed to submit." });
+  }
+});
+
+router.get("/parish/admin/concerns", async (req, res) => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parishId = Number(req.query.parishId);
+  if (!Number.isFinite(parishId)) {
+    res.status(400).json({ error: "parishId required" });
+    return;
+  }
+
+  try {
+    const { allowed } = await canManageParish(session.id, parishId);
+    if (!allowed) {
+      res.status(403).json({ error: "Not authorized to manage this parish" });
+      return;
+    }
+
+    // Return every concern for this parish, newest first. We include
+    // the owner's name + avatar UNLESS the row is anonymous — the
+    // parish admin sees attribution unless the submitter explicitly
+    // chose not to.
+    const rows = await db
+      .select({
+        id: prayerRequestsTable.id,
+        body: prayerRequestsTable.body,
+        isAnonymous: prayerRequestsTable.isAnonymous,
+        isAnswered: prayerRequestsTable.isAnswered,
+        createdAt: prayerRequestsTable.createdAt,
+        ownerId: prayerRequestsTable.ownerId,
+        ownerName: usersTable.name,
+        ownerAvatarUrl: usersTable.avatarUrl,
+        ownerEmail: usersTable.email,
+      })
+      .from(prayerRequestsTable)
+      .leftJoin(usersTable, eq(usersTable.id, prayerRequestsTable.ownerId))
+      .where(and(
+        eq(prayerRequestsTable.parishFeedId, parishId),
+        sql`${prayerRequestsTable.closedAt} IS NULL`,
+      ))
+      .orderBy(desc(prayerRequestsTable.createdAt));
+
+    res.json({
+      concerns: rows.map((r) => ({
+        id: r.id,
+        body: r.body,
+        isAnonymous: r.isAnonymous,
+        isAnswered: r.isAnswered,
+        createdAt: r.createdAt.toISOString(),
+        owner: r.isAnonymous
+          ? null
+          : { id: r.ownerId, name: r.ownerName, avatarUrl: r.ownerAvatarUrl, email: r.ownerEmail },
+      })),
+    });
+  } catch (err) {
+    console.error("[parish] admin concerns failed:", err);
+    res.status(500).json({ error: "Failed to load concerns." });
+  }
+});
+
+// Parish admin marks a pastoral concern as answered / closed. Closing
+// removes it from the active inbox view; the row stays in the DB for
+// the requester's prayer-list history if they choose to view it.
+router.post("/parish/admin/concerns/:id/close", async (req, res) => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  try {
+    const [row] = await db
+      .select({
+        id: prayerRequestsTable.id,
+        parishFeedId: prayerRequestsTable.parishFeedId,
+      })
+      .from(prayerRequestsTable)
+      .where(eq(prayerRequestsTable.id, id));
+    if (!row || row.parishFeedId === null) {
+      res.status(404).json({ error: "Concern not found" });
+      return;
+    }
+
+    const { allowed } = await canManageParish(session.id, row.parishFeedId);
+    if (!allowed) {
+      res.status(403).json({ error: "Not authorized." });
+      return;
+    }
+
+    await db
+      .update(prayerRequestsTable)
+      .set({ closedAt: new Date(), closeReason: "parish-admin-closed" })
+      .where(eq(prayerRequestsTable.id, id));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[parish] close concern failed:", err);
+    res.status(500).json({ error: "Failed to close." });
+  }
+});
 
 export default router;

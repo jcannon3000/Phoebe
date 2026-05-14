@@ -168,6 +168,31 @@ export default function ParishAdmin() {
           <span style={{ width: 40 }} />
         </div>
 
+        {/* Quick links — pastoral inbox + any future per-parish admin
+            surfaces sit here as a compact row of pills. */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <Link href="/parish/concerns">
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(46,107,64,0.15)",
+                border: "1px solid rgba(46,107,64,0.3)",
+                color: WARM_TEXT,
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: SPACE_GROTESK,
+                padding: "8px 14px",
+                borderRadius: 999,
+                cursor: "pointer",
+              }}
+            >
+              🤲 Pastoral concerns
+            </span>
+          </Link>
+        </div>
+
         {/* Parish switcher (multiple parishes only) */}
         {parishes.length > 1 && (
           <div className="mb-6">
