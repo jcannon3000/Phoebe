@@ -1986,10 +1986,14 @@ export default function PrayerModePage() {
       // as the actual communities carrying it (e.g. NYC Leaders ·
       // Heavenly Rest · …). communityFaces / weekPrayCount are
       // populated from prayer_feed_prayers rows for THIS entry today.
+      // The server doesn't return email on this payload, so we
+      // synthesize a unique key per face (feed entry + index) to
+      // avoid React key collisions when two prayers share a first
+      // name.
       groups: e.groups,
-      communityFaces: e.prayedBy.map((p) => ({
+      communityFaces: e.prayedBy.map((p, i) => ({
         name: p.name,
-        email: p.name,
+        email: `feed-${e.id}-${i}`,
         avatarUrl: p.avatarUrl,
       })),
       weekPrayCount: e.prayedTodayCount,
@@ -2187,16 +2191,32 @@ export default function PrayerModePage() {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {
           const parsed = JSON.parse(raw) as { completed?: number };
+          // Only honor the localStorage cursor if the slide it lands
+          // on is still un-prayed. If it points at a slide already
+          // prayed (e.g. another device cleared the list between
+          // sessions, or the user refreshed on the last slide right
+          // after tapping Amen), fall through to the first-un-prayed
+          // search below. Prevents a re-amen / double-record at the
+          // tail of the deck.
           if (typeof parsed.completed === "number" &&
               parsed.completed > 0 &&
-              parsed.completed < captured.length) {
+              parsed.completed < captured.length &&
+              !captured[parsed.completed]?.alreadyPrayedToday) {
             resumeAt = parsed.completed;
           }
         }
       } catch { /* ignore corrupt entry */ }
       if (resumeAt === 0) {
         const firstUnPrayed = captured.findIndex((s) => !s.alreadyPrayedToday);
-        resumeAt = firstUnPrayed >= 0 ? firstUnPrayed : 0;
+        if (firstUnPrayed >= 0) {
+          resumeAt = firstUnPrayed;
+        } else if (captured.length > 0) {
+          // Every slide is already prayed today — skip the slideshow
+          // entirely and jump to the closing summary. Otherwise the
+          // user would land on slide 0 (which they already prayed)
+          // and tapping Amen would double-record.
+          setPhase("closing");
+        }
       }
     }
     // resetFlow also wipes the localStorage progress entry — once the
@@ -2211,6 +2231,17 @@ export default function PrayerModePage() {
   // All consumers below should read from this — `slides` is the live
   // (re-rendering) array, `displaySlides` is the stable session copy.
   const displaySlides = frozenSlides ?? slides;
+  // Defensive clamp: if displaySlides shrinks under the user mid-
+  // session (a request expires, the parish-weekly queue rebuilds,
+  // etc.), `index` can point past the end. The advance() path's
+  // length-1 guard prevents a crash but leaves the user silently
+  // parked on a non-existent slide. Pull them back to the last real
+  // slide so the next render shows something coherent.
+  useEffect(() => {
+    if (displaySlides.length > 0 && index >= displaySlides.length) {
+      setIndex(displaySlides.length - 1);
+    }
+  }, [displaySlides.length, index]);
   // Office-reminder prefs query — used by the closing slide to surface
   // a "Set reminder" CTA when the user just finished an office and
   // hasn't enabled a daily reminder for that side yet. Only fetched in
@@ -2536,6 +2567,23 @@ export default function PrayerModePage() {
           });
       }
     }
+    // Circle-intention amens have no dedicated per-intention server
+    // endpoint (there's no concept of "I prayed this circle intention
+    // today" in the schema). Until that lands, at least stamp the
+    // user's streak so the slide tap counts toward "I prayed today"
+    // — without this, walking a slideshow that's all circle
+    // intentions left the user's prayer_streak_last_date untouched
+    // and the home-card avatar stack / streak metric never
+    // registered the session.
+    if (current && current.kind === "circle-intention") {
+      const key = `circle:${current.text}:${current.groupSlug ?? "_"}`;
+      if (!loggedIntercessionsRef.current.has(key)) {
+        loggedIntercessionsRef.current.add(key);
+        apiRequest("POST", "/api/prayer-streak/log").catch(() => {
+          /* swallow — best-effort */
+        });
+      }
+    }
     setSlideVisible(false);
     setTimeout(() => {
       if (index < displaySlides.length - 1) {
@@ -2614,16 +2662,43 @@ export default function PrayerModePage() {
         !!s.momentToken &&
         !loggedIntercessionsRef.current.has(s.momentToken),
     );
-    await Promise.allSettled(
-      toLog.map((s) =>
+    // Feed-entry intercessions (Phoebe Climate etc.) — same retry path
+    // but keyed by feed:slug:date:slot since they have no momentToken.
+    // Without this leg, a fire-and-forget POST that fails mid-swipe
+    // (network blip) had no second chance to land: the per-slide POST
+    // in advance() catches the error, and the local Set never gets
+    // re-asked. The closing-slide retry below catches that case.
+    const feedToLog = displaySlides.filter((s): s is PrayerSlide & {
+      feedSlug: string;
+      feedEntryDate: string;
+      feedEntrySlot: number;
+    } => {
+      if (s.kind !== "intercession") return false;
+      if (!s.feedSlug || !s.feedEntryDate || typeof s.feedEntrySlot !== "number") return false;
+      const key = `feed:${s.feedSlug}:${s.feedEntryDate}:${s.feedEntrySlot}`;
+      return !loggedIntercessionsRef.current.has(key);
+    });
+    await Promise.allSettled([
+      ...toLog.map((s) =>
         s.myUserToken
           ? apiRequest("POST", `/api/moment/${s.momentToken}/${s.myUserToken}/post`, {
               isCheckin: true,
             })
           : apiRequest("POST", `/api/moment/${s.momentToken}/amen`, {}),
       ),
-    );
+      ...feedToLog.map((s) =>
+        apiRequest(
+          "POST",
+          `/api/prayer-feeds/${s.feedSlug}/entries/${s.feedEntryDate}/pray?slot=${s.feedEntrySlot}`,
+          {},
+        ),
+      ),
+    ]);
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+    if (feedToLog.length > 0) {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+    }
 
     // Native haptic on finish — a quiet "success" buzz so the user's
     // body knows the list is complete even before they look back at
