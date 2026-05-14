@@ -1060,17 +1060,83 @@ router.get("/prayer-requests/:id/amens", async (req, res): Promise<void> => {
 
 // GET /api/me/parish-weekly — beta experiment.
 // People in the viewer's parish groups who have an active prayer
-// request, split into "I haven't prayed for them this week" vs "I
-// have." Drives the new weekly home card + slideshow scope.
+// request, plus community intercessions and feed intercessions, split
+// into "I haven't prayed this week" vs "I have." Drives the new
+// weekly home card + slideshow scope.
 //
 // Always returns a response (no beta gate on the server) so the
-// client can branch entirely on its own beta flag. Calling for a
-// non-beta user just costs one round trip of cheap queries.
+// client can branch entirely on its own beta flag.
+//
+// We mirror /api/moments' pre-reconcile step so the parish-weekly
+// view stays in sync with what /prayer-list, /prayer-mode (default),
+// and the community detail page see. Without the reconcile a freshly-
+// joined member would see feed/group intercessions in parish-weekly
+// at different times than on those other surfaces.
 router.get("/me/parish-weekly", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
-    const { getParishWeekly } = await import("../lib/parishWeekly");
+    const [
+      { getParishWeekly },
+      { reconcileGroupPracticeMembers, reconcileFeedPracticeMembers },
+    ] = await Promise.all([
+      import("../lib/parishWeekly"),
+      import("./groups"),
+    ]);
+    // Pre-reconcile every group + feed practice the viewer touches so
+    // their moment_user_tokens row exists before we read it. Mirrors
+    // the start of GET /api/moments.
+    try {
+      const { db, sharedMomentsTable, prayerFeedSubscriptionsTable, momentGroupsTable } = await import("@workspace/db");
+      const { eq: dEq, inArray: dInArray, sql: dSql, and: dAnd } = await import("drizzle-orm");
+      const myGroupRows = await db
+        .select({ groupId: groupMembersTable.groupId })
+        .from(groupMembersTable)
+        .where(dEq(groupMembersTable.userId, sessionUserId));
+      const myGroupIds = [...new Set(myGroupRows.map(r => r.groupId))];
+      const practiceIds = new Set<number>();
+      if (myGroupIds.length > 0) {
+        const primary = await db
+          .select({ id: sharedMomentsTable.id })
+          .from(sharedMomentsTable)
+          .where(dAnd(
+            dInArray(sharedMomentsTable.groupId, myGroupIds),
+            dSql`${sharedMomentsTable.state} != 'archived'`,
+          ));
+        for (const r of primary) practiceIds.add(r.id);
+        const secondary = await db
+          .select({ id: sharedMomentsTable.id })
+          .from(sharedMomentsTable)
+          .innerJoin(momentGroupsTable, dEq(momentGroupsTable.momentId, sharedMomentsTable.id))
+          .where(dAnd(
+            dInArray(momentGroupsTable.groupId, myGroupIds),
+            dSql`${sharedMomentsTable.state} != 'archived'`,
+          ));
+        for (const r of secondary) practiceIds.add(r.id);
+      }
+      const myFeedRows = await db
+        .select({ feedId: prayerFeedSubscriptionsTable.feedId })
+        .from(prayerFeedSubscriptionsTable)
+        .where(dEq(prayerFeedSubscriptionsTable.userId, sessionUserId));
+      const myFeedIds = [...new Set(myFeedRows.map(r => r.feedId))];
+      const feedPracticeIds = new Set<number>();
+      if (myFeedIds.length > 0) {
+        const fp = await db
+          .select({ id: sharedMomentsTable.id })
+          .from(sharedMomentsTable)
+          .where(dAnd(
+            dInArray(sharedMomentsTable.prayerFeedId, myFeedIds),
+            dSql`${sharedMomentsTable.state} != 'archived'`,
+          ));
+        for (const r of fp) feedPracticeIds.add(r.id);
+      }
+      await Promise.all([
+        ...Array.from(practiceIds).map(id => reconcileGroupPracticeMembers(id)),
+        ...Array.from(feedPracticeIds).map(id => reconcileFeedPracticeMembers(id)),
+      ]);
+    } catch (err) {
+      console.warn("[/me/parish-weekly] pre-reconcile failed:", err);
+    }
     const result = await getParishWeekly(sessionUserId);
     res.json(result);
   } catch (err) {

@@ -401,9 +401,16 @@ export async function getParishWeekly(userId: number): Promise<ParishWeeklyResul
   const feedIds = [...new Set(mySubscriptions.map(s => s.feedId))];
   if (feedIds.length > 0) {
     // Each feed has its intercessions stored as shared_moments rows
-    // linked via prayer_feed_id. We pull today's intercessions the
-    // same way feed-today does, then check if the viewer has any
-    // isCheckin post on each.
+    // linked via prayer_feed_id. /api/moments requires the viewer to
+    // have a moment_user_tokens row for the moment to surface it —
+    // reconcileFeedPracticeMembers writes those when the user fetches
+    // /api/moments. Parish-weekly must require the same token so the
+    // three primary surfaces (community detail, /prayer-list, main
+    // slideshow) and the parish-weekly card agree on what shows.
+    //
+    // Without this gate, a feed intercession would appear in
+    // parish-weekly the instant the user subscribed but stay invisible
+    // on the other surfaces until /api/moments was hit once.
     const feedMoments = await db
       .select({
         id: sharedMomentsTable.id,
@@ -415,6 +422,13 @@ export async function getParishWeekly(userId: number): Promise<ParishWeeklyResul
         templateType: sharedMomentsTable.templateType,
       })
       .from(sharedMomentsTable)
+      .innerJoin(
+        momentUserTokensTable,
+        and(
+          eq(momentUserTokensTable.momentId, sharedMomentsTable.id),
+          sql`LOWER(${momentUserTokensTable.email}) = ${viewerEmail}`,
+        ),
+      )
       .where(and(
         inArray(sharedMomentsTable.prayerFeedId, feedIds),
         eq(sharedMomentsTable.templateType, "intercession"),
