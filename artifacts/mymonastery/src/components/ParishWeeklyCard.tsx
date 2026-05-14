@@ -205,14 +205,17 @@ export function ParishWeeklyCard() {
           border: `1px solid ${allPrayed ? "rgba(46,107,64,0.28)" : "rgba(46,107,64,0.4)"}`,
         }}
       >
-        <div className="flex items-center justify-between mb-1 gap-2">
+        <div className="flex items-start justify-between mb-0.5 gap-2">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, margin: 0 }}
           >
             This week's prayer list 🌿
           </p>
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Right-side pills stacked vertically: progress count on
+              top, View pill below. Stacking keeps the eyebrow row
+              compact and gives each pill its own clear tap target. */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
             <span
               className="text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full"
               style={{
