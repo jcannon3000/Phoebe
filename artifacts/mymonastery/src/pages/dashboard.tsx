@@ -2071,12 +2071,10 @@ function PrayerOfficeCard() {
               Reminders
             </Link>
           </div>
-          {/* -mt-1 pulls the title up so it sits closer to the
-              "This morning" eyebrow above it. The outer pt-3 gives
-              the eyebrow itself enough breathing room from the top
-              of the card, but the title doesn't need a separate
-              gap — eyebrow + title read as a paired unit. */}
-          <div className="-mt-1">
+          {/* Title sits slightly below the eyebrow — eyebrow + title
+              read as a paired unit but with measured breathing room
+              between them, not crammed against each other. */}
+          <div className="mt-[6px]">
             <p
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -2085,7 +2083,7 @@ function PrayerOfficeCard() {
             </p>
           </div>
           {communityPrayed.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-[7px]">
+            <div className="flex items-center gap-1.5 mt-[12px]">
               <div className="flex -space-x-2">
                 {communityPrayed.slice(0, 5).map((p) => (
                   p.avatarUrl ? (
@@ -2123,7 +2121,7 @@ function PrayerOfficeCard() {
             // any phone size. Status pill has the lighter sage fill
             // and no border lift so it reads as a settled win; the
             // action pill keeps the standard sage-accent + arrow.
-            <div className="mt-[14px] flex items-stretch gap-2">
+            <div className="mt-[20px] flex items-stretch gap-2">
               <div
                 aria-label="Prayer completed today"
                 className="flex-1 rounded-xl text-center"
@@ -2163,7 +2161,7 @@ function PrayerOfficeCard() {
               <div
                 role="button"
                 tabIndex={0}
-                className="mt-[14px] w-full rounded-xl text-center cursor-pointer"
+                className="mt-[20px] w-full rounded-xl text-center cursor-pointer"
                 style={{
                   background: "rgba(46,107,64,0.22)",
                   color: "#F0EDE6",
