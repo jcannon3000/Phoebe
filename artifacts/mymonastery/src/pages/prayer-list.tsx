@@ -1276,7 +1276,17 @@ export default function PrayerListPage() {
       const [kind, idStr] = raw.split(":");
       const id = parseInt(idStr ?? "", 10);
       if (Number.isNaN(id)) return;
-      if (kind === "req") setDetail({ kind: "request", id });
+      if (kind === "req") {
+        setDetail({ kind: "request", id });
+        // Clear the push notification for this request — the user
+        // tapped through to view it, the lock-screen banner has
+        // done its job. No-op on web.
+        try {
+          window.dispatchEvent(
+            new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${id}` } })
+          );
+        } catch { /* non-fatal */ }
+      }
       else if (kind === "prayer-for") setDetail({ kind: "prayer-for", id });
       else if (kind === "prayer-from") setDetail({ kind: "prayer-from", id });
     };

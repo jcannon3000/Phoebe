@@ -139,6 +139,21 @@ export default function PrayerRequestDetailPage() {
     enabled: Number.isFinite(id),
   });
 
+  // Clear the push notification for this request as soon as the
+  // detail page mounts. The user has obviously seen the request
+  // (they tapped through to view it) so the lock-screen banner
+  // shouldn't keep lingering. Native shell listens for this event
+  // and removes any delivered notification whose APN thread-id
+  // matches `prayer-request-{id}`. No-op on web.
+  useEffect(() => {
+    if (!Number.isFinite(id)) return;
+    try {
+      window.dispatchEvent(
+        new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${id}` } })
+      );
+    } catch { /* non-fatal */ }
+  }, [id]);
+
   const [amened, setAmened] = useState(false);
   const amenMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/prayer-requests/${id}/amen`),
