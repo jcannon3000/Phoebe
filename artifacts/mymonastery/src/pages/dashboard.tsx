@@ -2111,53 +2111,37 @@ function NewPrayerRequestsCard({
       >
         <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
         <div className="flex-1 px-4 pt-[17px] pb-[17px]">
-          <div className="flex items-center justify-between gap-2">
+          {/* Headline on the LEFT, profile pictures of the request
+              authors on the RIGHT, justified to opposite edges of
+              the same row. Subtitle ("Tap to respond to your friends")
+              removed per user direction — the avatars do the
+              "who's asking" work without needing the copy. Only
+              entries with a real avatar render. */}
+          <div className="flex items-start justify-between gap-3">
             <span
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
               {headline} 🙏🏽
             </span>
-          </div>
-          <div className="mt-[8px] flex items-center justify-between gap-3">
-            <p
-              className="text-sm truncate"
-              style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-            >
-              {count === 1 ? "Tap to respond" : "Tap to respond to your friends"}
-            </p>
-            {faces.length > 0 && (
-              <div className="flex items-center -space-x-2 shrink-0">
-                {faces.slice(0, 3).map((f) => (
-                  <div
-                    key={f.key}
-                    title={f.name}
-                    className="rounded-full overflow-hidden shrink-0"
-                    style={{
-                      width: 24,
-                      height: 24,
-                      border: "1.5px solid #0F2818",
-                      background: "#1A4A2E",
-                    }}
-                  >
-                    {f.avatarUrl ? (
-                      <img
-                        src={f.avatarUrl}
-                        alt={f.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="w-full h-full flex items-center justify-center text-[10px] font-semibold"
-                        style={{ color: "#A8C5A0" }}
-                      >
-                        {f.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const withAvatars = faces.filter((f) => !!f.avatarUrl);
+              if (withAvatars.length === 0) return null;
+              return (
+                <div className="flex items-center -space-x-2 shrink-0">
+                  {withAvatars.slice(0, 3).map((f) => (
+                    <img
+                      key={f.key}
+                      src={f.avatarUrl as string}
+                      alt={f.name}
+                      title={f.name}
+                      className="w-6 h-6 rounded-full object-cover shrink-0"
+                      style={{ border: "1.5px solid #0F2818" }}
+                    />
+                  ))}
+                </div>
+              );
+            })()}
           </div>
           <div className="mt-[17px] w-full">
             <div
