@@ -2321,7 +2321,7 @@ function PrayerOfficeCard() {
                   {countCopy && (
                     <p
                       className="text-[11px]"
-                      style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 16 }}
+                      style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}
                     >
                       {countCopy}
                     </p>
@@ -2351,7 +2351,7 @@ function PrayerOfficeCard() {
             // any phone size. Status pill has the lighter sage fill
             // and no border lift so it reads as a settled win; the
             // action pill keeps the standard sage-accent + arrow.
-            <div className="mt-[20px] flex items-stretch gap-2">
+            <div className="mt-[12px] flex items-stretch gap-2">
               <div
                 aria-label="Prayer completed today"
                 className="flex-1 rounded-xl text-center"
@@ -2391,7 +2391,7 @@ function PrayerOfficeCard() {
               <div
                 role="button"
                 tabIndex={0}
-                className="mt-[20px] w-full rounded-xl text-center cursor-pointer"
+                className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
                 style={{
                   background: "rgba(46,107,64,0.22)",
                   color: "#F0EDE6",
