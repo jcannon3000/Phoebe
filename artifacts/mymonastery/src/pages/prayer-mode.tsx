@@ -1162,27 +1162,65 @@ function HabitSlide({
   const eveningDone = today?.evening ?? false;
   const daysWithEither = days.filter(d => d.morning || d.evening).length;
 
+  // Celebration haptic burst when the user has prayed both offices
+  // today. A single impact felt understated for a full-day milestone
+  // per user direction — fire a spaced sequence of heavy taps capped
+  // with a "success" notification so the device says "you did the
+  // whole day." Fires once per HabitSlide mount when both are done;
+  // not gated on a server flag because the slide itself only renders
+  // on the closingOnly path right after a fresh office finish.
+  const fullDayHapticFiredRef = useRef(false);
+  useEffect(() => {
+    if (!morningDone || !eveningDone) return;
+    if (fullDayHapticFiredRef.current) return;
+    fullDayHapticFiredRef.current = true;
+    const fire = (style: string, delayMs: number) => {
+      window.setTimeout(() => {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("phoebe:haptic", { detail: { style } }),
+          );
+        } catch { /* non-fatal */ }
+      }, delayMs);
+    };
+    fire("heavy", 0);
+    fire("heavy", 140);
+    fire("heavy", 280);
+    fire("heavy", 420);
+    fire("success", 620);
+  }, [morningDone, eveningDone]);
+
   // Encouragement copy keys off this morning's + evening's state. We
   // don't shame partial days — every line is forward-leaning.
   const encouragement = (() => {
-    if (morningDone && eveningDone) return "You prayed both offices today. This is the rhythm.";
-    if (morningDone) return "Morning is held. Evening Prayer waits when you're ready.";
-    if (eveningDone) return "Evening is held. Tomorrow begins again with Morning Prayer.";
-    return "One office a day grows the rhythm — both deepens it.";
+    // Both-done state: no line — the row pills + grid say it. Adding
+    // copy here read as overclaim per user direction.
+    if (morningDone && eveningDone) return null;
+    if (morningDone) return "Morning is held. Evening waits when you're ready.";
+    if (eveningDone) return "Evening is held. Tomorrow begins again with morning.";
+    return "One a day grows the rhythm — both deepens it.";
   })();
 
   const Row = ({ label, emoji, done }: { label: string; emoji: string; done: boolean }) => (
     <div
-      className="flex items-center justify-between w-full px-4 py-3 rounded-xl"
+      // animate-turn-pulse-practices: same border-color keyframe the
+      // home-screen "X prayer requests waiting" card uses. Borrowed
+      // here so the rhythm rows feel celebratory when the office is
+      // done — the inline borderColor is dropped in the done case so
+      // the CSS keyframe (which sets border-color) can take effect
+      // without the inline shorthand winning specificity.
+      className={`flex items-center justify-between w-full px-4 py-3 rounded-xl ${done ? "animate-turn-pulse-practices" : ""}`}
       style={{
         background: done ? "rgba(46,107,64,0.20)" : "rgba(46,107,64,0.08)",
-        border: `1px solid ${done ? "rgba(111,175,133,0.45)" : "rgba(46,107,64,0.22)"}`,
+        borderWidth: 1,
+        borderStyle: "solid",
+        ...(done ? {} : { borderColor: "rgba(46,107,64,0.22)" }),
       }}
     >
       <div className="flex items-center gap-3">
-        <span style={{ fontSize: 22 }}>{emoji}</span>
+        <span style={{ fontSize: 28 }}>{emoji}</span>
         <span
-          className="font-semibold text-[15px]"
+          className="font-semibold text-[19px]"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           {label}
@@ -1247,8 +1285,8 @@ function HabitSlide({
         transition={{ duration: 0.4, delay: 0.1 }}
         className="w-full flex flex-col gap-2"
       >
-        <Row label="Morning Prayer" emoji="🌅" done={morningDone} />
-        <Row label="Evening Prayer" emoji="🌙" done={eveningDone} />
+        <Row label="Morning" emoji="🌅" done={morningDone} />
+        <Row label="Evening" emoji="🌙" done={eveningDone} />
       </motion.div>
 
       {/* Past 7 days grid — two rows (morning, evening) × 7 columns.
@@ -1353,15 +1391,17 @@ function HabitSlide({
         </div>
       </motion.div>
 
-      <motion.p
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-        className="text-[14px] leading-relaxed"
-        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-      >
-        {encouragement}
-      </motion.p>
+      {encouragement && (
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="text-[14px] leading-relaxed"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {encouragement}
+        </motion.p>
+      )}
 
       <button
         onClick={onDone}
