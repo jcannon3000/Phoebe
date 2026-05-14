@@ -2034,10 +2034,12 @@ function PrayerOfficeCard() {
   // chooser; per user direction it now navigates to a dedicated
   // /prayer-chooser screen so the depth options live on a proper
   // route (back-button behaviour, deep-linkable, sound effect on
-  // entry). Once the user has prayed something today the copy flips
-  // to "Pray again"; the chooser screen still presents the full menu
-  // of depth options so they can pick anything to re-pray.
-  const ctaCopy = prayedToday ? "Pray again" : "Begin prayer";
+  // entry). The single CTA shows when the user hasn't prayed yet
+  // today ("Begin prayer →"). Once they've prayed something the pill
+  // splits into a side-by-side pair below — a "Prayer completed ✓"
+  // status pill + a "Pray again" action pill — so the win is visible
+  // without losing the way back in.
+  const ctaCopy = "Begin prayer";
 
   return (
     <div
@@ -2121,7 +2123,50 @@ function PrayerOfficeCard() {
               </span>
             </div>
           )}
-          <Link href="/prayer-chooser">
+          {prayedToday ? (
+            // Two-pill split: a non-tappable "Prayer completed ✓"
+            // status on the left, the tappable "Pray again" action on
+            // the right. Equal width via flex-1 so the row balances on
+            // any phone size. Status pill has the lighter sage fill
+            // and no border lift so it reads as a settled win; the
+            // action pill keeps the standard sage-accent + arrow.
+            <div className="mt-3 flex items-stretch gap-2">
+              <div
+                aria-label="Prayer completed today"
+                className="flex-1 rounded-xl text-center"
+                style={{
+                  background: "rgba(46,107,64,0.10)",
+                  color: "rgba(168,197,160,0.9)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  padding: "9px 12px",
+                  border: "1px solid rgba(46,107,64,0.22)",
+                }}
+              >
+                Prayer completed <span aria-hidden>✓</span>
+              </div>
+              <Link href="/prayer-chooser" className="flex-1">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="rounded-xl text-center cursor-pointer"
+                  style={{
+                    background: "rgba(46,107,64,0.22)",
+                    color: "#F0EDE6",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    padding: "9px 12px",
+                    border: "1px solid rgba(46,107,64,0.45)",
+                  }}
+                >
+                  Pray again <span aria-hidden>→</span>
+                </div>
+              </Link>
+            </div>
+          ) : (
+            <Link href="/prayer-chooser">
               <div
                 role="button"
                 tabIndex={0}
@@ -2139,6 +2184,7 @@ function PrayerOfficeCard() {
                 {ctaCopy} <span aria-hidden>→</span>
               </div>
             </Link>
+          )}
       </div>
     </div>
   );
