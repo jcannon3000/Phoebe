@@ -1000,6 +1000,15 @@ declare global {
       // handler keeps it within the gesture, so SFSafariViewController
       // is allowed to present.
       openInAppBrowser?: (url: string) => Promise<void>;
+      // Set the iOS app-icon badge to a specific count. The default
+      // Capacitor stack only updates the badge through APNs pushes,
+      // which means the icon can only grow — opening the app clears
+      // it to 0 and it stays at 0 until another push arrives.
+      // Calling setBadge from the dashboard after computing the live
+      // unprayed count keeps the icon honest across opens, amens,
+      // and dismissals. No-op on web. Backed by PhoebeBadgePlugin
+      // (ios/App/App/PhoebeBadgePlugin.swift).
+      setBadge?: (count: number) => Promise<void>;
     };
   }
 }
@@ -1094,6 +1103,25 @@ function exposePublicApi() {
         } catch {
           /* ignore */
         }
+      }
+    },
+    async setBadge(count: number) {
+      // No-op on web — there is no icon to badge.
+      if (!Capacitor.isNativePlatform()) return;
+      const clamped = Math.max(0, Math.floor(count));
+      try {
+        const cap = (window as {
+          Capacitor?: {
+            Plugins?: Record<string, { setBadge?: (opts: { count: number }) => Promise<void> }>;
+          };
+        }).Capacitor;
+        const plugin = cap?.Plugins?.PhoebeBadge;
+        if (plugin?.setBadge) {
+          await plugin.setBadge({ count: clamped });
+        }
+      } catch (err) {
+        // Best-effort — badge state isn't critical to app function.
+        console.warn("[PhoebeNative] setBadge failed:", err);
       }
     },
   };

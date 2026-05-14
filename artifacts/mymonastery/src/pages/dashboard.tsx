@@ -3663,6 +3663,19 @@ export default function Dashboard() {
     return requestCount + intercessionCount;
   }, [dashPrayerRequests, momentsData]);
 
+  // Sync the iOS app-icon badge to the live unprayed count whenever
+  // the dashboard's data settles. Without this the badge could only
+  // grow (via APNs pushes) and never shrink after the user prays —
+  // see PhoebeBadgePlugin.swift for why the native layer hands the
+  // count over to the web layer. No-op on web (setBadge guards on
+  // Capacitor.isNativePlatform internally).
+  useEffect(() => {
+    const native = (window as { PhoebeNative?: { setBadge?: (n: number) => Promise<void> } })
+      .PhoebeNative;
+    if (!native?.setBadge) return;
+    native.setBadge(newPrayersCount).catch(() => { /* non-fatal */ });
+  }, [newPrayersCount]);
+
   // Detect new unread letters. Runs once per session. The localStorage key
   // stores the *set* of correspondence ids that were already shown unread
   // on last dismiss — a new unread correspondence id (or a previously-read

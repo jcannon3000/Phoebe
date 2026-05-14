@@ -89,19 +89,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
 
-        // Clear the app-icon badge whenever the user opens the app.
-        // The new-prayer-request push sets the badge to the recipient's
-        // current "unprayed" count; once they're inside Phoebe, the
-        // dot has done its job and shouldn't linger on the icon — they
-        // can see what's waiting on the home screen card. iOS 16+ uses
-        // UNUserNotificationCenter.setBadgeCount(); older releases fall
-        // back to the deprecated UIApplication setter, which still
-        // works through iOS 17 even with the deprecation warning.
-        if #available(iOS 16.0, *) {
-            UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
-        } else {
-            application.applicationIconBadgeNumber = 0
-        }
+        // Badge management is now driven by the web layer (see
+        // PhoebeBadgePlugin + the dashboard's setBadge call against
+        // newPrayersCount). On foreground we DON'T blanket-clear to 0
+        // anymore — that left the icon stale at 0 between sessions,
+        // even when prayer requests were still waiting. The web app
+        // calls PhoebeNative.setBadge with the live unprayed count as
+        // soon as the dashboard's React Query data lands, so the icon
+        // catches up within a tick. Pushes continue to set the badge
+        // dynamically while the app is backgrounded.
     }
 
     // Warm-launch path: app was already running (foregrounded or

@@ -18,6 +18,7 @@
 		ADF3D1BD2F9AF27500B85EDF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ADF3D1BC2F9AF27500B85EDF /* PrivacyInfo.xcprivacy */; };
 		B1B1E0010000000000000002 /* BibleWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000001 /* BibleWebViewController.swift */; };
 		B1B1E0010000000000000004 /* BibleBrowserPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */; };
+		B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */; };
 		PB0EBE7515E0001000000001 /* PhoebeRising.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000002 /* PhoebeRising.caf */; };
 		PB0EBE7515E0001000000004 /* PhoebeRising-low.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */; };
 		PB0EBE7515E0001000000006 /* PhoebeRising-high.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */; };
@@ -39,6 +40,7 @@
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		B1B1E0010000000000000001 /* BibleWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BibleWebViewController.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BibleBrowserPlugin.swift; sourceTree = "<group>"; };
+		B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeBadgePlugin.swift; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 		PB0EBE7515E0001000000002 /* PhoebeRising.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PhoebeRising.caf; sourceTree = "<group>"; };
 		PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PhoebeRising-low.caf"; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				B1B1E0010000000000000001 /* BibleWebViewController.swift */,
 				B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */,
+				B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -236,6 +239,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				B1B1E0010000000000000002 /* BibleWebViewController.swift in Sources */,
 				B1B1E0010000000000000004 /* BibleBrowserPlugin.swift in Sources */,
+				B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
