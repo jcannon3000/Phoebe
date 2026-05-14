@@ -486,14 +486,29 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
   // enough; people need the lock-screen prompt to actually carry
   // each other in real time. Fired async so the HTTP response
   // doesn't wait on APNs / web-push round-trips.
+  //
+  // We exclude any recipient who has MUTED the author. The
+  // GET /api/prayer-requests filter already drops muted authors from
+  // the list (line 261); without this matching filter on the fan-out
+  // path, the muter still gets a lock-screen ping for a request they
+  // can't see in-app, which reads as a bug rather than a mute.
   (async () => {
     try {
       const gardenIds = await getGardenUserIds(sessionUserId);
       const recipients = gardenIds.filter((id) => id !== sessionUserId);
       if (recipients.length === 0) return;
+      // Drop anyone who has muted the author. userMutes(muter=R, muted=A)
+      // → R does not receive A's pushes. Single SELECT, cheap.
+      const muteRows = await db
+        .select({ muterId: userMutesTable.muterId })
+        .from(userMutesTable)
+        .where(eq(userMutesTable.mutedUserId, sessionUserId));
+      const mutersOfAuthor = new Set(muteRows.map(r => r.muterId));
+      const unmutedRecipients = recipients.filter(rid => !mutersOfAuthor.has(rid));
+      if (unmutedRecipients.length === 0) return;
       const authorName = owner?.name ?? "Someone";
       await Promise.all(
-        recipients.map((rid) =>
+        unmutedRecipients.map((rid) =>
           sendNewPrayerRequestPush(rid, {
             authorName,
             isAnonymous: parsed.data.isAnonymous,
