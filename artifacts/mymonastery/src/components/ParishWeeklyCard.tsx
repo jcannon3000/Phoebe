@@ -128,7 +128,7 @@ function ViewPill() {
         e.stopPropagation();
         setLocation("/prayer-list");
       }}
-      className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 transition-opacity hover:opacity-80"
+      className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
       style={{
         background: "rgba(46,107,64,0.22)",
         color: "#A8C5A0",
@@ -210,12 +210,16 @@ export function ParishWeeklyCard() {
             the headline down. Mirrors the eyebrow→headline tightness
             of the office card below it. */}
         <div className="absolute top-3 right-3 flex flex-col items-end gap-1 shrink-0">
+          {/* Pills sized to match the office card below it — same
+              text-[11px] semibold, px-2.5 py-1 padding, sage-tinted
+              fill + border — so the two cards read as a paired
+              header set. */}
           <span
-            className="text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full"
+            className="text-[11px] font-semibold tabular-nums px-2.5 py-1 rounded-full text-center"
             style={{
-              background: "rgba(46,107,64,0.18)",
-              color: "rgba(168,197,160,0.95)",
-              border: "1px solid rgba(46,107,64,0.3)",
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.4)",
               fontFamily: FONT,
             }}
           >
