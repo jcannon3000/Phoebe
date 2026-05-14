@@ -2320,8 +2320,8 @@ function PrayerOfficeCard() {
                   </p>
                   {countCopy && (
                     <p
-                      className="text-[11px] mt-[28px]"
-                      style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+                      className="text-[11px]"
+                      style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 16 }}
                     >
                       {countCopy}
                     </p>
