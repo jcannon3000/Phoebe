@@ -76,14 +76,11 @@ export default function PrayerChooserPage() {
     href: string;
     verb: string;
   };
+  // Intercession Slideshow removed — that depth lives on the home
+  // screen now as its own card, separate from the office chooser.
+  // Leaving the Devotion + Office options here keeps the chooser as
+  // "pick the depth of your office prayer."
   const options: Option[] = [
-    {
-      title: "Intercession Slideshow",
-      sub: "Your prayer list, no liturgy",
-      duration: "< 5 Min",
-      href: "/prayer-mode",
-      verb: "Start",
-    },
     {
       title: devotionLabel,
       sub: "From the Book of Common Prayer · with prayer list",
