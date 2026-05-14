@@ -199,13 +199,13 @@ export function ParishWeeklyCard() {
   return (
     <Link href="/prayer-mode?queue=parish-weekly">
       <div
-        className="w-full rounded-2xl px-4 py-[14px] cursor-pointer transition-opacity hover:opacity-95"
+        className="w-full rounded-2xl px-4 py-[20px] cursor-pointer transition-opacity hover:opacity-95"
         style={{
           background: allPrayed ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.16)",
           border: `1px solid ${allPrayed ? "rgba(46,107,64,0.28)" : "rgba(46,107,64,0.4)"}`,
         }}
       >
-        <div className="flex items-center justify-between mb-[5px] gap-2">
+        <div className="flex items-center justify-between mb-[7px] gap-2">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, margin: 0 }}
@@ -235,31 +235,31 @@ export function ParishWeeklyCard() {
         {allPrayed ? (
           <>
             <p
-              className="text-base font-semibold mb-[3px]"
+              className="text-base font-semibold mb-[4px]"
               style={{ color: "#F0EDE6", fontFamily: FONT }}
             >
               {headline}
             </p>
             <p
-              className="text-[12px] mb-[10px]"
+              className="text-[12px] mb-[14px]"
               style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
             >
               Everything your community is carrying has been prayed for.
             </p>
-            <div className="mt-[14px]">
+            <div className="mt-[20px]">
               <AvatarStack entries={data?.prayed ?? []} max={10} />
             </div>
           </>
         ) : (
           <>
             <p
-              className="text-base font-semibold mb-[3px]"
+              className="text-base font-semibold mb-[4px]"
               style={{ color: "#F0EDE6", fontFamily: FONT }}
             >
               {headline}
             </p>
             <p
-              className="text-[12px] mb-[10px]"
+              className="text-[12px] mb-[14px]"
               style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
             >
               {(data?.prayed.length ?? 0) === 0
@@ -267,10 +267,10 @@ export function ParishWeeklyCard() {
                 : `You've prayed for ${data?.prayed.length} so far this week.`}
             </p>
             {(data?.unprayed.length ?? 0) > 0 && (
-              <div className="mt-[14px] flex items-center justify-between gap-3">
+              <div className="mt-[20px] flex items-center justify-between gap-3">
                 <AvatarStack entries={data?.unprayed ?? []} max={6} />
                 <span
-                  className="text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0"
+                  className="text-[11px] font-semibold px-3 py-[3px] rounded-full shrink-0"
                   style={{
                     background: "rgba(46,107,64,0.35)",
                     color: "#C8D4C0",
