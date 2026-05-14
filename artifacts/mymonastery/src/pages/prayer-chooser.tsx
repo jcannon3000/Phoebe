@@ -8,16 +8,16 @@ import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
 
 // ── Prayer chooser ──────────────────────────────────────────────────────────
 // Replaces the dashboard's inline modal popup. The home-screen CTA links
-// here; this page presents the three depth options for today's prayer:
+// here; this page presents the two office-depth options for today:
 //
-//   • Intercession Slideshow — the personal slideshow, no liturgical
-//     wrapping.
-//   • Daily Devotion         — BCP short form, includes the prayer list.
-//   • Daily Office           — BCP full Morning/Evening Prayer, includes
-//                              the prayer list at the end.
+//   • Daily Devotion — BCP short form, includes the prayer list.
+//   • Daily Office   — BCP full Morning/Evening Prayer, includes the
+//                      prayer list at the end.
 //
-// Time-of-day labels and links flip morning vs evening; the slideshow
-// option stays the same either way (it's the same prayers).
+// (The Intercession Slideshow used to be a third option here; it's
+// since been promoted to its own card on the home screen, so this
+// chooser is purely about picking the depth of the office prayer.)
+// Time-of-day labels and links flip morning vs evening.
 //
 // On mount we play the opening swell — the same audio cue the prayer-
 // mode slideshow uses on entry. The user explicitly asked for a sound
