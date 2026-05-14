@@ -2050,7 +2050,7 @@ function PrayerOfficeCard() {
         border: "1px solid rgba(46,107,64,0.20)",
       }}
       >
-        <div className="flex-1 px-4 pt-2 pb-3">
+        <div className="flex-1 px-4 pt-1.5 pb-2.5">
           <div className="flex items-start justify-between gap-2">
             <p
               className="text-[11px] font-semibold uppercase tracking-widest"

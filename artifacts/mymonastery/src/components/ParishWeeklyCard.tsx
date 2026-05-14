@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -115,6 +115,33 @@ function EntryAvatar({ entry, size = 28 }: { entry: ParishWeeklyEntry; size?: nu
   );
 }
 
+// Small "View" pill placed in the top-right of the card. The outer
+// card is a Link to /prayer-mode, so this button uses stopPropagation
+// + preventDefault to suppress that and route to /prayer-list instead.
+function ViewPill() {
+  const [, setLocation] = useLocation();
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setLocation("/prayer-list");
+      }}
+      className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 transition-opacity hover:opacity-80"
+      style={{
+        background: "rgba(46,107,64,0.22)",
+        color: "#A8C5A0",
+        border: "1px solid rgba(46,107,64,0.4)",
+        fontFamily: FONT,
+        cursor: "pointer",
+      }}
+    >
+      View
+    </button>
+  );
+}
+
 function AvatarStack({ entries, max = 6 }: { entries: ParishWeeklyEntry[]; max?: number }) {
   const shown = entries.slice(0, max);
   const extra = entries.length - shown.length;
@@ -161,7 +188,7 @@ export function ParishWeeklyCard() {
   //   • Mixed sources → "N prayers waiting this week"
   const unprayedRequestsOnly = (data?.unprayed ?? []).every(e => e.kind === "request");
   const headline = (() => {
-    if (allPrayed) return "You've held your parish this week 🌿";
+    if (allPrayed) return "You've held your community this week 🌿";
     const n = data?.unprayed.length ?? 0;
     if (n === 1 && unprayedRequestsOnly && next?.kind === "request") {
       return `Pray for ${next.title}`;
@@ -172,42 +199,49 @@ export function ParishWeeklyCard() {
   return (
     <Link href="/prayer-mode?queue=parish-weekly">
       <div
-        className="w-full rounded-2xl p-4 cursor-pointer transition-opacity hover:opacity-95"
+        className="w-full rounded-2xl px-4 py-3 cursor-pointer transition-opacity hover:opacity-95"
         style={{
           background: allPrayed ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.16)",
           border: `1px solid ${allPrayed ? "rgba(46,107,64,0.28)" : "rgba(46,107,64,0.4)"}`,
         }}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 gap-2">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, margin: 0 }}
           >
             This week's prayer list 🌿
           </p>
-          <span
-            className="text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full"
-            style={{
-              background: "rgba(46,107,64,0.18)",
-              color: "rgba(168,197,160,0.95)",
-              border: "1px solid rgba(46,107,64,0.3)",
-              fontFamily: FONT,
-            }}
-          >
-            {(data?.prayed.length ?? 0)} / {totalEntries}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className="text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                color: "rgba(168,197,160,0.95)",
+                border: "1px solid rgba(46,107,64,0.3)",
+                fontFamily: FONT,
+              }}
+            >
+              {(data?.prayed.length ?? 0)} / {totalEntries}
+            </span>
+            {/* View pill — bypasses the card-wide tap target (which
+                opens prayer-mode) and routes to the manage prayer list
+                page instead. stopPropagation + preventDefault keep
+                the outer Link from firing on the same click. */}
+            <ViewPill />
+          </div>
         </div>
 
         {allPrayed ? (
           <>
             <p
-              className="text-base font-semibold mb-1"
+              className="text-base font-semibold mb-0.5"
               style={{ color: "#F0EDE6", fontFamily: FONT }}
             >
               {headline}
             </p>
             <p
-              className="text-[12px] mb-3"
+              className="text-[12px] mb-2"
               style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
             >
               Everything your community is carrying has been prayed for.
@@ -219,13 +253,13 @@ export function ParishWeeklyCard() {
         ) : (
           <>
             <p
-              className="text-base font-semibold mb-1"
+              className="text-base font-semibold mb-0.5"
               style={{ color: "#F0EDE6", fontFamily: FONT }}
             >
               {headline}
             </p>
             <p
-              className="text-[12px] mb-3"
+              className="text-[12px] mb-2"
               style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
             >
               {(data?.prayed.length ?? 0) === 0
