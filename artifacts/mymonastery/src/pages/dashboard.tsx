@@ -1896,14 +1896,7 @@ function NewPrayerRequestsCard({
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              {headline}
-            </span>
-            <span
-              aria-hidden
-              className="text-base shrink-0"
-              style={{ fontFamily: "'Space Grotesk', sans-serif", lineHeight: 1 }}
-            >
-              🙏🏽
+              {headline} 🙏🏽
             </span>
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-3">
