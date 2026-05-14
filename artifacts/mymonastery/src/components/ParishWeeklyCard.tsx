@@ -280,43 +280,42 @@ export function ParishWeeklyCard() {
                   ? "Everything your community is carrying has been prayed for."
                   : (data?.prayed.length ?? 0) === 0
                     ? "Your community is asking your prayers."
-                    : `You've prayed for ${data?.prayed.length} so far this week.`}
+                    : `You have prayed for ${data?.prayed.length} this week.`}
               </p>
             </>
           );
           if (isNativeApp) {
-            // Stacked layout — title + sub on top, stack underneath,
-            // Begin pill (if any) inline with the stack at the bottom.
+            // Stacked layout — title + sub on top, stack underneath
+            // on the left, Begin pill pinned to the right edge.
+            if (!stack && !beginPill) return headlineBlock;
             return (
               <>
                 {headlineBlock}
-                {stack && (
-                  <div className="mt-[20px] flex items-center justify-between gap-3">
-                    {stack}
-                    {beginPill}
-                  </div>
-                )}
+                <div className="mt-[20px] flex items-center justify-between gap-3">
+                  {stack ?? <span />}
+                  {beginPill}
+                </div>
               </>
             );
           }
-          // Web — wide screens (md+) place the avatar stack on the
-          // right, aligned with the title; narrow screens fall back
-          // to the stacked layout. The Begin pill rides with the
-          // stack in both cases.
+          // Web — wide screens (md+) place the avatar stack inline
+          // with the title and pin the Begin pill to the far right
+          // edge of the card. Narrow screens fall back to a stacked
+          // layout with the Begin pill on the right of the bottom row.
           return (
             <>
               <div className="md:flex md:items-start md:justify-between md:gap-6">
                 <div className="md:flex-1 md:min-w-0">{headlineBlock}</div>
-                {stack && (
-                  <div className="hidden md:flex md:items-center md:gap-3 md:shrink-0 md:mt-1">
+                {(stack || beginPill) && (
+                  <div className="hidden md:flex md:items-center md:gap-4 md:shrink-0 md:mt-1">
                     {stack}
                     {beginPill}
                   </div>
                 )}
               </div>
-              {stack && (
+              {(stack || beginPill) && (
                 <div className="mt-[20px] flex items-center justify-between gap-3 md:hidden">
-                  {stack}
+                  {stack ?? <span />}
                   {beginPill}
                 </div>
               )}
