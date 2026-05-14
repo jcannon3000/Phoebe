@@ -1678,72 +1678,143 @@ export default function PrayerModePage() {
   // has an active request the viewer hasn't amen'd this week. Same
   // request-slide shape under the hood, just sourced from a
   // weekly-scoped backend query instead of the all-time request feed.
+  // Parish-weekly slide construction: look up full Moment / Request /
+  // FeedEntry data by ID so each slide carries the same rich fields
+  // (groups[], communityFaces[], weekPrayCount, feedTag, learnMoreUrl)
+  // the default-mode deck uses. Without this lookup the slide reads as
+  // a stripped-down "just the text" card; with it, parish-weekly looks
+  // identical to the main slideshow's intercession slide.
+  const momentsById = new Map((momentsData?.moments ?? []).map(m => [m.id, m]));
+  const requestsById = new Map(prayerRequests.map(r => [r.id, r]));
+  const feedEntryById = new Map(feedTodayEntries.map(e => [e.id, e]));
+
   const slides: PrayerSlide[] = queueMode === "parish-weekly"
-    ? (parishWeeklyData?.unprayed ?? []).map((e): PrayerSlide | null => {
+    ? (parishWeeklyData?.unprayed ?? []).flatMap((e): PrayerSlide[] => {
         if (e.kind === "request") {
-          return {
+          const r = requestsById.get(e.request.id);
+          // Build from the live PrayerRequest if cached; otherwise
+          // synthesise from the parish-weekly entry alone.
+          return [{
             kind: "request",
-            text: e.request.body,
+            text: r?.body ?? e.request.body,
             attribution: "",
             requestId: e.request.id,
-            myWord: null,
-            authorName: e.title,
-            authorAvatarUrl: e.avatarUrl,
-            requestKind: e.request.kind ?? null,
-            alreadyPrayedToday: false,
-          };
+            myWord: r?.myWord ?? null,
+            authorName: r?.ownerName ?? e.title,
+            authorAvatarUrl: r?.ownerAvatarUrl ?? e.avatarUrl,
+            requestKind: (r?.kind ?? e.request.kind) ?? null,
+            alreadyPrayedToday: r?.myAmenedToday === true,
+          }];
         }
         if (e.kind === "intercession") {
-          return {
+          const m = momentsById.get(e.intercession.momentId);
+          if (!m) return [];
+          // Mirror the default-mode intercession-slide build exactly.
+          const title = m.intercessionTopic || m.name;
+          const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+          const intentionSub =
+            m.intention && norm(m.intention) !== norm(title) ? m.intention : null;
+          const attributionLabel = m.group?.name
+            ? m.group.name
+            : m.members
+                .filter((p) => p.email !== user?.email)
+                .map((p) => p.name || p.email.split("@")[0])
+                .slice(0, 3)
+                .join(", ");
+          const hasPrayedFlag = m.members.some(p => typeof p.prayedThisWeek === "boolean");
+          const otherMembers = m.members.filter(p => {
+            if (p.email === user?.email) return false;
+            if (!hasPrayedFlag) return true;
+            return p.prayedThisWeek === true;
+          });
+          const MAX_FACES = 7;
+          let communityFaces: Array<{ name: string; email: string; avatarUrl: string | null }> = [];
+          if (otherMembers.length > 0) {
+            if (otherMembers.length <= MAX_FACES) {
+              communityFaces = otherMembers.map(p => ({
+                name: p.name || p.email.split("@")[0],
+                email: p.email,
+                avatarUrl: p.avatarUrl ?? null,
+              }));
+            } else {
+              const withAvatar = otherMembers.filter(p => !!p.avatarUrl);
+              const withoutAvatar = otherMembers.filter(p => !p.avatarUrl);
+              const picked = [
+                ...withAvatar.slice(0, MAX_FACES),
+                ...withoutAvatar.slice(0, Math.max(0, MAX_FACES - withAvatar.length)),
+              ];
+              communityFaces = picked.map(p => ({
+                name: p.name || p.email.split("@")[0],
+                email: p.email,
+                avatarUrl: p.avatarUrl ?? null,
+              }));
+            }
+          }
+          const feedTag = m.prayerFeedId ? "Climate Justice" : null;
+          const finalAttribution = m.prayerFeedId && !attributionLabel
+            ? "Your community is holding this."
+            : attributionLabel
+              ? `with ${attributionLabel}`
+              : "";
+          const _allGroups = [
+            ...(m.group ? [m.group] : []),
+            ...((m as { additionalGroups?: Array<{ id: number; name: string; slug: string; emoji: string | null }> }).additionalGroups ?? []),
+          ];
+          const _seenGroupIds = new Set<number>();
+          const groups = _allGroups.filter((g) => {
+            if (_seenGroupIds.has(g.id)) return false;
+            _seenGroupIds.add(g.id);
+            return true;
+          });
+          return [{
             kind: "intercession",
-            text: e.intercession.intercessionFullText
-              || e.intercession.intention
-              || e.intercession.intercessionTopic
-              || e.title,
-            attribution: e.intercession.groupName ?? "",
-            momentId: e.intercession.momentId,
-            momentToken: e.intercession.momentToken ?? null,
-            intercessionTopic: e.intercession.intercessionTopic ?? null,
-            intercessionFullText: e.intercession.intercessionFullText ?? null,
-            intercessionSource: null,
-            communityChips: e.intercession.groupName
-              ? [{
-                  groupName: e.intercession.groupName,
-                  groupSlug: e.intercession.groupSlug ?? "",
-                  groupEmoji: e.intercession.groupEmoji,
-                }]
-              : null,
-            feedSlug: null,
-            feedTitle: null,
-            feedCoverEmoji: null,
-            learnMoreUrl: null,
-            authorName: null,
-            authorAvatarUrl: null,
-            authorEmoji: e.intercession.groupEmoji ?? "🙏🏽",
-            alreadyPrayedToday: false,
-          } as PrayerSlide;
+            text: title,
+            intention: intentionSub,
+            fullText: m.intercessionFullText?.trim() || null,
+            source: m.intercessionSource ?? null,
+            attribution: finalAttribution,
+            weekPrayCount: (m as { weekPostCount?: number }).weekPostCount ?? 0,
+            momentToken: m.momentToken,
+            myUserToken: m.myUserToken,
+            communityFaces,
+            feedTag,
+            learnMoreUrl: (m as { learnMoreUrl?: string | null }).learnMoreUrl?.trim() || null,
+            groups,
+          }];
         }
         // feed-entry
-        return {
+        const fe = feedEntryById.get(e.feedEntry.entryId);
+        if (fe) {
+          // Use the live feedTodayEntries row when available — same
+          // shape as the default-mode feed slide.
+          return [{
+            kind: "intercession",
+            text: fe.title,
+            intention: null,
+            fullText: fe.body?.trim() || null,
+            attribution: fe.feedTitle ? `from ${fe.feedTitle}` : "",
+            feedTag: fe.feedTitle || null,
+            learnMoreUrl: fe.learnMoreUrl?.trim() || null,
+            feedSlug: fe.feedSlug,
+            feedEntryDate: new Date().toISOString().slice(0, 10),
+            feedEntrySlot: fe.slot,
+          }];
+        }
+        // Fallback when the feed-today endpoint hasn't surfaced this
+        // entry — build from the parish-weekly entry directly.
+        return [{
           kind: "intercession",
-          text: e.feedEntry.body,
-          attribution: e.feedEntry.feedTitle,
-          momentId: e.feedEntry.entryId,
-          momentToken: null,
-          intercessionTopic: e.title,
-          intercessionFullText: e.feedEntry.body,
-          intercessionSource: null,
-          communityChips: null,
+          text: e.title,
+          intention: null,
+          fullText: e.feedEntry.body?.trim() || null,
+          attribution: `from ${e.feedEntry.feedTitle}`,
+          feedTag: e.feedEntry.feedTitle,
+          learnMoreUrl: e.feedEntry.learnMoreUrl?.trim() || null,
           feedSlug: e.feedEntry.feedSlug,
-          feedTitle: e.feedEntry.feedTitle,
-          feedCoverEmoji: e.feedEntry.feedCoverEmoji,
-          learnMoreUrl: e.feedEntry.learnMoreUrl,
-          authorName: null,
-          authorAvatarUrl: null,
-          authorEmoji: e.feedEntry.feedCoverEmoji ?? "🌱",
-          alreadyPrayedToday: false,
-        } as PrayerSlide;
-      }).filter((s): s is PrayerSlide => s !== null)
+          feedEntryDate: new Date().toISOString().slice(0, 10),
+          feedEntrySlot: e.feedEntry.slot,
+        }];
+      })
     : queueMode === "new"
     ? prayerRequests
         .filter((r) => {
