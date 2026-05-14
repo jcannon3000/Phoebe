@@ -53,6 +53,54 @@ async function createAllDayCalendarEvent(userId: number, opts: Parameters<typeof
   return _createAllDayCalendarEvent(userId, { ...opts, attendees });
 }
 
+// ─── Moment management auth ──────────────────────────────────────────────────
+//
+// "Can this user manage (edit / archive / delete) this moment?"
+//
+//   - The creator (smallest-id token, identified by email) always can.
+//   - Any admin or hidden-admin of the moment's PRIMARY group also can.
+//     This is the rule the user spec'd for community intercessions:
+//     once an admin schedules one in their parish, every other admin
+//     of that parish can edit or delete it.
+//   - Admins of SECONDARY (junction) groups do NOT inherit edit/delete.
+//     They can only detach their own group via
+//     DELETE /moments/:id/groups/:groupId.
+//
+// Used by PATCH /moments/:id, PATCH /moments/:id/goal,
+// PATCH /moments/:id/archive, PATCH /moments/:id/unarchive,
+// DELETE /moments/:id.
+async function canManageMoment(opts: {
+  userId: number;
+  userEmail: string;
+  momentId: number;
+  primaryGroupId: number | null;
+}): Promise<boolean> {
+  // Creator check — same "smallest-id token by email" rule used
+  // throughout the moments routes (line 3704, line 2630).
+  const tokens = await db
+    .select({ id: momentUserTokensTable.id, email: momentUserTokensTable.email })
+    .from(momentUserTokensTable)
+    .where(eq(momentUserTokensTable.momentId, opts.momentId));
+  if (tokens.length > 0) {
+    const creator = tokens.reduce((min, t) => (t.id < min.id ? t : min), tokens[0]);
+    if (creator.email.toLowerCase() === opts.userEmail.toLowerCase()) return true;
+  }
+  // Primary-group admin check.
+  if (opts.primaryGroupId != null) {
+    const [adminRow] = await db
+      .select({ id: groupMembersTable.id })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, opts.primaryGroupId),
+        eq(groupMembersTable.userId, opts.userId),
+        sql`${groupMembersTable.role} IN ('admin', 'hidden_admin')`,
+      ))
+      .limit(1);
+    if (adminRow) return true;
+  }
+  return false;
+}
+
 // Monastic wisdom: depth over breadth. A person may only hold three Lectio
 // Divina groups at once — the discipline is to go deep with a few, not shallow
 // with many.
@@ -3698,14 +3746,17 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
 
-  // Only the creator can edit
-  const allTokens = await db.select().from(momentUserTokensTable)
-    .where(eq(momentUserTokensTable.momentId, momentId));
-  const creatorToken = allTokens.length > 0
-    ? allTokens.reduce((min, t) => t.id < min.id ? t : min, allTokens[0])
-    : null;
-  const isCreator = creatorToken?.email?.toLowerCase() === user.email.toLowerCase();
-  if (!isCreator) { res.status(403).json({ error: "Forbidden" }); return; }
+  // Creator OR admin of the primary group can edit. For a community
+  // intercession scheduled inside a parish, every admin of that parish
+  // can adjust the prayer or its schedule — not only the person who
+  // happened to tap "create."
+  const canManage = await canManageMoment({
+    userId: sessionUserId,
+    userEmail: user.email,
+    momentId,
+    primaryGroupId: moment.groupId,
+  });
+  if (!canManage) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const parsed = EditMomentSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return; }
@@ -3820,10 +3871,15 @@ router.patch("/moments/:id/goal", async (req, res): Promise<void> => {
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
 
-  const allTokens = await db.select().from(momentUserTokensTable)
-    .where(eq(momentUserTokensTable.momentId, momentId));
-  const isMember = allTokens.some(t => t.email === user.email);
-  if (!isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+  // Goal changes (extend, tend-freely) are management actions —
+  // creator OR primary-group admin. Matches PATCH /moments/:id.
+  const canManage = await canManageMoment({
+    userId: sessionUserId,
+    userEmail: user.email,
+    momentId,
+    primaryGroupId: moment.groupId,
+  });
+  if (!canManage) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const parsed = UpdateGoalSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Validation failed" }); return; }

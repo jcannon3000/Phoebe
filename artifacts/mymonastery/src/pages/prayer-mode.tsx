@@ -1986,7 +1986,14 @@ export default function PrayerModePage() {
       feedSlug: e.feedSlug,
       feedEntryDate: new Date().toISOString().slice(0, 10),
       feedEntrySlot: e.slot,
-      alreadyPrayedToday: e.prayedToday === true,
+      // Always false for feed-authored intercessions (e.g. Phoebe
+      // Climate). The resume-position logic uses this flag to jump
+      // past already-prayed slides on entry — but for the climate /
+      // feed intercessions the user wants to keep seeing them every
+      // time they enter the slideshow, even if they tapped Amen
+      // earlier today. "Not today" gives them the per-slide skip
+      // hatch if they don't want to pray it a second time.
+      alreadyPrayedToday: false,
     })),
     // Other people's prayer requests come before the user's own private
     // prayers-for — hearing others first, then turning inward. We
@@ -2790,14 +2797,24 @@ export default function PrayerModePage() {
         )}
       </div>
 
-      {/* "Not today" skip link, below the Amen pulse, on request
-          slides only. Lets the viewer pass on a particular ask
-          without closing the slideshow — a small relief valve so
-          they can keep going. Restored per user direction; was
-          previously removed because it inflated the "prayed today"
-          dashboard count, but the count semantics are now derived
-          from amen rows directly so a skip doesn't poison anything. */}
-      {phase === "prayer" && displaySlides[index]?.kind === "request" && (
+      {/* "Not today" skip link, below the Amen pulse. Lets the viewer
+          pass on a particular slide without closing the slideshow —
+          a small relief valve so they can keep going. Surfaces on
+          request, intercession, and circle-intention slides; the
+          ask/closing/etc. slides have their own primary action and
+          don't need a separate skip. The count semantics are derived
+          from amen rows directly so a skip doesn't poison the dashboard
+          rollups.
+          Per user direction this was expanded from request-only to
+          also include intercession slides — particularly important
+          for the climate / community intercessions, which keep
+          surfacing even after the user has prayed them earlier today
+          (see alreadyPrayedToday: false above) so the user needs a
+          per-slide way to opt out of seeing one again. */}
+      {phase === "prayer" &&
+        (displaySlides[index]?.kind === "request"
+          || displaySlides[index]?.kind === "intercession"
+          || displaySlides[index]?.kind === "circle-intention") && (
         <div
           className="absolute left-0 right-0 flex justify-center pointer-events-none"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 130px)" }}
