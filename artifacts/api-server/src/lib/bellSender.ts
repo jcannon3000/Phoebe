@@ -86,13 +86,22 @@ export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<
   // collapsed back into the regular dashboard / prayer-mode flow:
   // climate users see feed-scoped intercessions in their normal slideshow,
   // so the regular morning bell is the right (and only) push to fire.
+  //
+  // Skip users who have set their OWN office reminder (Reminders pill
+  // in Settings → parish_office_morning_pref / parish_office_evening_pref
+  // != 'none'). They already get sendParishOfficeReminderPush at their
+  // chosen time downstream; the 9 AM bell would be a duplicate.
   const bellUsers = await db
     .select({
       id: usersTable.id,
       email: usersTable.email,
       timezone: usersTable.timezone,
     })
-    .from(usersTable);
+    .from(usersTable)
+    .where(and(
+      sql`(${usersTable.parishOfficeMorningPref} IS NULL OR ${usersTable.parishOfficeMorningPref} = 'none')`,
+      sql`(${usersTable.parishOfficeEveningPref} IS NULL OR ${usersTable.parishOfficeEveningPref} = 'none')`,
+    ));
 
   if (bellUsers.length === 0) return;
 
