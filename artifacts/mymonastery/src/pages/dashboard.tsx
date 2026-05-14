@@ -4575,22 +4575,15 @@ export default function Dashboard() {
                    not "walk through the slideshow every day." */}
           {filter === null && (
             <>
-              {/* "X prayer requests waiting" sits at the TOP of the
-                  home — beta users get the parish-weekly card, others
-                  get the count card. Always above the office card so
-                  the urgent "someone is waiting for your prayer" beat
-                  reads first. */}
-              {isBeta ? (
-                <div className="mt-5">
-                  <ParishWeeklyCard />
-                </div>
-              ) : (
-                newPrayersCount > 0 && (
-                  <div className="mt-5">
-                    <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
-                  </div>
-                )
-              )}
+              {/* "This week's prayer list" — the parish-weekly card,
+                  promoted from beta to the default for everyone. Sits
+                  at the TOP of the home, above the office card, so
+                  the "someone is waiting for your prayer" beat reads
+                  first. Hides itself when the parish has no active
+                  prayer for the week (see ParishWeeklyCard). */}
+              <div className="mt-5">
+                <ParishWeeklyCard />
+              </div>
               <div className="mt-3">
                 <PrayerOfficeCard />
               </div>
