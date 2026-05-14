@@ -1970,7 +1970,7 @@ function NewPrayerRequestsCard({
 // Office picker uses for "today's office."
 function PrayerOfficeCard() {
   const isMorning = new Date().getHours() < 12;
-  const eyebrow = "Daily Prayer with the Book of Common Prayer";
+  const eyebrow = "Book of Common Prayer";
   // Office-streak pill above the CTA. Same data source as before,
   // just the prefs lookup — no longer used to pick a "big" CTA.
   const { data: officePrefs } = useQuery<{
@@ -2076,7 +2076,7 @@ function PrayerOfficeCard() {
               the eyebrow itself enough breathing room from the top
               of the card, but the title doesn't need a separate
               gap — eyebrow + title read as a paired unit. */}
-          <div className="flex items-center gap-2 -mt-1">
+          <div className="flex items-center justify-between gap-2 -mt-1">
             <p
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
