@@ -1500,6 +1500,9 @@ export default function PrayerModePage() {
       learnMoreUrl: string | null;
       isRecurring: boolean;
       prayedToday: boolean;
+      groups: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
+      prayedBy: Array<{ name: string; avatarUrl: string | null }>;
+      prayedTodayCount: number;
     }>;
   }>({
     queryKey: ["/api/prayer-feeds/today"],
@@ -1971,11 +1974,25 @@ export default function PrayerModePage() {
       text: e.title,
       intention: null,
       fullText: e.body?.trim() || null,
-      attribution: e.feedTitle ? `from ${e.feedTitle}` : "",
-      // Reuse the feed-tag pill — feedTitle reads as the tag for
-      // a feed-authored intercession (e.g. "Phoebe Climate"). Falls
-      // back to the title untouched.
-      feedTag: e.feedTitle || null,
+      // Drop the "from {feedTitle}" attribution + the single feed-
+      // tag pill; the community pills below carry the same provenance
+      // (these feeds are linked to communities via prayer_feed_groups)
+      // and read with more identity than a generic feed name.
+      attribution: "",
+      feedTag: null,
+      // Community pills + face stack on feed-authored intercessions.
+      // Server attaches every group linked to this feed via
+      // prayer_feed_groups so a single "Phoebe Climate" feed renders
+      // as the actual communities carrying it (e.g. NYC Leaders ·
+      // Heavenly Rest · …). communityFaces / weekPrayCount are
+      // populated from prayer_feed_prayers rows for THIS entry today.
+      groups: e.groups,
+      communityFaces: e.prayedBy.map((p) => ({
+        name: p.name,
+        email: p.name,
+        avatarUrl: p.avatarUrl,
+      })),
+      weekPrayCount: e.prayedTodayCount,
       learnMoreUrl: e.learnMoreUrl?.trim() || null,
       // Carry the feed origin so the Amen handler can POST to
       // /api/prayer-feeds/:slug/entries/:date/pray on tap. We

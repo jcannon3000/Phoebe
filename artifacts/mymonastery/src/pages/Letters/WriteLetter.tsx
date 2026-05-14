@@ -15,6 +15,13 @@ interface LetterRef {
   authorEmail: string;
   authorName: string;
   sentAt: string;
+  // The full letter body. Surfaced when displaying the most recent
+  // letter from the other side(s) above the compose textarea so the
+  // writer can re-read what they're responding to before they write.
+  // The /letters/correspondences/:id endpoint already returns this;
+  // we just declare it on the client type.
+  content?: string;
+  periodStartDate?: string;
 }
 
 interface CorrespondenceBasic {
@@ -319,13 +326,20 @@ export default function WriteLetter() {
     wordCount <= maxWords &&
     !sendMutation.isPending &&
     !isWaitingForWindow;
-  const waitingDays = (() => {
-    if (!isOverdue || !correspondence?.letters?.length) return 0;
-    const otherLast = [...correspondence.letters]
+  // The most recent letter from the other side(s) — used as the
+  // "you're responding to this" preview rendered above the compose
+  // textarea, and as the source of the overdue-waiting-days count.
+  // Skips the viewer's own letters; sorted newest-first.
+  const respondingTo = (() => {
+    if (!correspondence?.letters?.length) return null;
+    const others = correspondence.letters
       .filter((l) => l.authorEmail !== user?.email)
-      .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())[0];
-    if (!otherLast) return 0;
-    const then = new Date(otherLast.sentAt);
+      .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    return others[0] ?? null;
+  })();
+  const waitingDays = (() => {
+    if (!isOverdue || !respondingTo) return 0;
+    const then = new Date(respondingTo.sentAt);
     then.setHours(0, 0, 0, 0);
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -489,6 +503,61 @@ export default function WriteLetter() {
           </div>
         )}
       </div>
+
+      {/* "You're responding to this" — the most recent letter from
+          the other side(s) of the correspondence, rendered above the
+          compose textarea so the writer can re-read what they're
+          replying to without leaving the page. Scrolls naturally
+          into the textarea below. Skipped when there's no prior
+          letter (the very first letter of a thread). */}
+      {respondingTo && respondingTo.content && (
+        <div className="px-6 pt-6 max-w-3xl mx-auto w-full">
+          <div
+            className="rounded-2xl px-5 py-5"
+            style={{
+              background: "#FBF8F2",
+              border: "1px solid #EDE6D9",
+              boxShadow: "0 1px 0 rgba(44,24,16,0.04)",
+            }}
+          >
+            <div className="flex items-baseline justify-between gap-3 mb-2">
+              <p
+                className="text-[11px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: "#9a9390" }}
+              >
+                You're responding to
+              </p>
+              <p className="text-[11px]" style={{ color: "#9a9390" }}>
+                {new Date(respondingTo.sentAt).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </p>
+            </div>
+            <p
+              className="text-sm font-semibold mb-2"
+              style={{ color: "#2C1810", fontFamily: "Space Grotesk, sans-serif" }}
+            >
+              {respondingTo.authorName || respondingTo.authorEmail}
+            </p>
+            <p
+              className="text-[15px] leading-relaxed whitespace-pre-wrap"
+              style={{
+                color: "#2C1810",
+                fontFamily: "Georgia, 'Times New Roman', serif",
+              }}
+            >
+              {respondingTo.content}
+            </p>
+          </div>
+          <div
+            className="flex items-center justify-center mt-4 mb-2 text-[12px]"
+            style={{ color: "#9a9390" }}
+          >
+            <span>↓ Write your reply below ↓</span>
+          </div>
+        </div>
+      )}
 
       {/* Writing area — auto-growing textarea in normal document flow.
           A trailing spacer (sized to keyboard + a full screen) gives

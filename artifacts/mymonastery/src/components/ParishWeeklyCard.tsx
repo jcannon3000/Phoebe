@@ -143,8 +143,21 @@ function ViewPill() {
 }
 
 function AvatarStack({ entries, max = 6 }: { entries: ParishWeeklyEntry[]; max?: number }) {
-  const shown = entries.slice(0, max);
-  const extra = entries.length - shown.length;
+  // Dedupe by author so a peer with multiple active requests shows
+  // once in the avatar row instead of twice. We key on the request
+  // userId for request entries; intercessions + feed-entries have
+  // no person attached so we fall back to the entry id (their
+  // visual identity is the moment/feed itself, not a face).
+  const seenKeys = new Set<string>();
+  const unique: ParishWeeklyEntry[] = [];
+  for (const e of entries) {
+    const key = e.kind === "request" ? `u-${e.userId}` : `e-${e.id}`;
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    unique.push(e);
+  }
+  const shown = unique.slice(0, max);
+  const extra = unique.length - shown.length;
   return (
     <div className="flex items-center">
       <div className="flex -space-x-2">
@@ -184,14 +197,44 @@ export function ParishWeeklyCard() {
   const next = data?.unprayed[0];
 
   // Headline copy varies by composition of the unprayed list:
-  //   • All requests, one person → "Pray for Sara"
-  //   • Mixed sources → "N prayers waiting this week"
+  //   • All from one person → "Pray for {name}"  (subtitle counts)
+  //   • Two people, requests only → "Pray for {A} and {B}"
+  //   • Three people, requests only → "Pray for {A}, {B}, and {C}"
+  //   • More than three OR mixed sources → "N prayers waiting this week"
   const unprayedRequestsOnly = (data?.unprayed ?? []).every(e => e.kind === "request");
+  // First-name list, deduped, preserving order of first appearance.
+  // Used by both headline + subtitle to name who's waiting.
+  const unprayedRequesterFirstNames = (() => {
+    const seen = new Set<number>();
+    const names: string[] = [];
+    for (const e of data?.unprayed ?? []) {
+      if (e.kind !== "request") continue;
+      if (seen.has(e.userId)) continue;
+      seen.add(e.userId);
+      names.push(e.title.split(/\s+/)[0] || e.title);
+    }
+    return names;
+  })();
+  const unprayedSingleOwner =
+    unprayedRequestsOnly && unprayedRequesterFirstNames.length === 1;
+  function joinList(names: string[]): string {
+    if (names.length === 0) return "";
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} and ${names[1]}`;
+    return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+  }
   const headline = (() => {
     if (allPrayed) return "You've held your community this week 🌿";
     const n = data?.unprayed.length ?? 0;
-    if (n === 1 && unprayedRequestsOnly && next?.kind === "request") {
+    if (unprayedSingleOwner && next?.kind === "request") {
       return `Pray for ${next.title}`;
+    }
+    if (
+      unprayedRequestsOnly &&
+      unprayedRequesterFirstNames.length >= 2 &&
+      unprayedRequesterFirstNames.length <= 3
+    ) {
+      return `Pray for ${joinList(unprayedRequesterFirstNames)}`;
     }
     return `${n} ${n === 1 ? "prayer" : "prayers"} waiting this week`;
   })();
@@ -273,19 +316,32 @@ export function ParishWeeklyCard() {
             >
               {(() => {
                 const n = data?.unprayed.length ?? 0;
-                // When the unprayed list is exactly one person, name
-                // them — the headline does too, but the subtitle
-                // frames the "this is new" beat the headline can't
-                // carry on its own.
-                if (n === 1 && unprayedRequestsOnly && next?.kind === "request") {
+                // Single owner — even if they posted multiple requests
+                // this week — gets the named-person framing so the
+                // subtitle reads as a continuation of the headline.
+                if (unprayedSingleOwner && next?.kind === "request") {
                   const firstName = next.title.split(/\s+/)[0] || next.title;
-                  return `${firstName} has a new prayer this week you haven't prayed for yet.`;
+                  if (n === 1) {
+                    return `${firstName} has a new prayer this week you haven't prayed for yet.`;
+                  }
+                  return `${firstName} has ${n} new prayers this week you haven't prayed for yet.`;
+                }
+                // 2–3 named requesters echo the headline ("Pray for
+                // Anabelle and Test" → "Anabelle and Test have new
+                // prayers this week…"). Mention the total prayer
+                // count so a person with multiple requests doesn't
+                // get under-represented.
+                if (
+                  unprayedRequestsOnly &&
+                  unprayedRequesterFirstNames.length >= 2 &&
+                  unprayedRequesterFirstNames.length <= 3
+                ) {
+                  const joined = joinList(unprayedRequesterFirstNames);
+                  return `${joined} have ${n} new ${n === 1 ? "prayer" : "prayers"} this week you haven't prayed for yet.`;
                 }
                 if (n > 1) {
                   return `${n} new prayers this week you haven't prayed for yet.`;
                 }
-                // n === 0 here only happens if the data shape is
-                // inconsistent (allPrayed branch would've fired).
                 return "Your community is asking your prayers.";
               })()}
             </p>

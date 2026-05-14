@@ -226,7 +226,7 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
     // slideshow renders one pill per group instead of a single feed
     // tag, so the viewer sees which of THEIR communities is carrying
     // today's intercession together.
-    groups: Array<{ id: number; name: string; emoji: string | null }>;
+    groups: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
     // Up to 7 distinct users who prayed THIS entry today. Used by
     // the slideshow's avatar stack + "N have prayed this today" line.
     // Empty for recurring rows (we'd need to know which "instance" to
@@ -247,12 +247,13 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
       .select({
         id: groupsTable.id,
         name: groupsTable.name,
+        slug: groupsTable.slug,
         emoji: groupsTable.emoji,
       })
       .from(prayerFeedGroupsTable)
       .innerJoin(groupsTable, eq(groupsTable.id, prayerFeedGroupsTable.groupId))
       .where(eq(prayerFeedGroupsTable.feedId, feedId));
-    return rows.map((r) => ({ id: r.id, name: r.name, emoji: r.emoji }));
+    return rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug, emoji: r.emoji }));
   }
 
   for (const s of subs) {
@@ -312,6 +313,40 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
       prayedConcreteIds = new Set(prayed.map((p) => p.entryId));
     }
 
+    // Communities this feed is linked to via prayer_feed_groups. The
+    // slideshow renders one pill per community in place of a single
+    // feed-tag chip.
+    const feedGroups = await loadGroupsForFeed(s.feedId);
+
+    // Per-entry "who prayed this today" roster. Only meaningful for
+    // concrete entries (recurring rows have no per-day identity until
+    // a prayer is logged). Capped at 7 distinct users; ordered most
+    // recent first. Same query backs the slide's avatar stack.
+    const prayedByByEntry = new Map<number, Array<{ name: string; avatarUrl: string | null }>>();
+    const prayedCountByEntry = new Map<number, number>();
+    if (concreteIds.length > 0) {
+      const todayLocal = todayInZone(s.feedTimezone);
+      const rows = await db
+        .select({
+          entryId: prayerFeedPrayersTable.entryId,
+          name: usersTable.name,
+          avatarUrl: usersTable.avatarUrl,
+        })
+        .from(prayerFeedPrayersTable)
+        .innerJoin(usersTable, eq(usersTable.id, prayerFeedPrayersTable.userId))
+        .where(and(
+          inArray(prayerFeedPrayersTable.entryId, concreteIds),
+          eq(prayerFeedPrayersTable.dayLocal, todayLocal),
+        ));
+      for (const r of rows) {
+        if (r.entryId == null) continue;
+        const list = prayedByByEntry.get(r.entryId) ?? [];
+        if (list.length < 7) list.push({ name: r.name ?? "", avatarUrl: r.avatarUrl ?? null });
+        prayedByByEntry.set(r.entryId, list);
+        prayedCountByEntry.set(r.entryId, (prayedCountByEntry.get(r.entryId) ?? 0) + 1);
+      }
+    }
+
     for (const m of [...bySlot.values()].sort((a, b) => a.slot - b.slot)) {
       out.push({
         id: m.id,
@@ -325,6 +360,9 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
         learnMoreUrl: m.learnMoreUrl,
         isRecurring: m.isRecurring,
         prayedToday: !m.isRecurring && prayedConcreteIds.has(m.id),
+        groups: feedGroups,
+        prayedBy: m.isRecurring ? [] : (prayedByByEntry.get(m.id) ?? []),
+        prayedTodayCount: m.isRecurring ? 0 : (prayedCountByEntry.get(m.id) ?? 0),
       });
     }
   }

@@ -222,19 +222,19 @@ export async function getParishWeekly(userId: number): Promise<ParishWeeklyResul
           )!,
         ))
         .orderBy(desc(prayerRequestsTable.createdAt));
-      // Collapse to one per owner (most recent).
-      const byOwner = new Map<number, typeof requestRows[number]>();
-      for (const r of requestRows) {
-        if (!byOwner.has(r.ownerId)) byOwner.set(r.ownerId, r);
-      }
-      const ownerIds = Array.from(byOwner.keys());
+      // Each prayer request gets its own entry — we used to collapse
+      // by owner so the same person appeared only once, but that
+      // hid the fact that one peer might be carrying multiple things
+      // at once. The client dedupes avatars in the stack so the
+      // visual roster still reads as "people" not "requests."
+      const ownerIds = [...new Set(requestRows.map(r => r.ownerId))];
       if (ownerIds.length > 0) {
         const peers = await db
           .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
           .from(usersTable)
           .where(inArray(usersTable.id, ownerIds));
         const peerById = new Map(peers.map(p => [p.id, p]));
-        const requestIds = ownerIds.map(oid => byOwner.get(oid)!.id);
+        const requestIds = requestRows.map(r => r.id);
         const myAmens = await db
           .select({
             requestId: prayerRequestAmensTable.requestId,
@@ -253,9 +253,8 @@ export async function getParishWeekly(userId: number): Promise<ParishWeeklyResul
             prayedRequestIds.set(a.requestId, a.prayedAt);
           }
         }
-        for (const ownerId of ownerIds) {
-          const req = byOwner.get(ownerId)!;
-          const peer = peerById.get(ownerId);
+        for (const req of requestRows) {
+          const peer = peerById.get(req.ownerId);
           const prayedAt = prayedRequestIds.get(req.id) ?? null;
           const entry: ParishWeeklyEntry = {
             kind: "request",
@@ -265,7 +264,7 @@ export async function getParishWeekly(userId: number): Promise<ParishWeeklyResul
             avatarUrl: peer?.avatarUrl ?? null,
             emoji: null,
             prayedAt: prayedAt ? new Date(prayedAt).toISOString() : null,
-            userId: ownerId,
+            userId: req.ownerId,
             request: {
               id: req.id,
               body: req.body,
