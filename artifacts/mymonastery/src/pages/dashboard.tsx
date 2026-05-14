@@ -3649,18 +3649,18 @@ export default function Dashboard() {
   // tz, which is the bug they reported. Reciprocity gate dropped —
   // see pendingPrayerCount note above.
   const newPrayersCount = useMemo(() => {
-    const requestCount = (dashPrayerRequests ?? []).filter(
+    // "N prayer requests waiting" must literally count prayer
+    // requests — the queue=new slideshow target only renders the
+    // request branch (lines ~1821 in prayer-mode.tsx). Previously we
+    // were also counting community intercessions, which inflated the
+    // headline ("3 prayer requests waiting") but produced an empty
+    // slideshow on tap (Respond → no slides) because intercessions
+    // aren't included in queue=new. Intercessions surface in their
+    // own home cards / the main slideshow already.
+    return (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
     ).length;
-    // Community intercessions the viewer hasn't prayed for today count
-    // toward "new prayers" the same way a fresh prayer request does. A
-    // group admin scheduling an intercession should land as a visible
-    // new prayer on the home screen, not just a push notification.
-    const intercessionCount = (momentsData?.moments ?? []).filter(
-      m => m.templateType === "intercession" && !m.myLoggedToday,
-    ).length;
-    return requestCount + intercessionCount;
-  }, [dashPrayerRequests, momentsData]);
+  }, [dashPrayerRequests]);
 
   // Sync the iOS app-icon badge to the live unprayed count whenever
   // the dashboard's data settles. Without this the badge could only
