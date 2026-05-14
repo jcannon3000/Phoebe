@@ -2050,7 +2050,7 @@ function PrayerOfficeCard() {
         border: "1px solid rgba(46,107,64,0.20)",
       }}
       >
-        <div className="flex-1 px-4 pt-0.5 pb-2.5">
+        <div className="flex-1 px-4 pt-3 pb-2.5">
           <div className="flex items-start justify-between gap-2">
             <p
               className="text-[11px] font-semibold uppercase tracking-widest"
@@ -2071,7 +2071,12 @@ function PrayerOfficeCard() {
               Reminders
             </Link>
           </div>
-          <div className="flex items-start justify-between gap-2">
+          {/* -mt-1 pulls the title up so it sits closer to the
+              "This morning" eyebrow above it. The outer pt-3 gives
+              the eyebrow itself enough breathing room from the top
+              of the card, but the title doesn't need a separate
+              gap — eyebrow + title read as a paired unit. */}
+          <div className="flex items-start justify-between gap-2 -mt-1">
             <p
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
