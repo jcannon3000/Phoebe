@@ -25,7 +25,8 @@ import {
 } from "@workspace/db";
 import { z } from "zod/v4";
 import crypto from "crypto";
-import { sendAnnouncementEmail } from "../lib/email";
+import { sendAnnouncementEmail, sendPrayerInviteEmail } from "../lib/email";
+import { getInviteBaseUrl } from "../lib/urls";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
 import {
@@ -33,6 +34,7 @@ import {
   sendCommunityJoinRequestPush,
   sendCommunityJoinAcceptedPush,
   sendNewPrayerRequestPush,
+  sendPrayerInvitePush,
 } from "../lib/pushSender";
 import { pool } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
@@ -927,6 +929,147 @@ router.post("/groups/:slug/rotate-invite", async (req, res): Promise<void> => {
   await db.update(groupsTable).set({ inviteToken: newToken })
     .where(eq(groupsTable.id, result.group.id));
   res.json({ ok: true, inviteToken: newToken });
+});
+
+// ── "How can I pray for you?" community prompt ─────────────────────────
+//
+// An admin asks every joined member of their group to share something
+// the community can hold for them in prayer this week. Each push deep-
+// links to /community/:slug/share-prayer where the member's response
+// becomes a regular prayer request (visible to their full garden via
+// the existing visibility rules).
+//
+// Rate limit: once per 7 days per group. The DB column groups.
+// last_prayer_invite_at is stamped on successful send; before the 7-day
+// window elapses the POST returns 429. GET returns the next eligible
+// timestamp so the client can render "Available in N days."
+const PRAYER_INVITE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
+router.get("/groups/:slug/prayer-invite-status", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+
+  const last = result.group.lastPrayerInviteAt;
+  const nextEligibleAt = last
+    ? new Date(new Date(last).getTime() + PRAYER_INVITE_COOLDOWN_MS)
+    : null;
+  const available = !nextEligibleAt || nextEligibleAt.getTime() <= Date.now();
+  res.json({
+    available,
+    lastSentAt: last ? new Date(last).toISOString() : null,
+    nextEligibleAt: nextEligibleAt ? nextEligibleAt.toISOString() : null,
+  });
+});
+
+router.post("/groups/:slug/prayer-invite", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const result = await requireAdmin(req.params.slug, user.id);
+  if (!result) { res.status(403).json({ error: "Admin access required" }); return; }
+
+  const last = result.group.lastPrayerInviteAt;
+  if (last && (Date.now() - new Date(last).getTime()) < PRAYER_INVITE_COOLDOWN_MS) {
+    const nextEligibleAt = new Date(new Date(last).getTime() + PRAYER_INVITE_COOLDOWN_MS);
+    res.status(429).json({
+      error: "You can send this once every 7 days.",
+      nextEligibleAt: nextEligibleAt.toISOString(),
+    });
+    return;
+  }
+
+  // Resolve every joined member of the group except the sending admin
+  // themself (don't push the admin their own prompt). Hidden-admins are
+  // excluded too — they're observers, not part of the community's
+  // pastoral round. We also pull name + email + the per-user email
+  // dedup column so the email fan-out can skip anyone who's already
+  // received a prayer-invite email today from a sibling group.
+  const recipients = await db
+    .select({
+      userId: groupMembersTable.userId,
+      name: usersTable.name,
+      email: usersTable.email,
+      lastEmailDate: usersTable.lastPrayerInviteEmailDate,
+    })
+    .from(groupMembersTable)
+    .innerJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
+    .where(
+      and(
+        eq(groupMembersTable.groupId, result.group.id),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        sql`${groupMembersTable.role} <> 'hidden_admin'`,
+        sql`${groupMembersTable.userId} <> ${user.id}`,
+      ),
+    );
+
+  // Stamp the rate-limit column BEFORE the fan-out. Two reasons:
+  //   1. A burst of fast taps from the admin can't kick off two
+  //      parallel fan-outs while the first is still in flight.
+  //   2. Even if push delivery partially fails, the admin doesn't
+  //      get to retry within the 7-day window and double-spam the
+  //      community.
+  await db
+    .update(groupsTable)
+    .set({ lastPrayerInviteAt: new Date() })
+    .where(eq(groupsTable.id, result.group.id));
+
+  // Today's UTC date (YYYY-MM-DD) for the per-user email dedup. Using
+  // UTC rather than user-local: the concept of "did they get this
+  // today" is loose enough that timezone precision doesn't matter, and
+  // a single yardstick makes the check trivial.
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  const adminName = user.name ?? "Someone";
+  const shareUrl = `${getInviteBaseUrl()}/communities/${result.group.slug}/share-prayer`;
+
+  // Fire-and-forget per-recipient delivery. Push always fires (it's
+  // per-group, not per-user). Email is gated by the daily dedup so a
+  // user in N groups gets at most one of these emails per day. We
+  // stamp the dedup column inside the inner promise so concurrent
+  // dispatches in the same fan-out don't double-send.
+  void Promise.all(
+    recipients
+      .filter((r) => typeof r.userId === "number")
+      .map(async (r) => {
+        const uid = r.userId as number;
+        try {
+          await sendPrayerInvitePush(uid, {
+            groupSlug: result.group.slug,
+            groupName: result.group.name,
+            adminName,
+          });
+        } catch (err) {
+          console.warn("[prayer-invite] push failed:", { userId: uid, err });
+        }
+        if (r.email && r.lastEmailDate !== todayUtc) {
+          try {
+            const sent = await sendPrayerInviteEmail({
+              to: r.email,
+              recipientName: r.name ?? "",
+              adminName,
+              groupName: result.group.name,
+              shareUrl,
+            });
+            if (sent) {
+              await db
+                .update(usersTable)
+                .set({ lastPrayerInviteEmailDate: todayUtc })
+                .where(eq(usersTable.id, uid));
+            }
+          } catch (err) {
+            console.warn("[prayer-invite] email failed:", { userId: uid, err });
+          }
+        }
+      }),
+  );
+
+  res.json({
+    ok: true,
+    sentToCount: recipients.length,
+    nextEligibleAt: new Date(Date.now() + PRAYER_INVITE_COOLDOWN_MS).toISOString(),
+  });
 });
 
 // PATCH /api/groups/:slug — update group (admin only)

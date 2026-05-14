@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText, HandHeart } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { MomentCard, type Moment } from "@/pages/dashboard";
@@ -375,6 +375,171 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 // ─── Service-time pill row ────────────────────────────────────────────────
 // One pill per service time, rendered on a single line. When the row
 // overflows the container width (narrow phone + many times) we switch to
+// Admin-only "Ask your community: how can I pray for you?" card.
+// Sends a push + email to every joined member (per-user dedup on the
+// email side), rate-limited server-side to once per 7 days. Card body
+// state mirrors the cooldown:
+//   • Available → primary action button is live
+//   • Cooldown → button disabled, subtitle shows "Available in N days"
+function PrayerInviteCard({ slug }: { slug: string }) {
+  const qc = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [justSent, setJustSent] = useState(false);
+
+  const { data: status, isLoading } = useQuery<{
+    available: boolean;
+    lastSentAt: string | null;
+    nextEligibleAt: string | null;
+  }>({
+    queryKey: [`/api/groups/${slug}/prayer-invite-status`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-invite-status`),
+    enabled: !!slug,
+  });
+
+  const sendMutation = useMutation<
+    { ok: boolean; sentToCount: number; nextEligibleAt: string },
+    Error,
+    void
+  >({
+    mutationFn: () => apiRequest("POST", `/api/groups/${slug}/prayer-invite`),
+    onSuccess: () => {
+      setJustSent(true);
+      setConfirming(false);
+      qc.invalidateQueries({ queryKey: [`/api/groups/${slug}/prayer-invite-status`] });
+    },
+    onError: (err) => {
+      setError(err.message || "Couldn't send the prompt. Try again?");
+    },
+  });
+
+  const daysLeft = (() => {
+    if (!status?.nextEligibleAt) return 0;
+    const ms = new Date(status.nextEligibleAt).getTime() - Date.now();
+    if (ms <= 0) return 0;
+    return Math.ceil(ms / (24 * 60 * 60 * 1000));
+  })();
+
+  const available = status?.available ?? false;
+
+  return (
+    <>
+      <div
+        className="rounded-xl px-4 py-3.5 mb-4"
+        style={{
+          background: "rgba(46,107,64,0.08)",
+          border: "1px solid rgba(46,107,64,0.22)",
+        }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-1"
+              style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
+            >
+              Ask your community
+            </p>
+            <p
+              className="text-base font-semibold"
+              style={{ color: "#F0EDE6", fontFamily: FONT, margin: 0 }}
+            >
+              How can I pray for you?
+            </p>
+            <p
+              className="text-[12px] mt-1 leading-relaxed"
+              style={{ color: "rgba(168,197,160,0.7)", fontFamily: FONT }}
+            >
+              {justSent
+                ? "Sent. Members will get a push + email."
+                : isLoading
+                  ? "…"
+                  : available
+                    ? "Sends a push + email to every member. You can send this once every 7 days."
+                    : `Available in ${daysLeft} ${daysLeft === 1 ? "day" : "days"}.`}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setError(null);
+              setConfirming(true);
+            }}
+            disabled={!available || sendMutation.isPending || justSent}
+            className="shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-opacity disabled:opacity-40"
+            style={{
+              background: "#2D5E3F",
+              color: "#F0EDE6",
+              fontFamily: FONT,
+            }}
+          >
+            <HandHeart size={13} className="inline mr-1" /> Send
+          </button>
+        </div>
+      </div>
+
+      {confirming && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-5"
+          style={{ background: "rgba(9,26,16,0.85)" }}
+          onClick={() => !sendMutation.isPending && setConfirming(false)}
+        >
+          <div
+            className="rounded-2xl px-6 py-6 max-w-sm w-full"
+            style={{
+              background: "#0F2818",
+              border: "1px solid rgba(46,107,64,0.4)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p
+              className="text-lg font-semibold mb-2"
+              style={{ color: "#F0EDE6", fontFamily: FONT }}
+            >
+              Send to your community?
+            </p>
+            <p
+              className="text-sm mb-6 leading-relaxed"
+              style={{ color: "rgba(168,197,160,0.85)", fontFamily: FONT }}
+            >
+              Every member will get a push notification + email asking how the community can pray for them this week. You can only send this once every 7 days.
+            </p>
+            {error && (
+              <p className="text-xs mb-3" style={{ color: "#F87171", fontFamily: FONT }}>
+                {error}
+              </p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirming(false)}
+                disabled={sendMutation.isPending}
+                className="px-4 py-2 rounded-full text-sm font-semibold transition-opacity"
+                style={{
+                  background: "rgba(143,175,150,0.12)",
+                  color: "#8FAF96",
+                  fontFamily: FONT,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => sendMutation.mutate()}
+                disabled={sendMutation.isPending}
+                className="px-4 py-2 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60"
+                style={{
+                  background: "#2D5E3F",
+                  color: "#F0EDE6",
+                  fontFamily: FONT,
+                }}
+              >
+                {sendMutation.isPending ? "Sending…" : "Send"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // an auto-scroll ticker so the pills stay legible instead of wrapping or
 // clipping. Mirrors the dashboard's ServiceTimesPillRow verbatim so the
 // card looks identical to the one on the home screen.
@@ -1322,6 +1487,11 @@ export default function CommunityDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Admin-only — "How can I pray for you?" community prompt.
+            Sends a push + email to every joined member; rate-limited
+            to once per 7 days server-side. Hidden for non-admins. */}
+        {isAdmin && <PrayerInviteCard slug={slug} />}
 
         {/* ── Prayer Circle intentions ──────────────────────────────────
             For circle groups, surface every active intention as its own card

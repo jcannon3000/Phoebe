@@ -109,6 +109,14 @@ export const usersTable = pgTable("users", {
   // we only push once per local day. NULL = never sent.
   parishOfficeMorningSentDate: text("parish_office_morning_sent_date"),
   parishOfficeEveningSentDate: text("parish_office_evening_sent_date"),
+  // YYYY-MM-DD (UTC) of the last "How can we pray for you?" email this
+  // user received. Per-user daily dedup so that if they belong to two
+  // groups and both admins send the prompt on the same day, the user
+  // gets the EMAIL only from the first group. Push notifications are
+  // not gated by this — those still fan out per-group (an admin's
+  // community shouldn't disappear just because a sibling group fired
+  // earlier).
+  lastPrayerInviteEmailDate: text("last_prayer_invite_email_date"),
   // BCP-47 locale code (e.g. "en", "es"). Drives i18next on the client
   // and template selection in pushSender / email senders. Beta users
   // can flip this to "es" via Settings → Language; non-beta accounts

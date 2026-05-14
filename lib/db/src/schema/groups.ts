@@ -33,6 +33,11 @@ export const groupsTable = pgTable("groups", {
   createdByUserId: integer("created_by_user_id").notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Last time an admin sent the "How can I pray for you?" community
+  // prompt to all members. Rate-limited to once per 7 days per group so
+  // the prompt stays special instead of becoming noise. Null = never
+  // sent; the next eligible-at timestamp is `value + 7 days`.
+  lastPrayerInviteAt: timestamp("last_prayer_invite_at", { withTimezone: true }),
 });
 
 // ── Group join requests ────────────────────────────────────────────────────

@@ -201,3 +201,86 @@ export async function sendPasswordResetEmail(opts: {
     return false;
   }
 }
+
+// "How can we pray for you?" community prompt — sent alongside the
+// push when a group admin invites members to share something the
+// community can carry. Single CTA links to the in-app submission
+// page. Per-user daily dedup is enforced at the call site (users.
+// last_prayer_invite_email_date) so a member in multiple groups only
+// gets one of these per day even if every admin fires the same day.
+export async function sendPrayerInviteEmail(opts: {
+  to: string;
+  recipientName: string;
+  adminName: string;
+  groupName: string;
+  shareUrl: string;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) {
+    console.warn("Gmail client unavailable — skipping prayer-invite email");
+    return false;
+  }
+
+  const firstName = (opts.recipientName ?? "").trim().split(/\s+/)[0] || "friend";
+  const adminFirst = (opts.adminName ?? "").trim().split(/\s+/)[0] || "Someone";
+  const subject = "How can we pray for you?";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
+          <tr>
+            <td>
+              <div style="margin-bottom:28px;">
+                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+              </div>
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
+                Hi ${firstName} — how can we pray for you?
+              </h1>
+              <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">
+                ${adminFirst} from <strong>${opts.groupName}</strong> is asking: is there something in your life this week your community can be with you in prayer about?
+              </p>
+              <a href="${opts.shareUrl}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">
+                Share with your community →
+              </a>
+              <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
+                Nothing is too small to be held together.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const text = [
+    `Hi ${firstName},`,
+    "",
+    `${adminFirst} from ${opts.groupName} is asking — is there something in your life this week your community can be with you in prayer about?`,
+    "",
+    "Share with your community:",
+    opts.shareUrl,
+    "",
+    "— Phoebe",
+  ].join("\n");
+
+  try {
+    const raw = encodeMimeMessage({ to: opts.to, subject, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    console.error("Failed to send prayer-invite email:", err);
+    return false;
+  }
+}

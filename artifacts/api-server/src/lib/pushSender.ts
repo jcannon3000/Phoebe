@@ -743,6 +743,27 @@ export async function sendNewPrayerRequestPush(
   });
 }
 
+// Community admin → all members: "How can we pray for you?" prompt.
+// Rate-limited server-side to once per 7 days per group. Tap deep-
+// links the member to /community/:slug/share-prayer where they can
+// post a prayer request that gets carried by their whole garden.
+// Sound is the gentle mid chime — this is an invitation, not an
+// urgent ask.
+export function sendPrayerInvitePush(
+  recipientUserId: number,
+  opts: { groupSlug: string; groupName: string; adminName: string },
+) {
+  const firstName = (opts.adminName || "").split(/\s+/)[0] || "Someone";
+  return sendPushToUser(recipientUserId, {
+    title: "How can we pray for you?",
+    body: `${firstName} from ${opts.groupName} is asking — tap to share.`,
+    path: `/communities/${opts.groupSlug}/share-prayer`,
+    threadId: `prayer-invite-${opts.groupSlug}`,
+    collapseId: `prayer-invite-${opts.groupSlug}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Phoebe Parish — morning / evening office reminder. Fires at the
 // user's chosen reminder time once per local day. Body branches by
 // pref: "office" deep-links into the full Daily Office, "devotion"

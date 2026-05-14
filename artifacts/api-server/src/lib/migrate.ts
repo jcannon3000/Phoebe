@@ -1523,6 +1523,13 @@ export async function migrate() {
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE`);
     await run(client, `ALTER TABLE groups ALTER COLUMN is_public SET DEFAULT TRUE`);
     await run(client, `UPDATE groups SET is_public = TRUE WHERE is_public = FALSE`);
+    // Last time an admin sent the "How can I pray for you?" community
+    // prompt push. Once-per-7-days rate limit enforced server-side. Null
+    // = never sent — that's the eligible default.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS last_prayer_invite_at TIMESTAMPTZ`);
+    // Per-user daily dedup for the "How can we pray for you?" email.
+    // YYYY-MM-DD UTC. NULL = never received.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_prayer_invite_email_date TEXT`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS group_join_requests (
         id SERIAL PRIMARY KEY,
