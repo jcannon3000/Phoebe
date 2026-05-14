@@ -674,13 +674,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
       localStorage.setItem(officeCompletedKey(resolvedMode), "1");
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
-    // Route to the deferred celebration summary if we came through the
-    // seamless intercessions handoff, otherwise exit cleanly.
-    if (seamlessReturnRef.current) {
-      setViewerLocation("/prayer-mode?closingOnly=1");
-    } else {
-      onBack();
-    }
+    // Every office finish lands on /prayer-mode?closingOnly=1 — the
+    // "you prayed for N people this week" summary followed by the
+    // prayer-rhythm habit slide. Parish-only users get their own
+    // celebration page; that branch is handled by handleEnd below
+    // (Amen path doesn't currently distinguish parish-only — kept
+    // consistent with the prior behaviour for the Amen path).
+    setViewerLocation("/prayer-mode?closingOnly=1");
   }
 
   return (
@@ -1906,10 +1906,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               } catch { /* non-fatal */ }
               if (parishOnly) {
                 setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
-              } else if (seamlessReturnRef.current) {
-                setViewerLocation("/prayer-mode?closingOnly=1");
               } else {
-                onBack();
+                // Always route to the closing summary + habit slide.
+                // Used to gate on seamlessReturnRef so a direct-entry
+                // office finish exited without the recap; user
+                // explicitly wanted the habit-rhythm screen for every
+                // office completion.
+                setViewerLocation("/prayer-mode?closingOnly=1");
               }
             };
             const handler = isIntercessionSlide

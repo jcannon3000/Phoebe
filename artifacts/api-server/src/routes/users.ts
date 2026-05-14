@@ -395,4 +395,59 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
 });
 
+// GET /me/office-history-week — past 7 days (today inclusive) of
+// office/devotion completions for the current user, broken down by
+// side (morning / evening). Drives the "Your prayer rhythm" habit
+// slide so it reflects sessions logged on any device, not just the
+// localStorage flags from this browser. Day strings are user-tz
+// YYYY-MM-DD; today sits at index 6 (last).
+router.get("/me/office-history-week", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [meTz] = await db
+      .select({ timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    const tz = meTz?.timezone || "UTC";
+    // One row per (day, side). The CASE collapses the four surfaces
+    // into "morning" or "evening"; DISTINCT folds duplicate sessions
+    // for the same side on the same day into one.
+    const rows = await db.execute<{ day: string; side: string }>(sql`
+      SELECT DISTINCT
+        to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
+        CASE
+          WHEN surface IN ('morning-prayer', 'morning-devotion') THEN 'morning'
+          WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
+        END AS side
+      FROM prayer_sessions
+      WHERE user_id = ${sessionUserId}
+        AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+        AND ended_at >= NOW() - INTERVAL '8 days'
+    `);
+    const byDay = new Map<string, { morning: boolean; evening: boolean }>();
+    for (const r of rows.rows) {
+      const slot = byDay.get(r.day) ?? { morning: false, evening: false };
+      if (r.side === "morning") slot.morning = true;
+      if (r.side === "evening") slot.evening = true;
+      byDay.set(r.day, slot);
+    }
+    // Build the 7-day window in user-tz, oldest first.
+    const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
+    const days: { ymd: string; morning: boolean; evening: boolean }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dt = new Date(Date.UTC(ty, tm - 1, td));
+      dt.setUTCDate(dt.getUTCDate() - i);
+      const ymd = dt.toISOString().slice(0, 10);
+      const slot = byDay.get(ymd) ?? { morning: false, evening: false };
+      days.push({ ymd, morning: slot.morning, evening: slot.evening });
+    }
+    res.json({ days });
+  } catch (err) {
+    console.error("[office-history-week] failed:", err);
+    res.status(500).json({ error: "Failed to load office history" });
+  }
+});
+
 export default router;

@@ -1111,26 +1111,47 @@ function HabitSlide({
   onDone: () => void;
   visible: boolean;
 }) {
-  // Build the past-7-days grid, oldest → newest left-to-right. Today
-  // sits at the right edge so the eye tracks rhythm into the present.
+  // Server is the source of truth — past completions from any device
+  // live in prayer_sessions, not localStorage. We still union with
+  // localStorage for the freshly-finished office so the slide reflects
+  // the tap that just landed even before the session row's invalidate
+  // round-trip lands.
+  const { data: historyData } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
+    queryKey: ["/api/me/office-history-week"],
+    queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
+    staleTime: 0,
+  });
+
   const days = (() => {
     const out: { dateKey: string; label: string; isToday: boolean; morning: boolean; evening: boolean }[] = [];
     const now = new Date();
+    const todayYmd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    // Index server response by ymd for O(1) lookup.
+    const serverByDay = new Map<string, { morning: boolean; evening: boolean }>();
+    for (const d of historyData?.days ?? []) {
+      serverByDay.set(d.ymd, { morning: !!d.morning, evening: !!d.evening });
+    }
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const label = ["S", "M", "T", "W", "T", "F", "S"][d.getDay()];
-      let morning = false;
-      let evening = false;
-      try {
-        morning =
-          !!localStorage.getItem(`phoebe:office-completed:morning:${dateKey}`)
-          || !!localStorage.getItem(`phoebe:office-completed:morning-devotion:${dateKey}`);
-        evening =
-          !!localStorage.getItem(`phoebe:office-completed:evening:${dateKey}`)
-          || !!localStorage.getItem(`phoebe:office-completed:early-evening-devotion:${dateKey}`);
-      } catch { /* localStorage blocked — leave both false */ }
+      const server = serverByDay.get(dateKey) ?? { morning: false, evening: false };
+      let morning = server.morning;
+      let evening = server.evening;
+      // localStorage union — only matters for today (the just-prayed
+      // office writes the flag synchronously; the session row needs an
+      // API round-trip to show up in the history query).
+      if (dateKey === todayYmd) {
+        try {
+          morning = morning
+            || !!localStorage.getItem(`phoebe:office-completed:morning:${dateKey}`)
+            || !!localStorage.getItem(`phoebe:office-completed:morning-devotion:${dateKey}`);
+          evening = evening
+            || !!localStorage.getItem(`phoebe:office-completed:evening:${dateKey}`)
+            || !!localStorage.getItem(`phoebe:office-completed:early-evening-devotion:${dateKey}`);
+        } catch { /* localStorage blocked */ }
+      }
       out.push({ dateKey, label, isToday: i === 0, morning, evening });
     }
     return out;
@@ -1328,6 +1349,30 @@ function HabitSlide({
       >
         Done
       </button>
+
+      {/* Reminders CTA — discoverable doorway to /settings's
+          OfficeReminderSettings card so the user can turn on (or
+          adjust) the morning + evening office reminder push from
+          inside the rhythm screen. Underlined link styling so it
+          reads as secondary to the primary Done. */}
+      <Link href="/settings">
+        <button
+          type="button"
+          className="text-[13px] font-medium underline transition-opacity hover:opacity-80"
+          style={{
+            color: "rgba(168,197,160,0.8)",
+            textDecorationColor: "rgba(168,197,160,0.4)",
+            textUnderlineOffset: 4,
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
+        >
+          Reminders →
+        </button>
+      </Link>
     </div>
   );
 }
