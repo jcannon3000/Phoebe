@@ -2076,26 +2076,13 @@ function PrayerOfficeCard() {
               the eyebrow itself enough breathing room from the top
               of the card, but the title doesn't need a separate
               gap — eyebrow + title read as a paired unit. */}
-          <div className="flex items-center justify-between gap-2 -mt-1">
+          <div className="-mt-1">
             <p
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
             >
               {isMorning ? "Morning Prayer" : "Evening Prayer"}
             </p>
-            {officeStreak > 0 && (
-              <span
-                className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center tabular-nums shrink-0"
-                style={{
-                  background: "rgba(168,197,160,0.12)",
-                  color: "rgba(168,197,160,0.95)",
-                  border: "1px solid rgba(168,197,160,0.3)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                🔥 {officeStreak}
-              </span>
-            )}
           </div>
           {communityPrayed.length > 0 && (
             <div className="flex items-center gap-1.5 mt-1">
