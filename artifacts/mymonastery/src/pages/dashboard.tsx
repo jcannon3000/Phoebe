@@ -2284,45 +2284,42 @@ function PrayerOfficeCard() {
               Reminders
             </Link>
           </div>
-          {/* Title sits with a tight gap above (eyebrow → title) and
-              a slightly larger one below (title → avatars). The
-              community-prayed row ALWAYS sits below the title now —
-              mirrors the parish-weekly card's vertical stack so the
-              two cards read with the same rhythm. Only people who
-              have an avatar render; initials-fallback rows are
+          {/* Title on the LEFT, avatar stack + count on the RIGHT,
+              same row. The two read as one band — copy on one side,
+              who's-praying-with-me on the other. Only people with a
+              real profile picture appear in the stack; initials are
               filtered out per user direction. */}
-          <div className="mt-[4px]">
-            <p
-              className="text-2xl font-semibold"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
-            >
-              {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
-            </p>
-          </div>
           {(() => {
             const withAvatars = communityPrayed.filter((p) => !!p.avatarUrl);
-            if (withAvatars.length === 0) return null;
             return (
-              <div className="mt-[10px]">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex -space-x-2">
-                    {withAvatars.slice(0, 5).map((p) => (
-                      <img
-                        key={p.id}
-                        src={p.avatarUrl as string}
-                        alt={p.name}
-                        title={p.name}
-                        className="w-6 h-6 rounded-full object-cover"
-                        style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
-                      />
-                    ))}
+              <div className="mt-[4px] flex items-center justify-between gap-3">
+                <p
+                  className="text-2xl font-semibold"
+                  style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
+                >
+                  {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
+                </p>
+                {withAvatars.length > 0 && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex -space-x-2">
+                      {withAvatars.slice(0, 5).map((p) => (
+                        <img
+                          key={p.id}
+                          src={p.avatarUrl as string}
+                          alt={p.name}
+                          title={p.name}
+                          className="w-6 h-6 rounded-full object-cover"
+                          style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {withAvatars.length === 1
+                        ? "1 person prayed with you this week"
+                        : `${withAvatars.length} people prayed with you this week`}
+                    </span>
                   </div>
-                  <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {withAvatars.length === 1
-                      ? "1 person prayed with you this week"
-                      : `${withAvatars.length} people prayed with you this week`}
-                  </span>
-                </div>
+                )}
               </div>
             );
           })()}
