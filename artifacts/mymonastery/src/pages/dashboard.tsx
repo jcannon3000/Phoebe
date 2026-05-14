@@ -2047,7 +2047,9 @@ function PrayerOfficeCard() {
       className="relative flex rounded-xl overflow-hidden"
       style={{
         background: "rgba(46,107,64,0.08)",
-        border: "1px solid rgba(46,107,64,0.20)",
+        // Match the border weight on the parish-weekly + count cards
+        // so the two stacked cards read as a paired set.
+        border: "1px solid rgba(46,107,64,0.4)",
       }}
       >
         <div className="flex-1 px-4 pt-[14px] pb-[17px]">
@@ -4358,9 +4360,27 @@ export default function Dashboard() {
                    "respond to your community + pray the office,"
                    not "walk through the slideshow every day." */}
           {filter === null && (
-            <div className="mt-5">
-              <PrayerOfficeCard />
-            </div>
+            <>
+              {/* "X prayer requests waiting" sits at the TOP of the
+                  home — beta users get the parish-weekly card, others
+                  get the count card. Always above the office card so
+                  the urgent "someone is waiting for your prayer" beat
+                  reads first. */}
+              {isBeta ? (
+                <div className="mt-5">
+                  <ParishWeeklyCard />
+                </div>
+              ) : (
+                newPrayersCount > 0 && (
+                  <div className="mt-5">
+                    <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
+                  </div>
+                )
+              )}
+              <div className="mt-3">
+                <PrayerOfficeCard />
+              </div>
+            </>
           )}
 
           {/* Prayer pills removed per product direction — the
@@ -4437,35 +4457,16 @@ export default function Dashboard() {
                 {/* 4. Upcoming — everything past the upcoming Sunday. */}
                 <TimeSection label="Upcoming" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
 
-                {/* Prayer request compose — sits below the events
-                    sections and above the "X prayer requests waiting"
-                    card. Per user direction the field reads as "share
-                    what I'm carrying" before the page transitions to
-                    "respond to what others are carrying." */}
+                {/* Prayer request compose — only the field moves
+                    down here, below the events sections. The count
+                    card "X prayer requests waiting" stays at the
+                    top of the page (above the office card). The
+                    compose field reads as "what I'm carrying" once
+                    the user has scrolled past their schedule. */}
                 {filter === null && (
                   <div className="mt-6">
                     <ActiveRequestsCard activeCount={ownActiveCount} />
                   </div>
-                )}
-
-                {/* Beta experiment: the Parish Weekly card replaces
-                    the count-based NewPrayerRequestsCard. Always
-                    visible (when the parish has any active request)
-                    so the prayer-for-community rhythm sits below
-                    the field instead of disappearing on quiet days.
-                    Non-beta keeps the legacy count card. */}
-                {filter === null && (
-                  isBeta ? (
-                    <div className="mt-3">
-                      <ParishWeeklyCard />
-                    </div>
-                  ) : (
-                    newPrayersCount > 0 && (
-                      <div className="mt-3">
-                        <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
-                      </div>
-                    )
-                  )
                 )}
 
                 {/* Prayer List carousel — sits AFTER Upcoming so it
