@@ -2417,11 +2417,15 @@ function ActiveRequestsCard({
 }: {
   activeCount: number;
 }) {
-  const headline = activeCount === 0
-    ? "Share something on your heart"
-    : activeCount === 1
-      ? "You have 1 active prayer request"
-      : `You have ${activeCount} active prayer requests`;
+  // Per user direction: the headline always asks the open question
+  // rather than reporting the user's own count. The count rolls up
+  // into the View pill (which deep-links into /my-prayer-requests
+  // where the count + state of each ask is visible).
+  const headline = "How can your community pray for you?";
+  // Reference activeCount so an unused-var warning doesn't fire
+  // — the value still gates the View pill below and is part of
+  // the public component API.
+  void activeCount;
   return (
     // Flat on the dashboard background — headline + compose. No
     // sub line ("Prayed for X times so far"); the count is
