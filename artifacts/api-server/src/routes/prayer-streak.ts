@@ -24,7 +24,7 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, and, inArray, gte } from "drizzle-orm";
-import { db, usersTable, momentUserTokensTable, momentPostsTable, prayerRequestAmensTable, prayerRequestsTable } from "@workspace/db";
+import { db, usersTable, momentUserTokensTable, momentPostsTable, prayerRequestAmensTable, prayerRequestsTable, prayerSessionsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -137,9 +137,23 @@ router.post("/prayer-streak/log", async (req: Request, res: Response): Promise<v
 });
 
 // GET /prayer-streak/community-prayed-week — returns garden members who
-// have prayed at least once in the last 7 days, derived from
-// users.prayer_streak_last_date. Used by the home card to show who's
-// been active in prayer this week.
+// have prayed at least once in the last 7 days. Two signal sources are
+// UNIONed:
+//   1. users.prayer_streak_last_date — bumped when a user finishes a
+//      prayer-mode slideshow via POST /prayer-streak/log
+//   2. prayer_sessions rows with an office / devotion surface — bumped
+//      whenever a user completes (or even just opens past the slide
+//      threshold) Morning/Evening Prayer or one of the Devotions.
+// Without (2) anyone who only prays the Daily Office never appeared
+// on the home card's avatar stack because that path doesn't write
+// prayer_streak_last_date.
+const OFFICE_SURFACES = [
+  "morning-prayer",
+  "evening-prayer",
+  "morning-devotion",
+  "early-evening-devotion",
+];
+
 router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Response): Promise<void> => {
   const sessionUser = req.user as { id: number } | undefined;
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -150,17 +164,44 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
     if (gardenIds.length === 0) { res.json({ people: [] }); return; }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const cutoff = sevenDaysAgo.toISOString().slice(0, 10); // YYYY-MM-DD
+    const cutoffYmd = sevenDaysAgo.toISOString().slice(0, 10); // YYYY-MM-DD
 
-    const people = await db
-      .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl, prayerStreakLastDate: usersTable.prayerStreakLastDate })
+    // Signal A: garden members whose streak marker is within the window.
+    const peopleRows = await db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        avatarUrl: usersTable.avatarUrl,
+        prayerStreakLastDate: usersTable.prayerStreakLastDate,
+      })
       .from(usersTable)
       .where(inArray(usersTable.id, gardenIds));
 
-    const active = people
-      .filter(p => p.prayerStreakLastDate && p.prayerStreakLastDate >= cutoff)
+    const activeIds = new Set<number>();
+    for (const p of peopleRows) {
+      if (p.prayerStreakLastDate && p.prayerStreakLastDate >= cutoffYmd) {
+        activeIds.add(p.id);
+      }
+    }
+
+    // Signal B: garden members with an office / devotion session in the
+    // window. We pull DISTINCT user IDs from prayer_sessions.
+    const officeRows = await db
+      .selectDistinct({ userId: prayerSessionsTable.userId })
+      .from(prayerSessionsTable)
+      .where(and(
+        inArray(prayerSessionsTable.userId, gardenIds),
+        inArray(prayerSessionsTable.surface, OFFICE_SURFACES),
+        gte(prayerSessionsTable.endedAt, sevenDaysAgo),
+      ));
+    for (const r of officeRows) {
+      if (typeof r.userId === "number") activeIds.add(r.userId);
+    }
+
+    const active = peopleRows
+      .filter((p) => activeIds.has(p.id))
       .slice(0, 12)
-      .map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
+      .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
 
     res.json({ people: active });
   } catch (err) {
