@@ -2071,12 +2071,12 @@ function PrayerOfficeCard() {
               Reminders
             </Link>
           </div>
-          <div className="flex items-start justify-between gap-2 mb-0.5">
+          <div className="flex items-start justify-between gap-2">
             <p
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
             >
-              {isMorning ? "Pray Morning Prayer" : "Pray Evening Prayer"}
+              {isMorning ? "Morning Prayer" : "Evening Prayer"}
             </p>
             {officeStreak > 0 && (
               <span
@@ -2131,7 +2131,7 @@ function PrayerOfficeCard() {
             // any phone size. Status pill has the lighter sage fill
             // and no border lift so it reads as a settled win; the
             // action pill keeps the standard sage-accent + arrow.
-            <div className="mt-3 flex items-stretch gap-2">
+            <div className="mt-2 flex items-stretch gap-2">
               <div
                 aria-label="Prayer completed today"
                 className="flex-1 rounded-xl text-center"
@@ -2171,7 +2171,7 @@ function PrayerOfficeCard() {
               <div
                 role="button"
                 tabIndex={0}
-                className="mt-3 w-full rounded-xl text-center cursor-pointer"
+                className="mt-2 w-full rounded-xl text-center cursor-pointer"
                 style={{
                   background: "rgba(46,107,64,0.22)",
                   color: "#F0EDE6",
