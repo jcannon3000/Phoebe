@@ -3706,6 +3706,43 @@ export default function Dashboard() {
     return requestCount + intercessionCount;
   }, [dashPrayerRequests, momentsData]);
 
+  // Faces stack for the "X prayer requests waiting" card. Lifted to
+  // parent scope so we can render the card lower in the page (under
+  // events, above the prayer-list carousel) without re-computing.
+  type HomeFace = { key: string; name: string; avatarUrl: string | null };
+  const homeFaces: HomeFace[] = useMemo(() => {
+    const out: HomeFace[] = [];
+    const seenSource = new Set<string>();
+    const seenIdentity = new Set<string>();
+    for (const r of dashPrayerRequests ?? []) {
+      if (out.length >= 3) break;
+      if (r.isAnswered || r.isOwnRequest || r.closedAt || r.isAnonymous) continue;
+      if (r.myAmenedEver) continue;
+      const key = `req-${r.ownerId ?? r.id}`;
+      if (seenSource.has(key)) continue;
+      const name = r.ownerName ?? "Someone";
+      const avatarUrl = r.ownerAvatarUrl ?? null;
+      const identity = `${name.trim().toLowerCase()}|${avatarUrl ?? ""}`;
+      if (seenIdentity.has(identity)) continue;
+      seenSource.add(key);
+      seenIdentity.add(identity);
+      out.push({ key, name, avatarUrl });
+    }
+    return out;
+  }, [dashPrayerRequests]);
+
+  // Active-request count for the viewer's own asks. Used by both the
+  // ActiveRequestsCard composer and the "What you've shared" copy.
+  const ownActiveCount = useMemo(() => {
+    return (dashPrayerRequests ?? []).filter((r) => {
+      if (!r.isOwnRequest) return false;
+      if (r.isAnswered) return false;
+      if (r.closedAt) return false;
+      if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+      return true;
+    }).length;
+  }, [dashPrayerRequests]);
+
   // Sync the iOS app-icon badge to the live unprayed count whenever
   // the dashboard's data settles. Without this the badge could only
   // grow (via APNs pushes) and never shrink after the user prays —
@@ -4320,71 +4357,11 @@ export default function Dashboard() {
                    that wasn't working — the daily rhythm is now
                    "respond to your community + pray the office,"
                    not "walk through the slideshow every day." */}
-          {filter === null && (() => {
-            // Up to 3 avatars of new-prayer-request authors for the
-            // top card's face stack. Limited to authors whose
-            // requests the viewer has NOT yet amened (newPrayersCount
-            // semantics) so the card stops nudging once the queue
-            // is cleared.
-            type Face = { key: string; name: string; avatarUrl: string | null };
-            const faces: Face[] = [];
-            const seenSource = new Set<string>();
-            const seenIdentity = new Set<string>();
-            const addFace = (key: string, name: string, avatarUrl: string | null) => {
-              if (!key || faces.length >= 3) return;
-              if (seenSource.has(key)) return;
-              const identity = `${(name ?? "").trim().toLowerCase()}|${avatarUrl ?? ""}`;
-              if (seenIdentity.has(identity)) return;
-              seenSource.add(key);
-              seenIdentity.add(identity);
-              faces.push({ key, name, avatarUrl });
-            };
-            for (const r of dashPrayerRequests ?? []) {
-              if (r.isAnswered || r.isOwnRequest || r.closedAt || r.isAnonymous) continue;
-              if (r.myAmenedEver) continue;
-              const key = `req-${r.ownerId ?? r.id}`;
-              addFace(key, r.ownerName ?? "Someone", r.ownerAvatarUrl ?? null);
-            }
-            // Roll-up of the viewer's own active prayer requests for
-            // ActiveRequestsCard. "Active" = not answered, not closed,
-            // and (if expiresAt is set) not past the expiry. The owner
-            // continues to see expired-but-not-closed requests, but
-            // for this card we want the meaningful "asks the community
-            // is currently carrying" count.
-            const ownActive = (dashPrayerRequests ?? []).filter((r) => {
-              if (!r.isOwnRequest) return false;
-              if (r.isAnswered) return false;
-              if (r.closedAt) return false;
-              if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
-              return true;
-            });
-            const ownActiveCount = ownActive.length;
-            return (
-              <>
-                {/* Beta experiment: the Parish Weekly card replaces
-                    the count-based NewPrayerRequestsCard. Always
-                    visible (when the parish has any active request)
-                    so the prayer-for-community rhythm sits next to
-                    the Office instead of disappearing on quiet days.
-                    Non-beta keeps the legacy count card. */}
-                {isBeta ? (
-                  <div className="mt-5">
-                    <ParishWeeklyCard />
-                  </div>
-                ) : (
-                  newPrayersCount > 0 && (
-                    <div className="mt-5">
-                      <NewPrayerRequestsCard count={newPrayersCount} faces={faces} />
-                    </div>
-                  )
-                )}
-                <div className="mt-3">
-                  <PrayerOfficeCard />
-                </div>
-                <ActiveRequestsCard activeCount={ownActiveCount} />
-              </>
-            );
-          })()}
+          {filter === null && (
+            <div className="mt-5">
+              <PrayerOfficeCard />
+            </div>
+          )}
 
           {/* Prayer pills removed per product direction — the
               dedicated /my-prayer-requests, /prayers-for-me, and
@@ -4459,6 +4436,37 @@ export default function Dashboard() {
 
                 {/* 4. Upcoming — everything past the upcoming Sunday. */}
                 <TimeSection label="Upcoming" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+
+                {/* Prayer request compose — sits below the events
+                    sections and above the "X prayer requests waiting"
+                    card. Per user direction the field reads as "share
+                    what I'm carrying" before the page transitions to
+                    "respond to what others are carrying." */}
+                {filter === null && (
+                  <div className="mt-6">
+                    <ActiveRequestsCard activeCount={ownActiveCount} />
+                  </div>
+                )}
+
+                {/* Beta experiment: the Parish Weekly card replaces
+                    the count-based NewPrayerRequestsCard. Always
+                    visible (when the parish has any active request)
+                    so the prayer-for-community rhythm sits below
+                    the field instead of disappearing on quiet days.
+                    Non-beta keeps the legacy count card. */}
+                {filter === null && (
+                  isBeta ? (
+                    <div className="mt-3">
+                      <ParishWeeklyCard />
+                    </div>
+                  ) : (
+                    newPrayersCount > 0 && (
+                      <div className="mt-3">
+                        <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
+                      </div>
+                    )
+                  )
+                )}
 
                 {/* Prayer List carousel — sits AFTER Upcoming so it
                     reads as a peek into a different surface (the

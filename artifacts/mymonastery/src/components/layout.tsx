@@ -374,10 +374,23 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {user && (
           <div className="flex items-center gap-2">
-            {/* Top-right Prayer List pill removed — the primary
-                "Begin your prayer list" action now lives under the
-                feast on the dashboard. Menu is the only top-right
-                control. */}
+            {/* Prayer list pill — sits to the left of Menu, same
+                height. Direct shortcut into the management view of
+                everything the viewer is carrying (their own
+                requests + their garden's). */}
+            <Link
+              href="/prayer-list"
+              className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                letterSpacing: "-0.01em",
+                background: "rgba(200,212,192,0.08)",
+                color: "#C8D4C0",
+                border: "1px solid rgba(46,107,64,0.3)",
+              }}
+            >
+              Prayer list
+            </Link>
             <button
               onClick={() => setDrawerOpen(true)}
               className="flex items-center justify-center transition-colors"
