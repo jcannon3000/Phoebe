@@ -205,7 +205,7 @@ export function ParishWeeklyCard() {
           border: `1px solid ${allPrayed ? "rgba(46,107,64,0.28)" : "rgba(46,107,64,0.4)"}`,
         }}
       >
-        <div className="flex items-center justify-between mb-2 gap-2">
+        <div className="flex items-center justify-between mb-1 gap-2">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, margin: 0 }}
