@@ -687,6 +687,9 @@ router.get("/people/:email", async (req, res): Promise<void> => {
           isNull(prayerRequestsTable.expiresAt),
           gt(prayerRequestsTable.expiresAt, new Date()),
         ),
+        // Parish-scoped pastoral concerns are private to the parish
+        // admin; never surface them on a peer's public profile.
+        isNull(prayerRequestsTable.parishFeedId),
       )
     ).orderBy(desc(prayerRequestsTable.createdAt)).limit(1);
     if (req) {

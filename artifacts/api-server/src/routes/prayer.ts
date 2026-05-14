@@ -7,6 +7,7 @@ import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
+import { isParishOnlyUser } from "../lib/parishGate";
 
 const router: IRouter = Router();
 
@@ -421,6 +422,19 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
       hasBody: req.body != null,
     }, "[prayer-requests:post] rejected — no session");
     res.status(401).json({ error: "Please sign in again — your session has expired." });
+    return;
+  }
+
+  // Parish-only users (Phoebe Parish tier — no community memberships,
+  // no beta access) don't get the garden-visible prayer-request flow.
+  // The UI hides the compose surface from them; this gate is the
+  // server-side enforcement so a hand-crafted POST can't bypass it.
+  // Pastoral concerns (private to the parish admin) go through
+  // /api/parish/concerns instead.
+  if (await isParishOnlyUser(sessionUserId)) {
+    res.status(403).json({
+      error: "Prayer requests aren't available on the parish tier. Share a pastoral concern with your parish admin instead.",
+    });
     return;
   }
 

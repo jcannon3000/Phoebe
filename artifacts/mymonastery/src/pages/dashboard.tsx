@@ -1890,7 +1890,7 @@ function NewPrayerRequestsCard({
         }}
       >
         <div className={`w-1 flex-shrink-0 ${colors.barPulseClass}`} />
-        <div className="flex-1 px-4 pt-3 pb-3">
+        <div className="flex-1 px-4 pt-[17px] pb-[17px]">
           <div className="flex items-center justify-between gap-2">
             <span
               className="text-base font-semibold"
@@ -1899,7 +1899,7 @@ function NewPrayerRequestsCard({
               {headline} 🙏🏽
             </span>
           </div>
-          <div className="mt-1.5 flex items-center justify-between gap-3">
+          <div className="mt-[8px] flex items-center justify-between gap-3">
             <p
               className="text-sm truncate"
               style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
@@ -1939,7 +1939,7 @@ function NewPrayerRequestsCard({
               </div>
             )}
           </div>
-          <div className="mt-3 w-full">
+          <div className="mt-[17px] w-full">
             <div
               className="w-full rounded-xl text-center"
               style={{
@@ -1948,7 +1948,7 @@ function NewPrayerRequestsCard({
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontSize: 14,
                 fontWeight: 500,
-                padding: "9px 12px",
+                padding: "6px 12px",
                 border: "1px solid rgba(111,175,133,0.45)",
               }}
             >

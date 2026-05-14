@@ -2013,6 +2013,11 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         .where(and(
           sql`${prayerRequestsTable.closedAt} IS NULL`,
           notExpired,
+          // Parish-scoped pastoral concerns are private to the
+          // requester + parish admin and must never appear on a
+          // community wall, even when the requester is a member of
+          // this group.
+          isNull(prayerRequestsTable.parishFeedId),
           or(
             eq(prayerRequestsTable.groupId, group.id),
             inArray(prayerRequestsTable.ownerId, memberUserIds),
@@ -2035,6 +2040,7 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
         .where(and(
           sql`${prayerRequestsTable.closedAt} IS NULL`,
           notExpired,
+          isNull(prayerRequestsTable.parishFeedId),
           eq(prayerRequestsTable.groupId, group.id),
         ))
         .orderBy(desc(prayerRequestsTable.createdAt));
