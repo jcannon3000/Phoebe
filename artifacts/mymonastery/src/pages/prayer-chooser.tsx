@@ -8,16 +8,17 @@ import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
 
 // ── Prayer chooser ──────────────────────────────────────────────────────────
 // Replaces the dashboard's inline modal popup. The home-screen CTA links
-// here; this page presents the two office-depth options for today:
+// here; this page presents three depth options for today's prayer:
 //
-//   • Daily Devotion — BCP short form, includes the prayer list.
-//   • Daily Office   — BCP full Morning/Evening Prayer, includes the
-//                      prayer list at the end.
+//   • Community Intercessions — the slideshow walk through your parish
+//                               group's prayer requests + intercessions.
+//   • Daily Devotion          — BCP short form, includes the prayer list.
+//   • Daily Office            — BCP full Morning/Evening Prayer, includes
+//                               the prayer list at the end.
 //
-// (The Intercession Slideshow used to be a third option here; it's
-// since been promoted to its own card on the home screen, so this
-// chooser is purely about picking the depth of the office prayer.)
-// Time-of-day labels and links flip morning vs evening.
+// Time-of-day labels and links flip morning vs evening; the
+// intercession slideshow is the same either way (it's the same
+// underlying queue).
 //
 // On mount we play the opening swell — the same audio cue the prayer-
 // mode slideshow uses on entry. The user explicitly asked for a sound
@@ -76,11 +77,17 @@ export default function PrayerChooserPage() {
     href: string;
     verb: string;
   };
-  // Intercession Slideshow removed — that depth lives on the home
-  // screen now as its own card, separate from the office chooser.
-  // Leaving the Devotion + Office options here keeps the chooser as
-  // "pick the depth of your office prayer."
+  // Three options: Community Intercessions (slideshow) first as the
+  // shortest depth, then Devotion (BCP short form), then Office
+  // (BCP full Morning/Evening Prayer).
   const options: Option[] = [
+    {
+      title: "Community Intercessions",
+      sub: "Your prayer list, no liturgy",
+      duration: "< 5 Min",
+      href: "/prayer-mode",
+      verb: "Start",
+    },
     {
       title: devotionLabel,
       sub: "From the Book of Common Prayer",
