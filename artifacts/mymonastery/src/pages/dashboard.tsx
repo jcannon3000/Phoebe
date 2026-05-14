@@ -2071,19 +2071,20 @@ function PrayerOfficeCard() {
               Reminders
             </Link>
           </div>
-          {/* Title sits slightly below the eyebrow — eyebrow + title
-              read as a paired unit but with measured breathing room
-              between them, not crammed against each other. */}
-          <div className="mt-[6px]">
+          {/* Title sits with a tight gap above (eyebrow → title) and
+              a slightly larger one below (title → avatars) so the
+              title reads as the centerpiece without the eyebrow
+              floating away. text-xl per user direction. */}
+          <div className="mt-[4px]">
             <p
-              className="text-base font-semibold"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+              className="text-xl font-semibold"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
             >
               {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
             </p>
           </div>
           {communityPrayed.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-[12px]">
+            <div className="flex items-center gap-1.5 mt-[10px]">
               <div className="flex -space-x-2">
                 {communityPrayed.slice(0, 5).map((p) => (
                   p.avatarUrl ? (
