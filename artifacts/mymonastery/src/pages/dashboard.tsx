@@ -2075,46 +2075,87 @@ function PrayerOfficeCard() {
               a slightly larger one below (title → avatars) so the
               title reads as the centerpiece without the eyebrow
               floating away. text-xl per user direction. */}
-          <div className="mt-[4px]">
-            <p
-              className="text-xl font-semibold"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
-            >
-              {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
-            </p>
-          </div>
-          {communityPrayed.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-[10px]">
-              <div className="flex -space-x-2">
-                {communityPrayed.slice(0, 5).map((p) => (
-                  p.avatarUrl ? (
-                    <img
-                      key={p.id}
-                      src={p.avatarUrl}
-                      alt={p.name}
-                      title={p.name}
-                      className="w-6 h-6 rounded-full object-cover"
-                      style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
-                    />
-                  ) : (
-                    <div
-                      key={p.id}
-                      title={p.name}
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold"
-                      style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid rgba(12,31,18,0.9)" }}
-                    >
-                      {p.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")}
-                    </div>
-                  )
-                ))}
+          {/* Title + community-prayed row. On wide web (md+) the two
+              sit side-by-side: title on the left, avatar stack + count
+              floated to the right. On mobile web AND inside the
+              Capacitor iOS app the row stays stacked (title on its
+              own line, avatars below). Native detection forces the
+              stacked layout even on iPad/landscape where the md:
+              breakpoint would otherwise kick in. */}
+          {(() => {
+            // Reads window.location.protocol synchronously — Capacitor
+            // serves the bundle from capacitor://localhost; web serves
+            // from https://. Cheaper than importing the Capacitor API.
+            const isNativeApp =
+              typeof window !== "undefined" &&
+              window.location.protocol === "capacitor:";
+            const communityPrayedBlock = communityPrayed.length > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <div className="flex -space-x-2">
+                  {communityPrayed.slice(0, 5).map((p) => (
+                    p.avatarUrl ? (
+                      <img
+                        key={p.id}
+                        src={p.avatarUrl}
+                        alt={p.name}
+                        title={p.name}
+                        className="w-6 h-6 rounded-full object-cover"
+                        style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
+                      />
+                    ) : (
+                      <div
+                        key={p.id}
+                        title={p.name}
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold"
+                        style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid rgba(12,31,18,0.9)" }}
+                      >
+                        {p.name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")}
+                      </div>
+                    )
+                  ))}
+                </div>
+                <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {communityPrayed.length === 1
+                    ? "1 person prayed with you this week"
+                    : `${communityPrayed.length} people prayed with you this week`}
+                </span>
               </div>
-              <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {communityPrayed.length === 1
-                  ? "1 person prayed with you this week"
-                  : `${communityPrayed.length} people prayed with you this week`}
-              </span>
-            </div>
-          )}
+            ) : null;
+            return (
+              <>
+                <div
+                  className={
+                    isNativeApp
+                      ? "mt-[4px]"
+                      : "mt-[4px] md:flex md:items-center md:justify-between md:gap-4"
+                  }
+                >
+                  <p
+                    className="text-2xl font-semibold"
+                    style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
+                  >
+                    {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
+                  </p>
+                  {/* Wide-web slot — md+, web only. Capacitor app
+                      skips this branch entirely via isNativeApp. */}
+                  {!isNativeApp && communityPrayedBlock && (
+                    <div className="hidden md:block shrink-0">
+                      {communityPrayedBlock}
+                    </div>
+                  )}
+                </div>
+                {/* Mobile / native slot — sits below the title. On
+                    web, hidden once we cross md (the wide slot
+                    above takes over); in the Capacitor app this
+                    is the only path that renders. */}
+                {communityPrayedBlock && (
+                  <div className={isNativeApp ? "mt-[10px]" : "mt-[10px] md:hidden"}>
+                    {communityPrayedBlock}
+                  </div>
+                )}
+              </>
+            );
+          })()}
           {prayedToday ? (
             // Two-pill split: a non-tappable "Prayer completed ✓"
             // status on the left, the tappable "Pray again" action on
@@ -3649,18 +3690,21 @@ export default function Dashboard() {
   // tz, which is the bug they reported. Reciprocity gate dropped —
   // see pendingPrayerCount note above.
   const newPrayersCount = useMemo(() => {
-    // "N prayer requests waiting" must literally count prayer
-    // requests — the queue=new slideshow target only renders the
-    // request branch (lines ~1821 in prayer-mode.tsx). Previously we
-    // were also counting community intercessions, which inflated the
-    // headline ("3 prayer requests waiting") but produced an empty
-    // slideshow on tap (Respond → no slides) because intercessions
-    // aren't included in queue=new. Intercessions surface in their
-    // own home cards / the main slideshow already.
-    return (dashPrayerRequests ?? []).filter(
+    const requestCount = (dashPrayerRequests ?? []).filter(
       r => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
     ).length;
-  }, [dashPrayerRequests]);
+    // Community intercessions the viewer hasn't prayed for today count
+    // toward "new prayers" the same way a fresh prayer request does. A
+    // group admin scheduling an intercession should land as a visible
+    // new prayer on the home screen, not just a push notification.
+    // The /prayer-mode?queue=new slideshow target includes both kinds
+    // (see queueMode === "new" in prayer-mode.tsx) so the count + the
+    // tap target are now in agreement.
+    const intercessionCount = (momentsData?.moments ?? []).filter(
+      m => m.templateType === "intercession" && !m.myLoggedToday,
+    ).length;
+    return requestCount + intercessionCount;
+  }, [dashPrayerRequests, momentsData]);
 
   // Sync the iOS app-icon badge to the live unprayed count whenever
   // the dashboard's data settles. Without this the badge could only

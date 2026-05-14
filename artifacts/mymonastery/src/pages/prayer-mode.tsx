@@ -51,6 +51,10 @@ type Moment = {
   windowOpen: boolean;
   myUserToken: string | null;
   momentToken: string | null;
+  // True if this viewer logged a check-in on this intercession today
+  // (their local timezone). Drives the queue=new filter so the home
+  // card's "N prayer requests waiting" count + the tap target agree.
+  myLoggedToday?: boolean;
   group?: { id: number; name: string; slug: string; emoji: string | null } | null;
   // Multi-group intercessions: every additional community the moment
   // was attached to via the moment_groups junction. Combined with
@@ -1819,30 +1823,117 @@ export default function PrayerModePage() {
         }];
       })
     : queueMode === "new"
-    ? prayerRequests
-        .filter((r) => {
-          if (r.isAnswered) return false;
-          if (r.closedAt) return false;
-          // Skip the viewer's own requests — there's nothing to pray
-          // for yourself in the slideshow, and surfacing them was
-          // creating a "why am I being asked to pray for me" loop.
-          if (r.isOwnRequest === true) return false;
-          if (r.myAmenedEver === true) return false;
-          if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
-          return true;
-        })
-        .map((r): PrayerSlide => ({
-          kind: "request",
-          text: r.body,
-          attribution: "",
-          requestId: r.id,
-          myWord: r.myWord ?? null,
-          authorName: r.ownerName ?? null,
-          authorAvatarUrl: r.ownerAvatarUrl ?? null,
-          requestKind: r.kind ?? null,
-          // Always false in queue-new — these are by definition un-prayed.
-          alreadyPrayedToday: false,
-        }))
+    ? [
+        // The home-screen "N prayer requests waiting" card counts BOTH
+        // un-amened requests AND community intercessions the viewer
+        // hasn't logged today. queue=new used to only render the
+        // requests; tapping Respond on a card that was actually mostly
+        // intercessions produced an empty slideshow. Now we surface
+        // both kinds here so the count + the tap target agree.
+        ...prayerRequests
+          .filter((r) => {
+            if (r.isAnswered) return false;
+            if (r.closedAt) return false;
+            // Skip the viewer's own requests — there's nothing to pray
+            // for yourself in the slideshow, and surfacing them was
+            // creating a "why am I being asked to pray for me" loop.
+            if (r.isOwnRequest === true) return false;
+            if (r.myAmenedEver === true) return false;
+            if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+            return true;
+          })
+          .map((r): PrayerSlide => ({
+            kind: "request",
+            text: r.body,
+            attribution: "",
+            requestId: r.id,
+            myWord: r.myWord ?? null,
+            authorName: r.ownerName ?? null,
+            authorAvatarUrl: r.ownerAvatarUrl ?? null,
+            requestKind: r.kind ?? null,
+            // Always false in queue-new — these are by definition un-prayed.
+            alreadyPrayedToday: false,
+          })),
+        // Un-logged community intercessions — same shape the default
+        // branch builds below. Inline rebuild so we don't have to
+        // restructure the entire slide-list assembly into a function.
+        ...intercessions
+          .filter((m) => !m.myLoggedToday)
+          .map((m): PrayerSlide => {
+            const title = m.intercessionTopic || m.name;
+            const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+            const intentionSub =
+              m.intention && norm(m.intention) !== norm(title) ? m.intention : null;
+            const attributionLabel = m.group?.name
+              ? m.group.name
+              : m.members
+                  .filter((p) => p.email !== user?.email)
+                  .map((p) => p.name || p.email.split("@")[0])
+                  .slice(0, 3)
+                  .join(", ");
+            const hasPrayedFlag = m.members.some((p) => typeof p.prayedThisWeek === "boolean");
+            const otherMembers = m.members.filter((p) => {
+              if (p.email === user?.email) return false;
+              if (!hasPrayedFlag) return true;
+              return p.prayedThisWeek === true;
+            });
+            const MAX_FACES = 7;
+            let communityFaces: Array<{ name: string; email: string; avatarUrl: string | null }> = [];
+            if (otherMembers.length > 0) {
+              if (otherMembers.length <= MAX_FACES) {
+                communityFaces = otherMembers.map((p) => ({
+                  name: p.name || p.email.split("@")[0],
+                  email: p.email,
+                  avatarUrl: p.avatarUrl ?? null,
+                }));
+              } else {
+                const withAvatar = otherMembers.filter((p) => !!p.avatarUrl);
+                const withoutAvatar = otherMembers.filter((p) => !p.avatarUrl);
+                const picked = [
+                  ...withAvatar.slice(0, MAX_FACES),
+                  ...withoutAvatar.slice(0, Math.max(0, MAX_FACES - withAvatar.length)),
+                ];
+                communityFaces = picked.map((p) => ({
+                  name: p.name || p.email.split("@")[0],
+                  email: p.email,
+                  avatarUrl: p.avatarUrl ?? null,
+                }));
+              }
+            }
+            const feedTag = m.prayerFeedId ? "Climate Justice" : null;
+            const finalAttribution = m.prayerFeedId && !attributionLabel
+              ? "Your community is holding this."
+              : attributionLabel
+                ? `with ${attributionLabel}`
+                : "";
+            const allGroupsRaw = [
+              ...(m.group ? [m.group] : []),
+              ...(m.additionalGroups ?? []),
+            ];
+            const seenGroupIds = new Set<number>();
+            const groups = allGroupsRaw.filter((g) => {
+              if (seenGroupIds.has(g.id)) return false;
+              seenGroupIds.add(g.id);
+              return true;
+            });
+            return {
+              kind: "intercession" as const,
+              text: title,
+              intention: intentionSub,
+              fullText: m.intercessionFullText?.trim() || null,
+              source: m.intercessionSource ?? null,
+              attribution: finalAttribution,
+              weekPrayCount: m.weekPostCount ?? 0,
+              momentToken: m.momentToken,
+              myUserToken: m.myUserToken,
+              communityFaces,
+              feedTag,
+              learnMoreUrl: m.learnMoreUrl?.trim() || null,
+              groups,
+              alreadyPrayedToday: false,
+            };
+          }),
+      ]
     : [
     ...intercessions.map((m) => {
       const title = m.intercessionTopic || m.name;
