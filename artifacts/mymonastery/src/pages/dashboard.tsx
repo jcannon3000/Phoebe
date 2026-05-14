@@ -4579,15 +4579,17 @@ export default function Dashboard() {
                    not "walk through the slideshow every day." */}
           {filter === null && (
             <>
-              {/* "This week's prayer list" — the parish-weekly card,
-                  promoted from beta to the default for everyone. Sits
-                  at the TOP of the home, above the office card, so
-                  the "someone is waiting for your prayer" beat reads
-                  first. Hides itself when the parish has no active
-                  prayer for the week (see ParishWeeklyCard). */}
-              <div className="mt-5">
-                <ParishWeeklyCard />
-              </div>
+              {/* Simple count-style card at the top: "X prayer
+                  requests waiting" + the first few faces + a
+                  Respond pill. Only rendered when newPrayersCount > 0
+                  — disappears entirely on quiet days, no completion
+                  state, no avatar-stack rollup. Matches the
+                  pre-parish-weekly-card behaviour per user direction. */}
+              {newPrayersCount > 0 && (
+                <div className="mt-5">
+                  <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
+                </div>
+              )}
               <div className="mt-3">
                 <PrayerOfficeCard />
               </div>
