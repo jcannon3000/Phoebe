@@ -267,9 +267,23 @@ export function ParishWeeklyCard() {
               className="text-[12px] mb-2"
               style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
             >
-              {(data?.prayed.length ?? 0) === 0
-                ? "Your community is asking your prayers."
-                : `You've prayed for ${data?.prayed.length} so far this week.`}
+              {(() => {
+                const n = data?.unprayed.length ?? 0;
+                // When the unprayed list is exactly one person, name
+                // them — the headline does too, but the subtitle
+                // frames the "this is new" beat the headline can't
+                // carry on its own.
+                if (n === 1 && unprayedRequestsOnly && next?.kind === "request") {
+                  const firstName = next.title.split(/\s+/)[0] || next.title;
+                  return `${firstName} has a new prayer this week you haven't prayed for yet.`;
+                }
+                if (n > 1) {
+                  return `${n} new prayers this week you haven't prayed for yet.`;
+                }
+                // n === 0 here only happens if the data shape is
+                // inconsistent (allPrayed branch would've fired).
+                return "Your community is asking your prayers.";
+              })()}
             </p>
             {(data?.unprayed.length ?? 0) > 0 && (
               <div className="mt-3 flex items-center justify-between gap-3">
