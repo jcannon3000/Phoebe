@@ -7,6 +7,7 @@ import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { IOSAppDownloadPrompt } from "@/components/IOSAppDownloadPrompt";
+import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { Component, useEffect, type ReactNode, type ErrorInfo } from "react";
@@ -475,6 +476,7 @@ function App() {
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
           <IOSAppDownloadPrompt />
+          <DesktopAppPrompt />
           <ForegroundPushToast />
           <NetworkBanner />
           <DayBoundaryRefresh />
