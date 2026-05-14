@@ -222,8 +222,38 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
     learnMoreUrl: string | null;
     isRecurring: boolean;
     prayedToday: boolean;
+    // Communities linked to this feed via prayer_feed_groups — the
+    // slideshow renders one pill per group instead of a single feed
+    // tag, so the viewer sees which of THEIR communities is carrying
+    // today's intercession together.
+    groups: Array<{ id: number; name: string; emoji: string | null }>;
+    // Up to 7 distinct users who prayed THIS entry today. Used by
+    // the slideshow's avatar stack + "N have prayed this today" line.
+    // Empty for recurring rows (we'd need to know which "instance" to
+    // count against — recurring entries have no per-day row of their
+    // own until someone prays them); for concrete rows we pull from
+    // prayer_feed_prayers.
+    prayedBy: Array<{ name: string; avatarUrl: string | null }>;
+    prayedTodayCount: number;
   };
   const out: Row[] = [];
+
+  // Per-feed group roster — fetched once per feed and reused for
+  // every entry on that feed. The same join also pulls a small
+  // emoji per group so the pill row carries the community's
+  // visual identity, not just its name.
+  async function loadGroupsForFeed(feedId: number) {
+    const rows = await db
+      .select({
+        id: groupsTable.id,
+        name: groupsTable.name,
+        emoji: groupsTable.emoji,
+      })
+      .from(prayerFeedGroupsTable)
+      .innerJoin(groupsTable, eq(groupsTable.id, prayerFeedGroupsTable.groupId))
+      .where(eq(prayerFeedGroupsTable.feedId, feedId));
+    return rows.map((r) => ({ id: r.id, name: r.name, emoji: r.emoji }));
+  }
 
   for (const s of subs) {
     const today = todayInZone(s.feedTimezone);

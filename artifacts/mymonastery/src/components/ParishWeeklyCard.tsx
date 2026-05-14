@@ -199,40 +199,42 @@ export function ParishWeeklyCard() {
   return (
     <Link href="/prayer-mode?queue=parish-weekly">
       <div
-        className="w-full rounded-2xl px-4 py-3 cursor-pointer transition-opacity hover:opacity-95"
+        className="w-full rounded-2xl px-4 py-3 cursor-pointer transition-opacity hover:opacity-95 relative"
         style={{
           background: allPrayed ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.16)",
           border: `1px solid ${allPrayed ? "rgba(46,107,64,0.28)" : "rgba(46,107,64,0.4)"}`,
         }}
       >
-        <div className="flex items-start justify-between mb-0.5 gap-2">
+        {/* Right-side pills stacked vertically, absolutely positioned
+            so their height doesn't stretch the eyebrow row and push
+            the headline down. Mirrors the eyebrow→headline tightness
+            of the office card below it. */}
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-1 shrink-0">
+          <span
+            className="text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full"
+            style={{
+              background: "rgba(46,107,64,0.18)",
+              color: "rgba(168,197,160,0.95)",
+              border: "1px solid rgba(46,107,64,0.3)",
+              fontFamily: FONT,
+            }}
+          >
+            {(data?.prayed.length ?? 0)} / {totalEntries}
+          </span>
+          {/* View pill — bypasses the card-wide tap target (which
+              opens prayer-mode) and routes to the manage prayer list
+              page instead. stopPropagation + preventDefault keep
+              the outer Link from firing on the same click. */}
+          <ViewPill />
+        </div>
+
+        <div className="mb-0.5 pr-16">
           <p
             className="text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, margin: 0 }}
           >
             This week's prayer list 🌿
           </p>
-          {/* Right-side pills stacked vertically: progress count on
-              top, View pill below. Stacking keeps the eyebrow row
-              compact and gives each pill its own clear tap target. */}
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <span
-              className="text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full"
-              style={{
-                background: "rgba(46,107,64,0.18)",
-                color: "rgba(168,197,160,0.95)",
-                border: "1px solid rgba(46,107,64,0.3)",
-                fontFamily: FONT,
-              }}
-            >
-              {(data?.prayed.length ?? 0)} / {totalEntries}
-            </span>
-            {/* View pill — bypasses the card-wide tap target (which
-                opens prayer-mode) and routes to the manage prayer list
-                page instead. stopPropagation + preventDefault keep
-                the outer Link from firing on the same click. */}
-            <ViewPill />
-          </div>
         </div>
 
         {allPrayed ? (
