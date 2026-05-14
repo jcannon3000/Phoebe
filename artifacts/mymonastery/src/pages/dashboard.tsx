@@ -3951,11 +3951,30 @@ export default function Dashboard() {
   // see PhoebeBadgePlugin.swift for why the native layer hands the
   // count over to the web layer. No-op on web (setBadge guards on
   // Capacitor.isNativePlatform internally).
+  //
+  // Two trigger points:
+  //  1. newPrayersCount changes (user prays, data invalidates, count drops).
+  //  2. The tab becomes visible again (returning from a push, or
+  //     foregrounding the iOS app). APNs may have set the badge while
+  //     we were backgrounded; resync to our authoritative count so a
+  //     stale push-driven badge doesn't outlive the next foreground.
   useEffect(() => {
     const native = (window as { PhoebeNative?: { setBadge?: (n: number) => Promise<void> } })
       .PhoebeNative;
     if (!native?.setBadge) return;
-    native.setBadge(newPrayersCount).catch(() => { /* non-fatal */ });
+    const sync = () => {
+      native.setBadge?.(newPrayersCount).catch(() => { /* non-fatal */ });
+    };
+    sync();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", sync);
+    };
   }, [newPrayersCount]);
 
   // Detect new unread letters. Runs once per session. The localStorage key

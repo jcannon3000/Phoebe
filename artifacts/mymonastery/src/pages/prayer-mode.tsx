@@ -1330,6 +1330,27 @@ function HabitSlide({
             {daysWithEither} {daysWithEither === 1 ? "day" : "days"} of prayer this week
           </p>
         )}
+        {/* Reminders pill — sits directly below the "N days of prayer
+            this week" tally so it reads as the natural next step from
+            the rhythm count. Deep-links to /settings where the
+            OfficeReminderSettings card lives. */}
+        <div className="mt-3 flex justify-center">
+          <Link href="/settings">
+            <button
+              type="button"
+              className="text-[11px] font-semibold px-3 py-1 rounded-full transition-opacity hover:opacity-90"
+              style={{
+                background: "rgba(46,107,64,0.22)",
+                color: "#A8C5A0",
+                border: "1px solid rgba(46,107,64,0.4)",
+                fontFamily: "'Space Grotesk', sans-serif",
+                cursor: "pointer",
+              }}
+            >
+              Reminders →
+            </button>
+          </Link>
+        </div>
       </motion.div>
 
       <motion.p
@@ -1349,30 +1370,6 @@ function HabitSlide({
       >
         Done
       </button>
-
-      {/* Reminders CTA — discoverable doorway to /settings's
-          OfficeReminderSettings card so the user can turn on (or
-          adjust) the morning + evening office reminder push from
-          inside the rhythm screen. Underlined link styling so it
-          reads as secondary to the primary Done. */}
-      <Link href="/settings">
-        <button
-          type="button"
-          className="text-[13px] font-medium underline transition-opacity hover:opacity-80"
-          style={{
-            color: "rgba(168,197,160,0.8)",
-            textDecorationColor: "rgba(168,197,160,0.4)",
-            textUnderlineOffset: 4,
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            fontFamily: "'Space Grotesk', sans-serif",
-          }}
-        >
-          Reminders →
-        </button>
-      </Link>
     </div>
   );
 }
