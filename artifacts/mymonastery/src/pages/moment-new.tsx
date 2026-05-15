@@ -568,9 +568,12 @@ export default function MomentNew() {
   const [templateId, setTemplateId] = useState<string | null>(null);
 
   // Intercession
-  const [intercessionMode, setIntercessionMode] = useState<"choose" | "bcp" | "custom" | null>(null);
+  const [intercessionMode, setIntercessionMode] = useState<"choose" | "bcp" | "custom" | "action" | null>(null);
+  // Outbound URL for the "Action" intercession type. Slideshow
+  // renders a "Take action →" pill that opens this in-browser.
+  const [actionLearnMoreUrl, setActionLearnMoreUrl] = useState("");
   const [intercessionTopic, setIntercessionTopic] = useState("");
-  const [intercessionSource, setIntercessionSource] = useState<"bcp" | "custom">("custom");
+  const [intercessionSource, setIntercessionSource] = useState<"bcp" | "custom" | "action">("custom");
   const [intercessionFullText, setIntercessionFullText] = useState("");
   const [selectedBcpPrayer, setSelectedBcpPrayer] = useState<BcpPrayer | null>(null);
 
@@ -807,6 +810,20 @@ export default function MomentNew() {
     setStep("intention");
   }
 
+  function confirmActionIntercession() {
+    setIntercessionSource("action");
+    setIntercessionFullText("");
+    setActionLearnMoreUrl("");
+    setLoggingType("reflection");
+    setReflectionPrompt("What is on your heart today?");
+    setIntercessionMode(null);
+    // Same flow as custom intercession (title + prayer on the next
+    // step) — the only added field is the URL, which renders inline
+    // on the same step so the admin sees everything for an action in
+    // one place.
+    setStep("intention");
+  }
+
   // ─── Navigation ─────────────────────────────────────────────────────────────
   const isBcpTemplate = templateId === "morning-prayer" || templateId === "evening-prayer";
   const BCP_STEP_ORDER: StepId[] = ["template", "bcp-commitment", "bcp-frequency", "bcp-days", "bcp-invite"];
@@ -1010,7 +1027,11 @@ export default function MomentNew() {
     const isLectio = templateId === "lectio-divina";
 
     // Fasting: derive name/intention/scheduling from fasting-specific fields
-    const isCustomIntercession = templateId === "intercession" && intercessionSource === "custom";
+    // "Action" intercessions follow the same custom-intercession plumbing
+    // (the user writes title + prayer); the only extra they carry is
+    // learnMoreUrl. Lump them together so the name/intention derivation
+    // below doesn't branch.
+    const isCustomIntercession = templateId === "intercession" && (intercessionSource === "custom" || intercessionSource === "action");
     const finalName = isFasting && fastingTypeChoice === "meat"
       ? "Fast from meat"
       : isFasting && fastingTypeChoice === "custom"
@@ -1050,6 +1071,11 @@ export default function MomentNew() {
       intercessionTopic: intercessionTopic.trim() || undefined,
       intercessionSource: (intercessionTopic.trim() || isCustomIntercession) ? intercessionSource : undefined,
       intercessionFullText: intercessionFullText.trim() || undefined,
+      // Action-type intercessions carry an outbound URL; ignored for
+      // BCP and plain-custom intercessions.
+      learnMoreUrl: intercessionSource === "action" && actionLearnMoreUrl.trim()
+        ? actionLearnMoreUrl.trim()
+        : undefined,
       frequency: (isLectio ? "weekly" : fastingFreqForApi) as "daily" | "weekly" | "monthly",
       scheduledTime: isFasting || isLectio ? "00:00" : scheduledTime,
       dayOfWeek: isFasting ? (fastingDayOfWeekRrule as "MO"|"TU"|"WE"|"TH"|"FR"|"SA"|"SU" | undefined) : dayOfWeek,
@@ -1387,6 +1413,19 @@ export default function MomentNew() {
                             </div>
                           </div>
                         </button>
+                        <button onClick={confirmActionIntercession}
+                          className="w-full text-left p-5 rounded-2xl transition-all"
+                          style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)" }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.65)")}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.35)")}>
+                          <div className="flex items-start gap-4">
+                            <span className="text-3xl">🌍</span>
+                            <div>
+                              <p className="font-semibold text-foreground">Take action</p>
+                              <p className="text-sm text-muted-foreground mt-0.5">A prayer with a link to learn more or act</p>
+                            </div>
+                          </div>
+                        </button>
                       </div>
                     </>
                   )}
@@ -1678,12 +1717,16 @@ export default function MomentNew() {
                     </details>
                   </div>
                 </div>
-              ) : step === "intention" && templateId === "intercession" && intercessionSource === "custom" ? (
+              ) : step === "intention" && templateId === "intercession" && (intercessionSource === "custom" || intercessionSource === "action") ? (
                 <div className="space-y-8 flex-1">
                   <div>
-                    <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Create your intercession 🙏🏽</h2>
+                    <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                      {intercessionSource === "action" ? "Create an action 🌍" : "Create your intercession 🙏🏽"}
+                    </h2>
                     <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                      Everyone in this practice will see the title and pray this prayer together.
+                      {intercessionSource === "action"
+                        ? "A prayer your community will pray together — with a link to learn more or take action."
+                        : "Everyone in this practice will see the title and pray this prayer together."}
                     </p>
                   </div>
 
@@ -1710,6 +1753,21 @@ export default function MomentNew() {
                       style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
                   </div>
+
+                  {intercessionSource === "action" && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Action link</label>
+                      <input type="url" value={actionLearnMoreUrl}
+                        onChange={e => setActionLearnMoreUrl(e.target.value.slice(0, 500))}
+                        placeholder="https://..."
+                        className="w-full px-4 py-3 rounded-2xl text-base focus:outline-none transition-colors"
+                        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+                      />
+                      <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
+                        Shown as a "Take action →" link on the prayer slide.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : step === "intention" && (
                 <div className="space-y-6 flex-1">

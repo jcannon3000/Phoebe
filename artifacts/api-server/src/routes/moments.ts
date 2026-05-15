@@ -715,8 +715,12 @@ const StandalonePlantSchema = z.object({
   reflectionPrompt: z.string().max(300).optional(),
   templateType: z.string().optional(),
   intercessionTopic: z.string().max(300).optional(),
-  intercessionSource: z.enum(["bcp", "custom"]).optional(),
+  intercessionSource: z.enum(["bcp", "custom", "action"]).optional(),
   intercessionFullText: z.string().optional(),
+  // Optional outbound URL — set when an admin creates an "action"
+  // intercession (a prayer + a link to learn more / take action).
+  // Slideshow renders this as a "Take action →" pill on the slide.
+  learnMoreUrl: z.string().url().optional(),
   frequency: z.enum(["daily", "weekly", "monthly"]).default("weekly"),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).default("08:00"),
   dayOfWeek: z.enum(["MO","TU","WE","TH","FR","SA","SU"]).optional(),
@@ -763,7 +767,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() }); return;
   }
 
-  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, groupId, additionalGroupIds } = parsed.data;
+  const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, learnMoreUrl, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, groupId, additionalGroupIds } = parsed.data;
 
   // ── Group practice validation — only admins can create ──
   let groupMembers: Array<{ email: string; name: string }> | null = null;
@@ -917,6 +921,7 @@ router.post("/moments", async (req, res): Promise<void> => {
     ...(commitmentDuration !== undefined ? { commitmentDuration } : {}),
     ...(commitmentEndDate ? { commitmentEndDate } : {}),
     ...(commitmentSessionsGoal !== undefined ? { commitmentSessionsGoal } : {}),
+    ...(learnMoreUrl !== undefined ? { learnMoreUrl } : {}),
   }).returning();
 
   // Link any additional groups via the junction table. Primary group
