@@ -2195,17 +2195,31 @@ function PrayerOfficeCard() {
   });
   const communityPrayed = communityPrayedData?.people ?? [];
 
+  // Authoritative source for "did the user pray today's side?" — server
+  // returns the last 7 days of office/devotion completions in the
+  // user's tz, split by morning/evening. LocalStorage stays as a
+  // sync-immediate fallback (the just-prayed office writes its flag
+  // synchronously while the session row needs an API round-trip), but
+  // the server query is what catches sessions logged on a different
+  // device or after a reinstall — that's the bug where the home CTA
+  // sometimes still said "Begin prayer" even after the user had prayed.
+  const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
+    queryKey: ["/api/me/office-history-week"],
+    queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
+    staleTime: 30_000,
+  });
+
   // "Prayed today" is scoped to the CURRENT half of the day. After
   // noon the CTA flips to "Evening Prayer" — at that boundary the
   // morning's completion flag stops counting, so a user who prayed
   // Morning Prayer sees a fresh "Begin prayer" CTA in the evening
-  // until they've prayed an evening office. Without this scope, the
-  // pill stayed stuck on "Prayer completed ✓" for the rest of the day
-  // even though the active CTA had moved on.
+  // until they've prayed an evening office.
   //
-  // Completion flags read here:
+  // Two signals are unioned:
+  //   • Server office-history-week — authoritative across devices.
   //   • phoebe:office-completed:{mode}:{day} — written by
-  //     bcp-daily-office for each of the four office/devotion modes.
+  //     bcp-daily-office for each of the four office/devotion modes,
+  //     synchronous so the dashboard flips before the next fetch.
   // The slideshow-completed flag is intentionally NOT read — it's a
   // separate surface (Community Intercessions) and tapping through it
   // shouldn't suppress the office CTA on either side.
@@ -2231,8 +2245,19 @@ function PrayerOfficeCard() {
     if (typeof window === "undefined") return false;
     const d = new Date();
     const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    // Same noon threshold as isMorning above — keeps the "what counts
-    // as prayed" in lockstep with the CTA's morning/evening side.
+    // Server-side: today's entry from the office history (last item
+    // of the 7-day window). Check the side that matches the current
+    // CTA half-of-day so the morning flag doesn't suppress the
+    // evening CTA and vice versa.
+    const serverDays = officeHistory?.days ?? [];
+    const todayServer = serverDays[serverDays.length - 1];
+    if (todayServer && todayServer.ymd === todayKey) {
+      if (isMorning && todayServer.morning) return true;
+      if (!isMorning && todayServer.evening) return true;
+    }
+    // Local fallback — synchronous flag the office viewer writes on
+    // finish. Catches the moment right after praying before the
+    // history query refetches.
     const sideModes = isMorning
       ? ["morning", "morning-devotion"]
       : ["evening", "early-evening-devotion"];
