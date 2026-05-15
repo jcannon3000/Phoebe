@@ -904,7 +904,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                       style={{
                         fontSize: 16,
                         fontStyle: "italic",
-                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        fontFamily: SPACE_GROTESK,
                         color: "rgba(200,212,192,0.75)",
                         margin: 0,
                       }}
@@ -972,7 +972,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                       style={{
                         fontSize: 16,
                         fontStyle: "italic",
-                        fontFamily: "Georgia, 'Times New Roman', serif",
+                        fontFamily: SPACE_GROTESK,
                         color: "rgba(200,212,192,0.75)",
                         margin: 0,
                       }}
@@ -1114,8 +1114,8 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           ) : currentSlide.type === "psalm_gloria" ? (
             // Doxology slide — sealing the psalm. Slim "Doxology"
             // eyebrow keeps the breadcrumb consistent with the verse
-            // slides above. Body renders as italic Georgia via the
-            // default <p> below the branch list.
+            // slides above. Body renders as italic Space Grotesk via
+            // the default <p> below the branch list.
             <p
               style={{
                 color: FAINT_GREEN,
@@ -1242,7 +1242,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           {currentSlide.type === "lesson_verses" ? (
             // Numbered-verse layout for a lesson chunk — verse number
             // on the left (faint sage), prose text on the right
-            // (Georgia). Mirrors the psalm verse layout but the
+            // (Space Grotesk italic). Mirrors the psalm verse layout but the
             // verses come from metadata.verses (chapter+verse+text)
             // instead of being parsed from a string blob. When a
             // chunk crosses a chapter boundary we mark the first verse
@@ -1266,7 +1266,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               if (verses.length === 0) {
                 // Defensive — server should always populate verses for
                 // this slide type, but if it didn't, render the body
-                // string as italic Georgia so we don't blank out.
+                // string as italic Space Grotesk so we don't blank out.
                 return (
                   <p
                     style={{
@@ -1275,7 +1275,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                       color: WARM_TEXT,
                       margin: 0,
                       whiteSpace: "pre-wrap",
-                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontFamily: SPACE_GROTESK,
                       fontStyle: "italic",
                       maxWidth: 600,
                     }}
@@ -1312,7 +1312,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                             lineHeight: 1.6,
                             color: WARM_TEXT,
                             margin: 0,
-                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontFamily: SPACE_GROTESK,
                           }}
                         >
                           {v.text}
@@ -1351,7 +1351,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                             color: WARM_TEXT,
                             margin: 0,
                             paddingLeft: ln.indented ? 24 : 0,
-                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontFamily: SPACE_GROTESK,
                             whiteSpace: "pre-wrap",
                           }}
                         >
@@ -1384,7 +1384,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                             fontSize: 14,
                             lineHeight: 1.6,
                             color: "rgba(240,237,230,0.75)",
-                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontFamily: SPACE_GROTESK,
                             fontStyle: "italic",
                             textAlign: "right",
                             margin: "24px 0 0 0",
@@ -1408,7 +1408,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                             fontSize: 15,
                             lineHeight: 1.7,
                             color: WARM_TEXT,
-                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontFamily: SPACE_GROTESK,
                             fontStyle: "italic",
                             margin: 0,
                           }}
@@ -1432,7 +1432,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               {currentSlide.callAndResponseLines.map((line, i) => (
                 <p
                   key={i}
-                  style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}
+                  style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK, fontStyle: "italic" }}
                 >
                   {line.text}
                 </p>
@@ -1471,7 +1471,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                       lineHeight: 1.6,
                       color: WARM_TEXT,
                       margin: 0,
-                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontFamily: SPACE_GROTESK,
                       fontStyle: "italic",
                       whiteSpace: "pre-wrap",
                     }}
@@ -1499,7 +1499,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                             color: WARM_TEXT,
                             margin: 0,
                             paddingLeft: indented ? 32 : 0,
-                            fontFamily: "Georgia, 'Times New Roman', serif",
+                            fontFamily: SPACE_GROTESK,
                             fontStyle: "italic",
                           }}
                         >
@@ -1544,7 +1544,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                       color: WARM_TEXT,
                       margin: 0,
                       paddingLeft: indented ? 32 : 0,
-                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontFamily: SPACE_GROTESK,
                       fontStyle: "italic",
                     }}
                   >
@@ -1595,7 +1595,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                           lineHeight: 1.7,
                           color: WARM_TEXT,
                           margin: 0,
-                          fontFamily: "Georgia, 'Times New Roman', serif",
+                          fontFamily: SPACE_GROTESK,
                           fontStyle: "italic",
                         }}
                       >
@@ -1609,7 +1609,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 <p
                   style={{
                     // Intercession slides bump the body to 22px italic
-                    // serif to match the prayer-mode slideshow's
+                    // to match the prayer-mode slideshow's
                     // "carrying one prayer" weight; everything else stays
                     // at the missal-page 17px reading size.
                     fontSize: currentSlide.type === "intercessions" ? 22 : 17,
@@ -1618,7 +1618,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                     color: currentSlide.type === "intercessions" ? "#E8E4D8" : WARM_TEXT,
                     margin: 0,
                     whiteSpace: "pre-wrap",
-                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    fontFamily: SPACE_GROTESK,
                     fontStyle: "italic",
                     maxWidth: 600,
                   }}
