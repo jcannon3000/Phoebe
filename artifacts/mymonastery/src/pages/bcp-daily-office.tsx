@@ -434,6 +434,19 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           }
         }
         setSlideIdx(initialIdx);
+        // If we're resuming PAST the intercessions portal (a
+        // localStorage in-progress index, or a ?slide= deep link that
+        // lands beyond it), the user has already crossed the handoff —
+        // stamp portalHandedOffRef so the auto-fire effect and the
+        // next()/prev() skip-logic treat the portal as visited.
+        // Without this, tapping Back to the portal slide re-fires the
+        // /prayer-mode handoff a second time.
+        const portalIdx = fetched.findIndex(
+          (s) => s.type === "intercessions_portal",
+        );
+        if (portalIdx >= 0 && initialIdx > portalIdx) {
+          portalHandedOffRef.current = true;
+        }
         // ?seamlessReturn=1 is appended by the prayer-mode handoff
         // when it bounces us back. Stamp both refs: seamlessReturn so
         // the closing collect's "Amen" routes to the celebration

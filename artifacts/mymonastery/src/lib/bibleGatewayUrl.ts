@@ -192,6 +192,21 @@ export function bibleUrlSegments(reference: string): BibleSegment[] {
       segs.push({ url: `${BIBLE_BASE}/${usfm}.${currentChapter}.${vOnly[1]}.NRSVUE`, label: `${rawBook} ${currentChapter}:${vOnly[1]}` });
       continue;
     }
+    // Bare chapter range with no chapter context — "1-2" → one pill
+    // per whole chapter, since Bible.com can't span chapters in a
+    // single URL. (Capped at 20 chapters as a sanity guard.)
+    const chapterRange = !currentChapter ? part.match(/^(\d+)-(\d+)$/) : null;
+    if (chapterRange) {
+      const start = parseInt(chapterRange[1], 10);
+      const end = parseInt(chapterRange[2], 10);
+      if (end > start && end - start <= 20) {
+        for (let c = start; c <= end; c++) {
+          segs.push({ url: `${BIBLE_BASE}/${usfm}.${c}.NRSVUE`, label: `${rawBook} ${c}` });
+        }
+        currentChapter = String(end);
+        continue;
+      }
+    }
     // Bare chapter with no verses yet — "11".
     const chOnly = part.match(/^(\d+)/);
     if (chOnly) {
