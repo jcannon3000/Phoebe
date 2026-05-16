@@ -1,4 +1,7 @@
 export type SlideType =
+  // Intro / threshold slide shown before the office or devotion
+  // begins — names the liturgy and the tradition it belongs to.
+  | "office_intro"
   | "opening"
   | "opening_sentence"
   | "confession"

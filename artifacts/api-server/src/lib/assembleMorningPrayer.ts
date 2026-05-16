@@ -31,6 +31,8 @@ import { buildLessonSlides } from "./assembleLesson";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type SlideType =
+  // Intro / threshold slide shown before the office begins.
+  | "office_intro"
   | "opening"
   | "opening_sentence"
   | "confession"
@@ -465,6 +467,20 @@ export async function assembleMorningPrayer(
   let idx = 0;
   const id = () => `slide_${idx++}`;
 
+  // SLIDE 0: Office intro — names the liturgy and the tradition it
+  // belongs to, so the user crosses a threshold before the opening
+  // sentence rather than landing cold in the middle of a rite.
+  slides.push(
+    slide(
+      id(),
+      "office_intro",
+      "🕊️",
+      "Before you begin",
+      "For centuries the Church has prayed the Daily Office — psalms, Scripture, and prayer at the hinges of the morning and evening. Monks and laypeople alike have kept this rhythm, letting a fixed pattern bring stability to ordinary days. You are joining a prayer the Church has never stopped praying.",
+      { title: "Morning Prayer" },
+    ),
+  );
+
   // SLIDE 1: Opening Sentence (the Opening Acclamation slot per user
   // direction). The earlier first slide was a Phoebe-specific date
   // label ("Wednesday in 4 Easter") — that information already lives
@@ -758,13 +774,27 @@ export async function assembleMorningPrayer(
     bcpReference: afterNTData?.bcpReference ?? null,
   });
 
-  // Creed
+  // Creed — split into two slides at the third article ("I believe
+  // in the Holy Spirit…"). Slide 1 is the Father + the Son; slide 2
+  // is the Holy Spirit and the Church. Falls back to one slide if
+  // the split phrase isn't found.
+  const mpCreed = getText("apostles_creed");
+  const mpCreedSplit = mpCreed.indexOf("I believe in the Holy Spirit");
+  const mpCreed1 = mpCreedSplit > 0 ? mpCreed.slice(0, mpCreedSplit).trimEnd() : mpCreed;
+  const mpCreed2 = mpCreedSplit > 0 ? mpCreed.slice(mpCreedSplit).trimStart() : "";
   slides.push(
-    slide(id(), "creed", "✝️", "THE APOSTLES' CREED", getText("apostles_creed"), {
+    slide(id(), "creed", "✝️", "THE APOSTLES' CREED", mpCreed1, {
       bcpReference: "BCP p. 96",
       metadata: { prompt: "We say together what we believe." },
     }),
   );
+  if (mpCreed2) {
+    slides.push(
+      slide(id(), "creed", "✝️", "THE APOSTLES' CREED", mpCreed2, {
+        bcpReference: "BCP p. 96",
+      }),
+    );
+  }
 
   // Lord's Prayer
   slides.push(

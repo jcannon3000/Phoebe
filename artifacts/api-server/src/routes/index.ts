@@ -29,6 +29,7 @@ import reportsRouter from "./reports";
 import climateRouter from "./climate";
 import prayerSessionsRouter from "./prayer-sessions";
 import parishRouter from "./parish";
+import actionsRouter from "./actions";
 
 const router: IRouter = Router();
 
@@ -62,5 +63,6 @@ router.use(reportsRouter);
 router.use(climateRouter);
 router.use(prayerSessionsRouter);
 router.use(parishRouter);
+router.use(actionsRouter);
 
 export default router;

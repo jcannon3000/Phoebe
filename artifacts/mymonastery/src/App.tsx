@@ -100,6 +100,8 @@ import PrayerListPage from "./pages/prayer-list";
 import PrayerModePage from "./pages/prayer-mode";
 import PrayerStartPage from "./pages/prayer-start";
 import PrayerRequestDetailPage from "./pages/prayer-request-detail";
+import ActionDetailPage from "./pages/action-detail";
+import ActionNewPage from "./pages/action-new";
 import PrayerForNew from "./pages/prayer-for-new";
 import PrayerRequestNew from "./pages/prayer-request-new";
 import PrayerForDetail from "./pages/prayer-for-detail";
@@ -365,6 +367,8 @@ function Router() {
       <Route path="/prayer-mode" component={PrayerModePage} />
       <Route path="/prayer-start" component={PrayerStartPage} />
       <Route path="/prayer-requests/:id" component={PrayerRequestDetailPage} />
+      <Route path="/actions/new" component={ActionNewPage} />
+      <Route path="/actions/:id" component={ActionDetailPage} />
       {/* /pray-for/new (no email) must sit above the two /pray-for/:email
           routes, otherwise "new" would match as an email param. */}
       <Route path="/pray-for/new" component={PrayerForNew} />

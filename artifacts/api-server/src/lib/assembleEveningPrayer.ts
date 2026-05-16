@@ -220,6 +220,20 @@ export async function assembleEveningPrayer(
   let idx = 0;
   const id = () => `ep_slide_${idx++}`;
 
+  // 0. Office intro — names the liturgy and the tradition it belongs
+  //    to, so the user crosses a threshold before the opening
+  //    sentence rather than landing cold in the middle of a rite.
+  slides.push(
+    slide(
+      id(),
+      "office_intro",
+      "🕊️",
+      "Before you begin",
+      "For centuries the Church has prayed the Daily Office — psalms, Scripture, and prayer at the hinges of the morning and evening. Monks and laypeople alike have kept this rhythm, letting a fixed pattern bring stability to ordinary days. You are joining a prayer the Church has never stopped praying.",
+      { title: "Evening Prayer" },
+    ),
+  );
+
   // 1. Opening Sentence (the Opening Acclamation slot per user
   //    direction). The earlier first slide was a Phoebe-specific
   //    date label — that information already lives in the chrome's
@@ -441,14 +455,26 @@ export async function assembleEveningPrayer(
     });
   }
 
-  // 12. The Apostles' Creed
+  // 12. The Apostles' Creed — split into two slides at the third
+  // article ("I believe in the Holy Spirit…"). Slide 1 is the
+  // Father + the Son; slide 2 is the Holy Spirit and the Church.
   const creedData = getTextData("apostles_creed");
+  const epCreedSplit = creedData.content.indexOf("I believe in the Holy Spirit");
+  const epCreed1 = epCreedSplit > 0 ? creedData.content.slice(0, epCreedSplit).trimEnd() : creedData.content;
+  const epCreed2 = epCreedSplit > 0 ? creedData.content.slice(epCreedSplit).trimStart() : "";
   slides.push(
-    slide(id(), "creed", "✝️", creedData.title.toUpperCase(), creedData.content, {
+    slide(id(), "creed", "✝️", creedData.title.toUpperCase(), epCreed1, {
       bcpReference: creedData.bcpReference,
       metadata: { prompt: "We say together what we believe." },
     }),
   );
+  if (epCreed2) {
+    slides.push(
+      slide(id(), "creed", "✝️", creedData.title.toUpperCase(), epCreed2, {
+        bcpReference: creedData.bcpReference,
+      }),
+    );
+  }
 
   // 13. The Lord's Prayer
   const lpData = getTextData("lords_prayer_contemporary");

@@ -14,6 +14,7 @@ import {
   ritualsTable,
   groupMembersTable,
   groupsTable,
+  actionsTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -25,6 +26,7 @@ import {
   sendParishOfficeReminderPush,
   sendParishEveningRecapPush,
   sendGatheringTomorrowPush,
+  sendActionReminderPush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
@@ -1090,6 +1092,92 @@ export async function runGatheringReminderSender(): Promise<void> {
   }
 }
 
+// ─── Action advance reminders ──────────────────────────────────────────────
+//
+// Runs on every scheduler tick. For each active community action:
+//   - ~7 days out → "is next week" push (deduped via week_reminder_sent_at)
+//   - ~1 day out  → "is tomorrow"  push (deduped via day_reminder_sent_at)
+// Both fan out to every joined member of the host community. UTC calendar-
+// date comparison — no per-community timezone; the push lands early in the
+// UTC day (evening across the Americas), which reads fine for an advance
+// nudge. Actions created inside the reminder window get their sent-at
+// columns pre-stamped at creation so the on-creation push isn't doubled.
+export async function runActionReminderSender(): Promise<void> {
+  try {
+    const now = new Date();
+    const dateUTC = (d: Date) => d.toISOString().slice(0, 10);
+    const plusDaysUTC = (n: number) => {
+      const d = new Date(now);
+      d.setUTCDate(d.getUTCDate() + n);
+      return dateUTC(d);
+    };
+    const tomorrowStr = plusDaysUTC(1);
+    const weekOutStr = plusDaysUTC(7);
+
+    // Active actions whose event hasn't passed yet.
+    const actions = await db
+      .select({
+        id: actionsTable.id,
+        title: actionsTable.title,
+        location: actionsTable.location,
+        eventAt: actionsTable.eventAt,
+        groupId: actionsTable.groupId,
+        weekReminderSentAt: actionsTable.weekReminderSentAt,
+        dayReminderSentAt: actionsTable.dayReminderSentAt,
+      })
+      .from(actionsTable)
+      .where(and(
+        eq(actionsTable.state, "active"),
+        gte(actionsTable.eventAt, now),
+      ));
+
+    for (const action of actions) {
+      const eventDateStr = dateUTC(new Date(action.eventAt));
+      let lead: "week" | "day" | null = null;
+      if (eventDateStr === tomorrowStr && action.dayReminderSentAt == null) {
+        lead = "day";
+      } else if (eventDateStr === weekOutStr && action.weekReminderSentAt == null) {
+        lead = "week";
+      }
+      if (!lead) continue;
+
+      const members = await db
+        .select({ userId: groupMembersTable.userId })
+        .from(groupMembersTable)
+        .where(and(
+          eq(groupMembersTable.groupId, action.groupId),
+          sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        ));
+
+      await Promise.allSettled(
+        members
+          .filter((m) => typeof m.userId === "number")
+          .map((m) =>
+            sendActionReminderPush(m.userId as number, {
+              actionId: action.id,
+              actionTitle: action.title,
+              lead: lead as "week" | "day",
+              location: action.location,
+            }),
+          ),
+      );
+
+      await db
+        .update(actionsTable)
+        .set(
+          lead === "day"
+            ? { dayReminderSentAt: new Date() }
+            : { weekReminderSentAt: new Date() },
+        )
+        .where(eq(actionsTable.id, action.id));
+
+      logger.info({ actionId: action.id, lead }, "[action-reminder] sent advance push");
+    }
+  } catch (err) {
+    logger.error({ err }, "[action-reminder] sender failed");
+  }
+}
+
 let bellInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startBellScheduler(): void {
@@ -1121,6 +1209,9 @@ export function startBellScheduler(): void {
     runGatheringReminderSender().catch((err) =>
       logger.error({ err }, "[gathering-reminder] initial run failed"),
     );
+    runActionReminderSender().catch((err) =>
+      logger.error({ err }, "[action-reminder] initial run failed"),
+    );
   }, 45_000);
 
   bellInterval = setInterval(
@@ -1148,6 +1239,9 @@ export function startBellScheduler(): void {
       );
       runGatheringReminderSender().catch((err) =>
         logger.error({ err }, "[gathering-reminder] scheduled run failed"),
+      );
+      runActionReminderSender().catch((err) =>
+        logger.error({ err }, "[action-reminder] scheduled run failed"),
       );
     },
     15 * 60 * 1000,

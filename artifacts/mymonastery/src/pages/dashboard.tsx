@@ -345,7 +345,28 @@ type DashboardItem =
   // worship on Sunday, one card replaces N cards and surfaces all
   // their times in a single tap.
   | { kind: "services"; schedules: ServiceSchedule[]; nextDate: Date; isOnDate: boolean }
-  | { kind: "feed"; data: SubscribedFeed };
+  | { kind: "feed"; data: SubscribedFeed }
+  // Community "action" — an advocacy / community-action event. Taps
+  // through to a full detail page (/actions/:id), unlike gatherings
+  // which open a modal.
+  | { kind: "action"; data: ActionFeedItem; nextDate: Date };
+
+// One upcoming action across the user's communities — shape returned by
+// GET /api/me/actions.
+type ActionFeedItem = {
+  id: number;
+  title: string;
+  eventAt: string;
+  location: string | null;
+  groupId: number;
+  groupName: string;
+  groupEmoji: string | null;
+  groupSlug: string;
+  hasAttachedPrayer: boolean;
+  comingCount: number;
+  maybeCount: number;
+  myRsvp: "coming" | "maybe" | null;
+};
 
 // Shape returned by GET /api/prayer-feeds/subscribed — one row per feed I
 // subscribe to, with the entry (if any) for today already attached.
@@ -483,6 +504,16 @@ export function HomeAuthoringFAB() {
               >
                 <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ Community intercession</p>
                 <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>An intention for the whole community to carry</p>
+              </button>
+            )}
+            {isAdminOfAny && (
+              <button
+                onClick={() => { setOpen(false); setLocation("/actions/new"); }}
+                className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              >
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📣 Community action</p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Call your community to show up together</p>
               </button>
             )}
           </motion.div>
@@ -1615,6 +1646,79 @@ function GatheringCard({
         </div>
       </motion.div>
     </div>
+  );
+}
+
+// ─── Action card ────────────────────────────────────────────────────────────
+// A community "action" (advocacy / community-action event) on the
+// dashboard. Unlike GatheringCard — which opens a modal — tapping an
+// action navigates to its full detail page: an action carries a
+// description, a "Learn more" link, RSVPs, and a roster that need room.
+function ActionCard({ a, keyPrefix }: { a: ActionFeedItem; keyPrefix: string }) {
+  const colors = CATEGORY_COLORS.gatherings;
+  let eventDate: Date | null = null;
+  try { eventDate = parseISO(a.eventAt); } catch { /* ignore */ }
+  const isToday_ = eventDate ? isToday(eventDate) : false;
+  const timeLabel = eventDate
+    ? `${nextDayLabel(eventDate)} · ${format(eventDate, "h:mm a")}`
+    : null;
+
+  // RSVP summary line — the viewer's own status when they've responded,
+  // otherwise a quiet count of who's in so far.
+  const respondingCount = a.comingCount + a.maybeCount;
+  const rsvpLabel =
+    a.myRsvp === "coming"
+      ? "You're coming"
+      : a.myRsvp === "maybe"
+        ? "You might come"
+        : respondingCount > 0
+          ? `${respondingCount} ${respondingCount === 1 ? "person" : "people"} responding`
+          : null;
+
+  return (
+    <Link key={`${keyPrefix}-${a.id}`} href={`/actions/${a.id}`} className="block w-full text-left">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
+        style={{
+          background: colors.bg,
+          border: "1px solid rgba(111,175,133,0.35)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div
+          className={`w-1 flex-shrink-0 ${isToday_ ? colors.barPulseClass : ""}`}
+          style={{ background: isToday_ ? undefined : colors.bar }}
+        />
+        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+              {a.title}
+            </span>
+            <span
+              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+            >
+              {a.groupEmoji ?? "⛪"} {a.groupName}
+            </span>
+          </div>
+
+          {/* The 📣 prefix marks the row as an action — distinguishing
+              it from a gathering, which is otherwise the same shape. */}
+          {timeLabel && (
+            <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
+              📣 {timeLabel}
+            </div>
+          )}
+          {rsvpLabel && (
+            <div className="mt-1 text-[11px]" style={{ color: "rgba(143,175,150,0.85)" }}>
+              {rsvpLabel}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </Link>
   );
 }
 
@@ -3276,6 +3380,14 @@ function TimeSection({
           keyPrefix={label}
         />,
       );
+    } else if (item.kind === "action") {
+      renderedNodes.push(
+        <ActionCard
+          key={`${label}-a-${item.data.id}`}
+          a={item.data}
+          keyPrefix={label}
+        />,
+      );
     } else if (item.kind === "moment") {
       renderedNodes.push(
         <MomentCard
@@ -3837,6 +3949,16 @@ export default function Dashboard() {
   });
   const rituals = ritualsData ?? [];
 
+  // Community actions (advocacy / community-action events) across every
+  // community the user belongs to. Bucketed into Today / Tomorrow / This
+  // week the same way gatherings and services are.
+  const { data: actionsData } = useQuery<{ actions: ActionFeedItem[] }>({
+    queryKey: ["/api/me/actions"],
+    queryFn: () => apiRequest("GET", "/api/me/actions"),
+    enabled: !!user,
+  });
+  const actions = actionsData?.actions ?? [];
+
   // Prayer-list streak (consecutive days finishing a full slideshow) — used
   // by the Today-empty fallback card to reward the habit.
   const { data: prayerStreakData } = useQuery<{ streak: number; lastPrayedDate: string | null; loggedToday?: boolean; gardenPrayedTodayCount?: number }>({
@@ -4364,6 +4486,23 @@ export default function Dashboard() {
       else monthItems.push(item);
     }
 
+    // ── Community actions placement
+    // Bucket by eventAt: today → Today, tomorrow → Tomorrow, within 7
+    // days → This week, else → This month. Actions whose event has
+    // already passed drop off the dashboard.
+    for (const a of actions) {
+      let eventDate: Date | null = null;
+      try { eventDate = parseISO(a.eventAt); } catch { /* ignore */ }
+      if (!eventDate || !Number.isFinite(eventDate.getTime())) continue;
+      const item: DashboardItem = { kind: "action", data: a, nextDate: eventDate };
+      const nextMs = startOfDay(eventDate).getTime();
+      if (nextMs < _todayMs) continue;
+      if (nextMs === todayStart) todayItems.push(item);
+      else if (nextMs === tomorrowStart) tomorrowItems.push(item);
+      else if (nextMs < sevenDaysOutMs) weekItems.push(item);
+      else monthItems.push(item);
+    }
+
     // Chronological sort for Upcoming / This month so cards line up by next
     // occurrence including time of day — a 9am Lectio lands before the same
     // day's 6:30pm gathering, and a Sunday service drops to last when its
@@ -4385,6 +4524,9 @@ export default function Dashboard() {
       if (item.kind === "gathering") {
         const d = computeNextGatheringDate(item.data);
         return d ? d.getTime() : Number.POSITIVE_INFINITY;
+      }
+      if (item.kind === "action") {
+        return item.nextDate ? item.nextDate.getTime() : Number.POSITIVE_INFINITY;
       }
       if (item.kind === "letter") {
         const ms = item.data.windowOpenDate ? new Date(item.data.windowOpenDate).getTime() : NaN;
@@ -4418,7 +4560,7 @@ export default function Dashboard() {
     monthItems.sort((a, b) => itemSortMs(a) - itemSortMs(b));
 
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, isBeta]);
+  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, isBeta]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");

@@ -103,6 +103,7 @@ interface OfficeDayInfo {
 // type. Keeps the chrome readable when the eyebrow is verbose
 // (e.g. "VENITE · PSALM 95").
 const SECTION_LABEL: Record<string, string> = {
+  office_intro: "Welcome",
   opening: "Opening",
   opening_sentence: "Opening Sentence",
   confession: "Confession",
@@ -600,6 +601,18 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     else prev();
   }
 
+  // Tap-to-navigate — tap the left half of the slide to go back, the
+  // right half to advance (Kindle-style). Taps that land on an
+  // interactive control (the Amen button, the Read on Bible.com
+  // link, the Back/Next nav, inline word fields) are left alone so
+  // the control's own handler runs instead of paging.
+  function handleTapNavigate(e: React.MouseEvent) {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("button, a, input, textarea")) return;
+    if (e.clientX < window.innerWidth / 2) prev();
+    else next();
+  }
+
   // Amen flow on intercession slides — fires the right endpoint for
   // the slide's source so the amen counts toward the recipient's
   // metrics + the bell scheduler's "prayed today" gate. Best-effort:
@@ -694,6 +707,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     <div
       onTouchStart={handleSwipeTouchStart}
       onTouchEnd={handleSwipeTouchEnd}
+      onClick={handleTapNavigate}
       style={{
         height: "100dvh",
         overflow: "hidden",
@@ -799,7 +813,64 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               + eyebrow, mirroring prayer-mode.tsx's "request" slide.
               The default left-aligned eyebrow + bold-title pair
               renders in the else branch below. */}
-          {currentSlide.type === "intercessions_portal" ? (
+          {currentSlide.type === "office_intro" ? (
+            // Threshold slide — names the office/devotion and the
+            // tradition it belongs to. Centered, with the same glow
+            // the psalm/intercessions titles use, so opening the
+            // liturgy feels like crossing into something.
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                textAlign: "center",
+                gap: 18,
+                maxWidth: 540,
+              }}
+            >
+              <p
+                style={{
+                  color: FAINT_GREEN,
+                  fontSize: 11,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                  fontWeight: 600,
+                }}
+              >
+                {currentSlide.eyebrow || "Before you begin"}
+              </p>
+              <h1
+                className="title-glow-breathe"
+                style={{
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: "clamp(40px, 8vw, 72px)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  color: WARM_TEXT,
+                  margin: 0,
+                  lineHeight: 1.05,
+                }}
+              >
+                {currentSlide.title ?? ""}
+              </h1>
+              {currentSlide.content && (
+                <p
+                  style={{
+                    fontSize: 17,
+                    lineHeight: 1.7,
+                    fontFamily: SPACE_GROTESK,
+                    color: "rgba(200,212,192,0.85)",
+                    margin: 0,
+                  }}
+                >
+                  {currentSlide.content}
+                </p>
+              )}
+            </div>
+          ) : currentSlide.type === "intercessions_portal" ? (
             // Intro chord for the prayer-mode handoff. The title
             // breathes for ~2.5 seconds (see the delayed auto-jump
             // effect above) before the office redirects into
@@ -1044,6 +1115,92 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   >
                     {reference}
                   </h1>
+                </div>
+              );
+            })()
+          ) : currentSlide.type === "lesson" ? (
+            // Plain lesson slide — same centered template as the
+            // psalm title page: a contextual eyebrow, the big
+            // reference headline, and a "From the Daily Office
+            // Lectionary" attribution. The "Read on Bible.com" pill
+            // renders below (the lesson || lesson_title block further
+            // down). The "Open your Bible…" body line is suppressed
+            // for this type so the slide reads as a clean title card.
+            (() => {
+              const isEvening =
+                resolvedMode === "evening" || resolvedMode === "early-evening-devotion";
+              const tod = isEvening ? "Evening" : "Morning";
+              const e = (currentSlide.eyebrow ?? "").toUpperCase();
+              const eyebrowText = e.includes("FIRST")
+                ? `The First Lesson Appointed For This ${tod}`
+                : e.includes("SECOND")
+                  ? `The Second Lesson Appointed For This ${tod}`
+                  : e.includes("GOSPEL")
+                    ? `The Gospel Appointed For This ${tod}`
+                    : `The Lesson Appointed For This ${tod}`;
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    textAlign: "center",
+                    gap: 16,
+                  }}
+                >
+                  <p
+                    style={{
+                      color: FAINT_GREEN,
+                      fontSize: 11,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {eyebrowText}
+                  </p>
+                  <h1
+                    className="title-glow-breathe"
+                    style={{
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: "clamp(36px, 7vw, 64px)",
+                      fontWeight: 700,
+                      letterSpacing: "-0.01em",
+                      color: WARM_TEXT,
+                      margin: 0,
+                      lineHeight: 1.05,
+                    }}
+                  >
+                    {currentSlide.title ?? ""}
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: 16,
+                      fontFamily: SPACE_GROTESK,
+                      color: "rgba(200,212,192,0.75)",
+                      margin: 0,
+                    }}
+                  >
+                    From the Daily Office Lectionary
+                  </p>
+                  {/* "Open your Bible, or read this passage online."
+                      — the server's lesson prompt, kept above the
+                      Read on Bible.com pill that renders below. */}
+                  {currentSlide.content && (
+                    <p
+                      style={{
+                        fontSize: 15,
+                        fontFamily: SPACE_GROTESK,
+                        color: "rgba(143,175,150,0.9)",
+                        margin: "6px 0 0 0",
+                      }}
+                    >
+                      {currentSlide.content}
+                    </p>
+                  )}
                 </div>
               );
             })()
@@ -1552,7 +1709,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 );
               })}
             </div>
-          ) : currentSlide.content ? (
+          ) : currentSlide.content && currentSlide.type !== "lesson" && currentSlide.type !== "office_intro" ? (
             (() => {
               // Prose prayers (general thanksgiving, confession,
               // absolution, collect, prayer for mission, opening

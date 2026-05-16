@@ -960,8 +960,8 @@ function SlideContent({
 
       {/* Optional outbound link. "Take action →" when the intercession
           is an action-type (community admin authored it with a CTA);
-          "Read more →" otherwise (background article on a feed entry
-          or a regular intercession with a context link). On the iOS
+          "Learn more →" otherwise (background article on a feed entry
+          or a written prayer responding to an article). On the iOS
           shell openExternal routes through SFSafariViewController so
           the user stays inside Phoebe; on web it opens a new tab. */}
       {slide.kind === "intercession" && slide.learnMoreUrl && (
@@ -984,7 +984,7 @@ function SlideContent({
               : { color: "rgba(168,197,160,0.75)" }
           }
         >
-          {slide.source === "action" ? "Take action →" : "Read more →"}
+          {slide.source === "action" ? "Take action →" : "Learn more →"}
         </button>
       )}
 

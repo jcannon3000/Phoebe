@@ -1117,7 +1117,10 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
       source: draft.source,
       title: draft.title.trim(),
       fullText: draft.fullText.trim(),
-      learnMoreUrl: draft.source === "action" ? draft.learnMoreUrl.trim() : null,
+      // The link is required for an action ("Take action →" pill) and
+      // optional for a written prayer ("Learn more →" pill — used to
+      // link the article a prayer is responding to).
+      learnMoreUrl: draft.learnMoreUrl.trim() || null,
     });
   }
 
@@ -1242,25 +1245,28 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
             />
           </div>
 
-          {draft.source === "action" && (
-            <div>
-              <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                Action link
-              </label>
-              <input
-                type="url"
-                value={draft.learnMoreUrl}
-                onChange={(e) => setDraft({ ...draft, learnMoreUrl: e.target.value })}
-                maxLength={500}
-                placeholder="https://…"
-                className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
-                style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-              />
-              <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-                Shown as a "Take action →" pill on the prayer slide.
-              </p>
-            </div>
-          )}
+          {/* Link field — required for an Action ("Take action →"
+              pill), optional for a written Prayer ("Learn more →" pill
+              for linking the article a prayer is responding to). */}
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              {draft.source === "action" ? "Action link" : "Learn more URL (optional)"}
+            </label>
+            <input
+              type="url"
+              value={draft.learnMoreUrl}
+              onChange={(e) => setDraft({ ...draft, learnMoreUrl: e.target.value })}
+              maxLength={500}
+              placeholder="https://…"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+            />
+            <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
+              {draft.source === "action"
+                ? 'Shown as a "Take action →" pill on the prayer slide.'
+                : 'Link an article — subscribers see a "Learn more →" pill on the slide that opens it.'}
+            </p>
+          </div>
 
           {error && (
             <p className="text-[11px]" style={{ color: "#E57373" }}>{error}</p>

@@ -170,7 +170,20 @@ export async function assembleDevotion(
   // shows the office name and the day, so the slide read as a
   // mostly-empty "OPENING — Wednesday in the 5th Week of Easter"
   // intro that the user had to tap past. Removed; the devotion now
-  // opens directly on the versicle.
+  // opens on the office-intro threshold slide, then the versicle.
+
+  // 0. Devotion intro — names the practice and the tradition it
+  //    belongs to before the versicle begins.
+  slides.push(
+    slide(
+      id(),
+      "office_intro",
+      "🌿",
+      "Before you begin",
+      "The Daily Devotions are a short form of the Church's daily prayer — a few unhurried minutes of Scripture and prayer to steady the day. They carry the rhythm the monasteries have kept for centuries, gathered into a span that fits a full life.",
+      { title: titleSuffix },
+    ),
+  );
 
   // 1. Opening versicle. Morning uses the canonical "make speed /
   //    make haste" pair; early-evening uses the shorter "Light and
