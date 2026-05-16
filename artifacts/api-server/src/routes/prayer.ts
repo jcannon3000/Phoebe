@@ -308,6 +308,11 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     // is in a different tz.
     let amenCountToday: number | null = null;
     let amenCountTotal: number | null = null;
+    // Distinct people who have prayed this request (any day). Drives
+    // the "Prayed by N people" line on the prayer-list — a person who
+    // prays on three different days counts once here (vs amenCountTotal
+    // which is per-user-per-day).
+    let amenPeopleCount: number | null = null;
     // Pull all amens once so we can derive both the owner-only counts
     // and the per-viewer "did I amen this today?" flag without two
     // round-trips. The viewer flag drives the slideshow's resume-
@@ -340,14 +345,17 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       // from the old 7/day cap inflating the visible total.
       const totalUserDays = new Set<string>();
       const todayUsers = new Set<number>();
+      const distinctUsers = new Set<number>();
       for (const row of amens) {
         if (!row.prayedAt) continue;
         const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
         totalUserDays.add(`${row.userId}|${ymd}`);
+        distinctUsers.add(row.userId);
         if (ymd === viewerTodayYmd) todayUsers.add(row.userId);
       }
       amenCountTotal = totalUserDays.size;
       amenCountToday = todayUsers.size;
+      amenPeopleCount = distinctUsers.size;
     }
 
     // Freshness flags based on expiresAt (which we no longer hard-filter on)
@@ -384,6 +392,7 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       needsRenewal,
       amenCountToday,
       amenCountTotal,
+      amenPeopleCount,
       // True if THIS viewer (not anyone) has tapped Amen on this
       // request today, in their own timezone. Drives the "skip
       // already-prayed slides" resume + the dashboard partial-
