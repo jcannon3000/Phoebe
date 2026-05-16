@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
-import { bibleGatewayUrl } from "@/lib/bibleGatewayUrl";
+import { bibleUrlSegments } from "@/lib/bibleGatewayUrl";
 import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1811,50 +1811,63 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               iOS shell shows SFSafariViewController instead of
               bouncing the user out to mobile Safari. */}
           {(currentSlide.type === "lesson" || currentSlide.type === "lesson_title") && (() => {
-            // Bible.com pill on the title card and on the legacy
-            // reference-only fallback slide. The verse-chunk slides
-            // don't get the pill — the user is already reading the
-            // text in-app and the pill would compete with the verses.
-            const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
-            const serverUrl = typeof meta?.readUrl === "string" ? meta.readUrl : null;
-            const computed = currentSlide.title ? bibleGatewayUrl(currentSlide.title) : null;
-            const url = serverUrl ?? computed;
-            if (!url) return null;
+            // Bible.com pills on the lesson title card. A reference
+            // with more than one contiguous range — multi-range
+            // ("Num. 11:16-17, 24-29") or cross-chapter
+            // ("John 7:14-8:2") — gets one pill PER range, because
+            // Bible.com only resolves a single contiguous range per
+            // URL (the old single-link build silently dropped every
+            // range after the first). A plain single-range reference
+            // keeps the simple "Read on Bible.com →" pill.
+            const segments = currentSlide.title
+              ? bibleUrlSegments(currentSlide.title)
+              : [];
+            if (segments.length === 0) return null;
+            const multi = segments.length > 1;
             return (
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  // Always intercept on native + web. openExternal
-                  // routes through SFSafariViewController on iOS and
-                  // window.open on the web. preventDefault stops the
-                  // iOS WebView from also navigating to the URL.
-                  e.preventDefault();
-                  openExternal(url);
-                }}
+              <div
                 style={{
-                  // Use `auto` margins so the pill horizontally
-                  // centers itself when the parent is centered (lesson
-                  // slides flow centered now) and naturally shrinks
-                  // back to the start on left-aligned layouts via the
-                  // flex parent's alignItems.
-                  alignSelf: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
                   marginTop: 4,
-                  padding: "10px 18px",
-                  borderRadius: 999,
-                  background: "rgba(46,107,64,0.18)",
-                  border: "1px solid rgba(46,107,64,0.45)",
-                  color: WARM_TEXT,
-                  fontFamily: SPACE_GROTESK,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  display: "inline-block",
                 }}
               >
-                Read on Bible.com →
-              </a>
+                {segments.map((seg, i) => (
+                  <a
+                    key={`${seg.url}-${i}`}
+                    href={seg.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      // Always intercept on native + web. openExternal
+                      // routes through SFSafariViewController on iOS
+                      // and window.open on the web. preventDefault
+                      // stops the iOS WebView from also navigating.
+                      e.preventDefault();
+                      openExternal(seg.url);
+                    }}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 999,
+                      background: "rgba(46,107,64,0.18)",
+                      border: "1px solid rgba(46,107,64,0.45)",
+                      color: WARM_TEXT,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      display: "inline-block",
+                    }}
+                  >
+                    {/* Single range → the plain label. Multiple →
+                        each pill names the range it opens so the
+                        reader knows which part they're reading. */}
+                    {multi ? `Read ${seg.label} →` : "Read on Bible.com →"}
+                  </a>
+                ))}
+              </div>
             );
           })()}
           {/* "Learn more" pill on feed-scoped intercession slides

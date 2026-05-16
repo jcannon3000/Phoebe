@@ -133,3 +133,77 @@ function lookupUsfm(raw: string): string | null {
 }
 
 export const bibleGatewayUrl = bibleUrl;
+
+export type BibleSegment = { url: string; label: string };
+
+const BIBLE_BASE = `https://www.bible.com/bible/${NRSVUE_VERSION_ID}`;
+
+/**
+ * Split a scripture reference into one {url, label} per contiguous
+ * range. Bible.com resolves only a single contiguous range per URL,
+ * so a multi-range reference ("Num. 11:16-17, 24-29") or a cross-
+ * chapter one ("John 7:14-8:2") returns more than one segment — the
+ * lesson slide renders a "Read …" pill for each. A plain single-range
+ * reference returns exactly one segment.
+ */
+export function bibleUrlSegments(reference: string): BibleSegment[] {
+  if (!reference) return [];
+  const trimmed = reference.trim();
+  if (!trimmed) return [];
+
+  const noParens = trimmed.replace(/\([^)]*\)/g, ",").replace(/\s+/g, " ").trim();
+  const cleaned = noParens.replace(/--/g, "-").replace(/[–—]/g, "-");
+
+  const m = cleaned.match(/^([\dA-Za-z.\s]+?)\s+(\d.*)$/);
+  if (!m) return [];
+  const rawBook = m[1].trim();
+  const rest = m[2].trim();
+  const usfm = lookupUsfm(rawBook);
+  if (!usfm) return [];
+
+  const segs: BibleSegment[] = [];
+  let currentChapter: string | null = null;
+  const parts = rest.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+
+  for (const part of parts) {
+    // Cross-chapter range "7:14-8:2" → two segments (chapter 7 from
+    // v14, then chapter 8 vv1-2). Bible.com can't span chapters in
+    // one URL, so the reader gets a pill for each side.
+    const cross = part.match(/^(\d+):(\d+)-(\d+):(\d+)$/);
+    if (cross) {
+      const [, c1, v1, c2, v2] = cross;
+      currentChapter = c2;
+      segs.push({ url: `${BIBLE_BASE}/${usfm}.${c1}.${v1}.NRSVUE`, label: `${rawBook} ${c1}:${v1}` });
+      segs.push({ url: `${BIBLE_BASE}/${usfm}.${c2}.1-${v2}.NRSVUE`, label: `${rawBook} ${c2}:1-${v2}` });
+      continue;
+    }
+    // Chapter:verse(s) — "11:16-17" or "11:16".
+    const cv = part.match(/^(\d+):(\d+(?:-\d+)?)$/);
+    if (cv) {
+      const [, ch, verses] = cv;
+      currentChapter = ch;
+      segs.push({ url: `${BIBLE_BASE}/${usfm}.${ch}.${verses}.NRSVUE`, label: `${rawBook} ${ch}:${verses}` });
+      continue;
+    }
+    // Continuation verse(s) — "24-29" / "16" — carry the running
+    // chapter (the BCP writes "11:16-17, 24-29", chapter implied).
+    const vOnly = part.match(/^(\d+(?:-\d+)?)$/);
+    if (vOnly && currentChapter) {
+      segs.push({ url: `${BIBLE_BASE}/${usfm}.${currentChapter}.${vOnly[1]}.NRSVUE`, label: `${rawBook} ${currentChapter}:${vOnly[1]}` });
+      continue;
+    }
+    // Bare chapter with no verses yet — "11".
+    const chOnly = part.match(/^(\d+)/);
+    if (chOnly) {
+      currentChapter = chOnly[1];
+      segs.push({ url: `${BIBLE_BASE}/${usfm}.${chOnly[1]}.NRSVUE`, label: `${rawBook} ${part}` });
+    }
+  }
+
+  // Nothing parsed — fall back to the legacy single-URL builder.
+  if (segs.length === 0) {
+    const u = bibleUrl(reference);
+    return u ? [{ url: u, label: rawBook }] : [];
+  }
+  return segs;
+}
