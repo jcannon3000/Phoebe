@@ -951,7 +951,11 @@ async function injectIntercessions(
   const intercessionSlides = await buildIntercessionSlides(userId, cacheDate);
   if (intercessionSlides.length === 0) return slides;
   const portalSlide: Slide = {
-    id: "intercessions_portal",
+    // `injectIntercessions` has no id-counter in scope, but the
+    // original slides are slide_0..slide_(N-1), so slide_N is a
+    // collision-free id consistent with the rest (EP/Devotion build
+    // their portal the same way).
+    id: `slide_${slides.length}`,
     type: "intercessions_portal",
     emoji: "🙏🏽",
     eyebrow: "INTERCESSIONS",

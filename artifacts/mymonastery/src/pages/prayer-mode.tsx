@@ -2497,26 +2497,32 @@ export default function PrayerModePage() {
     !prayingForEmails.has(f.email.toLowerCase())
   );
 
-  if (!hasActiveOwnRequest) {
+  // The ask-request nudge + the closing pause are the daily
+  // slideshow's gentle ending. queue=new is a focused "respond to the
+  // N waiting requests" deck — the home card counts exactly those
+  // requests, so the deck ends on the last one and goes straight to
+  // the closing summary, with no trailing nudge or breath.
+  if (queueMode !== "new") {
+    if (!hasActiveOwnRequest) {
+      slides.push({
+        kind: "ask-request",
+        text: "",
+        attribution: "",
+      });
+    }
+
+    // Pause slide — the final slide before the closing summary. A
+    // meditative breath: the user is invited to bring anything else
+    // on their heart to prayer that the slideshow couldn't know
+    // about. Keeping it inside the slides array (rather than as its
+    // own phase) means it inherits the same swipe/Amen advance and
+    // persists in slideshow-progress for partial-completion math.
     slides.push({
-      kind: "ask-request",
+      kind: "pause",
       text: "",
       attribution: "",
     });
   }
-
-  // Pause slide — always present, sits as the final slide before the
-  // closing summary. A meditative breath: the user is invited to bring
-  // anything else on their heart to prayer that the slideshow couldn't
-  // know about (a worry that surfaced this morning, a person no card
-  // captured, etc.). Keeping it inside the slides array (rather than
-  // as its own phase) means it inherits the same swipe/Amen advance
-  // and persists in slideshow-progress for partial-completion math.
-  slides.push({
-    kind: "pause",
-    text: "",
-    attribution: "",
-  });
 
   // All four data queries finished resolving. The slideshow waits for
   // this before deciding the start index — otherwise, opening from a
