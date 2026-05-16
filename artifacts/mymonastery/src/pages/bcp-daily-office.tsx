@@ -1174,7 +1174,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                       lineHeight: 1.05,
                     }}
                   >
-                    {currentSlide.title ?? ""}
+                    {/* Lectionary data writes cross-chapter ranges
+                        with a double hyphen ("Matt. 7:28--8:4") —
+                        normalize to a single en dash so the headline
+                        reads "Matt. 7:28–8:4" instead of shouting a
+                        stray "--". */}
+                    {(currentSlide.title ?? "").replace(/\s*-{2,}\s*/g, "–")}
                   </h1>
                   <p
                     style={{
