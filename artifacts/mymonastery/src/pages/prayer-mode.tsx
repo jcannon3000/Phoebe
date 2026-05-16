@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
@@ -1122,10 +1123,17 @@ function StreakCelebration({ streak }: { streak: number }) {
 function HabitSlide({
   onDone,
   visible,
+  isEvening = false,
 }: {
   onDone: () => void;
   visible: boolean;
+  /** True when the office just finished was an evening one. Gates the
+   *  "Ignatian Examen" pill — the Examen is an end-of-day practice. */
+  isEvening?: boolean;
 }) {
+  // The Examen is pilot-only, so the pill only shows for pilot users
+  // with pilot view on — same gate as the menu entry.
+  const { isBeta } = useBetaStatus();
   // Server is the source of truth — past completions from any device
   // live in prayer_sessions, not localStorage. We still union with
   // localStorage for the freshly-finished office so the slide reflects
@@ -1418,6 +1426,28 @@ function HabitSlide({
         </motion.p>
       )}
 
+      {/* Ignatian Examen pill — evening only (the Examen is an
+          end-of-day prayer), and pilot-only (same gate as the menu
+          entry). A gentle invitation to close the day reflectively
+          after Evening Prayer / Devotion. */}
+      {isEvening && isBeta && (
+        <Link href="/examen">
+          <button
+            type="button"
+            className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.45)",
+              fontFamily: "'Space Grotesk', sans-serif",
+              cursor: "pointer",
+            }}
+          >
+            🕯️ Ignatian Examen →
+          </button>
+        </Link>
+      )}
+
       <button
         onClick={onDone}
         className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
@@ -1676,6 +1706,17 @@ export default function PrayerModePage() {
   const closingOnly = (() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("closingOnly") === "1";
+  })();
+  // ?side=evening → the office just finished was an evening one. The
+  // habit slide uses this to surface an evening-only "Pray the Examen"
+  // pill. Falls back to the local hour when the param is absent (older
+  // build, or a non-office closingOnly path).
+  const closingIsEvening = (() => {
+    if (typeof window === "undefined") return false;
+    const side = new URLSearchParams(window.location.search).get("side");
+    if (side === "evening") return true;
+    if (side === "morning") return false;
+    return new Date().getHours() >= 12;
   })();
   // ?reset=1 → start fresh at slide 0, ignoring localStorage progress
   // AND the alreadyPrayedToday skip. Set when the user taps "Pray
@@ -3326,7 +3367,7 @@ export default function PrayerModePage() {
           />
         )}
         {phase === "habit" && (
-          <HabitSlide onDone={handleDone} visible={slideVisible} />
+          <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} />
         )}
       </div>
 

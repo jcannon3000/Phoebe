@@ -284,6 +284,13 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
 export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
+  // Which half of the day this office belongs to. Threaded onto the
+  // closing redirect (?side=) so the prayer-rhythm habit slide can
+  // show an evening-only "Pray the Examen" pill.
+  const officeSide: "morning" | "evening" =
+    resolvedMode === "evening" || resolvedMode === "early-evening-devotion"
+      ? "evening"
+      : "morning";
 
   // Phoebe Parish — when the user is in the parish-only tier we
   // route them to the parish celebration screen on Amen instead of
@@ -680,7 +687,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
     // celebration page; that branch is handled by handleEnd below
     // (Amen path doesn't currently distinguish parish-only — kept
     // consistent with the prior behaviour for the Amen path).
-    setViewerLocation("/prayer-mode?closingOnly=1");
+    setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
   }
 
   return (
@@ -1912,7 +1919,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 // office finish exited without the recap; user
                 // explicitly wanted the habit-rhythm screen for every
                 // office completion.
-                setViewerLocation("/prayer-mode?closingOnly=1");
+                setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
               }
             };
             const handler = isIntercessionSlide

@@ -88,7 +88,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "🌿", label: "Daily Devotions", path: "/bcp/daily-devotions" },
     // The Daily Examen — Ignatian end-of-day reflective prayer.
     // Pilot-only for now: shows for beta users with pilot view on.
-    ...(isBeta ? [{ emoji: "🕯️", label: "The Examen", path: "/examen" }] : []),
+    ...(isBeta ? [{ emoji: "🕯️", label: "Ignatian Examen", path: "/examen" }] : []),
     { divider: true },
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
     // "Manage Prayer Feeds" only renders for users who actually
