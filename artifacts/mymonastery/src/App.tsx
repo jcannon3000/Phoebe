@@ -125,6 +125,7 @@ import CommunityRequestsPage from "./pages/community-requests";
 import WelcomePage from "./pages/welcome";
 import CommunityNewPage from "./pages/community-new";
 import CommunityDetailPage from "./pages/community-detail";
+import CommunityAskPage from "./pages/community-ask";
 import SharePrayerPage from "./pages/share-prayer";
 import CommunitySettingsPage from "./pages/community-settings";
 import CommunityJoinPage from "./pages/community-join";
@@ -400,6 +401,7 @@ function Router() {
           reusable MetricsDashboard — it's no longer rendered as a route. */}
       <Route path="/communities/:slug/metrics" component={CommunitySettingsPage} />
       <Route path="/communities/:slug/share-prayer" component={SharePrayerPage} />
+      <Route path="/communities/:slug/ask" component={CommunityAskPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />

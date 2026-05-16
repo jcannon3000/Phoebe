@@ -381,28 +381,12 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 // state mirrors the cooldown:
 //   • Available → primary action button is live
 //   • Cooldown → button disabled, subtitle shows "Available in N days"
-// Preset prompts the admin can pick from when sending the ask. The
-// first is the default; the rest give the question a specific angle.
-// "custom" is a sentinel — when chosen the admin types their own.
-const PRAYER_PROMPT_PRESETS = [
-  "How can we pray for you?",
-  "What's a big life event this week we can pray for?",
-  "Is there a friend or family member we can pray for?",
-  "What justice issue is close to your heart?",
-] as const;
-
 function PrayerInviteCard({ slug }: { slug: string }) {
-  const qc = useQueryClient();
-  const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [justSent, setJustSent] = useState(false);
-  // Which prompt the admin picked. A preset string, or "custom" — in
-  // which case `customPrompt` holds what they typed.
-  const [promptChoice, setPromptChoice] = useState<string>(PRAYER_PROMPT_PRESETS[0]);
-  const [customPrompt, setCustomPrompt] = useState("");
-  const effectivePrompt = promptChoice === "custom"
-    ? customPrompt.trim()
-    : promptChoice;
+  const [, setLocation] = useLocation();
+  const search = useSearch();
+  // The /ask page redirects back here with ?invited=1 right after a
+  // successful send — surface a one-time "Sent" confirmation.
+  const justSent = new URLSearchParams(search).get("invited") === "1";
 
   const { data: status, isLoading } = useQuery<{
     available: boolean;
@@ -412,23 +396,6 @@ function PrayerInviteCard({ slug }: { slug: string }) {
     queryKey: [`/api/groups/${slug}/prayer-invite-status`],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-invite-status`),
     enabled: !!slug,
-  });
-
-  const sendMutation = useMutation<
-    { ok: boolean; sentToCount: number; nextEligibleAt: string },
-    Error,
-    string
-  >({
-    mutationFn: (prompt: string) =>
-      apiRequest("POST", `/api/groups/${slug}/prayer-invite`, { prompt }),
-    onSuccess: () => {
-      setJustSent(true);
-      setConfirming(false);
-      qc.invalidateQueries({ queryKey: [`/api/groups/${slug}/prayer-invite-status`] });
-    },
-    onError: (err) => {
-      setError(err.message || "Couldn't send the prompt. Try again?");
-    },
   });
 
   const daysLeft = (() => {
@@ -477,11 +444,8 @@ function PrayerInviteCard({ slug }: { slug: string }) {
             </p>
           </div>
           <button
-            onClick={() => {
-              setError(null);
-              setConfirming(true);
-            }}
-            disabled={!available || sendMutation.isPending || justSent}
+            onClick={() => setLocation(`/communities/${slug}/ask`)}
+            disabled={!available || justSent}
             className="shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-opacity disabled:opacity-40"
             style={{
               background: "#2D5E3F",
@@ -493,126 +457,6 @@ function PrayerInviteCard({ slug }: { slug: string }) {
           </button>
         </div>
       </div>
-
-      {confirming && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-5"
-          style={{ background: "rgba(9,26,16,0.85)" }}
-          onClick={() => !sendMutation.isPending && setConfirming(false)}
-        >
-          <div
-            className="rounded-2xl px-6 py-6 max-w-sm w-full"
-            style={{
-              background: "#0F2818",
-              border: "1px solid rgba(46,107,64,0.4)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p
-              className="text-lg font-semibold mb-2"
-              style={{ color: "#F0EDE6", fontFamily: FONT }}
-            >
-              Send to your community?
-            </p>
-            <p
-              className="text-sm mb-4 leading-relaxed"
-              style={{ color: "rgba(168,197,160,0.85)", fontFamily: FONT }}
-            >
-              Every member gets a push notification + email with the question you choose, and a simple slide to answer it. You can send this once every 7 days.
-            </p>
-
-            {/* Prompt picker — presets + a custom option. The chosen
-                question becomes the email subject + headline, the push
-                title, and the share-prayer slide's heading. */}
-            <p
-              className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2"
-              style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
-            >
-              Choose a prompt
-            </p>
-            <div className="flex flex-col gap-1.5 mb-3">
-              {PRAYER_PROMPT_PRESETS.map((preset) => {
-                const on = promptChoice === preset;
-                return (
-                  <button
-                    key={preset}
-                    onClick={() => setPromptChoice(preset)}
-                    className="text-left px-3 py-2 rounded-xl text-[13px] transition-colors"
-                    style={{
-                      background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
-                      border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                      color: on ? "#F0EDE6" : "rgba(200,212,192,0.8)",
-                      fontFamily: FONT,
-                    }}
-                  >
-                    {preset}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => setPromptChoice("custom")}
-                className="text-left px-3 py-2 rounded-xl text-[13px] transition-colors"
-                style={{
-                  background: promptChoice === "custom" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
-                  border: `1px solid ${promptChoice === "custom" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                  color: promptChoice === "custom" ? "#F0EDE6" : "rgba(200,212,192,0.8)",
-                  fontFamily: FONT,
-                }}
-              >
-                ✍🏽 Write your own…
-              </button>
-            </div>
-            {promptChoice === "custom" && (
-              <input
-                type="text"
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value.slice(0, 160))}
-                placeholder="e.g. What's weighing on you this week?"
-                autoFocus
-                className="w-full px-3 py-2 rounded-xl text-[13px] mb-3 outline-none"
-                style={{
-                  background: "#091A10",
-                  border: "1px solid rgba(46,107,64,0.4)",
-                  color: "#F0EDE6",
-                  fontFamily: FONT,
-                }}
-              />
-            )}
-
-            {error && (
-              <p className="text-xs mb-3" style={{ color: "#F87171", fontFamily: FONT }}>
-                {error}
-              </p>
-            )}
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setConfirming(false)}
-                disabled={sendMutation.isPending}
-                className="px-4 py-2 rounded-full text-sm font-semibold transition-opacity"
-                style={{
-                  background: "rgba(143,175,150,0.12)",
-                  color: "#8FAF96",
-                  fontFamily: FONT,
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => sendMutation.mutate(effectivePrompt)}
-                disabled={sendMutation.isPending || !effectivePrompt}
-                className="px-4 py-2 rounded-full text-sm font-semibold transition-opacity disabled:opacity-60"
-                style={{
-                  background: "#2D5E3F",
-                  color: "#F0EDE6",
-                  fontFamily: FONT,
-                }}
-              >
-                {sendMutation.isPending ? "Sending…" : "Send"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
