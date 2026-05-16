@@ -827,13 +827,28 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // General Thanksgiving
+  // General Thanksgiving — split into two slides at its second
+  // movement. Slide 1 is the thanksgiving itself (creation,
+  // preservation, the blessings of this life, redemption); slide 2
+  // is the petition that flows from it ("And, we pray, give us such
+  // an awareness…"). Falls back to one slide if the phrase is absent.
+  const mpGt = getText("general_thanksgiving");
+  const mpGtSplit = mpGt.indexOf("And, we pray, give us such an awareness");
+  const mpGt1 = mpGtSplit > 0 ? mpGt.slice(0, mpGtSplit).trimEnd() : mpGt;
+  const mpGt2 = mpGtSplit > 0 ? mpGt.slice(mpGtSplit).trimStart() : "";
   slides.push(
-    slide(id(), "general_thanksgiving", "🌾", "THE GENERAL THANKSGIVING", getText("general_thanksgiving"), {
+    slide(id(), "general_thanksgiving", "🌾", "THE GENERAL THANKSGIVING", mpGt1, {
       bcpReference: "BCP p. 101",
       metadata: { prompt: "This is often said aloud together." },
     }),
   );
+  if (mpGt2) {
+    slides.push(
+      slide(id(), "general_thanksgiving", "🌾", "THE GENERAL THANKSGIVING", mpGt2, {
+        bcpReference: "BCP p. 101",
+      }),
+    );
+  }
 
   // Concluding versicle — "Let us bless the Lord. / Thanks be to God."
   // From Easter Day through the Day of Pentecost the BCP appends

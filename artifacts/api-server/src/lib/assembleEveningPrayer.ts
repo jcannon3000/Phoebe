@@ -531,16 +531,27 @@ export async function assembleEveningPrayer(
     });
   }
 
-  // 17. General Thanksgiving
+  // 17. General Thanksgiving — split into two slides at its second
+  // movement. Slide 1 is the thanksgiving itself; slide 2 is the
+  // petition that flows from it ("And, we pray, give us such an
+  // awareness…"). Each half fits a card, so no scroll is needed.
   const gtData = getTextData("general_thanksgiving");
+  const epGtSplit = gtData.content.indexOf("And, we pray, give us such an awareness");
+  const epGt1 = epGtSplit > 0 ? gtData.content.slice(0, epGtSplit).trimEnd() : gtData.content;
+  const epGt2 = epGtSplit > 0 ? gtData.content.slice(epGtSplit).trimStart() : "";
   slides.push(
-    slide(id(), "general_thanksgiving", "🌾", gtData.title.toUpperCase(), gtData.content, {
+    slide(id(), "general_thanksgiving", "🌾", gtData.title.toUpperCase(), epGt1, {
       bcpReference: gtData.bcpReference,
-      isScrollable: true,
-      scrollHint: "↓ continue · tap when ready",
       metadata: { prompt: "This is often said aloud together." },
     }),
   );
+  if (epGt2) {
+    slides.push(
+      slide(id(), "general_thanksgiving", "🌾", gtData.title.toUpperCase(), epGt2, {
+        bcpReference: gtData.bcpReference,
+      }),
+    );
+  }
 
   // 18. Concluding versicle — "Let us bless the Lord. / Thanks be to
   //     God." (with Alleluia from Easter Day through the Day of
