@@ -40,6 +40,8 @@ interface Entry {
   scriptureRef: string | null;
   imageUrl: string | null;
   learnMoreUrl: string | null;
+  // "custom" (a written prayer) | "action" (a prayer + a CTA link).
+  source: "custom" | "action";
   state: EntryState;
   prayCount: number;
 }
@@ -78,6 +80,7 @@ type RecurringEntry = {
   title: string;
   body: string;
   learnMoreUrl: string | null;
+  source: "custom" | "action";
   state: "draft" | "live";
 };
 
@@ -250,6 +253,7 @@ export default function PrayerFeedManagePage() {
       title: string;
       body: string;
       learnMoreUrl: string | null;
+      source: "custom" | "action";
       state: EntryState;
     }) =>
       apiRequest("POST", `/api/prayer-feeds/${slug}/entries`, e),
@@ -276,6 +280,7 @@ export default function PrayerFeedManagePage() {
       title: string;
       body: string;
       learnMoreUrl: string | null;
+      source: "custom" | "action";
       state: "live" | "draft";
     }) => {
       const body = {
@@ -284,6 +289,7 @@ export default function PrayerFeedManagePage() {
         title: e.title,
         body: e.body,
         learnMoreUrl: e.learnMoreUrl,
+        source: e.source,
         state: e.state,
       };
       return e.id == null
@@ -350,10 +356,11 @@ export default function PrayerFeedManagePage() {
     title: string;
     body: string;
     learnMoreUrl: string;
+    source: "custom" | "action";
     recurrence: { kind: "once" | "daily" | "weekly"; mask: number };
     editingRecurringId: number | null;
   }>({
-    title: "", body: "", learnMoreUrl: "",
+    title: "", body: "", learnMoreUrl: "", source: "custom",
     recurrence: { kind: "once", mask: 127 },
     editingRecurringId: null,
   });
@@ -371,6 +378,7 @@ export default function PrayerFeedManagePage() {
         title: e.title,
         body: e.body,
         learnMoreUrl: e.learnMoreUrl ?? "",
+        source: e.source ?? "custom",
         recurrence: { kind: "once", mask: 127 },
         editingRecurringId: null,
       });
@@ -386,13 +394,14 @@ export default function PrayerFeedManagePage() {
         title: t.title,
         body: t.body,
         learnMoreUrl: t.learnMoreUrl ?? "",
+        source: t.source ?? "custom",
         recurrence: { kind: t.recurrenceKind, mask: t.weekdaysMask },
         editingRecurringId: t.id,
       });
     } else {
       // Empty cell — fresh draft, "once" by default.
       setDraft({
-        title: "", body: "", learnMoreUrl: "",
+        title: "", body: "", learnMoreUrl: "", source: "custom",
         recurrence: { kind: "once", mask: 127 },
         editingRecurringId: null,
       });
@@ -416,6 +425,7 @@ export default function PrayerFeedManagePage() {
         title: draft.title.trim(),
         body: draft.body.trim(),
         learnMoreUrl: draft.learnMoreUrl.trim() || null,
+        source: draft.source,
         state: state === "draft" ? "draft" : "live",
       });
     } else {
@@ -425,6 +435,7 @@ export default function PrayerFeedManagePage() {
         title: draft.title.trim(),
         body: draft.body.trim(),
         learnMoreUrl: draft.learnMoreUrl.trim() || null,
+        source: draft.source,
         state,
       });
     }
@@ -776,6 +787,38 @@ export default function PrayerFeedManagePage() {
               )}
 
               <div className="space-y-3">
+                {/* Type — Prayer vs Action. An "action" entry surfaces
+                    a "Take action →" pill on the subscriber's slide
+                    instead of "Learn more →". */}
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+                    Type
+                  </label>
+                  <div className="flex gap-2">
+                    {([
+                      { key: "custom" as const, label: "🙏🏽 Prayer", sub: "A written prayer" },
+                      { key: "action" as const, label: "🌍 Action", sub: "Prayer + a link" },
+                    ]).map((opt) => {
+                      const on = draft.source === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setDraft({ ...draft, source: opt.key })}
+                          className="flex-1 text-left rounded-lg px-3 py-2 transition-opacity"
+                          style={{
+                            background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                            border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                          }}
+                        >
+                          <p className="text-xs font-semibold" style={{ color: "#F0EDE6" }}>{opt.label}</p>
+                          <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>{opt.sub}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
                     Title
@@ -808,19 +851,21 @@ export default function PrayerFeedManagePage() {
 
                 <div>
                   <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    Learn more URL (optional)
+                    {draft.source === "action" ? "Action link" : "Learn more URL (optional)"}
                   </label>
                   <input
                     type="url"
                     value={draft.learnMoreUrl}
                     onChange={e => setDraft({ ...draft, learnMoreUrl: e.target.value })}
-                    placeholder="https://example.org/story"
+                    placeholder={draft.source === "action" ? "https://act.example.org" : "https://example.org/story"}
                     maxLength={500}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
                     style={{ color: "#F0EDE6" }}
                   />
                   <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-                    Subscribers see a "Learn more →" pill on the slide that opens this link.
+                    {draft.source === "action"
+                      ? 'Shown as a "Take action →" pill on the slide that opens this link.'
+                      : 'Subscribers see a "Learn more →" pill on the slide that opens this link.'}
                   </p>
                 </div>
 

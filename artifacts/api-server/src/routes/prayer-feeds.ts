@@ -168,9 +168,11 @@ const entrySchema = z.object({
   body: z.string().trim().max(2000).default(""),
   scriptureRef: z.string().trim().max(80).nullable().optional(),
   imageUrl: z.string().trim().url().max(500).nullable().optional(),
-  // Optional URL — surfaces as a "Learn more →" pill on the
-  // subscriber's intercession slide.
+  // Optional URL — surfaces as a "Learn more →" / "Take action →" pill
+  // on the subscriber's intercession slide.
   learnMoreUrl: z.string().trim().url().max(500).nullable().optional(),
+  // "custom" (a written prayer) | "action" (a prayer + a CTA link).
+  source: z.enum(["custom", "action"]).default("custom"),
   state: z.enum(["draft", "scheduled", "published"]).default("draft"),
 });
 
@@ -778,6 +780,7 @@ const recurringSchema = z.object({
   title: z.string().trim().min(1).max(120),
   body: z.string().trim().max(2000).default(""),
   learnMoreUrl: z.string().trim().url().max(500).nullable().optional(),
+  source: z.enum(["custom", "action"]).default("custom"),
   state: z.enum(["draft", "live"]).default("live"),
 });
 
@@ -842,6 +845,7 @@ router.post("/prayer-feeds/:slug/recurring", requireBeta, async (req, res): Prom
     title: data.title,
     body: data.body,
     learnMoreUrl: data.learnMoreUrl ?? null,
+    source: data.source,
     state: data.state,
     createdByUserId: user.id,
   }).returning();
@@ -870,6 +874,7 @@ router.put("/prayer-feeds/:slug/recurring/:id", requireBeta, async (req, res): P
   if (parsed.data.title !== undefined) patch.title = parsed.data.title;
   if (parsed.data.body !== undefined) patch.body = parsed.data.body;
   if (parsed.data.learnMoreUrl !== undefined) patch.learnMoreUrl = parsed.data.learnMoreUrl;
+  if (parsed.data.source !== undefined) patch.source = parsed.data.source;
   if (parsed.data.state !== undefined) patch.state = parsed.data.state;
   // Re-normalize daily kind to mask 127 if the kind is being set.
   if (parsed.data.recurrenceKind === "daily") patch.weekdaysMask = 127;
@@ -964,7 +969,26 @@ router.get("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promise
   const entries = await db.select().from(prayerFeedEntriesTable)
     .where(and(...conditions))
     .orderBy(asc(prayerFeedEntriesTable.entryDate), asc(prayerFeedEntriesTable.slot));
-  res.json({ entries });
+
+  // Per-viewer prayed state — which of these entries the current user
+  // has already prayed. One query against prayer_feed_prayers keyed on
+  // entry id; the feed detail page uses it to surface a count of
+  // prayers still waiting.
+  const entryIds = entries.map((e) => e.id);
+  const prayedRows = entryIds.length > 0
+    ? await db
+        .select({ entryId: prayerFeedPrayersTable.entryId })
+        .from(prayerFeedPrayersTable)
+        .where(and(
+          inArray(prayerFeedPrayersTable.entryId, entryIds),
+          eq(prayerFeedPrayersTable.userId, user.id),
+        ))
+    : [];
+  const prayedSet = new Set(prayedRows.map((r) => r.entryId));
+
+  res.json({
+    entries: entries.map((e) => ({ ...e, prayedByMe: prayedSet.has(e.id) })),
+  });
 });
 
 // POST /api/prayer-feeds/:slug/entries — editor-only upsert by date.
@@ -982,7 +1006,7 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
     res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
     return;
   }
-  const { entryDate, slot, title, body, scriptureRef, imageUrl, learnMoreUrl, state } = parsed.data;
+  const { entryDate, slot, title, body, scriptureRef, imageUrl, learnMoreUrl, source, state } = parsed.data;
   const publishedAt = state === "published" ? new Date() : null;
 
   // Upsert by (feed, date, slot). Three slots per day max — slot 1
@@ -996,6 +1020,7 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
     scriptureRef: scriptureRef ?? null,
     imageUrl: imageUrl ?? null,
     learnMoreUrl: learnMoreUrl ?? null,
+    source,
     state,
     createdByUserId: user.id,
     publishedAt,
@@ -1007,6 +1032,7 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
       scriptureRef: scriptureRef ?? null,
       imageUrl: imageUrl ?? null,
       learnMoreUrl: learnMoreUrl ?? null,
+      source,
       state,
       updatedAt: new Date(),
       publishedAt: sql`CASE WHEN ${prayerFeedEntriesTable.publishedAt} IS NULL AND ${state === "published"} THEN NOW() ELSE ${prayerFeedEntriesTable.publishedAt} END`,

@@ -37,6 +37,11 @@ export const prayerFeedEntriesTable = pgTable(
     // on lectionary slides — opens in SFSafariViewController so the
     // user stays inside Phoebe.
     learnMoreUrl: text("learn_more_url"),
+    // "custom" (a written prayer) | "action" (a prayer with a
+    // call-to-action link). Drives the CTA pill on the feed detail
+    // page — "Take action →" for action, "Learn more →" for custom —
+    // and the framing of the link in the prayer slideshow.
+    source: text("source").notNull().default("custom"),
     state: text("state").notNull().default("draft"), // draft | scheduled | published
     prayCount: integer("pray_count").notNull().default(0),
     createdByUserId: integer("created_by_user_id")

@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { openExternal } from "@/lib/openExternal";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Subscriber detail page for a Prayer Feed. Three intentions per day —
 // each gets its own card with its own "Pray 🙏🏽" button and roster, and
@@ -41,6 +43,14 @@ interface Entry {
   body: string;
   scriptureRef: string | null;
   imageUrl: string | null;
+  // Optional outbound link — surfaced as a "Learn more →" / "Take
+  // action →" pill on the slide overlay (and the prayer slideshow).
+  learnMoreUrl: string | null;
+  // "custom" (a written prayer) | "action" (a prayer + a CTA link).
+  source: "custom" | "action";
+  // Whether the current viewer has already prayed this entry. Only
+  // meaningful for concrete entries; synthetic recurring rows are false.
+  prayedByMe: boolean;
   state: EntryState;
   prayCount: number;
 }
@@ -95,6 +105,7 @@ type RecurringEntry = {
   title: string;
   body: string;
   learnMoreUrl: string | null;
+  source: "custom" | "action";
   state: "draft" | "live";
 };
 
@@ -144,6 +155,12 @@ export default function PrayerFeedDetailPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [showBackIssues, setShowBackIssues] = useState(false);
+  // The slide walker — tapping a card opens a one-slide deck; "Pray
+  // the full list" opens a deck of the whole week. null = closed.
+  const [slideshow, setSlideshow] = useState<{ deck: Entry[]; index: number } | null>(null);
+  // Today's slides auto-log a "pray" as the walker reaches them; this
+  // tracks which slots already fired so we don't double-POST.
+  const prayedSlotsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -222,6 +239,9 @@ export default function PrayerFeedDetailPage() {
             body: t.body,
             scriptureRef: null,
             imageUrl: null,
+            learnMoreUrl: t.learnMoreUrl,
+            source: t.source ?? "custom",
+            prayedByMe: false,
             state: "published",
             prayCount: 0,
           });
@@ -252,6 +272,24 @@ export default function PrayerFeedDetailPage() {
         return cmp !== 0 ? cmp : a.slot - b.slot;
       });
   }, [entries, today]);
+
+  // The whole visible week as one ordered deck (day, then slot) — what
+  // the "Pray the full list" slideshow walks. Published rows only;
+  // recurring templates surface here as published synthetic entries.
+  const weekEntries: Entry[] = useMemo(() => {
+    if (!today) return [];
+    const out: Entry[] = [];
+    for (let i = 0; i < 7; i++) {
+      const dateStr = addDays(today, i);
+      for (const s of SLOTS) {
+        const e = bySlot.get(`${dateStr}|${s}`);
+        if (e && e.state === "published") out.push(e);
+      }
+    }
+    return out;
+  }, [bySlot, today]);
+  // Prayers the viewer hasn't prayed yet — drives the top "waiting" box.
+  const unprayedCount = weekEntries.filter((e) => !e.prayedByMe).length;
 
   // ── Today's prayer roster — one query per slot. ────────────────────────
   // Each slot has its own pray-count and roster server-side, so we
@@ -296,6 +334,25 @@ export default function PrayerFeedDetailPage() {
       qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries/${today}/prayers`, slot] });
     },
   });
+
+  // Auto-log a "pray" when the walker reaches today's slide(s). The
+  // pray endpoint only accepts today's entries, so future-day slides
+  // are walked read-only. Idempotent server-side; the ref guard just
+  // avoids redundant POSTs.
+  useEffect(() => {
+    if (!slideshow || !today) return;
+    const cur = slideshow.deck[slideshow.index];
+    if (!cur || cur.entryDate !== today || cur.state !== "published") return;
+    if (prayedSlotsRef.current.has(cur.slot)) return;
+    prayedSlotsRef.current.add(cur.slot);
+    pray.mutate(cur.slot);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slideshow, today]);
+
+  function openSlideshow(deck: Entry[], index: number) {
+    if (deck.length === 0) return;
+    setSlideshow({ deck, index: Math.max(0, Math.min(index, deck.length - 1)) });
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────
   if (authLoading || !user || feedQ.isLoading) {
@@ -391,6 +448,41 @@ export default function PrayerFeedDetailPage() {
                 {feed.state === "live" ? "Subscribe" : "Coming soon"}
               </button>
             )}
+          </div>
+        )}
+
+        {/* Pray-with-this-feed box — surfaces how many of this week's
+            prayers are still waiting, and carries the always-present
+            wide "Pray the full list" CTA. Modeled on the home screen's
+            prayer-list card. */}
+        {weekEntries.length > 0 && (
+          <div
+            className="mb-6 rounded-2xl overflow-hidden flex"
+            style={{
+              background: "rgba(46,107,64,0.15)",
+              border: "1px solid rgba(46,107,64,0.45)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div className="w-1 flex-shrink-0" style={{ background: "#2E6B40" }} />
+            <div className="flex-1 px-4 py-3.5 min-w-0">
+              <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
+                🕯️ Pray with {feed.title}
+              </p>
+              <p className="text-sm mt-0.5 mb-3" style={{ color: "#8FAF96" }}>
+                {unprayedCount > 0
+                  ? `${unprayedCount} ${unprayedCount === 1 ? "prayer is" : "prayers are"} waiting for you this week.`
+                  : "You've prayed every intention this week. 🌿"}
+              </p>
+              <button
+                type="button"
+                onClick={() => openSlideshow(weekEntries, 0)}
+                className="w-full text-sm font-semibold rounded-full py-2.5 transition-opacity hover:opacity-90"
+                style={{ background: "#2E6B40", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                🕯️ Pray the full list →
+              </button>
+            </div>
           </div>
         )}
 
@@ -521,7 +613,16 @@ export default function PrayerFeedDetailPage() {
                         return (
                           <div
                             key={slot}
-                            className="rounded-2xl px-4 py-3"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openSlideshow([e], 0)}
+                            onKeyDown={(ev) => {
+                              if (ev.key === "Enter" || ev.key === " ") {
+                                ev.preventDefault();
+                                openSlideshow([e], 0);
+                              }
+                            }}
+                            className="rounded-2xl px-4 py-3 cursor-pointer transition-opacity hover:opacity-90"
                             style={{
                               background: isToday ? "rgba(62,124,122,0.14)" : "rgba(46,107,64,0.08)",
                               border: `1px solid ${isToday ? "rgba(62,124,122,0.35)" : "rgba(46,107,64,0.2)"}`,
@@ -534,14 +635,39 @@ export default function PrayerFeedDetailPage() {
                               >
                                 {e.title}
                               </p>
-                              {!isPublished && (
+                              {/* Right-side CTA pill — "Take action →"
+                                  for an action entry, "Learn more →"
+                                  otherwise; opens the link without
+                                  triggering the card's slideshow tap.
+                                  Falls back to the draft/scheduled
+                                  state label for unpublished rows. */}
+                              {!isPublished ? (
                                 <span
                                   className="text-[10px] uppercase tracking-widest shrink-0 mt-0.5"
                                   style={{ color: "rgba(143,175,150,0.5)" }}
                                 >
                                   {e.state}
                                 </span>
-                              )}
+                              ) : e.learnMoreUrl ? (
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    openExternal(e.learnMoreUrl as string);
+                                  }}
+                                  className="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-90"
+                                  style={{
+                                    background: "rgba(46,107,64,0.35)",
+                                    color: "#C8D4C0",
+                                    border: "1px solid rgba(46,107,64,0.55)",
+                                    fontFamily: "'Space Grotesk', sans-serif",
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {e.source === "action" ? "Take action →" : "Learn more →"}
+                                </button>
+                              ) : null}
                             </div>
                             {e.body && (
                               <p
@@ -618,6 +744,160 @@ export default function PrayerFeedDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Slide walker — a card tap opens a one-slide deck; "Pray the
+          full list" opens the whole week. Each slide is the prayer
+          text + a Learn more / Take action link; today's slides log a
+          pray as the walker reaches them (see the effect above). */}
+      <AnimatePresence>
+        {slideshow && (() => {
+          const cur = slideshow.deck[slideshow.index];
+          if (!cur) return null;
+          const total = slideshow.deck.length;
+          const isLast = slideshow.index >= total - 1;
+          const advance = () => {
+            if (isLast) setSlideshow(null);
+            else setSlideshow({ deck: slideshow.deck, index: slideshow.index + 1 });
+          };
+          const back = () => {
+            if (slideshow.index > 0) {
+              setSlideshow({ deck: slideshow.deck, index: slideshow.index - 1 });
+            }
+          };
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex flex-col"
+              style={{ background: "#0C1F12" }}
+            >
+              <button
+                type="button"
+                onClick={() => setSlideshow(null)}
+                aria-label="Close"
+                className="absolute flex items-center justify-center rounded-full"
+                style={{
+                  top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+                  right: 16,
+                  width: 36,
+                  height: 36,
+                  background: "rgba(46,107,64,0.18)",
+                  border: "1px solid rgba(46,107,64,0.35)",
+                  color: "#C8D4C0",
+                  fontSize: 18,
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  zIndex: 1,
+                }}
+              >
+                ×
+              </button>
+              <div
+                className="flex-1 flex flex-col items-center text-center px-6"
+                style={{
+                  maxWidth: 560,
+                  margin: "0 auto",
+                  width: "100%",
+                  paddingTop: "clamp(72px, 14vh, 140px)",
+                  paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 40px)",
+                  gap: 18,
+                  overflowY: "auto",
+                }}
+              >
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+                  style={{ color: "rgba(143,175,150,0.5)" }}
+                >
+                  {feed.title}
+                  {total > 1 ? ` · ${slideshow.index + 1} of ${total}` : ""}
+                </p>
+                <h2
+                  className="text-xl font-semibold leading-snug"
+                  style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                >
+                  {cur.title}
+                </h2>
+                {cur.body && (
+                  <p
+                    className="italic"
+                    style={{
+                      color: "#E8E4D8",
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontSize: 20,
+                      lineHeight: 1.55,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {cur.body}
+                  </p>
+                )}
+                {cur.scriptureRef && (
+                  <p
+                    className="text-[11px] uppercase tracking-[0.14em]"
+                    style={{ color: "rgba(143,175,150,0.55)" }}
+                  >
+                    {cur.scriptureRef}
+                  </p>
+                )}
+                {cur.learnMoreUrl && (
+                  <button
+                    type="button"
+                    onClick={() => openExternal(cur.learnMoreUrl as string)}
+                    className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90"
+                    style={{
+                      background: "rgba(46,107,64,0.18)",
+                      border: "1px solid rgba(46,107,64,0.45)",
+                      color: "#F0EDE6",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {cur.source === "action" ? "Take action →" : "Learn more →"}
+                  </button>
+                )}
+
+                {/* Walk controls — Continue advances the deck; the last
+                    slide finishes and closes. Back steps one slide. */}
+                <div className="flex flex-col items-center gap-2.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={advance}
+                    className="text-sm font-semibold rounded-full py-2.5 transition-opacity hover:opacity-90"
+                    style={{
+                      background: "#2D5E3F",
+                      border: "1px solid rgba(46,107,64,0.7)",
+                      color: "#F0EDE6",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      cursor: "pointer",
+                      minWidth: 200,
+                    }}
+                  >
+                    {isLast ? (total > 1 ? "Finish 🌿" : "Done") : "Continue →"}
+                  </button>
+                  {slideshow.index > 0 && (
+                    <button
+                      type="button"
+                      onClick={back}
+                      className="text-[13px] transition-opacity hover:opacity-80"
+                      style={{
+                        color: "rgba(143,175,150,0.7)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontFamily: "'Space Grotesk', sans-serif",
+                      }}
+                    >
+                      ← Back
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </Layout>
   );
 }

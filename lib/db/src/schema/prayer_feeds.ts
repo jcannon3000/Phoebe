@@ -101,6 +101,8 @@ export const prayerFeedRecurringEntriesTable = pgTable(
     title: text("title").notNull(),
     body: text("body").notNull().default(""),
     learnMoreUrl: text("learn_more_url"),
+    // "custom" | "action" — same meaning as on prayer_feed_entries.
+    source: text("source").notNull().default("custom"),
     state: text("state").notNull().default("live"), // draft | live
     createdByUserId: integer("created_by_user_id")
       .references(() => usersTable.id, { onDelete: "set null" }),
