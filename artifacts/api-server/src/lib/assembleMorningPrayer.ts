@@ -144,18 +144,11 @@ function pushCanticle(
   const headlineNum = numMatch ? `Canticle ${numMatch[1]}` : (title ?? "Canticle");
 
   const { verses, chunks } = splitCanticleIntoChunks(text, 4);
-  if (verses <= 4) {
-    // Short canticle — single slide as before.
-    slidesArr.push(
-      slide(id(), "canticle", emoji, eyebrow, text, {
-        title,
-        bcpReference,
-      }),
-    );
-    return;
-  }
 
-  // Long canticle: big title slide + verse-chunk slides.
+  // Every canticle — short or long — opens with its "Canticle N"
+  // title slide so the rhythm matches the psalm title slides. (It
+  // used to be emitted only for long canticles, which meant a short
+  // second canticle jumped straight into its verses with no title.)
   slidesArr.push(
     slide(id(), "canticle_title", emoji, eyebrow, "", {
       title,
@@ -165,6 +158,19 @@ function pushCanticle(
       metadata: { canticleKey, canticleHeadline: headlineNum },
     }),
   );
+
+  if (verses <= 4) {
+    // Short canticle — single body slide after the title.
+    slidesArr.push(
+      slide(id(), "canticle", emoji, eyebrow, text, {
+        title,
+        bcpReference,
+      }),
+    );
+    return;
+  }
+
+  // Long canticle: verse-chunk slides after the title.
   chunks.forEach((chunk, i) => {
     slidesArr.push(
       slide(id(), "canticle", emoji, eyebrow, chunk, {

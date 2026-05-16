@@ -1374,13 +1374,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                     </div>
                   </div>
                 ) : (
-                  // Gloria Patri — italic, no verse number. When the
-                  // slide's metadata says gloryBottomRight (set by
-                  // the assembler on the LAST chunk of a multi-psalm
-                  // appointed reading), the doxology drops to the
-                  // bottom-right of the slide as a small flush-right
-                  // seal. Otherwise it falls inline below the verses
-                  // with the legacy hairline rule.
+                  // Gloria Patri — no verse number. Renders left-
+                  // aligned at the same size + color as the psalm
+                  // verses (per user direction — it used to drop to
+                  // a small dimmed flush-right "seal", which read as
+                  // an afterthought rather than part of the psalm).
                   (() => {
                     const meta = currentSlide.metadata as { gloryBottomRight?: boolean } | undefined;
                     if (meta?.gloryBottomRight) {
@@ -1388,12 +1386,10 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                         <p
                           key={i}
                           style={{
-                            marginTop: 24,
-                            fontSize: 14,
+                            fontSize: 19,
                             lineHeight: 1.6,
-                            color: "rgba(240,237,230,0.75)",
+                            color: WARM_TEXT,
                             fontFamily: SPACE_GROTESK,
-                            textAlign: "right",
                             margin: "24px 0 0 0",
                           }}
                         >
