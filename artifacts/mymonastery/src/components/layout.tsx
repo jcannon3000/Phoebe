@@ -68,7 +68,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // Practices used to have its own top-level entry that deep-linked into
     // the dashboard's filter; removed — the dashboard itself is the home
     // surface, and the Practices pill there is the canonical way to narrow.
-    { emoji: "🙏🏽", label: "Manage Prayer List", path: "/prayer-list" },
+    { emoji: "🙏🏽", label: "Prayer List", path: "/prayer-list" },
     // Gatherings + Prayer Feeds tabs are intentionally kept off the
     // side menu — both pages still live at /gatherings and
     // /prayer-feeds for direct deep-link access, but day-to-day
