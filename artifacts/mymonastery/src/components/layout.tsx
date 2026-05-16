@@ -214,7 +214,26 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   My Communities
                 </p>
                 {(groupsData?.groups ?? []).length > 0 ? (
-                  <div className="space-y-1.5">
+                  // Clamp to ~3.5 rows with a bottom fade once there
+                  // are more than 3 communities — mirrors the Prayer
+                  // List carousel on the dashboard so "scroll for
+                  // more" reads the same everywhere. Each row is
+                  // ~52px + 6px gap; 196px lands at 3 full + a half
+                  // peek. Fade fades to the drawer bg (#040D06).
+                  <div style={{ position: "relative" }}>
+                    <div
+                      className="space-y-1.5"
+                      style={
+                        (groupsData?.groups ?? []).length > 3
+                          ? {
+                              maxHeight: 196,
+                              overflowY: "auto",
+                              WebkitOverflowScrolling: "touch",
+                              paddingBottom: 8,
+                            }
+                          : undefined
+                      }
+                    >
                     {groupsData!.groups.map((g) => {
                       const pendingCount = pendingCounts?.byGroup[g.id] ?? 0;
                       const isAdminOfThis = g.myRole === "admin" || g.myRole === "hidden_admin";
@@ -260,6 +279,16 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                         </button>
                       );
                     })}
+                    </div>
+                    {/* Bottom fade — only when the list scrolls.
+                        Fades to the drawer panel bg so the partial
+                        row reads as "more below". */}
+                    {(groupsData?.groups ?? []).length > 3 && (
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
+                        style={{ background: "linear-gradient(to bottom, transparent 10%, #040D06)" }}
+                      />
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
