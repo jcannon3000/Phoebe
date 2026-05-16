@@ -769,6 +769,13 @@ router.post("/moments", async (req, res): Promise<void> => {
 
   const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, learnMoreUrl, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, groupId, additionalGroupIds } = parsed.data;
 
+  // An "action" intercession is a prayer + a take-action link — the
+  // link is what makes it an action, so reject one without a URL
+  // rather than shipping an action with no "Take action" pill.
+  if (intercessionSource === "action" && !learnMoreUrl) {
+    res.status(400).json({ error: "An action needs a link." }); return;
+  }
+
   // ── Group practice validation — only admins can create ──
   let groupMembers: Array<{ email: string; name: string }> | null = null;
   // Captured for push dispatch after the moment is created.

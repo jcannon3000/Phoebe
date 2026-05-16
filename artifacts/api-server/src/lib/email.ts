@@ -1,6 +1,18 @@
 import { google } from "googleapis";
 import { INVITES_FROM_HEADER, getInvitesRefreshToken } from "./invitesAccount";
 
+// Escape a string before interpolating it into email HTML. Names,
+// group names, and admin-chosen prompts are all user-controlled; an
+// unescaped <img onerror> in any of them would be stored XSS that
+// fans out to every recipient's inbox.
+function escapeHtml(s: string): string {
+  return (s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function getOAuth2Client() {
   return new google.auth.OAuth2(
     process.env["GOOGLE_CLIENT_ID"],
@@ -230,6 +242,14 @@ export async function sendPrayerInviteEmail(opts: {
   const adminFirst = (opts.adminName ?? "").trim().split(/\s+/)[0] || "Someone";
   const prompt = (opts.prompt ?? "").trim() || "How can we pray for you?";
   const subject = prompt;
+  // HTML-escaped copies for the body. The prompt is admin free-text
+  // and the names / group name are user-controlled — all must be
+  // escaped before interpolation or it's stored XSS to every inbox.
+  const eFirstName = escapeHtml(firstName);
+  const eAdminFirst = escapeHtml(adminFirst);
+  const ePrompt = escapeHtml(prompt);
+  const eGroupName = escapeHtml(opts.groupName ?? "");
+  const eShareUrl = escapeHtml(opts.shareUrl ?? "");
 
   const html = `
 <!DOCTYPE html>
@@ -249,15 +269,15 @@ export async function sendPrayerInviteEmail(opts: {
                 <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
               </div>
               <p style="margin:0 0 6px;font-size:15px;color:#6b6460;line-height:1.6;">
-                Hi ${firstName},
+                Hi ${eFirstName},
               </p>
               <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
-                ${prompt}
+                ${ePrompt}
               </h1>
               <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">
-                ${adminFirst} from <strong>${opts.groupName}</strong> is asking. Share what's on your heart, and your community will hold it in prayer.
+                ${eAdminFirst} from <strong>${eGroupName}</strong> is asking. Share what's on your heart, and your community will hold it in prayer.
               </p>
-              <a href="${opts.shareUrl}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">
+              <a href="${eShareUrl}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">
                 Share with your community →
               </a>
               <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">

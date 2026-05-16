@@ -912,6 +912,16 @@ export default function MomentNew() {
         // leaving it blank would leave everyone with nothing to pray.
         return intention.trim().length >= 3 && intercessionFullText.trim().length >= 4;
       }
+      if (templateId === "intercession" && intercessionSource === "action") {
+        // An "Action" intercession needs the prayer AND the link —
+        // shipping one without a URL leaves it with no "Take action"
+        // pill, which defeats the type.
+        return (
+          intention.trim().length >= 3
+          && intercessionFullText.trim().length >= 4
+          && actionLearnMoreUrl.trim().length > 0
+        );
+      }
       return intention.trim().length >= 4;
     }
     if (step === "logging") {
