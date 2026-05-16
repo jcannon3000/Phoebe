@@ -461,72 +461,121 @@ export default function PrayerFeedDetailPage() {
           </div>
         )}
 
-        {/* This-week calendar — 7 days × 3 slots. Today is highlighted,
-            other days show the title for any slots that have been
-            published or scheduled (so subscribers can see what's
-            coming). Empty slots are silent. */}
+        {/* This week — each day is its own section: a day header
+            followed by a card per programmed prayer (instead of bare
+            title text). The week scrolls inside a clamped ~3.5-row
+            window with a bottom fade, so subscribers can see there's
+            more of the week below — same pattern as the dashboard. */}
         <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
           This week
         </p>
-        <div className="space-y-3 mb-6">
-          {calendarDays.map((dateStr, di) => {
-            const isToday = dateStr === today;
-            const filledSlots = SLOTS.filter(s => bySlot.has(slotKey(dateStr, s)));
-            return (
-              <div
-                key={dateStr}
-                className="rounded-2xl px-4 py-3"
-                style={{
-                  background: isToday ? "rgba(62,124,122,0.12)" : "rgba(46,107,64,0.05)",
-                  border: `1px solid ${isToday ? "rgba(62,124,122,0.35)" : "rgba(46,107,64,0.15)"}`,
-                }}
-              >
-                <div className="flex items-baseline justify-between gap-3 mb-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: isToday ? "#C8D4C0" : "rgba(143,175,150,0.7)" }}>
-                    {isToday ? "Today" : di === 1 ? "Tomorrow" : dayOfWeek(dateStr)}
-                    <span className="ml-2 font-normal" style={{ color: "rgba(143,175,150,0.5)" }}>
+        <div className="relative mb-6">
+          <div
+            className="pr-1"
+            style={{
+              maxHeight: 380,
+              overflowY: "auto",
+              scrollbarWidth: "none",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {calendarDays.map((dateStr, di) => {
+              const isToday = dateStr === today;
+              const filledSlots = SLOTS.filter(s => bySlot.has(slotKey(dateStr, s)));
+              return (
+                <div key={dateStr} className="mb-4">
+                  {/* Day section header */}
+                  <div className="flex items-baseline gap-2 mb-1.5">
+                    <p
+                      className="text-[11px] font-semibold uppercase tracking-widest"
+                      style={{ color: isToday ? "#C8D4C0" : "rgba(143,175,150,0.7)" }}
+                    >
+                      {isToday ? "Today" : di === 1 ? "Tomorrow" : dayOfWeek(dateStr)}
+                    </p>
+                    <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.45)" }}>
                       {shortDate(dateStr)}
                     </span>
-                  </p>
-                  {filledSlots.length === 0 && (
-                    <p className="text-[11px] italic" style={{ color: "rgba(143,175,150,0.5)" }}>
-                      Not yet programmed
-                    </p>
+                  </div>
+
+                  {filledSlots.length === 0 ? (
+                    // Soft placeholder card so an unprogrammed day
+                    // still has a visual home in the card rhythm.
+                    <div
+                      className="rounded-2xl px-4 py-3"
+                      style={{ background: "rgba(46,107,64,0.05)", border: "1px solid rgba(46,107,64,0.13)" }}
+                    >
+                      <p className="text-[12px] italic" style={{ color: "rgba(143,175,150,0.45)" }}>
+                        Not yet programmed
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {SLOTS.map(slot => {
+                        const e = bySlot.get(slotKey(dateStr, slot));
+                        if (!e) return null;
+                        const isPublished = e.state === "published";
+                        // Slot label dropped — subscribers don't think
+                        // in "First / Second slot," they just see the
+                        // intercessions on the day. Each one is now its
+                        // own card with a body preview.
+                        return (
+                          <div
+                            key={slot}
+                            className="rounded-2xl px-4 py-3"
+                            style={{
+                              background: isToday ? "rgba(62,124,122,0.14)" : "rgba(46,107,64,0.08)",
+                              border: `1px solid ${isToday ? "rgba(62,124,122,0.35)" : "rgba(46,107,64,0.2)"}`,
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <p
+                                className="text-sm font-semibold leading-snug flex-1 min-w-0"
+                                style={{ color: isPublished ? "#F0EDE6" : "rgba(240,237,230,0.6)" }}
+                              >
+                                {e.title}
+                              </p>
+                              {!isPublished && (
+                                <span
+                                  className="text-[10px] uppercase tracking-widest shrink-0 mt-0.5"
+                                  style={{ color: "rgba(143,175,150,0.5)" }}
+                                >
+                                  {e.state}
+                                </span>
+                              )}
+                            </div>
+                            {e.body && (
+                              <p
+                                className="text-[12px] mt-1 leading-snug"
+                                style={{
+                                  color: "rgba(143,175,150,0.8)",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                {e.body}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
-                {filledSlots.length > 0 && (
-                  <div className="space-y-1">
-                    {SLOTS.map(slot => {
-                      const e = bySlot.get(slotKey(dateStr, slot));
-                      if (!e) return null;
-                      const isPublished = e.state === "published";
-                      // Slot label dropped — subscribers don't think
-                      // in "First / Second slot," they just see the
-                      // intercessions on the day.
-                      return (
-                        <div
-                          key={slot}
-                          className="flex items-center gap-3 py-1"
-                        >
-                          <span
-                            className="text-sm flex-1 min-w-0 truncate"
-                            style={{ color: isPublished ? "#F0EDE6" : "rgba(240,237,230,0.6)" }}
-                          >
-                            {e.title}
-                          </span>
-                          {!isPublished && (
-                            <span className="text-[10px] uppercase tracking-widest flex-shrink-0" style={{ color: "rgba(143,175,150,0.5)" }}>
-                              {e.state}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+            {/* Tail spacer so the last day clears the bottom fade
+                when the week is scrolled all the way down. */}
+            <div className="h-10" />
+          </div>
+          {/* Bottom fade — the week always has 7 days, so the list
+              always overflows the clamp; the gradient cues "scroll
+              for more." Fades to the Layout background (#091A10). */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
+          />
         </div>
 
         {/* Back issues — flat past-slot list, newest first. */}
