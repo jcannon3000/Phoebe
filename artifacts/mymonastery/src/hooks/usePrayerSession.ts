@@ -34,6 +34,10 @@ export type PrayerSurface =
   | "evening-prayer"
   | "morning-devotion"
   | "early-evening-devotion"
+  // "examen" — the Ignatian Daily Examen, a guided five-movement
+  // reflective prayer. Counts toward "time praying" like the offices;
+  // the server stores surface as free text so no enum migration.
+  | "examen"
   // "prayer-list" — opening the manage prayer list page counts as a
   // prayer event for the metrics dashboard. Server exempts this
   // surface from the 5-second floor so a glance still records.

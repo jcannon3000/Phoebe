@@ -1,0 +1,267 @@
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { usePrayerSession } from "@/hooks/usePrayerSession";
+import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
+
+// ── The Daily Examen ────────────────────────────────────────────────────────
+// St. Ignatius of Loyola's end-of-day reflective prayer, as a guided
+// five-movement flow. A personal practice — no community, no logging
+// beyond the prayer-session time row. Pilot-only for now (gated on the
+// nav entry in layout.tsx).
+//
+// The five movements are the classic Ignatian shape: gratitude, asking
+// for light, reviewing the day, sorrow, and turning toward tomorrow.
+// Each movement is one slide with a calm prompt; the user sets their
+// own pace and advances when ready. On mount we play the same opening
+// swell the office + prayer-chooser use, so crossing into the Examen
+// feels like crossing a threshold.
+
+const FONT = "'Space Grotesk', sans-serif";
+const BG = "#0C1F12";
+
+type Movement = {
+  n: number;
+  title: string;
+  lead: string;
+  body: string;
+};
+
+const MOVEMENTS: Movement[] = [
+  {
+    n: 1,
+    title: "Gratitude",
+    lead: "Begin with thanks.",
+    body: "Recall the day that has passed. Notice its gifts — small and large, expected and unlooked-for. Let gratitude be the doorway in.",
+  },
+  {
+    n: 2,
+    title: "Ask for light",
+    lead: "Pray for clear sight.",
+    body: "Ask the Holy Spirit to walk back through the day with you — to help you see it not only as you remember it, but as God sees it.",
+  },
+  {
+    n: 3,
+    title: "Review the day",
+    lead: "Walk slowly through the hours.",
+    body: "Move from waking to now. Where did you feel close to God — alive, at peace, loving? Where did you feel distant — anxious, closed, pulled away?",
+  },
+  {
+    n: 4,
+    title: "Sorrow",
+    lead: "Notice where you fell short.",
+    body: "Without harshness, name the moments you turned from love. Ask for forgiveness, and receive the mercy already held out to you.",
+  },
+  {
+    n: 5,
+    title: "Toward tomorrow",
+    lead: "Look ahead with hope.",
+    body: "Turn to the day to come. Ask for the grace you will need. Place tomorrow, and yourself, into God's hands.",
+  },
+];
+
+export default function ExamenPage() {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  // step 0 = intro, 1..5 = movements, 6 = closing.
+  const [step, setStep] = useState(0);
+
+  usePrayerSession(user ? "examen" : null);
+
+  useEffect(() => {
+    if (!isLoading && !user) setLocation("/");
+  }, [user, isLoading, setLocation]);
+
+  // Opening swell once, when the user begins (leaving the intro).
+  // Fire-and-forget — the helper handles autoplay-policy unlock.
+  useEffect(() => {
+    if (step === 1) {
+      try { playOpeningSwell(); } catch { /* non-fatal */ }
+    }
+    // The closing gets the resolving submit feedback (swell + haptic).
+    if (step === 6) {
+      try { triggerSubmitFeedback(); } catch { /* non-fatal */ }
+    }
+  }, [step]);
+
+  if (isLoading || !user) return null;
+
+  const isIntro = step === 0;
+  const isClosing = step === 6;
+  const movement = !isIntro && !isClosing ? MOVEMENTS[step - 1] : null;
+
+  return (
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ background: BG, color: "#F0EDE6", fontFamily: FONT }}
+    >
+      {/* Top bar — back exits to the offices picker, the same place
+          the Examen is reached from. On a movement slide, Back steps
+          one movement instead of leaving. */}
+      <header
+        className="px-5 pb-2"
+        style={{ paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            if (step > 0 && step < 6) setStep((s) => s - 1);
+            else setLocation("/offices");
+          }}
+          className="text-sm"
+          style={{
+            color: "rgba(143,175,150,0.8)",
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontFamily: FONT,
+          }}
+        >
+          ← Back
+        </button>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
+        <AnimatePresence mode="wait">
+          {isIntro && (
+            <motion.div
+              key="intro"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="w-full max-w-md text-center"
+            >
+              <p
+                className="text-[11px] font-semibold uppercase tracking-widest mb-3"
+                style={{ color: "rgba(143,175,150,0.55)" }}
+              >
+                A prayer for the end of the day
+              </p>
+              <h1
+                className="text-3xl font-semibold leading-tight mb-3"
+                style={{ color: "#F0EDE6" }}
+              >
+                The Daily Examen
+              </h1>
+              <p
+                className="text-[15px] leading-relaxed mb-8"
+                style={{ color: "#8FAF96" }}
+              >
+                St. Ignatius's gentle walk back through your day — noticing
+                where God was near, and turning toward tomorrow. Five
+                movements, at your own pace. Find a quiet few minutes.
+              </p>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                Begin →
+              </button>
+            </motion.div>
+          )}
+
+          {movement && (
+            <motion.div
+              key={`movement-${movement.n}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="w-full max-w-md text-center"
+            >
+              <p
+                className="text-[11px] font-semibold uppercase tracking-widest mb-4"
+                style={{ color: "rgba(143,175,150,0.55)" }}
+              >
+                Movement {movement.n} of {MOVEMENTS.length}
+              </p>
+              <h2
+                className="title-glow-breathe text-3xl font-semibold leading-tight mb-2"
+                style={{ color: "#F0EDE6" }}
+              >
+                {movement.title}
+              </h2>
+              <p
+                className="text-base italic mb-6"
+                style={{ color: "#A8C5A0", fontFamily: "Georgia, 'Times New Roman', serif" }}
+              >
+                {movement.lead}
+              </p>
+              <p
+                className="text-[16px] leading-relaxed mb-9"
+                style={{ color: "rgba(240,237,230,0.92)" }}
+              >
+                {movement.body}
+              </p>
+              <button
+                type="button"
+                onClick={() => setStep((s) => s + 1)}
+                className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                {movement.n === MOVEMENTS.length ? "Amen" : "Continue →"}
+              </button>
+              {/* Movement dots — quiet progress, no numbers shouting. */}
+              <div className="flex items-center justify-center gap-1.5 mt-8">
+                {MOVEMENTS.map((m) => (
+                  <span
+                    key={m.n}
+                    className="block rounded-full"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: m.n <= movement.n
+                        ? "#6FAF85"
+                        : "rgba(46,107,64,0.3)",
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {isClosing && (
+            <motion.div
+              key="closing"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="w-full max-w-md text-center"
+            >
+              <p className="text-[40px] mb-4" aria-hidden>
+                🌿
+              </p>
+              <h2
+                className="text-2xl font-semibold leading-tight mb-3"
+                style={{ color: "#F0EDE6" }}
+              >
+                The day is held.
+              </h2>
+              <p
+                className="text-[15px] leading-relaxed mb-8"
+                style={{ color: "#8FAF96" }}
+              >
+                You have walked back through it with God. Rest now — and
+                come again tomorrow.
+              </p>
+              <button
+                type="button"
+                onClick={() => setLocation("/dashboard")}
+                className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                Done
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}

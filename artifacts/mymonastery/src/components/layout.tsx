@@ -22,7 +22,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, betaViewEnabled, toggleBetaView, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView, rawIsAdmin, rawIsBeta } = useBetaStatus();
   const [communityAdminView, toggleCommunityAdminView] = useCommunityAdminToggle();
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
@@ -86,6 +86,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
     { emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" },
     { emoji: "🌿", label: "Daily Devotions", path: "/bcp/daily-devotions" },
+    // The Daily Examen — Ignatian end-of-day reflective prayer.
+    // Pilot-only for now: shows for beta users with pilot view on.
+    ...(isBeta ? [{ emoji: "🕯️", label: "The Examen", path: "/examen" }] : []),
     { divider: true },
     { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
     // "Manage Prayer Feeds" only renders for users who actually
