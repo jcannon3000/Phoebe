@@ -481,19 +481,25 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName }: {
               the owner taps in. Server only populates amenPeopleCount
               for own requests (distinct prayer-ers, not per-day taps),
               so we render only when the value is set + > 0 to avoid a
-              sad "0 people" on a brand-new request. We render under the
-              body rather than inline with the right-rail pills so the
-              count gets a full row to breathe and reads as
-              encouragement, not as a stat chip. */}
+              sad "0 people" on a brand-new request. Tapping it routes
+              to the request detail page, which shows the faces of
+              everyone who prayed — stopPropagation keeps the card's
+              own onClick (the in-page modal) from also firing. */}
           {req.isOwnRequest
             && typeof req.amenPeopleCount === "number"
             && req.amenPeopleCount > 0 && (
-            <p
-              className="text-[11px] mt-1"
-              style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
+            <Link
+              href={`/prayer-requests/${req.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-block mt-1"
             >
-              🙏 Prayed by {req.amenPeopleCount} {req.amenPeopleCount === 1 ? "person" : "people"}
-            </p>
+              <span
+                className="text-[11px] underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-80"
+                style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}
+              >
+                🙏 Prayed by {req.amenPeopleCount} {req.amenPeopleCount === 1 ? "person" : "people"} →
+              </span>
+            </Link>
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
