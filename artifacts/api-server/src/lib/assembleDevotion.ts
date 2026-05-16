@@ -119,31 +119,40 @@ export async function assembleDevotion(
   const lectionary = getLectionaryReadings(liturgicalDay, lectOffice);
   const { psalms } = lectionary;
 
-  // Take just the first appointed psalm — the devotions are meant to
-  // be short. If the lectionary entry is missing or yields no psalms,
-  // fall back to Psalm 51 (morning) or Psalm 134 (evening), both of
-  // which the BCP suggests as the default when no psalm is appointed.
-  // We hold onto the parsed range so partial-psalm appointments like
-  // "119:73-96" get sliced down rather than rendering all 176 verses.
-  const firstPsalmRaw = psalms[0] ?? (kind === "morning" ? "51" : "134");
-  const parsedRef = parsePsalmRef(firstPsalmRaw) ?? {
-    number: kind === "morning" ? 51 : 134,
-    range: null as [number, number] | null,
-    raw: kind === "morning" ? "51" : "134",
-  };
-  const psalmNum = parsedRef.number;
+  // Parse all appointed psalms so the devotion stays in lockstep with
+  // the full Office (which renders the same combined set). Previously
+  // only the first was taken, which left users seeing "Psalm 91" in
+  // the devotion vs "Psalms 91 & 92" in EP for the same day.
+  // Fallback: Psalm 51 (morning) or Psalm 134 (evening) — both BCP
+  // defaults when no psalm is appointed.
+  const fallbackRaw = kind === "morning" ? "51" : "134";
+  const rawPsalms = psalms.length > 0 ? psalms : [fallbackRaw];
+  const appointedPsalms = rawPsalms
+    .map((p) => parsePsalmRef(p))
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+  if (appointedPsalms.length === 0) {
+    appointedPsalms.push({
+      number: kind === "morning" ? 51 : 134,
+      range: null,
+      raw: fallbackRaw,
+    });
+  }
 
-  // Look up the psalm content. Single DB query; if the row is missing
-  // we render a placeholder so the slide still appears (the user can
-  // tap through and we can backfill the seed later).
-  const psalmKey = `psalm_${psalmNum}`;
+  // Look up all appointed psalm rows in one query. Missing rows render
+  // a "see BCP Psalter" placeholder so the slide still appears.
   const collectKey = liturgicalDay.collectKey;
-  const fetchKeys = [psalmKey, collectKey];
+  const psalmKeys = appointedPsalms.map((p) => `psalm_${p.number}`);
+  const fetchKeys = [...psalmKeys, collectKey];
   const fetchedRows = await db
     .select()
     .from(bcpTextsTable)
     .where(inArray(bcpTextsTable.textKey, fetchKeys));
-  const psalmRow = fetchedRows.find((r) => r.textKey === psalmKey) ?? null;
+  const psalmRowsByKey: Record<string, typeof fetchedRows[number]> = {};
+  for (const row of fetchedRows) {
+    psalmRowsByKey[row.textKey] = row;
+  }
+  const firstPsalm = appointedPsalms[0];
+  const firstPsalmRow = psalmRowsByKey[`psalm_${firstPsalm.number}`] ?? null;
   const collectOfTheDayRow = fetchedRows.find((r) => r.textKey === collectKey) ?? null;
 
   // ── Build slides ────────────────────────────────────────────────────────────
@@ -209,94 +218,92 @@ export async function assembleDevotion(
     );
   }
 
-  // 3. Psalm — appointed lectionary psalm for the office, sliced to
-  // the appointed verse range when the lectionary specifies one.
+  // 3. Psalms — appointed lectionary psalms for the office, rendered
+  // as one combined liturgical block matching the full Office: a
+  // single combined title slide ("Psalms 91 & 92"), 4-verse chunks
+  // for each psalm in sequence, and one Gloria Patri sealing the
+  // whole set.
   const gloriaPatri =
-    "\nGlory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
-  const slicedPsalm =
-    psalmRow && parsedRef.range
-      ? sliceVersesByRange(psalmRow.content, parsedRef.range)
-      : psalmRow?.content;
-  const eyebrow = psalmEyebrow(parsedRef);
+    "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
 
-  // Title slide — same big "Psalm 23" headline pattern the full
-  // Daily Office uses. Reads as a deliberate transition into the
-  // psalm rather than verses appearing cold.
+  const combinedEyebrow = appointedPsalms.length === 1
+    ? psalmEyebrow(appointedPsalms[0])
+    : `PSALMS ${appointedPsalms
+        .map((p) => (p.range ? `${p.number}:${p.range[0]}-${p.range[1]}` : `${p.number}`))
+        .join(" & ")}`;
+  const combinedTitle = appointedPsalms.length === 1
+    ? (firstPsalmRow?.title ?? null)
+    : `Psalms ${appointedPsalms.map((p) => `${p.number}`).join(" & ")}`;
+
   slides.push(
-    slide(id(), "psalm_title", "📖", eyebrow, "", {
-      title: psalmRow?.title ?? null,
-      bcpReference: psalmRow?.bcpReference ?? null,
+    slide(id(), "psalm_title", "📖", combinedEyebrow, "", {
+      title: combinedTitle,
+      bcpReference: firstPsalmRow?.bcpReference ?? null,
       isScrollable: false,
       scrollHint: null,
       metadata: {
-        psalmNumber: psalmNum,
-        psalmRange: parsedRef.range,
-        psalmRef: parsedRef.raw,
+        psalmNumber: firstPsalm.number,
+        psalmRange: firstPsalm.range,
+        psalmRef: appointedPsalms.map((p) => p.raw).join(" & "),
         fromLectionary: true,
+        combined: appointedPsalms.length > 1,
       },
     }),
   );
 
-  if (slicedPsalm) {
-    // 4 verses per slide. Gloria Patri lives on its own slide (per
-    // user direction) — emitted after the chunks below so the doxology
-    // reads as a distinct sealing beat rather than tacked onto the
-    // last verse.
-    const chunks = splitPsalmIntoChunks(slicedPsalm, 4);
-    chunks.forEach((chunk, i) => {
-      slides.push(
-        slide(id(), "psalm", "📖", eyebrow, chunk, {
-          title: psalmRow?.title ?? null,
-          bcpReference: psalmRow?.bcpReference ?? null,
-          isScrollable: false,
-          scrollHint: null,
-          metadata: {
-            psalmNumber: psalmNum,
-            psalmRange: parsedRef.range,
-            psalmRef: parsedRef.raw,
-            fromLectionary: true,
-            psalmChunkIndex: i,
-            psalmChunkTotal: chunks.length,
-          },
-        }),
-      );
-    });
-  } else {
-    slides.push(
-      slide(
-        id(),
-        "psalm",
-        "📖",
-        eyebrow,
-        `[Psalm ${parsedRef.raw} — see BCP Psalter]`,
-        {
-          title: psalmRow?.title ?? null,
-          bcpReference: psalmRow?.bcpReference ?? null,
-          isScrollable: false,
-          scrollHint: null,
-          metadata: {
-            psalmNumber: psalmNum,
-            psalmRange: parsedRef.range,
-            psalmRef: parsedRef.raw,
-            fromLectionary: true,
-          },
-        },
-      ),
-    );
+  type DevotionChunk = { content: string; psalmRef: typeof appointedPsalms[number] };
+  const allChunks: DevotionChunk[] = [];
+  for (const psalmRef of appointedPsalms) {
+    const row = psalmRowsByKey[`psalm_${psalmRef.number}`] ?? null;
+    const sliced =
+      row && psalmRef.range
+        ? sliceVersesByRange(row.content, psalmRef.range)
+        : row?.content;
+    if (sliced) {
+      const chunks = splitPsalmIntoChunks(sliced, 4);
+      chunks.forEach((chunk) => allChunks.push({ content: chunk, psalmRef }));
+    } else {
+      allChunks.push({
+        content: `[Psalm ${psalmRef.raw} — see BCP Psalter]`,
+        psalmRef,
+      });
+    }
   }
 
-  // Gloria Patri — its own slide, sealing the devotion psalm.
+  allChunks.forEach((c, i) => {
+    const eyebrow = psalmEyebrow(c.psalmRef);
+    const row = psalmRowsByKey[`psalm_${c.psalmRef.number}`] ?? null;
+    slides.push(
+      slide(id(), "psalm", "📖", eyebrow, c.content, {
+        title: row?.title ?? null,
+        bcpReference: row?.bcpReference ?? null,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: {
+          psalmNumber: c.psalmRef.number,
+          psalmRange: c.psalmRef.range,
+          psalmRef: c.psalmRef.raw,
+          fromLectionary: true,
+          psalmChunkIndex: i,
+          psalmChunkTotal: allChunks.length,
+        },
+      }),
+    );
+  });
+
+  // Gloria Patri — its own slide, sealing the whole psalm set.
   slides.push(
-    slide(id(), "psalm_gloria", "📖", eyebrow, gloriaPatri.trimStart(), {
-      title: psalmRow?.title ?? null,
-      bcpReference: psalmRow?.bcpReference ?? null,
+    slide(id(), "psalm_gloria", "📖", combinedEyebrow, gloriaPatri, {
+      title: combinedTitle,
+      bcpReference: firstPsalmRow?.bcpReference ?? null,
       isScrollable: false,
       scrollHint: null,
       metadata: {
-        psalmNumber: psalmNum,
-        psalmRange: parsedRef.range,
-        psalmRef: parsedRef.raw,
+        psalmNumber: firstPsalm.number,
+        psalmRange: firstPsalm.range,
+        psalmRef: appointedPsalms.map((p) => p.raw).join(" & "),
         fromLectionary: true,
+        combined: appointedPsalms.length > 1,
       },
     }),
   );

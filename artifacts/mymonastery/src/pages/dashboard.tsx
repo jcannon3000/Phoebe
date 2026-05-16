@@ -2458,36 +2458,20 @@ function ActiveRequestsCard({
   // into the View pill (which deep-links into /my-prayer-requests
   // where the count + state of each ask is visible).
   const headline = "How can your community pray for you?";
-  // Reference activeCount so an unused-var warning doesn't fire
-  // — the value still gates the View pill below and is part of
-  // the public component API.
+  // activeCount is part of the public component API but no longer
+  // surfaced — the View pill that used to deep-link into
+  // /my-prayer-requests was removed per user direction.
   void activeCount;
   return (
-    // Flat on the dashboard background — headline + compose. No
-    // sub line ("Prayed for X times so far"); the count is
-    // surfaced inside the manage view via the View pill.
+    // Flat on the dashboard background — headline + compose.
     <div className="mt-8 px-1">
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="mb-3">
         <p
           className="text-base font-semibold"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
         >
           {headline}
         </p>
-        {activeCount > 0 && (
-          <Link
-            href="/my-prayer-requests"
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-80 mt-0.5"
-            style={{
-              background: "rgba(46,107,64,0.22)",
-              color: "#A8C5A0",
-              border: "1px solid rgba(46,107,64,0.4)",
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            View
-          </Link>
-        )}
       </div>
       <PrayerListComposeBar />
     </div>
