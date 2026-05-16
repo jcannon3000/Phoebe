@@ -285,8 +285,16 @@ async function runDayCallSender(opts: {
 }
 
 export async function runEveningNudgeSender(): Promise<void> {
-  return runDayCallSender({ hour: 20, slotKey: "evening", logTag: "[bell-evening]" });
+  // The 8 PM evening nudge is OFF per user direction — the only
+  // daily-prayer pushes that should fire are the office / devotion
+  // reminders each user sets for themselves in Settings (those run
+  // in runParishOfficeReminderSender, untouched). To re-enable the
+  // catch-up nudge, restore the call:
+  //   return runDayCallSender({ hour: 20, slotKey: "evening", logTag: "[bell-evening]" });
 }
+// Keep runDayCallSender referenced while the evening nudge is off so
+// the unused-symbol check stays quiet (same idiom as `void sql` below).
+void runDayCallSender;
 
 // ─── Lectio Divina stage reminder (Mon/Wed/Fri 09:30 local) ────────────────
 //
