@@ -2207,12 +2207,13 @@ export default function PrayerModePage() {
       })
     : queueMode === "new"
     ? [
-        // The home-screen "N prayer requests waiting" card counts BOTH
-        // un-amened requests AND community intercessions the viewer
-        // hasn't logged today. queue=new used to only render the
-        // requests; tapping Respond on a card that was actually mostly
-        // intercessions produced an empty slideshow. Now we surface
-        // both kinds here so the count + the tap target agree.
+        // queue=new is requests-only. The home "N prayer requests
+        // waiting" card counts prayer requests (not intercessions), so
+        // the slideshow it opens must show exactly those. Community
+        // intercessions — prayed or not — live in the main daily
+        // slideshow and the parish-weekly card; padding this focused
+        // queue with them (especially ones the viewer already prayed)
+        // made the tap target disagree with the count.
         ...prayerRequests
           .filter((r) => {
             if (r.isAnswered) return false;
@@ -2237,85 +2238,6 @@ export default function PrayerModePage() {
             // Always false in queue-new — these are by definition un-prayed.
             alreadyPrayedToday: false,
           })),
-        // Un-logged community intercessions — same shape the default
-        // branch builds below. Inline rebuild so we don't have to
-        // restructure the entire slide-list assembly into a function.
-        ...intercessions
-          .filter((m) => !m.myLoggedToday)
-          .map((m): PrayerSlide => {
-            const title = m.intercessionTopic || m.name;
-            const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
-            const intentionSub =
-              m.intention && norm(m.intention) !== norm(title) ? m.intention : null;
-            const attributionLabel = m.group?.name
-              ? m.group.name
-              : m.members
-                  .filter((p) => p.email !== user?.email)
-                  .map((p) => p.name || p.email.split("@")[0])
-                  .slice(0, 3)
-                  .join(", ");
-            const hasPrayedFlag = m.members.some((p) => typeof p.prayedThisWeek === "boolean");
-            const otherMembers = m.members.filter((p) => {
-              if (p.email === user?.email) return false;
-              if (!hasPrayedFlag) return true;
-              return p.prayedThisWeek === true;
-            });
-            const MAX_FACES = 7;
-            let communityFaces: Array<{ name: string; email: string; avatarUrl: string | null }> = [];
-            if (otherMembers.length > 0) {
-              if (otherMembers.length <= MAX_FACES) {
-                communityFaces = otherMembers.map((p) => ({
-                  name: p.name || p.email.split("@")[0],
-                  email: p.email,
-                  avatarUrl: p.avatarUrl ?? null,
-                }));
-              } else {
-                const withAvatar = otherMembers.filter((p) => !!p.avatarUrl);
-                const withoutAvatar = otherMembers.filter((p) => !p.avatarUrl);
-                const picked = [
-                  ...withAvatar.slice(0, MAX_FACES),
-                  ...withoutAvatar.slice(0, Math.max(0, MAX_FACES - withAvatar.length)),
-                ];
-                communityFaces = picked.map((p) => ({
-                  name: p.name || p.email.split("@")[0],
-                  email: p.email,
-                  avatarUrl: p.avatarUrl ?? null,
-                }));
-              }
-            }
-            const feedTag = m.prayerFeedId ? "Climate Justice" : null;
-            const finalAttribution = m.prayerFeedId && !attributionLabel
-              ? "Your community is holding this."
-              : attributionLabel
-                ? `with ${attributionLabel}`
-                : "";
-            const allGroupsRaw = [
-              ...(m.group ? [m.group] : []),
-              ...(m.additionalGroups ?? []),
-            ];
-            const seenGroupIds = new Set<number>();
-            const groups = allGroupsRaw.filter((g) => {
-              if (seenGroupIds.has(g.id)) return false;
-              seenGroupIds.add(g.id);
-              return true;
-            });
-            return {
-              kind: "intercession" as const,
-              text: title,
-              intention: intentionSub,
-              fullText: m.intercessionFullText?.trim() || null,
-              source: m.intercessionSource ?? null,
-              attribution: finalAttribution,
-              weekPrayCount: m.weekPostCount ?? 0,
-              momentToken: m.momentToken,
-              myUserToken: m.myUserToken,
-              communityFaces,
-              feedTag,
-              learnMoreUrl: m.learnMoreUrl?.trim() || null,
-              groups,
-              alreadyPrayedToday: false,
-            };
-          }),
       ]
     : [
     ...intercessions.map((m) => {
