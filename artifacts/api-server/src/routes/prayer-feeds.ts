@@ -12,6 +12,8 @@ import {
   betaUsersTable,
   groupsTable,
   groupMembersTable,
+  sharedMomentsTable,
+  momentUserTokensTable,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
 import { z } from "zod/v4";
@@ -85,6 +87,27 @@ async function getFeedBySlug(slug: string) {
   const [feed] = await db.select().from(prayerFeedsTable)
     .where(eq(prayerFeedsTable.slug, slug));
   return feed ?? null;
+}
+
+function generateToken(): string {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+// Validate the optional action / learn-more URL on a feed intercession.
+// Accepts http(s) only, prepends https:// for a bare host, returns null
+// on empty/invalid input. Mirrors the climate-admin helper.
+function normalizeLearnMoreUrl(input: string | null | undefined): string | null {
+  if (input === null || input === undefined) return null;
+  const trimmed = String(input).trim();
+  if (trimmed.length === 0) return null;
+  const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const u = new URL(withProto);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
 }
 
 // Edit permission for a feed:
@@ -991,6 +1014,125 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
   }).returning();
 
   res.status(201).json({ entry: row });
+});
+
+// ─── Feed intercessions ─────────────────────────────────────────────────────
+//
+// A feed intercession is a shared_moments row scoped to the feed
+// (prayer_feed_id set, group_id null) — the same primitive Phoebe
+// Climate uses. Subscribers get moment_user_tokens via
+// reconcileFeedPracticeMembers so the intercession surfaces on the
+// dashboard + prayer-mode slideshow, and gets a /moments/:id detail
+// page for free. This generalizes the climate-only admin endpoints to
+// any feed the caller can edit.
+
+// GET /api/prayer-feeds/:slug/intercessions — list this feed's
+// intercessions. Editors see all; everyone else sees active ones.
+router.get("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  const isCreator = await canEditFeed(user.id, feed);
+  if (!isCreator && feed.state === "draft") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const conditions = [eq(sharedMomentsTable.prayerFeedId, feed.id)];
+  if (!isCreator) conditions.push(eq(sharedMomentsTable.state, "active"));
+  const rows = await db
+    .select({
+      id: sharedMomentsTable.id,
+      name: sharedMomentsTable.name,
+      intention: sharedMomentsTable.intention,
+      intercessionTopic: sharedMomentsTable.intercessionTopic,
+      intercessionFullText: sharedMomentsTable.intercessionFullText,
+      intercessionSource: sharedMomentsTable.intercessionSource,
+      learnMoreUrl: sharedMomentsTable.learnMoreUrl,
+      state: sharedMomentsTable.state,
+      createdAt: sharedMomentsTable.createdAt,
+    })
+    .from(sharedMomentsTable)
+    .where(and(...conditions))
+    .orderBy(desc(sharedMomentsTable.createdAt));
+  res.json({ intercessions: rows });
+});
+
+const feedIntercessionSchema = z.object({
+  // "bcp" | "custom" | "action" — mirrors the moment-new chooser.
+  // "action" carries a required learnMoreUrl; the slideshow renders a
+  // "Take action →" pill for it.
+  source: z.enum(["bcp", "custom", "action"]).default("custom"),
+  title: z.string().trim().min(1).max(120),
+  fullText: z.string().trim().min(1).max(4000),
+  learnMoreUrl: z.string().trim().max(500).optional().nullable(),
+});
+
+// POST /api/prayer-feeds/:slug/intercessions — editor-only. Creates a
+// feed-scoped intercession and reconciles subscribers so it lands on
+// their dashboard + slideshow immediately.
+router.post("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to publish to this feed." });
+    return;
+  }
+  const parsed = feedIntercessionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    return;
+  }
+  const { source, title, fullText, learnMoreUrl } = parsed.data;
+  // Action intercessions require a usable URL; reject early so an admin
+  // doesn't ship an "action" with a dead "Take action" pill.
+  const normalizedUrl = normalizeLearnMoreUrl(learnMoreUrl);
+  if (source === "action" && !normalizedUrl) {
+    res.status(400).json({ error: "An action intercession needs a valid link." });
+    return;
+  }
+
+  const [u] = await db
+    .select({ email: usersTable.email, name: usersTable.name })
+    .from(usersTable)
+    .where(eq(usersTable.id, user.id));
+
+  const [moment] = await db
+    .insert(sharedMomentsTable)
+    .values({
+      prayerFeedId: feed.id,
+      groupId: null,
+      name: title,
+      intention: title,
+      intercessionTopic: title,
+      intercessionFullText: fullText,
+      intercessionSource: source,
+      templateType: "intercession",
+      loggingType: "photo",
+      frequency: "daily",
+      scheduledTime: "09:30",
+      timezone: feed.timezone ?? "America/New_York",
+      windowMinutes: 60,
+      goalDays: 30,
+      state: "active",
+      momentToken: generateToken(),
+      learnMoreUrl: normalizedUrl,
+    })
+    .returning();
+
+  // Mint the creator's token first so they're the organizer
+  // (smallest-id token), then reconcile to add every subscriber.
+  await db.insert(momentUserTokensTable).values({
+    momentId: moment.id,
+    email: (u?.email ?? "").toLowerCase(),
+    name: u?.name ?? "",
+    userToken: generateToken(),
+  });
+
+  const { reconcileFeedPracticeMembers } = await import("./groups");
+  await reconcileFeedPracticeMembers(moment.id);
+
+  res.status(201).json({ intercession: moment });
 });
 
 // DELETE /api/prayer-feeds/:slug/entries/:date — editor-only.

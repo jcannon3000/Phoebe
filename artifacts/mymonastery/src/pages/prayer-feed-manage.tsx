@@ -513,11 +513,16 @@ export default function PrayerFeedManagePage() {
           ))}
         </div>
 
-        {/* 7-day calendar — today + 6 upcoming days, three editable
-            slots per day. Each cell opens the editor pre-filled with
-            its existing entry (or empty for an unfilled slot). */}
+        {/* Intercessions — the primary content surface. A feed's
+            prayers are community intercessions (cards + detail pages),
+            authored here with a Prayer / Action chooser. */}
+        <FeedIntercessionsSection slug={slug!} />
+
+        {/* 7-day calendar — the legacy date-anchored entry editor.
+            Kept below the intercession list while feeds migrate; new
+            programming should go through Intercessions above. */}
         <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
-          This week
+          Daily entries (legacy)
         </p>
         <div className="space-y-4 mb-6">
           {calendarDays.map((dateStr, di) => {
@@ -1038,6 +1043,252 @@ export default function PrayerFeedManagePage() {
         })()}
       </div>
     </Layout>
+  );
+}
+
+// ── Feed intercessions section ─────────────────────────────────────────
+//
+// The primary content surface for a feed: a list of community
+// intercessions scoped to this feed (shared_moments rows with
+// prayer_feed_id set). An admin adds one via a composer with a
+// Prayer / Action type toggle — "Action" carries a link and renders
+// a "Take action →" pill in the slideshow. Each intercession links to
+// its /moments/:id detail page, the same page community intercessions
+// use, so feed prayers get cards + detail pages for free.
+type FeedIntercession = {
+  id: number;
+  name: string;
+  intention: string | null;
+  intercessionTopic: string | null;
+  intercessionFullText: string | null;
+  intercessionSource: string | null;
+  learnMoreUrl: string | null;
+  state: string;
+  createdAt: string;
+};
+
+function FeedIntercessionsSection({ slug }: { slug: string }) {
+  const qc = useQueryClient();
+  const [, setLocation] = useLocation();
+  const [composing, setComposing] = useState(false);
+  // Type toggle: "custom" = a written prayer; "action" = a prayer
+  // plus a link the slideshow surfaces as a "Take action →" pill.
+  const [draft, setDraft] = useState<{
+    source: "custom" | "action";
+    title: string;
+    fullText: string;
+    learnMoreUrl: string;
+  }>({ source: "custom", title: "", fullText: "", learnMoreUrl: "" });
+  const [error, setError] = useState<string | null>(null);
+
+  const listQ = useQuery<{ intercessions: FeedIntercession[] }>({
+    queryKey: [`/api/prayer-feeds/${slug}/intercessions`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/intercessions`),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (payload: { source: string; title: string; fullText: string; learnMoreUrl: string | null }) =>
+      apiRequest("POST", `/api/prayer-feeds/${slug}/intercessions`, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/intercessions`] });
+      setComposing(false);
+      setDraft({ source: "custom", title: "", fullText: "", learnMoreUrl: "" });
+      setError(null);
+    },
+    onError: (e) => {
+      setError(e instanceof Error ? e.message : "Couldn't add the intercession.");
+    },
+  });
+
+  const items = listQ.data?.intercessions ?? [];
+
+  function startNew() {
+    setDraft({ source: "custom", title: "", fullText: "", learnMoreUrl: "" });
+    setError(null);
+    setComposing(true);
+  }
+  function save() {
+    if (!draft.title.trim() || !draft.fullText.trim()) return;
+    if (draft.source === "action" && !draft.learnMoreUrl.trim()) {
+      setError("An action needs a link.");
+      return;
+    }
+    createMutation.mutate({
+      source: draft.source,
+      title: draft.title.trim(),
+      fullText: draft.fullText.trim(),
+      learnMoreUrl: draft.source === "action" ? draft.learnMoreUrl.trim() : null,
+    });
+  }
+
+  return (
+    <div className="mb-8">
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
+        Intercessions
+      </p>
+      <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+        Prayers your subscribers pray together. Each one gets its own card and detail page.
+      </p>
+
+      <div className="space-y-2 mb-3">
+        {items.map((it) => {
+          const isAction = it.intercessionSource === "action";
+          return (
+            <button
+              key={it.id}
+              type="button"
+              onClick={() => setLocation(`/moments/${it.id}`)}
+              className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
+              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.45)" }}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                  {it.intention || it.name}
+                </p>
+                {it.intercessionFullText && (
+                  <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
+                    {it.intercessionFullText}
+                  </p>
+                )}
+              </div>
+              {isAction && (
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                  style={{
+                    background: "rgba(46,107,64,0.3)",
+                    color: "#C8D4C0",
+                    border: "1px solid rgba(46,107,64,0.5)",
+                  }}
+                >
+                  🌍 Action
+                </span>
+              )}
+            </button>
+          );
+        })}
+        {items.length === 0 && !listQ.isLoading && (
+          <p className="text-xs italic px-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+            No intercessions yet.
+          </p>
+        )}
+      </div>
+
+      {!composing ? (
+        <button
+          type="button"
+          onClick={startNew}
+          className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
+        >
+          + Add intercession
+        </button>
+      ) : (
+        <div
+          className="rounded-lg p-3 space-y-3"
+          style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
+        >
+          {/* Type toggle — Prayer vs Action. */}
+          <div className="flex gap-2">
+            {([
+              { key: "custom" as const, label: "🙏🏽 Prayer", sub: "A written prayer" },
+              { key: "action" as const, label: "🌍 Action", sub: "Prayer + a link" },
+            ]).map((opt) => {
+              const on = draft.source === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setDraft({ ...draft, source: opt.key })}
+                  className="flex-1 text-left rounded-lg px-3 py-2 transition-opacity"
+                  style={{
+                    background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                    border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+                  }}
+                >
+                  <p className="text-xs font-semibold" style={{ color: "#F0EDE6" }}>{opt.label}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>{opt.sub}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Title
+            </label>
+            <input
+              type="text"
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              maxLength={120}
+              placeholder="e.g. For families displaced by the floods"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Prayer
+            </label>
+            <textarea
+              value={draft.fullText}
+              onChange={(e) => setDraft({ ...draft, fullText: e.target.value })}
+              rows={4}
+              maxLength={4000}
+              placeholder="Write the prayer your subscribers will pray together…"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm resize-none"
+              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+            />
+          </div>
+
+          {draft.source === "action" && (
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+                Action link
+              </label>
+              <input
+                type="url"
+                value={draft.learnMoreUrl}
+                onChange={(e) => setDraft({ ...draft, learnMoreUrl: e.target.value })}
+                maxLength={500}
+                placeholder="https://…"
+                className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+                style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+              />
+              <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
+                Shown as a "Take action →" pill on the prayer slide.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-[11px]" style={{ color: "#E57373" }}>{error}</p>
+          )}
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={save}
+              disabled={createMutation.isPending || !draft.title.trim() || !draft.fullText.trim()}
+              className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ background: "#2D5E3F", border: "1px solid #2D5E3F", color: "#F0EDE6" }}
+            >
+              {createMutation.isPending ? "Adding…" : "Add intercession"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setComposing(false); setError(null); }}
+              disabled={createMutation.isPending}
+              className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ background: "transparent", border: "1px solid rgba(143,175,150,0.3)", color: "#A8C5A0" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

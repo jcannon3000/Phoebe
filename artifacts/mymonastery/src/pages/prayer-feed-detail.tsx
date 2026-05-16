@@ -58,6 +58,20 @@ interface FeedResponse {
   isSubscribed: boolean;
 }
 
+// A feed intercession — a shared_moments row scoped to this feed.
+// Rendered as a card linking to its /moments/:id detail page.
+interface FeedIntercession {
+  id: number;
+  name: string;
+  intention: string | null;
+  intercessionTopic: string | null;
+  intercessionFullText: string | null;
+  intercessionSource: string | null;
+  learnMoreUrl: string | null;
+  state: string;
+  createdAt: string;
+}
+
 const SLOT_LABELS: Record<number, string> = {
   1: "First",
   2: "Second",
@@ -159,6 +173,16 @@ export default function PrayerFeedDetailPage() {
     enabled: !!feed,
   });
   const entries = entriesQ.data?.entries ?? [];
+
+  // Feed intercessions — shared_moments scoped to this feed. These are
+  // the new primary content (cards + /moments/:id detail pages); the
+  // date-anchored entries below are legacy.
+  const intercessionsQ = useQuery<{ intercessions: FeedIntercession[] }>({
+    queryKey: [`/api/prayer-feeds/${slug}/intercessions`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/intercessions`),
+    enabled: !!feed,
+  });
+  const feedIntercessions = intercessionsQ.data?.intercessions ?? [];
 
   // Recurring templates that fire across the visible week. Without
   // this query the This-week list only shows concrete entries; days
@@ -379,6 +403,63 @@ export default function PrayerFeedDetailPage() {
             (rosterBySlot / pray mutation / didIPrayToday are still
             referenced by the back-issues block below for read-only
             "X prayed" counts on archived days.) */}
+
+        {/* Prayers — feed intercessions, each a card linking to its
+            /moments/:id detail page. The primary content of a feed. */}
+        {feedIntercessions.length > 0 && (
+          <div className="mb-6">
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
+              Prayers
+            </p>
+            <div className="space-y-2">
+              {feedIntercessions.map((it) => {
+                const isAction = it.intercessionSource === "action";
+                return (
+                  <Link key={it.id} href={`/moments/${it.id}`}>
+                    <div
+                      className="rounded-2xl px-4 py-3 cursor-pointer transition-opacity hover:opacity-90"
+                      style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.3)" }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold leading-snug" style={{ color: "#F0EDE6" }}>
+                            {it.intention || it.name}
+                          </p>
+                          {it.intercessionFullText && (
+                            <p
+                              className="text-[12px] mt-1 leading-snug"
+                              style={{
+                                color: "rgba(143,175,150,0.8)",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }}
+                            >
+                              {it.intercessionFullText}
+                            </p>
+                          )}
+                        </div>
+                        {isAction && (
+                          <span
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                            style={{
+                              background: "rgba(46,107,64,0.3)",
+                              color: "#C8D4C0",
+                              border: "1px solid rgba(46,107,64,0.5)",
+                            }}
+                          >
+                            🌍 Action
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* This-week calendar — 7 days × 3 slots. Today is highlighted,
             other days show the title for any slots that have been
