@@ -858,9 +858,13 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 typeof meta?.psalmHeadline === "string" && meta.psalmHeadline.length > 0
                   ? meta.psalmHeadline
                   : null;
-              const headline =
-                customHeadline
-                ?? (currentSlide.eyebrow || "PSALM").replace(/^PSALM\b/, "Psalm");
+              // Normalize to proper case — server data is sometimes
+              // all-caps ("PSALMS 87 & 90"); the slide should read
+              // "Psalms 87 & 90", not shout.
+              const rawHeadline = customHeadline ?? (currentSlide.eyebrow || "Psalm");
+              const headline = rawHeadline
+                .toLowerCase()
+                .replace(/\b[a-z]/g, (c) => c.toUpperCase());
               const isEvening =
                 resolvedMode === "evening" || resolvedMode === "early-evening-devotion";
               const subtitle = isInvitatory
@@ -906,17 +910,16 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   >
                     {headline}
                   </h1>
-                  {currentSlide.title && !isInvitatory && (
+                  {!isInvitatory && (
                     <p
                       style={{
-                        fontSize: 16,
-                        fontStyle: "italic",
+                        fontSize: 19,
                         fontFamily: SPACE_GROTESK,
                         color: "rgba(200,212,192,0.75)",
                         margin: 0,
                       }}
                     >
-                      {currentSlide.title}
+                      From the Daily Office Lectionary
                     </p>
                   )}
                 </div>
@@ -977,8 +980,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   {currentSlide.title && (
                     <p
                       style={{
-                        fontSize: 16,
-                        fontStyle: "italic",
+                        fontSize: 19,
                         fontFamily: SPACE_GROTESK,
                         color: "rgba(200,212,192,0.75)",
                         margin: 0,
@@ -1277,13 +1279,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 return (
                   <p
                     style={{
-                      fontSize: 17,
+                      fontSize: 20,
                       lineHeight: 1.7,
                       color: WARM_TEXT,
                       margin: 0,
                       whiteSpace: "pre-wrap",
                       fontFamily: SPACE_GROTESK,
-                      fontStyle: "italic",
                       maxWidth: 600,
                     }}
                   >
@@ -1315,7 +1316,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                         <p
                           style={{
                             flex: 1,
-                            fontSize: 16,
+                            fontSize: 19,
                             lineHeight: 1.6,
                             color: WARM_TEXT,
                             margin: 0,
@@ -1353,7 +1354,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                         <p
                           key={li}
                           style={{
-                            fontSize: 16,
+                            fontSize: 19,
                             lineHeight: 1.6,
                             color: WARM_TEXT,
                             margin: 0,
@@ -1392,7 +1393,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                             lineHeight: 1.6,
                             color: "rgba(240,237,230,0.75)",
                             fontFamily: SPACE_GROTESK,
-                            fontStyle: "italic",
                             textAlign: "right",
                             margin: "24px 0 0 0",
                           }}
@@ -1416,7 +1416,6 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                             lineHeight: 1.7,
                             color: WARM_TEXT,
                             fontFamily: SPACE_GROTESK,
-                            fontStyle: "italic",
                             margin: 0,
                           }}
                         >
@@ -1439,7 +1438,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               {currentSlide.callAndResponseLines.map((line, i) => (
                 <p
                   key={i}
-                  style={{ fontSize: 17, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK, fontStyle: "italic" }}
+                  style={{ fontSize: 20, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK }}
                 >
                   {line.text}
                 </p>
@@ -1474,12 +1473,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   </p>
                   <p
                     style={{
-                      fontSize: 16,
+                      fontSize: 19,
                       lineHeight: 1.6,
                       color: WARM_TEXT,
                       margin: 0,
                       fontFamily: SPACE_GROTESK,
-                      fontStyle: "italic",
                       whiteSpace: "pre-wrap",
                     }}
                   >
@@ -1501,13 +1499,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                         <p
                           key={i}
                           style={{
-                            fontSize: 17,
+                            fontSize: 20,
                             lineHeight: 1.6,
                             color: WARM_TEXT,
                             margin: 0,
                             paddingLeft: indented ? 32 : 0,
                             fontFamily: SPACE_GROTESK,
-                            fontStyle: "italic",
                           }}
                         >
                           {text.replace(/^\s+/, "")}
@@ -1546,13 +1543,12 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                   <p
                     key={i}
                     style={{
-                      fontSize: 17,
+                      fontSize: 20,
                       lineHeight: 1.6,
                       color: WARM_TEXT,
                       margin: 0,
                       paddingLeft: indented ? 32 : 0,
                       fontFamily: SPACE_GROTESK,
-                      fontStyle: "italic",
                     }}
                   >
                     {text.replace(/^\s+/, "")}
@@ -1598,12 +1594,11 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                       <p
                         key={i}
                         style={{
-                          fontSize: 17,
+                          fontSize: 20,
                           lineHeight: 1.7,
                           color: WARM_TEXT,
                           margin: 0,
                           fontFamily: SPACE_GROTESK,
-                          fontStyle: "italic",
                         }}
                       >
                         {p}
@@ -1618,15 +1613,14 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                     // Intercession slides bump the body to 22px italic
                     // to match the prayer-mode slideshow's
                     // "carrying one prayer" weight; everything else stays
-                    // at the missal-page 17px reading size.
-                    fontSize: currentSlide.type === "intercessions" ? 22 : 17,
+                    // at the missal-page reading size.
+                    fontSize: currentSlide.type === "intercessions" ? 22 : 20,
                     lineHeight: currentSlide.type === "intercessions" ? 1.5 : 1.7,
                     fontWeight: currentSlide.type === "intercessions" ? 500 : 400,
                     color: currentSlide.type === "intercessions" ? "#E8E4D8" : WARM_TEXT,
                     margin: 0,
                     whiteSpace: "pre-wrap",
                     fontFamily: SPACE_GROTESK,
-                    fontStyle: "italic",
                     maxWidth: 600,
                   }}
                 >
