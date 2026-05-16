@@ -81,6 +81,13 @@ const DAILY_BELL_HOUR = 9;
 const DAILY_BELL_MINUTE = 0;
 
 export async function runBellSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  // The 9 AM daily bell is OFF per user direction. The scheduled
+  // 15-min tick calls this without `forceNow`, so it returns
+  // immediately and no morning push goes out. `forceNow` callers
+  // (the /api/bell/fire-now debug endpoint) still run end-to-end so
+  // the path stays testable, and flipping this guard re-enables the
+  // bell for everyone.
+  if (!opts.forceNow) return;
 
   // Single bell for all users now. Climate-enrolled users used to be
   // disjoined here so a parallel runClimateDailySender could fire a
