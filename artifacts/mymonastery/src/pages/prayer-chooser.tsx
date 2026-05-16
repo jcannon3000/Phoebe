@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
 
@@ -29,9 +30,13 @@ const FONT = "'Space Grotesk', sans-serif";
 
 export default function PrayerChooserPage() {
   const [, setLocation] = useLocation();
+  // The Examen is pilot-only — same gate as the menu entry + the
+  // habit-slide pill.
+  const { isBeta } = useBetaStatus();
 
   // Time-of-day split — same threshold the dashboard card uses (noon).
-  const isMorning = new Date().getHours() < 12;
+  const hour = new Date().getHours();
+  const isMorning = hour < 12;
   const eyebrow = isMorning ? "🌅 This morning" : "🌙 This evening";
   const headline = isMorning ? "Start this morning's prayer" : "Start this evening's prayer";
 
@@ -102,6 +107,16 @@ export default function PrayerChooserPage() {
       href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
       verb: verbFor(officeStateLocal),
     },
+    // Ignatian Examen — the contemplative close to the day. Sits at
+    // the bottom, and only after 5pm (it's an end-of-day prayer) for
+    // pilot users.
+    ...(hour >= 17 && isBeta ? [{
+      title: "Ignatian Examen",
+      sub: "A reflective close to the day",
+      duration: "5–10 Min",
+      href: "/examen",
+      verb: "Start",
+    }] : []),
   ];
 
   return (
@@ -134,7 +149,10 @@ export default function PrayerChooserPage() {
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-5 pb-12">
+      {/* Mobile/native: content sits near the top (justify-start +
+          a modest pt) so there isn't a yawning gap above the eyebrow.
+          Wide web keeps the centered composition. */}
+      <main className="flex-1 flex flex-col items-center justify-start md:justify-center px-5 pt-6 md:pt-0 pb-12">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
