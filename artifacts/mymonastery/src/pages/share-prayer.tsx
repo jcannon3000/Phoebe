@@ -19,6 +19,10 @@ type Group = {
   name: string;
   slug: string;
   emoji: string | null;
+  // The question the admin chose for the most recent "Ask your
+  // community" send. Drives this slide's headline so it asks the
+  // same thing the push / email did. Null → the default question.
+  prayerInvitePrompt: string | null;
 };
 
 export default function SharePrayerPage() {
@@ -33,17 +37,25 @@ export default function SharePrayerPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Pull the group so the page can address the user by name and name
-  // the community that asked. Endpoint already requires membership, so
-  // non-members get a 403 and we land on a generic error state.
-  const { data: group, isLoading, error } = useQuery<Group>({
+  // Pull the group so the page can address the user by name, name the
+  // community that asked, and read the admin's chosen prompt. Endpoint
+  // already requires membership, so non-members get a 403 and we land
+  // on a generic error state. GET /api/groups/:slug wraps the row in a
+  // `{ group, members, … }` envelope — normalize so this page works
+  // whether the response is the envelope or a bare group.
+  const { data: raw, isLoading, error } = useQuery<{ group?: Group } & Partial<Group>>({
     queryKey: [`/api/groups/${slug}`],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}`),
     enabled: !!slug,
     staleTime: 60_000,
   });
+  const group: Group | undefined = raw
+    ? (raw.group ?? (raw as Group))
+    : undefined;
 
   const firstName = (user?.name ?? "").trim().split(/\s+/)[0] || "";
+  // The headline question — the admin's chosen prompt, or the default.
+  const prompt = (group?.prayerInvitePrompt ?? "").trim() || "How can we pray for you?";
 
   async function handleSubmit() {
     const body = text.trim();
@@ -138,17 +150,25 @@ export default function SharePrayerPage() {
   return (
     <Layout>
       <div className="max-w-xl mx-auto w-full px-5 py-8">
+        {firstName && (
+          <p
+            className="text-sm mb-1.5"
+            style={{ color: "#8FAF96", fontFamily: FONT }}
+          >
+            Hi {firstName},
+          </p>
+        )}
         <h1
           className="text-2xl md:text-3xl font-semibold mb-3 leading-tight"
           style={{ color: "#F0EDE6", fontFamily: FONT }}
         >
-          {firstName ? `Hi ${firstName} — ` : ""}how can we pray for you?
+          {prompt}
         </h1>
         <p
           className="text-sm md:text-base leading-relaxed font-light mb-8"
           style={{ color: "#8FAF96", fontFamily: FONT }}
         >
-          Is there something in your life this week your community can be with you in prayer about? Nothing is too small to be held together.
+          {group.emoji ?? "🌿"} {group.name} is asking. Share what's on your heart — nothing is too small to be held together.
         </p>
 
         {/* Same card visual as the in-app prayer-request compose box —

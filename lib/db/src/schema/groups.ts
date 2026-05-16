@@ -38,6 +38,12 @@ export const groupsTable = pgTable("groups", {
   // the prompt stays special instead of becoming noise. Null = never
   // sent; the next eligible-at timestamp is `value + 7 days`.
   lastPrayerInviteAt: timestamp("last_prayer_invite_at", { withTimezone: true }),
+  // The prompt an admin chose for the most recent "Ask your community"
+  // send — a preset ("What's a big life event this week we can pray
+  // for?") or a custom question. The share-prayer landing page reads
+  // it so the slide asks the same question the push / email did.
+  // Null = never sent, or sent with the default question.
+  prayerInvitePrompt: text("prayer_invite_prompt"),
 });
 
 // ── Group join requests ────────────────────────────────────────────────────

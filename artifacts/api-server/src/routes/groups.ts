@@ -954,6 +954,10 @@ router.post("/groups/:slug/rotate-invite", async (req, res): Promise<void> => {
 // timestamp so the client can render "Available in N days."
 const PRAYER_INVITE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
+// The question the "Ask your community" prompt asks when the admin
+// doesn't pick a preset or write their own.
+const DEFAULT_PRAYER_INVITE_PROMPT = "How can we pray for you?";
+
 router.get("/groups/:slug/prayer-invite-status", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -990,6 +994,18 @@ router.post("/groups/:slug/prayer-invite", async (req, res): Promise<void> => {
     return;
   }
 
+  // Optional admin-chosen prompt — a preset ("What's a big life event
+  // this week we can pray for?") or a custom question. Falls back to
+  // the default if absent/blank. Threaded into the email subject +
+  // headline, the push title, and the share-prayer landing slide so
+  // every surface asks the same question.
+  const promptParsed = z
+    .object({ prompt: z.string().trim().min(1).max(160).optional() })
+    .safeParse(req.body ?? {});
+  const prompt = promptParsed.success && promptParsed.data.prompt
+    ? promptParsed.data.prompt
+    : DEFAULT_PRAYER_INVITE_PROMPT;
+
   // Resolve every joined member of the group except the sending admin
   // themself (don't push the admin their own prompt). Hidden-admins are
   // excluded too — they're observers, not part of the community's
@@ -1022,7 +1038,7 @@ router.post("/groups/:slug/prayer-invite", async (req, res): Promise<void> => {
   //      community.
   await db
     .update(groupsTable)
-    .set({ lastPrayerInviteAt: new Date() })
+    .set({ lastPrayerInviteAt: new Date(), prayerInvitePrompt: prompt })
     .where(eq(groupsTable.id, result.group.id));
 
   // Today's UTC date (YYYY-MM-DD) for the per-user email dedup. Using
@@ -1048,6 +1064,7 @@ router.post("/groups/:slug/prayer-invite", async (req, res): Promise<void> => {
             groupSlug: result.group.slug,
             groupName: result.group.name,
             adminName,
+            prompt,
           });
         } catch (err) {
           console.warn("[prayer-invite] push failed:", { userId: uid, err });
@@ -1060,6 +1077,7 @@ router.post("/groups/:slug/prayer-invite", async (req, res): Promise<void> => {
               adminName,
               groupName: result.group.name,
               shareUrl,
+              prompt,
             });
             if (sent) {
               await db

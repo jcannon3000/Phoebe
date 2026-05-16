@@ -808,11 +808,14 @@ export async function sendNewPrayerRequestPush(
 // urgent ask.
 export function sendPrayerInvitePush(
   recipientUserId: number,
-  opts: { groupSlug: string; groupName: string; adminName: string },
+  opts: { groupSlug: string; groupName: string; adminName: string; prompt?: string },
 ) {
   const firstName = (opts.adminName || "").split(/\s+/)[0] || "Someone";
+  // The admin-chosen question is the push title (a preset or a custom
+  // one); falls back to the default. The body names who's asking.
+  const title = (opts.prompt ?? "").trim() || "How can we pray for you?";
   return sendPushToUser(recipientUserId, {
-    title: "How can we pray for you?",
+    title,
     body: `${firstName} from ${opts.groupName} is asking — tap to share.`,
     path: `/communities/${opts.groupSlug}/share-prayer`,
     threadId: `prayer-invite-${opts.groupSlug}`,

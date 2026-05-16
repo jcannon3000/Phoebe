@@ -214,6 +214,11 @@ export async function sendPrayerInviteEmail(opts: {
   adminName: string;
   groupName: string;
   shareUrl: string;
+  /** The admin-chosen question — a preset or a custom one. Falls back
+   *  to "How can we pray for you?" when absent. Used as the subject
+   *  line + the email's headline so the email asks the same question
+   *  the push and the share-prayer slide do. */
+  prompt?: string;
 }): Promise<boolean> {
   const gmail = await getGmailClient();
   if (!gmail) {
@@ -223,7 +228,8 @@ export async function sendPrayerInviteEmail(opts: {
 
   const firstName = (opts.recipientName ?? "").trim().split(/\s+/)[0] || "friend";
   const adminFirst = (opts.adminName ?? "").trim().split(/\s+/)[0] || "Someone";
-  const subject = "How can we pray for you?";
+  const prompt = (opts.prompt ?? "").trim() || "How can we pray for you?";
+  const subject = prompt;
 
   const html = `
 <!DOCTYPE html>
@@ -242,11 +248,14 @@ export async function sendPrayerInviteEmail(opts: {
               <div style="margin-bottom:28px;">
                 <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
               </div>
+              <p style="margin:0 0 6px;font-size:15px;color:#6b6460;line-height:1.6;">
+                Hi ${firstName},
+              </p>
               <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
-                Hi ${firstName} — how can we pray for you?
+                ${prompt}
               </h1>
               <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">
-                ${adminFirst} from <strong>${opts.groupName}</strong> is asking: is there something in your life this week your community can be with you in prayer about?
+                ${adminFirst} from <strong>${opts.groupName}</strong> is asking. Share what's on your heart, and your community will hold it in prayer.
               </p>
               <a href="${opts.shareUrl}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">
                 Share with your community →

@@ -1527,6 +1527,10 @@ export async function migrate() {
     // prompt push. Once-per-7-days rate limit enforced server-side. Null
     // = never sent — that's the eligible default.
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS last_prayer_invite_at TIMESTAMPTZ`);
+    // The prompt the admin chose for the most recent "Ask your
+    // community" send (preset or custom). The share-prayer page reads
+    // it so the slide asks the same question the push / email did.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS prayer_invite_prompt TEXT`);
     // Per-user daily dedup for the "How can we pray for you?" email.
     // YYYY-MM-DD UTC. NULL = never received.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_prayer_invite_email_date TEXT`);
