@@ -35,11 +35,11 @@ type Slide =
       kind: "preview";
       caption: string;
       sub: string;
-      variant: "prayer-requests" | "intercession" | "lectio";
+      variant: "prayer-requests" | "intercession" | "daily-office";
     }
   | {
       kind: "preview-mock";
-      variant: "prayer-requests" | "intercession" | "lectio";
+      variant: "prayer-requests" | "intercession" | "daily-office";
     }
   | { kind: "closing"; above: string[]; featured: string };
 
@@ -48,7 +48,7 @@ const SLIDES: Slide[] = [
   {
     kind: "title",
     headline: "Three practices.",
-    sub: "Lectio divina. Intercession. Prayer requests.",
+    sub: "The Daily Office. Intercession. Prayer requests.",
   },
 
   // 2 — Setup
@@ -67,11 +67,11 @@ const SLIDES: Slide[] = [
     headline: "Each one plays a different role.",
     cards: [
       {
-        label: "Lectio Divina",
+        label: "The Daily Office",
         lines: [
-          "Scripture, together.",
-          "Monday, Wednesday, Friday — three unhurried stages on this week's Gospel.",
-          "Catch up any day. No one is behind.",
+          "The Church's daily prayer.",
+          "Morning and Evening Prayer from the Book of Common Prayer — psalms, scripture, canticles, collects.",
+          "Assembled for today. Nothing to look up.",
         ],
       },
       {
@@ -159,36 +159,36 @@ const SLIDES: Slide[] = [
     ],
   },
 
-  // ── Lectio Divina ──────────────────────────────────────────────────────────
-  // 10 — Intro to lectio
+  // ── The Daily Office ───────────────────────────────────────────────────────
+  // 10 — Intro to the Daily Office
   {
     kind: "statement",
-    headline: "Lectio divina is scripture, returned to slowly.",
+    headline: "The Daily Office is the Church's oldest rhythm of prayer.",
     body: [
-      "Not a reading plan. Not a study. A way of letting the same passage speak over three unhurried days — reading, meditating, praying.",
-      "Phoebe holds the rhythm. The community moves through the same Gospel together, one stage at a time.",
+      "Morning and evening, the Church has always stopped to pray — the psalms, a reading, the canticles, the collects. Monastics kept it through the centuries; the Book of Common Prayer gave it to every Christian.",
+      "Even prayed alone, it is never prayed alone — the same words, the same hours, the whole Church together.",
     ],
   },
 
-  // 11 — Preview: Lectio
+  // 11 — Preview: Daily Office
   {
     kind: "preview",
-    variant: "lectio",
-    caption: "Mon. Wed. Fri. One Gospel. Together.",
-    sub: "Three unhurried stages on this Sunday's Gospel. Catch up any day — no one is behind. You see the reflections of others as the week unfolds.",
+    variant: "daily-office",
+    caption: "Morning and Evening Prayer, ready to pray.",
+    sub: "The full office for today — opening sentences, the Psalter, the lessons, the canticles, the prayers — assembled in the order the Church has prayed them for centuries. Nothing to look up.",
   },
 
-  // 12 — Stacked: three stages
+  // 12 — Stacked: the shape of the office
   {
     kind: "stacked",
-    headline: "Three stages, three days.",
+    headline: "Morning and evening. Full or short.",
     items: [
-      "Monday — Lectio. Read the passage slowly, noticing what catches.",
-      "Wednesday — Meditatio. Sit with what you noticed. Let it speak.",
-      "Friday — Oratio. Pray it back. Respond.",
+      "Morning Prayer — to begin the day in praise.",
+      "Evening Prayer — to give the day back.",
+      "Or a shorter devotion when the hour is brief.",
     ],
     tail: [
-      "The community moves through it together. Each person's reflections become small gifts for the others.",
+      "Pray it perfectly, or return to it after a long absence — the office holds either way. A daily reminder keeps the hour.",
     ],
   },
 
@@ -196,7 +196,7 @@ const SLIDES: Slide[] = [
   {
     kind: "closing",
     above: [
-      "Prayer requests. Intercession. Lectio divina.",
+      "Prayer requests. Intercession. The Daily Office.",
       "Three rhythms the Church has always known —",
       "held in common, across the scattered life of a modern parish.",
     ],
@@ -584,12 +584,15 @@ function IntercessionMock() {
   );
 }
 
-// ─── Lectio mock ─────────────────────────────────────────────────────────────
-function LectioMock() {
-  const stages = [
-    { id: "lectio", label: "Lectio", day: "Mon", active: false, done: true },
-    { id: "meditatio", label: "Meditatio", day: "Wed", active: true, done: false },
-    { id: "oratio", label: "Oratio", day: "Fri", active: false, done: false },
+// ─── Daily Office mock ───────────────────────────────────────────────────────
+function DailyOfficeMock() {
+  const sections = [
+    { label: "Opening Sentence", done: true, active: false },
+    { label: "The Invitatory", done: true, active: false },
+    { label: "The Psalter", done: false, active: true },
+    { label: "The Lessons", done: false, active: false },
+    { label: "The Canticles", done: false, active: false },
+    { label: "The Prayers", done: false, active: false },
   ];
   return (
     <MockPhone>
@@ -601,55 +604,60 @@ function LectioMock() {
           fontFamily: C.font,
         }}
       >
-        Lectio Divina 📜
+        Morning Prayer 🌅
       </p>
       <h2
-        className="text-base font-bold mb-3"
+        className="text-base font-bold mb-0.5"
         style={{ color: "#F0EDE6", fontFamily: C.font }}
       >
-        The Road to Emmaus
+        The Daily Office
       </h2>
+      <p
+        className="text-[9px] mb-3"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
+      >
+        Book of Common Prayer · p. 75
+      </p>
 
-      {/* Stage pills */}
-      <div className="flex gap-1.5 mb-4">
-        {stages.map((s) => (
-          <div
-            key={s.id}
-            className="flex-1 rounded-lg px-2 py-1.5 text-center"
-            style={{
-              background: s.active
-                ? "rgba(46,107,64,0.35)"
-                : s.done
-                  ? "rgba(46,107,64,0.15)"
-                  : "rgba(200,212,192,0.04)",
-              border: s.active
-                ? "1px solid rgba(46,107,64,0.6)"
-                : "1px solid rgba(200,212,192,0.08)",
-            }}
-          >
-            <p
-              className="text-[8px] uppercase tracking-widest mb-0.5"
+      {/* Order of service */}
+      <div
+        className="rounded-xl px-3 py-2 mb-3"
+        style={{
+          background: "rgba(200,212,192,0.03)",
+          border: "1px solid rgba(200,212,192,0.08)",
+        }}
+      >
+        {sections.map((s, i) => (
+          <div key={i} className="flex items-center gap-2 py-[3px]">
+            <div
+              className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
               style={{
-                color: s.active
-                  ? "#C8D4C0"
-                  : s.done
-                    ? "#8FAF96"
-                    : "rgba(200,212,192,0.35)",
-                fontFamily: C.font,
+                background: s.done
+                  ? "rgba(46,107,64,0.4)"
+                  : s.active
+                    ? "rgba(46,107,64,0.5)"
+                    : "rgba(200,212,192,0.05)",
+                border: s.active
+                  ? "1px solid rgba(46,107,64,0.7)"
+                  : "1px solid rgba(200,212,192,0.12)",
               }}
             >
-              {s.day}
-            </p>
+              {s.done && (
+                <span className="text-[7px]" style={{ color: "#C8D4C0" }}>
+                  ✓
+                </span>
+              )}
+            </div>
             <p
-              className="text-[10px] font-semibold"
+              className="text-[10px]"
               style={{
                 color: s.active
                   ? "#F0EDE6"
                   : s.done
                     ? "#8FAF96"
-                    : "rgba(200,212,192,0.35)",
+                    : "rgba(200,212,192,0.4)",
+                fontWeight: s.active ? 600 : 400,
                 fontFamily: C.font,
-                fontStyle: "italic",
               }}
             >
               {s.label}
@@ -658,9 +666,9 @@ function LectioMock() {
         ))}
       </div>
 
-      {/* Passage */}
+      {/* Active passage — the Psalter */}
       <div
-        className="rounded-xl p-3 mb-3"
+        className="rounded-xl p-3"
         style={{
           background: "rgba(240,237,230,0.03)",
           border: "1px solid rgba(46,107,64,0.25)",
@@ -674,59 +682,28 @@ function LectioMock() {
             fontFamily: C.font,
           }}
         >
-          Luke 24:13–35
+          Psalm 63 · Appointed for today
         </p>
         <p
-          className="text-[11px] leading-[1.55] italic"
+          className="text-[11px] leading-[1.6] italic"
           style={{
             color: "#E8E4D8",
             fontFamily: "Georgia, 'Times New Roman', serif",
           }}
         >
-          …and their eyes were opened, and they recognized him. And he
-          vanished from their sight. They said to each other, "Did not our
-          hearts burn within us…"
-        </p>
-      </div>
-
-      {/* Prompt */}
-      <p
-        className="text-[10px] font-semibold mb-2"
-        style={{ color: "#C8D4C0", fontFamily: C.font }}
-      >
-        Meditatio — sit with what caught you.
-      </p>
-
-      {/* Reflection from another member */}
-      <div
-        className="rounded-xl p-2.5"
-        style={{
-          background: "rgba(46,107,64,0.10)",
-          border: "1px solid rgba(46,107,64,0.22)",
-        }}
-      >
-        <p
-          className="text-[8px] uppercase tracking-widest mb-1"
-          style={{ color: "rgba(200,212,192,0.5)", fontFamily: C.font }}
-        >
-          From Margaret · Wed
-        </p>
-        <p
-          className="text-[10px] leading-relaxed"
-          style={{ color: "#F0EDE6", fontFamily: C.font }}
-        >
-          I keep returning to "hearts burn within us" — that line stopped
-          me in the middle of an ordinary Wednesday.
+          O God, you are my God; eagerly I seek you; my soul thirsts for
+          you, my flesh faints for you, as in a barren and dry land where
+          there is no water.
         </p>
       </div>
     </MockPhone>
   );
 }
 
-function MockForVariant({ variant }: { variant: "prayer-requests" | "intercession" | "lectio" }) {
+function MockForVariant({ variant }: { variant: "prayer-requests" | "intercession" | "daily-office" }) {
   if (variant === "prayer-requests") return <PrayerRequestsMock />;
   if (variant === "intercession") return <IntercessionMock />;
-  return <LectioMock />;
+  return <DailyOfficeMock />;
 }
 
 function PreviewSlide({ slide }: { slide: Extract<Slide, { kind: "preview" }> }) {
