@@ -132,6 +132,7 @@ import CommunityJoinPage from "./pages/community-join";
 import BetaAdminPage from "./pages/beta-admin";
 import WaitlistAdminPage from "./pages/waitlist-admin";
 import BetaClaimPage from "./pages/beta-claim";
+import AdminToolsPage from "./pages/admin-tools";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
 import FeaturesDeck from "./pages/features-deck";
@@ -362,6 +363,7 @@ function Router() {
       <Route path="/people/find" component={FindFriendsPage} />
       <Route path="/people/:email/report" component={ReportUserPage} />
       <Route path="/admin/reports" component={ReportsAdminPage} />
+      <Route path="/admin/tools" component={AdminToolsPage} />
       <Route path="/prayer-list" component={PrayerListPage} />
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
       <Route path="/prayers-for-me" component={PrayersForMePage} />

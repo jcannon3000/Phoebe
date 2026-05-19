@@ -5,7 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight } from "lucide-react";
-import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -22,8 +22,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, isBeta, betaViewEnabled, toggleBetaView, rawIsAdmin, rawIsBeta } = useBetaStatus();
-  const [communityAdminView, toggleCommunityAdminView] = useCommunityAdminToggle();
+  const { isAdmin: isBetaAdmin, isBeta, rawIsAdmin, rawIsBeta } = useBetaStatus();
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
@@ -95,19 +94,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // admin a feed — single-feed admins land directly on that
     // feed's manage page; multi-feed admins land on the browse
     // page where their feeds carry an admin badge.
-    ...(myFeeds.length > 0 ? [{
-      emoji: "🕊️",
-      label: "Manage Prayer Feeds",
-      path: myFeeds.length === 1
-        ? `/prayer-feeds/${myFeeds[0].slug}/manage`
-        : "/prayer-feeds",
-    }] : []),
     { emoji: "⚙️", label: "Settings",    path: "/settings"    },
-    { emoji: "💬", label: "Feedback",    path: "/feedback"    },
-    ...(isBetaAdmin ? [
-      { emoji: "🔐", label: "Pilot Users", path: "/beta" },
-      { emoji: "📜", label: "Waitlist",    path: "/waitlist" },
-      { emoji: "🚩", label: "Reports",     path: "/admin/reports" },
+    // Admin Tools — visible to beta users (pilot view toggle), community
+    // admins (community admin toggle), prayer-feed creators, and beta admins.
+    ...((rawIsBeta || rawIsAdmin || myFeeds.length > 0 || (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin")) ? [
+      { emoji: "🔧", label: "Admin Tools", path: "/admin/tools" },
     ] : []),
     { emoji: "ℹ️", label: "About",       path: "/church-deck"  },
   ];
@@ -171,43 +162,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </div>
               </div>
 
-              {/* Pilot view toggle — visible for all pilot users (even when toggled off) */}
-              {rawIsBeta && (
-                <button
-                  onClick={toggleBetaView}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors mt-2"
-                  style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.15)" }}
-                >
-                  <div className="text-left">
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>Pilot view {betaViewEnabled ? "on" : "off"}</p>
-                    <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                      {betaViewEnabled ? "Seeing pilot features." : "Previewing regular user view."}
-                    </p>
-                  </div>
-                  <div className={`w-8 h-[18px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${betaViewEnabled ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
-                    <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full shadow-sm transition-transform ${betaViewEnabled ? "left-[16px]" : "left-[2px]"}`} style={{ background: "#F0EDE6" }} />
-                  </div>
-                </button>
-              )}
-
-              {/* Community admin toggle — lets a community admin experience the app as a regular member */}
-              {(groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin") && (
-                <button
-                  onClick={toggleCommunityAdminView}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors mt-2"
-                  style={{ background: "rgba(200,212,192,0.05)", border: "1px solid rgba(46,107,64,0.15)" }}
-                >
-                  <div className="text-left">
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>Community admin {communityAdminView ? "on" : "off"}</p>
-                    <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                      {communityAdminView ? "Seeing admin tools." : "Viewing as a member."}
-                    </p>
-                  </div>
-                  <div className={`w-8 h-[18px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${communityAdminView ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
-                    <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full shadow-sm transition-transform ${communityAdminView ? "left-[16px]" : "left-[2px]"}`} style={{ background: "#F0EDE6" }} />
-                  </div>
-                </button>
-              )}
+              {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
 
             {/* ── My Communities ── */}
