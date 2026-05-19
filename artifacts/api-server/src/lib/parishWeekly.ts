@@ -32,7 +32,6 @@ import {
   sharedMomentsTable,
   momentUserTokensTable,
   momentPostsTable,
-  prayerFeedSubscriptionsTable,
 } from "@workspace/db";
 
 export type ParishWeeklyEntry =
@@ -71,26 +70,6 @@ export type ParishWeeklyEntry =
         groupName: string | null;
         groupSlug: string | null;
         groupEmoji: string | null;
-      };
-    }
-  | {
-      kind: "feed-entry";
-      id: string;
-      title: string;
-      subtitle: string | null;
-      avatarUrl: string | null;
-      emoji: string | null;
-      prayedAt: string | null;
-      feedEntry: {
-        entryId: number;
-        feedId: number;
-        feedSlug: string;
-        feedTitle: string;
-        feedCoverEmoji: string | null;
-        slot: number;
-        body: string;
-        learnMoreUrl: string | null;
-        isRecurring: boolean;
       };
     };
 
@@ -149,10 +128,6 @@ function localYmdToUtcDate(ymd: string, tz: string): Date {
   return new Date(Date.UTC(y!, m! - 1, d!));
 }
 
-function todayInTz(tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-}
-
 /**
  * Build the parish-weekly entries for a viewer. See module header.
  */
@@ -171,7 +146,6 @@ export async function getParishWeekly(userId: number): Promise<ParishWeeklyResul
   const [wsY, wsM, wsD] = weekStartYmd.split("-").map(Number);
   const weekEnd = new Date(Date.UTC(wsY!, wsM! - 1, wsD! + 6));
   const weekEndYmd = `${weekEnd.getUTCFullYear()}-${String(weekEnd.getUTCMonth() + 1).padStart(2, "0")}-${String(weekEnd.getUTCDate()).padStart(2, "0")}`;
-  const todayYmd = todayInTz(tz);
 
   const unprayed: ParishWeeklyEntry[] = [];
   const prayed: ParishWeeklyEntry[] = [];
@@ -384,134 +358,16 @@ export async function getParishWeekly(userId: number): Promise<ParishWeeklyResul
     }
   }
 
-  // ── 3. Today's prayer-feed entries from subscribed feeds ─────────
-  //
-  // Feed entries are slot-based per day. We treat each day's slate as
-  // the "this week" unit: prayed-today flips the entry into the
-  // prayed bucket; tomorrow new entries refresh the list. Subscribers
-  // see a steady drip across the week rather than a fixed Monday
-  // dump. We pull from /api/prayer-feeds/today's same data path —
-  // see lib/prayerFeedToday.ts for the canonical implementation. We
-  // inline a minimal version here so we don't drag the HTTP layer
-  // into a lib import.
-  const mySubscriptions = await db
-    .select({ feedId: prayerFeedSubscriptionsTable.feedId })
-    .from(prayerFeedSubscriptionsTable)
-    .where(eq(prayerFeedSubscriptionsTable.userId, userId));
-  const feedIds = [...new Set(mySubscriptions.map(s => s.feedId))];
-  if (feedIds.length > 0) {
-    // Each feed has its intercessions stored as shared_moments rows
-    // linked via prayer_feed_id. /api/moments requires the viewer to
-    // have a moment_user_tokens row for the moment to surface it —
-    // reconcileFeedPracticeMembers writes those when the user fetches
-    // /api/moments. Parish-weekly must require the same token so the
-    // three primary surfaces (community detail, /prayer-list, main
-    // slideshow) and the parish-weekly card agree on what shows.
-    //
-    // Without this gate, a feed intercession would appear in
-    // parish-weekly the instant the user subscribed but stay invisible
-    // on the other surfaces until /api/moments was hit once.
-    const feedMoments = await db
-      .select({
-        id: sharedMomentsTable.id,
-        name: sharedMomentsTable.name,
-        intercessionTopic: sharedMomentsTable.intercessionTopic,
-        intercessionFullText: sharedMomentsTable.intercessionFullText,
-        prayerFeedId: sharedMomentsTable.prayerFeedId,
-        state: sharedMomentsTable.state,
-        templateType: sharedMomentsTable.templateType,
-      })
-      .from(sharedMomentsTable)
-      .innerJoin(
-        momentUserTokensTable,
-        and(
-          eq(momentUserTokensTable.momentId, sharedMomentsTable.id),
-          sql`LOWER(${momentUserTokensTable.email}) = ${viewerEmail}`,
-        ),
-      )
-      .where(and(
-        inArray(sharedMomentsTable.prayerFeedId, feedIds),
-        eq(sharedMomentsTable.templateType, "intercession"),
-        ne(sharedMomentsTable.state, "archived"),
-      ));
-    if (feedMoments.length > 0) {
-      const feedRows = await db
-        .select({
-          id: sql<number>`prayer_feeds.id`.as("id"),
-          slug: sql<string>`prayer_feeds.slug`.as("slug"),
-          title: sql<string>`prayer_feeds.title`.as("title"),
-          coverEmoji: sql<string | null>`prayer_feeds.cover_emoji`.as("cover_emoji"),
-        })
-        .from(sql`prayer_feeds`)
-        .where(inArray(sql`prayer_feeds.id`, feedIds));
-      const feedById = new Map<number, { slug: string; title: string; coverEmoji: string | null }>();
-      for (const f of feedRows) {
-        feedById.set(f.id, { slug: f.slug, title: f.title, coverEmoji: f.coverEmoji });
-      }
-      const feedMomentIds = feedMoments.map(m => m.id);
-      const feedCheckins = await db
-        .select({
-          momentId: momentPostsTable.momentId,
-          userToken: momentPostsTable.userToken,
-          windowDate: momentPostsTable.windowDate,
-          createdAt: momentPostsTable.createdAt,
-        })
-        .from(momentPostsTable)
-        .where(and(
-          inArray(momentPostsTable.momentId, feedMomentIds),
-          eq(momentPostsTable.isCheckin, 1),
-          eq(momentPostsTable.windowDate, todayYmd),
-        ));
-      // Feed-side tokens for the viewer.
-      const myFeedTokens = await db
-        .select({ momentId: momentUserTokensTable.momentId, userToken: momentUserTokensTable.userToken })
-        .from(momentUserTokensTable)
-        .where(and(
-          inArray(momentUserTokensTable.momentId, feedMomentIds),
-          sql`LOWER(${momentUserTokensTable.email}) = ${viewerEmail}`,
-        ));
-      const myFeedTokenSet = new Set(myFeedTokens.map(t => t.userToken));
-      const prayedFeedMomentIds = new Map<number, Date>();
-      for (const r of feedCheckins) {
-        if (myFeedTokenSet.has(r.userToken) && r.createdAt && !prayedFeedMomentIds.has(r.momentId)) {
-          prayedFeedMomentIds.set(r.momentId, r.createdAt);
-        }
-      }
-      for (const m of feedMoments) {
-        if (m.prayerFeedId == null) continue;
-        const feed = feedById.get(m.prayerFeedId);
-        if (!feed) continue;
-        const prayedAt = prayedFeedMomentIds.get(m.id) ?? null;
-        const title = m.intercessionTopic || m.name || "Intercession";
-        const entry: ParishWeeklyEntry = {
-          kind: "feed-entry",
-          id: `feed-entry-${m.id}`,
-          title,
-          subtitle: feed.title,
-          avatarUrl: null,
-          emoji: feed.coverEmoji ?? "🌱",
-          prayedAt: prayedAt ? new Date(prayedAt).toISOString() : null,
-          feedEntry: {
-            entryId: m.id,
-            feedId: m.prayerFeedId,
-            feedSlug: feed.slug,
-            feedTitle: feed.title,
-            feedCoverEmoji: feed.coverEmoji,
-            slot: 0,
-            body: m.intercessionFullText ?? m.intercessionTopic ?? title,
-            learnMoreUrl: null,
-            isRecurring: false,
-          },
-        };
-        if (prayedAt) prayed.push(entry);
-        else unprayed.push(entry);
-      }
-    }
-  }
+  // NOTE: feed intercessions are NOT queried separately here. A feed
+  // intercession is a shared_moment (template_type = intercession) and
+  // the viewer holds a moment_user_tokens row for it once subscribed,
+  // so section 2 above already picks it up as a `kind: "intercession"`
+  // entry — with the same momentToken-backed Amen path as every other
+  // intercession. A dedicated feed branch only duplicated those rows
+  // (and lacked a working Amen handler).
 
   // Sort: prayed by recency desc; unprayed by request createdAt asc
-  // (oldest first — they've been waiting longest), with intercessions
-  // and feed entries naturally interleaving by their own timestamps.
+  // (oldest first — they've been waiting longest).
   prayed.sort((a, b) => (b.prayedAt ?? "").localeCompare(a.prayedAt ?? ""));
   unprayed.sort((a, b) => {
     const ka = a.kind === "request" ? a.request.createdAt : "";

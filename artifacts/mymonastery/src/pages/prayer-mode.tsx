@@ -138,14 +138,6 @@ interface PrayerSlide {
   // feed-scoped or single-community intercessions where the chip
   // would be redundant.
   groups?: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
-  // intercession specific — feed-entry origin metadata. Set when the
-  // slide came from a prayer feed (prayerFeedEntriesTable / its
-  // recurring sibling), so the Amen handler can POST to the feed's
-  // /pray endpoint and the slideshow tap shows up on the
-  // /prayer-feeds/today + community-feed counts.
-  feedSlug?: string | null;
-  feedEntryDate?: string | null;
-  feedEntrySlot?: number | null;
   // prayer-for specific
   prayerForId?: number;
   recipientName?: string;
@@ -1814,26 +1806,6 @@ export default function PrayerModePage() {
           groupSlug: string | null;
           groupEmoji: string | null;
         };
-      }
-    | {
-        kind: "feed-entry";
-        id: string;
-        title: string;
-        subtitle: string | null;
-        avatarUrl: string | null;
-        emoji: string | null;
-        prayedAt: string | null;
-        feedEntry: {
-          entryId: number;
-          feedId: number;
-          feedSlug: string;
-          feedTitle: string;
-          feedCoverEmoji: string | null;
-          slot: number;
-          body: string;
-          learnMoreUrl: string | null;
-          isRecurring: boolean;
-        };
       };
   const parishWeeklyQuery = useQuery<{
     weekStartYmd: string;
@@ -2179,21 +2151,7 @@ export default function PrayerModePage() {
             groups,
           }];
         }
-        // feed-entry — built from the parish-weekly entry's own data.
-        // (The /api/prayer-feeds/today optimization was dropped when
-        // day-scheduled feed entries were retired.)
-        return [{
-          kind: "intercession",
-          text: e.title,
-          intention: null,
-          fullText: e.feedEntry.body?.trim() || null,
-          attribution: `from ${e.feedEntry.feedTitle}`,
-          feedTag: e.feedEntry.feedTitle,
-          learnMoreUrl: e.feedEntry.learnMoreUrl?.trim() || null,
-          feedSlug: e.feedEntry.feedSlug,
-          feedEntryDate: new Date().toISOString().slice(0, 10),
-          feedEntrySlot: e.feedEntry.slot,
-        }];
+        return [];
       })
     : queueMode === "new"
     ? [

@@ -178,14 +178,20 @@ export async function reconcileGroupPracticeMembers(momentId: number): Promise<v
       );
     }
 
-    // Remove tokens for people no longer in the group (but never the organizer).
-    const toRemove = tokens.filter(t => {
-      if (t.id === organizerId) return false;
-      return !groupEmailSet.has(t.email.toLowerCase());
-    });
-    if (toRemove.length > 0) {
-      await db.delete(momentUserTokensTable)
-        .where(inArray(momentUserTokensTable.id, toRemove.map(t => t.id)));
+    // Remove tokens for people no longer in the group (but never the
+    // organizer). Skipped when the moment is ALSO feed-scoped: a
+    // dual-scoped intercession's roster is the union of its group and
+    // its feed, and reconcileFeedPracticeMembers owns the feed half —
+    // pruning here would delete the feed's subscribers.
+    if (m.prayerFeedId == null) {
+      const toRemove = tokens.filter(t => {
+        if (t.id === organizerId) return false;
+        return !groupEmailSet.has(t.email.toLowerCase());
+      });
+      if (toRemove.length > 0) {
+        await db.delete(momentUserTokensTable)
+          .where(inArray(momentUserTokensTable.id, toRemove.map(t => t.id)));
+      }
     }
   } catch (err) {
     console.error("[groups] reconcileGroupPracticeMembers failed for moment", momentId, err);
@@ -252,13 +258,20 @@ export async function reconcileFeedPracticeMembers(momentId: number): Promise<vo
       );
     }
 
-    const toRemove = tokens.filter(t => {
-      if (t.id === organizerId) return false;
-      return !subscriberEmailSet.has(t.email.toLowerCase());
-    });
-    if (toRemove.length > 0) {
-      await db.delete(momentUserTokensTable)
-        .where(inArray(momentUserTokensTable.id, toRemove.map(t => t.id)));
+    // Remove tokens for people no longer subscribed (but never the
+    // organizer). Skipped when the moment is ALSO group-scoped: a
+    // dual-scoped intercession's roster is the union of its feed and
+    // its group, and reconcileGroupPracticeMembers owns the group half —
+    // pruning here would delete the group's members.
+    if (m.groupId == null) {
+      const toRemove = tokens.filter(t => {
+        if (t.id === organizerId) return false;
+        return !subscriberEmailSet.has(t.email.toLowerCase());
+      });
+      if (toRemove.length > 0) {
+        await db.delete(momentUserTokensTable)
+          .where(inArray(momentUserTokensTable.id, toRemove.map(t => t.id)));
+      }
     }
   } catch (err) {
     console.error("[groups] reconcileFeedPracticeMembers failed for moment", momentId, err);
