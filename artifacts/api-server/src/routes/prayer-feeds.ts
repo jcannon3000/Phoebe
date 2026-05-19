@@ -1161,6 +1161,109 @@ router.post("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): 
   res.status(201).json({ intercession: moment });
 });
 
+// GET /api/prayer-feeds/:slug/group-intercession-options — community
+// intercessions the editor could add to this feed. These are
+// group-scoped shared_moments (created in a community, not yet on any
+// feed) from communities the caller administers.
+router.get("/prayer-feeds/:slug/group-intercession-options", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "Editor only." });
+    return;
+  }
+  const adminGroups = await db
+    .select({ groupId: groupMembersTable.groupId })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.userId, user.id),
+      sql`${groupMembersTable.role} IN ('admin', 'hidden_admin')`,
+    ));
+  const groupIds = [...new Set(adminGroups.map((g) => g.groupId))];
+  if (groupIds.length === 0) { res.json({ intercessions: [] }); return; }
+  const rows = await db
+    .select({
+      id: sharedMomentsTable.id,
+      name: sharedMomentsTable.name,
+      intention: sharedMomentsTable.intention,
+      intercessionFullText: sharedMomentsTable.intercessionFullText,
+      intercessionSource: sharedMomentsTable.intercessionSource,
+      groupId: sharedMomentsTable.groupId,
+      groupName: groupsTable.name,
+      groupEmoji: groupsTable.emoji,
+    })
+    .from(sharedMomentsTable)
+    .innerJoin(groupsTable, eq(groupsTable.id, sharedMomentsTable.groupId))
+    .where(and(
+      inArray(sharedMomentsTable.groupId, groupIds),
+      eq(sharedMomentsTable.templateType, "intercession"),
+      eq(sharedMomentsTable.state, "active"),
+      sql`${sharedMomentsTable.prayerFeedId} IS NULL`,
+    ))
+    .orderBy(desc(sharedMomentsTable.createdAt));
+  res.json({ intercessions: rows });
+});
+
+// POST /api/prayer-feeds/:slug/intercessions/attach — editor-only.
+// Adds an existing community (group-scoped) intercession to this feed
+// by setting its prayer_feed_id. The intercession keeps its group, so
+// it stays visible to that community AND the feed's subscribers.
+const attachIntercessionSchema = z.object({ momentId: z.number().int().positive() });
+router.post("/prayer-feeds/:slug/intercessions/attach", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "Editor only." });
+    return;
+  }
+  const parsed = attachIntercessionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input" });
+    return;
+  }
+  const [moment] = await db
+    .select({
+      id: sharedMomentsTable.id,
+      groupId: sharedMomentsTable.groupId,
+      prayerFeedId: sharedMomentsTable.prayerFeedId,
+      templateType: sharedMomentsTable.templateType,
+    })
+    .from(sharedMomentsTable)
+    .where(eq(sharedMomentsTable.id, parsed.data.momentId))
+    .limit(1);
+  if (!moment || moment.templateType !== "intercession" || moment.groupId == null) {
+    res.status(404).json({ error: "Not a community intercession." });
+    return;
+  }
+  if (moment.prayerFeedId != null) {
+    res.status(409).json({ error: "That intercession is already on a feed." });
+    return;
+  }
+  // The caller must administer the intercession's community.
+  const [adminRow] = await db
+    .select({ id: groupMembersTable.id })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, moment.groupId),
+      eq(groupMembersTable.userId, user.id),
+      sql`${groupMembersTable.role} IN ('admin', 'hidden_admin')`,
+    ))
+    .limit(1);
+  if (!adminRow) {
+    res.status(403).json({ error: "You don't administer that community." });
+    return;
+  }
+  await db
+    .update(sharedMomentsTable)
+    .set({ prayerFeedId: feed.id })
+    .where(eq(sharedMomentsTable.id, moment.id));
+  const { reconcileFeedPracticeMembers } = await import("./groups");
+  await reconcileFeedPracticeMembers(moment.id);
+  res.json({ ok: true });
+});
+
 // DELETE /api/prayer-feeds/:slug/entries/:date — editor-only.
 // Optional ?slot=1..7 narrows the delete to a single slot. Without
 // the param we delete every slot on that date (back-compat with

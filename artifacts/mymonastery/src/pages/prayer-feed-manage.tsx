@@ -54,6 +54,19 @@ type FeedIntercession = {
   createdAt: string;
 };
 
+// A community (group-scoped) intercession the editor can attach to a
+// feed — created inside a community rather than in the feed itself.
+type GroupIntercessionOption = {
+  id: number;
+  name: string;
+  intention: string | null;
+  intercessionFullText: string | null;
+  intercessionSource: string | null;
+  groupId: number;
+  groupName: string | null;
+  groupEmoji: string | null;
+};
+
 export default function PrayerFeedManagePage() {
   const { user, isLoading: authLoading } = useAuth();
   // rawIsBeta + isLoading guard avoids the refresh-bounce-to-dashboard
@@ -245,10 +258,19 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
     learnMoreUrl: string;
   }>({ source: "custom", title: "", fullText: "", learnMoreUrl: "" });
   const [error, setError] = useState<string | null>(null);
+  // "Add from a community" picker — attaches an existing community
+  // intercession to this feed rather than authoring a new one.
+  const [picking, setPicking] = useState(false);
 
   const listQ = useQuery<{ intercessions: FeedIntercession[] }>({
     queryKey: [`/api/prayer-feeds/${slug}/intercessions`],
     queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/intercessions`),
+  });
+
+  const candidatesQ = useQuery<{ intercessions: GroupIntercessionOption[] }>({
+    queryKey: [`/api/prayer-feeds/${slug}/group-intercession-options`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/group-intercession-options`),
+    enabled: picking,
   });
 
   const createMutation = useMutation({
@@ -262,6 +284,16 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
     },
     onError: (e) => {
       setError(e instanceof Error ? e.message : "Couldn't add the intercession.");
+    },
+  });
+
+  const attachMutation = useMutation({
+    mutationFn: (momentId: number) =>
+      apiRequest("POST", `/api/prayer-feeds/${slug}/intercessions/attach`, { momentId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/intercessions`] });
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/group-intercession-options`] });
+      setPicking(false);
     },
   });
 
@@ -341,16 +373,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
         )}
       </div>
 
-      {!composing ? (
-        <button
-          type="button"
-          onClick={startNew}
-          className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90"
-          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
-        >
-          + Add intercession
-        </button>
-      ) : (
+      {composing ? (
         <div
           className="rounded-lg p-3 space-y-3"
           style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
@@ -457,6 +480,71 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
               Cancel
             </button>
           </div>
+        </div>
+      ) : picking ? (
+        // "Add from a community" — attach an existing community
+        // intercession to this feed.
+        <div
+          className="rounded-lg p-3"
+          style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
+        >
+          <p className="text-xs mb-2" style={{ color: "rgba(143,175,150,0.7)" }}>
+            Add an intercession created in one of your communities. It stays in that community and also appears here.
+          </p>
+          {candidatesQ.isLoading ? (
+            <p className="text-xs" style={{ color: "rgba(143,175,150,0.6)" }}>Loading…</p>
+          ) : (candidatesQ.data?.intercessions ?? []).length === 0 ? (
+            <p className="text-xs" style={{ color: "rgba(143,175,150,0.7)" }}>
+              No community intercessions available to add.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {(candidatesQ.data?.intercessions ?? []).map((it) => (
+                <button
+                  key={it.id}
+                  type="button"
+                  onClick={() => attachMutation.mutate(it.id)}
+                  disabled={attachMutation.isPending}
+                  className="text-left px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.28)" }}
+                >
+                  <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
+                    {it.intention || it.name}
+                  </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>
+                    {it.groupEmoji ?? "⛪"} {it.groupName ?? "Community"}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setPicking(false)}
+            className="text-[11px] mt-3 transition-opacity hover:opacity-70"
+            style={{ color: "rgba(143,175,150,0.6)", background: "transparent", border: "none", cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={startNew}
+            className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
+          >
+            + Add intercession
+          </button>
+          <button
+            type="button"
+            onClick={() => setPicking(true)}
+            className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
+          >
+            + Add from a community
+          </button>
         </div>
       )}
     </div>
