@@ -46,6 +46,8 @@ export const BCP_PRAYERS: BcpPrayer[] = [
     text: "Almighty God, to whom we must account for all our powers and privileges: Guide the people of the United States in the election of officials and representatives; that, by faithful administration and wise laws, the rights of all may be protected and our nation be enabled to fulfill your purposes; through Jesus Christ our Lord. Amen." },
   { category: "For the Nation", title: "For those in the Armed Forces",
     text: "Almighty God, we commend to your gracious care and keeping all the men and women of our armed forces at home and abroad. Defend them day by day with your heavenly grace; strengthen them in their trials and temptations; give them courage to face the perils which beset them; and grant them a sense of your abiding presence wherever they may be; through Jesus Christ our Lord. Amen." },
+  { category: "For the Nation", title: "For Veterans",
+    text: "Lord God of hosts, we give you thanks for the courage and sacrifice of all who have served this nation in time of need. We remember before you those who bear the wounds of war, seen and unseen; grant them healing, wholeness, and peace. Strengthen those who care for them, and give wisdom to all who shape the ways we honor and support those who have served; through Jesus Christ our Lord. Amen." },
 
   // FOR THE WORLD
   { category: "For the World", title: "For Peace Among Nations",
@@ -64,6 +66,26 @@ export const BCP_PRAYERS: BcpPrayer[] = [
     text: "O gracious Father, who opens your hand and fills all living things: Bless the lands and waters, and multiply the harvests of the world; let your Spirit go forth, that it may renew the face of the earth; show your loving-kindness, that our land may give her increase; and save us from selfish use of what you give, that men and women everywhere may give you thanks; through Christ our Lord. Amen." },
   { category: "For the Natural Order", title: "For the Future of the Human Race",
     text: "O God our heavenly Father, you have blessed us and given us dominion over all the earth: Increase our reverence before the mystery of life; and give us new insight into your purposes for the human race, and for the world you have made, that we may preserve what you have entrusted to us; through Jesus Christ our Lord. Amen." },
+  { category: "For the Natural Order", title: "For Fruitful Seasons",
+    text: "Almighty God, Lord of heaven and earth: We humbly pray that your gracious providence may give and preserve to our use the harvests of the land and of the seas, and may prosper all who labor to gather them, that we, who are constantly receiving good things from your hand, may always give you thanks; through Jesus Christ our Lord, who lives and reigns with you and the Holy Spirit, one God, for ever and ever. Amen." },
+  { category: "For the Natural Order", title: "For Rain",
+    text: "O God, heavenly Father, who by your Son Jesus Christ has promised to all who seek your kingdom and its righteousness all things necessary to sustain their life: Send us, we entreat you, in this time of need, such moderate rain and showers, that we may receive the fruits of the earth to our comfort and to your honor; through Jesus Christ our Lord. Amen." },
+  { category: "For the Natural Order", title: "In Times of Drought",
+    text: "O Almighty God, who of your great mercy have promised, through your Son, to give all necessary things to those who seek your kingdom: Grant that the dry and thirsty land may again receive your blessing in plentiful rain; through Jesus Christ our Lord. Amen." },
+
+  // FOR CITIES AND TOWNS
+  { category: "For Cities and Towns", title: "For Cities",
+    text: "Heavenly Father, in your Word you have given us a vision of that holy City to which the nations of the world bring their glory: Behold and visit, we pray, the cities of the earth. Renew the ties of mutual regard which form our civic life. Send us honest and able leaders. Enable us to eliminate poverty, prejudice, and oppression, that peace may prevail with righteousness, and justice with order, and that men and women from different cultures and with differing talents may find with one another the fulfillment of their humanity; through Jesus Christ our Lord. Amen." },
+  { category: "For Cities and Towns", title: "For Towns and Rural Areas",
+    text: "Lord Christ, when you came among us, you proclaimed the kingdom of God in villages, towns, and lonely places: Grant that your presence and power may be known throughout this land. Have mercy upon all of us who live and work in rural areas; and grant that all the people of our nation may give thanks to you for food and drink and all other bodily necessities of life, respect those who labor to produce them, and honor the land and the water from which these good things come. All this we ask in your holy Name. Amen." },
+  { category: "For Cities and Towns", title: "For the Right Use of God's Gifts",
+    text: "Almighty God, whose loving hand has given us all that we possess: Grant us grace that we may honor you with our substance, and, remembering the account which we must one day give, may be faithful stewards of your bounty; through Jesus Christ our Lord. Amen." },
+
+  // FOR VOCATION AND WORK
+  { category: "For Vocation and Work", title: "For Those Who Work",
+    text: "Almighty God, you have made us and all things to serve you: Bless all whose lives are spent in honest labor, and grant that, doing what we do in your Name, we may find joy in work done faithfully; through Jesus Christ our Lord. Amen." },
+  { category: "For Vocation and Work", title: "For Commerce and Industry",
+    text: "Almighty God, whose Son Jesus Christ in his earthly life shared our toil and hallowed our labor: Be present with your people where they work; make those who carry on the industries and commerce of this land responsive to your will; and give to us all a pride in what we do, and a just return for our labor; through Jesus Christ our Lord, who lives and reigns with you, in the unity of the Holy Spirit, one God, now and for ever. Amen." },
 
   // FOR THE POOR AND NEGLECTED
   { category: "For the Poor and Neglected", title: "For the Poor and Neglected",
@@ -86,6 +108,8 @@ export const BCP_PRAYERS: BcpPrayer[] = [
     text: "May God the Father bless you, God the Son heal you, God the Holy Spirit give you strength. May God the holy and undivided Trinity guard your body, save your soul, and bring you safely to his heavenly country; where he lives and reigns for ever and ever. Amen." },
   { category: "For the Sick", title: "For Strength and Confidence",
     text: "Heavenly Father, giver of life and health: Grant to all the sick and suffering such a sense of your presence, that their minds may be made easy, and their hearts at rest; through Jesus Christ our Lord. Amen." },
+  { category: "For the Sick", title: "For the Dying",
+    text: "Almighty God, look on this your servant, lying in great weakness, and comfort him with the promise of life everlasting, given in the resurrection of your Son Jesus Christ our Lord. Amen." },
 
   // FOR THE SORROWING
   { category: "For the Sorrowing", title: "Comfort and Relief",
@@ -106,6 +130,8 @@ export const BCP_PRAYERS: BcpPrayer[] = [
     text: "Lord Jesus, for our sake you were condemned as a criminal: Visit our jails and prisons with your pity and judgment. Remember all prisoners, and bring the guilty to repentance and amendment of life according to your will, and give them hope for their future. When any are held unjustly, bring them release; forgive us, and teach us to improve our justice. Remember those who work in these institutions; keep them humane and compassionate; and save them from becoming brutal or callous. And since what we do for those in prison, O Lord, we do for you, constrain us to improve their lot. All this we ask for your mercy's sake. Amen." },
   { category: "For Those in Need", title: "For those we Love",
     text: "O gracious Father, we humbly ask for your gentle care for the person we pray for now. Keep them ever in your love; teach them to love you with all their heart, with all their soul, with all their mind, and with all their strength; and, loving you, to love also all whom you love; through Jesus Christ our Lord. Amen." },
+  { category: "For Those in Need", title: "For Travelers",
+    text: "O God, our heavenly Father, whose glory fills the whole creation, and whose presence we find wherever we go: Preserve those who travel; surround them with your loving care; protect them from every danger; and bring them in safety to their journey's end; through Jesus Christ our Lord. Amen." },
 
   // FOR SOCIAL JUSTICE
   { category: "For Social Justice", title: "For Social Justice",
@@ -122,6 +148,24 @@ export const BCP_PRAYERS: BcpPrayer[] = [
     text: "We call on you, O God, for our home the earth, that we may be worthy of it. We call on you, O God, for the health of the earth so that we may live with gratitude in it. We call on you, O God, for those who share the earth, that we may live with reverence for it. We call on you, O God, for those who will inherit the earth, that we may leave it to them as a gift. Through Christ who came that we might have life. Amen." },
   { category: "For the Environment", title: "For Conservation of Natural Resources",
     text: "Almighty God, in giving us dominion over things on earth, you made us fellow workers in your creation: Give us wisdom and reverence so to use the resources of nature, that no one may suffer from our abuse of them, and that generations yet to come may continue to praise you for your bounty; through Jesus Christ our Lord. Amen." },
+
+  // PERSONAL PRAYERS
+  { category: "Personal Prayers", title: "In the Morning",
+    text: "Lord God, almighty and everlasting Father, you have brought us in safety to this new day: Preserve us with your mighty power, that we may not fall into sin, nor be overcome by adversity; and in all we do, direct us to the fulfilling of your purpose; through Jesus Christ our Lord. Amen." },
+  { category: "Personal Prayers", title: "In the Evening",
+    text: "Lord Jesus, stay with us, for evening is at hand and the day is past; be our companion in the way, kindle our hearts, and awaken hope, that we may know you as you are revealed in Scripture and the breaking of bread. Grant this for the sake of your love. Amen." },
+  { category: "Personal Prayers", title: "Before Sleep",
+    text: "Be present, O merciful God, and protect us through the hours of this night, so that we who are wearied by the changes and chances of this life may rest in your eternal changelessness; through Jesus Christ our Lord. Amen." },
+  { category: "Personal Prayers", title: "For Guidance",
+    text: "Direct us, O Lord, in all our doings with your most gracious favor, and further us with your continual help; that in all our works begun, continued, and ended in you, we may glorify your holy Name, and finally, by your mercy, obtain everlasting life; through Jesus Christ our Lord. Amen." },
+  { category: "Personal Prayers", title: "Grace at Meals",
+    text: "Blessed are you, O Lord God, King of the Universe, for you give us food to sustain our lives and make our hearts glad; through Jesus Christ our Lord. Amen." },
+  { category: "Personal Prayers", title: "For a Birthday",
+    text: "O God, our times are in your hand: Look with favor, we pray, on your servant N. as he begins another year. Grant that he may grow in wisdom and grace, and strengthen his trust in your goodness all the days of his life; through Jesus Christ our Lord. Amen." },
+  { category: "Personal Prayers", title: "On the Anniversary of a Marriage",
+    text: "O God, you have so consecrated the covenant of marriage that in it is represented the spiritual unity between Christ and his Church: Send therefore your blessing upon these your servants, that they may so love, honor, and cherish each other in faithfulness and patience, in wisdom and true godliness, that their home may be a haven of blessing and peace; through Jesus Christ our Lord. Amen." },
+  { category: "Personal Prayers", title: "Prayer of Saint Francis",
+    text: "Lord, make us instruments of your peace. Where there is hatred, let us sow love; where there is injury, pardon; where there is discord, union; where there is doubt, faith; where there is despair, hope; where there is darkness, light; where there is sadness, joy. Grant that we may not so much seek to be consoled as to console; to be understood as to understand; to be loved as to love. For it is in giving that we receive; it is in pardoning that we are pardoned; and it is in dying that we are born to eternal life. Amen." },
 
   // FOR FAMILIES
   { category: "For Families", title: "For Families",

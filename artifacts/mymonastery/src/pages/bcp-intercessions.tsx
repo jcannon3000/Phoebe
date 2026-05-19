@@ -28,8 +28,11 @@ const CATEGORY_EMOJI: Record<string, string> = {
   "For Those in Need": "🕊️",
   "For Social Justice": "⚖️",
   "For the Environment": "🌎",
+  "For Cities and Towns": "🏙️",
+  "For Vocation and Work": "🛠️",
   "For Families": "👨‍👩‍👧‍👦",
   "Thanksgivings": "🌾",
+  "Personal Prayers": "🕊️",
 };
 
 export default function BcpIntercessionsPage() {
