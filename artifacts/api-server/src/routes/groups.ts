@@ -102,9 +102,45 @@ export async function reconcileGroupPracticeMembers(momentId: number): Promise<v
     const groupRows = await db.select().from(groupMembersTable)
       .where(inArray(groupMembersTable.groupId, Array.from(attachedGroupIds)));
     const joined = groupRows.filter(gm => gm.joinedAt !== null);
+
+    // Resolve each joined member's email through their actual user
+    // account when there is one. `group_members.email` is the address
+    // an admin typed into the invite and is never re-synced afterward,
+    // so it can drift from the member's real account email (a changed
+    // email, gmail-dot variants, etc.). moment_user_tokens — and the
+    // visibility query in GET /api/moments — key on the *account*
+    // email, so deriving the token email from users.email here is what
+    // keeps a community intercession actually visible to the people it
+    // was created for.
+    //
+    // Bug this fixes: a member got the "new community intercession"
+    // push (push fans out by group-member userId) but the intercession
+    // never appeared, because visibility keyed on a token email that
+    // was minted from a stale group_members.email and so never matched
+    // their users.email.
+    const joinedUserIds = [
+      ...new Set(
+        joined
+          .map(gm => gm.userId)
+          .filter((id): id is number => typeof id === "number"),
+      ),
+    ];
+    const accountEmailById = new Map<number, string>();
+    if (joinedUserIds.length > 0) {
+      const userRows = await db
+        .select({ id: usersTable.id, email: usersTable.email })
+        .from(usersTable)
+        .where(inArray(usersTable.id, joinedUserIds));
+      for (const u of userRows) accountEmailById.set(u.id, u.email);
+    }
+
     const groupEmailToName = new Map<string, string | null>();
     for (const gm of joined) {
-      const key = gm.email.toLowerCase();
+      // Account email wins; fall back to the invite email only for
+      // members who haven't linked a user account yet.
+      const resolvedEmail =
+        (gm.userId != null ? accountEmailById.get(gm.userId) : undefined) ?? gm.email;
+      const key = resolvedEmail.toLowerCase();
       // Prefer the first non-null name we see so a member who joined
       // one group without a name but another with one shows up named.
       if (!groupEmailToName.has(key) || (groupEmailToName.get(key) == null && gm.name != null)) {
