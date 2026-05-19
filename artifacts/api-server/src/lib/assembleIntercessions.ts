@@ -358,8 +358,7 @@ export async function buildIntercessionSlides(
     body: string;
     learnMoreUrl: string | null;
     feedTitle: string | null;
-    feedSlug: string | null;
-    entryDate: string | null;
+    momentToken: string | null;
   };
   const feedMomentRows = subscribedFeedIds.length > 0
     ? await db
@@ -369,7 +368,7 @@ export async function buildIntercessionSlides(
           body: sharedMomentsTable.intercessionFullText,
           learnMoreUrl: sharedMomentsTable.learnMoreUrl,
           feedTitle: prayerFeedsTable.title,
-          feedSlug: prayerFeedsTable.slug,
+          momentToken: sharedMomentsTable.momentToken,
         })
         .from(sharedMomentsTable)
         .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, sharedMomentsTable.prayerFeedId))
@@ -390,8 +389,7 @@ export async function buildIntercessionSlides(
     body: r.body ?? "",
     learnMoreUrl: r.learnMoreUrl,
     feedTitle: r.feedTitle ?? null,
-    feedSlug: r.feedSlug ?? null,
-    entryDate: null,
+    momentToken: r.momentToken,
   }));
 
   const slides: Slide[] = [];
@@ -498,15 +496,11 @@ export async function buildIntercessionSlides(
       scrollHint: body.length > 280 ? "↓ continue · tap when ready" : null,
       metadata: {
         source: "feed",
-        feedEntryId: f.id,
         feedTitle: f.feedTitle ?? null,
-        // Slug + entry date are what the prayer-feed amen endpoint
-        // wants in the path: POST /api/prayer-feeds/:slug/entries/:date/pray.
-        // Surfacing both here means the renderer's Amen button on
-        // intercession slides can wire straight to the endpoint
-        // without a follow-up lookup.
-        feedSlug: f.feedSlug ?? null,
-        entryDate: f.entryDate,
+        // A feed intercession is a shared_moment — its Amen logs a
+        // check-in via POST /api/moment/:momentToken/amen, the same
+        // path the prayer-mode slideshow uses.
+        momentToken: f.momentToken,
         // Optional "Learn more" URL — surfaces as a pill CTA below
         // the body, mirroring the Bible.com pill on lectionary
         // slides. Opens in SFSafariViewController.

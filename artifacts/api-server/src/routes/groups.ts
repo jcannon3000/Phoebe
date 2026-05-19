@@ -178,20 +178,30 @@ export async function reconcileGroupPracticeMembers(momentId: number): Promise<v
       );
     }
 
-    // Remove tokens for people no longer in the group (but never the
-    // organizer). Skipped when the moment is ALSO feed-scoped: a
-    // dual-scoped intercession's roster is the union of its group and
-    // its feed, and reconcileFeedPracticeMembers owns the feed half —
-    // pruning here would delete the feed's subscribers.
-    if (m.prayerFeedId == null) {
-      const toRemove = tokens.filter(t => {
-        if (t.id === organizerId) return false;
-        return !groupEmailSet.has(t.email.toLowerCase());
-      });
-      if (toRemove.length > 0) {
-        await db.delete(momentUserTokensTable)
-          .where(inArray(momentUserTokensTable.id, toRemove.map(t => t.id)));
-      }
+    // Remove tokens for people no longer in any of the moment's
+    // scopes (but never the organizer). A dual-scoped intercession (a
+    // community intercession also attached to a feed) has a roster
+    // that is the UNION of its group members and the feed's
+    // subscribers, so widen the keep-set with the feed's subscribers
+    // before pruning — otherwise we'd delete them. This reconciler is
+    // the authoritative pruner for dual-scoped moments;
+    // reconcileFeedPracticeMembers only adds for them.
+    const keepEmails = new Set(groupEmailSet);
+    if (m.prayerFeedId != null) {
+      const feedSubs = await db
+        .select({ email: usersTable.email })
+        .from(prayerFeedSubscriptionsTable)
+        .innerJoin(usersTable, eq(usersTable.id, prayerFeedSubscriptionsTable.userId))
+        .where(eq(prayerFeedSubscriptionsTable.feedId, m.prayerFeedId));
+      for (const s of feedSubs) keepEmails.add(s.email.toLowerCase());
+    }
+    const toRemove = tokens.filter(t => {
+      if (t.id === organizerId) return false;
+      return !keepEmails.has(t.email.toLowerCase());
+    });
+    if (toRemove.length > 0) {
+      await db.delete(momentUserTokensTable)
+        .where(inArray(momentUserTokensTable.id, toRemove.map(t => t.id)));
     }
   } catch (err) {
     console.error("[groups] reconcileGroupPracticeMembers failed for moment", momentId, err);
@@ -261,8 +271,9 @@ export async function reconcileFeedPracticeMembers(momentId: number): Promise<vo
     // Remove tokens for people no longer subscribed (but never the
     // organizer). Skipped when the moment is ALSO group-scoped: a
     // dual-scoped intercession's roster is the union of its feed and
-    // its group, and reconcileGroupPracticeMembers owns the group half —
-    // pruning here would delete the group's members.
+    // its group. reconcileGroupPracticeMembers is the authoritative
+    // pruner for dual-scoped moments (it prunes against that union);
+    // here we only add, so we never delete the group's members.
     if (m.groupId == null) {
       const toRemove = tokens.filter(t => {
         if (t.id === organizerId) return false;

@@ -637,8 +637,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
       | {
           source?: unknown;
           requestId?: unknown;
-          feedSlug?: unknown;
-          entryDate?: unknown;
+          momentToken?: unknown;
         }
       | undefined;
     const source = typeof meta?.source === "string" ? meta.source : null;
@@ -659,16 +658,17 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
         .catch(() => { /* best-effort */ });
       return;
     }
-    if (
-      source === "feed"
-      && typeof meta?.feedSlug === "string"
-      && typeof meta?.entryDate === "string"
-    ) {
-      const slug = meta.feedSlug;
-      const date = meta.entryDate;
-      apiRequest("POST", `/api/prayer-feeds/${slug}/entries/${date}/pray`)
+    if (source === "feed" && typeof meta?.momentToken === "string") {
+      // A feed intercession is a shared_moment — log the Amen as a
+      // check-in, the same path prayer-mode uses. (Feeds dropped the
+      // day-scheduled /entries/:date/pray endpoint in the reimagining.)
+      const token = meta.momentToken;
+      apiRequest("POST", `/api/moment/${token}/amen`)
         .then(() => {
+          // /subscribed drives the dashboard + prayer-list feed cards;
+          // /moments drives the slideshow deck's prayed-today sort.
           queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
         })
         .catch(() => { /* best-effort */ });
       return;
