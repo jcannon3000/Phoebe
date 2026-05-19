@@ -272,6 +272,25 @@ function PersonRow({ person, index, showRemove, onUpdate, onRemove, onSelect }: 
 }
 
 // ─── BCP Prayer List ──────────────────────────────────────────────────────────
+const BCP_CATEGORY_EMOJI: Record<string, string> = {
+  "For the Church": "⛪",
+  "For the Mission of the Church": "✝️",
+  "For the Nation": "🏛️",
+  "For the World": "🌍",
+  "For the Natural Order": "🌿",
+  "For Cities and Towns": "🏙️",
+  "For Vocation and Work": "🛠️",
+  "For the Poor and Neglected": "🤲🏽",
+  "For the Sick": "💊",
+  "For the Sorrowing": "💔",
+  "For Those in Need": "🕊️",
+  "For Social Justice": "⚖️",
+  "For the Environment": "🌎",
+  "Personal Prayers": "🙏🏽",
+  "For Families": "👨‍👩‍👧‍👦",
+  "Thanksgivings": "🌾",
+};
+
 function BcpPrayerList({ onSelect }: { onSelect: (prayer: BcpPrayer) => void }) {
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const grouped = BCP_PRAYERS.reduce<Record<string, BcpPrayer[]>>((acc, p) => {
@@ -289,7 +308,10 @@ function BcpPrayerList({ onSelect }: { onSelect: (prayer: BcpPrayer) => void }) 
             onClick={() => setExpandedCat(expandedCat === cat ? null : cat)}
           >
             <span className="text-sm font-semibold text-foreground">{cat}</span>
-            <span className="text-muted-foreground text-xs ml-2 shrink-0">{expandedCat === cat ? "▲" : "▼"}</span>
+            <div className="flex items-center gap-2 ml-2 shrink-0">
+              <span className="text-base leading-none">{BCP_CATEGORY_EMOJI[cat] ?? "🙏🏽"}</span>
+              <span className="text-muted-foreground text-xs">{expandedCat === cat ? "▲" : "▼"}</span>
+            </div>
           </button>
           {expandedCat === cat && (
             <div className="divide-y divide-border/20 bg-background">
