@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,13 +6,16 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
-// Creator calendar editor for a Prayer Feed. This is the main surface
-// for the creator — a vertical list of upcoming days (empty cards or
-// composed ones), today pinned at top, and past entries collapsed at
-// the bottom. Tapping a day opens a lightweight editor modal.
+// Creator manage page for a Prayer Feed.
+//
+// A feed is a flat, ongoing list of community intercessions — no day
+// scheduling. This page is just: feed state (draft / live / paused),
+// the intercession composer (the feed's whole content), the bound
+// communities, and a danger zone. The old day-by-day calendar editor,
+// its per-cell modal, and recurring templates were retired when feeds
+// became a flat list.
 
 type FeedState = "draft" | "live" | "paused";
-type EntryState = "draft" | "scheduled" | "published";
 
 interface Feed {
   id: number;
@@ -27,115 +30,41 @@ interface Feed {
   subscriberCount: number;
 }
 
-interface Entry {
-  id: number;
-  feedId: number;
-  entryDate: string; // "YYYY-MM-DD"
-  // 1, 2, or 3. Position within the day. Older single-entry rows
-  // default to 1 server-side, so manage UIs that pre-date this
-  // change keep working.
-  slot: number;
-  title: string;
-  body: string;
-  scriptureRef: string | null;
-  imageUrl: string | null;
-  learnMoreUrl: string | null;
-  // "custom" (a written prayer) | "action" (a prayer + a CTA link).
-  source: "custom" | "action";
-  state: EntryState;
-  prayCount: number;
-}
-
-// Up to seven programmable slots per day. The numbers are positional
-// labels — each slot becomes its own slide on the subscriber side, in
-// ascending order.
-const SLOT_LABELS: Record<number, string> = {
-  1: "First",
-  2: "Second",
-  3: "Third",
-  4: "Fourth",
-  5: "Fifth",
-  6: "Sixth",
-  7: "Seventh",
-};
-const SLOTS = [1, 2, 3, 4, 5, 6, 7] as const;
-
 interface FeedResponse {
   feed: Feed;
   isCreator: boolean;
   isSubscribed: boolean;
 }
-interface EntriesResponse {
-  entries: Entry[];
-}
 
-// Lifted from FeedRecurringSection so the parent component can also
-// fetch recurring templates and merge them onto the calendar grid.
-// Same shape as the section component used to define inline.
-type RecurringEntry = {
+// A feed intercession — a shared_moments row scoped to this feed
+// (prayer_feed_id set). An admin adds one via a composer with a
+// Prayer / Action type toggle — "Action" carries a link and renders a
+// "Take action →" pill in the slideshow. Each intercession links to
+// its /moments/:id detail page, the same page community intercessions
+// use, so feed prayers get cards + detail pages for free.
+type FeedIntercession = {
   id: number;
-  slot: number;
-  recurrenceKind: "daily" | "weekly";
-  weekdaysMask: number;
-  title: string;
-  body: string;
+  name: string;
+  intention: string | null;
+  intercessionTopic: string | null;
+  intercessionFullText: string | null;
+  intercessionSource: string | null;
   learnMoreUrl: string | null;
-  source: "custom" | "action";
-  state: "draft" | "live";
+  state: string;
+  createdAt: string;
 };
-
-const WEEKDAY_LABELS: Array<{ bit: number; abbr: string; full: string }> = [
-  { bit: 1 << 0, abbr: "Su", full: "Sunday" },
-  { bit: 1 << 1, abbr: "M",  full: "Monday" },
-  { bit: 1 << 2, abbr: "Tu", full: "Tuesday" },
-  { bit: 1 << 3, abbr: "W",  full: "Wednesday" },
-  { bit: 1 << 4, abbr: "Th", full: "Thursday" },
-  { bit: 1 << 5, abbr: "F",  full: "Friday" },
-  { bit: 1 << 6, abbr: "Sa", full: "Saturday" },
-];
-
-function todayInZone(tz: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
-
-function addDays(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + n);
-  return dt.toISOString().slice(0, 10);
-}
-
-function prettyDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  return dt.toLocaleDateString(undefined, {
-    weekday: "short", month: "short", day: "numeric", timeZone: "UTC",
-  });
-}
 
 export default function PrayerFeedManagePage() {
   const { user, isLoading: authLoading } = useAuth();
-  // Use rawIsBeta + isLoading guard. rawIsBeta is the user's
-  // underlying beta access (independent of the betaViewEnabled
-  // toggle), and isLoading lets us avoid redirecting before the
-  // beta-status query has resolved. Without those, refreshing the
-  // manage page bounced the user to /dashboard the moment the
-  // effect ran with `isBeta` still falsy from the unresolved
-  // query — which is what the user reported as "the feed
-  // disappeared on refresh."
+  // rawIsBeta + isLoading guard avoids the refresh-bounce-to-dashboard
+  // race (unresolved beta-status query → isBeta false → redirect
+  // before data lands).
   const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
+  // Two-tap confirm gate for the destructive delete-feed button.
+  const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -148,96 +77,7 @@ export default function PrayerFeedManagePage() {
     queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}`),
     enabled: !!user && !!slug,
   });
-
   const feed = feedQ.data?.feed ?? null;
-  const tz = feed?.timezone ?? "America/New_York";
-  const today = feed ? todayInZone(tz) : null;
-
-  // Load a window: 14 days back ... 30 days forward, relative to today.
-  const windowFrom = today ? addDays(today, -14) : null;
-  const windowTo = today ? addDays(today, 30) : null;
-
-  const entriesQ = useQuery<EntriesResponse>({
-    queryKey: [`/api/prayer-feeds/${slug}/entries`, windowFrom, windowTo],
-    queryFn: () => apiRequest(
-      "GET",
-      `/api/prayer-feeds/${slug}/entries?from=${windowFrom}&to=${windowTo}`
-    ),
-    enabled: !!user && !!slug && !!feed && !!windowFrom && !!windowTo,
-  });
-
-  const entries: Entry[] = entriesQ.data?.entries ?? [];
-
-  // Recurring templates — fetched alongside concrete entries so the
-  // calendar grid can render template fires on every matching day.
-  // Without this the user creates a "Weekly · Mon/Wed/Fri" template,
-  // sees no change in the grid, opens the cell again, and gets the
-  // concrete-only data because templates lived in a parallel system.
-  const recurringQ = useQuery<{ recurring: RecurringEntry[] }>({
-    queryKey: [`/api/prayer-feeds/${slug}/recurring`],
-    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/recurring`),
-    enabled: !!user && !!slug && !!feed,
-  });
-  const recurringEntries: RecurringEntry[] = recurringQ.data?.recurring ?? [];
-
-  // Lookup per (date, slot). Concrete entries win; otherwise we
-  // fall back to a recurring template that fires on this date's
-  // weekday. The map values carry a discriminated `kind` so the
-  // editor / cell renderer knows which API to invoke and which
-  // icon to show.
-  type CellSource =
-    | { kind: "concrete"; entry: Entry }
-    | { kind: "recurring"; template: RecurringEntry };
-  const slotKey = (date: string, slot: number) => `${date}|${slot}`;
-  // (See the merged bySlot map below — slotKey is hoisted so the
-  // weekly-picker disabled-days computation can reuse it.)
-  const bySlot = useMemo(() => {
-    const m = new Map<string, CellSource>();
-    // First lay down recurring templates on every matching date
-    // in the visible window. Then concrete entries overwrite any
-    // collisions — so a one-time entry on a specific date still
-    // beats the template (the assembly logic on the subscriber
-    // side mirrors this).
-    if (today && windowFrom && windowTo) {
-      const start = new Date(`${windowFrom}T12:00:00Z`);
-      const end = new Date(`${windowTo}T12:00:00Z`);
-      const cursor = new Date(start);
-      while (cursor <= end) {
-        const dateStr = cursor.toISOString().slice(0, 10);
-        const weekdayBit = 1 << cursor.getUTCDay();
-        for (const t of recurringEntries) {
-          if (t.state !== "live") continue;
-          if ((t.weekdaysMask & weekdayBit) === 0) continue;
-          m.set(`${dateStr}|${t.slot}`, { kind: "recurring", template: t });
-        }
-        cursor.setUTCDate(cursor.getUTCDate() + 1);
-      }
-    }
-    for (const e of entries) {
-      m.set(`${e.entryDate}|${e.slot}`, { kind: "concrete", entry: e });
-    }
-    return m;
-  }, [entries, recurringEntries, today, windowFrom, windowTo]);
-
-  // Bitmask of weekdays that are already at 7-entry capacity inside
-  // the next-7-day visible window. The Weekly weekday-picker (in
-  // both the per-cell editor and the FeedRecurringSection composer)
-  // greys out matching bits so a new template fire can't push a
-  // saturated day over the cap.
-  const fullWeekdayBits = useMemo(() => {
-    if (!today) return 0;
-    let mask = 0;
-    for (let i = 0; i < 7; i++) {
-      const dateStr = addDays(today, i);
-      let count = 0;
-      for (const s of SLOTS) if (bySlot.has(slotKey(dateStr, s))) count++;
-      if (count >= 7) {
-        const utc = new Date(`${dateStr}T12:00:00Z`);
-        mask |= 1 << utc.getUTCDay();
-      }
-    }
-    return mask;
-  }, [bySlot, today]);
 
   // ── Mutations ───────────────────────────────────────────────────────────
   const updateFeed = useMutation({
@@ -246,84 +86,8 @@ export default function PrayerFeedManagePage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}`] }),
   });
 
-  const saveEntry = useMutation({
-    mutationFn: (e: {
-      entryDate: string;
-      slot: number;
-      title: string;
-      body: string;
-      learnMoreUrl: string | null;
-      source: "custom" | "action";
-      state: EntryState;
-    }) =>
-      apiRequest("POST", `/api/prayer-feeds/${slug}/entries`, e),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries`, windowFrom, windowTo] });
-    },
-  });
-
-  // Promote the per-cell editor draft to a recurring template — daily
-  // or weekly. Lives alongside saveEntry so the same modal can author
-  // either a one-off (concrete entry) or a template (recurring entry)
-  // without making the admin hunt for a separate composer.
-  // POSTs when no `id`, PUTs when one is supplied — the same modal can
-  // edit an existing template or create a new one.
-  // Slot is intentionally NOT sent on POST: the server picks the next
-  // free slot. Earlier we passed the cell's slot, which let a brand
-  // new template silently overwrite an existing one when the cell's
-  // slot already held a template that didn't fire on this day.
-  const saveRecurring = useMutation({
-    mutationFn: (e: {
-      id: number | null;
-      recurrenceKind: "daily" | "weekly";
-      weekdaysMask: number;
-      title: string;
-      body: string;
-      learnMoreUrl: string | null;
-      source: "custom" | "action";
-      state: "live" | "draft";
-    }) => {
-      const body = {
-        recurrenceKind: e.recurrenceKind,
-        weekdaysMask: e.weekdaysMask,
-        title: e.title,
-        body: e.body,
-        learnMoreUrl: e.learnMoreUrl,
-        source: e.source,
-        state: e.state,
-      };
-      return e.id == null
-        ? apiRequest("POST", `/api/prayer-feeds/${slug}/recurring`, body)
-        : apiRequest("PUT", `/api/prayer-feeds/${slug}/recurring/${e.id}`, body);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/recurring`] });
-      // Recurring templates show through on the calendar grid, so the
-      // visible entries view also needs to refresh.
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries`, windowFrom, windowTo] });
-    },
-  });
-
-  const deleteEntry = useMutation({
-    mutationFn: ({ date, slot }: { date: string; slot: number }) =>
-      apiRequest("DELETE", `/api/prayer-feeds/${slug}/entries/${date}?slot=${slot}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries`, windowFrom, windowTo] });
-    },
-  });
-
-  const deleteRecurring = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest("DELETE", `/api/prayer-feeds/${slug}/recurring/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/recurring`] });
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/entries`, windowFrom, windowTo] });
-    },
-  });
-
-  // Delete the entire feed — wipes the feed row, every entry, every
-  // subscription, and every "I prayed" stamp via DB cascades. Routes
-  // back to the dashboard since the manage URL is dead afterward.
+  // Delete the entire feed — cascades wipe every intercession,
+  // subscriber row, and "I prayed" stamp via DB foreign keys.
   const deleteFeed = useMutation({
     mutationFn: () => apiRequest("DELETE", `/api/prayer-feeds/${slug}`),
     onSuccess: () => {
@@ -333,118 +97,15 @@ export default function PrayerFeedManagePage() {
     },
   });
 
-  // ── Modal state — keyed by (date, slot) since each cell is its
-  // own intercession. The editor remembers which cell is open so
-  // saves / deletes don't drift to the wrong slot. ──────────────
-  const [editorTarget, setEditorTarget] = useState<{ date: string; slot: number } | null>(null);
-  // Two-tap confirm gate for the destructive delete-feed button —
-  // first tap arms it, second tap commits.
-  const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false);
-  // The per-cell editor draft now also carries a recurrence picker.
-  // "once" is the default and produces a one-time concrete entry on
-  // the cell's date+slot. "daily" / "weekly" promote the draft to a
-  // recurring template — useful when the admin opens a specific cell,
-  // realizes "actually this should run every weekday", and wants to
-  // commit the template right here without bouncing to the separate
-  // Recurring intercessions composer.
-  //
-  // editingRecurringId is non-null when the modal is editing an
-  // existing template (e.g. opened a cell that's powered by a
-  // recurring template, no concrete on that date). In that case
-  // commitEditor PUTs the template instead of POSTing a new one.
-  const [draft, setDraft] = useState<{
-    title: string;
-    body: string;
-    learnMoreUrl: string;
-    source: "custom" | "action";
-    recurrence: { kind: "once" | "daily" | "weekly"; mask: number };
-    editingRecurringId: number | null;
-  }>({
-    title: "", body: "", learnMoreUrl: "", source: "custom",
-    recurrence: { kind: "once", mask: 127 },
-    editingRecurringId: null,
-  });
-
-  function openEditor(dateStr: string, slot: number) {
-    const existing = bySlot.get(slotKey(dateStr, slot));
-    if (existing?.kind === "concrete") {
-      // Concrete entry on this date — edit it as a one-off. The
-      // recurrence picker still shows so the admin can promote
-      // this draft to a template, but the default is "once" so
-      // saving without touching the picker just updates the
-      // concrete row.
-      const e = existing.entry;
-      setDraft({
-        title: e.title,
-        body: e.body,
-        learnMoreUrl: e.learnMoreUrl ?? "",
-        source: e.source ?? "custom",
-        recurrence: { kind: "once", mask: 127 },
-        editingRecurringId: null,
-      });
-    } else if (existing?.kind === "recurring") {
-      // The cell is powered by a recurring template. Pre-fill the
-      // recurrence picker from the template so saving updates it
-      // (PUT) instead of creating a new one. Lets the admin tap any
-      // matching day in the calendar to edit the template — the
-      // alternative was bouncing to the Recurring intercessions
-      // section every time, which was the bug the user just hit.
-      const t = existing.template;
-      setDraft({
-        title: t.title,
-        body: t.body,
-        learnMoreUrl: t.learnMoreUrl ?? "",
-        source: t.source ?? "custom",
-        recurrence: { kind: t.recurrenceKind, mask: t.weekdaysMask },
-        editingRecurringId: t.id,
-      });
-    } else {
-      // Empty cell — fresh draft, "once" by default.
-      setDraft({
-        title: "", body: "", learnMoreUrl: "", source: "custom",
-        recurrence: { kind: "once", mask: 127 },
-        editingRecurringId: null,
-      });
-    }
-    setEditorTarget({ date: dateStr, slot });
-  }
-  function closeEditor() { setEditorTarget(null); }
-
-  async function commitEditor(state: EntryState) {
-    if (!editorTarget) return;
-    if (draft.recurrence.kind !== "once") {
-      // Promoting to (or updating) a recurring template — saveRecurring
-      // routes to the recurring endpoint. POSTs when this is a new
-      // template (server auto-assigns slot), PUTs when we're editing
-      // an existing one. Concrete entries still win on (date, slot)
-      // collisions, so the admin can override the template later.
-      await saveRecurring.mutateAsync({
-        id: draft.editingRecurringId,
-        recurrenceKind: draft.recurrence.kind,
-        weekdaysMask: draft.recurrence.kind === "daily" ? 127 : draft.recurrence.mask,
-        title: draft.title.trim(),
-        body: draft.body.trim(),
-        learnMoreUrl: draft.learnMoreUrl.trim() || null,
-        source: draft.source,
-        state: state === "draft" ? "draft" : "live",
-      });
-    } else {
-      await saveEntry.mutateAsync({
-        entryDate: editorTarget.date,
-        slot: editorTarget.slot,
-        title: draft.title.trim(),
-        body: draft.body.trim(),
-        learnMoreUrl: draft.learnMoreUrl.trim() || null,
-        source: draft.source,
-        state,
-      });
-    }
-    setEditorTarget(null);
-  }
-
   // ── Render ──────────────────────────────────────────────────────────────
   if (authLoading || !user || feedQ.isLoading) {
-    return <Layout><div className="max-w-lg mx-auto w-full py-12 text-sm" style={{ color: "#8FAF96" }}>Loading…</div></Layout>;
+    return (
+      <Layout>
+        <div className="max-w-lg mx-auto w-full py-12 text-sm" style={{ color: "#8FAF96" }}>
+          Loading…
+        </div>
+      </Layout>
+    );
   }
   if (!feed || !feedQ.data?.isCreator) {
     return (
@@ -455,20 +116,6 @@ export default function PrayerFeedManagePage() {
       </Layout>
     );
   }
-
-  // 7-day window for the calendar editor: today + 6 upcoming days.
-  // Each day expands to 3 editable slot cells.
-  const calendarDays: string[] = [];
-  for (let i = 0; i < 7; i++) calendarDays.push(addDays(today!, i));
-  // Past entries surface as a flat list (one row per slot) so admins
-  // can scan history without scrolling 21 cells per day. Slot order
-  // is preserved within each date.
-  const past: Entry[] = entries
-    .filter(e => e.entryDate < today!)
-    .sort((a, b) => {
-      const cmp = b.entryDate.localeCompare(a.entryDate);
-      return cmp !== 0 ? cmp : a.slot - b.slot;
-    });
 
   return (
     <Layout>
@@ -524,154 +171,18 @@ export default function PrayerFeedManagePage() {
           ))}
         </div>
 
-        {/* Intercessions — the primary content surface. A feed's
-            prayers are community intercessions (cards + detail pages),
-            authored here with a Prayer / Action chooser. */}
+        {/* Intercessions — the feed's whole content. A flat, ongoing
+            list of community intercessions, authored here with a
+            Prayer / Action chooser. */}
         <FeedIntercessionsSection slug={slug!} />
 
-        {/* 7-day calendar — the legacy date-anchored entry editor.
-            Kept below the intercession list while feeds migrate; new
-            programming should go through Intercessions above. */}
-        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
-          Daily entries (legacy)
-        </p>
-        <div className="space-y-4 mb-6">
-          {calendarDays.map((dateStr, di) => {
-            const isToday = dateStr === today;
-            return (
-              <div key={dateStr}>
-                <p
-                  className="text-[11px] font-semibold uppercase tracking-widest mb-2"
-                  style={{ color: isToday ? "#C8D4C0" : "rgba(143,175,150,0.7)" }}
-                >
-                  {isToday ? "Today" : di === 1 ? "Tomorrow" : prettyDate(dateStr)}
-                  <span className="ml-2 font-normal" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    {isToday ? prettyDate(dateStr) : ""}
-                  </span>
-                </p>
-                {/* Render only the filled entries for this day,
-                    plus a single "+ Add intercession" button if the
-                    day has fewer than 7 entries. Slot numbering is
-                    intentionally invisible — admins don't think in
-                    "First / Second / Seventh slot," they think in
-                    "what's running today." Slot is still the data
-                    model's ordering key, but tapping Add auto-picks
-                    the next free slot. */}
-                {(() => {
-                  const filled: Array<{ slot: number; cell: CellSource }> = [];
-                  for (const s of SLOTS) {
-                    const cell = bySlot.get(slotKey(dateStr, s));
-                    if (cell) filled.push({ slot: s, cell });
-                  }
-                  const remaining = 7 - filled.length;
-                  const nextSlot = SLOTS.find((s) => !bySlot.has(slotKey(dateStr, s)));
-                  return (
-                    <div className="space-y-1.5">
-                      {filled.map(({ slot, cell }) => {
-                        const cellTitle = cell.kind === "concrete" ? cell.entry.title : cell.template.title;
-                        const cellLabel = cell.kind === "concrete"
-                          ? "• one-off"
-                          : `↻ ${formatRecurrence(cell.template)}`;
-                        return (
-                          <button
-                            key={slot}
-                            onClick={() => openEditor(dateStr, slot)}
-                            className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
-                            style={{
-                              background: "#0F2818",
-                              border: "1px solid rgba(46,107,64,0.45)",
-                            }}
-                          >
-                            <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "#F0EDE6" }}>
-                              {cellTitle}
-                            </span>
-                            <span
-                              className="text-[10px] flex-shrink-0"
-                              style={{ color: "rgba(143,175,150,0.7)" }}
-                            >
-                              {cellLabel}
-                            </span>
-                          </button>
-                        );
-                      })}
-                      {remaining > 0 && nextSlot !== undefined && (
-                        <button
-                          onClick={() => openEditor(dateStr, nextSlot)}
-                          className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
-                          style={{
-                            background: "rgba(46,107,64,0.06)",
-                            border: "1px dashed rgba(46,107,64,0.3)",
-                          }}
-                        >
-                          <span className="text-sm flex-1 min-w-0" style={{ color: "#8FAF96" }}>
-                            + Add intercession
-                          </span>
-                          <span className="text-[10px] flex-shrink-0" style={{ color: "rgba(143,175,150,0.55)" }}>
-                            {filled.length}/7
-                          </span>
-                        </button>
-                      )}
-                      {remaining === 0 && (
-                        <p className="text-[10px] italic px-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-                          Day is full · 7/7
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Past entries — flat history list so admins can scan recent
-            programming without scrolling per-day grids. Each row is
-            one slot. */}
-        {past.length > 0 && (
-          <>
-            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
-              Past
-            </p>
-            <div className="space-y-2">
-              {past.slice(0, 21).map(e => (
-                <div
-                  key={`${e.entryDate}-${e.slot}`}
-                  className="rounded-xl px-4 py-3 flex items-center gap-3"
-                  style={{ background: "rgba(46,107,64,0.05)", border: "1px solid rgba(46,107,64,0.14)" }}
-                >
-                  <span className="text-[11px] font-medium w-20 flex-shrink-0" style={{ color: "rgba(143,175,150,0.6)" }}>
-                    {prettyDate(e.entryDate)}
-                  </span>
-                  <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "rgba(240,237,230,0.75)" }}>
-                    {e.title}
-                  </span>
-                  <span className="text-[11px] flex-shrink-0" style={{ color: "rgba(143,175,150,0.6)" }}>
-                    {e.prayCount} prayed
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ── Recurring intercessions — daily / weekly templates
-              that auto-fill the slide deck on the subscriber side.
-              A one-time entry on a specific date overrides the
-              template for that day, so admins can program a
-              "default daily" intercession AND swap it on holidays. */}
-        <FeedRecurringSection slug={slug!} fullWeekdayBits={fullWeekdayBits} />
-
-        {/* ── Groups — communities bound to this feed. Adding a
-              group auto-subscribes every joined member; removing
-              just stops auto-subscribing future joiners (existing
-              subscribers stay subscribed). */}
+        {/* Communities bound to this feed. Adding a group auto-
+            subscribes every joined member; removing just stops
+            auto-subscribing future joiners. */}
         <FeedGroupsSection slug={slug!} />
 
-        {/* ── Danger zone — delete the entire feed.
-              Cascades wipe every entry, every subscriber row, and
-              every "I prayed" stamp via DB foreign keys. Two-tap
-              confirm prevents accidents — first tap arms the
-              destructive button, second tap commits. */}
+        {/* Danger zone — delete the entire feed. Two-tap confirm
+            prevents accidents. */}
         <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,180,180,0.55)" }}>
             Danger zone
@@ -697,11 +208,7 @@ export default function PrayerFeedManagePage() {
                 onClick={() => deleteFeed.mutate()}
                 disabled={deleteFeed.isPending}
                 className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-85 disabled:opacity-50"
-                style={{
-                  background: "#A84848",
-                  border: "1px solid #A84848",
-                  color: "#FFFFFF",
-                }}
+                style={{ background: "#A84848", border: "1px solid #A84848", color: "#FFFFFF" }}
               >
                 {deleteFeed.isPending ? "Deleting…" : "Confirm delete"}
               </button>
@@ -709,409 +216,22 @@ export default function PrayerFeedManagePage() {
                 onClick={() => setDeleteConfirmArmed(false)}
                 disabled={deleteFeed.isPending}
                 className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-85 disabled:opacity-50"
-                style={{
-                  background: "transparent",
-                  border: "1px solid rgba(143,175,150,0.3)",
-                  color: "#8FAF96",
-                }}
+                style={{ background: "transparent", border: "1px solid rgba(143,175,150,0.3)", color: "#8FAF96" }}
               >
                 Cancel
               </button>
             </div>
           )}
         </div>
-
-        {/* ── Editor modal — keyed on (date, slot) so each cell on
-              the calendar opens its own intercession. ─────────── */}
-        {editorTarget && (() => {
-          const editorDate = editorTarget.date;
-          const editorSlot = editorTarget.slot;
-          const existing = bySlot.get(slotKey(editorDate, editorSlot));
-          // For the modal title + delete button we need to know
-          // whether we're editing concrete vs recurring vs nothing.
-          const editingExisting = !!existing;
-          const isRecurringEdit = existing?.kind === "recurring";
-          // When the open cell is concrete, look for a recurring
-          // template at the same slot. If one exists, the concrete
-          // is "masking" the template on this date — surface a hint
-          // so the admin can delete the one-off if they actually
-          // want the template to fire here. This is the "I picked
-          // M/W/F but Saturday is filled too" footgun.
-          const overlappingTemplate = existing?.kind === "concrete"
-            ? recurringEntries.find(
-                (t) => t.slot === editorSlot && t.state === "live",
-              )
-            : null;
-          return (
-          <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 py-6"
-            style={{ background: "rgba(0,0,0,0.55)" }}
-            onClick={closeEditor}
-          >
-            <div
-              className="w-full max-w-lg rounded-2xl p-5"
-              style={{ background: "#0A1F12", border: "1px solid rgba(46,107,64,0.4)" }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.45)" }}>
-                    {prettyDate(editorDate)}
-                    {editorDate === today && " · Today"}
-                    {isRecurringEdit && " · ↻ recurring"}
-                    {existing?.kind === "concrete" && " · • one-off"}
-                  </p>
-                  <p className="text-sm font-semibold mt-0.5" style={{ color: "#F0EDE6" }}>
-                    {editingExisting ? "Edit intercession" : "Compose intercession"}
-                  </p>
-                </div>
-                <button onClick={closeEditor} className="text-xl leading-none" style={{ color: "#8FAF96" }} aria-label="Close">
-                  ×
-                </button>
-              </div>
-
-              {overlappingTemplate && (
-                <div
-                  className="rounded-lg px-3 py-2.5 mb-4 text-[11px] leading-relaxed"
-                  style={{
-                    background: "rgba(232,176,80,0.08)",
-                    border: "1px solid rgba(232,176,80,0.28)",
-                    color: "rgba(240,222,180,0.92)",
-                  }}
-                >
-                  This date has a one-off entry sitting on top of your{" "}
-                  <strong>↻ {formatRecurrence(overlappingTemplate)}</strong> template at this
-                  slot. The one-off wins, so subscribers see "{existing!.kind === "concrete" ? existing!.entry.title : ""}" today.
-                  Delete the one-off below if you want the template to fire here instead.
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {/* Type — Prayer vs Action. An "action" entry surfaces
-                    a "Take action →" pill on the subscriber's slide
-                    instead of "Learn more →". */}
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    Type
-                  </label>
-                  <div className="flex gap-2">
-                    {([
-                      { key: "custom" as const, label: "🙏🏽 Prayer", sub: "A written prayer" },
-                      { key: "action" as const, label: "🌍 Action", sub: "Prayer + a link" },
-                    ]).map((opt) => {
-                      const on = draft.source === opt.key;
-                      return (
-                        <button
-                          key={opt.key}
-                          type="button"
-                          onClick={() => setDraft({ ...draft, source: opt.key })}
-                          className="flex-1 text-left rounded-lg px-3 py-2 transition-opacity"
-                          style={{
-                            background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                            border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                          }}
-                        >
-                          <p className="text-xs font-semibold" style={{ color: "#F0EDE6" }}>{opt.label}</p>
-                          <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>{opt.sub}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={draft.title}
-                    onChange={e => setDraft({ ...draft, title: e.target.value })}
-                    placeholder="e.g. Farmers in Kenya facing drought"
-                    maxLength={120}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-                    style={{ color: "#F0EDE6" }}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    Body
-                  </label>
-                  <textarea
-                    value={draft.body}
-                    onChange={e => setDraft({ ...draft, body: e.target.value })}
-                    placeholder="One or two sentences inviting people to pray."
-                    rows={4}
-                    maxLength={2000}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm resize-none"
-                    style={{ color: "#F0EDE6" }}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    {draft.source === "action" ? "Action link" : "Learn more URL (optional)"}
-                  </label>
-                  <input
-                    type="url"
-                    value={draft.learnMoreUrl}
-                    onChange={e => setDraft({ ...draft, learnMoreUrl: e.target.value })}
-                    placeholder={draft.source === "action" ? "https://act.example.org" : "https://example.org/story"}
-                    maxLength={500}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
-                    style={{ color: "#F0EDE6" }}
-                  />
-                  <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-                    {draft.source === "action"
-                      ? 'Shown as a "Take action →" pill on the slide that opens this link.'
-                      : 'Subscribers see a "Learn more →" pill on the slide that opens this link.'}
-                  </p>
-                </div>
-
-                {/* Repeats — promotes this draft to a daily/weekly
-                    template instead of a one-time entry. "Just <date>"
-                    is the default and matches the previous behaviour.
-                    Switching to daily/weekly hides the per-state
-                    Save draft / Schedule / Publish row in favor of a
-                    single "Save recurring" path because schedule-on-
-                    a-future-date doesn't apply to templates. */}
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    Repeats
-                  </label>
-                  <div className="flex gap-2 mb-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setDraft({ ...draft, recurrence: { kind: "once", mask: 127 } })}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
-                      style={{
-                        background: draft.recurrence.kind === "once" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                        border: `1px solid ${draft.recurrence.kind === "once" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                        color: "#F0EDE6",
-                      }}
-                    >
-                      Just {prettyDate(editorDate)}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Same pattern as Weekly: tie this toggle to
-                        // the existing template's id if one is at the
-                        // same slot, so saving updates rather than
-                        // duplicates.
-                        const existingTemplate = recurringEntries.find(
-                          (t) => t.slot === editorSlot && t.state === "live",
-                        );
-                        setDraft({
-                          ...draft,
-                          recurrence: { kind: "daily", mask: 127 },
-                          editingRecurringId: existingTemplate?.id ?? draft.editingRecurringId,
-                        });
-                      }}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
-                      style={{
-                        background: draft.recurrence.kind === "daily" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                        border: `1px solid ${draft.recurrence.kind === "daily" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                        color: "#F0EDE6",
-                      }}
-                    >
-                      Daily
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // When toggling to Weekly, pre-fill the mask
-                        // from any existing recurring template at this
-                        // slot, so the admin sees their previous
-                        // selection (M/W/F still highlighted) instead
-                        // of a blank picker. Falls back to all days
-                        // selected when there's no template, so the
-                        // admin can deselect what they don't want
-                        // rather than hunt for what they do.
-                        const existingTemplate = recurringEntries.find(
-                          (t) => t.slot === editorSlot && t.state === "live",
-                        );
-                        const prefill =
-                          draft.recurrence.kind === "weekly"
-                            ? draft.recurrence.mask
-                            : existingTemplate
-                              ? existingTemplate.weekdaysMask
-                              : 127;
-                        setDraft({
-                          ...draft,
-                          recurrence: { kind: "weekly", mask: prefill },
-                          editingRecurringId: existingTemplate?.id ?? draft.editingRecurringId,
-                        });
-                      }}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
-                      style={{
-                        background: draft.recurrence.kind === "weekly" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                        border: `1px solid ${draft.recurrence.kind === "weekly" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                        color: "#F0EDE6",
-                      }}
-                    >
-                      Weekly
-                    </button>
-                  </div>
-                  {draft.recurrence.kind === "weekly" && (
-                    <div className="flex gap-1 flex-wrap">
-                      {WEEKDAY_LABELS.map((w) => {
-                        const on = (draft.recurrence.mask & w.bit) !== 0;
-                        // Disable bits for days that already have 7
-                        // entries this week — selecting them would
-                        // push the day over the cap.
-                        const isFull = (fullWeekdayBits & w.bit) !== 0;
-                        return (
-                          <button
-                            key={w.bit}
-                            type="button"
-                            disabled={isFull}
-                            title={isFull ? "Day is full (7 entries)" : undefined}
-                            onClick={() =>
-                              setDraft({
-                                ...draft,
-                                recurrence: {
-                                  kind: "weekly",
-                                  mask: draft.recurrence.mask ^ w.bit,
-                                },
-                              })
-                            }
-                            className="text-[11px] font-semibold rounded-full transition-opacity disabled:cursor-not-allowed"
-                            style={{
-                              width: 36,
-                              height: 32,
-                              background: isFull
-                                ? "rgba(46,107,64,0.04)"
-                                : on
-                                  ? "rgba(46,107,64,0.35)"
-                                  : "rgba(46,107,64,0.08)",
-                              border: `1px solid ${
-                                isFull
-                                  ? "rgba(46,107,64,0.15)"
-                                  : on
-                                    ? "rgba(46,107,64,0.6)"
-                                    : "rgba(46,107,64,0.25)"
-                              }`,
-                              color: isFull
-                                ? "rgba(143,175,150,0.35)"
-                                : on
-                                  ? "#F0EDE6"
-                                  : "rgba(143,175,150,0.7)",
-                              textDecoration: isFull ? "line-through" : "none",
-                            }}
-                          >
-                            {w.abbr}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {draft.recurrence.kind !== "once" && (
-                    <p className="text-[10px] mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                      Saves as a recurring template. A one-time entry on a specific date overrides this template for that day.
-                      {fullWeekdayBits !== 0 && draft.recurrence.kind === "weekly" && " Greyed-out days already have 7 entries."}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 mt-5">
-                <button
-                  onClick={() => commitEditor("draft")}
-                  disabled={saveEntry.isPending || saveRecurring.isPending || draft.title.trim().length === 0
-                    || (draft.recurrence.kind === "weekly" && draft.recurrence.mask === 0)}
-                  className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
-                  style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
-                >
-                  Save draft
-                </button>
-                {/* Schedule only applies to one-off entries on a future
-                    date. Hidden when the draft is a recurring template
-                    — schedule-on-a-future-date is meaningless for
-                    "fires every Mon/Wed/Fri" semantics. */}
-                {draft.recurrence.kind === "once" && (
-                  <button
-                    onClick={() => commitEditor("scheduled")}
-                    disabled={saveEntry.isPending || draft.title.trim().length === 0 || editorDate <= today!}
-                    className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
-                    style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
-                  >
-                    Schedule
-                  </button>
-                )}
-                <button
-                  onClick={() => commitEditor("published")}
-                  disabled={saveEntry.isPending || saveRecurring.isPending || draft.title.trim().length === 0
-                    || (draft.recurrence.kind === "weekly" && draft.recurrence.mask === 0)}
-                  className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40 ml-auto"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                >
-                  Publish
-                </button>
-              </div>
-
-              {existing && existing.kind === "concrete" && (
-                <button
-                  onClick={async () => {
-                    if (confirm("Delete this intercession?")) {
-                      await deleteEntry.mutateAsync({ date: editorDate, slot: editorSlot });
-                      closeEditor();
-                    }
-                  }}
-                  disabled={deleteEntry.isPending}
-                  className="text-[11px] mt-3 transition-opacity hover:opacity-70"
-                  style={{ color: "#E57373" }}
-                >
-                  Delete intercession
-                </button>
-              )}
-              {existing && existing.kind === "recurring" && (
-                <button
-                  onClick={async () => {
-                    const t = existing.template;
-                    if (confirm(`Delete the recurring template "${t.title}"? It will stop firing on every matching day.`)) {
-                      await deleteRecurring.mutateAsync(t.id);
-                      closeEditor();
-                    }
-                  }}
-                  disabled={deleteRecurring.isPending}
-                  className="text-[11px] mt-3 transition-opacity hover:opacity-70"
-                  style={{ color: "#E57373" }}
-                >
-                  Delete recurring template
-                </button>
-              )}
-            </div>
-          </div>
-          );
-        })()}
       </div>
     </Layout>
   );
 }
 
-// ── Feed intercessions section ─────────────────────────────────────────
+// ── Intercessions composer ──────────────────────────────────────────────
 //
-// The primary content surface for a feed: a list of community
-// intercessions scoped to this feed (shared_moments rows with
-// prayer_feed_id set). An admin adds one via a composer with a
-// Prayer / Action type toggle — "Action" carries a link and renders
-// a "Take action →" pill in the slideshow. Each intercession links to
-// its /moments/:id detail page, the same page community intercessions
-// use, so feed prayers get cards + detail pages for free.
-type FeedIntercession = {
-  id: number;
-  name: string;
-  intention: string | null;
-  intercessionTopic: string | null;
-  intercessionFullText: string | null;
-  intercessionSource: string | null;
-  learnMoreUrl: string | null;
-  state: string;
-  createdAt: string;
-};
-
+// The feed's whole content surface: a flat, ongoing list of community
+// intercessions, each authored with a Prayer / Action type toggle.
 function FeedIntercessionsSection({ slug }: { slug: string }) {
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
@@ -1482,352 +602,6 @@ function FeedGroupsSection({ slug }: { slug: string }) {
           >
             Cancel
           </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Recurring entries section ─────────────────────────────────────────
-//
-// (RecurringEntry type + WEEKDAY_LABELS now live at module scope —
-// the parent calendar grid also reads recurring templates so the
-// shape needs to be shared.)
-
-function formatRecurrence(r: RecurringEntry): string {
-  if (r.recurrenceKind === "daily") return "Daily";
-  const days = WEEKDAY_LABELS.filter((w) => (r.weekdaysMask & w.bit) !== 0).map((w) => w.abbr);
-  if (days.length === 0) return "Weekly (no days)";
-  if (days.length === 7) return "Daily";
-  return days.join("/");
-}
-
-function FeedRecurringSection({
-  slug,
-  fullWeekdayBits,
-}: {
-  slug: string;
-  // Bitmask of weekdays that are already at 7-entry capacity in the
-  // visible week. Toggles inside this composer disable those bits so
-  // an admin can't add a template that lands on a full day.
-  fullWeekdayBits: number;
-}) {
-  const qc = useQueryClient();
-  const [composing, setComposing] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  // Slot is no longer user-selected — auto-assigned server-side. The
-  // composer just collects title/body/learnMore + recurrence.
-  const [draft, setDraft] = useState<{
-    kind: "daily" | "weekly";
-    mask: number;
-    title: string;
-    body: string;
-    learnMoreUrl: string;
-  }>({ kind: "daily", mask: 127, title: "", body: "", learnMoreUrl: "" });
-
-  const recurringQ = useQuery<{ recurring: RecurringEntry[] }>({
-    queryKey: [`/api/prayer-feeds/${slug}/recurring`],
-    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/recurring`),
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: (payload: {
-      id: number | null;
-      recurrenceKind: "daily" | "weekly";
-      weekdaysMask: number;
-      title: string;
-      body: string;
-      learnMoreUrl: string | null;
-      state: "live" | "draft";
-    }) => {
-      const body = {
-        recurrenceKind: payload.recurrenceKind,
-        weekdaysMask: payload.weekdaysMask,
-        title: payload.title,
-        body: payload.body,
-        learnMoreUrl: payload.learnMoreUrl,
-        state: payload.state,
-      };
-      return payload.id == null
-        ? apiRequest("POST", `/api/prayer-feeds/${slug}/recurring`, body)
-        : apiRequest("PUT", `/api/prayer-feeds/${slug}/recurring/${payload.id}`, body);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/recurring`] });
-      setComposing(false);
-      setEditingId(null);
-    },
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest("DELETE", `/api/prayer-feeds/${slug}/recurring/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/recurring`] });
-    },
-  });
-
-  function startNew() {
-    setDraft({ kind: "daily", mask: 127, title: "", body: "", learnMoreUrl: "" });
-    setEditingId(null);
-    setComposing(true);
-  }
-  function startEdit(r: RecurringEntry) {
-    setDraft({
-      kind: r.recurrenceKind,
-      mask: r.weekdaysMask,
-      title: r.title,
-      body: r.body,
-      learnMoreUrl: r.learnMoreUrl ?? "",
-    });
-    setEditingId(r.id);
-    setComposing(true);
-  }
-  function toggleWeekday(bit: number) {
-    // Don't toggle bits that are already full this week — those days
-    // are at the 7-entry cap and a new template fire would push them
-    // over. Editing into a full day is the one path the user
-    // explicitly called out as forbidden.
-    if ((fullWeekdayBits & bit) !== 0) return;
-    setDraft((d) => ({ ...d, mask: d.mask ^ bit }));
-  }
-  function save() {
-    if (!draft.title.trim()) return;
-    // Strip any full-day bits before sending so a stale state can't
-    // silently land a fire on a saturated day.
-    const safeMask = draft.kind === "daily"
-      ? (127 & ~fullWeekdayBits)
-      : (draft.mask & ~fullWeekdayBits);
-    saveMutation.mutate({
-      id: editingId,
-      recurrenceKind: draft.kind,
-      weekdaysMask: safeMask,
-      title: draft.title.trim(),
-      body: draft.body.trim(),
-      learnMoreUrl: draft.learnMoreUrl.trim() || null,
-      state: "live",
-    });
-  }
-
-  const items = recurringQ.data?.recurring ?? [];
-
-  return (
-    <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
-        Recurring intercessions
-      </p>
-      <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
-        Daily or weekly templates. A one-time entry on a specific day overrides the template for that day.
-      </p>
-
-      <div className="space-y-2 mb-3">
-        {items.map((r) => (
-          <div
-            key={r.id}
-            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg"
-            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                {r.title}
-              </p>
-              <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>
-                {formatRecurrence(r)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => startEdit(r)}
-                className="text-[11px] font-semibold transition-opacity hover:opacity-70"
-                style={{ color: "#A8C5A0", background: "transparent", border: "none", cursor: "pointer" }}
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(`Delete "${r.title}"?`)) removeMutation.mutate(r.id);
-                }}
-                disabled={removeMutation.isPending}
-                className="text-[11px] font-semibold transition-opacity hover:opacity-70"
-                style={{ color: "rgba(232,176,176,0.9)", background: "transparent", border: "none", cursor: "pointer" }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {!composing ? (
-        <button
-          type="button"
-          onClick={startNew}
-          className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90"
-          style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
-        >
-          + Add recurring intercession
-        </button>
-      ) : (
-        <div
-          className="rounded-lg p-3 space-y-3"
-          style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
-        >
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Title
-            </label>
-            <input
-              type="text"
-              value={draft.title}
-              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              maxLength={120}
-              placeholder="e.g. Farmers in changing seasons"
-              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
-              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Body (optional)
-            </label>
-            <textarea
-              value={draft.body}
-              onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-              rows={3}
-              maxLength={2000}
-              placeholder="One or two sentences inviting people to pray."
-              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm resize-none"
-              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Learn more URL (optional)
-            </label>
-            <input
-              type="url"
-              value={draft.learnMoreUrl}
-              onChange={(e) => setDraft({ ...draft, learnMoreUrl: e.target.value })}
-              maxLength={500}
-              placeholder="https://example.org/story"
-              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
-              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-            />
-          </div>
-
-          {/* Slot picker removed — the server auto-assigns the next
-              available slot per day, and the cap is "7 entries per
-              day" rather than "this slot or that slot." */}
-
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Schedule
-            </label>
-            <div className="flex gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => setDraft({ ...draft, kind: "daily", mask: 127 })}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
-                style={{
-                  background: draft.kind === "daily" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                  border: `1px solid ${draft.kind === "daily" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                  color: "#F0EDE6",
-                }}
-              >
-                Daily
-              </button>
-              <button
-                type="button"
-                onClick={() => setDraft({ ...draft, kind: "weekly" })}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
-                style={{
-                  background: draft.kind === "weekly" ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                  border: `1px solid ${draft.kind === "weekly" ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                  color: "#F0EDE6",
-                }}
-              >
-                Weekly
-              </button>
-            </div>
-            {draft.kind === "weekly" && (
-              <div className="flex gap-1 flex-wrap">
-                {WEEKDAY_LABELS.map((w) => {
-                  const on = (draft.mask & w.bit) !== 0;
-                  // Days that already have 7 entries this week are
-                  // disabled — saving one of these would fail anyway,
-                  // and visually hinting "can't pick this" beats a
-                  // silent server reject.
-                  const isFull = (fullWeekdayBits & w.bit) !== 0;
-                  return (
-                    <button
-                      key={w.bit}
-                      type="button"
-                      onClick={() => toggleWeekday(w.bit)}
-                      disabled={isFull}
-                      title={isFull ? "Day is full (7 entries)" : undefined}
-                      className="text-[11px] font-semibold rounded-full transition-opacity disabled:cursor-not-allowed"
-                      style={{
-                        width: 36,
-                        height: 32,
-                        background: isFull
-                          ? "rgba(46,107,64,0.04)"
-                          : on
-                            ? "rgba(46,107,64,0.35)"
-                            : "rgba(46,107,64,0.08)",
-                        border: `1px solid ${
-                          isFull
-                            ? "rgba(46,107,64,0.15)"
-                            : on
-                              ? "rgba(46,107,64,0.6)"
-                              : "rgba(46,107,64,0.25)"
-                        }`,
-                        color: isFull
-                          ? "rgba(143,175,150,0.35)"
-                          : on
-                            ? "#F0EDE6"
-                            : "rgba(143,175,150,0.7)",
-                        textDecoration: isFull ? "line-through" : "none",
-                      }}
-                    >
-                      {w.abbr}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {fullWeekdayBits !== 0 && draft.kind === "weekly" && (
-              <p className="text-[10px] mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                Greyed-out days already have 7 entries this week.
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={save}
-              disabled={saveMutation.isPending || draft.title.trim().length === 0
-                || (draft.kind === "weekly" && (draft.mask & ~fullWeekdayBits) === 0)
-                || (draft.kind === "daily" && (127 & ~fullWeekdayBits) === 0)}
-              className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: "#2D5E3F", border: "1px solid #2D5E3F", color: "#F0EDE6" }}
-            >
-              {editingId == null ? "Add" : "Save"}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setComposing(false); setEditingId(null); }}
-              disabled={saveMutation.isPending}
-              className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
-              style={{ background: "transparent", border: "1px solid rgba(143,175,150,0.3)", color: "#A8C5A0" }}
-            >
-              Cancel
-            </button>
-          </div>
         </div>
       )}
     </div>
