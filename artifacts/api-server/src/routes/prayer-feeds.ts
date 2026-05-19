@@ -14,6 +14,7 @@ import {
   groupMembersTable,
   sharedMomentsTable,
   momentUserTokensTable,
+  momentPostsTable,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
 import { z } from "zod/v4";
@@ -91,6 +92,113 @@ async function getFeedBySlug(slug: string) {
 
 function generateToken(): string {
   return crypto.randomBytes(16).toString("hex");
+}
+
+// ─── Flat-list feed intercessions ────────────────────────────────────────────
+// Prayer feeds no longer schedule entries by day. A feed's intercessions
+// now live as shared_moments rows (template_type = intercession,
+// prayer_feed_id set). This loads them for a set of feeds, newest first,
+// annotated with the viewer's prayed-today state and a distinct
+// "people praying" count — the data the dashboard / prayer-list /
+// community summary cards used to read from the retired
+// prayer_feed_entries day grid.
+type FeedIntercession = {
+  id: number;
+  feedId: number;
+  title: string;
+  body: string | null;
+  learnMoreUrl: string | null;
+  createdAt: Date;
+  prayedToday: boolean;
+  prayCount: number;
+};
+
+async function loadFeedIntercessions(
+  feedIds: number[],
+  viewerEmail: string,
+): Promise<Map<number, FeedIntercession[]>> {
+  const byFeed = new Map<number, FeedIntercession[]>();
+  if (feedIds.length === 0) return byFeed;
+
+  const moments = await db
+    .select({
+      id: sharedMomentsTable.id,
+      feedId: sharedMomentsTable.prayerFeedId,
+      topic: sharedMomentsTable.intercessionTopic,
+      name: sharedMomentsTable.name,
+      body: sharedMomentsTable.intercessionFullText,
+      learnMoreUrl: sharedMomentsTable.learnMoreUrl,
+      createdAt: sharedMomentsTable.createdAt,
+      timezone: sharedMomentsTable.timezone,
+    })
+    .from(sharedMomentsTable)
+    .where(and(
+      inArray(sharedMomentsTable.prayerFeedId, feedIds),
+      eq(sharedMomentsTable.templateType, "intercession"),
+      sql`${sharedMomentsTable.state} <> 'archived'`,
+    ))
+    .orderBy(desc(sharedMomentsTable.createdAt));
+  if (moments.length === 0) return byFeed;
+
+  // Check-ins on these intercessions, joined to the token roster so we
+  // can both tell whether THIS viewer prayed today and count distinct
+  // people praying. A feed intercession is prayed through the ordinary
+  // shared-moment check-in path, so moment_posts is the source of truth.
+  const momentIds = moments.map((m) => m.id);
+  const checkins = await db
+    .select({
+      momentId: momentPostsTable.momentId,
+      windowDate: momentPostsTable.windowDate,
+      email: momentUserTokensTable.email,
+    })
+    .from(momentPostsTable)
+    .innerJoin(
+      momentUserTokensTable,
+      eq(momentUserTokensTable.userToken, momentPostsTable.userToken),
+    )
+    .where(and(
+      inArray(momentPostsTable.momentId, momentIds),
+      eq(momentPostsTable.isCheckin, 1),
+    ));
+
+  const myWindowDates = new Map<number, Set<string>>();
+  const prayerEmails = new Map<number, Set<string>>();
+  for (const c of checkins) {
+    const lc = c.email.toLowerCase();
+    const pe = prayerEmails.get(c.momentId) ?? new Set<string>();
+    pe.add(lc);
+    prayerEmails.set(c.momentId, pe);
+    if (lc === viewerEmail) {
+      const wd = myWindowDates.get(c.momentId) ?? new Set<string>();
+      wd.add(c.windowDate);
+      myWindowDates.set(c.momentId, wd);
+    }
+  }
+
+  for (const m of moments) {
+    if (m.feedId == null) continue;
+    const today = todayInZone(m.timezone || "UTC");
+    const list = byFeed.get(m.feedId) ?? [];
+    list.push({
+      id: m.id,
+      feedId: m.feedId,
+      title: m.topic || m.name || "Intercession",
+      body: m.body,
+      learnMoreUrl: m.learnMoreUrl,
+      createdAt: m.createdAt,
+      prayedToday: myWindowDates.get(m.id)?.has(today) ?? false,
+      prayCount: prayerEmails.get(m.id)?.size ?? 0,
+    });
+    byFeed.set(m.feedId, list);
+  }
+  return byFeed;
+}
+
+// Resolve the caller's account email (lowercased) for token matching.
+async function viewerEmailFor(userId: number): Promise<string> {
+  const [me] = await db.select({ email: usersTable.email })
+    .from(usersTable).where(eq(usersTable.id, userId));
+  return (me?.email ?? "").toLowerCase();
 }
 
 // Validate the optional action / learn-more URL on a feed intercession.
@@ -224,7 +332,6 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
       feedSlug: prayerFeedsTable.slug,
       feedTitle: prayerFeedsTable.title,
       feedCoverEmoji: prayerFeedsTable.coverEmoji,
-      feedTimezone: prayerFeedsTable.timezone,
     })
     .from(prayerFeedSubscriptionsTable)
     .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedSubscriptionsTable.feedId))
@@ -232,9 +339,14 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
 
   if (subs.length === 0) { res.json({ entries: [] }); return; }
 
-  // Collect today's concrete + recurring rows per feed, grouped by
-  // feed so the response shape is feed-first (mirrors how the UI
-  // renders one card per feed with N intercessions inside).
+  // One row per intercession on every subscribed feed, grouped
+  // feed-first (the UI renders one card per feed with N intercessions
+  // inside). Feeds are a flat ongoing list now — `slot` is just the
+  // newest-first index and `isRecurring` is always false.
+  const byFeed = await loadFeedIntercessions(
+    subs.map((s) => s.feedId),
+    await viewerEmailFor(user.id),
+  );
   type Row = {
     id: number;
     feedId: number;
@@ -247,152 +359,27 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
     learnMoreUrl: string | null;
     isRecurring: boolean;
     prayedToday: boolean;
-    // Communities linked to this feed via prayer_feed_groups — the
-    // slideshow renders one pill per group instead of a single feed
-    // tag, so the viewer sees which of THEIR communities is carrying
-    // today's intercession together.
-    groups: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
-    // Up to 7 distinct users who prayed THIS entry today. Used by
-    // the slideshow's avatar stack + "N have prayed this today" line.
-    // Empty for recurring rows (we'd need to know which "instance" to
-    // count against — recurring entries have no per-day row of their
-    // own until someone prays them); for concrete rows we pull from
-    // prayer_feed_prayers.
-    prayedBy: Array<{ name: string; avatarUrl: string | null }>;
-    prayedTodayCount: number;
   };
-  const out: Row[] = [];
-
-  // Per-feed group roster — fetched once per feed and reused for
-  // every entry on that feed. The same join also pulls a small
-  // emoji per group so the pill row carries the community's
-  // visual identity, not just its name.
-  async function loadGroupsForFeed(feedId: number) {
-    const rows = await db
-      .select({
-        id: groupsTable.id,
-        name: groupsTable.name,
-        slug: groupsTable.slug,
-        emoji: groupsTable.emoji,
-      })
-      .from(prayerFeedGroupsTable)
-      .innerJoin(groupsTable, eq(groupsTable.id, prayerFeedGroupsTable.groupId))
-      .where(eq(prayerFeedGroupsTable.feedId, feedId));
-    return rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug, emoji: r.emoji }));
-  }
-
+  const entries: Row[] = [];
   for (const s of subs) {
-    const today = todayInZone(s.feedTimezone);
-    // bit 0=Sunday..bit 6=Saturday — match assembleIntercessions.
-    const todayWeekdayBit = 1 << new Date(`${today}T12:00:00Z`).getUTCDay();
-
-    const concrete = await db.select({
-      id: prayerFeedEntriesTable.id,
-      slot: prayerFeedEntriesTable.slot,
-      title: prayerFeedEntriesTable.title,
-      body: prayerFeedEntriesTable.body,
-      learnMoreUrl: prayerFeedEntriesTable.learnMoreUrl,
-    })
-      .from(prayerFeedEntriesTable)
-      .where(and(
-        eq(prayerFeedEntriesTable.feedId, s.feedId),
-        eq(prayerFeedEntriesTable.entryDate, today),
-        eq(prayerFeedEntriesTable.state, "published"),
-      ));
-
-    const recurring = await db.select({
-      id: prayerFeedRecurringEntriesTable.id,
-      slot: prayerFeedRecurringEntriesTable.slot,
-      title: prayerFeedRecurringEntriesTable.title,
-      body: prayerFeedRecurringEntriesTable.body,
-      learnMoreUrl: prayerFeedRecurringEntriesTable.learnMoreUrl,
-    })
-      .from(prayerFeedRecurringEntriesTable)
-      .where(and(
-        eq(prayerFeedRecurringEntriesTable.feedId, s.feedId),
-        eq(prayerFeedRecurringEntriesTable.state, "live"),
-        sql`(${prayerFeedRecurringEntriesTable.weekdaysMask} & ${todayWeekdayBit}) <> 0`,
-      ));
-
-    // Merge — concrete wins on conflicting (feed, slot) keys.
-    const bySlot = new Map<number, { id: number; slot: number; title: string; body: string; learnMoreUrl: string | null; isRecurring: boolean }>();
-    for (const r of recurring) {
-      bySlot.set(r.slot, { ...r, isRecurring: true });
-    }
-    for (const r of concrete) {
-      bySlot.set(r.slot, { ...r, isRecurring: false });
-    }
-
-    // "Have I prayed any of today's entries on this feed?" — used by
-    // the personal feed card to grey out a feed once the user finishes
-    // its intercessions for the day.
-    const concreteIds = concrete.map((c) => c.id);
-    let prayedConcreteIds = new Set<number>();
-    if (concreteIds.length > 0) {
-      const prayed = await db.select({ entryId: prayerFeedPrayersTable.entryId })
-        .from(prayerFeedPrayersTable)
-        .where(and(
-          eq(prayerFeedPrayersTable.userId, user.id),
-          inArray(prayerFeedPrayersTable.entryId, concreteIds),
-        ));
-      prayedConcreteIds = new Set(prayed.map((p) => p.entryId));
-    }
-
-    // Communities this feed is linked to via prayer_feed_groups. The
-    // slideshow renders one pill per community in place of a single
-    // feed-tag chip.
-    const feedGroups = await loadGroupsForFeed(s.feedId);
-
-    // Per-entry "who prayed this today" roster. Only meaningful for
-    // concrete entries (recurring rows have no per-day identity until
-    // a prayer is logged). Capped at 7 distinct users; ordered most
-    // recent first. Same query backs the slide's avatar stack.
-    const prayedByByEntry = new Map<number, Array<{ name: string; avatarUrl: string | null }>>();
-    const prayedCountByEntry = new Map<number, number>();
-    if (concreteIds.length > 0) {
-      const todayLocal = todayInZone(s.feedTimezone);
-      const rows = await db
-        .select({
-          entryId: prayerFeedPrayersTable.entryId,
-          name: usersTable.name,
-          avatarUrl: usersTable.avatarUrl,
-        })
-        .from(prayerFeedPrayersTable)
-        .innerJoin(usersTable, eq(usersTable.id, prayerFeedPrayersTable.userId))
-        .where(and(
-          inArray(prayerFeedPrayersTable.entryId, concreteIds),
-          eq(prayerFeedPrayersTable.dayLocal, todayLocal),
-        ));
-      for (const r of rows) {
-        if (r.entryId == null) continue;
-        const list = prayedByByEntry.get(r.entryId) ?? [];
-        if (list.length < 7) list.push({ name: r.name ?? "", avatarUrl: r.avatarUrl ?? null });
-        prayedByByEntry.set(r.entryId, list);
-        prayedCountByEntry.set(r.entryId, (prayedCountByEntry.get(r.entryId) ?? 0) + 1);
-      }
-    }
-
-    for (const m of [...bySlot.values()].sort((a, b) => a.slot - b.slot)) {
-      out.push({
+    (byFeed.get(s.feedId) ?? []).forEach((m, i) => {
+      entries.push({
         id: m.id,
         feedId: s.feedId,
         feedSlug: s.feedSlug,
         feedTitle: s.feedTitle,
         feedCoverEmoji: s.feedCoverEmoji ?? null,
-        slot: m.slot,
+        slot: i,
         title: m.title,
-        body: m.body,
+        body: m.body ?? "",
         learnMoreUrl: m.learnMoreUrl,
-        isRecurring: m.isRecurring,
-        prayedToday: !m.isRecurring && prayedConcreteIds.has(m.id),
-        groups: feedGroups,
-        prayedBy: m.isRecurring ? [] : (prayedByByEntry.get(m.id) ?? []),
-        prayedTodayCount: m.isRecurring ? 0 : (prayedCountByEntry.get(m.id) ?? 0),
+        isRecurring: false,
+        prayedToday: m.prayedToday,
       });
-    }
+    });
   }
 
-  res.json({ entries: out });
+  res.json({ entries });
 });
 
 // GET /api/groups/:slug/prayer-feeds — feeds bound to this group, each
@@ -422,7 +409,6 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
       feedSlug: prayerFeedsTable.slug,
       feedTitle: prayerFeedsTable.title,
       feedCoverEmoji: prayerFeedsTable.coverEmoji,
-      feedTimezone: prayerFeedsTable.timezone,
       feedSubscriberCount: prayerFeedsTable.subscriberCount,
     })
     .from(prayerFeedGroupsTable)
@@ -440,48 +426,27 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
     subscriberCount: number;
     todayEntries: Array<{ id: number; slot: number; title: string; isRecurring: boolean }>;
   };
-  const feeds: FeedOut[] = [];
 
-  for (const f of bound) {
-    const today = todayInZone(f.feedTimezone);
-    const todayWeekdayBit = 1 << new Date(`${today}T12:00:00Z`).getUTCDay();
-
-    const concrete = await db.select({
-      id: prayerFeedEntriesTable.id,
-      slot: prayerFeedEntriesTable.slot,
-      title: prayerFeedEntriesTable.title,
-    })
-      .from(prayerFeedEntriesTable)
-      .where(and(
-        eq(prayerFeedEntriesTable.feedId, f.feedId),
-        eq(prayerFeedEntriesTable.entryDate, today),
-        eq(prayerFeedEntriesTable.state, "published"),
-      ));
-    const recurring = await db.select({
-      id: prayerFeedRecurringEntriesTable.id,
-      slot: prayerFeedRecurringEntriesTable.slot,
-      title: prayerFeedRecurringEntriesTable.title,
-    })
-      .from(prayerFeedRecurringEntriesTable)
-      .where(and(
-        eq(prayerFeedRecurringEntriesTable.feedId, f.feedId),
-        eq(prayerFeedRecurringEntriesTable.state, "live"),
-        sql`(${prayerFeedRecurringEntriesTable.weekdaysMask} & ${todayWeekdayBit}) <> 0`,
-      ));
-
-    const bySlot = new Map<number, { id: number; slot: number; title: string; isRecurring: boolean }>();
-    for (const r of recurring) bySlot.set(r.slot, { ...r, isRecurring: true });
-    for (const r of concrete) bySlot.set(r.slot, { ...r, isRecurring: false });
-
-    feeds.push({
-      feedId: f.feedId,
-      feedSlug: f.feedSlug,
-      feedTitle: f.feedTitle,
-      feedCoverEmoji: f.feedCoverEmoji ?? null,
-      subscriberCount: f.feedSubscriberCount ?? 0,
-      todayEntries: [...bySlot.values()].sort((a, b) => a.slot - b.slot),
-    });
-  }
+  // Feeds are a flat ongoing list of intercessions now — `todayEntries`
+  // is the feed's current intercessions (newest first), `slot` a stable
+  // index and `isRecurring` always false.
+  const byFeed = await loadFeedIntercessions(
+    bound.map((f) => f.feedId),
+    await viewerEmailFor(user.id),
+  );
+  const feeds: FeedOut[] = bound.map((f) => ({
+    feedId: f.feedId,
+    feedSlug: f.feedSlug,
+    feedTitle: f.feedTitle,
+    feedCoverEmoji: f.feedCoverEmoji ?? null,
+    subscriberCount: f.feedSubscriberCount ?? 0,
+    todayEntries: (byFeed.get(f.feedId) ?? []).map((m, i) => ({
+      id: m.id,
+      slot: i,
+      title: m.title,
+      isRecurring: false,
+    })),
+  }));
 
   res.json({ feeds });
 });
@@ -496,7 +461,8 @@ router.get("/prayer-feeds/mine", requireBeta, async (req, res): Promise<void> =>
 });
 
 // GET /api/prayer-feeds/subscribed — feeds the caller subscribes to,
-// each with today's entry (if any). Used by the dashboard.
+// each with a preview of its newest intercession. Used by the
+// dashboard + prayer-list feed cards.
 router.get("/prayer-feeds/subscribed", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const subs = await db
@@ -507,40 +473,30 @@ router.get("/prayer-feeds/subscribed", requireBeta, async (req, res): Promise<vo
     .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedSubscriptionsTable.feedId))
     .where(eq(prayerFeedSubscriptionsTable.userId, user.id));
 
-  const out: Array<{
-    feed: typeof prayerFeedsTable.$inferSelect;
-    todayEntry: typeof prayerFeedEntriesTable.$inferSelect | null;
-    prayedToday: boolean;
-  }> = [];
+  const byFeed = await loadFeedIntercessions(
+    subs.map((s) => s.feed.id),
+    await viewerEmailFor(user.id),
+  );
 
-  for (const { feed } of subs) {
-    const today = todayInZone(feed.timezone);
-    // Multi-slot feeds publish up to three entries per date. The
-    // dashboard summary card has room for one preview, so we pick the
-    // earliest slot (smallest slot number) that's been published. That
-    // matches the order subscribers see them in prayer-mode and gives
-    // a stable "today's intention" preview regardless of how many
-    // slots are filled.
-    const [entry] = await db.select().from(prayerFeedEntriesTable)
-      .where(and(
-        eq(prayerFeedEntriesTable.feedId, feed.id),
-        eq(prayerFeedEntriesTable.entryDate, today),
-        eq(prayerFeedEntriesTable.state, "published"),
-      ))
-      .orderBy(asc(prayerFeedEntriesTable.slot))
-      .limit(1);
-    let prayedToday = false;
-    if (entry) {
-      const [p] = await db.select({ id: prayerFeedPrayersTable.id })
-        .from(prayerFeedPrayersTable)
-        .where(and(
-          eq(prayerFeedPrayersTable.entryId, entry.id),
-          eq(prayerFeedPrayersTable.userId, user.id),
-        ));
-      prayedToday = !!p;
-    }
-    out.push({ feed, todayEntry: entry ?? null, prayedToday });
-  }
+  // Feeds are a flat ongoing list now — there is no per-day entry, so
+  // the dashboard card previews the feed's newest intercession.
+  const out = subs.map(({ feed }) => {
+    const newest = (byFeed.get(feed.id) ?? [])[0] ?? null;
+    return {
+      feed,
+      todayEntry: newest
+        ? {
+            id: newest.id,
+            entryDate: todayInZone(feed.timezone),
+            title: newest.title,
+            body: newest.body,
+            scriptureRef: null as string | null,
+            prayCount: newest.prayCount,
+          }
+        : null,
+      prayedToday: newest?.prayedToday ?? false,
+    };
+  });
   res.json({ subscriptions: out });
 });
 
@@ -939,7 +895,6 @@ router.delete("/prayer-feeds/:slug/groups/:groupId", requireBeta, async (req, re
   // here. People who manually subscribed should stay subscribed;
   // the binding remove just means new joiners won't be auto-
   // subscribed going forward.
-  void inArray;
   res.json({ ok: true });
 });
 
