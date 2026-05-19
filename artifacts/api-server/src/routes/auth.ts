@@ -474,7 +474,7 @@ router.post(
     message: "Too many signup attempts from your network. Please try again in an hour.",
   }),
   async (req, res): Promise<void> => {
-  const { email, name, password, groupSlug, groupInviteToken, website } = req.body as {
+  const { email, name, password, groupSlug, groupInviteToken, website, officesOnly } = req.body as {
     email?: string; name?: string; password?: string;
     groupSlug?: string; groupInviteToken?: string;
     // Honeypot: a hidden field no real browser user will ever fill in.
@@ -482,6 +482,13 @@ router.post(
     // looks identical to a validation failure (no tell-tale "bot detected"
     // response, so they won't adapt).
     website?: string;
+    // Set true by the public /pray sign-up — creates a limited
+    // "offices-only" account (Daily Office / Devotion only; no groups,
+    // no prayer requests). Self-limiting, so it's safe to honor from an
+    // unauthenticated request. If a community invite is also present
+    // the user joins the group and the derived tier becomes "full" —
+    // community membership wins (see lib/parishGate.ts).
+    officesOnly?: boolean;
   };
 
   // Honeypot trip — silently reject with a generic validation error.
@@ -548,7 +555,7 @@ router.post(
   const passwordHash = await hashPassword(password);
   const [user] = await db
     .insert(usersTable)
-    .values({ email: normalizedEmail, name: name.trim(), passwordHash })
+    .values({ email: normalizedEmail, name: name.trim(), passwordHash, officesOnly: officesOnly === true })
     .returning();
 
   // If they were on the waitlist, drop their entry — they have an account

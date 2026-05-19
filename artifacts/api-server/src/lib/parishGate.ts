@@ -27,6 +27,11 @@ export type AccessTier =
   // (office reminders + parish picker). No garden, no requests, no
   // communities, no letters.
   | "parish-only"
+  // Offices-only — accounts created from the public /pray page. Even
+  // more limited than parish-only: just the Daily Office / Daily
+  // Devotion (no parish identity, no groups, no prayer requests). It
+  // reuses the parish dashboard as its home surface.
+  | "offices-only"
   // No access tier yet — needs to either pick a parish (Phoebe Parish
   // signup) or wait on a beta invite. Useful for the onboarding
   // redirect logic.
@@ -54,6 +59,7 @@ export async function getUserAccessTier(userId: number): Promise<UserAccess> {
       id: usersTable.id,
       email: usersTable.email,
       parishFeedId: usersTable.parishFeedId,
+      officesOnly: usersTable.officesOnly,
     })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
@@ -96,9 +102,16 @@ export async function getUserAccessTier(userId: number): Promise<UserAccess> {
   const hasCommunityMembership = memberRows.length > 0;
   const parishSlug = parishRow[0]?.slug ?? null;
 
+  // Order matters: a community membership ALWAYS wins, so an
+  // offices-only account that later joins a community frictionlessly
+  // upgrades to "full". Offices-only is checked before parish-only;
+  // in practice the two signals are mutually exclusive (the /pray
+  // signup never sets a parish_feed_id).
   let tier: AccessTier;
   if (isBeta || hasCommunityMembership) {
     tier = "full";
+  } else if (user.officesOnly) {
+    tier = "offices-only";
   } else if (user.parishFeedId !== null) {
     tier = "parish-only";
   } else {

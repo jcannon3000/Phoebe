@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { OfficeViewer, type LiturgyMode } from "./bcp-daily-office";
 
@@ -21,7 +22,6 @@ const BUTTON_BG = "#2D5E3F";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
 type Choice = "office" | "devotion";
-type WaitlistResult = "added" | "already" | "has-account";
 
 // Same 14:00 cutoff the Daily Office / Devotion pickers use, so the
 // public page resolves to the same morning/evening variant.
@@ -144,7 +144,6 @@ function ChoiceCard({ emoji, title, subtitle, onClick }: {
 
 function PublicClosing({ onPrayAgain }: { onPrayAgain: () => void }) {
   const [step, setStep] = useState<"invite" | "signup" | "done">("invite");
-  const [result, setResult] = useState<WaitlistResult>("added");
 
   return (
     <div
@@ -155,12 +154,9 @@ function PublicClosing({ onPrayAgain }: { onPrayAgain: () => void }) {
         <HabitInvite onContinue={() => setStep("signup")} onPrayAgain={onPrayAgain} />
       )}
       {step === "signup" && (
-        <SignupStep
-          onBack={() => setStep("invite")}
-          onDone={(r) => { setResult(r); setStep("done"); }}
-        />
+        <SignupStep onBack={() => setStep("invite")} onDone={() => setStep("done")} />
       )}
-      {step === "done" && <DoneStep result={result} />}
+      {step === "done" && <DoneStep />}
     </div>
   );
 }
@@ -234,17 +230,22 @@ function HabitInvite({ onContinue, onPrayAgain }: {
 
 function SignupStep({ onBack, onDone }: {
   onBack: () => void;
-  onDone: (r: WaitlistResult) => void;
+  onDone: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [website, setWebsite] = useState(""); // honeypot
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [existingAccount, setExistingAccount] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setExistingAccount(false);
     if (website.trim().length > 0) {
       setError("Something went wrong. Please try again.");
       return;
@@ -254,21 +255,40 @@ function SignupStep({ onBack, onDone }: {
       setError("Enter a valid email address.");
       return;
     }
+    if (password.length < 6) {
+      setError("Choose a password of at least 6 characters.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/waitlist", {
+      // Creates a real but limited "offices-only" account and signs the
+      // visitor in (the server establishes the session via req.login).
+      // They can pray the daily offices and subscribe to public feeds;
+      // joining a community later upgrades them to the full app.
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), source: "public-prayer" }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          officesOnly: true,
+          website,
+        }),
       });
-      const data = await res.json();
-      if (data.ok) {
-        onDone(data.alreadyHasAccount ? "has-account" : data.alreadyOnList ? "already" : "added");
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (res.ok && data.ok) {
+        // Refresh the auth cache so the app sees the new session before
+        // the done step navigates into /parish.
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        onDone();
+      } else if (res.status === 400 && typeof data.error === "string" && /already exists/i.test(data.error)) {
+        setExistingAccount(true);
       } else {
-        setError(data.error ?? "Couldn't save your spot. Please try again.");
+        setError(typeof data.error === "string" ? data.error : "Couldn't create your account. Please try again.");
       }
     } catch {
-      setError("Couldn't save your spot. Please try again.");
+      setError("Couldn't create your account. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -279,6 +299,40 @@ function SignupStep({ onBack, onDone }: {
     color: WARM_TEXT,
     border: "1px solid rgba(46,107,64,0.25)",
   } as const;
+
+  if (existingAccount) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-sm flex flex-col items-center text-center"
+        style={{ gap: 16 }}
+      >
+        <div className="text-4xl">🌿</div>
+        <h2 className="text-[24px] font-bold leading-snug" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
+          You already have an account.
+        </h2>
+        <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
+          That email is already with Phoebe — sign in to keep praying.
+        </p>
+        <button
+          onClick={() => setLocation("/")}
+          className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
+          style={{ background: BUTTON_BG, color: WARM_TEXT }}
+        >
+          Go to sign in
+        </button>
+        <button
+          onClick={() => setExistingAccount(false)}
+          className="text-[13px] font-medium transition-opacity hover:opacity-80"
+          style={{ color: FAINT, background: "transparent", border: "none", cursor: "pointer" }}
+        >
+          Use a different email
+        </button>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -293,7 +347,7 @@ function SignupStep({ onBack, onDone }: {
           Keep the rhythm going.
         </h2>
         <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-          Phoebe is rolling out by invitation. Leave your name and we'll make room for you — morning and evening prayer, and a community to pray with.
+          Create your account and the daily office will be waiting for you — morning and evening, whenever you return.
         </p>
       </div>
 
@@ -318,6 +372,16 @@ function SignupStep({ onBack, onDone }: {
           autoComplete="email"
           disabled={submitting}
         />
+        <input
+          type="password"
+          placeholder="Create a password"
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); setError(""); }}
+          className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+          style={inputStyle}
+          autoComplete="new-password"
+          disabled={submitting}
+        />
         {/* Honeypot — bots fill hidden fields; humans never see this. */}
         <input
           type="text"
@@ -339,7 +403,7 @@ function SignupStep({ onBack, onDone }: {
           {submitting ? (
             <span className="w-4 h-4 rounded-full border-2 border-[#F0EDE6] border-t-transparent animate-spin" />
           ) : (
-            "Request your invitation"
+            "Create my account"
           )}
         </button>
       </form>
@@ -355,16 +419,8 @@ function SignupStep({ onBack, onDone }: {
   );
 }
 
-function DoneStep({ result }: { result: WaitlistResult }) {
+function DoneStep() {
   const [, setLocation] = useLocation();
-  const heading = result === "has-account" ? "Welcome back." : "You're on the list.";
-  const message =
-    result === "has-account"
-      ? "You already have a Phoebe account — sign in to keep praying."
-      : result === "already"
-        ? "You're already on the list. We'll be in touch when there's room."
-        : "We'll be in touch when there's room — and the rhythm will be waiting for you.";
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -375,21 +431,17 @@ function DoneStep({ result }: { result: WaitlistResult }) {
     >
       <div className="text-5xl">🌿</div>
       <h2 className="text-[24px] font-bold leading-snug" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-        {heading}
+        Welcome to Phoebe.
       </h2>
       <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-        {message}
+        Your account is ready. Morning and evening, the daily office will be here for you.
       </p>
       <button
-        onClick={() => setLocation("/")}
+        onClick={() => setLocation("/parish")}
         className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
-        style={
-          result === "has-account"
-            ? { background: BUTTON_BG, color: WARM_TEXT }
-            : { background: "transparent", color: SAGE, border: "1px solid rgba(46,107,64,0.3)" }
-        }
+        style={{ background: BUTTON_BG, color: WARM_TEXT }}
       >
-        {result === "has-account" ? "Go to sign in" : "Visit Phoebe"}
+        Begin
       </button>
     </motion.div>
   );

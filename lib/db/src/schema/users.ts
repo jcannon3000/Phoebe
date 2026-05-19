@@ -79,6 +79,13 @@ export const usersTable = pgTable("users", {
   // needed). FK constraint is added in migration SQL to avoid a
   // circular import between this schema file and prayer_feeds.
   parishFeedId: integer("parish_feed_id"),
+  // True for accounts created via the public /pray page — a limited
+  // tier that only has the Daily Office / Daily Devotion: no groups,
+  // no prayer requests. Drives accessTier = "offices-only" (see
+  // api-server/src/lib/parishGate.ts) and the social-route block in
+  // api-server/src/routes/index.ts. Joining a community later still
+  // upgrades them to full (the tier is derived; full wins).
+  officesOnly: boolean("offices_only").notNull().default(false),
   // ── Phoebe Parish: office reminder preferences ───────────────────────────
   // Each side of the day picks one of three values:
   //   "none"     — do not push at the morning/evening reminder hour

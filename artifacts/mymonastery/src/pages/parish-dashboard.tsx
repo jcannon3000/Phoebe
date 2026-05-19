@@ -178,9 +178,42 @@ export default function ParishDashboard() {
               </div>
             </div>
           </div>
+        ) : user.accessTier === "offices-only" ? (
+          <div className="mb-6">
+            <p
+              style={{
+                fontFamily: SPACE_GROTESK,
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: FAINT_GREEN,
+                marginBottom: 6,
+              }}
+            >
+              Daily prayer
+            </p>
+            <h1
+              style={{
+                fontFamily: SPACE_GROTESK,
+                fontSize: 22,
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+                color: WARM_TEXT,
+                margin: 0,
+              }}
+            >
+              Pause and pray.
+            </h1>
+            <p style={{ color: SAGE, fontSize: 13, marginTop: 4 }}>
+              Morning and evening, from the Book of Common Prayer.
+            </p>
+          </div>
         ) : null}
 
-        {/* Today's parish intercessions */}
+        {/* Today's parish intercessions — parish-only; an offices-only
+            account has no parish slate of its own. */}
+        {user.accessTier === "parish-only" && (
+        <>
         <p
           style={{
             fontFamily: SPACE_GROTESK,
@@ -276,6 +309,8 @@ export default function ParishDashboard() {
             No intentions published for today yet — check back soon.
           </div>
         )}
+        </>
+        )}
 
         {/* Office entry points */}
         <p
@@ -288,7 +323,7 @@ export default function ParishDashboard() {
             marginBottom: 8,
           }}
         >
-          Pray with your parish
+          {user.accessTier === "offices-only" ? "Pray the office" : "Pray with your parish"}
         </p>
         <div className="grid grid-cols-2 gap-2 mb-6">
           <OfficeButton

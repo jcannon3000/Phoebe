@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Phoebe Parish — derived server-side from beta_users + group_members
-// + users.parish_feed_id. "full" sees everything (the historical
-// experience), "parish-only" sees a stripped UI (BCP + parish dash +
-// settings), "unassigned" hasn't picked anything yet (gets routed to
-// parish onboarding).
-export type AccessTier = "full" | "parish-only" | "unassigned";
+// + users.parish_feed_id + users.offices_only. "full" sees everything
+// (the historical experience), "parish-only" sees a stripped UI (BCP +
+// parish dash + settings), "offices-only" is the public /pray sign-up
+// tier (offices only, no parish identity), "unassigned" hasn't picked
+// anything yet (gets routed to parish onboarding).
+export type AccessTier = "full" | "parish-only" | "offices-only" | "unassigned";
 
 export interface AuthUser {
   id: number;

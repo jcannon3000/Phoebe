@@ -307,6 +307,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
   // beta + community users.
   const { user: viewerUser } = useAuth();
   const parishOnly = viewerUser?.accessTier === "parish-only";
+  // Offices-only accounts (public /pray sign-ups) have no parish
+  // celebration and no /prayer-mode access — they finish back on
+  // their home, the parish dashboard.
+  const officesOnlyViewer = viewerUser?.accessTier === "offices-only";
 
   // Track time-spent + max-slide-reached for the metrics dashboard.
   // The slidesCompletedRef is the high-water mark of slideIdx; the
@@ -717,6 +721,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
     // The public /pray page handles its own close (a sign-up invite)
     // rather than the auth-only /prayer-mode recap.
     if (onComplete) { onComplete(); return; }
+    if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
     // Every office finish lands on /prayer-mode?closingOnly=1 — the
     // "you prayed for N people this week" summary followed by the
     // prayer-rhythm habit slide. Parish-only users get their own
@@ -2104,6 +2109,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               if (onComplete) { onComplete(); return; }
               if (parishOnly) {
                 setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
+              } else if (officesOnlyViewer) {
+                setViewerLocation("/parish");
               } else {
                 // Always route to the closing summary + habit slide.
                 // Used to gate on seamlessReturnRef so a direct-entry
