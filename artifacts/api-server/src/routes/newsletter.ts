@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   db,
   newslettersTable,
@@ -60,7 +60,9 @@ async function resolveRecipients(
         and(
           inArray(groupMembersTable.groupId, groupIds),
           isNotNull(groupMembersTable.joinedAt),
-          ne(groupMembersTable.role, "hidden_admin"),
+          // IS DISTINCT FROM (not <>) so rows with a NULL role still
+          // count — a plain <> drops them, since NULL <> 'x' is NULL.
+          sql`${groupMembersTable.role} IS DISTINCT FROM 'hidden_admin'`,
         ),
       );
   }
@@ -92,7 +94,7 @@ router.get("/admin/newsletter/groups", async (req, res): Promise<void> => {
           SELECT COUNT(*)::int FROM group_members gm
           WHERE gm.group_id = ${groupsTable.id}
             AND gm.joined_at IS NOT NULL
-            AND gm.role <> 'hidden_admin'
+            AND gm.role IS DISTINCT FROM 'hidden_admin'
         )`,
       })
       .from(groupsTable)

@@ -343,6 +343,9 @@ export async function migrate() {
     // shows on /groups/:slug/gatherings. Nullable — personal gatherings
     // (unattached) have group_id IS NULL.
     await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL`);
+    // Video-call link — when set, the gathering is an online call
+    // (Zoom / Meet / Teams) rather than an in-person meet.
+    await run(client, `ALTER TABLE rituals ADD COLUMN IF NOT EXISTS meeting_url TEXT`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_rituals_group_id ON rituals(group_id)`);
 
     // Per-meetup location (each scheduled gathering can be in a different place).
@@ -1599,6 +1602,15 @@ export async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+
+    // ── Repair NULL group_members.role ────────────────────────────────────
+    // The schema defines role as NOT NULL DEFAULT 'member', but some rows
+    // were inserted before that default existed and left role NULL. SQL
+    // member-count queries use `role <> 'hidden_admin'`, which silently
+    // drops NULL-role rows (NULL <> 'x' is NULL, not true) — so those
+    // members vanished from counts and from newsletter recipient lists.
+    // Backfill the intended default. Idempotent.
+    await run(client, `UPDATE group_members SET role = 'member' WHERE role IS NULL`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
