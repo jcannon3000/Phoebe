@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
+import { openExternal } from "@/lib/openExternal";
 
 type Tab = "timeline" | "moments" | "settings";
 
@@ -369,6 +370,15 @@ export default function RitualDetail() {
   const lastCompletedMeetup = timeline?.past.find(m => m.status === "completed") ?? null;
   const isOneTime = ritual.frequency === "once";
   const rhythmDays = ritual.frequency === "biweekly" ? 14 : ritual.frequency === "monthly" ? 30 : 7;
+  // Video-call gathering — carries a meetingUrl instead of a physical
+  // place. `meetingUrl` isn't in the generated api-client type yet, so
+  // we read it off the row with a cast (same pattern the file already
+  // uses for `description`). When set, location lines are suppressed
+  // in favour of a "Join video call" button.
+  const meetingUrl = (() => {
+    const raw = (ritual as { meetingUrl?: string | null }).meetingUrl;
+    return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+  })();
   // One-time gatherings have no recurring rhythm to fall behind, so we
   // never compute a "next due" date for them.
   const nextDueDate = !isOneTime && lastCompletedMeetup
@@ -434,8 +444,11 @@ export default function RitualDetail() {
                   </p>
                 );
               })()}
-              {timeline?.location && (
+              {timeline?.location && !meetingUrl && (
                 <p className="mt-2 text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>📍 {timeline.location}</p>
+              )}
+              {meetingUrl && (
+                <p className="mt-2 text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>📹 Video call</p>
               )}
             </div>
 
@@ -591,11 +604,24 @@ export default function RitualDetail() {
                       </span>
                     )}
                   </p>
-                  {/* Per-meetup location (falls back to tradition-level for legacy data) */}
-                  {(timeline.upcoming.location ?? timeline.location) && (
+                  {/* Per-meetup location (falls back to tradition-level
+                      for legacy data). Suppressed for video-call
+                      gatherings — the meetup location for those is the
+                      meeting link itself, surfaced as a Join button. */}
+                  {!meetingUrl && (timeline.upcoming.location ?? timeline.location) && (
                     <p className="text-sm mt-2" style={{ color: "#8FAF96" }}>
                       {timeline.upcoming.location ?? timeline.location}
                     </p>
+                  )}
+                  {meetingUrl && (
+                    <button
+                      type="button"
+                      onClick={() => openExternal(meetingUrl)}
+                      className="mt-3 w-full rounded-xl px-4 py-3 text-center font-semibold text-sm cursor-pointer transition-opacity hover:opacity-90"
+                      style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}
+                    >
+                      📹 Join video call →
+                    </button>
                   )}
 
                   {/* Divider */}

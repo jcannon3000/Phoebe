@@ -135,6 +135,17 @@ router.post("/rituals", async (req, res): Promise<void> => {
     const rawGroupId = req.body?.groupId;
     const groupId = typeof rawGroupId === "number" && Number.isFinite(rawGroupId) ? rawGroupId : null;
 
+    // `meetingUrl` — set by the "Video call" gathering format. Pulled
+    // off the raw body (not in the generated zod schema yet). Accepts
+    // any http(s) URL (Zoom / Meet / Teams). Null for in-person
+    // gatherings. We constrain to http(s) so a javascript: URI can't
+    // ride in via a hand-crafted request.
+    const rawMeetingUrl = req.body?.meetingUrl;
+    const meetingUrl =
+      typeof rawMeetingUrl === "string" && /^https?:\/\/\S+$/i.test(rawMeetingUrl.trim())
+        ? rawMeetingUrl.trim()
+        : null;
+
     const [ritual] = await db
       .insert(ritualsTable)
       .values({
@@ -145,6 +156,7 @@ router.post("/rituals", async (req, res): Promise<void> => {
         participants: body.participants ?? [],
         intention: body.intention ?? null,
         location,
+        meetingUrl,
         ownerId: body.ownerId,
         scheduleToken: schedulingToken,
         rhythm: body.rhythm ?? "fortnightly",

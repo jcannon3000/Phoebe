@@ -9,6 +9,7 @@ import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
+import { openExternal } from "@/lib/openExternal";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
 // Office-progress reading + LiturgyMode now live on /prayer-chooser
@@ -1599,6 +1600,10 @@ function GatheringCard({
   // the community-name eyebrow in the corner (same physical address) and
   // clutters the row. Location lives in the modal pop-up instead.
   const timeLabel = next ? `${nextDayLabel(next)} · ${format(next, "h:mm a")}` : null;
+  // Video-call gatherings get a "📹 Video call" tag under the time so
+  // the row reads as online at a glance — the join link itself lives
+  // in the detail modal.
+  const isVideoGathering = typeof r.meetingUrl === "string" && !!r.meetingUrl.trim();
 
   return (
     <div
@@ -1641,6 +1646,11 @@ function GatheringCard({
           {timeLabel && (
             <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
               {timeLabel}
+            </div>
+          )}
+          {isVideoGathering && (
+            <div className="mt-1 text-[11px] font-medium" style={{ color: "rgba(143,175,150,0.85)" }}>
+              📹 Video call
             </div>
           )}
         </div>
@@ -1734,7 +1744,12 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
     ? (isToday(next) ? "Today" : format(next, "EEEE, MMM d"))
     : null;
   const timeLabel = next ? format(next, "h:mm a") : null;
-  const locationLabel = r.nextMeetupLocation ?? r.location ?? null;
+  // A video-call gathering carries a meetingUrl — its modal shows a
+  // "Join video call" button instead of a 📍 location line. (The
+  // meetup location for a video gathering is the meeting link itself,
+  // so we suppress the raw-URL location line when meetingUrl is set.)
+  const meetingUrl = (typeof r.meetingUrl === "string" && r.meetingUrl.trim()) ? r.meetingUrl.trim() : null;
+  const locationLabel = meetingUrl ? null : (r.nextMeetupLocation ?? r.location ?? null);
   const description = (r.description ?? r.intention ?? "") as string;
 
   const { data: groupsCache } = useQuery<{ groups: Array<{ id: number; name: string; emoji: string | null; slug: string }> }>({
@@ -1802,10 +1817,26 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
                 {locationLabel && (
                   <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📍 {locationLabel}</p>
                 )}
+                {meetingUrl && (
+                  <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📹 Video call</p>
+                )}
               </div>
             )}
             {!timeLabel && locationLabel && (
               <p className="text-sm" style={{ color: "#C8D4C0" }}>📍 {locationLabel}</p>
+            )}
+            {/* Join button — video-call gatherings only. Opens the
+                meeting link in SFSafariViewController on iOS, a new
+                tab on web. */}
+            {meetingUrl && (
+              <button
+                type="button"
+                onClick={() => openExternal(meetingUrl)}
+                className="rounded-xl px-4 py-3 text-center font-semibold text-sm cursor-pointer transition-opacity hover:opacity-90"
+                style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}
+              >
+                📹 Join video call →
+              </button>
             )}
             {description.trim() && (
               <p

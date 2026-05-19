@@ -2378,6 +2378,7 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
       frequency: ritualsTable.frequency,
       dayPreference: ritualsTable.dayPreference,
       location: ritualsTable.location,
+      meetingUrl: ritualsTable.meetingUrl,
       createdAt: ritualsTable.createdAt,
     })
     .from(ritualsTable)
@@ -2400,6 +2401,7 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
           frequency: ritualsTable.frequency,
           dayPreference: ritualsTable.dayPreference,
           location: ritualsTable.location,
+          meetingUrl: ritualsTable.meetingUrl,
           createdAt: ritualsTable.createdAt,
           ownerId: ritualsTable.ownerId,
           participants: ritualsTable.participants,

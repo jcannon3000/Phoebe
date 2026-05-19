@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
+import { openExternal } from "@/lib/openExternal";
 import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText, HandHeart } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
@@ -59,6 +60,9 @@ type Gathering = {
   dayPreference?: string | null;
   nextMeetupDate?: string | null;
   location?: string | null;
+  // Set when the gathering is a video call rather than in-person.
+  // Drives the "📹 Video call" tag + "Join video call" button.
+  meetingUrl?: string | null;
 };
 type Announcement = {
   id: number; title: string | null; content: string; authorName: string; createdAt: string;
@@ -544,6 +548,7 @@ function CommunityGatheringCard({
   // detail modal carries the full address.
   const next = computeNextGatheringDate(g);
   const timeLabel = next ? `${gatheringDayLabel(next)} · ${format(next, "h:mm a")}` : null;
+  const isVideoGathering = typeof g.meetingUrl === "string" && !!g.meetingUrl.trim();
 
   return (
     <div
@@ -574,6 +579,11 @@ function CommunityGatheringCard({
               {timeLabel}
             </div>
           )}
+          {isVideoGathering && (
+            <div className="mt-1 text-[11px] font-medium" style={{ color: "rgba(143,175,150,0.85)" }}>
+              📹 Video call
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
@@ -600,7 +610,11 @@ function CommunityGatheringDetailModal({
     ? (isToday(next) ? "Today" : format(next, "EEEE, MMM d"))
     : null;
   const timeLabel = next ? format(next, "h:mm a") : null;
-  const locationLabel = g.location ?? null;
+  // Video-call gathering — show a "Join video call" button instead of
+  // a location line (the meetup location for a video gathering is the
+  // link itself, so the raw-URL location line is suppressed).
+  const meetingUrl = (typeof g.meetingUrl === "string" && g.meetingUrl.trim()) ? g.meetingUrl.trim() : null;
+  const locationLabel = meetingUrl ? null : (g.location ?? null);
   const description = (g.description ?? "") as string;
 
   return (
@@ -653,10 +667,25 @@ function CommunityGatheringDetailModal({
                 {locationLabel && (
                   <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📍 {locationLabel}</p>
                 )}
+                {meetingUrl && (
+                  <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📹 Video call</p>
+                )}
               </div>
             )}
             {!timeLabel && locationLabel && (
               <p className="text-sm" style={{ color: "#C8D4C0" }}>📍 {locationLabel}</p>
+            )}
+            {/* Join button — video-call gatherings. Opens the meeting
+                link via SFSafariViewController on iOS / a new tab on web. */}
+            {meetingUrl && (
+              <button
+                type="button"
+                onClick={() => openExternal(meetingUrl)}
+                className="rounded-xl px-4 py-3 text-center font-semibold text-sm cursor-pointer transition-opacity hover:opacity-90"
+                style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}
+              >
+                📹 Join video call →
+              </button>
             )}
             {description.trim() && (
               <p

@@ -53,6 +53,11 @@ export default function TraditionNew() {
   // that members can weigh in on.
   const [timeMode, setTimeMode] = useState<"fixed" | "flexible">("fixed");
   const [firstLocation, setFirstLocation] = useState("");
+  // In-person gatherings collect a location; video-call gatherings
+  // collect a meeting link (Zoom / Meet / Teams). One or the other —
+  // the format toggle on the "When" step picks which field shows.
+  const [gatheringFormat, setGatheringFormat] = useState<"in_person" | "video">("in_person");
+  const [meetingUrl, setMeetingUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -181,7 +186,18 @@ export default function TraditionNew() {
   async function handleCreate() {
     if (!user) return;
     if (!firstPick) { setError("Pick a time for your first gathering."); return; }
-    if (!firstLocation.trim()) { setError("Where will this gathering happen?"); return; }
+    if (gatheringFormat === "in_person" && !firstLocation.trim()) {
+      setError("Where will this gathering happen?");
+      return;
+    }
+    if (gatheringFormat === "video") {
+      const url = meetingUrl.trim();
+      if (!url) { setError("Paste the video call link."); return; }
+      if (!/^https?:\/\/\S+$/i.test(url)) {
+        setError("That doesn't look like a link — it should start with https://");
+        return;
+      }
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -227,13 +243,19 @@ export default function TraditionNew() {
         // Scope the gathering to the chosen community so it shows up
         // on /groups/:slug/gatherings for every member.
         groupId: selectedGroupId ?? undefined,
+        // Video-call gatherings carry a meetingUrl; in-person ones
+        // leave it undefined and use the per-meetup location instead.
+        meetingUrl: gatheringFormat === "video" ? meetingUrl.trim() : undefined,
       });
 
       // Save proposed times + location → creates meetup + Google Calendar invite with alternates.
       // Location is per-meetup going forward, so it's sent here (not on the ritual create).
+      // For a video-call gathering we send the meeting link as the
+      // meetup location so the Google Calendar invite has a clickable
+      // join link; in-app surfaces read the ritual-level meetingUrl.
       await apiRequest("PATCH", `/api/rituals/${result.id}/proposed-times`, {
         proposedTimes,
-        location: firstLocation.trim(),
+        location: gatheringFormat === "video" ? meetingUrl.trim() : firstLocation.trim(),
       });
 
       qc.invalidateQueries({ queryKey: ["/api/rituals"] });
@@ -650,23 +672,81 @@ export default function TraditionNew() {
                 </div>
               </div>
 
-              {/* Location (required, tied to this first gathering) */}
-              <div className="mb-5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C8D4C0" }}>
-                  Where · Required
-                </p>
-                <input
-                  type="text"
-                  value={firstLocation}
-                  onChange={(e) => setFirstLocation(e.target.value)}
-                  placeholder="e.g. The coffee shop on Main, my kitchen, Zoom…"
-                  className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-                  style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
-                />
-                <p className="text-xs mt-2" style={{ color: "#8FAF96" }}>
-                  Location is per event — set it fresh each time you gather.
-                </p>
+              {/* Format toggle — in-person vs video call. Picks which
+                  field shows below: a free-text place, or a meeting
+                  link. Same visual vocabulary as the fixed/flexible
+                  toggle above it. */}
+              <div
+                className="grid grid-cols-2 gap-2 mb-4 p-1 rounded-2xl"
+                style={{ background: "rgba(15,40,24,0.6)", border: "1px solid rgba(46,107,64,0.25)" }}
+              >
+                {(["in_person", "video"] as const).map((fmt) => {
+                  const active = gatheringFormat === fmt;
+                  return (
+                    <button
+                      key={fmt}
+                      type="button"
+                      onClick={() => { setGatheringFormat(fmt); setError(""); }}
+                      className="rounded-xl py-2.5 text-sm font-semibold transition-colors"
+                      style={{
+                        background: active ? "#2D5E3F" : "transparent",
+                        color: active ? "#F0EDE6" : "#8FAF96",
+                      }}
+                    >
+                      <span className="block text-sm">{fmt === "in_person" ? "In person" : "Video call"}</span>
+                      <span
+                        className="block text-[10px] font-normal mt-0.5"
+                        style={{
+                          color: active ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.6)",
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {fmt === "in_person" ? "Meet at a place" : "Zoom, Meet, Teams…"}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+
+              {gatheringFormat === "in_person" ? (
+                /* Location (required, tied to this first gathering) */
+                <div className="mb-5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C8D4C0" }}>
+                    Where · Required
+                  </p>
+                  <input
+                    type="text"
+                    value={firstLocation}
+                    onChange={(e) => setFirstLocation(e.target.value)}
+                    placeholder="e.g. The coffee shop on Main, my kitchen…"
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
+                  />
+                  <p className="text-xs mt-2" style={{ color: "#8FAF96" }}>
+                    Location is per event — set it fresh each time you gather.
+                  </p>
+                </div>
+              ) : (
+                /* Video call link (required) — one stable link reused
+                   for every occurrence. */
+                <div className="mb-5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "#C8D4C0" }}>
+                    Video call link · Required
+                  </p>
+                  <input
+                    type="url"
+                    inputMode="url"
+                    value={meetingUrl}
+                    onChange={(e) => setMeetingUrl(e.target.value)}
+                    placeholder="https://zoom.us/j/…"
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
+                  />
+                  <p className="text-xs mt-2" style={{ color: "#8FAF96" }}>
+                    Paste your Zoom, Google Meet, or Teams link — everyone uses the same link each time.
+                  </p>
+                </div>
+              )}
 
               {/* Alternatives — flexible mode only. Hidden entirely for
                   fixed-time gatherings (parish dinners, scheduled
@@ -734,7 +814,12 @@ export default function TraditionNew() {
 
               <button
                 onClick={handleCreate}
-                disabled={!firstPick || !firstLocation.trim() || submitting}
+                disabled={
+                  !firstPick
+                  || submitting
+                  || (gatheringFormat === "in_person" && !firstLocation.trim())
+                  || (gatheringFormat === "video" && !meetingUrl.trim())
+                }
                 className="w-full mt-8 py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >

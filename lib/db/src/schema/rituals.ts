@@ -13,6 +13,12 @@ export const ritualsTable = pgTable("rituals", {
   intention: text("intention"),
   ownerId: integer("owner_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   location: text("location"),
+  // Video-call link for "online" gatherings. When set, the gathering
+  // is a video call (Zoom / Meet / Teams / etc.) rather than an
+  // in-person meet — its cards render a "Join call" button instead of
+  // a location line. One stable link reused for every occurrence.
+  // Null for in-person gatherings.
+  meetingUrl: text("meeting_url"),
   proposedTimes: jsonb("proposed_times").notNull().default([]),
   confirmedTime: text("confirmed_time"),
   scheduleToken: text("schedule_token"),

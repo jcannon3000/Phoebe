@@ -317,6 +317,9 @@ components:
           type: ["string", "null"]
         location:
           type: ["string", "null"]
+        meetingUrl:
+          description: Video-call link for online gatherings (Zoom / Meet / Teams). Null for in-person gatherings.
+          type: ["string", "null"]
         participants:
           type: array
           items:
