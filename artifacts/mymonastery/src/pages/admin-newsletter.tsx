@@ -78,6 +78,23 @@ export default function AdminNewsletterPage() {
       .reduce((sum, g) => sum + g.memberCount, 0);
   }, [scope, allUsersCount, groups, selectedGroupIds]);
 
+  const preview = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/admin/newsletter/preview", {
+        subject: subject.trim(),
+        bodyMarkdown: body.trim(),
+      }),
+    onSuccess: (res: { sentTo: string }) => {
+      toast({ title: `Preview sent to ${res.sentTo}.` });
+    },
+    onError: (err: any) => {
+      toast({
+        title: err?.message || "Failed to send preview.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const send = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/admin/newsletter", {
@@ -125,6 +142,11 @@ export default function AdminNewsletterPage() {
   }
 
   if (authLoading || !user || !rawIsAdmin) return null;
+
+  const canPreview =
+    subject.trim().length > 0 &&
+    body.trim().length > 0 &&
+    !preview.isPending;
 
   const canSend =
     subject.trim().length > 0 &&
@@ -198,9 +220,24 @@ export default function AdminNewsletterPage() {
           className="w-full text-sm px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/30 font-mono leading-relaxed resize-y"
           style={inputStyle}
         />
-        <p className="text-[11px] mt-1.5 mb-5" style={{ color: "rgba(143,175,150,0.5)" }}>
+        <p className="text-[11px] mt-1.5 mb-3" style={{ color: "rgba(143,175,150,0.5)" }}>
           Markdown supported. A line like <code style={{ color: "#8FAF96" }}>[[Join us]](https://withphoebe.app)</code> becomes a green button pill.
         </p>
+
+        {/* Preview to self */}
+        <button
+          onClick={() => preview.mutate()}
+          disabled={!canPreview}
+          className="w-full py-2.5 rounded-xl text-sm font-medium transition-all mb-6"
+          style={{
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.3)",
+            color: canPreview ? "#C8D4C0" : "rgba(143,175,150,0.4)",
+            cursor: canPreview ? "pointer" : "not-allowed",
+          }}
+        >
+          {preview.isPending ? "Sending preview…" : "📨 Send a preview to my email"}
+        </button>
 
         {/* Recipients */}
         <label className="text-[11px] font-semibold uppercase tracking-[0.12em] mb-2 block" style={labelStyle}>

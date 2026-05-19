@@ -128,6 +128,45 @@ router.get("/admin/newsletters", async (req, res): Promise<void> => {
   }
 });
 
+// POST /api/admin/newsletter/preview — send a one-off preview of the
+// rendered newsletter to the requesting admin's own email. Nothing is
+// logged and no other recipients are touched — it's just a test send
+// so the admin can see exactly how the email looks before sending.
+router.post("/admin/newsletter/preview", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(user.id))) {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+
+  const schema = z.object({
+    subject: z.string().trim().min(1).max(200),
+    bodyMarkdown: z.string().trim().min(1).max(20000),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "A subject and body are required" });
+    return;
+  }
+
+  try {
+    const ok = await sendNewsletterEmail({
+      to: user.email,
+      subject: `[Preview] ${parsed.data.subject}`,
+      bodyMarkdown: parsed.data.bodyMarkdown,
+    });
+    if (!ok) {
+      res.status(502).json({ error: "Email service is unavailable right now" });
+      return;
+    }
+    res.json({ ok: true, sentTo: user.email });
+  } catch (err) {
+    console.error("POST /api/admin/newsletter/preview error:", err);
+    res.status(500).json({ error: "Failed to send preview" });
+  }
+});
+
 // POST /api/admin/newsletter — compose + send a newsletter. Recipients
 // are resolved, the row is logged, and the response returns immediately
 // with the recipient count; the actual email fan-out runs in the
