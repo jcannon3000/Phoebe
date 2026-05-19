@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import {
   db,
   prayerRequestsTable,
@@ -10,6 +10,7 @@ import {
   prayerFeedEntriesTable,
   prayerFeedRecurringEntriesTable,
   prayerFeedsTable,
+  sharedMomentsTable,
   usersTable,
 } from "@workspace/db";
 import { sql } from "drizzle-orm";
@@ -132,36 +133,33 @@ export async function buildIntercessionsSlide(
         .limit(15)
     : [];
 
-  // --- 4. Today's published entry on each subscribed feed. Date is
-  //        compared in UTC to keep this cheap; near-midnight users in
-  //        the wrong timezone may briefly see yesterday's or
-  //        tomorrow's entry, which is acceptable for an office surface.
-  const todayStr = cacheDate.toISOString().slice(0, 10);
+  // --- 4. Intercessions from each subscribed prayer feed. Feeds are a
+  //        flat, ongoing list of intercessions now (the day-scheduled
+  //        entry system was retired) — newest first, capped so the
+  //        office paragraph stays short.
   const feedSubs = await db
     .select({ feedId: prayerFeedSubscriptionsTable.feedId })
     .from(prayerFeedSubscriptionsTable)
     .where(eq(prayerFeedSubscriptionsTable.userId, userId));
   const subscribedFeedIds = feedSubs.map((s) => s.feedId);
-  // Up to three slots per (feed, today). Each slot is its own
-  // intention; we render them as three lines in the combined
-  // intercessions paragraph below, keyed by slot order.
   const feedRows = subscribedFeedIds.length > 0
     ? await db
         .select({
-          id: prayerFeedEntriesTable.id,
-          slot: prayerFeedEntriesTable.slot,
-          title: prayerFeedEntriesTable.title,
+          id: sharedMomentsTable.id,
+          title: sql<string>`coalesce(${sharedMomentsTable.intercessionTopic}, ${sharedMomentsTable.name})`,
           feedTitle: prayerFeedsTable.title,
         })
-        .from(prayerFeedEntriesTable)
-        .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedEntriesTable.feedId))
+        .from(sharedMomentsTable)
+        .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, sharedMomentsTable.prayerFeedId))
         .where(
           and(
-            inArray(prayerFeedEntriesTable.feedId, subscribedFeedIds),
-            eq(prayerFeedEntriesTable.entryDate, todayStr),
-            eq(prayerFeedEntriesTable.state, "published"),
+            inArray(sharedMomentsTable.prayerFeedId, subscribedFeedIds),
+            eq(sharedMomentsTable.templateType, "intercession"),
+            sql`${sharedMomentsTable.state} <> 'archived'`,
           ),
         )
+        .orderBy(desc(sharedMomentsTable.createdAt))
+        .limit(6)
     : [];
 
   // Compose the body text. Each source becomes its own section if
@@ -343,73 +341,16 @@ export async function buildIntercessionSlides(
         .limit(15)
     : [];
 
-  const todayStr = cacheDate.toISOString().slice(0, 10);
   const feedSubs = await db
     .select({ feedId: prayerFeedSubscriptionsTable.feedId })
     .from(prayerFeedSubscriptionsTable)
     .where(eq(prayerFeedSubscriptionsTable.userId, userId));
   const subscribedFeedIds = feedSubs.map((s) => s.feedId);
-  // Up to three slots per (feed, today) — each becomes its own
-  // intercession slide on the subscriber side. Order ascends by
-  // slot so a feed programmed with morning / midday / evening
-  // intentions reads top-to-bottom in the deck.
-  // Concrete one-time entries for today.
-  const concreteRows = subscribedFeedIds.length > 0
-    ? await db
-        .select({
-          id: prayerFeedEntriesTable.id,
-          feedId: prayerFeedEntriesTable.feedId,
-          slot: prayerFeedEntriesTable.slot,
-          title: prayerFeedEntriesTable.title,
-          body: prayerFeedEntriesTable.body,
-          learnMoreUrl: prayerFeedEntriesTable.learnMoreUrl,
-          feedTitle: prayerFeedsTable.title,
-          feedSlug: prayerFeedsTable.slug,
-          entryDate: prayerFeedEntriesTable.entryDate,
-        })
-        .from(prayerFeedEntriesTable)
-        .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedEntriesTable.feedId))
-        .where(
-          and(
-            inArray(prayerFeedEntriesTable.feedId, subscribedFeedIds),
-            eq(prayerFeedEntriesTable.entryDate, todayStr),
-            eq(prayerFeedEntriesTable.state, "published"),
-          ),
-        )
-    : [];
 
-  // Recurring templates that fire today. weekdaysMask uses the bit
-  // index = (Sunday=0..Saturday=6). cacheDate is the user's "today"
-  // anchor; UTC getUTCDay matches that since cacheDate is built
-  // from local-day boundaries already.
-  const todayWeekdayBit = 1 << cacheDate.getUTCDay();
-  const recurringRows = subscribedFeedIds.length > 0
-    ? await db
-        .select({
-          id: prayerFeedRecurringEntriesTable.id,
-          feedId: prayerFeedRecurringEntriesTable.feedId,
-          slot: prayerFeedRecurringEntriesTable.slot,
-          title: prayerFeedRecurringEntriesTable.title,
-          body: prayerFeedRecurringEntriesTable.body,
-          learnMoreUrl: prayerFeedRecurringEntriesTable.learnMoreUrl,
-          feedTitle: prayerFeedsTable.title,
-          feedSlug: prayerFeedsTable.slug,
-        })
-        .from(prayerFeedRecurringEntriesTable)
-        .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedRecurringEntriesTable.feedId))
-        .where(
-          and(
-            inArray(prayerFeedRecurringEntriesTable.feedId, subscribedFeedIds),
-            eq(prayerFeedRecurringEntriesTable.state, "live"),
-            // Bitmask AND > 0 — today's weekday is in the rule.
-            sql`(${prayerFeedRecurringEntriesTable.weekdaysMask} & ${todayWeekdayBit}) <> 0`,
-          ),
-        )
-    : [];
-
-  // Merge: concrete entries win over recurring on conflicting
-  // (feed, slot) pairs. The admin can override a daily template
-  // for one specific date by writing a one-time entry.
+  // Feed intercessions — the flat, ongoing list of every prayer feed
+  // the viewer subscribes to. Newest first, capped so the devotion
+  // stays short. (Feeds used to be day-scheduled; that system was
+  // retired — a feed is now just a list of intercessions.)
   type FeedRow = {
     id: number;
     slot: number;
@@ -420,33 +361,38 @@ export async function buildIntercessionSlides(
     feedSlug: string | null;
     entryDate: string | null;
   };
-  const bySlotKey = (feedId: number | null, slot: number) => `${feedId ?? 0}:${slot}`;
-  const merged = new Map<string, FeedRow>();
-  for (const r of recurringRows) {
-    merged.set(bySlotKey(r.feedId, r.slot), {
-      id: r.id,
-      slot: r.slot,
-      title: r.title,
-      body: r.body,
-      learnMoreUrl: r.learnMoreUrl,
-      feedTitle: r.feedTitle ?? null,
-      feedSlug: r.feedSlug ?? null,
-      entryDate: null,
-    });
-  }
-  for (const r of concreteRows) {
-    merged.set(bySlotKey(r.feedId, r.slot), {
-      id: r.id,
-      slot: r.slot,
-      title: r.title,
-      body: r.body,
-      learnMoreUrl: r.learnMoreUrl,
-      feedTitle: r.feedTitle ?? null,
-      feedSlug: r.feedSlug ?? null,
-      entryDate: r.entryDate,
-    });
-  }
-  const feedRows: FeedRow[] = [...merged.values()].sort((a, b) => a.slot - b.slot);
+  const feedMomentRows = subscribedFeedIds.length > 0
+    ? await db
+        .select({
+          id: sharedMomentsTable.id,
+          title: sql<string>`coalesce(${sharedMomentsTable.intercessionTopic}, ${sharedMomentsTable.name})`,
+          body: sharedMomentsTable.intercessionFullText,
+          learnMoreUrl: sharedMomentsTable.learnMoreUrl,
+          feedTitle: prayerFeedsTable.title,
+          feedSlug: prayerFeedsTable.slug,
+        })
+        .from(sharedMomentsTable)
+        .leftJoin(prayerFeedsTable, eq(prayerFeedsTable.id, sharedMomentsTable.prayerFeedId))
+        .where(
+          and(
+            inArray(sharedMomentsTable.prayerFeedId, subscribedFeedIds),
+            eq(sharedMomentsTable.templateType, "intercession"),
+            sql`${sharedMomentsTable.state} <> 'archived'`,
+          ),
+        )
+        .orderBy(desc(sharedMomentsTable.createdAt))
+        .limit(6)
+    : [];
+  const feedRows: FeedRow[] = feedMomentRows.map((r, i) => ({
+    id: r.id,
+    slot: i,
+    title: r.title,
+    body: r.body ?? "",
+    learnMoreUrl: r.learnMoreUrl,
+    feedTitle: r.feedTitle ?? null,
+    feedSlug: r.feedSlug ?? null,
+    entryDate: null,
+  }));
 
   const slides: Slide[] = [];
   const dayKey = cacheDate.toISOString().slice(0, 10);
