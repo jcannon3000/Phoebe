@@ -160,8 +160,12 @@ export default function LetterNew() {
         setLocation(`/letters/${existingId}`);
         return;
       }
-      const autoName = `Letters with ${other.name || other.email.split("@")[0]}`;
-      createMutation.mutate({ type: "one_to_one", name: autoName, members: validMembers });
+      // Don't create the correspondence here — go straight to writing.
+      // The dialogue is created atomically when the first letter sends
+      // (POST /phoebe/correspondences/start), same as the profile flow.
+      const to = encodeURIComponent(other.email.trim());
+      const toName = other.name ? `&toName=${encodeURIComponent(other.name)}` : "";
+      setLocation(`/letters/compose?to=${to}${toName}`);
     } else {
       if (!name) setName("Our Updates");
       setStep(3);

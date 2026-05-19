@@ -143,7 +143,13 @@ export default function PersonProfile() {
     enabled: !!user && !!email,
   });
 
+  // Correspondences with this person. Zero-letter ones are filtered
+  // out: a dialogue with no letters yet isn't a relationship surface —
+  // it's either a stale row from the old "create then write" flow or
+  // a group setup the creator hasn't opened. Dropping them here means
+  // the "Write a letter" CTA still shows (and no empty card appears).
   const sharedLetters = (correspondencesData ?? []).filter(c =>
+    c.letterCount > 0 &&
     c.members.some(m => m.email.toLowerCase() === (email ?? "").toLowerCase())
   );
 
