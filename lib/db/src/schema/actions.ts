@@ -31,6 +31,10 @@ export const actionsTable = pgTable("actions", {
   // When the action happens. Drives dashboard date-bucketing and the
   // week-before / day-before reminder pushes.
   eventAt: timestamp("event_at", { withTimezone: true }).notNull(),
+  // Optional subject line for the "email your officials" flow — when
+  // the action has action_officials rows, this is the pre-filled
+  // mailto subject. Null falls back to the action title.
+  emailSubject: text("email_subject"),
   // Optional intercession the community prays toward this action. Points
   // at a shared_moments row (typically in the same community). Null means
   // no attached prayer. ON DELETE SET NULL so deleting the intercession

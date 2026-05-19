@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, ApiError } from "@/lib/queryClient";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 // ── New action ───────────────────────────────────────────────────────────────
 // Admin-only form for creating a community "action" (an advocacy /
@@ -65,6 +66,20 @@ export default function ActionNewPage() {
   const [attachedMomentId, setAttachedMomentId] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // "Email your officials" — beta only. The creator names the
+  // officials members should email about this action.
+  const { isBeta } = useBetaStatus();
+  const [emailSubject, setEmailSubject] = useState("");
+  const [officials, setOfficials] = useState<
+    Array<{ name: string; title: string; email: string }>
+  >([]);
+  const addOfficial = () =>
+    setOfficials((o) => [...o, { name: "", title: "", email: "" }]);
+  const updateOfficial = (i: number, field: "name" | "title" | "email", value: string) =>
+    setOfficials((o) => o.map((x, j) => (j === i ? { ...x, [field]: value } : x)));
+  const removeOfficial = (i: number) =>
+    setOfficials((o) => o.filter((_, j) => j !== i));
+
   // Default the community to the only one the user administers.
   const effectiveGroupId = groupId ?? (adminGroups.length === 1 ? adminGroups[0].id : null);
 
@@ -81,6 +96,14 @@ export default function ActionNewPage() {
   const createMutation = useMutation({
     mutationFn: () => {
       const iso = new Date(eventAt).toISOString();
+      const cleanOfficials = officials
+        .map((o) => ({
+          name: o.name.trim(),
+          title: o.title.trim(),
+          email: o.email.trim(),
+        }))
+        .filter((o) => o.name && o.email)
+        .map((o) => ({ name: o.name, title: o.title || undefined, email: o.email }));
       return apiRequest("POST", "/api/actions", {
         groupId: effectiveGroupId,
         title: title.trim(),
@@ -89,6 +112,11 @@ export default function ActionNewPage() {
         location: location.trim() || undefined,
         learnMoreUrl: learnMoreUrl.trim() || undefined,
         attachedMomentId: attachedMomentId ?? undefined,
+        officials: isBeta && cleanOfficials.length > 0 ? cleanOfficials : undefined,
+        emailSubject:
+          isBeta && cleanOfficials.length > 0 && emailSubject.trim()
+            ? emailSubject.trim()
+            : undefined,
       }) as Promise<{ action: { id: number } }>;
     },
     onSuccess: (res) => {
@@ -122,6 +150,16 @@ export default function ActionNewPage() {
     if (isNaN(new Date(eventAt).getTime())) {
       setFormError("That date and time looks off.");
       return;
+    }
+    if (isBeta) {
+      const halfFilled = officials.some((o) => {
+        const filled = o.name.trim() || o.title.trim() || o.email.trim();
+        return filled && !(o.name.trim() && o.email.trim());
+      });
+      if (halfFilled) {
+        setFormError("Each official needs both a name and an email.");
+        return;
+      }
     }
     createMutation.mutate();
   };
@@ -285,6 +323,114 @@ export default function ActionNewPage() {
                   >
                     Links a community intercession to this action.
                   </p>
+                </div>
+              )}
+
+              {/* Email your officials — beta only. The creator names
+                  the officials members should email about this; each
+                  becomes an "Email …" button on the detail page that
+                  opens the device mail app pre-filled. */}
+              {isBeta && (
+                <div>
+                  <Label>Email your officials (optional)</Label>
+                  <p
+                    className="text-[12px] mb-2.5"
+                    style={{ color: "rgba(143,175,150,0.7)" }}
+                  >
+                    Add officials members can email about this — name, role,
+                    and their public email address. State &amp; local officials
+                    publish these; members of Congress don't.
+                  </p>
+                  <div className="flex flex-col gap-2.5">
+                    {officials.map((o, i) => (
+                      <div
+                        key={i}
+                        className="rounded-xl p-3 flex flex-col gap-2"
+                        style={{
+                          background: "rgba(46,107,64,0.08)",
+                          border: "1px solid rgba(46,107,64,0.25)",
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={o.name}
+                          onChange={(e) => updateOfficial(i, "name", e.target.value)}
+                          placeholder="Name (e.g. Jane Doe)"
+                          maxLength={160}
+                          className="w-full rounded-lg px-3 py-2.5 text-sm"
+                          style={INPUT_STYLE}
+                        />
+                        <input
+                          type="text"
+                          value={o.title}
+                          onChange={(e) => updateOfficial(i, "title", e.target.value)}
+                          placeholder="Role (e.g. State Senator, District 5)"
+                          maxLength={160}
+                          className="w-full rounded-lg px-3 py-2.5 text-sm"
+                          style={INPUT_STYLE}
+                        />
+                        <input
+                          type="email"
+                          value={o.email}
+                          onChange={(e) => updateOfficial(i, "email", e.target.value)}
+                          placeholder="email@…"
+                          maxLength={320}
+                          className="w-full rounded-lg px-3 py-2.5 text-sm"
+                          style={INPUT_STYLE}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeOfficial(i)}
+                          className="self-start text-[12px] transition-opacity hover:opacity-80"
+                          style={{
+                            color: "rgba(200,150,150,0.8)",
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            fontFamily: FONT,
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addOfficial}
+                    className="mt-2.5 text-[13px] font-semibold rounded-full px-3.5 py-2 transition-opacity hover:opacity-90"
+                    style={{
+                      background: "rgba(46,107,64,0.18)",
+                      border: "1px solid rgba(46,107,64,0.4)",
+                      color: "#A8C5A0",
+                      fontFamily: FONT,
+                      cursor: "pointer",
+                    }}
+                  >
+                    + Add an official
+                  </button>
+                  {officials.length > 0 && (
+                    <div className="mt-3">
+                      <Label>Email subject</Label>
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        placeholder={title.trim() || "Subject line for the email"}
+                        maxLength={200}
+                        className="w-full rounded-xl px-3 py-3 text-sm"
+                        style={INPUT_STYLE}
+                      />
+                      <p
+                        className="text-[12px] mt-1.5"
+                        style={{ color: "rgba(143,175,150,0.7)" }}
+                      >
+                        Members write their own note; this is just the subject
+                        line. Defaults to the action title.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

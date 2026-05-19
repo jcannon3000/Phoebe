@@ -38,3 +38,5 @@ export * from "./content_reports";
 export * from "./prayer_sessions";
 export * from "./actions";
 export * from "./action_rsvps";
+export * from "./action_officials";
+export * from "./action_email_sends";

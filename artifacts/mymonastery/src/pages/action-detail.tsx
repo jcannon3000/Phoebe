@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 // ── Action detail page ───────────────────────────────────────────────────────
 // Landing page for a community "action" — an advocacy / community-action
@@ -19,6 +20,13 @@ const FONT = "'Space Grotesk', sans-serif";
 type RsvpPerson = { userId: number; name: string; avatarUrl: string | null };
 type RsvpStatus = "coming" | "maybe";
 
+type ActionOfficial = {
+  id: number;
+  name: string;
+  title: string | null;
+  email: string;
+};
+
 type ActionDetail = {
   action: {
     id: number;
@@ -28,12 +36,15 @@ type ActionDetail = {
     learnMoreUrl: string | null;
     location: string | null;
     eventAt: string;
+    emailSubject: string | null;
     state: string;
     createdAt: string;
   };
   group: { id: number; name: string; emoji: string | null; slug: string } | null;
   creator: { id: number; name: string } | null;
   attachedIntercession: { id: number; name: string; intention: string } | null;
+  officials: ActionOfficial[];
+  emailSendCount: number;
   rsvps: { coming: RsvpPerson[]; maybe: RsvpPerson[] };
   myRsvp: RsvpStatus | null;
   canManage: boolean;
@@ -141,6 +152,39 @@ export default function ActionDetailPage() {
     if (rsvpMutation.isPending) return;
     const next = data?.myRsvp === status ? null : status;
     rsvpMutation.mutate(next);
+  };
+
+  // "Email your officials" — beta only. The note the user writes is
+  // shared across every official (one paragraph, sent to each).
+  const { isBeta } = useBetaStatus();
+  const [note, setNote] = useState("");
+
+  // Logs an email "started" so the action can show how many went out.
+  // Best-effort — a failure here shouldn't block the mail app opening.
+  const emailSentMutation = useMutation({
+    mutationFn: (officialId: number) =>
+      apiRequest("POST", `/api/actions/${id}/email-sent`, { officialId }) as Promise<{
+        emailSendCount: number;
+      }>,
+    onSuccess: (res) => {
+      queryClient.setQueryData<ActionDetail>(queryKey, (prev) =>
+        prev ? { ...prev, emailSendCount: res.emailSendCount } : prev,
+      );
+    },
+  });
+
+  // Build the mailto + hand off to the device mail app, then log it.
+  const emailOfficial = (official: ActionOfficial) => {
+    if (!data) return;
+    const subject = data.action.emailSubject?.trim() || data.action.title;
+    const url =
+      `mailto:${encodeURIComponent(official.email)}` +
+      `?subject=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(note)}`;
+    // mailto is a non-http scheme — hand it straight to the OS rather
+    // than the in-app browser.
+    window.location.href = url;
+    emailSentMutation.mutate(official.id);
   };
 
   return (
@@ -283,6 +327,103 @@ export default function ActionDetailPage() {
                     </p>
                   </div>
                 </Link>
+              )}
+
+              {/* Email your officials — beta only. Each button opens
+                  the device mail app pre-filled with the official's
+                  address, the subject, and the note the member writes
+                  here, then logs it toward the "emails sent" count. */}
+              {isBeta && data.officials.length > 0 && (
+                <div className="mb-6">
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-widest mb-2"
+                    style={{ color: "rgba(143,175,150,0.55)" }}
+                  >
+                    Email your officials
+                  </p>
+                  <p className="text-[13px] mb-3" style={{ color: "#8FAF96" }}>
+                    Write a short note in your own words, then send — it opens
+                    your mail app, ready to go.
+                  </p>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Dear ___, I'm a constituent, and I'm writing because…"
+                    rows={5}
+                    maxLength={4000}
+                    className="w-full rounded-xl px-3 py-3 text-sm leading-relaxed mb-3"
+                    style={{
+                      background: "#0F2818",
+                      border: "1px solid rgba(46,107,64,0.4)",
+                      color: "#F0EDE6",
+                      fontFamily: FONT,
+                      resize: "vertical",
+                    }}
+                  />
+                  <div className="flex flex-col gap-2">
+                    {data.officials.map((o) => (
+                      <div
+                        key={o.id}
+                        className="rounded-xl p-3 flex items-center justify-between gap-3"
+                        style={{
+                          background: "rgba(46,107,64,0.1)",
+                          border: "1px solid rgba(46,107,64,0.3)",
+                        }}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className="text-sm font-semibold"
+                            style={{ color: "#F0EDE6", margin: 0 }}
+                          >
+                            {o.name}
+                          </p>
+                          {o.title && (
+                            <p
+                              className="text-[12px] mt-0.5"
+                              style={{ color: "rgba(143,175,150,0.8)", margin: 0 }}
+                            >
+                              {o.title}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => emailOfficial(o)}
+                          disabled={!note.trim()}
+                          className="text-[12px] font-semibold px-3 py-2 rounded-full shrink-0 transition-opacity hover:opacity-90 disabled:opacity-45"
+                          style={{
+                            background: "#2D5E3F",
+                            border: "1px solid rgba(46,107,64,0.7)",
+                            color: "#F0EDE6",
+                            fontFamily: FONT,
+                            cursor: note.trim() ? "pointer" : "default",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ✉️ Email
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {!note.trim() && (
+                    <p
+                      className="text-[12px] mt-2"
+                      style={{ color: "rgba(143,175,150,0.6)" }}
+                    >
+                      Write your note above to send.
+                    </p>
+                  )}
+                  {data.emailSendCount > 0 && (
+                    <p
+                      className="text-[12px] mt-2.5"
+                      style={{ color: "rgba(143,175,150,0.85)" }}
+                    >
+                      🕊️ {data.emailSendCount}{" "}
+                      {data.emailSendCount === 1 ? "email" : "emails"} sent from
+                      your community.
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* RSVP — two options. The selected one is filled; tapping

@@ -5,10 +5,13 @@ import {
   db,
   actionsTable,
   actionRsvpsTable,
+  actionOfficialsTable,
+  actionEmailSendsTable,
   usersTable,
   groupsTable,
   groupMembersTable,
   sharedMomentsTable,
+  betaUsersTable,
 } from "@workspace/db";
 import { sendNewActionPush } from "../lib/pushSender";
 
@@ -72,6 +75,23 @@ async function canManageAction(
   return isGroupAdmin(action.groupId, userId);
 }
 
+// "Email your officials" is a beta-only feature. Gates who can attach
+// officials to an action and who can log an email send.
+async function isBetaUser(userId: number): Promise<boolean> {
+  const [u] = await db
+    .select({ email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (!u) return false;
+  const [beta] = await db
+    .select({ email: betaUsersTable.email })
+    .from(betaUsersTable)
+    .where(eq(betaUsersTable.email, u.email.toLowerCase()))
+    .limit(1);
+  return !!beta;
+}
+
 // ─── RSVP roster ─────────────────────────────────────────────────────────────
 // Shared by GET /:id and PUT /:id/rsvp so the detail page can refresh the
 // roster from a single response after an RSVP toggle.
@@ -116,6 +136,19 @@ const CreateActionBody = z.object({
   location: z.string().trim().max(500).optional(),
   eventAt: z.string().min(1),
   attachedMomentId: z.number().int().positive().nullable().optional(),
+  // "Email your officials" (beta) — an optional subject line and the
+  // officials to contact. Officials are dropped for non-beta creators.
+  emailSubject: z.string().trim().max(200).optional(),
+  officials: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(160),
+        title: z.string().trim().max(160).optional(),
+        email: z.string().trim().email().max(320),
+      }),
+    )
+    .max(10)
+    .optional(),
 });
 
 router.post("/actions", async (req, res): Promise<void> => {
@@ -182,11 +215,26 @@ router.post("/actions", async (req, res): Promise<void> => {
         location: data.location?.trim() || null,
         eventAt,
         attachedMomentId,
+        emailSubject: data.emailSubject?.trim() || null,
         state: "active",
         weekReminderSentAt,
         dayReminderSentAt,
       })
       .returning();
+
+    // "Email your officials" (beta only) — attach the target officials
+    // so the detail page can surface the mailto flow. Silently dropped
+    // for non-beta creators.
+    if ((data.officials?.length ?? 0) > 0 && (await isBetaUser(userId))) {
+      await db.insert(actionOfficialsTable).values(
+        data.officials!.map((o) => ({
+          actionId: action.id,
+          name: o.name,
+          title: o.title?.trim() || null,
+          email: o.email.toLowerCase(),
+        })),
+      );
+    }
 
     // Fan out the on-creation push to every joined member except the creator.
     const [group] = await db
@@ -434,6 +482,28 @@ router.get("/actions/:id", async (req, res): Promise<void> => {
         ? "maybe"
         : null;
 
+  // "Email your officials" — the target officials + how many emails
+  // have been started so far. Empty officials list = no email section
+  // on the detail page.
+  const officials = await db
+    .select({
+      id: actionOfficialsTable.id,
+      name: actionOfficialsTable.name,
+      title: actionOfficialsTable.title,
+      email: actionOfficialsTable.email,
+    })
+    .from(actionOfficialsTable)
+    .where(eq(actionOfficialsTable.actionId, actionId))
+    .orderBy(asc(actionOfficialsTable.id));
+  let emailSendCount = 0;
+  if (officials.length > 0) {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(actionEmailSendsTable)
+      .where(eq(actionEmailSendsTable.actionId, actionId));
+    emailSendCount = count ?? 0;
+  }
+
   res.json({
     action: {
       id: action.id,
@@ -443,12 +513,15 @@ router.get("/actions/:id", async (req, res): Promise<void> => {
       learnMoreUrl: action.learnMoreUrl,
       location: action.location,
       eventAt: action.eventAt,
+      emailSubject: action.emailSubject,
       state: action.state,
       createdAt: action.createdAt,
     },
     group: group ?? null,
     creator: creator ?? null,
     attachedIntercession,
+    officials,
+    emailSendCount,
     rsvps: roster,
     myRsvp,
     canManage: await canManageAction(action, userId),
@@ -635,6 +708,77 @@ router.put("/actions/:id/rsvp", async (req, res): Promise<void> => {
 
   const roster = await loadRsvpRoster(actionId);
   res.json({ myRsvp: status, rsvps: roster });
+});
+
+// ─── Email-sent log ──────────────────────────────────────────────────────────
+// Logged when a member opens a pre-filled email to one of the action's
+// officials. Beta-only. Returns the refreshed total so the detail page
+// can update the "N emails sent" line without a refetch.
+
+const EmailSentBody = z.object({
+  officialId: z.number().int().positive().nullable().optional(),
+});
+
+router.post("/actions/:id/email-sent", async (req, res): Promise<void> => {
+  const userId = req.user ? (req.user as { id: number }).id : null;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const actionId = Number(req.params.id);
+  if (!Number.isFinite(actionId)) {
+    res.status(400).json({ error: "Invalid action id" });
+    return;
+  }
+  const parsed = EmailSentBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [action] = await db
+    .select({ id: actionsTable.id, groupId: actionsTable.groupId, state: actionsTable.state })
+    .from(actionsTable)
+    .where(eq(actionsTable.id, actionId))
+    .limit(1);
+  if (!action || action.state === "archived") {
+    res.status(404).json({ error: "Action not found" });
+    return;
+  }
+  const member = await isGroupMember(action.groupId, userId);
+  const admin = member ? false : await isGroupAdmin(action.groupId, userId);
+  if (!member && !admin) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  if (!(await isBetaUser(userId))) {
+    res.status(403).json({ error: "Beta-only feature" });
+    return;
+  }
+
+  // Validate the official belongs to this action; null = unattributed.
+  let officialId: number | null = null;
+  if (parsed.data.officialId != null) {
+    const [official] = await db
+      .select({ id: actionOfficialsTable.id })
+      .from(actionOfficialsTable)
+      .where(
+        and(
+          eq(actionOfficialsTable.id, parsed.data.officialId),
+          eq(actionOfficialsTable.actionId, actionId),
+        ),
+      )
+      .limit(1);
+    officialId = official ? official.id : null;
+  }
+
+  await db.insert(actionEmailSendsTable).values({ actionId, userId, officialId });
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(actionEmailSendsTable)
+    .where(eq(actionEmailSendsTable.actionId, actionId));
+  res.json({ emailSendCount: count ?? 0 });
 });
 
 export default router;
