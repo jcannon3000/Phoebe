@@ -1060,9 +1060,10 @@ export function sendPrayerRenewalNudgePush(
 //   • 1 request, N amens: "Sara and {N-1} others prayed for your request."
 //   • 2+ requests:        "Sara and others prayed for your requests today."
 //
-// Deep-links to the single request when there is only one in the batch;
-// otherwise lands on /my-prayer-requests so the requester can see all
-// of their requests at a glance.
+// Always deep-links to a single prayer's detail slide — the same view
+// (prayer body + the faces of everyone who prayed) the requester sees
+// when they tap the prayer-request card. When the batch spans several
+// requests the scanner picks the most-prayed one as the landing slide.
 export function sendHeldInPrayerPush(
   recipientUserId: number,
   opts: {
@@ -1083,11 +1084,13 @@ export function sendHeldInPrayerPush(
         : opts.amenCount === 2
           ? `${firstName} and 1 other prayed for your request.`
           : `${firstName} and ${opts.amenCount - 1} others prayed for your request.`;
-  // Single-request deep-link → request detail; multi-request → user's
-  // own list. threadId / collapseId use the recipient + day so iOS
-  // groups the daily ping under one stream.
+  // Always deep-link to one prayer's detail slide so tapping the push
+  // lands on the prayer + the faces of who prayed, exactly like tapping
+  // the prayer-request card. The scanner chooses the most-prayed
+  // request when the batch covers several. threadId / collapseId use
+  // the recipient + day so iOS groups the daily ping under one stream.
   const path =
-    opts.requestCount === 1 && opts.prayerRequestId !== null
+    opts.prayerRequestId !== null
       ? `/prayer-requests/${opts.prayerRequestId}`
       : `/my-prayer-requests`;
   const threadId = `held-in-prayer-${recipientUserId}-${opts.localYmd}`;

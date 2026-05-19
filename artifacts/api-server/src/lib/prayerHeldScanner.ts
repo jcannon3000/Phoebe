@@ -111,15 +111,23 @@ export async function runPrayerHeldScan(): Promise<void> {
       // recipient's tz). Use any row's dayKey for collapseId.
       const dayKey = earliest.dayKey;
 
+      // The push always deep-links to a single prayer slide showing the
+      // faces of who prayed — the same detail view as tapping the
+      // prayer-request card. When the batch spans several requests we
+      // land on the one with the most amens (the richest "who prayed"
+      // wall); ties break to the earliest-prayed request.
+      const deepLinkRequest = [...rows].sort(
+        (a, b) =>
+          b.amenCount - a.amenCount ||
+          a.firstAmenAt.getTime() - b.firstAmenAt.getTime(),
+      )[0];
+
       await sendHeldInPrayerPush(recipientId, {
         firstAmenName: firstAmenUser?.name || "Someone",
         firstAmenAvatarUrl: firstAmenUser?.avatarUrl ?? null,
         amenCount: totalAmens,
         requestCount,
-        // When there's a single request the push deep-links into that
-        // request's detail page; with two or more, it lands on the
-        // requester's own list since no single request is "the one."
-        prayerRequestId: requestCount === 1 ? earliest.requestId : null,
+        prayerRequestId: deepLinkRequest.requestId,
         localYmd: dayKey,
       });
     } catch (err) {
