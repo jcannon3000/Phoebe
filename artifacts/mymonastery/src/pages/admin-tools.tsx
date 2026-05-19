@@ -183,6 +183,12 @@ export default function AdminToolsPage() {
             {isAdmin && (
               <>
                 <LinkRow
+                  emoji="📨"
+                  label="Newsletter"
+                  description="Email Phoebe users"
+                  onClick={() => setLocation("/admin/newsletter")}
+                />
+                <LinkRow
                   emoji="🔐"
                   label="Pilot Users"
                   description="Manage beta access"

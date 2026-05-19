@@ -77,6 +77,169 @@ function encodeMimeMessage(options: {
   return Buffer.from(message).toString("base64url");
 }
 
+// ── Markdown → email HTML ────────────────────────────────────────────────────
+// A deliberately small renderer for newsletter bodies. Supports headings
+// (# ## ###), bold, italic, links, bullet/numbered lists, paragraphs, and
+// CTA pill buttons. A line on its own of the form
+//   [[Button label]](https://example.com)
+// becomes a green call-to-action pill. The input is HTML-escaped first,
+// so the only markup that survives is what this function emits — no
+// stored XSS even though the body is admin free-text. Every style is
+// inlined since email clients drop <style> blocks.
+
+// A line that is solely a CTA pill: [[label]](https://url)
+const CTA_PILL_RE = /^\[\[([^\]]+)\]\]\((https?:\/\/[^)\s]+)\)$/;
+
+// Inline formatting applied within a single line/list item. Assumes the
+// input has already been HTML-escaped.
+function renderInlineMarkdown(text: string): string {
+  let s = text;
+  // Links: [label](url) — url is constrained to http(s) to avoid
+  // javascript: URIs sneaking past the escape.
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    (_m, label, url) => `<a href="${url}" style="color:#4a7c59;text-decoration:underline;">${label}</a>`);
+  // Bold first (consumes **…**), then italic on the remaining single *.
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+  s = s.replace(/_([^_\n]+)_/g, "<em>$1</em>");
+  return s;
+}
+
+export function renderMarkdownToEmailHtml(md: string): string {
+  const lines = escapeHtml(md).replace(/\r\n/g, "\n").split("\n");
+  const blocks: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i] ?? "";
+    if (line.trim() === "") { i++; continue; }
+
+    const cta = CTA_PILL_RE.exec(line.trim());
+    if (cta) {
+      const label = renderInlineMarkdown(cta[1]!);
+      const url = cta[2]!;
+      blocks.push(
+        `<table cellpadding="0" cellspacing="0" style="margin:6px 0 24px;"><tr>` +
+        `<td style="border-radius:10px;background:#4a7c59;">` +
+        `<a href="${url}" style="display:inline-block;padding:14px 28px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-0.2px;">${label} &rarr;</a>` +
+        `</td></tr></table>`,
+      );
+      i++;
+      continue;
+    }
+
+    const heading = /^(#{1,3})\s+(.*)$/.exec(line);
+    if (heading) {
+      const level = heading[1]!.length;
+      const size = level === 1 ? 20 : level === 2 ? 17 : 15;
+      blocks.push(`<h${level} style="margin:24px 0 10px;font-size:${size}px;font-weight:600;color:#2d2a26;line-height:1.3;">${renderInlineMarkdown(heading[2]!)}</h${level}>`);
+      i++;
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*]\s+/.test(lines[i] ?? "")) {
+        items.push(`<li style="margin:0 0 6px;">${renderInlineMarkdown((lines[i] ?? "").replace(/^[-*]\s+/, ""))}</li>`);
+        i++;
+      }
+      blocks.push(`<ul style="margin:0 0 18px;padding-left:22px;font-size:15px;color:#3a3632;line-height:1.7;">${items.join("")}</ul>`);
+      continue;
+    }
+
+    if (/^\d+\.\s+/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i] ?? "")) {
+        items.push(`<li style="margin:0 0 6px;">${renderInlineMarkdown((lines[i] ?? "").replace(/^\d+\.\s+/, ""))}</li>`);
+        i++;
+      }
+      blocks.push(`<ol style="margin:0 0 18px;padding-left:22px;font-size:15px;color:#3a3632;line-height:1.7;">${items.join("")}</ol>`);
+      continue;
+    }
+
+    // Paragraph — accumulate consecutive non-blank, non-block lines.
+    const paraLines: string[] = [];
+    while (
+      i < lines.length &&
+      (lines[i] ?? "").trim() !== "" &&
+      !/^#{1,3}\s+/.test(lines[i] ?? "") &&
+      !/^[-*]\s+/.test(lines[i] ?? "") &&
+      !/^\d+\.\s+/.test(lines[i] ?? "") &&
+      !CTA_PILL_RE.test((lines[i] ?? "").trim())
+    ) {
+      paraLines.push(lines[i] ?? "");
+      i++;
+    }
+    blocks.push(`<p style="margin:0 0 18px;font-size:15px;color:#3a3632;line-height:1.7;">${paraLines.map(renderInlineMarkdown).join("<br>")}</p>`);
+  }
+  return blocks.join("\n");
+}
+
+// Newsletter-style email — an admin-composed message rendered from
+// markdown into the standard Phoebe email card.
+export async function sendNewsletterEmail(opts: {
+  to: string;
+  subject: string;
+  bodyMarkdown: string;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) {
+    console.warn("Gmail client unavailable — skipping newsletter email");
+    return false;
+  }
+
+  const bodyHtml = renderMarkdownToEmailHtml(opts.bodyMarkdown);
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
+          <tr>
+            <td>
+              <div style="margin-bottom:28px;">
+                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+              </div>
+              <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.subject)}</h1>
+              ${bodyHtml}
+              <p style="margin:8px 0 0;font-size:12px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
+                You're receiving this because you're a member of Phoebe.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const text = [
+    opts.subject,
+    "",
+    opts.bodyMarkdown,
+    "",
+    "---",
+    "You're receiving this because you're a member of Phoebe.",
+  ].join("\n");
+
+  try {
+    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    console.error("Failed to send newsletter email:", err);
+    return false;
+  }
+}
+
 export async function sendAnnouncementEmail(opts: {
   to: string;
   subject: string;

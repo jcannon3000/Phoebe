@@ -134,6 +134,7 @@ import BetaAdminPage from "./pages/beta-admin";
 import WaitlistAdminPage from "./pages/waitlist-admin";
 import BetaClaimPage from "./pages/beta-claim";
 import AdminToolsPage from "./pages/admin-tools";
+import AdminNewsletterPage from "./pages/admin-newsletter";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
 import FeaturesDeck from "./pages/features-deck";
@@ -283,9 +284,12 @@ function ParishGate({ children }: { children: ReactNode }) {
       }
       return;
     }
-    if (user.accessTier === "parish-only") {
-      // Allow the parish surfaces themselves + BCP + settings + the
-      // root onboarding fall-through.
+    if (user.accessTier === "parish-only" || user.accessTier === "offices-only") {
+      // Both restricted tiers get the same allowlist — the parish
+      // surfaces + BCP + settings + the root onboarding fall-through.
+      // An offices-only user has no parish, but its home (parish
+      // dashboard) and settings live under /parish, so the allowlist
+      // is identical; everything else bounces to /parish.
       const allowed =
         location === "/" ||
         location === "/parish" ||
@@ -365,6 +369,7 @@ function Router() {
       <Route path="/people/:email/report" component={ReportUserPage} />
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
+      <Route path="/admin/newsletter" component={AdminNewsletterPage} />
       <Route path="/prayer-list" component={PrayerListPage} />
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
       <Route path="/prayers-for-me" component={PrayersForMePage} />

@@ -40,3 +40,4 @@ export * from "./actions";
 export * from "./action_rsvps";
 export * from "./action_officials";
 export * from "./action_email_sends";
+export * from "./newsletters";

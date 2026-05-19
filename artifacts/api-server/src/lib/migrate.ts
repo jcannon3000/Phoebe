@@ -1581,6 +1581,25 @@ export async function migrate() {
       logger.error({ err }, "BCP text seed failed (non-fatal — server still starts)");
     }
 
+    // ── Newsletters ────────────────────────────────────────────────────────
+    // Admin-composed newsletter emails. One row per send for audit history.
+    // recipient_scope is "all" (every user) or "groups" (members of the
+    // group ids in group_ids).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS newsletters (
+        id SERIAL PRIMARY KEY,
+        subject TEXT NOT NULL,
+        body_markdown TEXT NOT NULL,
+        recipient_scope TEXT NOT NULL,
+        group_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+        recipient_count INTEGER NOT NULL DEFAULT 0,
+        sent_count INTEGER NOT NULL DEFAULT 0,
+        sent_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sent_by_name TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
