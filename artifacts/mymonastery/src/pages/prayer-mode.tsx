@@ -40,6 +40,11 @@ type Moment = {
   // phoebe-climate is the only feed, so a non-null prayerFeedId is
   // treated as the climate-justice tag.
   prayerFeedId?: number | null;
+  // Creation time — orders a feed's intercession deck newest-first.
+  createdAt?: string | null;
+  // Whether the viewer has prayed this intercession today. Drives the
+  // feed's rotating deck: un-prayed cards sort to the top.
+  myPrayedToday?: boolean;
   // Optional outbound URL surfaced as a "Read more" link on the slide,
   // for background context (e.g. a Grist article about the issue).
   learnMoreUrl?: string | null;
@@ -1867,36 +1872,11 @@ export default function PrayerModePage() {
   });
   const circleIntentionsData = circleIntentionsQuery.data;
 
-  // Today's intercessions across every prayer feed the user subscribes
-  // to. Lives in prayerFeedEntriesTable + prayerFeedRecurringEntriesTable
-  // — a separate system from /api/moments (sharedMomentsTable), which
-  // is why feed-authored intercessions weren't surfacing in the
-  // slideshow before. The /today endpoint merges concrete + recurring
-  // entries (concrete wins on slot collisions) and returns one row per
-  // (feed, slot) for the user's current day.
-  const feedTodayQuery = useQuery<{
-    entries: Array<{
-      id: number;
-      feedId: number;
-      feedSlug: string;
-      feedTitle: string;
-      feedCoverEmoji: string | null;
-      slot: number;
-      title: string;
-      body: string;
-      learnMoreUrl: string | null;
-      isRecurring: boolean;
-      prayedToday: boolean;
-      groups: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
-      prayedBy: Array<{ name: string; avatarUrl: string | null }>;
-      prayedTodayCount: number;
-    }>;
-  }>({
-    queryKey: ["/api/prayer-feeds/today"],
-    queryFn: () => apiRequest("GET", "/api/prayer-feeds/today"),
-    enabled: !!user,
-  });
-  const feedTodayEntries = feedTodayQuery.data?.entries ?? [];
+  // (The legacy /api/prayer-feeds/today query lived here. Prayer feeds
+  // are now a flat, ongoing list of intercessions — sharedMomentsTable
+  // rows with prayer_feed_id set — which reach the slideshow through
+  // /api/moments like any other intercession. The day-scheduled entry
+  // system it queried has been retired.)
 
   // Streak number for the closing slide (always shown — user explicitly
   // asked for it regardless of whether today is a "first today" event).
@@ -2028,6 +2008,34 @@ export default function PrayerModePage() {
     (m) => m.templateType === "intercession",
   );
 
+  // Prayer feeds render as a rotating deck: for each feed, at most
+  // three intercessions — the viewer's un-prayed ones first, then
+  // newest first. Slides aren't skip-marked, so the deck loops — once
+  // everything's prayed it simply replays, with un-prayed always
+  // surfacing on top. Non-feed (community) intercessions are unchanged.
+  const FEED_DECK_SIZE = 3;
+  const deckedIntercessions: Moment[] = (() => {
+    const nonFeed = intercessions.filter((m) => m.prayerFeedId == null);
+    const byFeed = new Map<number, Moment[]>();
+    for (const m of intercessions) {
+      if (m.prayerFeedId == null) continue;
+      const arr = byFeed.get(m.prayerFeedId);
+      if (arr) arr.push(m);
+      else byFeed.set(m.prayerFeedId, [m]);
+    }
+    const deck: Moment[] = [];
+    for (const arr of byFeed.values()) {
+      const sorted = [...arr].sort((a, b) => {
+        const ap = a.myPrayedToday ? 1 : 0;
+        const bp = b.myPrayedToday ? 1 : 0;
+        if (ap !== bp) return ap - bp;
+        return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+      });
+      deck.push(...sorted.slice(0, FEED_DECK_SIZE));
+    }
+    return [...nonFeed, ...deck];
+  })();
+
   // "Pray for someone" records, filtered to match the People-page CTA:
   // we drop server-expired prayers AND prayers on their final day (0 days
   // left). A prayer on Day N of N already reads "done" on /people — we
@@ -2076,7 +2084,6 @@ export default function PrayerModePage() {
   // identical to the main slideshow's intercession slide.
   const momentsById = new Map((momentsData?.moments ?? []).map(m => [m.id, m]));
   const requestsById = new Map(prayerRequests.map(r => [r.id, r]));
-  const feedEntryById = new Map(feedTodayEntries.map(e => [e.id, e]));
 
   const slides: PrayerSlide[] = queueMode === "parish-weekly"
     ? (parishWeeklyData?.unprayed ?? []).flatMap((e): PrayerSlide[] => {
@@ -2172,26 +2179,9 @@ export default function PrayerModePage() {
             groups,
           }];
         }
-        // feed-entry
-        const fe = feedEntryById.get(e.feedEntry.entryId);
-        if (fe) {
-          // Use the live feedTodayEntries row when available — same
-          // shape as the default-mode feed slide.
-          return [{
-            kind: "intercession",
-            text: fe.title,
-            intention: null,
-            fullText: fe.body?.trim() || null,
-            attribution: fe.feedTitle ? `from ${fe.feedTitle}` : "",
-            feedTag: fe.feedTitle || null,
-            learnMoreUrl: fe.learnMoreUrl?.trim() || null,
-            feedSlug: fe.feedSlug,
-            feedEntryDate: new Date().toISOString().slice(0, 10),
-            feedEntrySlot: fe.slot,
-          }];
-        }
-        // Fallback when the feed-today endpoint hasn't surfaced this
-        // entry — build from the parish-weekly entry directly.
+        // feed-entry — built from the parish-weekly entry's own data.
+        // (The /api/prayer-feeds/today optimization was dropped when
+        // day-scheduled feed entries were retired.)
         return [{
           kind: "intercession",
           text: e.title,
@@ -2240,7 +2230,7 @@ export default function PrayerModePage() {
           })),
       ]
     : [
-    ...intercessions.map((m) => {
+    ...deckedIntercessions.map((m) => {
       const title = m.intercessionTopic || m.name;
       // For custom intercessions the user-entered `intention` often duplicates
       // `name` / `intercessionTopic` — hide it when it's the same text.
@@ -2357,61 +2347,9 @@ export default function PrayerModePage() {
       groupEmoji: intn.groupEmoji,
       groupSlug: intn.groupSlug,
     }))),
-    // Prayer feed intercessions for today — one slide per (feed, slot)
-    // for every feed the user subscribes to. These come from the
-    // `prayer_feed_entries` (concrete) + `prayer_feed_recurring_entries`
-    // (templates) tables, merged by the /api/prayer-feeds/today endpoint.
-    // Without this branch, anything authored on a feed's calendar editor
-    // (e.g. "The Dams in Michigan" on Phoebe Climate) was silently
-    // dropped from the slideshow because /api/moments only sees
-    // sharedMomentsTable rows.
-    ...feedTodayEntries.map((e): PrayerSlide => ({
-      kind: "intercession" as const,
-      text: e.title,
-      intention: null,
-      fullText: e.body?.trim() || null,
-      // Drop the "from {feedTitle}" attribution + the single feed-
-      // tag pill; the community pills below carry the same provenance
-      // (these feeds are linked to communities via prayer_feed_groups)
-      // and read with more identity than a generic feed name.
-      attribution: "",
-      feedTag: null,
-      // Community pills + face stack on feed-authored intercessions.
-      // Server attaches every group linked to this feed via
-      // prayer_feed_groups so a single "Phoebe Climate" feed renders
-      // as the actual communities carrying it (e.g. NYC Leaders ·
-      // Heavenly Rest · …). communityFaces / weekPrayCount are
-      // populated from prayer_feed_prayers rows for THIS entry today.
-      // The server doesn't return email on this payload, so we
-      // synthesize a unique key per face (feed entry + index) to
-      // avoid React key collisions when two prayers share a first
-      // name.
-      groups: e.groups,
-      communityFaces: e.prayedBy.map((p, i) => ({
-        name: p.name,
-        email: `feed-${e.id}-${i}`,
-        avatarUrl: p.avatarUrl,
-      })),
-      weekPrayCount: e.prayedTodayCount,
-      learnMoreUrl: e.learnMoreUrl?.trim() || null,
-      // Carry the feed origin so the Amen handler can POST to
-      // /api/prayer-feeds/:slug/entries/:date/pray on tap. We
-      // synthesize today's date here (UTC) instead of trusting
-      // the server's per-feed timezone — the pray endpoint
-      // re-checks tz on its end and 400s if mismatched, so this
-      // is a soft hint, not a contract.
-      feedSlug: e.feedSlug,
-      feedEntryDate: new Date().toISOString().slice(0, 10),
-      feedEntrySlot: e.slot,
-      // Always false for feed-authored intercessions (e.g. Phoebe
-      // Climate). The resume-position logic uses this flag to jump
-      // past already-prayed slides on entry — but for the climate /
-      // feed intercessions the user wants to keep seeing them every
-      // time they enter the slideshow, even if they tapped Amen
-      // earlier today. "Not today" gives them the per-slide skip
-      // hatch if they don't want to pray it a second time.
-      alreadyPrayedToday: false,
-    })),
+    // (Legacy prayer-feed day-entries used to be spliced in here from
+    // /api/prayer-feeds/today. Feeds are now a flat list of
+    // intercessions and flow through `deckedIntercessions` above.)
     // Other people's prayer requests come before the user's own private
     // prayers-for — hearing others first, then turning inward. We
     // deliberately exclude the viewer's own default-kind requests;
@@ -2941,34 +2879,9 @@ export default function PrayerModePage() {
           });
       }
     }
-    // Feed-entry intercession (came from prayerFeedEntriesTable, not
-    // sharedMomentsTable — no momentToken). Log to the feed's pray
-    // endpoint so the prayer count + roster on the feed detail page
-    // and the community detail card both reflect this slideshow tap.
-    if (
-      current
-      && current.kind === "intercession"
-      && current.feedSlug
-      && current.feedEntryDate
-      && typeof current.feedEntrySlot === "number"
-    ) {
-      const key = `feed:${current.feedSlug}:${current.feedEntryDate}:${current.feedEntrySlot}`;
-      if (!loggedIntercessionsRef.current.has(key)) {
-        loggedIntercessionsRef.current.add(key);
-        apiRequest(
-          "POST",
-          `/api/prayer-feeds/${current.feedSlug}/entries/${current.feedEntryDate}/pray?slot=${current.feedEntrySlot}`,
-          {},
-        )
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/today"] });
-            queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
-          })
-          .catch(() => {
-            /* swallow — best-effort */
-          });
-      }
-    }
+    // (Legacy feed day-entry pray-logging was here — feed intercessions
+    // are now sharedMomentsTable rows and log through the moment path
+    // above like any other intercession.)
     // Circle-intention amens have no dedicated per-intention server
     // endpoint (there's no concept of "I prayed this circle intention
     // today" in the schema). Until that lands, at least stamp the
@@ -3064,43 +2977,16 @@ export default function PrayerModePage() {
         !!s.momentToken &&
         !loggedIntercessionsRef.current.has(s.momentToken),
     );
-    // Feed-entry intercessions (Phoebe Climate etc.) — same retry path
-    // but keyed by feed:slug:date:slot since they have no momentToken.
-    // Without this leg, a fire-and-forget POST that fails mid-swipe
-    // (network blip) had no second chance to land: the per-slide POST
-    // in advance() catches the error, and the local Set never gets
-    // re-asked. The closing-slide retry below catches that case.
-    const feedToLog = displaySlides.filter((s): s is PrayerSlide & {
-      feedSlug: string;
-      feedEntryDate: string;
-      feedEntrySlot: number;
-    } => {
-      if (s.kind !== "intercession") return false;
-      if (!s.feedSlug || !s.feedEntryDate || typeof s.feedEntrySlot !== "number") return false;
-      const key = `feed:${s.feedSlug}:${s.feedEntryDate}:${s.feedEntrySlot}`;
-      return !loggedIntercessionsRef.current.has(key);
-    });
-    await Promise.allSettled([
-      ...toLog.map((s) =>
+    await Promise.allSettled(
+      toLog.map((s) =>
         s.myUserToken
           ? apiRequest("POST", `/api/moment/${s.momentToken}/${s.myUserToken}/post`, {
               isCheckin: true,
             })
           : apiRequest("POST", `/api/moment/${s.momentToken}/amen`, {}),
       ),
-      ...feedToLog.map((s) =>
-        apiRequest(
-          "POST",
-          `/api/prayer-feeds/${s.feedSlug}/entries/${s.feedEntryDate}/pray?slot=${s.feedEntrySlot}`,
-          {},
-        ),
-      ),
-    ]);
+    );
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
-    if (feedToLog.length > 0) {
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/today"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
-    }
 
     // Native haptic on finish — a quiet "success" buzz so the user's
     // body knows the list is complete even before they look back at

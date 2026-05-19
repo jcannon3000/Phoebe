@@ -2112,6 +2112,10 @@ router.get("/moments", async (req, res): Promise<void> => {
 
         return {
           ...m,
+          // Whether the viewer has already logged a prayer for this
+          // intercession today. Drives the prayer-feed rotating deck
+          // in the slideshow — un-prayed cards bubble to the top.
+          myPrayedToday: todayILogged,
           group: m.groupId ? groupMap.get(m.groupId) ?? null : effectiveGroupByMomentId.get(m.id) ?? null,
           additionalGroups: additionalGroupsByMomentId.get(m.id) ?? [],
           memberCount: allMembers.length,
