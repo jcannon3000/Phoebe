@@ -803,7 +803,8 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
           className="max-w-2xl w-full mx-auto"
           style={(() => {
             const isTitleCard =
-              currentSlide.type === "intercessions_portal"
+              currentSlide.type === "office_intro"
+              || currentSlide.type === "intercessions_portal"
               || currentSlide.type === "psalm_title"
               || currentSlide.type === "canticle_title"
               || currentSlide.type === "lesson_title";
