@@ -119,6 +119,7 @@ import BcpIntercessionsPage from "./pages/bcp-intercessions";
 import BcpDailyOfficePage from "./pages/bcp-daily-office";
 import BcpDailyDevotionPage from "./pages/bcp-daily-devotion";
 import BcpPsalterPage from "./pages/bcp-psalter";
+import PublicPrayerPage from "./pages/public-prayer";
 import CommunitiesPage from "./pages/communities";
 import CommunitiesBrowsePage from "./pages/communities-browse";
 import CommunityRequestsPage from "./pages/community-requests";
@@ -390,6 +391,10 @@ function Router() {
       <Route path="/bcp/daily-office" component={BcpDailyOfficePage} />
       <Route path="/bcp/daily-devotions" component={BcpDailyDevotionPage} />
       <Route path="/bcp/psalter" component={BcpPsalterPage} />
+      {/* /pray — public, no login. Choose the Daily Office or Daily
+          Devotion, pray the time-appropriate liturgy, then a sign-up
+          invitation. The office/devotion APIs are already public. */}
+      <Route path="/pray" component={PublicPrayerPage} />
       <Route path="/communities" component={CommunitiesPage} />
       <Route path="/communities/browse" component={CommunitiesBrowsePage} />
       <Route path="/communities/new" component={CommunityNewPage} />

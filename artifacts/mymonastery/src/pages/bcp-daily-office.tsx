@@ -91,6 +91,13 @@ interface OfficeViewerProps {
   office?: "morning" | "evening";
   mode?: LiturgyMode;
   onBack: () => void;
+  // When set, the office's completion exit calls this instead of
+  // redirecting to /prayer-mode. The public /pray page passes it so the
+  // close lands on its own sign-up invite rather than the auth-only
+  // prayer-mode recap. Its presence also marks "public mode" — the
+  // devotion's alternate-route shortcuts (which go to auth-only pages)
+  // are hidden.
+  onComplete?: () => void;
 }
 
 interface OfficeDayInfo {
@@ -282,7 +289,7 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
 };
 
-export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
+export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
   // Which half of the day this office belongs to. Threaded onto the
@@ -707,6 +714,9 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
       localStorage.setItem(officeCompletedKey(resolvedMode), "1");
       localStorage.removeItem(officeProgressKey(resolvedMode));
     } catch { /* non-fatal */ }
+    // The public /pray page handles its own close (a sign-up invite)
+    // rather than the auth-only /prayer-mode recap.
+    if (onComplete) { onComplete(); return; }
     // Every office finish lands on /prayer-mode?closingOnly=1 — the
     // "you prayed for N people this week" summary followed by the
     // prayer-rhythm habit slide. Parish-only users get their own
@@ -1944,7 +1954,7 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
               opening acclamation. Only on the first slide; once the
               reader is moving through the devotion they shouldn't
               keep seeing alternate routes. */}
-          {isDevotion && slideIdx === 0 && (
+          {isDevotion && slideIdx === 0 && !onComplete && (
             <div
               style={{
                 marginTop: 28,
@@ -2090,6 +2100,8 @@ export function OfficeViewer({ office, mode, onBack }: OfficeViewerProps) {
                 localStorage.setItem(officeCompletedKey(resolvedMode), "1");
                 localStorage.removeItem(officeProgressKey(resolvedMode));
               } catch { /* non-fatal */ }
+              // Public /pray page: hand off to its own sign-up close.
+              if (onComplete) { onComplete(); return; }
               if (parishOnly) {
                 setViewerLocation(`/parish/celebration?surface=${encodeURIComponent(resolvedMode)}`);
               } else {
