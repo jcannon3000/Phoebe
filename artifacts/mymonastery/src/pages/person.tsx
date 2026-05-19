@@ -657,11 +657,14 @@ export default function PersonProfile() {
 
             {/* CTA — only when there's no letter correspondence yet.
                 Once one exists, the dialogue is the relationship and the
-                profile shouldn't push another channel on top of it. */}
-            {sharedLetters.length === 0 && (
+                profile shouldn't push another channel on top of it.
+                Goes straight to composing — the recipient is known, so
+                /letters/compose skips the type + who pickers entirely.
+                The dialogue is created when this first letter sends. */}
+            {sharedLetters.length === 0 && email && (
               <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
                 <Link
-                  href="/letters/new"
+                  href={`/letters/compose?to=${encodeURIComponent(email)}${person?.name ? `&toName=${encodeURIComponent(person.name)}` : ""}`}
                   className="text-sm font-medium transition-opacity hover:opacity-70"
                   style={{ color: "#8FAF96" }}
                 >

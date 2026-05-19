@@ -49,10 +49,20 @@ interface DraftData {
 
 export default function WriteLetter() {
   const [, params] = useRoute("/letters/:id/write");
+  const [isComposeRoute] = useRoute("/letters/compose");
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const correspondenceId = params?.id;
-  const token = new URLSearchParams(window.location.search).get("token");
+  const searchParams = new URLSearchParams(window.location.search);
+  // "New" mode — composing the very first letter to a known person.
+  // No correspondence exists yet; reached from a profile's "Write a
+  // letter" CTA. The dialogue is created atomically when this letter
+  // sends (POST /phoebe/correspondences/start), so there's no type
+  // picker, no recipient picker, no period gating — just write.
+  const newRecipientEmail = searchParams.get("to") ?? "";
+  const newRecipientName = searchParams.get("toName") ?? "";
+  const isNewMode = !!isComposeRoute && !!newRecipientEmail;
+  const token = searchParams.get("token");
   const tokenParam = token ? `?token=${token}` : "";
   const queryClient = useQueryClient();
 
@@ -122,7 +132,9 @@ export default function WriteLetter() {
     enabled: !!correspondenceId && (!!user || !!token),
   });
 
-  const isOneToOne = correspondence?.groupType === "one_to_one";
+  // New mode is always a one_to_one (you're writing to one known
+  // person), so it takes the one_to_one 100-word floor.
+  const isOneToOne = isNewMode || correspondence?.groupType === "one_to_one";
   const minWords = isOneToOne ? 100 : 50;
   const maxWords = 1000;
   // Threshold at which the counter switches from a "minimum to hit" UI
@@ -260,17 +272,35 @@ export default function WriteLetter() {
   useEffect(() => { return () => { saveDraft(); }; }, [saveDraft]);
 
   const sendMutation = useMutation({
-    mutationFn: () =>
-      apiRequest("POST", `/api/phoebe/correspondences/${correspondenceId}/letters${tokenParam}`, {
+    mutationFn: (): Promise<any> => {
+      // New mode: one atomic call creates the correspondence AND this
+      // first letter together. The dialogue only comes into being here.
+      if (isNewMode) {
+        return apiRequest("POST", "/api/phoebe/correspondences/start", {
+          memberEmail: newRecipientEmail,
+          memberName: newRecipientName || undefined,
+          content: content.trim(),
+        });
+      }
+      return apiRequest("POST", `/api/phoebe/correspondences/${correspondenceId}/letters${tokenParam}`, {
         content: content.trim(),
       }).catch(() =>
         apiRequest("POST", `/api/letters/correspondences/${correspondenceId}/letters${tokenParam}`, {
           content: content.trim(),
         })
-      ),
-    onSuccess: () => {
+      );
+    },
+    onSuccess: (result: any) => {
       // Clear local draft state so we don't re-POST it on the way out.
       lastSavedRef.current = content;
+      // New mode: the start endpoint returns the freshly-created
+      // correspondence id — refresh the lists and jump into the thread.
+      if (isNewMode) {
+        queryClient.invalidateQueries({ queryKey: ["/api/phoebe/correspondences"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/letters/correspondences"] });
+        setLocation(`/letters/${result?.id}`);
+        return;
+      }
       // Drop cached draft + correspondence detail + list so the thread
       // we navigate to shows the new letter immediately.
       queryClient.removeQueries({ queryKey: [`/api/phoebe/correspondences/${correspondenceId}/draft`] });
@@ -283,9 +313,14 @@ export default function WriteLetter() {
     },
     onError: (err: Error) => {
       const body = err instanceof ApiError && err.body && typeof err.body === "object"
-        ? (err.body as { error?: string; message?: string; nextPeriodStart?: string })
+        ? (err.body as { error?: string; message?: string; nextPeriodStart?: string; existingId?: number })
         : null;
       const code = body?.error;
+      if (code === "duplicate_correspondence" && body?.existingId) {
+        // A correspondence with this person already exists — just open it.
+        setLocation(`/letters/${body.existingId}`);
+        return;
+      }
       if (code === "already_written" || code === "already_written_this_period") {
         setErrorState({ message: "You've already written this period.", nextPeriodStart: body?.nextPeriodStart });
       } else if (code === "not_your_turn") {
@@ -351,6 +386,12 @@ export default function WriteLetter() {
   }
 
   function handleBack() {
+    // New mode has no correspondence + no draft — return to the
+    // person's profile the writer came from.
+    if (isNewMode) {
+      setLocation(`/people/${encodeURIComponent(newRecipientEmail)}`);
+      return;
+    }
     if (content.trim() && content !== lastSavedRef.current) saveDraft();
     setLocation(`/letters/${correspondenceId}${tokenParam}`);
   }
@@ -363,8 +404,12 @@ export default function WriteLetter() {
         {errorState.nextPeriodStart && (
           <p className="text-sm mb-6" style={{ color: "#9a9390" }}>Next period starts {errorState.nextPeriodStart}.</p>
         )}
-        <button onClick={() => setLocation(`/letters/${correspondenceId}${tokenParam}`)} className="text-sm font-medium" style={{ color: "#5C7A5F" }}>
-          ← Back to letters
+        <button
+          onClick={() => setLocation(isNewMode ? `/people/${encodeURIComponent(newRecipientEmail)}` : `/letters/${correspondenceId}${tokenParam}`)}
+          className="text-sm font-medium"
+          style={{ color: "#5C7A5F" }}
+        >
+          ← Back
         </button>
       </div>
     );
@@ -389,8 +434,17 @@ export default function WriteLetter() {
         <button onClick={handleBack} className="text-sm" style={{ color: "#9a9390" }}>←</button>
         <div className="text-center">
           <p className="text-[13px]" style={{ color: "#9a9390" }}>
-            {isOneToOne && otherMembers ? `Letters with ${otherMembers}` : correspondence?.name}
+            {isNewMode
+              ? `A letter to ${newRecipientName || newRecipientEmail.split("@")[0]}`
+              : isOneToOne && otherMembers
+                ? `Letters with ${otherMembers}`
+                : correspondence?.name}
           </p>
+          {isNewMode && (
+            <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
+              Letter 1
+            </p>
+          )}
           {correspondence?.currentPeriod && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? `Letter ${(correspondence.letters?.length ?? 0) + 1}` : `Round ${correspondence.currentPeriod.periodNumber}`}
@@ -418,20 +472,32 @@ export default function WriteLetter() {
               Sign in to send your letter. Your draft is saved.
             </p>
             <div className="flex items-center gap-3 flex-wrap">
-              <a
-                href={`/?redirect=${encodeURIComponent(`/letters/${correspondenceId}/write`)}`}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "#5C7A5F", color: "#fff" }}
-              >
-                Log in →
-              </a>
-              <a
-                href={`/?signup=1&redirect=${encodeURIComponent(`/letters/${correspondenceId}/write`)}`}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: "transparent", border: "1px solid #C8BFB0", color: "#5C7A5F" }}
-              >
-                Create account →
-              </a>
+              {(() => {
+                // Where to land after auth: back into this exact
+                // compose surface (new mode) or this correspondence's
+                // write screen (existing thread).
+                const returnPath = isNewMode
+                  ? `/letters/compose?to=${encodeURIComponent(newRecipientEmail)}${newRecipientName ? `&toName=${encodeURIComponent(newRecipientName)}` : ""}`
+                  : `/letters/${correspondenceId}/write`;
+                return (
+                  <>
+                    <a
+                      href={`/?redirect=${encodeURIComponent(returnPath)}`}
+                      className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+                      style={{ background: "#5C7A5F", color: "#fff" }}
+                    >
+                      Log in →
+                    </a>
+                    <a
+                      href={`/?signup=1&redirect=${encodeURIComponent(returnPath)}`}
+                      className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+                      style={{ background: "transparent", border: "1px solid #C8BFB0", color: "#5C7A5F" }}
+                    >
+                      Create account →
+                    </a>
+                  </>
+                );
+              })()}
               <button onClick={() => setConfirmSend(false)} className="text-sm" style={{ color: "#9a9390" }}>
                 Keep writing
               </button>

@@ -364,6 +364,10 @@ function Router() {
       <Route path="/letter/:id" component={LetterSplash} />
       <Route path="/letters" component={LettersPage} />
       <Route path="/letters/new" component={LetterNew} />
+      {/* Compose the first letter to a known person. No correspondence
+          exists yet — WriteLetter runs in "new" mode and the dialogue
+          is created atomically when the letter is sent. */}
+      <Route path="/letters/compose" component={WriteLetter} />
       <Route path="/letters/invite/:token" component={LetterInvitePage} />
       <Route path="/i/:token" component={LetterInvitePage} />
       <Route path="/letters/:id/write" component={WriteLetter} />

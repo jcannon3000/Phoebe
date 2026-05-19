@@ -226,6 +226,176 @@ router.post(
   }),
 );
 
+// ─── POST /api/phoebe/correspondences/start ──────────────────────────────────
+// Atomic "write the first letter." Creates a one_to_one correspondence
+// AND its first letter together, in a single transaction — so a
+// dialogue never exists in the DB until a letter has actually been
+// written. This is the entry point from a person's profile ("Write
+// {name} a letter"): the recipient is already known and it's always
+// one_to_one, so there is no type picker and no recipient picker —
+// the writer goes straight to composing.
+router.post(
+  "/phoebe/correspondences/start",
+  requireSessionAuth(async (req, res, auth) => {
+    const { memberEmail, memberName, content } = req.body as {
+      memberEmail?: string;
+      memberName?: string;
+      content?: string;
+    };
+
+    const otherEmail = (memberEmail ?? "").trim().toLowerCase();
+    if (!otherEmail || !otherEmail.includes("@")) {
+      res.status(400).json({ error: "A valid recipient email is required" });
+      return;
+    }
+    if (otherEmail === auth.email.toLowerCase()) {
+      res.status(400).json({ error: "You can't write a letter to yourself" });
+      return;
+    }
+
+    const body = (content ?? "").trim();
+    if (!body) {
+      res.status(400).json({ error: "Letter content is required" });
+      return;
+    }
+    const wordCount = body.split(/\s+/).length;
+    // Mirror the one_to_one bounds the per-letter endpoint enforces.
+    if (wordCount < 100) {
+      res.status(400).json({ error: "Letter must be at least 100 words", wordCount });
+      return;
+    }
+    if (wordCount > 5000) {
+      res.status(400).json({ error: "Letter must be 5000 words or fewer", wordCount });
+      return;
+    }
+
+    // Dedup: never create a second active one_to_one with the same
+    // person. The profile only surfaces "Write a letter" when no
+    // correspondence exists, so this is a safety net — if one already
+    // exists we hand the client its id to navigate to instead.
+    const myMemberships = await db
+      .select({ correspondenceId: correspondenceMembersTable.correspondenceId })
+      .from(correspondenceMembersTable)
+      .where(eq(correspondenceMembersTable.email, auth.email.toLowerCase()));
+    for (const { correspondenceId } of myMemberships) {
+      const [existing] = await db
+        .select()
+        .from(correspondencesTable)
+        .where(and(
+          eq(correspondencesTable.id, correspondenceId),
+          eq(correspondencesTable.isActive, true),
+          eq(correspondencesTable.groupType, "one_to_one"),
+        ));
+      if (!existing) continue;
+      const [otherMember] = await db
+        .select()
+        .from(correspondenceMembersTable)
+        .where(and(
+          eq(correspondenceMembersTable.correspondenceId, correspondenceId),
+          eq(correspondenceMembersTable.email, otherEmail),
+        ));
+      if (otherMember) {
+        res.status(409).json({
+          error: "duplicate_correspondence",
+          existingId: correspondenceId,
+          message: `You already have a correspondence with ${memberName || otherEmail}.`,
+        });
+        return;
+      }
+    }
+
+    const resolvedAuthorName =
+      (auth.name && auth.name.trim()) || auth.email.split("@")[0] || "Anonymous";
+    const name = `Letters with ${memberName?.trim() || otherEmail.split("@")[0]}`;
+    const creatorToken = randomUUID();
+    const inviteToken = randomUUID();
+
+    // Transaction: correspondence + both member rows + the first
+    // letter, all-or-nothing. A failure leaves no inert dialogue.
+    let result: { correspondenceId: number; letterId: number };
+    try {
+      result = await db.transaction(async (tx) => {
+        const [correspondence] = await tx
+          .insert(correspondencesTable)
+          .values({ name, createdByUserId: auth.userId, groupType: "one_to_one" })
+          .returning();
+
+        const [creatorMember] = await tx
+          .insert(correspondenceMembersTable)
+          .values({
+            correspondenceId: correspondence.id,
+            userId: auth.userId,
+            email: auth.email,
+            name: auth.name,
+            inviteToken: creatorToken,
+            joinedAt: new Date(),
+          })
+          .returning();
+
+        // Recipient member row — joinedAt stays null until they
+        // accept the invite that goes out below.
+        await tx.insert(correspondenceMembersTable).values({
+          correspondenceId: correspondence.id,
+          userId: null,
+          email: otherEmail,
+          name: memberName?.trim() || null,
+          inviteToken,
+        });
+
+        const periodInfo = getCurrentPeriodInfo(correspondence.startedAt, new Date(), "one_to_one");
+        const [letter] = await tx
+          .insert(lettersTable)
+          .values({
+            correspondenceId: correspondence.id,
+            authorUserId: auth.userId,
+            authorEmail: auth.email,
+            authorName: resolvedAuthorName,
+            content: body,
+            letterNumber: 1,
+            periodNumber: periodInfo.periodNumber,
+            periodStartDate: periodInfo.periodStartStr,
+          })
+          .returning();
+
+        await tx
+          .update(correspondenceMembersTable)
+          .set({ lastLetterAt: new Date() })
+          .where(eq(correspondenceMembersTable.id, creatorMember.id));
+
+        return { correspondenceId: correspondence.id, letterId: letter.id };
+      });
+    } catch (err) {
+      console.error("[POST /phoebe/correspondences/start] FAILED:", err);
+      res.status(500).json({
+        error: "start_failed",
+        message: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+
+    // First letter is in — send the recipient their invitation now, so
+    // they have something to read when they click through. Fire-and-
+    // forget, outside the transaction.
+    const inviteUrl = `${getInviteBaseUrl()}/i/${inviteToken}`;
+    sendInvitationEmail({
+      to: otherEmail,
+      creatorName: auth.name,
+      correspondenceName: name,
+      inviteUrl,
+      type: "one_to_one",
+    }).catch((e) => console.error("Invitation email failed:", e));
+    sendLetterInvitationCalendarEvent({
+      recipientEmail: otherEmail,
+      creatorName: auth.name,
+      correspondenceName: name,
+      inviteUrl,
+      type: "one_to_one",
+    }).catch((e) => console.error("Invitation calendar event failed:", e));
+
+    res.json({ id: result.correspondenceId, letterId: result.letterId });
+  }),
+);
+
 // ─── GET /api/phoebe/correspondences ─────────────────────────────────────────
 
 router.get(
