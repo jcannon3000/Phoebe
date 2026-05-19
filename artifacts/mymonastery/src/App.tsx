@@ -298,6 +298,11 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/parish/admin" ||
         location.startsWith("/parish/celebration") ||
         location.startsWith("/bcp") ||
+        // Public prayer feeds — discovery + detail. Offices-only and
+        // parish-only members may browse and subscribe to public feeds
+        // (the API enforces public/private; feed management stays
+        // beta-only).
+        location.startsWith("/prayer-feeds") ||
         location === "/about" ||
         location === "/privacy" ||
         location === "/terms" ||

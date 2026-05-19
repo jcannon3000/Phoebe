@@ -343,6 +343,30 @@ export default function ParishDashboard() {
           />
         </div>
 
+        {/* Public prayer feeds — an offices-only member can follow
+            public feeds; the feed's intercessions then join their
+            daily office. */}
+        {user.accessTier === "offices-only" && (
+          <Link href="/prayer-feeds">
+            <div
+              style={{
+                background: "rgba(46,107,64,0.10)",
+                border: "1px solid rgba(46,107,64,0.25)",
+                borderRadius: 16,
+                padding: "16px 18px",
+                cursor: "pointer",
+              }}
+            >
+              <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>
+                🌍 Explore prayer feeds
+              </p>
+              <p style={{ color: SAGE, fontSize: 12, margin: "4px 0 0" }}>
+                Follow a public feed — its intercessions join your daily office.
+              </p>
+            </div>
+          </Link>
+        )}
+
         {/* Private prayer concern — visible only to the parish admin
             (the priest / pastor). The card is intentionally quieter
             than the office buttons: this is for when something is

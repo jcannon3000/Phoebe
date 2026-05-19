@@ -27,6 +27,7 @@ interface Feed {
   creatorUserId: number;
   timezone: string;
   state: FeedState;
+  visibility: "public" | "private";
   subscriberCount: number;
 }
 
@@ -94,7 +95,7 @@ export default function PrayerFeedManagePage() {
 
   // ── Mutations ───────────────────────────────────────────────────────────
   const updateFeed = useMutation({
-    mutationFn: (patch: Partial<Pick<Feed, "title" | "tagline" | "coverEmoji" | "state">>) =>
+    mutationFn: (patch: Partial<Pick<Feed, "title" | "tagline" | "coverEmoji" | "state" | "visibility">>) =>
       apiRequest("PUT", `/api/prayer-feeds/${slug}`, patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}`] }),
   });
@@ -166,7 +167,7 @@ export default function PrayerFeedManagePage() {
         </div>
 
         {/* State toggle */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-4">
           {(["draft", "live", "paused"] as FeedState[]).map(s => (
             <button
               key={s}
@@ -182,6 +183,41 @@ export default function PrayerFeedManagePage() {
               {s}
             </button>
           ))}
+        </div>
+
+        {/* Visibility toggle — a public feed is discoverable in
+            /prayer-feeds and subscribable by any account, including the
+            limited offices-only tier. A private feed stays within beta
+            members and bound communities. */}
+        <div className="mb-6">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
+            style={{ color: "rgba(143,175,150,0.6)" }}
+          >
+            Visibility
+          </p>
+          <div className="flex gap-2">
+            {(["private", "public"] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => updateFeed.mutate({ visibility: v })}
+                disabled={feed.visibility === v || updateFeed.isPending}
+                className="text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full transition-opacity disabled:opacity-100"
+                style={{
+                  background: feed.visibility === v ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                  border: `1px solid ${feed.visibility === v ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.2)"}`,
+                  color: feed.visibility === v ? "#F0EDE6" : "#8FAF96",
+                }}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+            {feed.visibility === "public"
+              ? "Anyone can find this feed and subscribe to it."
+              : "Only beta members and bound communities can see this feed."}
+          </p>
         </div>
 
         {/* Intercessions — the feed's whole content. A flat, ongoing

@@ -2,12 +2,12 @@ import { useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
-// Simple discovery list of every `live` Prayer Feed. Beta-only; the
-// server will 403 non-beta callers regardless.
+// Discovery list of Prayer Feeds. Open to any signed-in account —
+// non-beta users (including the offices-only tier) see only public
+// feeds; beta members see every live feed. The API enforces this.
 
 interface BrowseFeed {
   id: number;
@@ -21,21 +21,16 @@ interface BrowseFeed {
 
 export default function PrayerFeedsBrowsePage() {
   const { user, isLoading: authLoading } = useAuth();
-  // rawIsBeta + isLoading guard: avoids the redirect-on-refresh
-  // race where the unresolved beta-status query made `isBeta`
-  // briefly false and bounced the user to /dashboard.
-  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
-    if (!authLoading && !betaLoading && user && !rawIsBeta) setLocation("/dashboard");
-  }, [user, authLoading, betaLoading, rawIsBeta, setLocation]);
+  }, [user, authLoading, setLocation]);
 
   const feedsQ = useQuery<{ feeds: BrowseFeed[] }>({
     queryKey: ["/api/prayer-feeds"],
     queryFn: () => apiRequest("GET", "/api/prayer-feeds"),
-    enabled: !!user && rawIsBeta,
+    enabled: !!user,
   });
   const feeds = feedsQ.data?.feeds ?? [];
 

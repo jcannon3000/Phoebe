@@ -50,6 +50,50 @@ const requireBeta: RequestHandler = async (req, res, next) => {
   }
 };
 
+// Lighter gate than requireBeta — used by the public-feed surfaces
+// (discovery, detail, intercession list, subscribe) which any signed-in
+// account may reach, including the limited offices-only tier. The
+// handlers themselves enforce the public/private visibility rule.
+const requireAuth: RequestHandler = (req, res, next) => {
+  if (!getUser(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
+  next();
+};
+
+// Is this user a beta member? Beta users see every live feed in
+// discovery and may reach private feeds; non-beta accounts are limited
+// to feeds the creator marked visibility = "public".
+async function isBetaUser(userId: number): Promise<boolean> {
+  const [u] = await db.select({ email: usersTable.email })
+    .from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return false;
+  const [beta] = await db.select({ email: betaUsersTable.email })
+    .from(betaUsersTable).where(eq(betaUsersTable.email, u.email.toLowerCase()));
+  return !!beta;
+}
+
+// Can this user view a feed's detail + intercession list? Creators
+// always can. Draft feeds are hidden from everyone else. A live
+// public feed is open to any signed-in user; a live private feed is
+// reachable only by beta members and existing subscribers.
+async function canViewFeed(
+  userId: number,
+  feed: { id: number; state: string; visibility: string },
+  isCreator: boolean,
+): Promise<boolean> {
+  if (isCreator) return true;
+  if (feed.state === "draft") return false;
+  if (feed.visibility === "public") return true;
+  if (await isBetaUser(userId)) return true;
+  const [sub] = await db
+    .select({ id: prayerFeedSubscriptionsTable.id })
+    .from(prayerFeedSubscriptionsTable)
+    .where(and(
+      eq(prayerFeedSubscriptionsTable.feedId, feed.id),
+      eq(prayerFeedSubscriptionsTable.userId, userId),
+    ));
+  return !!sub;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function slugify(name: string): string {
@@ -264,6 +308,7 @@ const updateFeedSchema = z.object({
   coverImageUrl: z.string().trim().url().max(500).nullable().optional(),
   timezone: z.string().trim().max(60).optional(),
   state: z.enum(["draft", "live", "paused"]).optional(),
+  visibility: z.enum(["public", "private"]).optional(),
 });
 
 const entrySchema = z.object({
@@ -294,10 +339,15 @@ const updateEntrySchema = entrySchema.partial().extend({
 
 // GET /api/prayer-feeds — discovery: every `live` feed. For Phase 2/3
 // beta this is a simple flat list; ranking / curation comes later.
-router.get("/prayer-feeds", requireBeta, async (req, res): Promise<void> => {
+router.get("/prayer-feeds", requireAuth, async (req, res): Promise<void> => {
   const user = getUser(req)!;
+  // Beta members see every live feed in discovery; everyone else
+  // (including the offices-only tier) sees only public feeds.
+  const beta = await isBetaUser(user.id);
   const rows = await db.select().from(prayerFeedsTable)
-    .where(eq(prayerFeedsTable.state, "live"))
+    .where(beta
+      ? eq(prayerFeedsTable.state, "live")
+      : and(eq(prayerFeedsTable.state, "live"), eq(prayerFeedsTable.visibility, "public")))
     .orderBy(desc(prayerFeedsTable.subscriberCount), desc(prayerFeedsTable.createdAt));
 
   // Annotate each row with whether the caller already subscribes.
@@ -599,23 +649,23 @@ async function bindFeedToGroup(feedId: number, groupSlug: string, byUserId: numb
 // creator AND for beta admins on platform-owned feeds (creatorUserId
 // NULL, e.g. phoebe-climate). The flag name is preserved for client
 // back-compat.
-router.get("/prayer-feeds/:slug", requireBeta, async (req, res): Promise<void> => {
+router.get("/prayer-feeds/:slug", requireAuth, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
 
   const isCreator = await canEditFeed(user.id, feed);
+  // Draft feeds are hidden from non-editors; private feeds are hidden
+  // from everyone but beta members and existing subscribers.
+  if (!(await canViewFeed(user.id, feed, isCreator))) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   const [sub] = await db.select().from(prayerFeedSubscriptionsTable)
     .where(and(
       eq(prayerFeedSubscriptionsTable.feedId, feed.id),
       eq(prayerFeedSubscriptionsTable.userId, user.id),
     ));
-
-  // Draft / paused feeds are hidden from non-editors entirely.
-  if (!isCreator && feed.state === "draft") {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
 
   res.json({
     feed,
@@ -1009,12 +1059,12 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
 
 // GET /api/prayer-feeds/:slug/intercessions — list this feed's
 // intercessions. Editors see all; everyone else sees active ones.
-router.get("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): Promise<void> => {
+router.get("/prayer-feeds/:slug/intercessions", requireAuth, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
   const isCreator = await canEditFeed(user.id, feed);
-  if (!isCreator && feed.state === "draft") {
+  if (!(await canViewFeed(user.id, feed, isCreator))) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -1252,12 +1302,18 @@ router.delete("/prayer-feeds/:slug/entries/:date", requireBeta, async (req, res)
 // After inserting the subscription row we reconcile every feed
 // intercession's moment_user_tokens so the subscriber receives a token
 // per intercession — that's how /api/moments + prayer-mode pick them up.
-router.post("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Promise<void> => {
+router.post("/prayer-feeds/:slug/subscribe", requireAuth, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
   if (feed.state !== "live") {
     res.status(400).json({ error: "This feed is not currently accepting subscribers." });
+    return;
+  }
+  // Non-beta accounts (incl. the offices-only tier) may only subscribe
+  // to feeds the creator has marked public.
+  if (feed.visibility !== "public" && !(await isBetaUser(user.id))) {
+    res.status(403).json({ error: "This feed is private." });
     return;
   }
   await db.insert(prayerFeedSubscriptionsTable).values({
@@ -1284,7 +1340,7 @@ router.post("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Prom
 // DELETE /api/prayer-feeds/:slug/subscribe — unsubscribe. Same
 // reconcile-on-the-way-out so the user's tokens for every feed
 // intercession are removed in lockstep.
-router.delete("/prayer-feeds/:slug/subscribe", requireBeta, async (req, res): Promise<void> => {
+router.delete("/prayer-feeds/:slug/subscribe", requireAuth, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }

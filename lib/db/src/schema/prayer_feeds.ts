@@ -50,6 +50,14 @@ export const prayerFeedsTable = pgTable(
     // staff provision parishes manually for now (no self-serve
     // parish creation in the UI).
     kind: text("kind").notNull().default("general"), // general | parish
+    // Discovery visibility. "private" (default) — the feed is reachable
+    // only by its creator, bound communities, and beta users; it does
+    // not appear in public discovery. "public" — anyone with an account
+    // (including the limited offices-only tier) can find it in
+    // /prayer-feeds and subscribe. The feed creator toggles this from
+    // the manage page. Existing feeds default private so nothing
+    // becomes discoverable without a deliberate flip.
+    visibility: text("visibility").notNull().default("private"), // public | private
     // Phoebe Parish — last YYYY-MM-DD (parish TZ) we fired the 8pm
     // recap push for this parish. Idempotency for the bell-scheduler
     // tick; only used when kind="parish".
@@ -65,6 +73,7 @@ export const prayerFeedsTable = pgTable(
 
 export type PrayerFeedState = "draft" | "live" | "paused";
 export type PrayerFeedKind = "general" | "parish";
+export type PrayerFeedVisibility = "public" | "private";
 
 // Many-to-many between prayer feeds and groups. A feed can be
 // "within" multiple groups; a group can carry multiple feeds.

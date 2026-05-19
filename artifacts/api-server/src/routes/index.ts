@@ -37,20 +37,25 @@ const router: IRouter = Router();
 // ─── Offices-only account gate ───────────────────────────────────────────────
 // Accounts created from the public /pray page (users.offices_only = true,
 // accessTier "offices-only") are limited to the Daily Office / Daily
-// Devotion. This middleware is the server-side enforcement of that
-// limit: it rejects every social / community surface for those
-// accounts, so the limit holds even against a hand-crafted API call —
-// the frontend ParishGate only hides the routes. Anything NOT listed
-// (auth, office, devotion, parish, users, me, prayer-sessions, push,
-// bell, health, feedback) stays reachable so the office experience and
-// settings keep working.
+// Devotion plus public prayer feeds. This middleware is the server-side
+// enforcement of that limit: it rejects every social / community
+// surface for those accounts, so the limit holds even against a
+// hand-crafted API call — the frontend ParishGate only hides the
+// routes. Anything NOT listed (auth, office, devotion, parish, users,
+// me, prayer-sessions, push, bell, health, feedback, and prayer-feeds —
+// which enforces public/private access itself) stays reachable so the
+// office experience, public feeds, and settings keep working.
 const OFFICES_ONLY_BLOCKED_PREFIXES = [
   "/groups",
   "/prayer-requests",
   "/prayers-for",
   "/gatherings",
+  // "/moments" (the social practices dashboard) is blocked, but the
+  // singular "/moment/:token/*" routes are NOT — an offices-only member
+  // logs an Amen on a public-feed intercession via /moment/:token/amen,
+  // and those routes are already scoped to moments the caller holds a
+  // token for.
   "/moments",
-  "/moment",
   "/letters",
   "/letter",
   "/rituals",
@@ -58,7 +63,6 @@ const OFFICES_ONLY_BLOCKED_PREFIXES = [
   "/people",
   "/contacts",
   "/invite",
-  "/prayer-feeds",
   "/mutes",
   "/reports",
   "/climate",

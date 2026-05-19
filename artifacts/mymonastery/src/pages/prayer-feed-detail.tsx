@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
@@ -56,10 +55,6 @@ interface FeedIntercession {
 
 export default function PrayerFeedDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
-  // rawIsBeta + isLoading guard avoids the refresh-bounce-to-
-  // dashboard race (unresolved beta-status query → isBeta false →
-  // redirect before data lands).
-  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -72,9 +67,11 @@ export default function PrayerFeedDetailPage() {
   } | null>(null);
 
   useEffect(() => {
+    // Prayer feeds are reachable by any signed-in account now — public
+    // feeds are open to everyone and the API enforces public/private.
+    // Only the not-signed-in case bounces.
     if (!authLoading && !user) setLocation("/");
-    if (!authLoading && !betaLoading && user && !rawIsBeta) setLocation("/dashboard");
-  }, [user, authLoading, betaLoading, rawIsBeta, setLocation, slug]);
+  }, [user, authLoading, setLocation, slug]);
 
   // ── Feed + intercessions ────────────────────────────────────────────────
   const feedQ = useQuery<FeedResponse>({
