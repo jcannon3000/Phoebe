@@ -23,7 +23,7 @@ type Slide =
         | "prayer-requests"
         | "bcp"
         | "prayer-list"
-        | "lectio"
+        | "daily-office"
         | "meat-fast"
         | "calendar"
         | "gatherings";
@@ -33,9 +33,9 @@ type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "gatherings";
+      mock: "prayer-requests" | "bcp" | "prayer-list" | "daily-office" | "meat-fast" | "calendar" | "gatherings";
     }
-  | { kind: "combo-mock"; mock: "prayer-requests" | "bcp" | "prayer-list" | "lectio" | "meat-fast" | "calendar" | "gatherings" }
+  | { kind: "combo-mock"; mock: "prayer-requests" | "bcp" | "prayer-list" | "daily-office" | "meat-fast" | "calendar" | "gatherings" }
   | { kind: "quote"; text: string }
   | { kind: "closing"; body: string[]; featured: string[] };
 
@@ -91,16 +91,16 @@ const SLIDES: Slide[] = [
     mock: "bcp",
   },
 
-  // ── Feature 3: Lectio Divina ──
+  // ── Feature 3: The Daily Office ──
   // 8
   {
     kind: "feature-combo",
     label: "",
-    headline: "Group Lectio Divina",
+    headline: "The Daily Office",
     body: [
-      "The Sunday gospel, read together across the week, moving through each stage together on Mondays, Wednesdays, and Fridays.",
+      "Morning and Evening Prayer from the Book of Common Prayer — the psalms, the lessons, the canticles, and the collects, assembled for today and ready to pray. A daily reminder keeps the hour.",
     ],
-    mock: "lectio",
+    mock: "daily-office",
   },
 
   // 17 — Gatherings (text + mock on one slide)
@@ -151,17 +151,17 @@ function DashboardMock() {
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
       </div>
       <div className="space-y-2">
-        {/* Lectio card */}
+        {/* Daily Office card */}
         <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
           <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
           <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>📜 Lectio Divina</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>with Sarah, David +3</p>
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🌅 Morning Prayer</p>
+              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>The Daily Office · BCP</p>
             </div>
             <div className="text-right shrink-0 flex flex-col items-end gap-1">
-              <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>1 of 3</p>
-              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>Responses</span>
+              <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>This morning</p>
+              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>Pray</span>
             </div>
           </div>
         </div>
@@ -581,27 +581,15 @@ function PrayerListMock() {
   );
 }
 
-/* ── Lectio Divina — responses view (matches actual app slideshow) ── */
-function LectioMock() {
-  const reflections = [
-    {
-      name: "Margaret",
-      isYou: false,
-      time: "Mon · 8am",
-      text: "I keep returning to the moment they recognised him — and then he was gone. That sudden absence after recognition.",
-    },
-    {
-      name: "You",
-      isYou: true,
-      time: "Today · 7am",
-      text: "\"Hearts burning\" — the way ordinary moments can hold something we don't see until later.",
-    },
-    {
-      name: "David",
-      isYou: false,
-      time: "Wed · 6pm",
-      text: "The road itself. They were walking away from Jerusalem. Yet he met them there.",
-    },
+/* ── The Daily Office — Morning Prayer (matches actual app office) ── */
+function DailyOfficeMock() {
+  const sections = [
+    { label: "Opening Sentence", done: true, active: false },
+    { label: "Confession", done: true, active: false },
+    { label: "The Invitatory", done: true, active: false },
+    { label: "The Psalter", done: false, active: true },
+    { label: "The Lessons", done: false, active: false },
+    { label: "The Prayers", done: false, active: false },
   ];
   return (
     <MockPhone>
@@ -615,8 +603,8 @@ function LectioMock() {
           Menu
         </div>
         <div className="text-right">
-          <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.55)" }}>Stage 2</p>
-          <p className="text-[10px]" style={{ color: C.sage }}>Luke 24:13–35</p>
+          <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.55)" }}>Morning Prayer</p>
+          <p className="text-[10px]" style={{ color: C.sage }}>BCP p. 75</p>
         </div>
       </div>
 
@@ -625,34 +613,64 @@ function LectioMock() {
         className="text-[9px] uppercase tracking-[0.18em] font-semibold mb-3"
         style={{ color: "rgba(143,175,150,0.45)" }}
       >
-        What others heard
+        The Daily Office
       </p>
 
-      {/* Reflection cards */}
-      <div className="space-y-2 mb-4">
-        {reflections.map((r, i) => (
-          <div
-            key={i}
-            className="rounded-xl px-3 py-2.5"
-            style={{
-              background: r.isYou ? "rgba(111,175,133,0.08)" : "#0F2818",
-              border: `1px solid ${r.isYou ? "rgba(111,175,133,0.35)" : "rgba(200,212,192,0.15)"}`,
-            }}
-          >
-            <div className="flex items-baseline justify-between mb-1">
-              <p
-                className="text-[9px] uppercase tracking-widest font-semibold"
-                style={{ color: r.isYou ? "#6FAF85" : C.sage }}
-              >
-                {r.name}
-              </p>
-              <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.45)" }}>{r.time}</p>
+      {/* Order of service */}
+      <div
+        className="rounded-xl px-3 py-2 mb-3"
+        style={{ background: "rgba(200,212,192,0.03)", border: "1px solid rgba(200,212,192,0.1)" }}
+      >
+        {sections.map((s, i) => (
+          <div key={i} className="flex items-center gap-2 py-[3px]">
+            <div
+              className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+              style={{
+                background: s.done
+                  ? "rgba(46,107,64,0.4)"
+                  : s.active
+                    ? "rgba(46,107,64,0.5)"
+                    : "rgba(200,212,192,0.05)",
+                border: s.active
+                  ? "1px solid rgba(46,107,64,0.7)"
+                  : "1px solid rgba(200,212,192,0.12)",
+              }}
+            >
+              {s.done && <span className="text-[7px]" style={{ color: "#C8D4C0" }}>✓</span>}
             </div>
-            <p className="text-[11px] leading-[1.55]" style={{ color: C.text, fontFamily: C.font }}>
-              {r.text}
+            <p
+              className="text-[10px]"
+              style={{
+                color: s.active ? C.text : s.done ? C.sage : "rgba(200,212,192,0.4)",
+                fontWeight: s.active ? 600 : 400,
+                fontFamily: C.font,
+              }}
+            >
+              {s.label}
             </p>
           </div>
         ))}
+      </div>
+
+      {/* Open passage — the Psalter */}
+      <div
+        className="rounded-xl px-3 py-2.5 mb-3"
+        style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)" }}
+      >
+        <p
+          className="text-[9px] uppercase tracking-widest font-semibold mb-1"
+          style={{ color: C.sage }}
+        >
+          Psalm 63 · Appointed today
+        </p>
+        <p
+          className="text-[11px] leading-[1.6] italic"
+          style={{ color: C.text, fontFamily: "Georgia, 'Times New Roman', serif" }}
+        >
+          O God, you are my God; eagerly I seek you; my soul thirsts for you,
+          my flesh faints for you, as in a barren and dry land where there is
+          no water.
+        </p>
       </div>
 
       {/* Floating nav pill */}
@@ -661,12 +679,12 @@ function LectioMock() {
         style={{ background: "rgba(19,44,29,0.92)", border: "1px solid rgba(200,212,192,0.15)" }}
       >
         <p className="text-[10px] font-semibold" style={{ color: C.text }}>Back</p>
-        <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)" }}>Stage 2 · Meditatio</p>
+        <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)" }}>The Psalter</p>
         <div
           className="px-2.5 py-1 rounded-full text-[10px] font-semibold"
           style={{ background: "#2D5E3F", color: C.text }}
         >
-          Next stage
+          Continue
         </div>
       </div>
     </MockPhone>
@@ -900,7 +918,7 @@ const MOCK_MAP: Record<string, () => JSX.Element> = {
   "prayer-requests": PrayerRequestsMock,
   bcp: BCPPrayerModeMock,
   "prayer-list": PrayerListMock,
-  lectio: LectioMock,
+  "daily-office": DailyOfficeMock,
   "meat-fast": MeatFastMock,
   calendar: CalendarMock,
   gatherings: GatheringsMock,
