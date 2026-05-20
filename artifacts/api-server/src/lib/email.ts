@@ -327,12 +327,23 @@ export async function sendNewsletterEmailDiagnostic(opts: {
       code?: number;
       status?: number;
       message?: string;
-      response?: { status?: number; data?: unknown };
+      response?: {
+        status?: number;
+        data?: { error?: string; error_description?: string } | unknown;
+      };
       errors?: Array<{ reason?: string; message?: string }>;
     };
     const code = e?.code ?? e?.status ?? e?.response?.status;
     const reasonCode = e?.errors?.[0]?.reason;
-    const msg = e?.errors?.[0]?.message || e?.message;
+    // OAuth-style errors (refresh-token revoked, etc.) carry their
+    // human-readable detail on response.data.error_description, NOT
+    // on errors[0].message. Pull both — the description is usually
+    // the most actionable line for the toast (e.g. "Token has been
+    // expired or revoked.").
+    const data = e?.response?.data as { error?: string; error_description?: string } | undefined;
+    const oauthErr = data?.error;
+    const oauthDesc = data?.error_description;
+    const msg = oauthDesc || e?.errors?.[0]?.message || e?.message;
     console.error("[email] sendNewsletterEmailDiagnostic FAILED", {
       to: opts.to,
       subject: opts.subject,
@@ -345,7 +356,8 @@ export async function sendNewsletterEmailDiagnostic(opts: {
     const parts: string[] = [];
     if (code) parts.push(`code ${code}`);
     if (reasonCode) parts.push(reasonCode);
-    if (msg) parts.push(msg);
+    else if (oauthErr) parts.push(oauthErr);
+    if (msg && msg !== oauthErr) parts.push(msg);
     return {
       ok: false,
       reason: parts.length > 0 ? parts.join(" · ") : "Gmail send failed (no further detail)",
