@@ -139,7 +139,6 @@ const SLIDES: Slide[] = [
     headline: "A daily habit, held together.",
     body: [
       "For seventeen centuries, Christians have steadied their days by stopping to pray — morning and evening, in monasteries, in parishes, in kitchens. The Office has carried the faithful through plagues, exiles, and the long, ordinary middle.",
-      "Phoebe helps your community keep that rhythm — together. A bell in the morning, a bell in the evening, a quiet record of who showed up.",
     ],
     mock: "prayer-rhythm",
   },
