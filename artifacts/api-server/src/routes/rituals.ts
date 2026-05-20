@@ -685,11 +685,35 @@ router.delete("/rituals/:id", async (req, res): Promise<void> => {
   }
 
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  // Verify ownership
-  const [ritual] = await db.select({ ownerId: ritualsTable.ownerId }).from(ritualsTable).where(eq(ritualsTable.id, params.data.id));
+  // Permission: caller must be either the original owner OR an admin
+  // (admin | hidden_admin) of the gathering's primary host community.
+  // Community admins manage their community's gatherings, even when
+  // the gathering was created by someone else (a former member, etc.).
+  const [ritual] = await db.select({
+    ownerId: ritualsTable.ownerId,
+    groupId: ritualsTable.groupId,
+  }).from(ritualsTable).where(eq(ritualsTable.id, params.data.id));
   if (!ritual) { res.status(404).json({ error: "Tradition not found" }); return; }
-  if (!sessionUserId || ritual.ownerId !== sessionUserId) { res.status(403).json({ error: "Only the owner can delete this tradition" }); return; }
+
+  let allowed = ritual.ownerId === sessionUserId;
+  if (!allowed && ritual.groupId) {
+    const [membership] = await db.select({ role: groupMembersTable.role })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, ritual.groupId),
+        eq(groupMembersTable.userId, sessionUserId),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ));
+    if (membership && (membership.role === "admin" || membership.role === "hidden_admin")) {
+      allowed = true;
+    }
+  }
+  if (!allowed) {
+    res.status(403).json({ error: "Only the owner or a community admin can delete this gathering" });
+    return;
+  }
 
   // Delete Google Calendar events from meetups before removing DB records
   try {
@@ -710,6 +734,11 @@ router.delete("/rituals/:id", async (req, res): Promise<void> => {
   await db.delete(ritualMessagesTable).where(eq(ritualMessagesTable.ritualId, params.data.id));
   await db.delete(scheduleResponsesTable).where(eq(scheduleResponsesTable.ritualId, params.data.id));
   await db.delete(inviteTokensTable).where(eq(inviteTokensTable.ritualId, params.data.id));
+  // ritual_groups (multi-community share junction). Wrap in try/catch
+  // so a fresh DB without the table doesn't break delete.
+  try {
+    await db.delete(ritualGroupsTable).where(eq(ritualGroupsTable.ritualId, params.data.id));
+  } catch { /* table may not exist on stale schemas */ }
 
   await db.delete(ritualsTable).where(eq(ritualsTable.id, params.data.id));
   res.sendStatus(204);
