@@ -236,8 +236,120 @@ export async function sendNewsletterEmail(opts: {
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
-    console.error("Failed to send newsletter email:", err);
+    // Log Google's full response so Railway logs carry the real reason
+    // (refresh-token revoked, daily-quota exceeded, bad recipient, etc).
+    // Mirrors the diagnostic shape we use for calendar.ts errors.
+    const e = err as {
+      code?: number;
+      status?: number;
+      message?: string;
+      response?: { status?: number; data?: unknown };
+      errors?: Array<{ reason?: string; message?: string }>;
+    };
+    console.error("[email] sendNewsletterEmail FAILED", {
+      to: opts.to,
+      subject: opts.subject,
+      code: e?.code ?? e?.status ?? e?.response?.status,
+      message: e?.message,
+      reason: e?.errors?.[0]?.reason,
+      data: e?.response?.data,
+    });
     return false;
+  }
+}
+
+// Diagnostic-friendly newsletter send. Same template as
+// sendNewsletterEmail above, but instead of swallowing failures to
+// boolean it returns the Gmail error reason so the preview route can
+// surface "invalid_grant" / "quotaExceeded" / etc. straight into the
+// admin's toast without making them dig through Railway logs.
+export async function sendNewsletterEmailDiagnostic(opts: {
+  to: string;
+  subject: string;
+  bodyMarkdown: string;
+}): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const gmail = await getGmailClient();
+  if (!gmail) {
+    return {
+      ok: false,
+      reason:
+        "Gmail client unavailable — INVITES_GOOGLE_REFRESH_TOKEN env var missing or unreadable on the server.",
+    };
+  }
+
+  const bodyHtml = renderMarkdownToEmailHtml(opts.bodyMarkdown);
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
+          <tr>
+            <td>
+              <div style="margin-bottom:28px;">
+                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+              </div>
+              <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.subject)}</h1>
+              ${bodyHtml}
+              <p style="margin:8px 0 0;font-size:12px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
+                You're receiving this because you're a member of Phoebe.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+  const text = [
+    opts.subject,
+    "",
+    opts.bodyMarkdown,
+    "",
+    "---",
+    "You're receiving this because you're a member of Phoebe.",
+  ].join("\n");
+
+  try {
+    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return { ok: true };
+  } catch (err) {
+    const e = err as {
+      code?: number;
+      status?: number;
+      message?: string;
+      response?: { status?: number; data?: unknown };
+      errors?: Array<{ reason?: string; message?: string }>;
+    };
+    const code = e?.code ?? e?.status ?? e?.response?.status;
+    const reasonCode = e?.errors?.[0]?.reason;
+    const msg = e?.errors?.[0]?.message || e?.message;
+    console.error("[email] sendNewsletterEmailDiagnostic FAILED", {
+      to: opts.to,
+      subject: opts.subject,
+      code,
+      reason: reasonCode,
+      message: e?.message,
+      data: e?.response?.data,
+    });
+    // Reader-friendly short message for the toast.
+    const parts: string[] = [];
+    if (code) parts.push(`code ${code}`);
+    if (reasonCode) parts.push(reasonCode);
+    if (msg) parts.push(msg);
+    return {
+      ok: false,
+      reason: parts.length > 0 ? parts.join(" · ") : "Gmail send failed (no further detail)",
+    };
   }
 }
 

@@ -9,7 +9,7 @@ import {
   groupMembersTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
-import { sendNewsletterEmail } from "../lib/email";
+import { sendNewsletterEmail, sendNewsletterEmailDiagnostic } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -188,13 +188,16 @@ router.post("/admin/newsletter/preview", async (req, res): Promise<void> => {
   }
 
   try {
-    const ok = await sendNewsletterEmail({
+    // Diagnostic variant — surfaces the Gmail error reason (refresh
+    // token revoked, quota exceeded, etc.) all the way through to the
+    // toast so we can act on it without spelunking Railway logs.
+    const result = await sendNewsletterEmailDiagnostic({
       to: user.email,
       subject: `[Preview] ${parsed.data.subject}`,
       bodyMarkdown: parsed.data.bodyMarkdown,
     });
-    if (!ok) {
-      res.status(502).json({ error: "Email service is unavailable right now" });
+    if (!result.ok) {
+      res.status(502).json({ error: `Email service error — ${result.reason}` });
       return;
     }
     res.json({ ok: true, sentTo: user.email });
