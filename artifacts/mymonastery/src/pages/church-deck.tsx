@@ -473,44 +473,51 @@ function PrayerRequestsMock() {
 
 /* ── Prayer Notification — iOS-style notification (standalone, no lock screen) ── */
 function PrayerNotificationMock() {
+  // iOS uses SF Pro / system fonts — keep the same here so the card
+  // feels like an OS-level notification, not Phoebe's UI font.
+  const iosFont =
+    "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', Helvetica, Arial, sans-serif";
   return (
     <div
-      className="rounded-2xl px-3.5 py-3 flex gap-3 items-start w-full max-w-[420px] mx-auto"
+      className="rounded-[18px] md:rounded-[22px] px-4 md:px-5 py-3.5 md:py-4 flex gap-3 md:gap-3.5 items-start w-full max-w-[560px] mx-auto"
       style={{
-        background: "rgba(40,45,48,0.92)",
-        backdropFilter: "blur(8px)",
+        background: "rgba(44,46,49,0.92)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
         border: "1px solid rgba(255,255,255,0.06)",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
+        boxShadow:
+          "0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)",
       }}
     >
-      {/* App icon — Phoebe (saint) */}
-      <div
-        className="w-11 h-11 rounded-[10px] flex items-center justify-center shrink-0"
-        style={{
-          background: "linear-gradient(135deg, #1a3a26 0%, #0F2818 100%)",
-          border: "1px solid rgba(200,212,192,0.18)",
-        }}
-      >
-        <span className="text-[22px]">🙏🏽</span>
-      </div>
+      {/* App icon — real Phoebe icon */}
+      <img
+        src="/phoebe-app-icon.png"
+        alt="Phoebe"
+        className="w-[44px] h-[44px] md:w-[52px] md:h-[52px] rounded-[10px] md:rounded-[12px] shrink-0"
+        style={{ objectFit: "cover" }}
+      />
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2 mb-1">
+        <div className="flex items-start justify-between gap-3 mb-1">
           <p
-            className="text-[14px] md:text-[15px] font-semibold leading-tight"
-            style={{ color: "#F5F5F5", fontFamily: C.font }}
+            className="text-[15px] md:text-[17px] font-semibold leading-snug"
+            style={{ color: "#F5F5F5", fontFamily: iosFont, letterSpacing: "-0.01em" }}
           >
             You've been held in prayer today
           </p>
           <p
-            className="text-[11px] shrink-0 pt-0.5"
-            style={{ color: "rgba(220,230,235,0.55)", fontFamily: C.font }}
+            className="text-[12px] md:text-[13px] shrink-0 pt-[2px]"
+            style={{ color: "rgba(220,230,235,0.55)", fontFamily: iosFont }}
           >
             now
           </p>
         </div>
         <p
-          className="text-[13px] md:text-[14px] leading-snug"
-          style={{ color: "rgba(220,230,235,0.88)", fontFamily: C.font }}
+          className="text-[14px] md:text-[16px] leading-snug"
+          style={{
+            color: "rgba(230,235,240,0.92)",
+            fontFamily: iosFont,
+            letterSpacing: "-0.005em",
+          }}
         >
           Theresa and others prayed for your requests today.
         </p>
