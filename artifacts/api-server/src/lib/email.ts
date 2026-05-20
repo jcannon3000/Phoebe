@@ -5,7 +5,7 @@ import { INVITES_FROM_HEADER, getInvitesRefreshToken } from "./invitesAccount";
 // group names, and admin-chosen prompts are all user-controlled; an
 // unescaped <img onerror> in any of them would be stored XSS that
 // fans out to every recipient's inbox.
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return (s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -24,7 +24,7 @@ function getOAuth2Client() {
 let cachedAccessToken: string | null = null;
 let cachedTokenExpiry: number | null = null;
 
-async function getGmailClient() {
+export async function getGmailClient() {
   const refreshToken = getInvitesRefreshToken();
   if (!refreshToken) {
     console.warn("No Google refresh token set — email sending disabled");
@@ -46,7 +46,7 @@ async function getGmailClient() {
   return google.gmail({ version: "v1", auth: oauth2Client });
 }
 
-function encodeMimeMessage(options: {
+export function encodeMimeMessage(options: {
   to: string;
   subject: string;
   html: string;

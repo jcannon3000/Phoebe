@@ -1145,19 +1145,41 @@ router.get("/phoebe/invite/:token", async (req, res): Promise<void> => {
     .where(eq(correspondenceMembersTable.correspondenceId, correspondence.id));
 
   const creator = members.find((m) => m.userId === correspondence.createdByUserId);
-  const letterCount = await db
-    .select({ count: sql<number>`count(*)::int` })
+
+  // Return the actual letters so the invite landing page can render
+  // them — the recipient should be able to READ the letter (or several)
+  // before being asked to do anything. Authentication is the invite
+  // token itself; the holder of the token is the addressed recipient.
+  // We strip nothing — the body is the letter as written.
+  const letters = await db
+    .select({
+      id: lettersTable.id,
+      content: lettersTable.content,
+      authorName: lettersTable.authorName,
+      authorEmail: lettersTable.authorEmail,
+      sentAt: lettersTable.sentAt,
+    })
     .from(lettersTable)
-    .where(eq(lettersTable.correspondenceId, correspondence.id));
+    .where(eq(lettersTable.correspondenceId, correspondence.id))
+    .orderBy(lettersTable.sentAt);
 
   res.json({
     correspondenceName: correspondence.name,
     creatorName: creator?.name || "Someone",
     type: correspondence.groupType,
     memberCount: members.length,
-    letterCount: letterCount[0]?.count || 0,
+    letterCount: letters.length,
     alreadyJoined: !!member.joinedAt,
     memberEmail: member.email,
+    // Most recent letters in chronological order. For one-to-one this
+    // is typically one or two; for groups it can be longer.
+    letters: letters.map((l) => ({
+      id: l.id,
+      content: l.content,
+      authorName: l.authorName,
+      isFromYou: l.authorEmail.toLowerCase() === member.email.toLowerCase(),
+      sentAt: l.sentAt instanceof Date ? l.sentAt.toISOString() : l.sentAt,
+    })),
   });
 });
 
