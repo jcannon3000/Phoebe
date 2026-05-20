@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
@@ -82,6 +83,91 @@ function ReminderTimeRow({
         }}
       />
     </div>
+  );
+}
+
+// Single on/off preference for the Tuesday-evening prayer-feed digest
+// (push + email + slideshow). Beta-only — the sender's beta gate is
+// the source of truth; the UI hides the section for non-beta users
+// so it doesn't show a toggle for a feature they can't trigger.
+function WeeklyDigestSettings() {
+  const { isBeta } = useBetaStatus();
+  const queryClient = useQueryClient();
+  const { data } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/me/weekly-digest-pref"],
+    queryFn: () => apiRequest("GET", "/api/me/weekly-digest-pref") as Promise<{ enabled: boolean }>,
+    enabled: isBeta,
+  });
+  const save = useMutation({
+    mutationFn: (enabled: boolean) =>
+      apiRequest("PUT", "/api/me/weekly-digest-pref", { enabled }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/weekly-digest-pref"] }),
+  });
+
+  if (!isBeta) return null;
+  const enabled = data?.enabled ?? true;
+
+  const options: Array<{ value: boolean; label: string; sub: string }> = [
+    { value: true, label: "Tuesday evenings", sub: "When something new lands on your feeds" },
+    { value: false, label: "Off", sub: "" },
+  ];
+
+  return (
+    <>
+      <SectionHeader label="Weekly digest" />
+      <p
+        className="text-[13px] mb-3"
+        style={{
+          color: "rgba(143,175,150,0.8)",
+          fontFamily: "Georgia, serif",
+          fontStyle: "italic",
+        }}
+      >
+        A Tuesday-evening summary of what's new on the prayer feeds you follow — a push, an email, and a slideshow that walks them.
+      </p>
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const isSelected = enabled === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => save.mutate(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p
+                  className="text-[14px]"
+                  style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+                >
+                  {opt.label}
+                </p>
+                {opt.sub && (
+                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                    {opt.sub}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
   );
 }
 
@@ -885,6 +971,9 @@ export default function SettingsPage() {
 
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />
+
+        {/* ── Weekly prayer-feed digest ── (beta-only for now) */}
+        <WeeklyDigestSettings />
 
         {/* ── Muted People ── */}
         <MutedPeople />

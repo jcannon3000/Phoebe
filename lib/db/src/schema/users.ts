@@ -124,6 +124,20 @@ export const usersTable = pgTable("users", {
   // community shouldn't disappear just because a sibling group fired
   // earlier).
   lastPrayerInviteEmailDate: text("last_prayer_invite_email_date"),
+  // ── Weekly prayer-feed digest ───────────────────────────────────────────
+  // Fires Tuesday evening (user TZ) when the subscriber has any new
+  // intercessions on their subscribed feeds since the previous digest.
+  // The push + email + slideshow share the same "since" cutoff, which is
+  // this column: YYYY-MM-DD in user-TZ of the last digest we fired.
+  // NULL = never sent (first-ever digest uses a 7-day lookback). The
+  // sender skips a tick when there's nothing new, so this column only
+  // moves forward on a non-empty week.
+  lastDigestSentDate: text("last_digest_sent_date"),
+  // Per-user opt-out for the weekly digest email + push. Default on so
+  // a new subscriber gets the rhythm; flipped from Settings → Weekly
+  // digest. Disabling stops both channels, not just one — the digest is
+  // one unified prompt.
+  weeklyDigestEnabled: boolean("weekly_digest_enabled").notNull().default(true),
   // BCP-47 locale code (e.g. "en", "es"). Drives i18next on the client
   // and template selection in pushSender / email senders. Beta users
   // can flip this to "es" via Settings → Language; non-beta accounts

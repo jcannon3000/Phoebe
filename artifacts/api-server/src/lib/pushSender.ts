@@ -1317,3 +1317,30 @@ export function sendLectioEveningReminderPush(
   });
 }
 
+// Weekly prayer-feed digest — fires Tuesday evening (user TZ) per the
+// scheduler in bellSender. Title carries the new-intercession count;
+// body adds a "you can act on N of these" line when any of the new
+// items are action-type. Deep-links into the digest slideshow.
+export function sendWeeklyDigestPush(
+  userId: number,
+  opts: { count: number; actionCount: number },
+): Promise<SendResult> {
+  const { count, actionCount } = opts;
+  const title = count === 1
+    ? "1 new intercession on your feeds"
+    : `${count} new intercessions on your feeds`;
+  const body =
+    actionCount === 0
+      ? "Tap to pray them together."
+      : actionCount === 1
+        ? "Including 1 you can act on. Tap to pray."
+        : `Including ${actionCount} you can act on. Tap to pray.`;
+  return sendPushToUser(userId, {
+    title,
+    body,
+    path: "/prayer-mode?queue=feed-digest",
+    threadId: "weekly-digest",
+    badge: 1,
+  });
+}
+

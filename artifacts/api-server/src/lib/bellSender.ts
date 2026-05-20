@@ -15,6 +15,7 @@ import {
   groupMembersTable,
   groupsTable,
   actionsTable,
+  betaUsersTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -27,11 +28,14 @@ import {
   sendParishEveningRecapPush,
   sendGatheringTomorrowPush,
   sendActionReminderPush,
+  sendWeeklyDigestPush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
 import { logger } from "./logger";
 import { PHOEBE_PARISH_ENABLED } from "./parishFlag";
+import { loadFeedDigest } from "./feedDigest";
+import { sendWeeklyDigestEmail } from "./email";
 
 // ─── Timezone helpers ───────────────────────────────────────────────────────
 
@@ -1193,6 +1197,94 @@ export async function runActionReminderSender(): Promise<void> {
   }
 }
 
+// ─── Weekly prayer-feed digest sender ─────────────────────────────────────────
+// Fires Tuesday at 18:00 in each opted-in subscriber's local TZ.
+// Sends one push + one email summarising the intercessions that have
+// landed on their subscribed feeds since the previous digest, with
+// action-type intercessions called out separately. The push deep-links
+// to /prayer-mode?queue=feed-digest so the slide walker plays the same
+// set as the email. Empty weeks are silent — last_digest_sent_date
+// only moves forward on a non-empty week so the next non-empty week
+// still fires.
+export async function runWeeklyDigestSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  const force = opts.forceNow === true;
+  try {
+    // Beta-only for now — the digest is a beta-cohort feature while
+    // we refine cadence + content. innerJoin against beta_users
+    // (email-keyed, lowercased) drops non-beta accounts at query time.
+    const users = await db
+      .select({
+        id: usersTable.id,
+        email: usersTable.email,
+        name: usersTable.name,
+        timezone: usersTable.timezone,
+        lastDigestSentDate: usersTable.lastDigestSentDate,
+      })
+      .from(usersTable)
+      .innerJoin(
+        betaUsersTable,
+        sql`LOWER(${usersTable.email}) = LOWER(${betaUsersTable.email})`,
+      )
+      .where(eq(usersTable.weeklyDigestEnabled, true));
+
+    for (const user of users) {
+      const tz = user.timezone ?? "America/New_York";
+      const todayStr = todayDateInTz(tz);
+
+      if (!force) {
+        // Tuesday at 18:00, first 15 minutes of the hour. 0=Sun, 2=Tue.
+        // Reading getUTCDay from noon-UTC of the local date is the
+        // pattern other senders use to avoid cross-midnight surprises.
+        const weekday = new Date(`${todayStr}T12:00:00Z`).getUTCDay();
+        if (weekday !== 2) continue;
+        const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
+        if (nowH !== 18 || nowM >= 15) continue;
+      }
+      // Idempotent: once per local-TZ Tuesday.
+      if (user.lastDigestSentDate === todayStr) continue;
+
+      // Cutoff for "new since": the previous digest's stamp, or 7 days
+      // ago for a first-ever digest. UTC midnight of the local stamp
+      // is slightly over-inclusive across the international date line,
+      // which is fine — we'd rather over-show than skip an item.
+      const since = user.lastDigestSentDate
+        ? new Date(`${user.lastDigestSentDate}T00:00:00Z`)
+        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+      const digest = await loadFeedDigest(user.id, since);
+      if (digest.entries.length === 0) continue;
+
+      try {
+        await sendWeeklyDigestPush(user.id, {
+          count: digest.entries.length,
+          actionCount: digest.actionEntries.length,
+        });
+      } catch (err) {
+        logger.error({ err, userId: user.id }, "[digest] push failed");
+      }
+      try {
+        await sendWeeklyDigestEmail({
+          to: user.email,
+          recipientName: user.name,
+          digest,
+        });
+      } catch (err) {
+        logger.error({ err, userId: user.id }, "[digest] email failed");
+      }
+
+      // Stamp only when the week was non-empty.
+      await db
+        .update(usersTable)
+        .set({ lastDigestSentDate: todayStr })
+        .where(eq(usersTable.id, user.id));
+
+      logger.info({ userId: user.id, count: digest.entries.length, actionCount: digest.actionEntries.length }, "[digest] sent");
+    }
+  } catch (err) {
+    logger.error({ err }, "[digest] sender failed");
+  }
+}
+
 let bellInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startBellScheduler(): void {
@@ -1227,6 +1319,9 @@ export function startBellScheduler(): void {
     runActionReminderSender().catch((err) =>
       logger.error({ err }, "[action-reminder] initial run failed"),
     );
+    runWeeklyDigestSender().catch((err) =>
+      logger.error({ err }, "[digest] initial run failed"),
+    );
   }, 45_000);
 
   bellInterval = setInterval(
@@ -1257,6 +1352,9 @@ export function startBellScheduler(): void {
       );
       runActionReminderSender().catch((err) =>
         logger.error({ err }, "[action-reminder] scheduled run failed"),
+      );
+      runWeeklyDigestSender().catch((err) =>
+        logger.error({ err }, "[digest] scheduled run failed"),
       );
     },
     15 * 60 * 1000,

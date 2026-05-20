@@ -1759,6 +1759,10 @@ export default function PrayerModePage() {
     const v = new URLSearchParams(window.location.search).get("queue");
     if (v === "new") return "new";
     if (v === "parish-weekly") return "parish-weekly";
+    // Weekly prayer-feed digest — opened from the Tuesday push/email.
+    // Plays the new intercessions on the viewer's subscribed feeds
+    // since their previous digest.
+    if (v === "feed-digest") return "feed-digest";
     return null;
   })();
   const finishHref = returnToHref ?? "/dashboard";
@@ -1832,6 +1836,33 @@ export default function PrayerModePage() {
     staleTime: 60_000,
   });
   const parishWeeklyData = parishWeeklyQuery.data;
+
+  // Weekly prayer-feed digest — only fetched when opened via
+  // queue=feed-digest. Each entry maps to an intercession slide below.
+  type FeedDigestEntry = {
+    id: number;
+    feedId: number;
+    feedSlug: string;
+    feedTitle: string;
+    feedCoverEmoji: string | null;
+    title: string;
+    body: string | null;
+    source: string | null;
+    learnMoreUrl: string | null;
+    momentToken: string | null;
+    createdAt: string;
+  };
+  const feedDigestQuery = useQuery<{
+    sinceDate: string;
+    entries: FeedDigestEntry[];
+    actionEntries: FeedDigestEntry[];
+  }>({
+    queryKey: ["/api/me/feed-digest"],
+    queryFn: () => apiRequest("GET", "/api/me/feed-digest"),
+    enabled: !!user && queueMode === "feed-digest",
+    staleTime: 60_000,
+  });
+  const feedDigestData = feedDigestQuery.data;
 
   const myPrayersForQuery = useQuery<MyActivePrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
@@ -2070,7 +2101,25 @@ export default function PrayerModePage() {
   const momentsById = new Map((momentsData?.moments ?? []).map(m => [m.id, m]));
   const requestsById = new Map(prayerRequests.map(r => [r.id, r]));
 
-  const slides: PrayerSlide[] = queueMode === "parish-weekly"
+  const slides: PrayerSlide[] = queueMode === "feed-digest"
+    ? (feedDigestData?.entries ?? []).map((e): PrayerSlide => ({
+        // The Tuesday digest's new intercessions, played as a focused
+        // walk. Built as plain intercession slides so the Take-action
+        // / Learn-more pill, momentToken-backed Amen, and feed-name
+        // chip all reuse the existing intercession render path.
+        kind: "intercession",
+        text: e.title,
+        intention: null,
+        fullText: e.body?.trim() || null,
+        source: e.source ?? null,
+        attribution: "",
+        weekPrayCount: 0,
+        momentToken: e.momentToken,
+        myUserToken: null,
+        feedTag: e.feedTitle,
+        learnMoreUrl: e.learnMoreUrl?.trim() || null,
+      }))
+    : queueMode === "parish-weekly"
     ? (parishWeeklyData?.unprayed ?? []).flatMap((e): PrayerSlide[] => {
         if (e.kind === "request") {
           const r = requestsById.get(e.request.id);
@@ -2497,7 +2546,7 @@ export default function PrayerModePage() {
     // sent the user in to handle a specific queue, so resume-progress
     // and alreadyPrayedToday-skip don't apply (all queue slides are
     // un-prayed by construction; no localStorage to honor).
-    if (!seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly") {
+    if (!seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest") {
       try {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {

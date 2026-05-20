@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { INVITES_FROM_HEADER, getInvitesRefreshToken } from "./invitesAccount";
+import type { FeedDigest } from "./feedDigest";
 
 // Escape a string before interpolating it into email HTML. Names,
 // group names, and admin-chosen prompts are all user-controlled; an
@@ -473,6 +474,157 @@ export async function sendPrayerInviteEmail(opts: {
     return true;
   } catch (err) {
     console.error("Failed to send prayer-invite email:", err);
+    return false;
+  }
+}
+
+// Weekly prayer-feed digest — fired Tuesday evening (user TZ) by the
+// runWeeklyDigestSender scheduler. Lists the new intercessions on
+// each subscriber's feeds since the previous digest, with action-type
+// intercessions called out separately. CTA leads to the slideshow at
+// /prayer-mode?queue=feed-digest.
+export async function sendWeeklyDigestEmail(opts: {
+  to: string;
+  recipientName: string;
+  digest: FeedDigest;
+}): Promise<boolean> {
+  const gmail = await getGmailClient();
+  if (!gmail) {
+    console.warn("Gmail client unavailable — skipping weekly digest email");
+    return false;
+  }
+
+  const { digest } = opts;
+  const n = digest.entries.length;
+  const actions = digest.actionEntries;
+  if (n === 0) return false; // safety — sender should already skip empty weeks
+
+  const firstName = (opts.recipientName ?? "").trim().split(/\s+/)[0] || "friend";
+  const headline = n === 1
+    ? "1 new on your feeds this week"
+    : `${n} new on your feeds this week`;
+  const subject = n === 1
+    ? "1 new intercession to pray this week"
+    : `${n} new intercessions to pray this week`;
+
+  const appBaseUrl = (process.env.APP_BASE_URL ?? "https://withphoebe.app").replace(/\/$/, "");
+  const slideshowUrl = `${appBaseUrl}/prayer-mode?queue=feed-digest`;
+  const settingsUrl = `${appBaseUrl}/settings`;
+
+  const eFirstName = escapeHtml(firstName);
+  const eSlideshow = escapeHtml(slideshowUrl);
+  const eSettings = escapeHtml(settingsUrl);
+  const eHeadline = escapeHtml(headline);
+
+  // Action call-out — only renders when at least one of the new items
+  // is an action. Each card carries the title, feed badge, and a
+  // direct "Take action →" link (the same one the slideshow shows).
+  const actionsHtml = actions.length === 0
+    ? ""
+    : `
+              <div style="background:#f5f1e8;border:1px solid #e8d8a8;border-radius:12px;padding:18px 18px 14px;margin-bottom:24px;">
+                <p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#8a6a1a;text-transform:uppercase;letter-spacing:1px;">
+                  📣 Take action this week
+                </p>
+                ${actions.map((a) => `
+                <div style="margin-bottom:14px;">
+                  <p style="margin:0 0 2px;font-size:15px;font-weight:600;color:#2d2a26;">${escapeHtml(a.title)}</p>
+                  <p style="margin:0 0 6px;font-size:12px;color:#9a8a4a;">on ${escapeHtml(a.feedTitle)}</p>
+                  ${a.learnMoreUrl ? `<a href="${escapeHtml(a.learnMoreUrl)}" style="font-size:13px;font-weight:600;color:#4a7c59;text-decoration:none;">Take action →</a>` : ""}
+                </div>`).join("")}
+              </div>
+    `;
+
+  // Up to 5 entries previewed in the body; the slideshow has the rest.
+  const PREVIEW_LIMIT = 5;
+  const previewed = digest.entries.slice(0, PREVIEW_LIMIT);
+  const moreCount = Math.max(0, n - PREVIEW_LIMIT);
+  const listHtml = `
+              <div style="margin-bottom:24px;">
+                ${previewed.map((e) => `
+                <div style="border-top:1px solid #f0ece6;padding:12px 0;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#9a9390;text-transform:uppercase;letter-spacing:0.6px;">
+                    ${e.feedCoverEmoji ? escapeHtml(e.feedCoverEmoji) + " " : ""}${escapeHtml(e.feedTitle)}
+                  </p>
+                  <p style="margin:0;font-size:15px;font-weight:600;color:#2d2a26;">${escapeHtml(e.title)}</p>
+                </div>`).join("")}
+                ${moreCount > 0 ? `<p style="margin:14px 0 0;font-size:13px;color:#6b6460;font-style:italic;">+${moreCount} more in the slideshow.</p>` : ""}
+              </div>
+  `;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f9f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7f4;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;border:1px solid #e8e2d9;padding:40px 36px;">
+          <tr>
+            <td>
+              <div style="margin-bottom:28px;">
+                <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
+              </div>
+              <p style="margin:0 0 6px;font-size:15px;color:#6b6460;line-height:1.6;">
+                Hi ${eFirstName},
+              </p>
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
+                ${eHeadline}
+              </h1>
+              <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">
+                Here's what your feeds are carrying. Pray them in one sitting or one at a time — your community is praying alongside you.
+              </p>${actionsHtml}${listHtml}
+              <a href="${eSlideshow}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">
+                Pray them all together →
+              </a>
+              <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
+                You're getting this because you subscribe to prayer feeds on Phoebe.
+                <a href="${eSettings}" style="color:#6b6460;text-decoration:underline;">Update your weekly preferences</a>.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  // Plain-text fallback.
+  const lines: string[] = [`Hi ${firstName},`, "", headline + ".", ""];
+  if (actions.length > 0) {
+    lines.push("Take action this week:");
+    for (const a of actions) {
+      lines.push(`  • ${a.title} (on ${a.feedTitle})`);
+      if (a.learnMoreUrl) lines.push(`    ${a.learnMoreUrl}`);
+    }
+    lines.push("");
+  }
+  lines.push("New intercessions:");
+  for (const e of previewed) {
+    lines.push(`  • ${e.title} (on ${e.feedTitle})`);
+  }
+  if (moreCount > 0) lines.push(`  …and ${moreCount} more.`);
+  lines.push("");
+  lines.push("Pray them all together:");
+  lines.push(`  ${slideshowUrl}`);
+  lines.push("");
+  lines.push("— Phoebe");
+  lines.push("");
+  lines.push(`Update your weekly preferences: ${settingsUrl}`);
+  const text = lines.join("\n");
+
+  try {
+    const raw = encodeMimeMessage({ to: opts.to, subject, html, text });
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+    return true;
+  } catch (err) {
+    console.error("Failed to send weekly digest email:", err);
     return false;
   }
 }

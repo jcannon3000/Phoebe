@@ -1183,4 +1183,95 @@ router.get("/me/parish-weekly", async (req, res): Promise<void> => {
   }
 });
 
+// ─── GET /api/me/feed-digest ──────────────────────────────────────────────
+// Backs the queue=feed-digest slideshow that the weekly push deep-links
+// into. Returns the new intercessions on the viewer's subscribed feeds
+// since the previous digest (or the last 7 days for a first-ever
+// caller). Beta-only while the digest is a beta-cohort feature.
+//
+// ?since=YYYY-MM-DD optionally overrides the cutoff — handy for QA or
+// for clients that want to re-pull a previously-sent digest.
+router.get("/me/feed-digest", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    // Beta gate. Mirrors the prayer-feeds requireBeta pattern.
+    const { db: ddb, usersTable: uT, betaUsersTable: bT } = await import("@workspace/db");
+    const { eq: dEq } = await import("drizzle-orm");
+    const [me] = await ddb.select({ email: uT.email, lastDigestSentDate: uT.lastDigestSentDate })
+      .from(uT).where(dEq(uT.id, sessionUserId));
+    if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const [beta] = await ddb.select({ email: bT.email })
+      .from(bT).where(dEq(bT.email, me.email.toLowerCase()));
+    if (!beta) { res.status(403).json({ error: "Weekly digest is a beta feature." }); return; }
+
+    const sinceRaw = typeof req.query.since === "string" ? req.query.since : null;
+    const sinceFromQuery = sinceRaw && /^\d{4}-\d{2}-\d{2}$/.test(sinceRaw)
+      ? new Date(`${sinceRaw}T00:00:00Z`)
+      : null;
+    // Default: previous digest stamp, or 7 days ago.
+    const since = sinceFromQuery
+      ?? (me.lastDigestSentDate
+        ? new Date(`${me.lastDigestSentDate}T00:00:00Z`)
+        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+
+    const { loadFeedDigest } = await import("../lib/feedDigest");
+    const digest = await loadFeedDigest(sessionUserId, since);
+    res.json({
+      sinceDate: digest.sinceDate.toISOString(),
+      entries: digest.entries.map((e) => ({
+        ...e,
+        createdAt: e.createdAt.toISOString(),
+      })),
+      actionEntries: digest.actionEntries.map((e) => ({
+        ...e,
+        createdAt: e.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error("[/me/feed-digest] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// ─── Weekly digest opt-out preference ─────────────────────────────────────
+// Single boolean toggle the settings page reads + writes. The sender's
+// beta-only gate lives at query time, so non-beta users see this
+// preference as inert (the UI hides it for them too).
+router.get("/me/weekly-digest-pref", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [me] = await db
+      .select({ enabled: usersTable.weeklyDigestEnabled })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+    res.json({ enabled: me.enabled });
+  } catch (err) {
+    console.error("[/me/weekly-digest-pref GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.put("/me/weekly-digest-pref", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const enabled = (req.body as { enabled?: unknown })?.enabled;
+  if (typeof enabled !== "boolean") {
+    res.status(400).json({ error: "enabled must be a boolean" });
+    return;
+  }
+  try {
+    await db
+      .update(usersTable)
+      .set({ weeklyDigestEnabled: enabled })
+      .where(eq(usersTable.id, sessionUserId));
+    res.json({ enabled });
+  } catch (err) {
+    console.error("[/me/weekly-digest-pref PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 export default router;
