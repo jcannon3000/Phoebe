@@ -52,10 +52,22 @@ async function resolveRecipients(
       .from(usersTable);
   } else {
     if (groupIds.length === 0) return [];
+    // Read directly off group_members — no inner join to users. An
+    // earlier version joined on group_members.user_id, which silently
+    // dropped every member whose row didn't have a Phoebe userId
+    // attached (invited by email, joined via the community link
+    // without ever creating a full account, etc.). That's almost
+    // every member in some communities and produced "you're sending
+    // to 1 person" right next to a member count of 12. The newsletter
+    // needs an email address — which group_members.email always has —
+    // not a Phoebe userId. Same predicate the side-menu count uses:
+    // joinedAt set and role is not hidden_admin.
     rows = await db
-      .select({ email: usersTable.email, name: usersTable.name })
+      .select({
+        email: groupMembersTable.email,
+        name: groupMembersTable.name,
+      })
       .from(groupMembersTable)
-      .innerJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
       .where(
         and(
           inArray(groupMembersTable.groupId, groupIds),
