@@ -21,9 +21,12 @@ type Slide =
       kind: "feature-demo";
       variant:
         | "prayer-requests"
+        | "prayer-notification"
+        | "community-intercession"
         | "bcp"
         | "prayer-list"
         | "daily-office"
+        | "prayer-rhythm"
         | "meat-fast"
         | "calendar"
         | "gatherings";
@@ -33,9 +36,9 @@ type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "prayer-requests" | "bcp" | "prayer-list" | "daily-office" | "meat-fast" | "calendar" | "gatherings";
+      mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings";
     }
-  | { kind: "combo-mock"; mock: "prayer-requests" | "bcp" | "prayer-list" | "daily-office" | "meat-fast" | "calendar" | "gatherings" }
+  | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
   | { kind: "quote"; text: string }
   | { kind: "closing"; body: string[]; featured: string[] };
 
@@ -70,13 +73,41 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "A daily call to prayer.",
+    headline: "A place where prayers are shared and held.",
     body: [
-      "People share what they're carrying with their community.",
+      "Phoebe gives your community a place to share what they're carrying — joys, sorrows, the long quiet things — and to know those prayers are being held by others.",
       "Once a day, Phoebe rings — a real bell on the phone — and opens a slideshow of every prayer request from your community.",
       "Tap through. Leave a word. Tap Amen. The whole community's prayers, held in a few minutes — every day, together.",
     ],
     mock: "prayer-requests",
+  },
+
+  // ── Feature 1a: Notification when community prays for you ──
+  // 6
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "You'll know you're being prayed for.",
+    body: [
+      "When someone shares a request, the community is gently notified — a quiet nudge, not a flood. People show up, leave a word, tap Amen.",
+      "And when others have prayed for you that day, Phoebe lets you know. Theresa and three others held you in prayer this morning. A small, ordinary miracle, made visible.",
+      "It turns out, knowing someone has been praying for you changes things.",
+    ],
+    mock: "prayer-notification",
+  },
+
+  // ── Feature 1b: Praying for the world together ──
+  // 7
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "Pray for the world — together.",
+    body: [
+      "Beyond the prayers of your own community, Phoebe lifts up the wider ones: for justice, for peace, for the sick, for the suffering, for those in authority — drawn from the great intercessions of the Book of Common Prayer.",
+      "When other parishes hold the same intercession, you see them praying alongside you — Heavenly Rest, St George's, All Souls — a small reminder that the Church is never praying alone.",
+      "One prayer at a time. An Amen at the end. The communion of saints, made visible.",
+    ],
+    mock: "community-intercession",
   },
 
   // ── Feature 2: BCP Intercessions ──
@@ -101,6 +132,20 @@ const SLIDES: Slide[] = [
       "Morning and Evening Prayer from the Book of Common Prayer — the psalms, the lessons, the canticles, and the collects, assembled for today and ready to pray. A daily reminder keeps the hour.",
     ],
     mock: "daily-office",
+  },
+
+  // ── Feature 3b: Prayer Rhythm — daily habit of prayer ──
+  // 9
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: "A daily habit, held together.",
+    body: [
+      "For seventeen centuries, Christians have steadied their days by stopping to pray — morning and evening, in monasteries, in parishes, in kitchens. The Office has carried the faithful through plagues, exiles, and the long, ordinary middle.",
+      "Phoebe helps your community keep that rhythm — together. A bell in the morning, a bell in the evening, a quiet record of who showed up.",
+      "Not a streak to chase. A practice to share.",
+    ],
+    mock: "prayer-rhythm",
   },
 
   // 17 — Gatherings (text + mock on one slide)
@@ -424,6 +469,263 @@ function PrayerRequestsMock() {
   );
 }
 
+/* ── Prayer Notification — iOS-style lock screen notification ── */
+function PrayerNotificationMock() {
+  return (
+    <MockPhone>
+      {/* Lock-screen-ish backdrop */}
+      <div
+        className="rounded-2xl px-3 pt-3 pb-4"
+        style={{
+          background:
+            "linear-gradient(180deg, #060b0a 0%, #0a1614 60%, #060b0a 100%)",
+          border: "1px solid rgba(200,212,192,0.08)",
+        }}
+      >
+        {/* Status bar */}
+        <div className="flex items-center justify-between mb-3 px-1">
+          <p
+            className="text-[8px] font-medium"
+            style={{ color: "rgba(255,255,255,0.7)", fontFamily: C.font }}
+          >
+            Phoebe
+          </p>
+          <p
+            className="text-[8px] font-medium"
+            style={{ color: "rgba(255,255,255,0.7)", fontFamily: C.font }}
+          >
+            now
+          </p>
+        </div>
+
+        {/* Time + date */}
+        <p
+          className="text-[10px] text-center mb-0.5"
+          style={{ color: "rgba(180,200,210,0.85)", fontFamily: C.font }}
+        >
+          Wed May 20
+        </p>
+        <p
+          className="text-[36px] leading-none font-light text-center mb-3 tracking-tight"
+          style={{
+            color: "#0F2A4D",
+            fontFamily: "'Helvetica Neue', sans-serif",
+            textShadow: "0 1px 0 rgba(255,255,255,0.06)",
+            WebkitTextStroke: "0.5px rgba(180,200,210,0.4)",
+          }}
+        >
+          12:43
+        </p>
+
+        {/* Streak / Today stats */}
+        <div className="flex items-start justify-center gap-6 mb-4">
+          <div className="text-center">
+            <p
+              className="text-[8px] uppercase tracking-wide mb-0.5"
+              style={{ color: "rgba(180,200,210,0.55)", fontFamily: C.font }}
+            >
+              Streak
+            </p>
+            <p
+              className="text-[10px] font-medium"
+              style={{ color: "rgba(220,230,235,0.9)", fontFamily: C.font }}
+            >
+              4 days
+            </p>
+          </div>
+          <div className="text-center">
+            <p
+              className="text-[8px] uppercase tracking-wide mb-0.5"
+              style={{ color: "rgba(180,200,210,0.55)", fontFamily: C.font }}
+            >
+              Today
+            </p>
+            <p
+              className="text-[10px] font-medium"
+              style={{ color: "rgba(220,230,235,0.9)", fontFamily: C.font }}
+            >
+              58 min
+            </p>
+          </div>
+        </div>
+
+        {/* Notification card */}
+        <div
+          className="rounded-xl px-2.5 py-2 flex gap-2 items-start"
+          style={{
+            background: "rgba(40,50,52,0.85)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.04)",
+          }}
+        >
+          {/* App icon — Phoebe (saint icon) */}
+          <div
+            className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+            style={{
+              background:
+                "linear-gradient(135deg, #1a3a26 0%, #0F2818 100%)",
+              border: "1px solid rgba(200,212,192,0.15)",
+            }}
+          >
+            <span className="text-[13px]">🙏🏽</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 mb-0.5">
+              <p
+                className="text-[10px] font-semibold leading-tight"
+                style={{ color: "#F5F5F5", fontFamily: C.font }}
+              >
+                You've been held in prayer today
+              </p>
+              <p
+                className="text-[8px] shrink-0"
+                style={{ color: "rgba(220,230,235,0.5)", fontFamily: C.font }}
+              >
+                now
+              </p>
+            </div>
+            <p
+              className="text-[9px] leading-snug"
+              style={{ color: "rgba(220,230,235,0.85)", fontFamily: C.font }}
+            >
+              Theresa and others prayed for your requests today.
+            </p>
+          </div>
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
+/* ── Community Intercession — prayer-mode card with multi-parish chips ── */
+function CommunityIntercessionMock() {
+  const parishes = [
+    { emoji: "🕊️", name: "Heavenly Rest" },
+    { emoji: "🌿", name: "NYC Leaders" },
+    { emoji: "🌻", name: "St George's" },
+    { emoji: "🙏🏽", name: "All Souls" },
+  ];
+  const avatars = ["#7FA98A", "#C8A26A", "#9AA8D4", "#B58B7C", "#8FAF96", "#A8A0BD"];
+  const serif = "Georgia, 'Times New Roman', serif";
+  return (
+    <MockPhone>
+      {/* Top close (×) */}
+      <div className="flex items-center justify-end mb-3">
+        <div
+          className="w-5 h-5 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(200,212,192,0.08)" }}
+        >
+          <span className="text-[10px]" style={{ color: "rgba(200,212,192,0.5)" }}>×</span>
+        </div>
+      </div>
+
+      {/* Eyebrow */}
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-1.5"
+        style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}
+      >
+        Community Intercession
+      </p>
+
+      {/* Title */}
+      <h2
+        className="text-[18px] italic text-center mb-3"
+        style={{ color: C.text, fontFamily: serif }}
+      >
+        For Social Justice
+      </h2>
+
+      {/* Parish chips */}
+      <div className="flex flex-wrap gap-1.5 justify-center mb-3 px-2">
+        {parishes.map((p, i) => (
+          <div
+            key={i}
+            className="px-2 py-0.5 rounded-full text-[9px] font-medium flex items-center gap-1"
+            style={{
+              background: "rgba(46,107,64,0.18)",
+              border: "1px solid rgba(46,107,64,0.4)",
+              color: C.text,
+              fontFamily: C.font,
+            }}
+          >
+            <span>{p.emoji}</span>
+            <span>{p.name}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Avatar row */}
+      <div className="flex items-center justify-center mb-1.5">
+        {avatars.map((bg, i) => (
+          <div
+            key={i}
+            className="w-4 h-4 rounded-full"
+            style={{
+              background: bg,
+              border: "1.5px solid #091A10",
+              marginLeft: i === 0 ? 0 : -4,
+            }}
+          />
+        ))}
+      </div>
+      <p
+        className="text-[9px] text-center mb-3 italic"
+        style={{ color: "rgba(200,212,192,0.55)", fontFamily: serif }}
+      >
+        7 people have prayed this this week.
+      </p>
+
+      {/* Prayer text card */}
+      <div
+        className="rounded-xl px-3 py-2.5 mb-3"
+        style={{
+          background: "rgba(46,107,64,0.06)",
+          border: "1px solid rgba(46,107,64,0.18)",
+        }}
+      >
+        <p
+          className="text-[10px] leading-[1.55] italic mb-2"
+          style={{ color: C.text, fontFamily: serif }}
+        >
+          Grant, O God, that your holy and life-giving Spirit may so move every
+          human heart, and especially the hearts of the people of this land,
+          that barriers which divide us may crumble, suspicions disappear, and
+          hatreds cease; that our divisions being healed, we may live in
+          justice and peace; through Jesus Christ our Lord. Amen.
+        </p>
+        <p
+          className="text-[8px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)", fontFamily: C.font }}
+        >
+          From the Book of Common Prayer
+        </p>
+      </div>
+
+      {/* Amen CTA */}
+      <div className="flex flex-col items-center gap-1.5">
+        <div
+          className="px-5 py-1.5 rounded-full text-[11px] font-semibold"
+          style={{ background: "#2D5E3F", color: C.text, fontFamily: C.font }}
+        >
+          Amen →
+        </div>
+        <p
+          className="text-[9px]"
+          style={{ color: "rgba(200,212,192,0.45)", fontFamily: C.font, textDecoration: "underline" }}
+        >
+          Not today
+        </p>
+        <p
+          className="text-[9px] mt-0.5"
+          style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}
+        >
+          1 of 11
+        </p>
+      </div>
+    </MockPhone>
+  );
+}
+
 /* ── BCP Intercessions — category list view (matches actual bcp-intercessions page) ── */
 function BCPPrayerModeMock() {
   const categories = [
@@ -581,110 +883,278 @@ function PrayerListMock() {
   );
 }
 
-/* ── The Daily Office — Morning Prayer (matches actual app office) ── */
+/* ── The Daily Office — Evening Prayer psalm slide (matches actual app office) ── */
 function DailyOfficeMock() {
-  const sections = [
-    { label: "Opening Sentence", done: true, active: false },
-    { label: "Confession", done: true, active: false },
-    { label: "The Invitatory", done: true, active: false },
-    { label: "The Psalter", done: false, active: true },
-    { label: "The Lessons", done: false, active: false },
-    { label: "The Prayers", done: false, active: false },
+  const verses = [
+    {
+      n: 121,
+      line1: "I have done what is just and right;",
+      line2: "do not deliver me to my oppressors.",
+    },
+    {
+      n: 122,
+      line1: "Be surety for your servant's good;",
+      line2: "let not the proud oppress me.",
+    },
+    {
+      n: 123,
+      line1: "My eyes have failed from watching for your salvation",
+      line2: "and for your righteous promise.",
+    },
+    {
+      n: 124,
+      line1: "Deal with your servant according to your loving-kindness",
+      line2: "and teach me your statutes.",
+    },
   ];
+  const serif = "Georgia, 'Times New Roman', serif";
   return (
     <MockPhone>
-      {/* Header bar */}
+      {/* Header bar: ← Back / Evening Prayer pill / spacer */}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>← Back</p>
+        <p
+          className="text-[11px]"
+          style={{ color: "rgba(143,175,150,0.55)" }}
+        >
+          ← Back
+        </p>
         <div
           className="px-3 py-1 rounded-full text-[10px] font-semibold"
-          style={{ background: "rgba(19,44,29,0.85)", border: "1px solid rgba(200,212,192,0.15)", color: C.text }}
+          style={{
+            background: "rgba(19,44,29,0.85)",
+            border: "1px solid rgba(200,212,192,0.18)",
+            color: C.text,
+            fontFamily: C.font,
+          }}
         >
-          Menu
+          Evening Prayer
         </div>
-        <div className="text-right">
-          <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.55)" }}>Morning Prayer</p>
-          <p className="text-[10px]" style={{ color: C.sage }}>BCP p. 75</p>
-        </div>
+        <div className="w-[40px]" />
       </div>
 
-      {/* Section label */}
+      {/* Eyebrow */}
       <p
-        className="text-[9px] uppercase tracking-[0.18em] font-semibold mb-3"
-        style={{ color: "rgba(143,175,150,0.45)" }}
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3 text-center"
+        style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}
       >
-        The Daily Office
+        Psalm 119:121&ndash;144
       </p>
 
-      {/* Order of service */}
-      <div
-        className="rounded-xl px-3 py-2 mb-3"
-        style={{ background: "rgba(200,212,192,0.03)", border: "1px solid rgba(200,212,192,0.1)" }}
-      >
-        {sections.map((s, i) => (
-          <div key={i} className="flex items-center gap-2 py-[3px]">
-            <div
-              className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
-              style={{
-                background: s.done
-                  ? "rgba(46,107,64,0.4)"
-                  : s.active
-                    ? "rgba(46,107,64,0.5)"
-                    : "rgba(200,212,192,0.05)",
-                border: s.active
-                  ? "1px solid rgba(46,107,64,0.7)"
-                  : "1px solid rgba(200,212,192,0.12)",
-              }}
-            >
-              {s.done && <span className="text-[7px]" style={{ color: "#C8D4C0" }}>✓</span>}
+      {/* Verses */}
+      <div className="mb-4">
+        {verses.map((v) => (
+          <div key={v.n} className="mb-2.5">
+            <div className="flex gap-2">
+              <span
+                className="text-[10px] leading-[1.55] shrink-0 pt-[1px]"
+                style={{ color: C.sage, fontFamily: serif, fontVariantNumeric: "tabular-nums" }}
+              >
+                {v.n}
+              </span>
+              <div className="flex-1">
+                <p
+                  className="text-[11px] leading-[1.55]"
+                  style={{ color: C.text, fontFamily: serif }}
+                >
+                  {v.line1}{" "}
+                  <span style={{ color: C.sage }}>*</span>
+                </p>
+                <p
+                  className="text-[11px] leading-[1.55] pl-3"
+                  style={{ color: C.text, fontFamily: serif }}
+                >
+                  {v.line2}
+                </p>
+              </div>
             </div>
-            <p
-              className="text-[10px]"
-              style={{
-                color: s.active ? C.text : s.done ? C.sage : "rgba(200,212,192,0.4)",
-                fontWeight: s.active ? 600 : 400,
-                fontFamily: C.font,
-              }}
-            >
-              {s.label}
-            </p>
           </div>
         ))}
       </div>
 
-      {/* Open passage — the Psalter */}
-      <div
-        className="rounded-xl px-3 py-2.5 mb-3"
-        style={{ background: "#0F2818", border: "1px solid rgba(200,212,192,0.15)" }}
+      {/* Footer */}
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3 text-center"
+        style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
       >
-        <p
-          className="text-[9px] uppercase tracking-widest font-semibold mb-1"
-          style={{ color: C.sage }}
-        >
-          Psalm 63 · Appointed today
-        </p>
-        <p
-          className="text-[11px] leading-[1.6] italic"
-          style={{ color: C.text, fontFamily: "Georgia, 'Times New Roman', serif" }}
-        >
-          O God, you are my God; eagerly I seek you; my soul thirsts for you,
-          my flesh faints for you, as in a barren and dry land where there is
-          no water.
-        </p>
-      </div>
+        BCP p. 763
+      </p>
 
-      {/* Floating nav pill */}
+      {/* Floating nav pill: Back / 8 · PSALM / Next */}
       <div
         className="flex items-center justify-between rounded-full px-3 py-2"
-        style={{ background: "rgba(19,44,29,0.92)", border: "1px solid rgba(200,212,192,0.15)" }}
+        style={{
+          background: "rgba(19,44,29,0.92)",
+          border: "1px solid rgba(200,212,192,0.15)",
+        }}
       >
-        <p className="text-[10px] font-semibold" style={{ color: C.text }}>Back</p>
-        <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)" }}>The Psalter</p>
+        <p
+          className="text-[10px] font-semibold"
+          style={{ color: "rgba(200,212,192,0.6)", fontFamily: C.font }}
+        >
+          Back
+        </p>
+        <p
+          className="text-[9px] uppercase tracking-[0.22em]"
+          style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}
+        >
+          8 · Psalm
+        </p>
         <div
           className="px-2.5 py-1 rounded-full text-[10px] font-semibold"
-          style={{ background: "#2D5E3F", color: C.text }}
+          style={{ background: "#2D5E3F", color: C.text, fontFamily: C.font }}
         >
-          Continue
+          Next
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
+/* ── Prayer Rhythm — daily habit / Past 7 days (matches actual app) ── */
+function PrayerRhythmMock() {
+  // 7 days of prayer this week — morning row all green, evening row mostly purple with one miss
+  const morning = [true, true, true, true, true, true, true];
+  const evening = [true, true, true, true, true, false, true];
+  const dayLetters = ["T", "F", "S", "S", "M", "T", "W"];
+  return (
+    <MockPhone>
+      {/* Top close (×) */}
+      <div className="flex items-center justify-end mb-2">
+        <div
+          className="w-5 h-5 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(200,212,192,0.08)" }}
+        >
+          <span className="text-[10px]" style={{ color: "rgba(200,212,192,0.5)" }}>×</span>
+        </div>
+      </div>
+
+      {/* Title block */}
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-1"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
+      >
+        Today
+      </p>
+      <h2
+        className="text-[15px] font-semibold text-center mb-3"
+        style={{ color: C.text, fontFamily: C.font }}
+      >
+        Your prayer rhythm
+      </h2>
+
+      {/* Morning card */}
+      <div
+        className="rounded-xl px-3 py-2 mb-2 flex items-center gap-2"
+        style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
+      >
+        <span className="text-[14px]">🌅</span>
+        <p
+          className="text-[12px] font-semibold flex-1"
+          style={{ color: C.text, fontFamily: C.font }}
+        >
+          Morning
+        </p>
+        <div
+          className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
+          style={{ background: "rgba(46,107,64,0.5)", color: C.text, fontFamily: C.font }}
+        >
+          Completed ✓
+        </div>
+      </div>
+
+      {/* Evening card */}
+      <div
+        className="rounded-xl px-3 py-2 mb-3 flex items-center gap-2"
+        style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
+      >
+        <span className="text-[14px]">🌙</span>
+        <p
+          className="text-[12px] font-semibold flex-1"
+          style={{ color: C.text, fontFamily: C.font }}
+        >
+          Evening
+        </p>
+        <div
+          className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
+          style={{ background: "rgba(46,107,64,0.5)", color: C.text, fontFamily: C.font }}
+        >
+          Completed ✓
+        </div>
+      </div>
+
+      {/* Past 7 days */}
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-2"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
+      >
+        Past 7 Days
+      </p>
+      <div className="grid grid-cols-8 gap-1 mb-2 px-1">
+        <div />
+        {dayLetters.map((d, i) => (
+          <p
+            key={i}
+            className="text-[9px] text-center"
+            style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
+          >
+            {d}
+          </p>
+        ))}
+        {/* Morning row */}
+        <span className="text-[12px] text-center">🌅</span>
+        {morning.map((done, i) => (
+          <div key={`m${i}`} className="flex items-center justify-center">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: done ? "#7FA98A" : "transparent",
+                border: done ? "none" : "1px solid rgba(127,169,138,0.3)",
+              }}
+            />
+          </div>
+        ))}
+        {/* Evening row */}
+        <span className="text-[12px] text-center">🌙</span>
+        {evening.map((done, i) => (
+          <div key={`e${i}`} className="flex items-center justify-center">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: done ? "#9AA8D4" : "transparent",
+                border: done ? "none" : "1px solid rgba(154,168,212,0.3)",
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <p
+        className="text-[10px] text-center mb-3"
+        style={{ color: "rgba(200,212,192,0.55)", fontFamily: C.font }}
+      >
+        7 days of prayer this week
+      </p>
+
+      {/* Bottom pills */}
+      <div className="flex flex-col items-center gap-1.5">
+        <div
+          className="px-3 py-1 rounded-full text-[10px]"
+          style={{
+            border: "1px solid rgba(200,212,192,0.18)",
+            color: C.text,
+            fontFamily: C.font,
+          }}
+        >
+          Reminders →
+        </div>
+        <div
+          className="px-3 py-1 rounded-full text-[10px]"
+          style={{
+            border: "1px solid rgba(200,212,192,0.18)",
+            color: C.text,
+            fontFamily: C.font,
+          }}
+        >
+          🕯️ Ignatian Examen →
         </div>
       </div>
     </MockPhone>
@@ -916,9 +1386,12 @@ function GatheringsMock() {
 
 const MOCK_MAP: Record<string, () => JSX.Element> = {
   "prayer-requests": PrayerRequestsMock,
+  "prayer-notification": PrayerNotificationMock,
+  "community-intercession": CommunityIntercessionMock,
   bcp: BCPPrayerModeMock,
   "prayer-list": PrayerListMock,
   "daily-office": DailyOfficeMock,
+  "prayer-rhythm": PrayerRhythmMock,
   "meat-fast": MeatFastMock,
   calendar: CalendarMock,
   gatherings: GatheringsMock,
