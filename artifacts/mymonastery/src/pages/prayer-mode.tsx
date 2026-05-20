@@ -767,14 +767,17 @@ function SlideContent({
       )}
 
       {/* For intercessions with explicit group attachments, render one
-          pill per community in place of the plaintext "with {group}"
-          attribution. Mirrors the row on the moment-detail page so a
-          slide for a multi-community intercession shows which
+          pill per community. Mirrors the row on the moment-detail
+          page so a multi-community intercession shows which
           communities are carrying it. Non-tappable here — the
           slideshow shouldn't bounce the user out of prayer mode to a
-          community home page; the chips are informational. Falls back
-          to the plaintext attribution when there are no groups (feed-
-          scoped intercessions, prayer requests, etc.). */}
+          community home page; the chips are informational. For
+          intercessions WITHOUT a community (feed-only) we deliberately
+          do NOT fall back to a "with {names…}" line: the avatar rail
+          below carries the social signal — those are people who have
+          actually prayed, not a slice of any community's roster.
+          Non-intercession slides (prayer requests etc.) keep their
+          attribution. */}
       {slide.kind === "intercession" && slide.groups && slide.groups.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 justify-center">
           {slide.groups.map((g) => (
@@ -793,7 +796,7 @@ function SlideContent({
             </span>
           ))}
         </div>
-      ) : slide.attribution ? (
+      ) : slide.kind !== "intercession" && slide.attribution ? (
         <p className="text-sm" style={{ color: "#8FAF96" }}>
           {slide.attribution}
         </p>
