@@ -87,8 +87,14 @@ async function getMembership(correspondenceId: number, auth: LetterAuth) {
     .from(correspondenceMembersTable)
     .where(eq(correspondenceMembersTable.correspondenceId, correspondenceId));
 
+  // Match by userId when we have one, falling back to case-insensitive
+  // email. Email casing on stored rows isn't *currently* mixed (signup
+  // lowercases users.email and most insert paths normalize), but doing
+  // the compare case-insensitively here is belt-and-suspenders against
+  // any data path that ever stores a non-lowercased address.
+  const authEmailLc = auth.email.toLowerCase();
   const member = members.find(
-    (m) => (auth.userId && m.userId === auth.userId) || m.email === auth.email,
+    (m) => (auth.userId && m.userId === auth.userId) || m.email.toLowerCase() === authEmailLc,
   );
 
   return { member, members };
@@ -136,7 +142,7 @@ router.post(
       const creatorMemberships = await db
         .select()
         .from(correspondenceMembersTable)
-        .where(eq(correspondenceMembersTable.email, auth.email));
+        .where(eq(correspondenceMembersTable.email, auth.email.toLowerCase()));
 
       for (const cm of creatorMemberships) {
         const [corr] = await db
@@ -186,7 +192,7 @@ router.post(
     await db.insert(correspondenceMembersTable).values({
       correspondenceId: correspondence.id,
       userId: auth.userId,
-      email: auth.email,
+      email: auth.email.toLowerCase(),
       name: auth.name,
       inviteToken: creatorToken,
       joinedAt: new Date(),
@@ -233,7 +239,7 @@ router.get(
         and(
           auth.userId
             ? eq(correspondenceMembersTable.userId, auth.userId)
-            : eq(correspondenceMembersTable.email, auth.email),
+            : eq(correspondenceMembersTable.email, auth.email.toLowerCase()),
           sql`archived_at IS NULL`,
         ),
       );
@@ -364,7 +370,7 @@ router.post(
           eq(correspondenceMembersTable.correspondenceId, correspondenceId),
           auth.userId
             ? eq(correspondenceMembersTable.userId, auth.userId)
-            : eq(correspondenceMembersTable.email, auth.email),
+            : eq(correspondenceMembersTable.email, auth.email.toLowerCase()),
         ),
       );
     res.json({ ok: true });
@@ -648,8 +654,9 @@ router.post(
 
     // Send calendar events + notification emails to other members (fire-and-forget)
     const frontendUrl = getInviteBaseUrl();
+    const authEmailLcNotif = auth.email.toLowerCase();
     for (const m of members) {
-      if (m.email === auth.email) continue;
+      if (m.email.toLowerCase() === authEmailLcNotif) continue;
       if (!m.joinedAt) continue;
       // If the recipient has archived this dialogue on their side, don't
       // send a "new letter" push — they've stepped away from the thread.

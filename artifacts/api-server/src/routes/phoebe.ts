@@ -197,7 +197,7 @@ router.post(
     await db.insert(correspondenceMembersTable).values({
       correspondenceId: correspondence.id,
       userId: auth.userId,
-      email: auth.email,
+      email: auth.email.toLowerCase(),
       name: auth.name,
       inviteToken: creatorToken,
       joinedAt: new Date(),
@@ -325,7 +325,7 @@ router.post(
           .values({
             correspondenceId: correspondence.id,
             userId: auth.userId,
-            email: auth.email,
+            email: auth.email.toLowerCase(),
             name: auth.name,
             inviteToken: creatorToken,
             joinedAt: new Date(),
@@ -910,8 +910,9 @@ router.post(
 
     // Notify recipients (fire-and-forget)
     const frontendUrl = getInviteBaseUrl();
+    const authEmailLcNotif = auth.email.toLowerCase();
     for (const m of members) {
-      if (m.email === auth.email) continue;
+      if (m.email.toLowerCase() === authEmailLcNotif) continue;
 
       // If the member hasn't joined yet and this is the first letter,
       // send the invitation email (they now have something to read).
