@@ -41,6 +41,12 @@ export default function TraditionNew() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  // Additional invited communities (multi-community gatherings). The
+  // primary host is selectedGroupId; these are extras that should see
+  // the gathering on their dashboards and be invited as calendar
+  // attendees (for video calls). Restricted to communities the user
+  // also admins — the server re-checks ownership.
+  const [additionalGroupIds, setAdditionalGroupIds] = useState<number[]>([]);
   const [selectedPeople, setSelectedPeople] = useState<{ name: string; email: string }[]>([]);
   const [newPeople, setNewPeople] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [rhythm, setRhythm] = useState("once");
@@ -246,6 +252,9 @@ export default function TraditionNew() {
         // Video-call gatherings carry a meetingUrl; in-person ones
         // leave it undefined and use the per-meetup location instead.
         meetingUrl: gatheringFormat === "video" ? meetingUrl.trim() : undefined,
+        // Additional communities (multi-community gatherings). Server
+        // re-validates that the creator admins each one.
+        additionalGroupIds: additionalGroupIds.length > 0 ? additionalGroupIds : undefined,
       });
 
       // Save proposed times + location → creates meetup + Google Calendar invite with alternates.
@@ -808,6 +817,65 @@ export default function TraditionNew() {
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* Also invite — multi-community gatherings. Only shown
+                  when the admin has more than one community of their
+                  own (excluding the primary host they already picked).
+                  Members of every selected community will see the
+                  gathering on their dashboard, can RSVP, and (for
+                  video calls) receive the calendar invite. */}
+              {adminGroups.filter((g) => g.id !== selectedGroupId).length > 0 && (
+                <div className="mt-7">
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3"
+                    style={{ color: "rgba(143,175,150,0.5)" }}
+                  >
+                    Also invite (optional)
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {adminGroups
+                      .filter((g) => g.id !== selectedGroupId)
+                      .map((g) => {
+                        const checked = additionalGroupIds.includes(g.id);
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => {
+                              setAdditionalGroupIds((ids) =>
+                                ids.includes(g.id) ? ids.filter((x) => x !== g.id) : [...ids, g.id],
+                              );
+                            }}
+                            className="w-full text-left px-4 py-3 rounded-xl transition-all flex items-center justify-between"
+                            style={{
+                              background: checked ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.07)",
+                              border: `1px solid ${checked ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.15)"}`,
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-5 h-5 rounded-md flex items-center justify-center text-xs shrink-0"
+                                style={{
+                                  background: checked ? "#2D6B40" : "transparent",
+                                  border: `1px solid ${checked ? "#2D6B40" : "rgba(143,175,150,0.4)"}`,
+                                  color: "#F0EDE6",
+                                }}
+                              >
+                                {checked ? "✓" : ""}
+                              </div>
+                              <span className="text-sm" style={{ color: "#C8D4C0" }}>
+                                {g.emoji ? `${g.emoji} ` : ""}{g.name}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                  <p className="text-[11px] mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
+                    Each selected community will see this gathering and can RSVP.
+                  </p>
+                </div>
               )}
 
               {error && <p className="text-sm mt-4 mb-2" style={{ color: "#C47A65" }}>{error}</p>}

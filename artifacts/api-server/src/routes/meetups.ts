@@ -6,6 +6,7 @@ import {
   meetupsTable,
   meetupRsvpsTable,
   ritualsTable,
+  ritualGroupsTable,
   groupMembersTable,
   usersTable,
 } from "@workspace/db";
@@ -75,17 +76,31 @@ async function authorizeMeetupAccess(
     return { kind: "forbidden" };
   }
 
-  // Group ritual: caller must be a joined member of that group. IS
-  // DISTINCT FROM handles rows with NULL role (see newsletter route
-  // for the same NULL-safe pattern). Hidden admins also count — they
-  // observe the gathering on their dashboard, and an observer who
-  // wants to RSVP to attend is a perfectly fine case.
+  // Group ritual: caller must be a joined member of ANY linked
+  // community — the primary host on ritualsTable.groupId OR any
+  // additional community in ritualGroupsTable. IS DISTINCT FROM in
+  // the gather-helpers handles rows with NULL role; here we just
+  // check joinedAt + a userId match, which is enough for the access
+  // gate (hidden admins included intentionally — observers may want
+  // to attend).
+  const linkedGroupIds = new Set<number>([ritual.groupId]);
+  try {
+    const extra = await db
+      .select({ groupId: ritualGroupsTable.groupId })
+      .from(ritualGroupsTable)
+      .where(eq(ritualGroupsTable.ritualId, ritual.id));
+    for (const r of extra) linkedGroupIds.add(r.groupId);
+  } catch {
+    // ritual_groups may not exist on a fresh schema; fall through with
+    // just the primary host (current behavior).
+  }
+
   const [membership] = await db
     .select({ id: groupMembersTable.id })
     .from(groupMembersTable)
     .where(
       and(
-        eq(groupMembersTable.groupId, ritual.groupId),
+        inArray(groupMembersTable.groupId, Array.from(linkedGroupIds)),
         eq(groupMembersTable.userId, userId),
         isNotNull(groupMembersTable.joinedAt),
       ),
@@ -244,10 +259,33 @@ router.get("/meetups/rsvp-summary", async (req, res): Promise<void> => {
       .where(inArray(meetupsTable.id, capped));
     if (rituals.length === 0) { res.json({ meetups: {} }); return; }
 
+    // For multi-community gatherings, ALL linked communities count
+    // toward access. Build a map of ritualId → set of group ids
+    // (primary host + additional invited communities).
+    const ritualIds = rituals.map((r) => r.ritualId);
+    const ritualGroupRows = await db
+      .select({ ritualId: ritualGroupsTable.ritualId, groupId: ritualGroupsTable.groupId })
+      .from(ritualGroupsTable)
+      .where(inArray(ritualGroupsTable.ritualId, ritualIds))
+      .catch(() => [] as Array<{ ritualId: number; groupId: number }>);
+
+    const linkedGroupsByRitual = new Map<number, Set<number>>();
+    for (const r of rituals) {
+      const set = new Set<number>();
+      if (r.groupId != null) set.add(r.groupId);
+      linkedGroupsByRitual.set(r.ritualId, set);
+    }
+    for (const r of ritualGroupRows) {
+      const set = linkedGroupsByRitual.get(r.ritualId);
+      if (set) set.add(r.groupId);
+    }
+
     // Which group ids does the caller belong to (joined, regardless
     // of role)? Drives the access filter.
     const groupIds = Array.from(
-      new Set(rituals.map((r) => r.groupId).filter((g): g is number => g != null)),
+      new Set(
+        Array.from(linkedGroupsByRitual.values()).flatMap((s) => Array.from(s)),
+      ),
     );
     const memberRows = groupIds.length
       ? await db
@@ -264,7 +302,12 @@ router.get("/meetups/rsvp-summary", async (req, res): Promise<void> => {
     const memberOfGroups = new Set(memberRows.map((m) => m.groupId));
 
     const allowedMeetupIds = rituals
-      .filter((r) => (r.groupId == null ? r.ownerId === user.id : memberOfGroups.has(r.groupId)))
+      .filter((r) => {
+        const linked = linkedGroupsByRitual.get(r.ritualId) ?? new Set<number>();
+        if (linked.size === 0) return r.ownerId === user.id; // personal ritual
+        for (const gid of linked) if (memberOfGroups.has(gid)) return true;
+        return false;
+      })
       .map((r) => r.meetupId);
     if (allowedMeetupIds.length === 0) { res.json({ meetups: {} }); return; }
 

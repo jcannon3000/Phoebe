@@ -42,3 +42,4 @@ export * from "./action_officials";
 export * from "./action_email_sends";
 export * from "./newsletters";
 export * from "./meetup_rsvps";
+export * from "./ritual_groups";

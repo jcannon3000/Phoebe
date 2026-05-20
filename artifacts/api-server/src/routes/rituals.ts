@@ -1,8 +1,8 @@
 import { getInviteBaseUrl } from "../lib/urls";
 import { Router, type IRouter } from "express";
-import { eq, desc, or, sql, and, ne } from "drizzle-orm";
+import { eq, desc, or, sql, and, ne, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { db, ritualsTable, meetupsTable, ritualMessagesTable, scheduleResponsesTable, inviteTokensTable, usersTable, momentUserTokensTable, ritualTimeSuggestionsTable, groupMembersTable, groupsTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, ritualMessagesTable, scheduleResponsesTable, inviteTokensTable, usersTable, momentUserTokensTable, ritualTimeSuggestionsTable, groupMembersTable, groupsTable, ritualGroupsTable } from "@workspace/db";
 import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, createGatheringCalendarEvent, updateGatheringCalendarEvent } from "../lib/calendar";
 import { sendNewGatheringPush } from "../lib/pushSender";
 import {
@@ -29,6 +29,22 @@ import { getWelcomeMessage, getCoordinatorResponse } from "../lib/agent";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
+
+// ─── Multi-community helpers ─────────────────────────────────────────────────
+// A gathering's "linked groups" = its primary host (rituals.group_id)
+// UNION the rows in ritual_groups. Most fan-outs (push, calendar
+// attendees, access checks) want the union, so isolate it here to
+// avoid drifting variants across the file.
+
+async function resolveLinkedGroupIds(ritualId: number, primaryGroupId: number | null): Promise<number[]> {
+  const rows = await db
+    .select({ groupId: ritualGroupsTable.groupId })
+    .from(ritualGroupsTable)
+    .where(eq(ritualGroupsTable.ritualId, ritualId));
+  const set = new Set<number>(rows.map((r) => r.groupId));
+  if (primaryGroupId != null) set.add(primaryGroupId);
+  return Array.from(set);
+}
 
 // ─── Gathering calendar-invite sync ──────────────────────────────────────────
 // Keep the meetup's Google Calendar event in lock-step with its scheduled
@@ -73,6 +89,13 @@ async function syncMeetupCalendarInvite(meetupId: number): Promise<void> {
     const meetingUrl = (ritual.meetingUrl ?? "").trim();
     if (!meetingUrl) return;
 
+    // Linked communities = primary host + any additional invited
+    // communities. The attendee list is the UNION of joined members
+    // across all of them (deduped by email), so a multi-community
+    // gathering produces one calendar event with the full roster.
+    const linkedGroupIds = await resolveLinkedGroupIds(ritual.id, ritual.groupId);
+    if (linkedGroupIds.length === 0) return;
+
     const [group] = await db
       .select({ name: groupsTable.name })
       .from(groupsTable)
@@ -88,13 +111,17 @@ async function syncMeetupCalendarInvite(meetupId: number): Promise<void> {
       .innerJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
       .where(
         and(
-          eq(groupMembersTable.groupId, ritual.groupId),
+          inArray(groupMembersTable.groupId, linkedGroupIds),
           sql`${groupMembersTable.joinedAt} IS NOT NULL`,
           sql`${groupMembersTable.role} IS DISTINCT FROM 'hidden_admin'`,
           ne(groupMembersTable.userId, ritual.ownerId),
         ),
       );
-    const attendees = memberRows.map((m) => m.email);
+    // Dedup by lowercased email so a single person who happens to be in
+    // both communities still only gets one invite.
+    const attendees = Array.from(
+      new Set(memberRows.map((m) => m.email.toLowerCase())),
+    );
     if (attendees.length === 0) return; // solo gathering — nothing to invite
 
     const startDate = new Date(meetup.scheduledDate);
@@ -185,6 +212,29 @@ async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: t
     nextMeetupLocation = ritual.location ?? null;
   }
 
+  // Additional invited communities (multi-community gatherings).
+  // Includes names so the client can render an "Also visible to:" line
+  // without a second round-trip. We exclude the primary host here so
+  // the array is the literal "additional" set.
+  let additionalGroups: Array<{ id: number; name: string; slug: string; emoji: string | null }> = [];
+  try {
+    const rows = await db
+      .select({
+        id: groupsTable.id,
+        name: groupsTable.name,
+        slug: groupsTable.slug,
+        emoji: groupsTable.emoji,
+      })
+      .from(ritualGroupsTable)
+      .innerJoin(groupsTable, eq(groupsTable.id, ritualGroupsTable.groupId))
+      .where(eq(ritualGroupsTable.ritualId, ritual.id));
+    additionalGroups = rows.filter((g) => g.id !== ritual.groupId);
+  } catch {
+    // ritual_groups table may not exist yet on fresh schemas; degrade
+    // gracefully rather than 500'ing the whole list.
+    additionalGroups = [];
+  }
+
   return {
     ...ritual,
     participants: (ritual.participants as Array<{ name: string; email: string }>) ?? [],
@@ -193,6 +243,8 @@ async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: t
     nextMeetupDate,
     nextMeetupLocation,
     nextMeetupId,
+    additionalGroupIds: additionalGroups.map((g) => g.id),
+    additionalGroups,
     status,
   };
 }
@@ -208,13 +260,61 @@ router.get("/rituals", async (req, res): Promise<void> => {
     userEmail = u?.email ?? null;
   }
 
+  // Rituals visible through community membership — the user is a
+  // joined member of either the ritual's primary host community
+  // (ritualsTable.groupId) OR any community attached via the
+  // ritual_groups join table. Computing the set of group ids first
+  // keeps the WHERE clause simple and works whether or not the
+  // ritual_groups table has any rows.
+  let visibleViaCommunityRitualIds: number[] = [];
+  if (ownerId !== null && !isNaN(ownerId)) {
+    try {
+      const joinedGroups = await db
+        .select({ groupId: groupMembersTable.groupId })
+        .from(groupMembersTable)
+        .where(and(
+          eq(groupMembersTable.userId, ownerId),
+          sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        ));
+      const joinedGroupIds = joinedGroups.map((r) => r.groupId);
+      if (joinedGroupIds.length > 0) {
+        const [primaryRows, linkedRows] = await Promise.all([
+          db
+            .select({ id: ritualsTable.id })
+            .from(ritualsTable)
+            .where(inArray(ritualsTable.groupId, joinedGroupIds)),
+          db
+            .select({ id: ritualGroupsTable.ritualId })
+            .from(ritualGroupsTable)
+            .where(inArray(ritualGroupsTable.groupId, joinedGroupIds)),
+        ]);
+        const set = new Set<number>();
+        for (const r of primaryRows) set.add(r.id);
+        for (const r of linkedRows) set.add(r.id);
+        visibleViaCommunityRitualIds = Array.from(set);
+      }
+    } catch {
+      // ritual_groups may not exist on a fresh schema yet; fall through
+      // with no community-membership broadening (existing
+      // owner/participants path still works).
+    }
+  }
+
   const whereClause = ownerId !== null && !isNaN(ownerId)
     ? userEmail
       ? or(
           eq(ritualsTable.ownerId, ownerId),
-          sql`${ritualsTable.participants} @> ${JSON.stringify([{ email: userEmail }])}::jsonb`
+          sql`${ritualsTable.participants} @> ${JSON.stringify([{ email: userEmail }])}::jsonb`,
+          visibleViaCommunityRitualIds.length > 0
+            ? inArray(ritualsTable.id, visibleViaCommunityRitualIds)
+            : undefined,
         )
-      : eq(ritualsTable.ownerId, ownerId)
+      : visibleViaCommunityRitualIds.length > 0
+        ? or(
+            eq(ritualsTable.ownerId, ownerId),
+            inArray(ritualsTable.id, visibleViaCommunityRitualIds),
+          )
+        : eq(ritualsTable.ownerId, ownerId)
     : undefined;
 
   const rituals = await db
@@ -273,6 +373,43 @@ router.post("/rituals", async (req, res): Promise<void> => {
         ? rawMeetingUrl.trim()
         : null;
 
+    // `additionalGroupIds` — communities other than the primary host
+    // that should also see / be invited to this gathering. Each id
+    // must belong to a group the caller admins (admin or hidden_admin
+    // role); the API does the membership check so a hand-crafted
+    // request can't push gatherings into a community the creator
+    // doesn't own. The primary groupId is removed if it accidentally
+    // appears in the additional list, and duplicates are collapsed.
+    const rawAdditionalGroupIds = req.body?.additionalGroupIds;
+    let additionalGroupIds: number[] = [];
+    if (Array.isArray(rawAdditionalGroupIds)) {
+      const candidate = Array.from(
+        new Set(
+          rawAdditionalGroupIds
+            .map((v: unknown) => Number(v))
+            .filter((n: number) => Number.isFinite(n) && n > 0),
+        ),
+      ).filter((id) => id !== groupId);
+      if (candidate.length > 0) {
+        const owns = await db
+          .select({ groupId: groupMembersTable.groupId })
+          .from(groupMembersTable)
+          .where(
+            and(
+              eq(groupMembersTable.userId, body.ownerId),
+              inArray(groupMembersTable.groupId, candidate),
+              sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+              or(
+                eq(groupMembersTable.role, "admin"),
+                eq(groupMembersTable.role, "hidden_admin"),
+              ),
+            ),
+          );
+        const ownedSet = new Set(owns.map((r) => r.groupId));
+        additionalGroupIds = candidate.filter((id) => ownedSet.has(id));
+      }
+    }
+
     const [ritual] = await db
       .insert(ritualsTable)
       .values({
@@ -296,6 +433,13 @@ router.post("/rituals", async (req, res): Promise<void> => {
       })
       .returning();
 
+    // Write additional-community links (multi-community gatherings).
+    if (additionalGroupIds.length > 0) {
+      await db.insert(ritualGroupsTable).values(
+        additionalGroupIds.map((gid) => ({ ritualId: ritual.id, groupId: gid })),
+      ).onConflictDoNothing();
+    }
+
     const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritual.id));
     const enriched = await enrichRitual(ritual, meetups);
 
@@ -306,22 +450,29 @@ router.post("/rituals", async (req, res): Promise<void> => {
       nextMeetupDate: enriched.nextMeetupDate,
     };
 
-    // Fan out new-gathering push to all joined group members (not the creator).
+    // Fan out new-gathering push to joined members of EVERY linked
+    // community (primary + additional), deduped by userId so a person
+    // in both communities only gets one push. The deep-link uses the
+    // primary host's slug since that's the canonical "where this lives"
+    // address.
     if (groupId) {
       const [group] = await db.select({ slug: groupsTable.slug }).from(groupsTable).where(eq(groupsTable.id, groupId));
       const [creator] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, ritual.ownerId));
       if (group) {
+        const linkedGroupIds = [groupId, ...additionalGroupIds];
         const members = await db
           .select({ userId: groupMembersTable.userId })
           .from(groupMembersTable)
           .where(and(
-            eq(groupMembersTable.groupId, groupId),
+            inArray(groupMembersTable.groupId, linkedGroupIds),
             sql`${groupMembersTable.joinedAt} IS NOT NULL`,
             ne(groupMembersTable.userId, ritual.ownerId),
           ));
         const creatorName = creator?.name ?? "Someone";
+        const sentTo = new Set<number>();
         members.forEach(m => {
-          if (typeof m.userId === "number") {
+          if (typeof m.userId === "number" && !sentTo.has(m.userId)) {
+            sentTo.add(m.userId);
             sendNewGatheringPush(m.userId, {
               ritualId: ritual.id,
               groupSlug: group.slug,

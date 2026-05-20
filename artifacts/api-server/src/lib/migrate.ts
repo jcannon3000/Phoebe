@@ -1620,6 +1620,23 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_meetup_rsvp_meetup_user ON meetup_rsvps (meetup_id, user_id)`);
 
+    // ── Ritual <-> Groups join (multi-community gatherings) ──────────────
+    // A gathering can span more than one community: the primary host
+    // stays on rituals.group_id; this table holds additional invited
+    // communities. Members of ANY linked community see the gathering
+    // on their dashboard, can RSVP, and are union'd into the
+    // calendar-invite attendee list. Mirrors how intercessions span
+    // multiple communities.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS ritual_groups (
+        id SERIAL PRIMARY KEY,
+        ritual_id INTEGER NOT NULL REFERENCES rituals(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_ritual_groups_ritual_group ON ritual_groups (ritual_id, group_id)`);
+
     // ── Repair NULL group_members.role ────────────────────────────────────
     // The schema defines role as NOT NULL DEFAULT 'member', but some rows
     // were inserted before that default existed and left role NULL. SQL
