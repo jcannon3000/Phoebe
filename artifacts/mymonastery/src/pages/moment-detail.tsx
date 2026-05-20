@@ -9,6 +9,7 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { InviteStep } from "@/components/InviteStep";
 import { useToast } from "@/hooks/use-toast";
+import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ interface MomentDetail {
     intercessionTopic: string | null;
     intercessionSource?: string | null;
     intercessionFullText?: string | null;
+    learnMoreUrl?: string | null;
     timezone?: string | null;
     practiceDays?: string | string[] | null;
     timeOfDay?: string | null;
@@ -1109,6 +1111,22 @@ export default function MomentDetail() {
             >
               {moment.intercessionFullText}
             </p>
+          </div>
+        )}
+
+        {/* Take action / Learn more — for action-type intercessions
+            (Episcopal Church OGR / VoterVoice alerts, etc.) and any
+            custom intercession the creator attached a URL to. Mirrors
+            the same pill the prayer-mode slideshow renders, so the
+            detail page is a usable landing spot for the action even
+            when the user lands here without going through the slide. */}
+        {isIntercession && moment.learnMoreUrl && moment.learnMoreUrl.trim().length > 0 && (
+          <div className="mb-5 flex justify-center">
+            <ExternalLinkPill
+              url={moment.learnMoreUrl}
+              label={moment.intercessionSource === "action" ? "Take action →" : "Learn more →"}
+              size="medium"
+            />
           </div>
         )}
 
