@@ -104,8 +104,6 @@ const SLIDES: Slide[] = [
     headline: "Pray for the world — together.",
     body: [
       "Beyond the prayers of your own community, Phoebe lifts up the wider ones: for justice, for peace, for the sick, for the suffering, for those in authority — drawn from the great intercessions of the Book of Common Prayer.",
-      "When other parishes hold the same intercession, you see them praying alongside you — Heavenly Rest, St George's, All Souls — a small reminder that the Church is never praying alone.",
-      "One prayer at a time. An Amen at the end. The communion of saints, made visible.",
     ],
     mock: "community-intercession",
   },
