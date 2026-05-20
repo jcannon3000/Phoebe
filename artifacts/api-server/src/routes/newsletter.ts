@@ -85,24 +85,47 @@ router.get("/admin/newsletter/groups", async (req, res): Promise<void> => {
     return;
   }
   try {
-    const groups = await db
-      .select({
-        id: groupsTable.id,
-        name: groupsTable.name,
-        emoji: groupsTable.emoji,
-        memberCount: sql<number>`(
-          SELECT COUNT(*)::int FROM group_members gm
-          WHERE gm.group_id = ${groupsTable.id}
-            AND gm.joined_at IS NOT NULL
-            AND gm.role IS DISTINCT FROM 'hidden_admin'
-        )`,
-      })
-      .from(groupsTable)
-      .orderBy(groupsTable.name);
-    const [allUsers] = await db
-      .select({ count: sql<number>`COUNT(*)::int` })
-      .from(usersTable);
-    res.json({ groups, allUsersCount: allUsers?.count ?? 0 });
+    // Mirror /api/groups exactly: fetch every group_members row for
+    // every group, then count in JS using the same filter the side
+    // menu uses (joinedAt set, role !== "hidden_admin"). Earlier
+    // versions of this endpoint used a SQL correlated subquery, which
+    // for reasons we never fully pinned down was producing "1 member"
+    // even when /api/groups simultaneously reported 7+ for the same
+    // group. The JS-side approach matches the canonical count path
+    // exactly, so the newsletter picker can never diverge from what
+    // the side menu shows.
+    const [allGroupRows, allMemberRows, allUsers] = await Promise.all([
+      db
+        .select({
+          id: groupsTable.id,
+          name: groupsTable.name,
+          emoji: groupsTable.emoji,
+        })
+        .from(groupsTable)
+        .orderBy(groupsTable.name),
+      db
+        .select({
+          groupId: groupMembersTable.groupId,
+          joinedAt: groupMembersTable.joinedAt,
+          role: groupMembersTable.role,
+        })
+        .from(groupMembersTable),
+      db.select({ count: sql<number>`COUNT(*)::int` }).from(usersTable),
+    ]);
+
+    const countByGroup = new Map<number, number>();
+    for (const m of allMemberRows) {
+      if (m.joinedAt === null) continue;
+      if (m.role === "hidden_admin") continue;
+      countByGroup.set(m.groupId, (countByGroup.get(m.groupId) ?? 0) + 1);
+    }
+
+    const groups = allGroupRows.map((g) => ({
+      ...g,
+      memberCount: countByGroup.get(g.id) ?? 0,
+    }));
+
+    res.json({ groups, allUsersCount: allUsers[0]?.count ?? 0 });
   } catch (err) {
     console.error("GET /api/admin/newsletter/groups error:", err);
     res.status(500).json({ error: "Failed to load groups" });
