@@ -3,7 +3,7 @@ import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, and, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { db, ritualsTable, meetupsTable, ritualMessagesTable, scheduleResponsesTable, inviteTokensTable, usersTable, momentUserTokensTable, ritualTimeSuggestionsTable, groupMembersTable, groupsTable } from "@workspace/db";
-import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent } from "../lib/calendar";
+import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent, addAttendeesToCalendarEvent, removeAttendeesFromCalendarEvent, getCalendarEvent, createGatheringCalendarEvent, updateGatheringCalendarEvent } from "../lib/calendar";
 import { sendNewGatheringPush } from "../lib/pushSender";
 import {
   CreateRitualBody,
@@ -29,6 +29,109 @@ import { getWelcomeMessage, getCoordinatorResponse } from "../lib/agent";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
+
+// ─── Gathering calendar-invite sync ──────────────────────────────────────────
+// Keep the meetup's Google Calendar event in lock-step with its scheduled
+// time and attendee list. ONLY runs for gatherings tied to a community
+// (ritual.groupId != null) — personal rituals stay calendar-less, and
+// every non-gathering caller of calendar.ts keeps its existing
+// "no attendees" behavior.
+//
+// Behavior:
+//   • no event yet  → creates one with the joined group members as
+//                     attendees (excluding the creator, who already
+//                     created the gathering and doesn't need their own
+//                     invite). sendUpdates:"all" so Google emails the
+//                     attendees.
+//   • event exists  → patches start/end/attendees so a moved gathering
+//                     re-notifies the attendees.
+//
+// Fire-and-forget at call sites — meetup creation/confirmation still
+// succeeds in the API response even if Google's Calendar API hiccups.
+async function syncMeetupCalendarInvite(meetupId: number): Promise<void> {
+  try {
+    const [meetup] = await db
+      .select()
+      .from(meetupsTable)
+      .where(eq(meetupsTable.id, meetupId))
+      .limit(1);
+    if (!meetup) return;
+
+    const [ritual] = await db
+      .select()
+      .from(ritualsTable)
+      .where(eq(ritualsTable.id, meetup.ritualId))
+      .limit(1);
+    if (!ritual || ritual.groupId == null) return; // personal ritual — no community to invite
+
+    const [group] = await db
+      .select({ name: groupsTable.name })
+      .from(groupsTable)
+      .where(eq(groupsTable.id, ritual.groupId));
+
+    // Joined members with a usersTable row, excluding the creator (they
+    // already know — and including them tends to surface a duplicate
+    // event on their own calendar). NULL-safe role check matches the
+    // newsletter route's IS DISTINCT FROM pattern.
+    const memberRows = await db
+      .select({ email: usersTable.email })
+      .from(groupMembersTable)
+      .innerJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
+      .where(
+        and(
+          eq(groupMembersTable.groupId, ritual.groupId),
+          sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+          sql`${groupMembersTable.role} IS DISTINCT FROM 'hidden_admin'`,
+          ne(groupMembersTable.userId, ritual.ownerId),
+        ),
+      );
+    const attendees = memberRows.map((m) => m.email);
+    if (attendees.length === 0) return; // solo gathering — nothing to invite
+
+    const startDate = new Date(meetup.scheduledDate);
+    if (Number.isNaN(startDate.getTime())) return;
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1h default
+
+    // A short description with the host community name and Phoebe
+    // attribution so the calendar invite reads like real mail.
+    const description = [
+      ritual.intention?.trim() || "",
+      "",
+      group?.name ? `Hosted by ${group.name}` : "",
+      "Sent through Phoebe — RSVPs live in the app.",
+    ].filter(Boolean).join("\n");
+    const location = meetup.location ?? ritual.location ?? undefined;
+
+    if (meetup.googleCalendarEventId) {
+      await updateGatheringCalendarEvent(meetup.googleCalendarEventId, {
+        summary: ritual.name,
+        description,
+        location,
+        startDate,
+        endDate,
+        attendees,
+      });
+      return;
+    }
+
+    const eventId = await createGatheringCalendarEvent({
+      summary: ritual.name,
+      description,
+      location,
+      startDate,
+      endDate,
+      attendees,
+    });
+    if (eventId) {
+      await db
+        .update(meetupsTable)
+        .set({ googleCalendarEventId: eventId })
+        .where(eq(meetupsTable.id, meetupId));
+    }
+  } catch (err) {
+    console.warn("[gathering-calendar] sync failed", { meetupId, err });
+  }
+}
 
 async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: typeof meetupsTable.$inferSelect[]) {
   const { streak, lastMeetupDate, nextMeetupDate: computedNext, status } = computeStreak(meetups, ritual.frequency);
@@ -383,6 +486,13 @@ router.post("/rituals/:id/meetups", async (req, res): Promise<void> => {
       notes: parsed.data.notes ?? null,
     })
     .returning();
+
+  // Fire-and-forget: send the Google Calendar invite to every joined
+  // group member if this is a community gathering. See
+  // syncMeetupCalendarInvite for the gating rules.
+  syncMeetupCalendarInvite(meetup.id).catch((err) =>
+    req.log.warn({ err, meetupId: meetup.id }, "[gathering-calendar] sync failed"),
+  );
 
   res.status(201).json(meetup);
 });
@@ -871,15 +981,25 @@ router.post("/rituals/:id/confirm-time", async (req, res): Promise<void> => {
     .where(eq(meetupsTable.ritualId, id));
   const existingPlanned = existingMeetups.find((m) => m.status === "planned");
 
+  let confirmedMeetupId: number;
   if (existingPlanned) {
     await db.update(meetupsTable).set({ scheduledDate: confirmedTimeIso }).where(eq(meetupsTable.id, existingPlanned.id));
+    confirmedMeetupId = existingPlanned.id;
   } else {
-    await db.insert(meetupsTable).values({
+    const [inserted] = await db.insert(meetupsTable).values({
       ritualId: id,
       scheduledDate: confirmedTimeIso,
       status: "planned",
-    });
+    }).returning({ id: meetupsTable.id });
+    confirmedMeetupId = inserted!.id;
   }
+
+  // Send/update the Google Calendar invite for the confirmed time. Fire
+  // and forget — the confirm-time endpoint succeeds even if calendar
+  // sync hiccups.
+  syncMeetupCalendarInvite(confirmedMeetupId).catch((err) =>
+    req.log.warn({ err, meetupId: confirmedMeetupId }, "[gathering-calendar] sync failed"),
+  );
 
   res.json({ confirmedTime: confirmedTimeIso });
 });

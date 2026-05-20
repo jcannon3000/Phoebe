@@ -45,6 +45,157 @@ async function getSchedulerClient() {
   return oauth2Client;
 }
 
+// ─── Gathering calendar events (WITH attendees) ──────────────────────────────
+//
+// Most Phoebe calendar events run through createCalendarEvent below and
+// are deliberately attendee-less — the product policy is documented in
+// that helper. Gatherings are the ONE place that policy is reversed:
+// when a community admin creates (or moves) a gathering on Phoebe, we
+// want every group member to actually get the calendar invite in their
+// inbox / on their own calendar so the time gets blocked and the RSVP
+// shows up natively too. The in-app Going/Maybe RSVP remains the source
+// of truth for who's attending; this calendar event is a notification
+// + scheduling helper.
+//
+// Notable departures from the policy-locked createCalendarEvent:
+//   • attendees ARE included
+//   • sendUpdates: "all" so Google emails them the invite
+//   • no fan-out / no per-user OAuth — sent from invites@withphoebe.app
+//     just like every other Phoebe email
+//
+// Returns the event id (write it back to meetups.google_calendar_event_id)
+// or null on failure. Fire-and-forget at call sites — the in-app
+// gathering still works without the calendar invite.
+export async function createGatheringCalendarEvent(opts: {
+  summary: string;
+  description?: string;
+  location?: string;
+  startDate: Date;
+  endDate?: Date;
+  /** IANA timezone (e.g. "America/New_York"). Defaults to UTC. */
+  timeZone?: string;
+  /** Joined group-member emails (excluding the creator if you don't want
+   *  them in their own invite). */
+  attendees: string[];
+}): Promise<string | null> {
+  const auth = await getSchedulerClient();
+  if (!auth) return null;
+  const calendar = google.calendar({ version: "v3", auth });
+  const start = opts.startDate;
+  const end = opts.endDate ?? new Date(start.getTime() + 60 * 60 * 1000);
+  const tz = opts.timeZone ?? "UTC";
+
+  const cleanedAttendees = Array.from(
+    new Set(
+      opts.attendees
+        .map((e) => (e ?? "").trim().toLowerCase())
+        .filter((e) => e && e.includes("@")),
+    ),
+  ).map((email) => ({ email }));
+
+  try {
+    const event = await calendar.events.insert({
+      calendarId: "primary",
+      // "all" → Google emails every attendee the invitation. This is the
+      // crucial difference vs createCalendarEvent.
+      sendUpdates: "all",
+      requestBody: {
+        summary: opts.summary,
+        description: opts.description,
+        location: opts.location,
+        start: { dateTime: start.toISOString(), timeZone: tz },
+        end: { dateTime: end.toISOString(), timeZone: tz },
+        attendees: cleanedAttendees,
+        guestsCanInviteOthers: false,
+        guestsCanSeeOtherGuests: true,
+        reminders: {
+          useDefault: false,
+          overrides: [{ method: "popup", minutes: 30 }],
+        },
+      },
+    });
+    if (!event.data.id) {
+      console.error("[calendar] gathering events.insert returned no id", event.data);
+      return null;
+    }
+    console.log(
+      `[calendar] Created gathering event ${event.data.id} with ${cleanedAttendees.length} attendee(s)`,
+    );
+    return event.data.id;
+  } catch (err) {
+    const e = err as {
+      code?: number;
+      status?: number;
+      message?: string;
+      response?: { status?: number; data?: unknown };
+      errors?: Array<{ reason?: string; message?: string }>;
+    };
+    console.error("[calendar] gathering events.insert FAILED", {
+      code: e?.code ?? e?.status ?? e?.response?.status,
+      message: e?.message,
+      reason: e?.errors?.[0]?.reason,
+      data: e?.response?.data,
+      summary: opts.summary,
+    });
+    return null;
+  }
+}
+
+// Update an existing gathering calendar event. Used when the gathering's
+// time / location moves so attendees see the change on their calendar
+// (Google emails them an "updated invitation" because sendUpdates:"all").
+export async function updateGatheringCalendarEvent(
+  eventId: string,
+  opts: {
+    summary?: string;
+    description?: string;
+    location?: string;
+    startDate?: Date;
+    endDate?: Date;
+    timeZone?: string;
+    attendees?: string[];
+  },
+): Promise<boolean> {
+  const auth = await getSchedulerClient();
+  if (!auth) return false;
+  const calendar = google.calendar({ version: "v3", auth });
+  const tz = opts.timeZone ?? "UTC";
+  const requestBody: Record<string, unknown> = {};
+  if (opts.summary !== undefined) requestBody["summary"] = opts.summary;
+  if (opts.description !== undefined) requestBody["description"] = opts.description;
+  if (opts.location !== undefined) requestBody["location"] = opts.location;
+  if (opts.startDate) {
+    requestBody["start"] = { dateTime: opts.startDate.toISOString(), timeZone: tz };
+  }
+  if (opts.endDate) {
+    requestBody["end"] = { dateTime: opts.endDate.toISOString(), timeZone: tz };
+  }
+  if (opts.attendees) {
+    const cleaned = Array.from(
+      new Set(
+        opts.attendees
+          .map((e) => (e ?? "").trim().toLowerCase())
+          .filter((e) => e && e.includes("@")),
+      ),
+    ).map((email) => ({ email }));
+    requestBody["attendees"] = cleaned;
+  }
+
+  try {
+    await calendar.events.patch({
+      calendarId: "primary",
+      eventId,
+      sendUpdates: "all",
+      requestBody,
+    });
+    console.log(`[calendar] Updated gathering event ${eventId}`);
+    return true;
+  } catch (err) {
+    console.error("[calendar] gathering events.patch FAILED", err);
+    return false;
+  }
+}
+
 export async function createCalendarEvent(
   _userId: number, // kept for call-site compatibility; scheduler account is used
   opts: {
