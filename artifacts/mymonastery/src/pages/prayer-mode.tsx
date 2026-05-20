@@ -959,20 +959,43 @@ function SlideContent({
         </div>
       )}
 
-      {/* Optional outbound link. "Take action →" when the intercession
-          is an action-type (community admin authored it with a CTA);
-          "Learn more →" otherwise (background article on a feed entry
-          or a written prayer responding to an article). Both render as
-          the same pill — see ExternalLinkPill — and glow until the
-          user has tapped them once. openExternal routes through
-          SFSafariViewController on the iOS shell; web falls back to a
-          new tab. */}
+      {/* Optional outbound link. Two shapes:
+            • "Take action →" intercessions sit inside a small card
+              that explains what tapping does (so the pill isn't a
+              naked verb floating below the prayer). The pill itself
+              glows until the user has tapped it once.
+            • "Learn more →" intercessions render the pill alone —
+              the body text already explains the context.
+          openExternal routes the tap through SFSafariViewController on
+          the iOS shell; web falls back to a new tab. */}
       {slide.kind === "intercession" && slide.learnMoreUrl && (
-        <ExternalLinkPill
-          url={slide.learnMoreUrl}
-          label={slide.source === "action" ? "Take action →" : "Learn more →"}
-          className="mt-1"
-        />
+        slide.source === "action" ? (
+          <div
+            className="w-full rounded-2xl px-5 py-4 mt-1 flex flex-col items-center text-center"
+            style={{
+              background: "rgba(46,107,64,0.18)",
+              border: "1px solid rgba(46,107,64,0.4)",
+              gap: 12,
+            }}
+          >
+            <p
+              className="text-sm leading-relaxed"
+              style={{
+                color: "#C8D4C0",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              You can take action by emailing the applicable representatives.
+            </p>
+            <ExternalLinkPill url={slide.learnMoreUrl} label="Take action →" />
+          </div>
+        ) : (
+          <ExternalLinkPill
+            url={slide.learnMoreUrl}
+            label="Learn more →"
+            className="mt-1"
+          />
+        )
       )}
 
       <div className="mt-4">
