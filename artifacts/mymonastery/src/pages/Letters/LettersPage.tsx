@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { differenceInCalendarDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -111,8 +112,12 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
 
   // Days until write window opens — only show when we're truly waiting,
   // not when local-TZ override has flipped to OPEN.
+  // Calendar-day diff (local TZ) so this number matches the dashboard
+  // card and the correspondence detail page. The previous Math.ceil
+  // over a raw ms diff disagreed by one day across UTC-midnight
+  // windowOpenDate boundaries.
   const waitingDays = (isOneToOne && turnState === "WAITING" && item.windowOpenDate)
-    ? Math.max(0, Math.ceil((new Date(item.windowOpenDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(0, differenceInCalendarDays(new Date(item.windowOpenDate), new Date()))
     : null;
   const showCountdown = waitingDays !== null && waitingDays > 0;
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { differenceInCalendarDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -283,8 +284,15 @@ export default function CorrespondencePage() {
               nextIsMine &&
               !!windowOpenAt &&
               windowOpenAt.getTime() > Date.now();
+            // Count calendar-day boundaries in local TZ so the number
+            // here lines up exactly with the dashboard's letter card.
+            // The previous Math.ceil over a raw ms diff disagreed by
+            // one day whenever the server-side UTC-midnight
+            // windowOpenDate sat across a local-tz boundary from
+            // today — dashboard would say "5 days" while this page
+            // said "6 days" for the same correspondence.
             const daysUntilOpen = isWaitingForWindow && windowOpenAt
-              ? Math.max(1, Math.ceil((windowOpenAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+              ? Math.max(0, differenceInCalendarDays(windowOpenAt, new Date()))
               : 0;
 
             if (isOpen) {
@@ -294,7 +302,9 @@ export default function CorrespondencePage() {
               ctaLabel = "Write your letter 🖋️";
               ctaHref = writeUrl;
             } else if (isWaitingForWindow) {
-              subtitle = `Window opens in ${daysUntilOpen} ${daysUntilOpen === 1 ? "day" : "days"} · your draft will wait`;
+              subtitle = daysUntilOpen === 0
+                ? "Window opens today · your draft will wait"
+                : `Window opens in ${daysUntilOpen} ${daysUntilOpen === 1 ? "day" : "days"} · your draft will wait`;
               ctaLabel = "Start drafting 🖋️";
               ctaHref = writeUrl;
               ctaFilled = false;
