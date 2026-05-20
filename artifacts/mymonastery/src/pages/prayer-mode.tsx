@@ -12,6 +12,7 @@ import { openExternal } from "@/lib/openExternal";
 import type { MyActivePrayerFor } from "@/components/pray-for-them";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
+import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 
 // Scale the big prayer-text block by character length so long prayers
@@ -958,31 +959,17 @@ function SlideContent({
       {/* Optional outbound link. "Take action →" when the intercession
           is an action-type (community admin authored it with a CTA);
           "Learn more →" otherwise (background article on a feed entry
-          or a written prayer responding to an article). On the iOS
-          shell openExternal routes through SFSafariViewController so
-          the user stays inside Phoebe; on web it opens a new tab. */}
+          or a written prayer responding to an article). Both render as
+          the same pill — see ExternalLinkPill — and glow until the
+          user has tapped them once. openExternal routes through
+          SFSafariViewController on the iOS shell; web falls back to a
+          new tab. */}
       {slide.kind === "intercession" && slide.learnMoreUrl && (
-        <button
-          onClick={() => openExternal(slide.learnMoreUrl!)}
-          className={
-            slide.source === "action"
-              ? "text-[11px] font-semibold px-3 py-1 rounded-full mt-1"
-              : "text-xs underline decoration-dotted underline-offset-4 mt-1 bg-transparent border-0 p-0"
-          }
-          style={
-            slide.source === "action"
-              ? {
-                  background: "rgba(46,107,64,0.35)",
-                  color: "#C8D4C0",
-                  border: "1px solid rgba(46,107,64,0.55)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  cursor: "pointer",
-                }
-              : { color: "rgba(168,197,160,0.75)" }
-          }
-        >
-          {slide.source === "action" ? "Take action →" : "Learn more →"}
-        </button>
+        <ExternalLinkPill
+          url={slide.learnMoreUrl}
+          label={slide.source === "action" ? "Take action →" : "Learn more →"}
+          className="mt-1"
+        />
       )}
 
       <div className="mt-4">

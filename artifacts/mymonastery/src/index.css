@@ -210,6 +210,17 @@ textarea:focus {
   animation: input-pulse 3s ease-in-out infinite;
 }
 
+/* ── Pill glow — call-out for unclicked Take action / Learn more
+   pills on slideshow intercession slides. Drops off the first time
+   the user taps the pill (state lives in localStorage). */
+@keyframes pill-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(143,175,150,0.35); }
+  50%      { box-shadow: 0 0 18px 2px rgba(143,175,150,0.6); }
+}
+.animate-pill-glow {
+  animation: pill-glow 2s ease-in-out infinite;
+}
+
 /* ── Card — parchment, not plastic ───────────────────────────────── */
 .card-elevated {
   box-shadow: 0 2px 12px rgba(0,0,0,0.3);

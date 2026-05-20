@@ -9,6 +9,7 @@ import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
+import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
@@ -1905,11 +1906,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
             );
           })()}
           {/* "Learn more" pill on feed-scoped intercession slides
-              when the admin set a learn_more_url on the entry. Same
-              shape + behavior as the Bible.com pill above: real <a>
-              for accessibility, openExternal intercept so iOS shows
-              SFSafariViewController instead of bouncing to mobile
-              Safari. */}
+              when the admin set a learn_more_url on the entry. Shares
+              ExternalLinkPill with the prayer-mode slideshow so the
+              two surfaces look the same; the pill glows until the
+              user has tapped it once. */}
           {currentSlide.type === "intercessions" && (() => {
             const meta = currentSlide.metadata as { learnMoreUrl?: unknown; source?: unknown } | undefined;
             const url = typeof meta?.learnMoreUrl === "string" && meta.learnMoreUrl.length > 0
@@ -1917,31 +1917,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               : null;
             if (!url) return null;
             return (
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  openExternal(url);
-                }}
-                style={{
-                  alignSelf: "center",
-                  marginTop: 4,
-                  padding: "10px 18px",
-                  borderRadius: 999,
-                  background: "rgba(46,107,64,0.18)",
-                  border: "1px solid rgba(46,107,64,0.45)",
-                  color: WARM_TEXT,
-                  fontFamily: SPACE_GROTESK,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  display: "inline-block",
-                }}
-              >
-                Learn more →
-              </a>
+              <div style={{ alignSelf: "center", marginTop: 4 }}>
+                <ExternalLinkPill url={url} label="Learn more →" size="medium" />
+              </div>
             );
           })()}
           {currentSlide.bcpReference && (
