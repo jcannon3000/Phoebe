@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
+import { ServerDownScreen } from "@/components/ServerDownScreen";
 import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
@@ -514,6 +515,7 @@ function App() {
           <DesktopAppPrompt />
           <ForegroundPushToast />
           <NetworkBanner />
+          <ServerDownScreen />
           <DayBoundaryRefresh />
           <ForegroundRefresh />
           <NotificationTapPrewarm />
