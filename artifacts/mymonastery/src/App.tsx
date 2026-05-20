@@ -304,6 +304,10 @@ function ParishGate({ children }: { children: ReactNode }) {
         // (the API enforces public/private; feed management stays
         // beta-only).
         location.startsWith("/prayer-feeds") ||
+        // Letters — the other "monk-like" rhythm. Open to offices-only
+        // and parish-only members; the server-side gate matches.
+        location.startsWith("/letters") ||
+        location.startsWith("/letter") ||
         location === "/about" ||
         location === "/privacy" ||
         location === "/terms" ||

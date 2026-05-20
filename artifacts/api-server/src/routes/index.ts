@@ -37,14 +37,19 @@ const router: IRouter = Router();
 // ─── Offices-only account gate ───────────────────────────────────────────────
 // Accounts created from the public /pray page (users.offices_only = true,
 // accessTier "offices-only") are limited to the Daily Office / Daily
-// Devotion plus public prayer feeds. This middleware is the server-side
-// enforcement of that limit: it rejects every social / community
-// surface for those accounts, so the limit holds even against a
-// hand-crafted API call — the frontend ParishGate only hides the
-// routes. Anything NOT listed (auth, office, devotion, parish, users,
-// me, prayer-sessions, push, bell, health, feedback, and prayer-feeds —
-// which enforces public/private access itself) stays reachable so the
-// office experience, public feeds, and settings keep working.
+// Devotion, public prayer feeds, AND Letters. Letters is the other
+// "monk-like" rhythm Phoebe offers — slow, 1:1, contemplative — so it
+// composes naturally with the offices experience without dragging in
+// the social / community surfaces those accounts opted out of. The
+// menu already surfaces Letters to every signed-in user; this gate
+// just makes sure the API doesn't 403 them.
+//
+// This middleware is the server-side enforcement of the limit: it
+// rejects every remaining community surface for these accounts, so
+// the limit holds even against a hand-crafted API call. Anything NOT
+// listed (auth, office, devotion, parish, users, me, prayer-sessions,
+// push, bell, health, feedback, letters, and prayer-feeds — which
+// enforces public/private access itself) stays reachable.
 const OFFICES_ONLY_BLOCKED_PREFIXES = [
   "/groups",
   "/prayer-requests",
@@ -56,8 +61,9 @@ const OFFICES_ONLY_BLOCKED_PREFIXES = [
   // and those routes are already scoped to moments the caller holds a
   // token for.
   "/moments",
-  "/letters",
-  "/letter",
+  // "/letters" and "/letter" intentionally OMITTED — Letters is open to
+  // offices-only accounts. (Earlier versions of this list blocked them;
+  // we opened the gate when Letters became a first-class entry point.)
   "/rituals",
   "/actions",
   "/people",
