@@ -77,8 +77,6 @@ const SLIDES: Slide[] = [
     headline: "A place where prayers are shared and held.",
     body: [
       "Phoebe gives your community a place to share what they're carrying — joys, sorrows, the long quiet things — and to know those prayers are being held by others.",
-      "Once a day, Phoebe rings — a real bell on the phone — and opens a slideshow of every prayer request from your community.",
-      "Tap through. Leave a word. Tap Amen. The whole community's prayers, held in a few minutes — every day, together.",
     ],
     mock: "prayer-requests",
   },
