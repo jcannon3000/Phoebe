@@ -37,6 +37,7 @@ type Slide =
       headline: string;
       body: string[];
       mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings";
+      stacked?: boolean;
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
   | { kind: "quote"; text: string }
@@ -94,6 +95,7 @@ const SLIDES: Slide[] = [
       "It turns out, knowing someone has been praying for you changes things.",
     ],
     mock: "prayer-notification",
+    stacked: true,
   },
 
   // ── Feature 1b: Praying for the world together ──
@@ -469,131 +471,51 @@ function PrayerRequestsMock() {
   );
 }
 
-/* ── Prayer Notification — iOS-style lock screen notification ── */
+/* ── Prayer Notification — iOS-style notification (standalone, no lock screen) ── */
 function PrayerNotificationMock() {
   return (
-    <MockPhone>
-      {/* Lock-screen-ish backdrop */}
+    <div
+      className="rounded-2xl px-3.5 py-3 flex gap-3 items-start w-full max-w-[420px] mx-auto"
+      style={{
+        background: "rgba(40,45,48,0.92)",
+        backdropFilter: "blur(8px)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
+      }}
+    >
+      {/* App icon — Phoebe (saint) */}
       <div
-        className="rounded-2xl px-3 pt-3 pb-4"
+        className="w-11 h-11 rounded-[10px] flex items-center justify-center shrink-0"
         style={{
-          background:
-            "linear-gradient(180deg, #060b0a 0%, #0a1614 60%, #060b0a 100%)",
-          border: "1px solid rgba(200,212,192,0.08)",
+          background: "linear-gradient(135deg, #1a3a26 0%, #0F2818 100%)",
+          border: "1px solid rgba(200,212,192,0.18)",
         }}
       >
-        {/* Status bar */}
-        <div className="flex items-center justify-between mb-3 px-1">
+        <span className="text-[22px]">🙏🏽</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2 mb-1">
           <p
-            className="text-[8px] font-medium"
-            style={{ color: "rgba(255,255,255,0.7)", fontFamily: C.font }}
+            className="text-[14px] md:text-[15px] font-semibold leading-tight"
+            style={{ color: "#F5F5F5", fontFamily: C.font }}
           >
-            Phoebe
+            You've been held in prayer today
           </p>
           <p
-            className="text-[8px] font-medium"
-            style={{ color: "rgba(255,255,255,0.7)", fontFamily: C.font }}
+            className="text-[11px] shrink-0 pt-0.5"
+            style={{ color: "rgba(220,230,235,0.55)", fontFamily: C.font }}
           >
             now
           </p>
         </div>
-
-        {/* Time + date */}
         <p
-          className="text-[10px] text-center mb-0.5"
-          style={{ color: "rgba(180,200,210,0.85)", fontFamily: C.font }}
+          className="text-[13px] md:text-[14px] leading-snug"
+          style={{ color: "rgba(220,230,235,0.88)", fontFamily: C.font }}
         >
-          Wed May 20
+          Theresa and others prayed for your requests today.
         </p>
-        <p
-          className="text-[36px] leading-none font-light text-center mb-3 tracking-tight"
-          style={{
-            color: "#0F2A4D",
-            fontFamily: "'Helvetica Neue', sans-serif",
-            textShadow: "0 1px 0 rgba(255,255,255,0.06)",
-            WebkitTextStroke: "0.5px rgba(180,200,210,0.4)",
-          }}
-        >
-          12:43
-        </p>
-
-        {/* Streak / Today stats */}
-        <div className="flex items-start justify-center gap-6 mb-4">
-          <div className="text-center">
-            <p
-              className="text-[8px] uppercase tracking-wide mb-0.5"
-              style={{ color: "rgba(180,200,210,0.55)", fontFamily: C.font }}
-            >
-              Streak
-            </p>
-            <p
-              className="text-[10px] font-medium"
-              style={{ color: "rgba(220,230,235,0.9)", fontFamily: C.font }}
-            >
-              4 days
-            </p>
-          </div>
-          <div className="text-center">
-            <p
-              className="text-[8px] uppercase tracking-wide mb-0.5"
-              style={{ color: "rgba(180,200,210,0.55)", fontFamily: C.font }}
-            >
-              Today
-            </p>
-            <p
-              className="text-[10px] font-medium"
-              style={{ color: "rgba(220,230,235,0.9)", fontFamily: C.font }}
-            >
-              58 min
-            </p>
-          </div>
-        </div>
-
-        {/* Notification card */}
-        <div
-          className="rounded-xl px-2.5 py-2 flex gap-2 items-start"
-          style={{
-            background: "rgba(40,50,52,0.85)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid rgba(255,255,255,0.04)",
-          }}
-        >
-          {/* App icon — Phoebe (saint icon) */}
-          <div
-            className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-            style={{
-              background:
-                "linear-gradient(135deg, #1a3a26 0%, #0F2818 100%)",
-              border: "1px solid rgba(200,212,192,0.15)",
-            }}
-          >
-            <span className="text-[13px]">🙏🏽</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-0.5">
-              <p
-                className="text-[10px] font-semibold leading-tight"
-                style={{ color: "#F5F5F5", fontFamily: C.font }}
-              >
-                You've been held in prayer today
-              </p>
-              <p
-                className="text-[8px] shrink-0"
-                style={{ color: "rgba(220,230,235,0.5)", fontFamily: C.font }}
-              >
-                now
-              </p>
-            </div>
-            <p
-              className="text-[9px] leading-snug"
-              style={{ color: "rgba(220,230,235,0.85)", fontFamily: C.font }}
-            >
-              Theresa and others prayed for your requests today.
-            </p>
-          </div>
-        </div>
       </div>
-    </MockPhone>
+    </div>
   );
 }
 
@@ -1422,6 +1344,47 @@ function FeatureComboSlide({
   slide: Extract<Slide, { kind: "feature-combo" }>;
 }) {
   const Mock = MOCK_MAP[slide.mock];
+  if (slide.stacked) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto gap-8 text-center">
+        <div className="w-full">
+          {slide.label && (
+            <p
+              className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
+              style={{ color: "rgba(143,175,150,0.45)" }}
+            >
+              {slide.label}
+            </p>
+          )}
+          <h2
+            className="text-2xl md:text-3xl font-semibold mb-4 leading-tight"
+            style={{ color: C.text, fontFamily: C.font }}
+          >
+            {slide.headline}
+          </h2>
+          <div className="space-y-3 md:space-y-4 max-w-xl mx-auto">
+            {slide.body.map((p, i) => (
+              <p
+                key={i}
+                className="text-sm md:text-base leading-relaxed font-light"
+                style={{ color: C.sage, fontFamily: C.font, whiteSpace: "pre-line" }}
+              >
+                {p}
+              </p>
+            ))}
+          </div>
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18, duration: 0.45 }}
+          className="w-full flex justify-center"
+        >
+          {Mock ? <Mock /> : null}
+        </motion.div>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col md:flex-row items-start md:items-center justify-center w-full max-w-5xl mx-auto gap-8 md:gap-16">
       {/* Text — left on desktop, full-width on mobile */}
