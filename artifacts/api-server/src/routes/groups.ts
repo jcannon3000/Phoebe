@@ -19,6 +19,7 @@ import {
   circleDailyFocusTable,
   circleIntentionsTable,
   ritualsTable,
+  ritualGroupsTable,
   meetupsTable,
   prayerFeedSubscriptionsTable,
   groupJoinRequestsTable,
@@ -2423,9 +2424,37 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
     });
   }).map(({ ownerId, participants, ...rest }) => { void ownerId; void participants; return rest; });
 
+  // Path 3: rituals linked to this community via the ritual_groups
+  // junction (multi-community gatherings). A gathering can be hosted
+  // by one community and shared with several others — each shared-with
+  // community sees the gathering in its own Gatherings list. We catch
+  // a missing-table error so a fresh DB without ritual_groups doesn't
+  // 500 the whole list.
+  let sharedExtra: typeof explicit = [];
+  try {
+    sharedExtra = await db
+      .select({
+        id: ritualsTable.id,
+        name: ritualsTable.name,
+        description: ritualsTable.description,
+        template: ritualsTable.template,
+        rhythm: ritualsTable.rhythm,
+        frequency: ritualsTable.frequency,
+        dayPreference: ritualsTable.dayPreference,
+        location: ritualsTable.location,
+        meetingUrl: ritualsTable.meetingUrl,
+        createdAt: ritualsTable.createdAt,
+      })
+      .from(ritualGroupsTable)
+      .innerJoin(ritualsTable, eq(ritualsTable.id, ritualGroupsTable.ritualId))
+      .where(eq(ritualGroupsTable.groupId, group.id));
+  } catch {
+    sharedExtra = [];
+  }
+
   // Merge + dedupe by id, sort desc by createdAt.
   const seen = new Set<number>();
-  const merged = [...explicit, ...legacy].filter((r) => {
+  const merged = [...explicit, ...legacy, ...sharedExtra].filter((r) => {
     if (seen.has(r.id)) return false;
     seen.add(r.id);
     return true;

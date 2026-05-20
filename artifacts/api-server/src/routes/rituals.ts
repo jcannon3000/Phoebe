@@ -573,6 +573,110 @@ router.put("/rituals/:id", async (req, res): Promise<void> => {
   res.json(UpdateRitualResponse.parse(enriched));
 });
 
+// ─── GET /api/rituals/:id/groups — list communities a gathering is shared with
+// Primary group (ritualsTable.groupId) + any rows in ritual_groups.
+// Mirrors GET /moments/:id/groups so the gathering admin UI reads the
+// same shape as the intercession admin UI.
+router.get("/rituals/:id/groups", async (req, res): Promise<void> => {
+  const ritualId = parseInt(req.params.id, 10);
+  if (isNaN(ritualId)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
+  if (!ritual) { res.status(404).json({ error: "Gathering not found" }); return; }
+
+  const primary = ritual.groupId
+    ? (await db.select().from(groupsTable).where(eq(groupsTable.id, ritual.groupId)))[0]
+    : null;
+  let extraGroupIds: number[] = [];
+  try {
+    const extraLinks = await db.select({ groupId: ritualGroupsTable.groupId })
+      .from(ritualGroupsTable)
+      .where(eq(ritualGroupsTable.ritualId, ritualId));
+    extraGroupIds = extraLinks.map(l => l.groupId);
+  } catch {
+    // ritual_groups may not be migrated yet — degrade to empty list.
+    extraGroupIds = [];
+  }
+  const extraGroups = extraGroupIds.length > 0
+    ? await db.select().from(groupsTable).where(inArray(groupsTable.id, extraGroupIds))
+    : [];
+
+  res.json({
+    primary: primary ? { id: primary.id, name: primary.name, slug: primary.slug, emoji: primary.emoji } : null,
+    additional: extraGroups.map(g => ({ id: g.id, name: g.name, slug: g.slug, emoji: g.emoji })),
+  });
+});
+
+// ─── POST /api/rituals/:id/groups — share a gathering with another community.
+// Body: { groupId: number }. Caller must be an admin (admin | hidden_admin)
+// of the target community AND must be a member of the gathering's primary
+// community. The target's joined members are NOT auto-added as participants
+// (unlike intercessions) — gatherings don't have a per-person token roster
+// the way intercessions do; they're discovered by community list views, so
+// just adding the junction row is enough.
+const attachRitualGroupSchema = z.object({ groupId: z.number().int().positive() });
+router.post("/rituals/:id/groups", async (req, res): Promise<void> => {
+  const ritualId = parseInt(req.params.id, 10);
+  if (isNaN(ritualId)) { res.status(400).json({ error: "Invalid ritual id" }); return; }
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = attachRitualGroupSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
+  const targetGroupId = parsed.data.groupId;
+
+  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
+  if (!ritual) { res.status(404).json({ error: "Gathering not found" }); return; }
+
+  // Caller must admin the target community.
+  const [myMembership] = await db.select().from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, targetGroupId), eq(groupMembersTable.userId, sessionUserId)));
+  if (!myMembership || (myMembership.role !== "admin" && myMembership.role !== "hidden_admin")) {
+    res.status(403).json({ error: "You must be an admin of that community" });
+    return;
+  }
+
+  // No-op if target == primary or already linked.
+  if (ritual.groupId === targetGroupId) {
+    res.json({ ok: true, alreadyLinked: true });
+    return;
+  }
+  const [existing] = await db.select().from(ritualGroupsTable)
+    .where(and(eq(ritualGroupsTable.ritualId, ritualId), eq(ritualGroupsTable.groupId, targetGroupId)));
+  if (existing) {
+    res.json({ ok: true, alreadyLinked: true });
+    return;
+  }
+
+  await db.insert(ritualGroupsTable).values({ ritualId, groupId: targetGroupId }).onConflictDoNothing();
+  res.json({ ok: true });
+});
+
+// ─── DELETE /api/rituals/:id/groups/:groupId — detach a gathering from a
+// secondary community. Caller must admin the community being removed. The
+// primary groupId is never deleted via this endpoint — that would orphan
+// the gathering.
+router.delete("/rituals/:id/groups/:groupId", async (req, res): Promise<void> => {
+  const ritualId = parseInt(req.params.id, 10);
+  const targetGroupId = parseInt(req.params.groupId, 10);
+  if (isNaN(ritualId) || isNaN(targetGroupId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [myMembership] = await db.select().from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, targetGroupId), eq(groupMembersTable.userId, sessionUserId)));
+  if (!myMembership || (myMembership.role !== "admin" && myMembership.role !== "hidden_admin")) {
+    res.status(403).json({ error: "You must be an admin of that community" });
+    return;
+  }
+
+  await db.delete(ritualGroupsTable)
+    .where(and(eq(ritualGroupsTable.ritualId, ritualId), eq(ritualGroupsTable.groupId, targetGroupId)));
+
+  res.json({ ok: true });
+});
+
 router.delete("/rituals/:id", async (req, res): Promise<void> => {
   const params = DeleteRitualParams.safeParse(req.params);
   if (!params.success) {
