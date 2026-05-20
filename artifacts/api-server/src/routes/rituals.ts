@@ -46,8 +46,12 @@ async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: t
   }
 
   // Find the upcoming meetup row to pull its per-meetup location. Fall back
-  // to the legacy ritual-level location when the meetup row has none.
+  // to the legacy ritual-level location when the meetup row has none. We
+  // also surface its id so client surfaces (dashboard card, detail
+  // modal) can attach RSVPs to the right meetup without an extra
+  // round-trip.
   let nextMeetupLocation: string | null = null;
+  let nextMeetupId: number | null = null;
   if (nextMeetupDate) {
     const nextIso = nextMeetupDate;
     const match = meetups.find((m) => {
@@ -55,6 +59,7 @@ async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: t
       catch { return false; }
     });
     nextMeetupLocation = match?.location ?? ritual.location ?? null;
+    nextMeetupId = match?.id ?? null;
   } else {
     nextMeetupLocation = ritual.location ?? null;
   }
@@ -66,6 +71,7 @@ async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: t
     lastMeetupDate,
     nextMeetupDate,
     nextMeetupLocation,
+    nextMeetupId,
     status,
   };
 }

@@ -1603,6 +1603,23 @@ export async function migrate() {
       )
     `);
 
+    // ── Meetup RSVPs ──────────────────────────────────────────────────────
+    // Going / Maybe RSVPs on gathering meetups. Mirrors action_rsvps:
+    // one row per (meetup, user); clearing an RSVP deletes the row;
+    // status is "going" | "maybe". Unique index enforces the
+    // one-row-per-user invariant.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS meetup_rsvps (
+        id SERIAL PRIMARY KEY,
+        meetup_id INTEGER NOT NULL REFERENCES meetups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_meetup_rsvp_meetup_user ON meetup_rsvps (meetup_id, user_id)`);
+
     // ── Repair NULL group_members.role ────────────────────────────────────
     // The schema defines role as NOT NULL DEFAULT 'member', but some rows
     // were inserted before that default existed and left role NULL. SQL
