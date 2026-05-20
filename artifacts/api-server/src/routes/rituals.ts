@@ -32,17 +32,18 @@ const router: IRouter = Router();
 
 // ─── Gathering calendar-invite sync ──────────────────────────────────────────
 // Keep the meetup's Google Calendar event in lock-step with its scheduled
-// time and attendee list. ONLY runs for gatherings tied to a community
-// (ritual.groupId != null) — personal rituals stay calendar-less, and
-// every non-gathering caller of calendar.ts keeps its existing
-// "no attendees" behavior.
+// time and attendee list. SCOPED INTENTIONALLY: only fires for VIDEO-CALL
+// gatherings (ritual.meetingUrl present) tied to a community
+// (ritual.groupId != null). In-person gatherings — even community ones —
+// don't get Google Calendar invites; that's a deliberate product choice.
+// Personal rituals are never touched. Every non-gathering caller of
+// calendar.ts continues to use the attendee-less helpers.
 //
 // Behavior:
 //   • no event yet  → creates one with the joined group members as
-//                     attendees (excluding the creator, who already
-//                     created the gathering and doesn't need their own
-//                     invite). sendUpdates:"all" so Google emails the
-//                     attendees.
+//                     attendees (excluding the creator and any
+//                     hidden_admin observers). sendUpdates:"all" so
+//                     Google emails the invitation.
 //   • event exists  → patches start/end/attendees so a moved gathering
 //                     re-notifies the attendees.
 //
@@ -63,6 +64,14 @@ async function syncMeetupCalendarInvite(meetupId: number): Promise<void> {
       .where(eq(ritualsTable.id, meetup.ritualId))
       .limit(1);
     if (!ritual || ritual.groupId == null) return; // personal ritual — no community to invite
+
+    // ── Video-call-only gate ──
+    // A gathering counts as a video call when the ritual carries a
+    // non-empty meetingUrl (the field set by the "video call" gathering
+    // format on creation). Anything else — in-person addresses,
+    // unspecified — is intentionally skipped.
+    const meetingUrl = (ritual.meetingUrl ?? "").trim();
+    if (!meetingUrl) return;
 
     const [group] = await db
       .select({ name: groupsTable.name })
@@ -92,15 +101,24 @@ async function syncMeetupCalendarInvite(meetupId: number): Promise<void> {
     if (Number.isNaN(startDate.getTime())) return;
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1h default
 
-    // A short description with the host community name and Phoebe
-    // attribution so the calendar invite reads like real mail.
+    // A short description with the host community name + the meeting
+    // link itself so the calendar event is "tap to join" without
+    // bouncing through Phoebe. Google Calendar turns URLs in
+    // descriptions into clickable links automatically.
     const description = [
       ritual.intention?.trim() || "",
+      "",
+      `Join the call: ${meetingUrl}`,
       "",
       group?.name ? `Hosted by ${group.name}` : "",
       "Sent through Phoebe — RSVPs live in the app.",
     ].filter(Boolean).join("\n");
-    const location = meetup.location ?? ritual.location ?? undefined;
+
+    // For video calls, the meeting link IS the location — many
+    // calendar clients render the location prominently with a click
+    // target. Falls back to a textual location if for some reason
+    // someone set both.
+    const location = meetup.location ?? meetingUrl;
 
     if (meetup.googleCalendarEventId) {
       await updateGatheringCalendarEvent(meetup.googleCalendarEventId, {
