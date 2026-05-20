@@ -648,6 +648,30 @@ export function sendLetterRespondReminderPush(
 //
 // Fires once per member per period via the scheduler-side dedupe in
 // letter_window_pushes; the collapse-id is belt-and-suspenders.
+// Heads-up push the day before a one-to-one reply window opens. Pairs
+// with the dashboard's tight 3-day letter card (day-before → day-of →
+// day-after, then the card hides) so users get a gentle nudge that
+// "letter time is tomorrow" before the card surfaces on the home
+// screen. Names the other participant and deep-links to the write
+// surface so the user can start a draft early if they want.
+export function sendLetterDayBeforePush(
+  userId: number,
+  opts: {
+    correspondenceId: number;
+    periodStartDate: string;
+    recipientName: string;
+  },
+) {
+  return sendPushToUser(userId, {
+    title: `A letter to ${opts.recipientName} tomorrow`,
+    body: `Your reply window opens tomorrow — start a draft whenever you're ready.`,
+    path: `/letters/${opts.correspondenceId}/write`,
+    threadId: `letter-${opts.correspondenceId}`,
+    collapseId: `letter-day-before-${opts.correspondenceId}-${opts.periodStartDate}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 export function sendLetterPeriodOpenPush(
   userId: number,
   opts: {

@@ -41,6 +41,7 @@ import {
   sendLetterPeriodOpenPush,
   sendLetterReminderDay3Push,
   sendLetterReminderDay7Push,
+  sendLetterDayBeforePush,
 } from "./pushSender";
 import { logger } from "./logger";
 
@@ -126,8 +127,32 @@ export async function runLetterWindowSweep(): Promise<void> {
             creatorEmail,
           );
 
+          // Resolve recipient name once — needed by every push path
+          // (day-before, day-of, day-3, day-7).
+          const recipientName = (other.name ?? other.email.split("@")[0] ?? "your friend").trim();
+
+          // Day-before heads-up. Fires ~24h before MY window opens — i.e.
+          // turn state is WAITING, I am the next writer, and the open
+          // moment is within the next ~25 hours. The 25h ceiling absorbs
+          // the 15-minute sweep cadence so we don't skip it. Dedupe key
+          // is the same windowOpenDate the day-of push will use, with a
+          // distinct `kind` so they're independent.
+          if (
+            turn.state === "WAITING" &&
+            turn.windowOpenDate &&
+            turn.nextWriterEmail?.toLowerCase() === m.email.toLowerCase()
+          ) {
+            const hoursUntil =
+              (turn.windowOpenDate.getTime() - now.getTime()) / 3_600_000;
+            if (hoursUntil > 0 && hoursUntil <= 25) {
+              const dayBeforeKey = formatPeriodStartDateString(turn.windowOpenDate);
+              await dayBeforePushOnce(c.id, m.userId, dayBeforeKey, recipientName);
+            }
+            continue;
+          }
+
           // Fire only on OPEN (and OVERDUE — they still need a nudge
-          // even if a tick was missed). Skip WAITING and SENT.
+          // even if a tick was missed). Skip remaining WAITING + SENT.
           if (turn.state !== "OPEN" && turn.state !== "OVERDUE") continue;
 
           // Use the windowOpenDate as the period key so the dedupe is
@@ -138,10 +163,6 @@ export async function runLetterWindowSweep(): Promise<void> {
             ? formatPeriodStartDateString(turn.windowOpenDate)
             : periodStartStr;
 
-          // 1:1 push names the OTHER participant: "Time to write Maya."
-          // Use their member name; fall back to email local-part if
-          // name is missing.
-          const recipientName = (other.name ?? other.email.split("@")[0] ?? "your friend").trim();
           await pushOnce(c.id, m.userId, turnKey, c.name, /*isOneToOne*/ true, recipientName);
 
           // Day-3 + Day-7 reminders. Only fire on one_to_one (the
@@ -269,6 +290,44 @@ async function reminderPushOnce(
   }).catch((err) => logger.warn(
     { err, userId, correspondenceId, kind },
     "[letter-window] reminder push failed",
+  ));
+}
+
+// Day-before heads-up push. Same insert-then-send dedupe shape as
+// pushOnce / reminderPushOnce, with a dedicated kind so the unique
+// row never collides with the day-of "open" push that follows
+// ~24 hours later.
+async function dayBeforePushOnce(
+  correspondenceId: number,
+  userId: number,
+  periodKey: string,
+  recipientName: string,
+): Promise<void> {
+  const [existing] = await db.select({ id: letterWindowPushesTable.id })
+    .from(letterWindowPushesTable)
+    .where(and(
+      eq(letterWindowPushesTable.correspondenceId, correspondenceId),
+      eq(letterWindowPushesTable.userId, userId),
+      eq(letterWindowPushesTable.periodStartDate, periodKey),
+      eq(letterWindowPushesTable.kind, "open_day_before"),
+    ));
+  if (existing) return;
+
+  const ins = await db.insert(letterWindowPushesTable).values({
+    correspondenceId,
+    userId,
+    periodStartDate: periodKey,
+    kind: "open_day_before",
+  }).onConflictDoNothing().returning({ id: letterWindowPushesTable.id });
+  if (ins.length === 0) return;
+
+  await sendLetterDayBeforePush(userId, {
+    correspondenceId,
+    periodStartDate: periodKey,
+    recipientName,
+  }).catch((err) => logger.warn(
+    { err, userId, correspondenceId },
+    "[letter-window] day-before push failed",
   ));
 }
 

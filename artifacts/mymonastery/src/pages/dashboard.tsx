@@ -4397,38 +4397,62 @@ export default function Dashboard() {
     // the writing gate handle the few intra-day hours where the API
     // is still WAITING.
     //
-    // Only show WAITING letters when *I* am the next writer. If I sent
-    // the last letter, the window belongs to *them* and there's
-    // nothing for me to do.
+    // ── Letter card visibility ────────────────────────────────────────────
+    // Two kinds of letter cards surface here:
+    //
+    //   • Read prompt — an inbound letter is unread. Stays visible until
+    //     the user reads it, regardless of any window.
+    //   • Write prompt — it's the user's turn to write next. For
+    //     one-to-one dialogues this is restricted to a TIGHT 3-day window
+    //     around the writing window opening: the day before it opens, the
+    //     day it opens, and the day after. After that the card disappears
+    //     even if the letter hasn't been written — reminder push
+    //     notifications (see letterWindowSender) take over from there so
+    //     the dashboard doesn't accumulate aging "you owe a letter" cards.
+    //
+    // Small-group correspondences keep the looser "any actionable state
+    // → Today" rule because they don't have a single windowOpenDate to
+    // bucket against.
     const dashUserName = user?.name ?? "";
     for (const c of (dashCorrespondences ?? [])) {
+      // Read prompt — always visible while there's something unread.
+      if (c.unreadCount > 0) {
+        todayItems.push({ kind: "letter", data: c });
+        continue;
+      }
+
+      if (c.groupType === "one_to_one") {
+        // If the last letter was from me, it's their turn; nothing for
+        // me to write yet.
+        const lastLetterFromMe = c.recentLetters?.[0]?.authorName === dashUserName;
+        if (lastLetterFromMe) continue;
+        if (!c.windowOpenDate) continue;
+
+        const daysAhead = differenceInCalendarDays(
+          new Date(c.windowOpenDate),
+          new Date(),
+        );
+        if (daysAhead === 1) {
+          // Day BEFORE the window opens — heads up.
+          tomorrowItems.push({ kind: "letter", data: c });
+        } else if (daysAhead === 0 || daysAhead === -1) {
+          // Day OF and day AFTER the window opens — active prompt.
+          todayItems.push({ kind: "letter", data: c });
+        }
+        // daysAhead >= 2 (more than a day out) or <= -2 (more than a
+        // day past the open date): card is hidden. Reminder pushes
+        // carry the load from here.
+        continue;
+      }
+
+      // Small-group correspondences — keep the original "actionable →
+      // Today" bucketing.
       const actionable =
-        c.unreadCount > 0 ||
         c.myTurn ||
         c.turnState === "OPEN" ||
         c.turnState === "OVERDUE";
       if (actionable) {
         todayItems.push({ kind: "letter", data: c });
-        continue;
-      }
-      if (
-        c.groupType === "one_to_one" &&
-        c.turnState === "WAITING" &&
-        c.windowOpenDate
-      ) {
-        const lastLetterFromMe = c.recentLetters?.[0]?.authorName === dashUserName;
-        if (lastLetterFromMe) continue;
-        const windowDate = new Date(c.windowOpenDate);
-        const daysAhead = differenceInCalendarDays(windowDate, new Date());
-        if (daysAhead <= 0) {
-          todayItems.push({ kind: "letter", data: c });
-        } else if (daysAhead === 1) {
-          tomorrowItems.push({ kind: "letter", data: c });
-        } else if (daysAhead < 7) {
-          weekItems.push({ kind: "letter", data: c });
-        } else {
-          monthItems.push({ kind: "letter", data: c });
-        }
       }
     }
 
