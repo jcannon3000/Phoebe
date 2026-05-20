@@ -1630,36 +1630,39 @@ function GatheringCard({
           style={{ background: isToday_ ? undefined : colors.bar }}
         />
         <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+          {/* Row 1: name (left) + community pill (right). */}
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <span className="text-base font-semibold truncate block" style={{ color: "#F0EDE6" }}>
-                {r.name}
+            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+              {r.name}
+            </span>
+            {hostGroup && (
+              <span
+                className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+                style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+              >
+                {hostGroup.emoji ?? "⛪"} {hostGroup.name}
               </span>
-              {timeLabel && (
-                <div className="mt-0.5 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
+            )}
+          </div>
+
+          {/* Row 2: date/time (left) + video call tag (right, when set). */}
+          {(timeLabel || isVideoGathering) && (
+            <div className="mt-0.5 flex items-baseline justify-between gap-3">
+              {timeLabel ? (
+                <div className="text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
                   {timeLabel}
                 </div>
-              )}
-            </div>
-            <div className="flex flex-col items-end shrink-0 mt-1">
-              {hostGroup && (
-                <span
-                  className="text-[10px] font-semibold uppercase"
-                  style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-                >
-                  {hostGroup.emoji ?? "⛪"} {hostGroup.name}
-                </span>
-              )}
+              ) : <div />}
               {isVideoGathering && (
                 <span
-                  className="mt-2 text-[10px] font-medium"
+                  className="text-[10px] font-medium shrink-0"
                   style={{ color: "rgba(143,175,150,0.85)" }}
                 >
                   📹 Video call
                 </span>
               )}
             </div>
-          </div>
+          )}
           {/* RSVP counts (going / maybe). Reads from the dashboard's
               cached batch summary so this is free on the wire. */}
           {typeof r.nextMeetupId === "number" && r.nextMeetupId > 0 && (
