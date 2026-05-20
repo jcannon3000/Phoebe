@@ -504,7 +504,7 @@ function PrayerNotificationMock() {
       >
         now
       </p>
-      <div className="flex-1 min-w-0 text-right pr-8 md:pr-10">
+      <div className="flex-1 min-w-0 text-left pr-8 md:pr-10">
         <p
           className="text-[15px] md:text-[17px] font-semibold leading-snug mb-1"
           style={{ color: "#F5F5F5", fontFamily: iosFont, letterSpacing: "-0.01em" }}
