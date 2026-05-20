@@ -90,7 +90,6 @@ const SLIDES: Slide[] = [
     body: [
       "When someone shares a request, the community is gently notified — a quiet nudge, not a flood. People show up, leave a word, tap Amen.",
       "And when others have prayed for you that day, Phoebe lets you know. Theresa and three others held you in prayer this morning. A small, ordinary miracle, made visible.",
-      "It turns out, knowing someone has been praying for you changes things.",
     ],
     mock: "prayer-notification",
     stacked: true,
@@ -474,7 +473,7 @@ function PrayerNotificationMock() {
     "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', Helvetica, Arial, sans-serif";
   return (
     <div
-      className="rounded-[18px] md:rounded-[22px] px-4 md:px-5 py-3.5 md:py-4 flex gap-3 md:gap-3.5 items-start w-full max-w-[560px] mx-auto"
+      className="relative rounded-[18px] md:rounded-[22px] px-4 md:px-5 py-3.5 md:py-4 flex gap-3 md:gap-3.5 items-start w-full max-w-[560px] mx-auto"
       style={{
         background: "rgba(44,46,49,0.92)",
         backdropFilter: "blur(20px)",
@@ -491,21 +490,27 @@ function PrayerNotificationMock() {
         className="w-[44px] h-[44px] md:w-[52px] md:h-[52px] rounded-[10px] md:rounded-[12px] shrink-0"
         style={{ objectFit: "cover" }}
       />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <p
-            className="text-[15px] md:text-[17px] font-semibold leading-snug"
-            style={{ color: "#F5F5F5", fontFamily: iosFont, letterSpacing: "-0.01em" }}
-          >
-            You've been held in prayer today
-          </p>
-          <p
-            className="text-[12px] md:text-[13px] shrink-0 pt-[2px]"
-            style={{ color: "rgba(220,230,235,0.55)", fontFamily: iosFont }}
-          >
-            now
-          </p>
-        </div>
+      {/* Floating timestamp — pulled out of the title row so both
+          title and body get the full text-area width and share the
+          same right edge. */}
+      <p
+        className="absolute text-[12px] md:text-[13px]"
+        style={{
+          top: "0.95rem",
+          right: "1rem",
+          color: "rgba(220,230,235,0.55)",
+          fontFamily: iosFont,
+        }}
+      >
+        now
+      </p>
+      <div className="flex-1 min-w-0 text-right pr-8 md:pr-10">
+        <p
+          className="text-[15px] md:text-[17px] font-semibold leading-snug mb-1"
+          style={{ color: "#F5F5F5", fontFamily: iosFont, letterSpacing: "-0.01em" }}
+        >
+          You've been held in prayer today
+        </p>
         <p
           className="text-[14px] md:text-[16px] leading-snug"
           style={{
