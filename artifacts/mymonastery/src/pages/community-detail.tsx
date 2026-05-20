@@ -476,15 +476,22 @@ function gatheringDayLabel(date: Date): string {
   const now = new Date();
   const tomorrow = addDays(startOfDay(now), 1);
   if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
-  // Weeks are Sun→Sat. If the date falls in the *next* calendar week,
-  // prefix with "next" so a Wednesday five days out from Friday reads
-  // "next Wednesday" rather than an ambiguous "Wednesday".
+  // Weeks are Sun→Sat. If the date falls in *this* week (after today),
+  // use the bare weekday — "Friday" reads as "this coming Friday."
+  const thisWeekEnd = endOfWeek(now);
+  if (date <= thisWeekEnd) {
+    return format(date, "EEEE");
+  }
+  // Next calendar week — prefix with "Next" so a Wednesday five days
+  // out from Friday reads "Next Wednesday" rather than ambiguous.
   const nextWeekStart = startOfWeek(addWeeks(now, 1));
   const nextWeekEnd = endOfWeek(addWeeks(now, 1));
   if (date >= nextWeekStart && date <= nextWeekEnd) {
     return `Next ${format(date, "EEEE")}`;
   }
-  return format(date, "EEEE");
+  // Two or more weeks out — bare weekday is ambiguous (which Wednesday?),
+  // so fall back to a short date like "Wed, Jun 3".
+  return format(date, "EEE, MMM d");
 }
 
 // Mirror of dashboard.tsx#computeNextGatheringDate — keeps the community

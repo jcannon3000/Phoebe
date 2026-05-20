@@ -176,21 +176,21 @@ function countActivePrayersFor(prayersFor: Array<{ id: number; expired: boolean;
 function nextDayLabel(date: Date): string {
   // Mirrors community-detail.tsx#gatheringDayLabel so the same
   // gathering renders the same line on the home dashboard and the
-  // community page. Today / Tomorrow / "Next Wednesday" (next
-  // calendar week, Sun→Sat) / weekday / "MMM d" for far-out.
+  // community page. Today / Tomorrow / weekday (this week) /
+  // "Next Wednesday" (next calendar week, Sun→Sat) /
+  // "Wed, Jun 3" for two+ weeks out.
   if (isToday(date)) return "Today";
   const now = new Date();
   const tomorrow = addDays(startOfDay(now), 1);
   if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
+  const thisWeekEnd = endOfWeek(now);
+  if (date <= thisWeekEnd) return format(date, "EEEE");
   const nextWeekStart = startOfWeek(addWeeks(now, 1));
   const nextWeekEnd = endOfWeek(addWeeks(now, 1));
   if (date >= nextWeekStart && date <= nextWeekEnd) {
     return `Next ${format(date, "EEEE")}`;
   }
-  // Two weeks+ out: switch to a calendar date so the row doesn't
-  // read as an ambiguous weekday.
-  if (date > nextWeekEnd) return format(date, "MMM d");
-  return format(date, "EEEE");
+  return format(date, "EEE, MMM d");
 }
 
 const DOW_LC: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
@@ -1819,6 +1819,19 @@ function GatheringDetailModal({ r, onClose }: { r: any; onClose: () => void }) {
           </div>
 
           <div className="px-5 pb-5 pt-1 flex flex-col gap-2">
+            {/* Multi-community gatherings: surface every additional
+                community the gathering is visible to, so a member from
+                one parish can see "this is also for X". Reads
+                enrichRitual's additionalGroups; nothing renders for
+                single-community or personal gatherings. */}
+            {Array.isArray(r.additionalGroups) && r.additionalGroups.length > 0 && (
+              <p className="text-[11px]" style={{ color: "#8FAF96" }}>
+                Also visible to:{" "}
+                {(r.additionalGroups as Array<{ name: string; emoji: string | null }>)
+                  .map((g) => `${g.emoji ? `${g.emoji} ` : ""}${g.name}`)
+                  .join(" · ")}
+              </p>
+            )}
             {timeLabel && (
               <div
                 className="rounded-xl px-4 py-3"

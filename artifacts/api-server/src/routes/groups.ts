@@ -2461,6 +2461,19 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
     return { ...g, nextMeetupDate };
   });
 
+  // Sort by next upcoming date so the soonest meetup is first.
+  // Gatherings without a next date (e.g. one-off that's already past
+  // with no future plans) fall to the bottom, ordered by createdAt
+  // desc as a stable secondary sort.
+  enriched.sort((a, b) => {
+    const aNext = a.nextMeetupDate ? new Date(a.nextMeetupDate).getTime() : null;
+    const bNext = b.nextMeetupDate ? new Date(b.nextMeetupDate).getTime() : null;
+    if (aNext !== null && bNext !== null) return aNext - bNext;
+    if (aNext !== null) return -1;
+    if (bNext !== null) return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   res.json({ gatherings: enriched });
 });
 
