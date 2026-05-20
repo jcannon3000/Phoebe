@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { openExternal } from "@/lib/openExternal";
 import { motion, AnimatePresence } from "framer-motion";
+import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 
 // Subscriber detail page for a Prayer Feed.
 //
@@ -280,23 +280,17 @@ export default function PrayerFeedDetailPage() {
                       )}
                     </Link>
                     {/* CTA pill — opens the link without navigating to
-                        the moment page. */}
+                        the moment page. Uses ExternalLinkPill so the
+                        first-tap glow + click persistence matches the
+                        slideshow and the intercession detail page. */}
                     {it.learnMoreUrl && (
-                      <button
-                        type="button"
-                        onClick={() => openExternal(it.learnMoreUrl as string)}
-                        className="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 transition-opacity hover:opacity-90"
-                        style={{
-                          background: "rgba(46,107,64,0.35)",
-                          color: "#C8D4C0",
-                          border: "1px solid rgba(46,107,64,0.55)",
-                          fontFamily: "'Space Grotesk', sans-serif",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {isAction ? "Take action →" : "Learn more →"}
-                      </button>
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                        <ExternalLinkPill
+                          url={it.learnMoreUrl}
+                          label={isAction ? "Take action →" : "Learn more →"}
+                          size="small"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -394,20 +388,11 @@ export default function PrayerFeedDetailPage() {
                   </p>
                 )}
                 {cur.learnMoreUrl && (
-                  <button
-                    type="button"
-                    onClick={() => openExternal(cur.learnMoreUrl as string)}
-                    className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90"
-                    style={{
-                      background: "rgba(46,107,64,0.18)",
-                      border: "1px solid rgba(46,107,64,0.45)",
-                      color: "#F0EDE6",
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {cur.intercessionSource === "action" ? "Take action →" : "Learn more →"}
-                  </button>
+                  <ExternalLinkPill
+                    url={cur.learnMoreUrl}
+                    label={cur.intercessionSource === "action" ? "Take action →" : "Learn more →"}
+                    size="medium"
+                  />
                 )}
 
                 {/* Walk controls — Continue advances the deck; the last
