@@ -600,67 +600,28 @@ function CommunityGatheringCard({
 // ─── Community gathering detail modal ──────────────────────────────────────
 // Mirrors ServiceDetailModal / GatheringDetailModal on the home dashboard:
 // tapping a gathering card pops this up with name, next time, location,
-// and description. Admins of the host community also see a "Shared with"
-// section where they can attach the gathering to other communities they
-// admin — same multi-community pattern as community intercessions.
+// and description. Read-only — admins reach the settings page (manage
+// shares, delete) via the gear icon in the top right.
 function CommunityGatheringDetailModal({
   g,
   groupName,
   groupEmoji,
-  hostGroupId,
   isAdmin,
-  slug,
   onClose,
 }: {
   g: Gathering;
   groupName: string;
   groupEmoji: string | null;
-  hostGroupId: number;
   isAdmin: boolean;
-  slug: string;
   onClose: () => void;
 }) {
-  const qc = useQueryClient();
-  // Shape of the multi-community share endpoint. Available even for
-  // non-admins so the modal can show "Also shared with: …" as read-only.
+  const [, setLocation] = useLocation();
+  // Communities the gathering is shared with (for the read-only chips).
   type ShareRow = { id: number; name: string; slug: string; emoji: string | null };
   const shareQ = useQuery<{ primary: ShareRow | null; additional: ShareRow[] }>({
     queryKey: [`/api/rituals/${g.id}/groups`],
     queryFn: () => apiRequest("GET", `/api/rituals/${g.id}/groups`),
   });
-  // The communities the viewer admins, for the "Add another community"
-  // picker. Filtered to exclude the primary + anything already linked.
-  const myGroupsQ = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; myRole: string }> }>({
-    queryKey: ["/api/groups"],
-    queryFn: () => apiRequest("GET", "/api/groups"),
-    enabled: isAdmin,
-  });
-  const myAdminGroups = (myGroupsQ.data?.groups ?? []).filter(
-    (gg) => gg.myRole === "admin" || gg.myRole === "hidden_admin",
-  );
-  const linkedIds = new Set<number>([
-    hostGroupId,
-    ...((shareQ.data?.additional ?? []).map((r) => r.id)),
-  ]);
-  const addable = myAdminGroups.filter((gg) => !linkedIds.has(gg.id));
-
-  const attachMutation = useMutation({
-    mutationFn: (groupId: number) =>
-      apiRequest("POST", `/api/rituals/${g.id}/groups`, { groupId }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/rituals/${g.id}/groups`] });
-      qc.invalidateQueries({ queryKey: [`/api/groups/${slug}/gatherings`] });
-    },
-  });
-  const detachMutation = useMutation({
-    mutationFn: (groupId: number) =>
-      apiRequest("DELETE", `/api/rituals/${g.id}/groups/${groupId}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/rituals/${g.id}/groups`] });
-      qc.invalidateQueries({ queryKey: [`/api/groups/${slug}/gatherings`] });
-    },
-  });
-  const [pendingAddId, setPendingAddId] = useState<number | "">("");
   const next = computeNextGatheringDate(g);
   const dateLabel = next
     ? (isToday(next) ? "Today" : format(next, "EEEE, MMM d"))
@@ -703,14 +664,29 @@ function CommunityGatheringDetailModal({
                 <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{dateLabel}</p>
               )}
             </div>
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              className="shrink-0 rounded-full p-1.5 transition-opacity hover:opacity-80"
-              style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
-            >
-              <X size={16} />
-            </button>
+            <div className="shrink-0 flex items-center gap-1.5">
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    setLocation(`/gatherings/${g.id}/settings`);
+                  }}
+                  aria-label="Gathering settings"
+                  className="rounded-full p-1.5 transition-opacity hover:opacity-80"
+                  style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0", cursor: "pointer" }}
+                >
+                  <Settings size={16} />
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                aria-label="Close"
+                className="rounded-full p-1.5 transition-opacity hover:opacity-80"
+                style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           <div className="px-5 pb-5 pt-1 flex flex-col gap-2">
@@ -752,12 +728,10 @@ function CommunityGatheringDetailModal({
               </p>
             )}
 
-            {/* Multi-community share section. Always render the
-                "Shared with" line when there's at least one additional
-                community so non-admins can see who else holds this.
-                Admins additionally see remove (×) buttons and an
-                "Add community" picker for their other admin groups. */}
-            {((shareQ.data?.additional?.length ?? 0) > 0 || (isAdmin && addable.length > 0)) && (
+            {/* Read-only "Shared with" chips so any member can see who
+                else holds this gathering. Editing happens on the
+                settings page (gear icon in the header) — admins only. */}
+            {(shareQ.data?.additional?.length ?? 0) > 0 && (
               <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}>
                 <p
                   className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2"
@@ -765,7 +739,7 @@ function CommunityGatheringDetailModal({
                 >
                   Shared with
                 </p>
-                <div className="flex flex-wrap gap-1.5 mb-2">
+                <div className="flex flex-wrap gap-1.5">
                   {(shareQ.data?.additional ?? []).map((row) => (
                     <span
                       key={row.id}
@@ -777,74 +751,10 @@ function CommunityGatheringDetailModal({
                         fontFamily: FONT,
                       }}
                     >
-                      <span>{row.emoji ?? "⛪"} {row.name}</span>
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          aria-label={`Remove ${row.name}`}
-                          onClick={() => detachMutation.mutate(row.id)}
-                          disabled={detachMutation.isPending}
-                          className="ml-0.5 rounded-full hover:opacity-80 transition-opacity"
-                          style={{ color: "rgba(200,212,192,0.65)", cursor: "pointer" }}
-                        >
-                          <X size={12} />
-                        </button>
-                      )}
+                      {row.emoji ?? "⛪"} {row.name}
                     </span>
                   ))}
-                  {(shareQ.data?.additional?.length ?? 0) === 0 && !isAdmin && (
-                    <span className="text-[12px] italic" style={{ color: "rgba(200,212,192,0.5)" }}>
-                      Just {groupEmoji ?? "⛪"} {groupName}.
-                    </span>
-                  )}
                 </div>
-                {isAdmin && addable.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={pendingAddId}
-                      onChange={(e) => setPendingAddId(e.target.value ? Number(e.target.value) : "")}
-                      className="flex-1 text-[12px] px-2.5 py-1.5 rounded-lg"
-                      style={{
-                        background: "rgba(200,212,192,0.06)",
-                        border: "1px solid rgba(200,212,192,0.18)",
-                        color: "#F0EDE6",
-                        fontFamily: FONT,
-                      }}
-                    >
-                      <option value="">+ Add a community…</option>
-                      {addable.map((gg) => (
-                        <option key={gg.id} value={gg.id}>
-                          {gg.emoji ?? "⛪"} {gg.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      disabled={!pendingAddId || attachMutation.isPending}
-                      onClick={() => {
-                        if (typeof pendingAddId === "number") {
-                          attachMutation.mutate(pendingAddId);
-                          setPendingAddId("");
-                        }
-                      }}
-                      className="text-[12px] font-semibold px-3 py-1.5 rounded-lg disabled:opacity-40"
-                      style={{
-                        background: "#2D5E3F",
-                        color: "#F0EDE6",
-                        border: "1px solid rgba(46,107,64,0.6)",
-                        fontFamily: FONT,
-                        cursor: pendingAddId ? "pointer" : "not-allowed",
-                      }}
-                    >
-                      {attachMutation.isPending ? "Adding…" : "Add"}
-                    </button>
-                  </div>
-                )}
-                {isAdmin && addable.length === 0 && (shareQ.data?.additional?.length ?? 0) === 0 && (
-                  <p className="text-[11px] italic" style={{ color: "rgba(143,175,150,0.55)" }}>
-                    You don't admin any other communities yet.
-                  </p>
-                )}
               </div>
             )}
           </div>
@@ -3076,9 +2986,7 @@ export default function CommunityDetailPage() {
           g={openGatheringModal}
           groupName={group.name}
           groupEmoji={group.emoji}
-          hostGroupId={group.id}
           isAdmin={isAdmin}
-          slug={slug!}
           onClose={() => setOpenGatheringModal(null)}
         />
       )}

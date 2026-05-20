@@ -90,6 +90,7 @@ import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
 import PrayerChooserPage from "./pages/prayer-chooser";
 import GatheringsPage from "./pages/gatherings";
+import GatheringSettings from "./pages/gathering-settings";
 import MomentNew from "./pages/moment-new";
 import MomentDetail from "./pages/moment-detail";
 import MomentPostPage from "./pages/moment-post";
@@ -355,6 +356,7 @@ function Router() {
       <Route path="/parish/concerns" component={ParishConcernsPage} />
       <Route path="/parish/intercessions" component={ParishIntercessionsPage} />
       <Route path="/gatherings" component={GatheringsPage} />
+      <Route path="/gatherings/:id/settings" component={GatheringSettings} />
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />
       <Route path="/moment/new" component={MomentNew} />
