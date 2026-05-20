@@ -2487,7 +2487,18 @@ router.get("/groups/:slug/gatherings", async (req, res): Promise<void> => {
         nextMeetupDate = new Date(planned[0].scheduledDate).toISOString();
       }
     }
-    return { ...g, nextMeetupDate };
+    // Find the matching meetup id so the client can attach RSVPs to
+    // the right meetup without an extra round-trip.
+    let nextMeetupId: number | null = null;
+    if (nextMeetupDate) {
+      const nextIso = nextMeetupDate;
+      const match = meetups.find((m) => {
+        try { return new Date(m.scheduledDate).toISOString() === nextIso; }
+        catch { return false; }
+      });
+      nextMeetupId = match?.id ?? null;
+    }
+    return { ...g, nextMeetupDate, nextMeetupId };
   });
 
   // Sort by next upcoming date so the soonest meetup is first.

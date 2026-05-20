@@ -82,7 +82,7 @@ export function RsvpBlock({ meetupId }: { meetupId: number }) {
             onClick={() => setStatus.mutate("going")}
           />
           <PillButton
-            label="Maybe"
+            label="Interested"
             emoji="🤔"
             active={yourStatus === "maybe"}
             disabled={setStatus.isPending || clearStatus.isPending || isLoading}
@@ -110,7 +110,7 @@ export function RsvpBlock({ meetupId }: { meetupId: number }) {
             <AttendeeRowBlock title={`🌿 Going (${going.length})`} rows={going} />
           )}
           {maybe.length > 0 && (
-            <AttendeeRowBlock title={`🤔 Maybe (${maybe.length})`} rows={maybe} />
+            <AttendeeRowBlock title={`🤔 Interested (${maybe.length})`} rows={maybe} />
           )}
         </div>
       )}
@@ -269,7 +269,7 @@ export function RsvpSummaryStrip({
 
   const parts: string[] = [];
   if (slot.goingCount > 0) parts.push(`${slot.goingCount} going`);
-  if (slot.maybeCount > 0) parts.push(`${slot.maybeCount} maybe`);
+  if (slot.maybeCount > 0) parts.push(`${slot.maybeCount} interested`);
 
   // Stack the going-previews first, fall back to maybe-previews when
   // there are no goings (so a gathering with only "maybe" RSVPs still
