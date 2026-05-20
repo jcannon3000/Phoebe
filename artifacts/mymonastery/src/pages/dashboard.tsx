@@ -1634,24 +1634,29 @@ function GatheringCard({
             <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
               {r.name}
             </span>
-            {hostGroup && (
-              <span
-                className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-                style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-              >
-                {hostGroup.emoji ?? "⛪"} {hostGroup.name}
-              </span>
-            )}
+            <div className="flex flex-col items-end shrink-0 gap-0.5 mt-1">
+              {hostGroup && (
+                <span
+                  className="text-[10px] font-semibold uppercase"
+                  style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+                >
+                  {hostGroup.emoji ?? "⛪"} {hostGroup.name}
+                </span>
+              )}
+              {isVideoGathering && (
+                <span
+                  className="text-[10px] font-medium"
+                  style={{ color: "rgba(143,175,150,0.85)" }}
+                >
+                  📹 Video call
+                </span>
+              )}
+            </div>
           </div>
 
           {timeLabel && (
             <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
               {timeLabel}
-            </div>
-          )}
-          {isVideoGathering && (
-            <div className="mt-1 text-[11px] font-medium" style={{ color: "rgba(143,175,150,0.85)" }}>
-              📹 Video call
             </div>
           )}
           {/* RSVP counts (going / maybe). Reads from the dashboard's
