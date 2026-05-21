@@ -854,6 +854,14 @@ router.post("/letters/invite/:token/accept", async (req, res): Promise<void> => 
     return;
   }
 
+  // The invite is bound to a specific email — refuse if the body
+  // tries to claim it for a different address. Without this, a
+  // leaked invite token could be redeemed against any account.
+  if (email.toLowerCase() !== member.email.toLowerCase()) {
+    res.status(403).json({ error: "This invitation is for a different email address." });
+    return;
+  }
+
   // Check if Phoebe account exists with this email
   const { usersTable } = await import("@workspace/db");
   const [existingUser] = await db
@@ -939,7 +947,10 @@ Rules:
 
 router.delete("/letters/all", async (req, res): Promise<void> => {
   const internalKey = req.headers["x-internal-key"];
-  if (internalKey !== process.env["INTERNAL_API_KEY"]) {
+  // Fail-CLOSED when the env var isn't set: `undefined !== undefined`
+  // is false, so without the !envVar guard a missing key would let
+  // every public request through. Same shape as office.ts.
+  if (!process.env["INTERNAL_API_KEY"] || internalKey !== process.env["INTERNAL_API_KEY"]) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
@@ -953,7 +964,7 @@ router.delete("/letters/all", async (req, res): Promise<void> => {
 
 router.post("/letters/send-reminders", async (req, res): Promise<void> => {
   const internalKey = req.headers["x-internal-key"];
-  if (internalKey !== process.env["INTERNAL_API_KEY"]) {
+  if (!process.env["INTERNAL_API_KEY"] || internalKey !== process.env["INTERNAL_API_KEY"]) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }

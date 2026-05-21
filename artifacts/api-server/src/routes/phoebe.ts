@@ -914,10 +914,17 @@ router.post(
     for (const m of members) {
       if (m.email.toLowerCase() === authEmailLcNotif) continue;
 
-      // If the member hasn't joined yet and this is the first letter,
-      // send the invitation email (they now have something to read).
+      // If the member hasn't joined yet, send the invitation email the
+      // first time we reach them — gated on the per-member
+      // invitationSentAt stamp rather than the global "first letter"
+      // flag. Previously a small_group member added (or pending) after
+      // letter 1 would NEVER get an invitation, because the route only
+      // fired the invitation block on isFirstLetter. With this gate,
+      // late joiners get their "you have a letter waiting" email the
+      // first letter sent after they're added; subsequent letters
+      // skip them (the stamp guards against re-spam).
       if (!m.joinedAt) {
-        if (isFirstLetter) {
+        if (!m.invitationSentAt) {
           const inviteUrl = `${frontendUrl}/i/${m.inviteToken}`;
           sendInvitationEmail({
             to: m.email,
@@ -933,6 +940,13 @@ router.post(
             inviteUrl,
             type,
           }).catch((err) => console.error("Invitation calendar event failed:", err));
+          // Stamp the row so future letters in this correspondence
+          // don't re-invite the same person. Best-effort — a failed
+          // stamp at worst means one duplicate invitation, never zero.
+          db.update(correspondenceMembersTable)
+            .set({ invitationSentAt: new Date() })
+            .where(eq(correspondenceMembersTable.id, m.id))
+            .catch((err) => console.error("invitationSentAt stamp failed:", err));
         }
         continue;
       }
@@ -1202,6 +1216,14 @@ router.post("/phoebe/invite/:token/accept", async (req, res): Promise<void> => {
     res.json({ correspondenceId: member.correspondenceId, token }); return;
   }
 
+  // The invite is bound to a specific email — refuse if the body
+  // tries to claim it for a different address. Otherwise a leaked
+  // invite token could be redeemed against any account.
+  if (email.toLowerCase() !== member.email.toLowerCase()) {
+    res.status(403).json({ error: "This invitation is for a different email address." });
+    return;
+  }
+
   const [existingUser] = await db
     .select()
     .from(usersTable)
@@ -1224,7 +1246,9 @@ router.post("/phoebe/invite/:token/accept", async (req, res): Promise<void> => {
 
 router.post("/phoebe/send-reminders", async (req, res): Promise<void> => {
   const internalKey = req.headers["x-internal-key"];
-  if (internalKey !== process.env["INTERNAL_API_KEY"]) {
+  // Fail-CLOSED when env var is missing — `undefined !== undefined`
+  // is false, which would let any public request through.
+  if (!process.env["INTERNAL_API_KEY"] || internalKey !== process.env["INTERNAL_API_KEY"]) {
     res.status(401).json({ error: "Unauthorized" }); return;
   }
 
@@ -1389,7 +1413,7 @@ router.post(
 // OVERDUE and schedule a single follow-up calendar event.
 router.post("/phoebe/check-overdue-letters", async (req, res): Promise<void> => {
   const internalKey = req.headers["x-internal-key"];
-  if (internalKey !== process.env["INTERNAL_API_KEY"]) {
+  if (!process.env["INTERNAL_API_KEY"] || internalKey !== process.env["INTERNAL_API_KEY"]) {
     res.status(401).json({ error: "Unauthorized" }); return;
   }
 

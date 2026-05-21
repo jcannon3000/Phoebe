@@ -2611,11 +2611,54 @@ router.post("/moments/:id/groups", async (req, res): Promise<void> => {
   const [moment] = await db.select().from(sharedMomentsTable).where(eq(sharedMomentsTable.id, momentId));
   if (!moment) { res.status(404).json({ error: "Moment not found" }); return; }
 
-  // Caller must admin the target group.
-  const [myMembership] = await db.select().from(groupMembersTable)
-    .where(and(eq(groupMembersTable.groupId, targetGroupId), eq(groupMembersTable.userId, sessionUserId)));
-  if (!myMembership || (myMembership.role !== "admin" && myMembership.role !== "hidden_admin")) {
+  // Permission has two parts:
+  //   1. Caller must admin the TARGET community (so they're authorized
+  //      to pull content onto their members' dashboards).
+  //   2. Caller must also have authority over the MOMENT itself —
+  //      either an organizer (their userToken row has organizer flag,
+  //      or they own the primary group's admin role). Without this,
+  //      any community admin who learned a moment id could fan a
+  //      stranger's intercession into their members' feed and
+  //      auto-subscribe them.
+  const [targetMembership] = await db.select().from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, targetGroupId),
+      eq(groupMembersTable.userId, sessionUserId),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+    ));
+  if (!targetMembership || (targetMembership.role !== "admin" && targetMembership.role !== "hidden_admin")) {
     res.status(403).json({ error: "You must be an admin of that community" });
+    return;
+  }
+  // The moment's creator is the member-token row with the smallest
+  // id (same heuristic used at lines 2108-2111 and 2377). If that
+  // row's email matches the caller, they're authorized on the moment.
+  const [callerUser] = await db.select({ email: usersTable.email }).from(usersTable)
+    .where(eq(usersTable.id, sessionUserId));
+  let authorizedOnMoment = false;
+  if (callerUser) {
+    const allMomentMembers = await db.select().from(momentUserTokensTable)
+      .where(eq(momentUserTokensTable.momentId, momentId));
+    const creatorToken = allMomentMembers.length > 0
+      ? allMomentMembers.reduce((min, mt) => mt.id < min.id ? mt : min, allMomentMembers[0])
+      : null;
+    if (creatorToken && creatorToken.email.toLowerCase() === callerUser.email.toLowerCase()) {
+      authorizedOnMoment = true;
+    }
+  }
+  if (!authorizedOnMoment && moment.groupId) {
+    const [primaryMembership] = await db.select().from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, moment.groupId),
+        eq(groupMembersTable.userId, sessionUserId),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ));
+    if (primaryMembership && (primaryMembership.role === "admin" || primaryMembership.role === "hidden_admin")) {
+      authorizedOnMoment = true;
+    }
+  }
+  if (!authorizedOnMoment) {
+    res.status(403).json({ error: "You don't have permission to share this intercession" });
     return;
   }
 
@@ -3518,11 +3561,30 @@ router.post("/moments/:id/personal-time", async (req, res): Promise<void> => {
 
     const { personalTime, personalTimezone } = parsed.data;
 
-    // Verify the user is a member
+    // Verify the user is a member (case-insensitive email compare so
+    // a casing mismatch between users.email and the token row doesn't
+    // 403 a legit member).
     const allMembers = await db.select().from(momentUserTokensTable)
       .where(eq(momentUserTokensTable.momentId, momentId));
-    const myTokenRow = allMembers.find(t => t.email === user.email);
+    const userEmailLc = user.email.toLowerCase();
+    const myTokenRow = allMembers.find(t => t.email.toLowerCase() === userEmailLc);
     if (!myTokenRow) { res.status(403).json({ error: "Not a member" }); return; }
+
+    // Despite the "personal-time" name, this endpoint mutates the
+    // PRACTICE-WIDE scheduledTime + timezone and rebuilds the group
+    // calendar event for every member (lines 3545-3585 below). So we
+    // gate it on the creator only — any joined member used to be able
+    // to rewrite the schedule for the whole practice. Creator =
+    // smallest-id token row (same heuristic used elsewhere).
+    const creatorToken = allMembers.reduce(
+      (min, mt) => mt.id < min.id ? mt : min,
+      allMembers[0],
+    );
+    const isCreator = creatorToken?.email.toLowerCase() === userEmailLc;
+    if (!isCreator) {
+      res.status(403).json({ error: "Only the practice creator can change the time" });
+      return;
+    }
 
     // Update the practice's shared scheduled time (applies to everyone)
     await db.update(sharedMomentsTable)
@@ -3647,8 +3709,14 @@ router.post("/moments/:momentToken/join", async (req, res): Promise<void> => {
 
     const { name, email, personalTime, personalTimezone } = parsed.data;
 
+    // Case-insensitive email lookup so an existing token with a
+    // differently-cased email (e.g. mixed-case from an old invite)
+    // gets reused instead of producing a duplicate row.
     const existing = await db.select().from(momentUserTokensTable)
-      .where(and(eq(momentUserTokensTable.momentId, moment.id), eq(momentUserTokensTable.email, email)));
+      .where(and(
+        eq(momentUserTokensTable.momentId, moment.id),
+        sql`LOWER(${momentUserTokensTable.email}) = LOWER(${email})`,
+      ));
 
     let tokenRow;
     if (existing.length > 0) {
@@ -4226,8 +4294,17 @@ router.get("/connections", async (req, res): Promise<void> => {
 // Finds archived practices that still have calendar event IDs on member tokens,
 // deletes those events from Google Calendar, and clears the stored IDs.
 router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
-  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
-  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  // Cron-only: this endpoint archives expired intercessions and
+  // deletes calendar events globally. Anything signed-in being able
+  // to fire it is a DoS vector (and changes DB state for everyone).
+  // Fail-CLOSED when env var is missing, same shape as office.ts.
+  const internalKey = req.headers["x-internal-key"];
+  if (!process.env["INTERNAL_API_KEY"] || internalKey !== process.env["INTERNAL_API_KEY"]) {
+    res.status(401).json({ error: "Unauthorized" }); return;
+  }
+  // No caller user — the job looks up each member's userId via
+  // their token's email when it needs to call deleteCalendarEvent
+  // (line ~4413), so there's no shared "session user" to keep.
 
   try {
     // Auto-archive intercessions whose 2-day grace period has expired.
@@ -4353,13 +4430,12 @@ router.post("/moments/cleanup-calendars", async (req, res): Promise<void> => {
       if (!meetup.googleCalendarEventId) continue;
       if (existingRitualIds.has(meetup.ritualId)) continue;
 
-      // Orphaned meetup — ritual was deleted but calendar event remains
-      try {
-        await deleteCalendarEvent(sessionUserId, meetup.googleCalendarEventId);
-        console.info(`Cleanup tradition: deleted GCal event ${meetup.googleCalendarEventId} for deleted ritual ${meetup.ritualId}`);
-        cleaned++;
-      } catch { /* best effort */ }
-
+      // Orphaned meetup — the ritual was deleted but its calendar
+      // event remains. Without a caller user (this is a cron now),
+      // we don't have credentials to actually delete from GCal, so
+      // just clear the stale DB reference. The orphan event itself
+      // will sit on the original organizer's calendar until they
+      // remove it manually or its recurrence ends.
       await db.update(meetupsTable)
         .set({ googleCalendarEventId: null })
         .where(eq(meetupsTable.id, meetup.id));

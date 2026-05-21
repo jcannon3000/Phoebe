@@ -122,7 +122,14 @@ async function syncMeetupCalendarInvite(meetupId: number): Promise<void> {
     const attendees = Array.from(
       new Set(memberRows.map((m) => m.email.toLowerCase())),
     );
-    if (attendees.length === 0) return; // solo gathering — nothing to invite
+
+    // No attendees AND no existing event → solo gathering, nothing to
+    // do. If there IS an existing event but the attendee list became
+    // empty (everyone left the linked communities), still PATCH with
+    // an empty attendee array below so Google notifies the old
+    // attendees the gathering is no longer for them, instead of
+    // silently leaving them on a stale invite.
+    if (attendees.length === 0 && !meetup.googleCalendarEventId) return;
 
     const startDate = new Date(meetup.scheduledDate);
     if (Number.isNaN(startDate.getTime())) return;
@@ -629,11 +636,37 @@ router.post("/rituals/:id/groups", async (req, res): Promise<void> => {
   const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
   if (!ritual) { res.status(404).json({ error: "Gathering not found" }); return; }
 
-  // Caller must admin the target community.
-  const [myMembership] = await db.select().from(groupMembersTable)
-    .where(and(eq(groupMembersTable.groupId, targetGroupId), eq(groupMembersTable.userId, sessionUserId)));
-  if (!myMembership || (myMembership.role !== "admin" && myMembership.role !== "hidden_admin")) {
+  // Permission has two parts:
+  //   1. Caller must admin the TARGET community (so they're authorized
+  //      to pull content onto their members' dashboards).
+  //   2. Caller must also have authority over the GATHERING itself —
+  //      either the original owner OR an admin of the primary host
+  //      community. Without this, any community admin who learned a
+  //      ritual id could fan a stranger's gathering into their feed.
+  const [targetMembership] = await db.select().from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, targetGroupId),
+      eq(groupMembersTable.userId, sessionUserId),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+    ));
+  if (!targetMembership || (targetMembership.role !== "admin" && targetMembership.role !== "hidden_admin")) {
     res.status(403).json({ error: "You must be an admin of that community" });
+    return;
+  }
+  let authorizedOnRitual = ritual.ownerId === sessionUserId;
+  if (!authorizedOnRitual && ritual.groupId) {
+    const [primaryMembership] = await db.select().from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, ritual.groupId),
+        eq(groupMembersTable.userId, sessionUserId),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ));
+    if (primaryMembership && (primaryMembership.role === "admin" || primaryMembership.role === "hidden_admin")) {
+      authorizedOnRitual = true;
+    }
+  }
+  if (!authorizedOnRitual) {
+    res.status(403).json({ error: "You don't have permission to share this gathering" });
     return;
   }
 
@@ -665,7 +698,11 @@ router.delete("/rituals/:id/groups/:groupId", async (req, res): Promise<void> =>
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const [myMembership] = await db.select().from(groupMembersTable)
-    .where(and(eq(groupMembersTable.groupId, targetGroupId), eq(groupMembersTable.userId, sessionUserId)));
+    .where(and(
+      eq(groupMembersTable.groupId, targetGroupId),
+      eq(groupMembersTable.userId, sessionUserId),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+    ));
   if (!myMembership || (myMembership.role !== "admin" && myMembership.role !== "hidden_admin")) {
     res.status(403).json({ error: "You must be an admin of that community" });
     return;
@@ -995,6 +1032,18 @@ router.patch("/rituals/:id/proposed-times", async (req, res): Promise<void> => {
     req.log.error({ err }, "Failed to create/update planned meetup for proposed-times");
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to save meetup" });
     return;
+  }
+
+  // Re-sync the Google Calendar invite for the planned meetup. The
+  // scheduledDate just changed (proposed-times moved the gathering),
+  // so any existing event needs a patch so attendees see the new time.
+  // No-op for non-video-call gatherings — syncMeetupCalendarInvite
+  // gates on ritual.meetingUrl. Fire-and-forget; the API response
+  // doesn't depend on Google.
+  if (meetupId !== null) {
+    syncMeetupCalendarInvite(meetupId).catch((err) =>
+      req.log.warn({ err, meetupId }, "[gathering-calendar] proposed-times sync failed"),
+    );
   }
 
   // ─── Create Google Calendar event for the tradition ─────────────────────────
