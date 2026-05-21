@@ -360,33 +360,65 @@ export default function PrayerFeedDetailPage() {
                   overflowY: "auto",
                 }}
               >
-                <p
-                  className="text-[10px] font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: "rgba(143,175,150,0.5)" }}
-                >
-                  {feed.title}
-                  {total > 1 ? ` · ${slideshow.index + 1} of ${total}` : ""}
-                </p>
-                <h2
-                  className="text-xl font-semibold leading-snug"
-                  style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-                >
-                  {cur.intention || cur.name}
-                </h2>
-                {cur.intercessionFullText && (
+                {/* Header block — same as prayer-mode.tsx's intercession
+                    slide: "Community Intercession" eyebrow over a
+                    "🌿 {feed title}" pill. Both signal what kind of
+                    slide this is at a glance. */}
+                <div className="flex flex-col items-center gap-1.5">
                   <p
-                    className="italic"
+                    className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+                    style={{ color: "rgba(143,175,150,0.45)" }}
+                  >
+                    Community Intercession
+                  </p>
+                  <span
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
+                    style={{
+                      background: "rgba(46,107,64,0.22)",
+                      color: "#A8C5A0",
+                      border: "1px solid rgba(46,107,64,0.4)",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                    }}
+                  >
+                    {feed.coverEmoji ?? "🌿"} {feed.title}
+                  </span>
+                </div>
+
+                {/* Prayer body — large italic serif, same scale as
+                    prayer-mode's intercession slide. The intention/name
+                    is folded in as a small italic line below when it
+                    differs from the body. */}
+                {cur.intercessionFullText ? (
+                  <p
+                    className="text-[22px] leading-[1.5] font-medium italic"
                     style={{
                       color: "#E8E4D8",
                       fontFamily: "Georgia, 'Times New Roman', serif",
-                      fontSize: 20,
-                      lineHeight: 1.55,
                       whiteSpace: "pre-wrap",
                     }}
                   >
                     {cur.intercessionFullText}
                   </p>
+                ) : (
+                  <p
+                    className="text-[22px] leading-[1.5] font-medium italic"
+                    style={{
+                      color: "#E8E4D8",
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                    }}
+                  >
+                    {cur.intention || cur.name}
+                  </p>
                 )}
+                {cur.intercessionFullText && (cur.intention || cur.name) && (
+                  <p
+                    className="text-sm italic"
+                    style={{ color: "#8FAF96", marginTop: "-4px" }}
+                  >
+                    {cur.intention || cur.name}
+                  </p>
+                )}
+
                 {cur.learnMoreUrl && (
                   <ExternalLinkPill
                     url={cur.learnMoreUrl}
@@ -401,7 +433,7 @@ export default function PrayerFeedDetailPage() {
                   <button
                     type="button"
                     onClick={advance}
-                    className="text-sm font-semibold rounded-full py-2.5 transition-opacity hover:opacity-90"
+                    className="text-sm font-semibold rounded-full px-8 py-2.5 transition-opacity hover:opacity-90"
                     style={{
                       background: "#2D5E3F",
                       border: "1px solid rgba(46,107,64,0.7)",
@@ -428,6 +460,30 @@ export default function PrayerFeedDetailPage() {
                     >
                       ← Back
                     </button>
+                  )}
+                  {/* Progress indicator — small dot row, same convention
+                      the prayer-mode walker uses to show where the
+                      viewer is in the deck. */}
+                  {total > 1 && (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      {Array.from({ length: total }).map((_, i) => (
+                        <span
+                          key={i}
+                          className="rounded-full"
+                          style={{
+                            width: i === slideshow.index ? 16 : 4,
+                            height: 4,
+                            background:
+                              i === slideshow.index
+                                ? "#A8C5A0"
+                                : i < slideshow.index
+                                  ? "rgba(168,197,160,0.55)"
+                                  : "rgba(168,197,160,0.2)",
+                            transition: "all 200ms ease",
+                          }}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
