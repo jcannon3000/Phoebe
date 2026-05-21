@@ -17,7 +17,15 @@ export const newslettersTable = pgTable("newsletters", {
   recipientCount: integer("recipient_count").notNull().default(0),
   // How many of those sends Gmail accepted.
   sentCount: integer("sent_count").notNull().default(0),
-  sentByUserId: integer("sent_by_user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  // Emails the background fan-out couldn't deliver (Gmail returned an
+  // error). Captured so admins can see exactly which recipients failed
+  // without spelunking Railway logs. Stored as a jsonb array of strings.
+  failedRecipients: jsonb("failed_recipients").$type<string[]>().notNull().default([]),
+  // Nullable: an audit row outlives the admin who composed the send.
+  // Cascade-on-delete would have wiped the whole history when the
+  // user was removed; SET NULL keeps the row + preserves the snapshot
+  // of sentByName so we always know who sent it (just lose the link).
+  sentByUserId: integer("sent_by_user_id").references(() => usersTable.id, { onDelete: "set null" }),
   sentByName: text("sent_by_name").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

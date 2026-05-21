@@ -88,12 +88,12 @@ export default function LetterInvitePage() {
 
   // ── Already-signed-in path: auto-accept and bounce into the
   // correspondence. No need to make a logged-in user re-enter their
-  // name/email.
+  // name/email. (The accept endpoint is idempotent — calling it for
+  // an already-joined member still returns the correspondenceId we
+  // need for the redirect, so the alreadyJoined case rides this same
+  // path without a separate setLocation.)
   useEffect(() => {
     if (!user || !data || submitting) return;
-    if (data.alreadyJoined) {
-      setLocation(`/letters/${data.correspondenceName ? "" : ""}`); // placeholder; replaced below
-    }
     setSubmitting(true);
     (async () => {
       try {

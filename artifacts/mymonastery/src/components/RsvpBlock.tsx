@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -43,10 +43,18 @@ export function RsvpBlock({ meetupId }: { meetupId: number }) {
   });
 
   // Invalidate both the detail query and the dashboard batch summary
-  // so changes propagate everywhere we render RSVP counts.
+  // so changes propagate everywhere we render RSVP counts. The summary
+  // is stored under TWO cache keys — the keyed query ["meetups-rsvp-
+  // summary", idsKey] and the canonical mirror ["meetups-rsvp-summary"]
+  // that RsvpSummaryStrip reads. Use a predicate so any cache entry
+  // whose key starts with "meetups-rsvp-summary" is invalidated; that
+  // covers both the keyed query AND the mirror without us having to
+  // know what the current idsKey is.
   function invalidate() {
     qc.invalidateQueries({ queryKey: [`/api/meetups/${meetupId}/rsvps`] });
-    qc.invalidateQueries({ queryKey: ["meetups-rsvp-summary"] });
+    qc.invalidateQueries({
+      predicate: (q) => q.queryKey[0] === "meetups-rsvp-summary",
+    });
   }
 
   const setStatus = useMutation({
@@ -307,29 +315,31 @@ export function RsvpSummaryStrip({
 // Hook the dashboard mounts once to prime the batch summary cache for
 // every visible meetup. Returns nothing — its only job is to populate
 // the ["meetups-rsvp-summary"] queryKey that RsvpSummaryStrip reads.
+//
+// Two cache slots are kept in sync:
+//   • ["meetups-rsvp-summary", idsKey] — the React Query entry for
+//     the actual fetch. Re-fires when the id set changes.
+//   • ["meetups-rsvp-summary"]         — a canonical mirror with no
+//     params suffix that RsvpSummaryStrip reads. Mirrored in a
+//     useEffect so the write is observed by React (rather than the
+//     during-render version which produced stale paints after an
+//     RSVP toggle).
 export function useDashboardRsvpSummary(meetupIds: number[]) {
   // Stable string so the query refetches only when the id set changes,
   // not on every re-render of the dashboard component.
   const idsKey = [...new Set(meetupIds)].sort((a, b) => a - b).join(",");
-  useQuery<SummaryResponse>({
+  const qc = useQueryClient();
+  const { data } = useQuery<SummaryResponse>({
     queryKey: ["meetups-rsvp-summary", idsKey],
     queryFn: () => apiRequest("GET", `/api/meetups/rsvp-summary?ids=${idsKey}`),
     enabled: meetupIds.length > 0,
     staleTime: 30_000,
-    // Mirror to the canonical short key so RsvpSummaryStrip can read
-    // without juggling the params suffix.
-    select: (data) => {
-      const qc = (window as unknown as { __pq__?: { setQueryData?: (k: unknown, v: unknown) => void } }).__pq__;
-      void qc;
-      return data;
-    },
-    // Use onSuccess via React Query v5 — set the canonical cache key.
-    // (queryClient.setQueryData is the cleanest path.)
   });
-  // Side-effect: keep the canonical cache slot in sync. We can't
-  // use the hook's `qc.setQueryData` inside the queryFn cleanly, so
-  // do it in an effect.
-  const qc = useQueryClient();
-  const stored = qc.getQueryData<SummaryResponse>(["meetups-rsvp-summary", idsKey]);
-  if (stored) qc.setQueryData(["meetups-rsvp-summary"], stored);
+  // Mirror the latest payload to the canonical key whenever it
+  // changes. Effect (not in-render) so React's render cycle picks up
+  // the update reliably and consumers re-paint after a mutation
+  // invalidates either key.
+  useEffect(() => {
+    if (data) qc.setQueryData(["meetups-rsvp-summary"], data);
+  }, [data, qc]);
 }

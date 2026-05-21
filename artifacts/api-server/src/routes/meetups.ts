@@ -78,11 +78,16 @@ async function authorizeMeetupAccess(
 
   // Group ritual: caller must be a joined member of ANY linked
   // community — the primary host on ritualsTable.groupId OR any
-  // additional community in ritualGroupsTable. IS DISTINCT FROM in
-  // the gather-helpers handles rows with NULL role; here we just
-  // check joinedAt + a userId match, which is enough for the access
-  // gate (hidden admins included intentionally — observers may want
-  // to attend).
+  // additional community in ritualGroupsTable.
+  //
+  // Hidden admins are INTENTIONALLY allowed here — the asymmetry vs.
+  // the newsletter route (which excludes hidden_admin from
+  // recipients) is on purpose: a quiet observer of a community who
+  // wants to attend its Zoom gathering and RSVP "going" is a
+  // perfectly fine case, but blasting a community newsletter at
+  // observers undermines the "hidden" half of their role. Keep both
+  // sides in lockstep by editing only the column they explicitly
+  // gate on (role) — not by gating on the table.
   const linkedGroupIds = new Set<number>([ritual.groupId]);
   try {
     const extra = await db

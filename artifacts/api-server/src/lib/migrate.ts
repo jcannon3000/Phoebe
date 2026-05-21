@@ -1602,6 +1602,31 @@ export async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    // Per-recipient failure audit (jsonb array of emails Gmail wouldn't
+    // accept on the background fan-out). Added later — wrap in IF NOT
+    // EXISTS so the column appears on existing deployments too.
+    await run(client, `ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS failed_recipients JSONB NOT NULL DEFAULT '[]'::jsonb`);
+    // sent_by_user_id was created as ON DELETE CASCADE, which wipes
+    // the entire audit trail if the admin who composed the send is
+    // ever deleted. An audit row should outlive the user. Drop the
+    // constraint, make the column nullable, re-add it as ON DELETE
+    // SET NULL.
+    await run(client, `ALTER TABLE newsletters DROP CONSTRAINT IF EXISTS newsletters_sent_by_user_id_fkey`);
+    await run(client, `ALTER TABLE newsletters ALTER COLUMN sent_by_user_id DROP NOT NULL`);
+    await run(client, `ALTER TABLE newsletters ADD CONSTRAINT newsletters_sent_by_user_id_fkey FOREIGN KEY (sent_by_user_id) REFERENCES users(id) ON DELETE SET NULL`);
+
+    // ── correspondence_members.invitation_sent_at ─────────────────────────
+    // Per-member stamp of "we've emailed this pending recipient their
+    // invitation." Replaces the global isFirstLetter gate that meant
+    // anyone added to a small_group correspondence after letter 1 was
+    // never sent an invitation. The route now invites a pending member
+    // the first letter they appear on, then stamps this column so
+    // subsequent letters don't re-spam. Backfill timestamps for any
+    // existing joined members so we don't accidentally re-invite them
+    // on the next letter; pending members keep NULL so they get their
+    // overdue invitation on the next letter.
+    await run(client, `ALTER TABLE correspondence_members ADD COLUMN IF NOT EXISTS invitation_sent_at TIMESTAMPTZ`);
+    await run(client, `UPDATE correspondence_members SET invitation_sent_at = joined_at WHERE invitation_sent_at IS NULL AND joined_at IS NOT NULL`);
 
     // ── Meetup RSVPs ──────────────────────────────────────────────────────
     // Going / Maybe RSVPs on gathering meetups. Mirrors action_rsvps:

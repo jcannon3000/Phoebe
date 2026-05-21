@@ -37,10 +37,20 @@ const router: IRouter = Router();
 // avoid drifting variants across the file.
 
 async function resolveLinkedGroupIds(ritualId: number, primaryGroupId: number | null): Promise<number[]> {
-  const rows = await db
-    .select({ groupId: ritualGroupsTable.groupId })
-    .from(ritualGroupsTable)
-    .where(eq(ritualGroupsTable.ritualId, ritualId));
+  // Wrap the ritual_groups read so a brand-new deploy whose migration
+  // hasn't created the table yet doesn't take down every fan-out path
+  // (calendar sync, push, access checks). On a missing table we just
+  // fall back to the primary host group — matches behavior pre-multi-
+  // community.
+  let rows: Array<{ groupId: number }> = [];
+  try {
+    rows = await db
+      .select({ groupId: ritualGroupsTable.groupId })
+      .from(ritualGroupsTable)
+      .where(eq(ritualGroupsTable.ritualId, ritualId));
+  } catch {
+    rows = [];
+  }
   const set = new Set<number>(rows.map((r) => r.groupId));
   if (primaryGroupId != null) set.add(primaryGroupId);
   return Array.from(set);
@@ -593,9 +603,6 @@ router.get("/rituals/:id/groups", async (req, res): Promise<void> => {
   const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
   if (!ritual) { res.status(404).json({ error: "Gathering not found" }); return; }
 
-  const primary = ritual.groupId
-    ? (await db.select().from(groupsTable).where(eq(groupsTable.id, ritual.groupId)))[0]
-    : null;
   let extraGroupIds: number[] = [];
   try {
     const extraLinks = await db.select({ groupId: ritualGroupsTable.groupId })
@@ -606,6 +613,36 @@ router.get("/rituals/:id/groups", async (req, res): Promise<void> => {
     // ritual_groups may not be migrated yet — degrade to empty list.
     extraGroupIds = [];
   }
+
+  // Membership gate: caller must be a joined member of at least one
+  // community this gathering belongs to (primary or any extra). The
+  // gathering owner is also let through. Otherwise any signed-in user
+  // could enumerate which communities a stranger's gathering touches.
+  let allowed = ritual.ownerId === sessionUserId;
+  if (!allowed) {
+    const groupIdsToCheck = [
+      ...(ritual.groupId ? [ritual.groupId] : []),
+      ...extraGroupIds,
+    ];
+    if (groupIdsToCheck.length > 0) {
+      const [membership] = await db.select({ id: groupMembersTable.id })
+        .from(groupMembersTable)
+        .where(and(
+          inArray(groupMembersTable.groupId, groupIdsToCheck),
+          eq(groupMembersTable.userId, sessionUserId),
+          sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+        ));
+      if (membership) allowed = true;
+    }
+  }
+  if (!allowed) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const primary = ritual.groupId
+    ? (await db.select().from(groupsTable).where(eq(groupsTable.id, ritual.groupId)))[0]
+    : null;
   const extraGroups = extraGroupIds.length > 0
     ? await db.select().from(groupsTable).where(inArray(groupsTable.id, extraGroupIds))
     : [];

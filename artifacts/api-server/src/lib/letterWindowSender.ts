@@ -131,12 +131,18 @@ export async function runLetterWindowSweep(): Promise<void> {
           // (day-before, day-of, day-3, day-7).
           const recipientName = (other.name ?? other.email.split("@")[0] ?? "your friend").trim();
 
-          // Day-before heads-up. Fires ~24h before MY window opens — i.e.
-          // turn state is WAITING, I am the next writer, and the open
-          // moment is within the next ~25 hours. The 25h ceiling absorbs
-          // the 15-minute sweep cadence so we don't skip it. Dedupe key
-          // is the same windowOpenDate the day-of push will use, with a
-          // distinct `kind` so they're independent.
+          // Day-before heads-up. Fires when the window opens TOMORROW —
+          // i.e. turn state is WAITING, I am the next writer, and the
+          // open moment is between ~14 and ~24 hours away. The narrow
+          // band keeps the push from landing at 2am the morning of
+          // "the day before" (we used to fire whenever hoursUntil was
+          // anywhere from 1 minute to 25 hours, which made the timing
+          // feel arbitrary). With a 15-min sweep, this firing window
+          // is wide enough that we never skip the push but narrow
+          // enough that it lands during the recipient's evening on
+          // the day prior. Dedupe key is the same windowOpenDate the
+          // day-of push will use, with a distinct `kind` so they're
+          // independent.
           if (
             turn.state === "WAITING" &&
             turn.windowOpenDate &&
@@ -144,7 +150,7 @@ export async function runLetterWindowSweep(): Promise<void> {
           ) {
             const hoursUntil =
               (turn.windowOpenDate.getTime() - now.getTime()) / 3_600_000;
-            if (hoursUntil > 0 && hoursUntil <= 25) {
+            if (hoursUntil >= 14 && hoursUntil <= 24) {
               const dayBeforeKey = formatPeriodStartDateString(turn.windowOpenDate);
               await dayBeforePushOnce(c.id, m.userId, dayBeforeKey, recipientName);
             }

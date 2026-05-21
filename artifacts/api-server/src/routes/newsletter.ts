@@ -118,6 +118,7 @@ router.get("/admin/newsletter/groups", async (req, res): Promise<void> => {
       db
         .select({
           groupId: groupMembersTable.groupId,
+          email: groupMembersTable.email,
           joinedAt: groupMembersTable.joinedAt,
           role: groupMembersTable.role,
         })
@@ -125,16 +126,29 @@ router.get("/admin/newsletter/groups", async (req, res): Promise<void> => {
       db.select({ count: sql<number>`COUNT(*)::int` }).from(usersTable),
     ]);
 
-    const countByGroup = new Map<number, number>();
+    // Per-group sets of lowercased emails so the count matches the
+    // send-target exactly. Earlier we counted raw rows, which could
+    // diverge from resolveRecipients' dedup-by-email and put the
+    // picker out of sync with the actual send when a group had
+    // duplicate group_members rows for the same person (rare, mostly
+    // legacy / role-backfill artifacts).
+    const emailsByGroup = new Map<number, Set<string>>();
     for (const m of allMemberRows) {
       if (m.joinedAt === null) continue;
       if (m.role === "hidden_admin") continue;
-      countByGroup.set(m.groupId, (countByGroup.get(m.groupId) ?? 0) + 1);
+      const key = (m.email ?? "").trim().toLowerCase();
+      if (!key) continue;
+      let set = emailsByGroup.get(m.groupId);
+      if (!set) {
+        set = new Set();
+        emailsByGroup.set(m.groupId, set);
+      }
+      set.add(key);
     }
 
     const groups = allGroupRows.map((g) => ({
       ...g,
-      memberCount: countByGroup.get(g.id) ?? 0,
+      memberCount: emailsByGroup.get(g.id)?.size ?? 0,
     }));
 
     res.json({ groups, allUsersCount: allUsers[0]?.count ?? 0 });
@@ -266,23 +280,33 @@ router.post("/admin/newsletter", async (req, res): Promise<void> => {
     // limits and means one bad address doesn't abort the rest.
     void (async () => {
       let sentCount = 0;
+      const failedRecipients: string[] = [];
       for (const r of recipients) {
         try {
           const ok = await sendNewsletterEmail({ to: r.email, subject, bodyMarkdown });
           if (ok) sentCount++;
+          else failedRecipients.push(r.email);
         } catch (err) {
           console.error("Newsletter send failed for", r.email, err);
+          failedRecipients.push(r.email);
         }
       }
       try {
+        // Persist BOTH the counted successes AND the list of email
+        // addresses that didn't make it. An admin can re-target the
+        // failed set from the history view rather than re-send to
+        // everyone.
         await db
           .update(newslettersTable)
-          .set({ sentCount })
+          .set({ sentCount, failedRecipients })
           .where(eq(newslettersTable.id, newsletterId));
       } catch (err) {
         console.error("Failed to update newsletter sent_count:", err);
       }
-      console.log(`Newsletter ${newsletterId}: sent ${sentCount}/${recipients.length}`);
+      console.log(
+        `Newsletter ${newsletterId}: sent ${sentCount}/${recipients.length}` +
+          (failedRecipients.length > 0 ? ` (${failedRecipients.length} failed)` : ""),
+      );
     })();
 
     res.json({ ok: true, id: newsletterId, recipientCount: recipients.length });

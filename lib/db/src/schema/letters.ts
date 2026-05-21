@@ -30,6 +30,13 @@ export const correspondenceMembersTable = pgTable("correspondence_members", {
   calendarPromptState: text("calendar_prompt_state"),
   lastCalendarEventId: text("last_calendar_event_id"),
   overdueCalendarEventId: text("overdue_calendar_event_id"),
+  // Stamped the first time we send a pending member their invitation
+  // email. Used to gate sendInvitationEmail so a recipient who joins
+  // a small_group correspondence AFTER letter 1 still gets their
+  // "you have a letter waiting" email the next time a letter is
+  // written — previous behavior only fired on the first letter and
+  // late joiners were never invited.
+  invitationSentAt: timestamp("invitation_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
