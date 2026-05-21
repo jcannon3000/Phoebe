@@ -1399,6 +1399,16 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_sent_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_sent_date TEXT`);
+    // YYYY-MM-DD (parish TZ) of the last Saturday-evening parish-recap
+    // push we fired for this user. NULL = never sent. Added separately
+    // because the column was introduced in 62639d5 without a migrate.ts
+    // entry — every drizzle select().from(usersTable) crashed in
+    // production with _DrizzleQueryError "column does not exist" until
+    // this ALTER landed, including passport.deserializeUser on the auth
+    // middleware (so any logged-in request to /dashboard / /service-worker.js
+    // returned the generic 500 JSON, which is what Safari displayed
+    // when the user navigated back from the slideshow).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_weekly_recap_sent_date TEXT`);
 
     // ── Default morning office reminder → 'devotion' ──────────────────────
     // The morning office pref originally defaulted to 'none' so legacy
