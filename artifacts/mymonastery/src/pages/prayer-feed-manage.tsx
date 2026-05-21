@@ -220,6 +220,14 @@ export default function PrayerFeedManagePage() {
           </p>
         </div>
 
+        {/* Share-link affordance — only meaningful while the feed is
+            public. /feed/:slug is the no-login landing page; tapping
+            this drops the canonical URL into the native iOS share
+            sheet (or copies it to the clipboard on desktop). */}
+        {feed.visibility === "public" && (
+          <ShareLinkSection slug={feed.slug} title={feed.title} tagline={feed.tagline} />
+        )}
+
         {/* Intercessions — the feed's whole content. A flat, ongoing
             list of community intercessions, authored here with a
             Prayer / Action chooser. */}
@@ -274,6 +282,103 @@ export default function PrayerFeedManagePage() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+// ── Share link (public feeds only) ────────────────────────────────────────
+// Renders the public /feed/:slug URL with a primary "Share" / "Copy"
+// action. On the iOS Capacitor shell + any device with the Web Share
+// API, this surfaces the system share sheet (Messages, Mail, social
+// apps, copy to clipboard); on desktop browsers without it we fall
+// back to a plain clipboard copy with a brief "Copied" confirmation.
+//
+// The base URL is hardcoded to the production host on purpose: a
+// shareable link minted from window.location.origin would be wrong in
+// the Capacitor webview (capacitor://localhost) and on any preview
+// deploy, so we always link to the canonical site regardless of where
+// the admin happens to be when they tap Share.
+function ShareLinkSection({
+  slug,
+  title,
+  tagline,
+}: {
+  slug: string;
+  title: string;
+  tagline: string | null;
+}) {
+  const url = `https://withphoebe.app/feed/${slug}`;
+  const [copied, setCopied] = useState(false);
+  const canShare =
+    typeof navigator !== "undefined" &&
+    typeof (navigator as Navigator & { share?: unknown }).share === "function";
+
+  async function handleShare() {
+    if (canShare) {
+      try {
+        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
+          title,
+          text: tagline ?? "A prayer feed on Phoebe",
+          url,
+        });
+        return;
+      } catch {
+        // User dismissed the share sheet, or sharing wasn't actually
+        // available. Fall through to the clipboard path.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard unavailable; the URL is right above for manual copy. */
+    }
+  }
+
+  return (
+    <div className="mb-6">
+      <p
+        className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
+        style={{ color: "rgba(143,175,150,0.6)" }}
+      >
+        Share link
+      </p>
+      <div
+        className="flex items-center gap-2 rounded-xl px-3 py-2"
+        style={{
+          background: "rgba(46,107,64,0.08)",
+          border: "1px solid rgba(46,107,64,0.22)",
+        }}
+      >
+        <span
+          className="flex-1 truncate text-[12px]"
+          style={{
+            color: "#A8C5A0",
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          }}
+          title={url}
+        >
+          {url}
+        </span>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full transition-opacity hover:opacity-85"
+          style={{
+            background: "rgba(46,107,64,0.35)",
+            border: "1px solid rgba(46,107,64,0.55)",
+            color: "#F0EDE6",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {copied ? "Copied" : canShare ? "Share" : "Copy"}
+        </button>
+      </div>
+      <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+        Anyone can pray this feed at the link above — no account needed. They'll be invited to sign up at the end.
+      </p>
+    </div>
   );
 }
 
