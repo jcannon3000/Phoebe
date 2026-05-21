@@ -649,10 +649,27 @@ async function bindFeedToGroup(feedId: number, groupSlug: string, byUserId: numb
 // creator AND for beta admins on platform-owned feeds (creatorUserId
 // NULL, e.g. phoebe-climate). The flag name is preserved for client
 // back-compat.
-router.get("/prayer-feeds/:slug", requireAuth, async (req, res): Promise<void> => {
-  const user = getUser(req)!;
+router.get("/prayer-feeds/:slug", async (req, res): Promise<void> => {
+  // Anonymous callers are allowed when the feed is live + public —
+  // backs the /feed/:slug shareable landing page. Private and draft
+  // feeds still 404 for anon.
+  const user = getUser(req);
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (!user) {
+    if (feed.state !== "live" || feed.visibility !== "public") {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json({
+      feed,
+      isCreator: false,
+      isSubscribed: false,
+      mutedUntil: null,
+    });
+    return;
+  }
 
   const isCreator = await canEditFeed(user.id, feed);
   // Draft feeds are hidden from non-editors; private feeds are hidden
@@ -1059,14 +1076,26 @@ router.post("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promis
 
 // GET /api/prayer-feeds/:slug/intercessions — list this feed's
 // intercessions. Editors see all; everyone else sees active ones.
-router.get("/prayer-feeds/:slug/intercessions", requireAuth, async (req, res): Promise<void> => {
-  const user = getUser(req)!;
+router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> => {
+  // Anonymous callers may read the active intercessions of a live
+  // public feed — backs the /feed/:slug shareable page's intercession
+  // list. Drafts + private feeds still 404 for anon.
+  const user = getUser(req);
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
-  const isCreator = await canEditFeed(user.id, feed);
-  if (!(await canViewFeed(user.id, feed, isCreator))) {
-    res.status(404).json({ error: "Not found" });
-    return;
+
+  let isCreator = false;
+  if (user) {
+    isCreator = await canEditFeed(user.id, feed);
+    if (!(await canViewFeed(user.id, feed, isCreator))) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+  } else {
+    if (feed.state !== "live" || feed.visibility !== "public") {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
   }
   const conditions = [eq(sharedMomentsTable.prayerFeedId, feed.id)];
   if (!isCreator) conditions.push(eq(sharedMomentsTable.state, "active"));

@@ -5,7 +5,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { getUserAccessTier } from "../lib/parishGate";
@@ -474,7 +474,7 @@ router.post(
     message: "Too many signup attempts from your network. Please try again in an hour.",
   }),
   async (req, res): Promise<void> => {
-  const { email, name, password, groupSlug, groupInviteToken, website, officesOnly } = req.body as {
+  const { email, name, password, groupSlug, groupInviteToken, website, officesOnly, subscribeToFeedSlug } = req.body as {
     email?: string; name?: string; password?: string;
     groupSlug?: string; groupInviteToken?: string;
     // Honeypot: a hidden field no real browser user will ever fill in.
@@ -489,6 +489,11 @@ router.post(
     // the user joins the group and the derived tier becomes "full" —
     // community membership wins (see lib/parishGate.ts).
     officesOnly?: boolean;
+    // Set by the public /feed/:slug landing page — auto-subscribes the
+    // new account to that specific feed atomically with creation. Only
+    // honored for live + public feeds (server-verified); a stray slug
+    // for a private/draft feed is silently ignored.
+    subscribeToFeedSlug?: string;
   };
 
   // Honeypot trip — silently reject with a generic validation error.
@@ -614,6 +619,39 @@ router.post(
       console.error("[auth/register] failed to insert community-wide member:", err);
       // Non-fatal: the user account exists; they can click the link
       // again from the authenticated flow to complete the join.
+    }
+  }
+
+  // Public-feed auto-subscribe — a visitor who landed via /feed/:slug
+  // and signed up there keeps following that feed without a follow-up
+  // tap. Mirrors the /api/prayer-feeds/:slug/subscribe handler's
+  // reconcile step so the new subscriber's moment_user_tokens are
+  // minted in lockstep with the subscription row. Best-effort: a
+  // failure here doesn't unwind the account creation.
+  if (typeof subscribeToFeedSlug === "string" && subscribeToFeedSlug.length > 0) {
+    try {
+      const { prayerFeedsTable, prayerFeedSubscriptionsTable } = await import("@workspace/db");
+      const [feed] = await db
+        .select({ id: prayerFeedsTable.id, state: prayerFeedsTable.state, visibility: prayerFeedsTable.visibility })
+        .from(prayerFeedsTable)
+        .where(eq(prayerFeedsTable.slug, subscribeToFeedSlug));
+      if (feed && feed.state === "live" && feed.visibility === "public") {
+        await db.insert(prayerFeedSubscriptionsTable).values({
+          feedId: feed.id,
+          userId: user.id,
+        }).onConflictDoNothing();
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(prayerFeedSubscriptionsTable)
+          .where(eq(prayerFeedSubscriptionsTable.feedId, feed.id));
+        await db.update(prayerFeedsTable)
+          .set({ subscriberCount: count, updatedAt: new Date() })
+          .where(eq(prayerFeedsTable.id, feed.id));
+        const { reconcileAllPracticesForFeed } = await import("./groups");
+        await reconcileAllPracticesForFeed(feed.id);
+      }
+    } catch (err) {
+      console.error("[auth/register] auto-subscribe to feed failed:", err);
     }
   }
 

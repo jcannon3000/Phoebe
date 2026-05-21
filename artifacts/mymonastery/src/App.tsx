@@ -123,6 +123,7 @@ import BcpDailyDevotionPage from "./pages/bcp-daily-devotion";
 import BcpPsalterPage from "./pages/bcp-psalter";
 import PublicPrayerPage from "./pages/public-prayer";
 import PublicLettersPage from "./pages/public-letters";
+import PublicFeedPage from "./pages/public-feed";
 import CommunitiesPage from "./pages/communities";
 import CommunitiesBrowsePage from "./pages/communities-browse";
 import CommunityRequestsPage from "./pages/community-requests";
@@ -418,6 +419,9 @@ function Router() {
           invitation. The office/devotion APIs are already public. */}
       <Route path="/pray" component={PublicPrayerPage} />
       <Route path="/write" component={PublicLettersPage} />
+      {/* /feed/:slug — public, no-login landing for a single prayer feed.
+          Logged-in users are redirected by the page to /prayer-feeds/:slug. */}
+      <Route path="/feed/:slug" component={PublicFeedPage} />
       <Route path="/communities" component={CommunitiesPage} />
       <Route path="/communities/browse" component={CommunitiesBrowsePage} />
       <Route path="/communities/new" component={CommunityNewPage} />
