@@ -246,25 +246,40 @@ function PrayingScreen({
     else setIdx(safeIdx - 1);
   }
 
+  // The non-logged-in feed slideshow now mirrors prayer-mode.tsx's
+  // intercession slide design so logged-in and signed-out users see
+  // the same slide shape:
+  //   • close (×) in the top-right (no nav chrome above the slide)
+  //   • "Community Intercession" eyebrow + "🌿 {feed.title}" pill
+  //   • italic Georgia title (not bold sans-serif)
+  //   • optional body card in italic Space Grotesk
+  //   • "Take action" / "Learn more" link (matching prayer-mode's card)
+  //   • centered Amen pill + "Not today" skip + "N of M" progress
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: BG, fontFamily: SPACE_GROTESK }}>
-      <header className="px-6 py-6 flex items-center justify-between">
-        <button
-          onClick={onClose}
-          className="text-sm"
-          style={{ color: SAGE, background: "transparent", border: "none", cursor: "pointer" }}
-        >
-          ← Back
-        </button>
-        <p className="text-xs" style={{ color: FAINT }}>
-          {safeIdx + 1} of {total}
-        </p>
-        <span className="text-sm" style={{ color: WARM_TEXT, fontWeight: 700 }}>
-          {feed.coverEmoji ?? "🕊️"}
-        </span>
-      </header>
+    <div className="min-h-screen flex flex-col relative" style={{ background: BG, fontFamily: SPACE_GROTESK }}>
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-5 right-5 w-9 h-9 rounded-full flex items-center justify-center text-xl transition-opacity hover:opacity-80"
+        style={{
+          color: "rgba(200,212,192,0.45)",
+          background: "rgba(200,212,192,0.06)",
+          border: "1px solid rgba(200,212,192,0.12)",
+          cursor: "pointer",
+          zIndex: 1,
+        }}
+      >
+        ×
+      </button>
 
-      <main className="flex-1 w-full max-w-md mx-auto px-5 pb-16 flex flex-col items-center text-center">
+      <main
+        className="flex-1 w-full max-w-md mx-auto px-5 flex flex-col items-center text-center"
+        style={{
+          paddingTop: "clamp(72px, 14vh, 140px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)",
+          gap: 18,
+        }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={item.id}
@@ -273,27 +288,51 @@ function PrayingScreen({
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.32 }}
             className="flex flex-col items-center w-full"
-            style={{ gap: 20 }}
+            style={{ gap: 18 }}
           >
+            {/* Eyebrow + feed pill — same shape prayer-mode renders for
+                feed-scoped intercessions. The pill carries the feed's
+                cover emoji + its display title. */}
+            <div className="flex flex-col items-center gap-1.5">
+              <p
+                className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+                style={{ color: "rgba(143,175,150,0.45)" }}
+              >
+                Community Intercession
+              </p>
+              <span
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
+                style={{
+                  background: "rgba(46,107,64,0.22)",
+                  color: "#A8C5A0",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {feed.coverEmoji ?? "🌿"} {feed.title}
+              </span>
+            </div>
+
+            {/* Title — italic Georgia, matches the in-app intercession
+                slide. The big bold sans-serif we used before read
+                like a marketing card, not a prayer. */}
             <p
-              className="text-[10px] font-semibold uppercase tracking-[0.22em] mt-4"
-              style={{ color: FAINT }}
-            >
-              From {feed.title}
-            </p>
-            <h2
-              className="text-[26px] font-bold leading-snug"
-              style={{ color: WARM_TEXT, letterSpacing: "-0.02em", maxWidth: 380 }}
+              className="text-[22px] leading-[1.5] font-medium italic"
+              style={{
+                color: "#E8E4D8",
+                fontFamily: "Georgia, 'Times New Roman', serif",
+                maxWidth: 380,
+              }}
             >
               {title}
-            </h2>
+            </p>
 
             {body && (
               <div
-                className="w-full rounded-2xl px-6 py-5 text-left"
+                className="w-full rounded-2xl px-6 py-5 text-left mt-1"
                 style={{
                   background: "rgba(46,107,64,0.12)",
-                  border: "1px solid rgba(46,107,64,0.18)",
+                  border: "1px solid rgba(46,107,64,0.15)",
                 }}
               >
                 <p
@@ -314,14 +353,17 @@ function PrayingScreen({
             {hasLink && (
               isAction ? (
                 <div
-                  className="w-full rounded-2xl px-5 py-4 flex flex-col items-center text-center"
+                  className="w-full rounded-2xl px-5 py-4 mt-1 flex flex-col items-center text-center"
                   style={{
                     background: "rgba(46,107,64,0.18)",
                     border: "1px solid rgba(46,107,64,0.4)",
                     gap: 12,
                   }}
                 >
-                  <p className="text-sm leading-relaxed" style={{ color: "#C8D4C0" }}>
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
                     You can take action by emailing the applicable representatives.
                   </p>
                   <button
@@ -340,7 +382,7 @@ function PrayingScreen({
               ) : (
                 <button
                   onClick={() => openExternal(item.learnMoreUrl!)}
-                  className="text-[13px] font-semibold px-4 py-2.5 rounded-full"
+                  className="text-[13px] font-semibold px-4 py-2.5 rounded-full mt-1"
                   style={{
                     background: "rgba(46,107,64,0.35)",
                     color: WARM_TEXT,
@@ -355,27 +397,57 @@ function PrayingScreen({
           </motion.div>
         </AnimatePresence>
 
-        <div className="mt-auto pt-10 flex items-center justify-center gap-4 w-full">
+        {/* Footer — Amen pill (advances), "Not today" skip below it
+            (matches the in-app slideshow's skip link), and a small
+            "N of total" progress hint at the very bottom. Back is now
+            a single tap-arrow next to Amen rather than a top-bar
+            "← Back" button so the chrome doesn't compete with the
+            prayer copy. */}
+        <div
+          className="mt-auto w-full flex flex-col items-center"
+          style={{ gap: 14, paddingTop: 32 }}
+        >
+          <div className="flex items-center justify-center gap-4">
+            {safeIdx > 0 && (
+              <button
+                onClick={back}
+                aria-label="Previous"
+                className="text-[16px] transition-opacity hover:opacity-80"
+                style={{
+                  color: "rgba(143,175,150,0.55)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "8px 6px",
+                }}
+              >
+                ←
+              </button>
+            )}
+            <button
+              onClick={advance}
+              className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
+              style={{ background: BUTTON_BG, color: WARM_TEXT, minWidth: 200 }}
+            >
+              {safeIdx + 1 >= total ? "Done →" : "Amen →"}
+            </button>
+          </div>
           <button
-            onClick={back}
-            className="text-[13px] font-medium"
+            onClick={advance}
+            className="text-[13px] underline-offset-2 transition-opacity hover:opacity-80"
             style={{
-              color: FAINT,
+              color: "rgba(143,175,150,0.6)",
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              padding: "8px 12px",
+              textDecoration: "underline",
             }}
           >
-            ←
+            Not today
           </button>
-          <button
-            onClick={advance}
-            className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{ background: BUTTON_BG, color: WARM_TEXT }}
-          >
-            {safeIdx + 1 >= total ? "Done →" : "Amen →"}
-          </button>
+          <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.4)" }}>
+            {safeIdx + 1} of {total}
+          </p>
         </div>
       </main>
     </div>
