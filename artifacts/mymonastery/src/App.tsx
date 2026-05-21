@@ -128,6 +128,7 @@ import CommunitiesPage from "./pages/communities";
 import CommunitiesBrowsePage from "./pages/communities-browse";
 import CommunityRequestsPage from "./pages/community-requests";
 import WelcomePage from "./pages/welcome";
+import WelcomePublicPage from "./pages/welcome-public";
 import CommunityNewPage from "./pages/community-new";
 import CommunityDetailPage from "./pages/community-detail";
 import CommunityAskPage from "./pages/community-ask";
@@ -338,7 +339,13 @@ function ParishGate({ children }: { children: ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Onboarding} />
+      {/* Public first-open chooser: morning/evening office, climate
+          prayer, or sign in. Onboarding (the email/password form) is
+          mounted at /signin now — /onboarding kept as an alias so any
+          older deep links still resolve. */}
+      <Route path="/" component={WelcomePublicPage} />
+      <Route path="/signin" component={Onboarding} />
+      <Route path="/onboarding" component={Onboarding} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/prayer-chooser" component={PrayerChooserPage} />

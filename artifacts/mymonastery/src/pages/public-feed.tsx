@@ -161,7 +161,7 @@ function HeroScreen({
         <span className="text-2xl font-bold" style={{ color: WARM_TEXT, letterSpacing: "-0.03em" }}>
           Phoebe
         </span>
-        <Link href="/" className="text-sm font-medium" style={{ color: SAGE }}>
+        <Link href="/signin" className="text-sm font-medium" style={{ color: SAGE }}>
           Sign in
         </Link>
       </header>
@@ -471,7 +471,7 @@ function SignupStep({
             Sign in and subscribe to {feedTitle} from your dashboard to keep following it.
           </p>
           <button
-            onClick={() => setLocation("/")}
+            onClick={() => setLocation("/signin")}
             className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
             style={{ background: BUTTON_BG, color: WARM_TEXT }}
           >

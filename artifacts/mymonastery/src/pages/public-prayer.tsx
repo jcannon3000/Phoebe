@@ -35,8 +35,21 @@ function resolveMode(choice: Choice): LiturgyMode {
 }
 
 export default function PublicPrayerPage() {
-  const [phase, setPhase] = useState<"choose" | "pray" | "finish">("choose");
-  const [choice, setChoice] = useState<Choice | null>(null);
+  // ?start=office or ?start=devotion bypasses the in-page chooser and
+  // drops the visitor straight into the time-appropriate liturgy. The
+  // new welcome-public chooser at "/" uses ?start=office so the
+  // visitor goes straight from "Morning Prayer →" to praying without
+  // a second pick.
+  const startParam = (() => {
+    if (typeof window === "undefined") return null;
+    const p = new URLSearchParams(window.location.search).get("start");
+    return p === "office" || p === "devotion" ? p as Choice : null;
+  })();
+
+  const [phase, setPhase] = useState<"choose" | "pray" | "finish">(
+    startParam ? "pray" : "choose",
+  );
+  const [choice, setChoice] = useState<Choice | null>(startParam);
 
   if (phase === "pray" && choice) {
     return (
@@ -68,7 +81,7 @@ function ChooseScreen({ onChoose }: { onChoose: (c: Choice) => void }) {
         <span className="text-2xl font-bold" style={{ color: WARM_TEXT, letterSpacing: "-0.03em" }}>
           Phoebe
         </span>
-        <Link href="/" className="text-sm font-medium" style={{ color: SAGE }}>
+        <Link href="/signin" className="text-sm font-medium" style={{ color: SAGE }}>
           Sign in
         </Link>
       </header>
@@ -317,7 +330,7 @@ function SignupStep({ onBack, onDone }: {
           That email is already with Phoebe — sign in to keep praying.
         </p>
         <button
-          onClick={() => setLocation("/")}
+          onClick={() => setLocation("/signin")}
           className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
           style={{ background: BUTTON_BG, color: WARM_TEXT }}
         >
