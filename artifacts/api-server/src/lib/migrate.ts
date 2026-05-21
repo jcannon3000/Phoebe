@@ -1461,16 +1461,25 @@ export async function migrate() {
     await run(client, `ALTER TABLE prayer_feeds ALTER COLUMN creator_user_id DROP NOT NULL`);
 
     // Seed the phoebe-climate feed (platform-owned, creator_user_id NULL).
-    // Idempotent — skips if the slug already exists.
+    // Idempotent — skips if the slug already exists. visibility=public
+    // so it surfaces on the public /feed/phoebe-climate landing the
+    // welcome chooser links to.
     await run(client, `
-      INSERT INTO prayer_feeds (slug, title, timezone, state, creator_user_id)
-      VALUES ('phoebe-climate', 'Phoebe Climate', 'America/New_York', 'live', NULL)
+      INSERT INTO prayer_feeds (slug, title, timezone, state, visibility, creator_user_id)
+      VALUES ('phoebe-climate', 'Phoebe Climate', 'America/New_York', 'live', 'public', NULL)
       ON CONFLICT DO NOTHING
     `);
 
     // Defensive: if a previous run seeded phoebe-climate with a human
     // creator, null it out now so the row is platform-owned everywhere.
     await run(client, `UPDATE prayer_feeds SET creator_user_id = NULL WHERE slug = 'phoebe-climate' AND creator_user_id IS NOT NULL`);
+
+    // Defensive: an earlier seed that ran before the visibility column
+    // existed (or before this seed set it) would leave phoebe-climate
+    // on the schema default 'private', which 404s the public landing.
+    // Force it back to live + public on every boot so the chooser link
+    // works regardless of how the row was originally inserted.
+    await run(client, `UPDATE prayer_feeds SET visibility = 'public', state = 'live' WHERE slug = 'phoebe-climate'`);
 
     // group_announcements gains optional event-shape columns so a single
     // announcement can be flagged as a prayer walk. Climate tab surfaces
