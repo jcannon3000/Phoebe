@@ -513,7 +513,11 @@ router.get("/prayer-feeds/mine", requireBeta, async (req, res): Promise<void> =>
 // GET /api/prayer-feeds/subscribed — feeds the caller subscribes to,
 // each with a preview of its newest intercession. Used by the
 // dashboard + prayer-list feed cards.
-router.get("/prayer-feeds/subscribed", requireBeta, async (req, res): Promise<void> => {
+// Any signed-in account may read its own subscriptions — including the
+// offices-only tier, whose parish dashboard surfaces a "Your feed" card
+// for each subscribed public feed. The endpoint is per-caller (filters
+// to userId), so opening it up doesn't leak anyone else's data.
+router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const subs = await db
     .select({

@@ -81,9 +81,34 @@ export default function ParishDashboard() {
     staleTime: 60_000,
   });
 
+  // Subscribed prayer feeds — only meaningful for offices-only users
+  // who came in via /feed/:slug (the public-feed signup auto-subscribes
+  // them) or who later browsed and subscribed manually. For parish-only
+  // users we keep the surface focused on the parish itself.
+  type SubscribedFeed = {
+    feed: {
+      id: number;
+      slug: string;
+      title: string;
+      tagline: string | null;
+      coverEmoji: string | null;
+      subscriberCount: number;
+    };
+    todayEntry: { id: number; title: string; body: string | null } | null;
+    prayedToday: boolean;
+  };
+  const subscribedFeedsQuery = useQuery<{ subscriptions: SubscribedFeed[] }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
+    enabled: !!user && user?.accessTier === "offices-only",
+    staleTime: 60_000,
+  });
+
   if (authLoading || !user) return null;
 
   const data = todayQuery.data;
+  const subscribedFeeds = subscribedFeedsQuery.data?.subscriptions ?? [];
+  const hasFeeds = user.accessTier === "offices-only" && subscribedFeeds.length > 0;
   const isMorning = new Date().getHours() < 12;
 
   return (
@@ -312,6 +337,95 @@ export default function ParishDashboard() {
         </>
         )}
 
+        {/* Your subscribed feeds — surfaced ABOVE the office buttons
+            for offices-only members who came in via /feed/:slug (or
+            later subscribed). Each card shows the feed's newest
+            intercession + taps through to the full feed detail. When
+            the user has no subscriptions this whole block is hidden
+            and the offices stay primary. */}
+        {hasFeeds && (
+          <>
+            <p
+              style={{
+                fontFamily: SPACE_GROTESK,
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: FAINT_GREEN,
+                marginBottom: 8,
+              }}
+            >
+              {subscribedFeeds.length === 1 ? "Your feed" : "Your feeds"}
+            </p>
+            <div className="space-y-2 mb-6">
+              {subscribedFeeds.map((sf) => (
+                <Link key={sf.feed.id} href={`/prayer-feeds/${sf.feed.slug}`}>
+                  <div
+                    style={{
+                      background: "#0F2818",
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: 16,
+                      padding: "14px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 22,
+                        width: 40,
+                        height: 40,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: 12,
+                        background: "rgba(46,107,64,0.18)",
+                        border: "1px solid rgba(46,107,64,0.3)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {sf.feed.coverEmoji ?? "🕊️"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontFamily: SPACE_GROTESK,
+                          fontSize: 15,
+                          fontWeight: 600,
+                          color: WARM_TEXT,
+                          margin: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {sf.feed.title}
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: SPACE_GROTESK,
+                          fontSize: 12,
+                          color: sf.todayEntry ? SAGE : "rgba(143,175,150,0.6)",
+                          fontStyle: sf.todayEntry ? "normal" : "italic",
+                          margin: "2px 0 0",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {sf.todayEntry ? sf.todayEntry.title : "Nothing new yet."}
+                      </p>
+                    </div>
+                    <span style={{ color: SAGE, fontSize: 16 }}>→</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Office entry points */}
         <p
           style={{
@@ -343,10 +457,12 @@ export default function ParishDashboard() {
           />
         </div>
 
-        {/* Public prayer feeds — an offices-only member can follow
-            public feeds; the feed's intercessions then join their
-            daily office. */}
-        {user.accessTier === "offices-only" && (
+        {/* Public prayer feeds — discovery card for an offices-only
+            member who hasn't subscribed to anything yet. Once they
+            have at least one subscription, the "Your feeds" section
+            above is the primary surface and this card is hidden to
+            avoid two paths to the same place. */}
+        {user.accessTier === "offices-only" && !hasFeeds && (
           <Link href="/prayer-feeds">
             <div
               style={{
