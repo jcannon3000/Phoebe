@@ -108,7 +108,12 @@ function resolveOneToOneTurn(
   const other = members.find((m) => m.email.toLowerCase() !== requesterEmail.toLowerCase());
   const otherEmail = other?.email ?? "";
   // Find the creator's email so letter 1 is always assigned to the creator.
-  const creator = members.find((m) => m.userId === correspondence.createdByUserId);
+  // When createdByUserId is null we can't identify the creator — don't
+  // match. Without this guard, the find returns the first member whose
+  // userId is also null, which gives the wrong name on the invite page.
+  const creator = correspondence.createdByUserId
+    ? members.find((m) => m.userId === correspondence.createdByUserId)
+    : undefined;
   return getOneToOneTurnState(
     requesterEmail,
     otherEmail,
@@ -1159,7 +1164,12 @@ router.get("/phoebe/invite/:token", async (req, res): Promise<void> => {
     .from(correspondenceMembersTable)
     .where(eq(correspondenceMembersTable.correspondenceId, correspondence.id));
 
-  const creator = members.find((m) => m.userId === correspondence.createdByUserId);
+  // When createdByUserId is null we can't identify the creator — don't
+  // match. Without this guard, the find returns the first member whose
+  // userId is also null, which gives the wrong name on the invite page.
+  const creator = correspondence.createdByUserId
+    ? members.find((m) => m.userId === correspondence.createdByUserId)
+    : undefined;
 
   // Return the actual letters so the invite landing page can render
   // them — the recipient should be able to READ the letter (or several)

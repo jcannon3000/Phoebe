@@ -339,12 +339,24 @@ router.get("/rituals", async (req, res): Promise<void> => {
     .from(ritualsTable)
     .where(whereClause)
     .orderBy(desc(ritualsTable.createdAt));
-    
+
+  // Bulk-fetch every relevant meetup in a single query, then group by
+  // ritualId. The old per-ritual select issued N queries and scaled
+  // poorly when a user belonged to many communities with many
+  // gatherings each.
+  const ritualIds = rituals.map((r) => r.id);
+  const allMeetups = ritualIds.length > 0
+    ? await db.select().from(meetupsTable).where(inArray(meetupsTable.ritualId, ritualIds))
+    : [];
+  const meetupsByRitual = new Map<number, typeof meetupsTable.$inferSelect[]>();
+  for (const m of allMeetups) {
+    const list = meetupsByRitual.get(m.ritualId) ?? [];
+    list.push(m);
+    meetupsByRitual.set(m.ritualId, list);
+  }
+
   const enriched = await Promise.all(
-    rituals.map(async (r) => {
-      const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, r.id));
-      return enrichRitual(r, meetups);
-    })
+    rituals.map((r) => enrichRitual(r, meetupsByRitual.get(r.id) ?? [])),
   );
   res.json(ListRitualsResponse.parse(enriched));
 });

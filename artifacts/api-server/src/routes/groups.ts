@@ -2939,25 +2939,43 @@ router.delete("/groups/:slug/focus/:id", async (req, res): Promise<void> => {
 
 // ─── User Search ─────────────────────────────────────────────────────────────
 
-// GET /api/groups/users/search?q=... — search Phoebe users by name or email
+// GET /api/groups/users/search?q=... — search Phoebe users by name or email.
+// Beta-admin gated: this endpoint exposes raw email addresses, and the
+// only legit caller is the beta-admin onboarding picker (beta-admin.tsx)
+// which is itself admin-only. The previous version was open to any
+// signed-in user, which let an attacker enumerate the full user
+// directory by typing two-letter substrings.
+//
+// Filter is done SQL-side via ILIKE so we never pull the whole users
+// table into Node, and LIMIT 8 caps the wire size.
 router.get("/groups/users/search", async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (!(await isBetaAdmin(user.id))) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
 
-    const q = ((req.query.q as string) || "").trim().toLowerCase();
+    const q = ((req.query.q as string) || "").trim();
     if (q.length < 2) { res.json({ users: [] }); return; }
 
-    const allUsers = await db
-      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, avatarUrl: usersTable.avatarUrl })
-      .from(usersTable);
+    // Escape LIKE wildcards (%, _) so a user typing them doesn't get
+    // a surprise match set.
+    const safeQ = q.replace(/[%_\\]/g, (c) => `\\${c}`);
+    const pattern = `%${safeQ}%`;
 
-    const matches = allUsers
-      .filter(u => u.id !== user.id && (
-        u.name?.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q)
+    const matches = await db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, avatarUrl: usersTable.avatarUrl })
+      .from(usersTable)
+      .where(and(
+        sql`${usersTable.id} <> ${user.id}`,
+        or(
+          sql`${usersTable.name} ILIKE ${pattern}`,
+          sql`${usersTable.email} ILIKE ${pattern}`,
+        ),
       ))
-      .slice(0, 8);
+      .limit(8);
 
     res.json({ users: matches });
   } catch (err) {
