@@ -155,6 +155,7 @@ import ParishOnboarding from "./pages/parish-onboarding";
 import ParishSettings from "./pages/parish-settings";
 import ParishCelebration from "./pages/parish-celebration";
 import ParishAdmin from "./pages/parish-admin";
+import ParishNewPage from "./pages/parish-new";
 import ParishConcernsPage from "./pages/parish-concerns";
 import ParishIntercessionsPage from "./pages/parish-intercessions";
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
@@ -361,6 +362,10 @@ function Router() {
       <Route path="/parish/settings" component={ParishSettings} />
       <Route path="/parish/celebration" component={ParishCelebration} />
       <Route path="/parish/admin" component={ParishAdmin} />
+      {/* /parish/new — self-serve parish creation (beta-gated; page
+          re-checks). The creator becomes the first admin and gets
+          dropped on /parish/admin to start authoring. */}
+      <Route path="/parish/new" component={ParishNewPage} />
       <Route path="/parish/concerns" component={ParishConcernsPage} />
       <Route path="/parish/intercessions" component={ParishIntercessionsPage} />
       <Route path="/gatherings" component={GatheringsPage} />

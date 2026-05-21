@@ -19,7 +19,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -129,10 +129,27 @@ export default function ParishAdmin() {
           >
             No parishes
           </h1>
-          <p style={{ fontFamily: GEORGIA, fontStyle: "italic", color: SAGE, fontSize: 15 }}>
-            You're not the admin of any parish yet. Phoebe staff provision parishes manually —
-            ask us to set yours up.
+          <p style={{ fontFamily: GEORGIA, fontStyle: "italic", color: SAGE, fontSize: 15, marginBottom: 20 }}>
+            You're not the admin of any parish yet. Create one and become its first admin — you'll publish today's intercessions, see who prays with you each week, and add co-pastors as admins.
           </p>
+          <Link href="/parish/new">
+            <span
+              style={{
+                display: "inline-block",
+                background: "#2D5E3F",
+                color: WARM_TEXT,
+                padding: "12px 24px",
+                borderRadius: 999,
+                fontSize: 14,
+                fontWeight: 600,
+                fontFamily: SPACE_GROTESK,
+                cursor: "pointer",
+                textDecoration: "none",
+              }}
+            >
+              Create your parish →
+            </span>
+          </Link>
         </div>
       </div>
     );
@@ -420,6 +437,11 @@ export default function ParishAdmin() {
               </div>
             )}
 
+            {/* Parish admin roster — creator + any co-admins the
+                creator has granted access to. Adding goes by email
+                (the recipient must already have a Phoebe account). */}
+            <ParishAdminsManager slug={m.parish.slug} />
+
             {/* Footer link to programming surface */}
             <Link href={`/prayer-feeds/${m.parish.slug}/manage`}>
               <span
@@ -481,6 +503,225 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
         {value}
       </p>
       <p style={{ color: SAGE, fontSize: 11, margin: "2px 0 0" }}>{sub}</p>
+    </div>
+  );
+}
+
+// ─── Parish admin roster — creator + co-admins ──────────────────────────────
+// Adds another admin by email (the recipient must already have a
+// Phoebe account). The creator is shown but not removable from this
+// surface — they'd need to transfer ownership first.
+function ParishAdminsManager({ slug }: { slug: string }) {
+  const queryClient = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+
+  const adminsQ = useQuery<{
+    creator: { userId: number; name: string; email: string } | null;
+    coAdmins: Array<{ userId: number; name: string; email: string; addedAt: string }>;
+  }>({
+    queryKey: [`/api/parishes/${slug}/admins`],
+    queryFn: () => apiRequest("GET", `/api/parishes/${slug}/admins`),
+    enabled: !!slug,
+  });
+
+  const addAdmin = useMutation<{ ok: boolean; name?: string }, Error, string>({
+    mutationFn: (e: string) => apiRequest("POST", `/api/parishes/${slug}/admins`, { email: e }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/parishes/${slug}/admins`] });
+      if (data.name) setJustAdded(data.name);
+      setEmail("");
+      setError("");
+      window.setTimeout(() => setJustAdded(null), 2400);
+    },
+    onError: (err) => setError(err.message || "Couldn't add admin."),
+  });
+
+  const removeAdmin = useMutation<void, Error, number>({
+    mutationFn: (userId: number) =>
+      apiRequest("DELETE", `/api/parishes/${slug}/admins/${userId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/parishes/${slug}/admins`] }),
+  });
+
+  function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes("@")) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    addAdmin.mutate(trimmed);
+  }
+
+  const creator = adminsQ.data?.creator ?? null;
+  const coAdmins = adminsQ.data?.coAdmins ?? [];
+
+  return (
+    <div style={{ marginTop: 28, marginBottom: 24 }}>
+      <p
+        style={{
+          fontFamily: SPACE_GROTESK,
+          fontSize: 11,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: FAINT_GREEN,
+          marginBottom: 10,
+        }}
+      >
+        Parish admins
+      </p>
+      <div
+        style={{
+          background: "#0F2818",
+          border: `1px solid ${BORDER}`,
+          borderRadius: 16,
+          padding: "14px 16px",
+        }}
+      >
+        {creator && (
+          <AdminRow name={creator.name} email={creator.email} badge="Creator" />
+        )}
+        {coAdmins.map((a) => (
+          <AdminRow
+            key={a.userId}
+            name={a.name}
+            email={a.email}
+            badge="Admin"
+            onRemove={() => removeAdmin.mutate(a.userId)}
+            removing={removeAdmin.isPending}
+          />
+        ))}
+        {creator == null && coAdmins.length === 0 && !adminsQ.isLoading && (
+          <p style={{ color: SAGE, fontSize: 12, fontFamily: SPACE_GROTESK, margin: 0, padding: "4px 0" }}>
+            Loading…
+          </p>
+        )}
+
+        <form onSubmit={handleAdd} style={{ marginTop: 14, display: "flex", gap: 8 }}>
+          <input
+            type="email"
+            placeholder="Add an admin by email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            disabled={addAdmin.isPending}
+            style={{
+              flex: 1,
+              background: "#091A10",
+              color: WARM_TEXT,
+              border: `1px solid ${BORDER}`,
+              borderRadius: 10,
+              padding: "10px 12px",
+              fontSize: 13,
+              fontFamily: SPACE_GROTESK,
+              outline: "none",
+            }}
+          />
+          <button
+            type="submit"
+            disabled={addAdmin.isPending || !email.trim()}
+            style={{
+              background: "#2D5E3F",
+              color: WARM_TEXT,
+              border: "none",
+              borderRadius: 999,
+              padding: "10px 18px",
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: SPACE_GROTESK,
+              cursor: addAdmin.isPending || !email.trim() ? "default" : "pointer",
+              opacity: addAdmin.isPending || !email.trim() ? 0.45 : 1,
+            }}
+          >
+            {addAdmin.isPending ? "…" : "Add"}
+          </button>
+        </form>
+        {error && (
+          <p style={{ color: "#C47A65", fontSize: 12, fontFamily: SPACE_GROTESK, margin: "8px 0 0" }}>
+            {error}
+          </p>
+        )}
+        {justAdded && (
+          <p style={{ color: "#A8C5A0", fontSize: 12, fontFamily: SPACE_GROTESK, margin: "8px 0 0" }}>
+            ✓ {justAdded} is now an admin.
+          </p>
+        )}
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, color: "rgba(143,175,150,0.55)", margin: "10px 0 0" }}>
+          They'll need a Phoebe account already. They'll be able to publish today's intercessions and read pastoral concerns, same as you.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AdminRow({
+  name,
+  email,
+  badge,
+  onRemove,
+  removing,
+}: {
+  name: string;
+  email: string;
+  badge: string;
+  onRemove?: () => void;
+  removing?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "10px 0",
+        borderBottom: "1px solid rgba(200,212,192,0.08)",
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 14, color: WARM_TEXT, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {name}
+        </p>
+        <p style={{ fontFamily: SPACE_GROTESK, fontSize: 11, color: SAGE, margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {email}
+        </p>
+      </div>
+      <span
+        style={{
+          fontFamily: SPACE_GROTESK,
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "rgba(168,197,160,0.7)",
+          padding: "2px 8px",
+          borderRadius: 999,
+          background: "rgba(46,107,64,0.18)",
+          border: "1px solid rgba(46,107,64,0.3)",
+          flexShrink: 0,
+        }}
+      >
+        {badge}
+      </span>
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          disabled={removing}
+          style={{
+            background: "transparent",
+            color: FAINT_GREEN,
+            border: "none",
+            fontSize: 12,
+            fontFamily: SPACE_GROTESK,
+            cursor: removing ? "default" : "pointer",
+            padding: "4px 6px",
+            opacity: removing ? 0.4 : 1,
+            flexShrink: 0,
+          }}
+        >
+          Remove
+        </button>
+      )}
     </div>
   );
 }

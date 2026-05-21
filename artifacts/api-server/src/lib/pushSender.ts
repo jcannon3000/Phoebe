@@ -1317,6 +1317,29 @@ export function sendLectioEveningReminderPush(
   });
 }
 
+// Weekly parish recap — Saturday evening (parish TZ). Tells each
+// parishioner how many of their parish prayed with them this week,
+// deep-linking into /parish/celebration where the post-Office screen
+// already shows the same count + faces. Skipped when the week has
+// zero distinct parish prayers.
+export function sendParishWeeklyRecapPush(
+  userId: number,
+  opts: { parishTitle: string; parishSlug: string; weekCount: number },
+): Promise<SendResult> {
+  const { parishTitle, parishSlug, weekCount } = opts;
+  const body =
+    weekCount === 1
+      ? "1 parishioner prayed with you this week."
+      : `${weekCount} parishioners prayed with you this week.`;
+  return sendPushToUser(userId, {
+    title: parishTitle,
+    body,
+    path: "/parish/celebration",
+    threadId: `parish-weekly-${parishSlug}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Weekly prayer-feed digest — fires Tuesday evening (user TZ) per the
 // scheduler in bellSender. Title carries the new-intercession count;
 // body adds a "you can act on N of these" line when any of the new

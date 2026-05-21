@@ -16,6 +16,7 @@ import {
   groupsTable,
   actionsTable,
   betaUsersTable,
+  prayerFeedSubscriptionsTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -29,6 +30,7 @@ import {
   sendGatheringTomorrowPush,
   sendActionReminderPush,
   sendWeeklyDigestPush,
+  sendParishWeeklyRecapPush,
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
@@ -1285,6 +1287,90 @@ export async function runWeeklyDigestSender(opts: { forceNow?: boolean } = {}): 
   }
 }
 
+// ─── Parish weekly recap sender ───────────────────────────────────────────────
+// Fires Saturday at 18:00 in each parish's local TZ — closes out the
+// liturgical week with "N parishioners prayed with you this week." for
+// every subscriber. Mirrors the daily evening recap's per-parish fan-
+// out (lines 967-1032 above) but at a weekly cadence; idempotency
+// lives per-user on users.parish_weekly_recap_sent_date so a
+// parishioner added to the parish later in the day still gets the
+// recap if it hasn't been sent to them yet.
+export async function runParishWeeklyRecapSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  const force = opts.forceNow === true;
+  try {
+    const parishes = await db
+      .select({
+        id: prayerFeedsTable.id,
+        title: prayerFeedsTable.title,
+        slug: prayerFeedsTable.slug,
+        timezone: prayerFeedsTable.timezone,
+      })
+      .from(prayerFeedsTable)
+      .where(and(
+        eq(prayerFeedsTable.kind, "parish"),
+        eq(prayerFeedsTable.state, "live"),
+      ));
+
+    for (const parish of parishes) {
+      const tz = parish.timezone ?? "America/New_York";
+      const todayStr = todayDateInTz(tz);
+
+      if (!force) {
+        // Saturday at 18:00 (first 15 min). Sun=0, Sat=6 — read from
+        // noon-UTC of the local date to avoid cross-midnight surprises.
+        const weekday = new Date(`${todayStr}T12:00:00Z`).getUTCDay();
+        if (weekday !== 6) continue;
+        const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
+        if (nowH !== 18 || nowM >= 15) continue;
+      }
+
+      // Solidarity count: distinct parishioners who completed a
+      // prayer_sessions row in the last 7 days. Matches the count
+      // the parish dashboard + post-Office celebration already show.
+      const [weekRow] = await db
+        .select({ count: sql<number>`count(distinct ${prayerSessionsTable.userId})::int` })
+        .from(prayerSessionsTable)
+        .innerJoin(
+          prayerFeedSubscriptionsTable,
+          and(
+            eq(prayerFeedSubscriptionsTable.userId, prayerSessionsTable.userId),
+            eq(prayerFeedSubscriptionsTable.feedId, parish.id),
+          ),
+        )
+        .where(sql`${prayerSessionsTable.endedAt} > NOW() - INTERVAL '7 days'`);
+      const weekCount = weekRow?.count ?? 0;
+      if (weekCount === 0) continue; // empty week — skip silently.
+
+      const parishioners = await db
+        .select({
+          id: usersTable.id,
+          weeklyStamp: usersTable.parishWeeklyRecapSentDate,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.parishFeedId, parish.id));
+
+      for (const u of parishioners) {
+        if (u.weeklyStamp === todayStr) continue;
+        try {
+          await sendParishWeeklyRecapPush(u.id, {
+            parishTitle: parish.title,
+            parishSlug: parish.slug,
+            weekCount,
+          });
+        } catch (err) {
+          logger.error({ err, userId: u.id, parishId: parish.id }, "[parish-weekly] push failed");
+        }
+        await db.update(usersTable)
+          .set({ parishWeeklyRecapSentDate: todayStr })
+          .where(eq(usersTable.id, u.id));
+      }
+      logger.info({ parishId: parish.id, weekCount, parishioners: parishioners.length }, "[parish-weekly] sent");
+    }
+  } catch (err) {
+    logger.error({ err }, "[parish-weekly] sender failed");
+  }
+}
+
 let bellInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startBellScheduler(): void {
@@ -1322,6 +1408,9 @@ export function startBellScheduler(): void {
     runWeeklyDigestSender().catch((err) =>
       logger.error({ err }, "[digest] initial run failed"),
     );
+    runParishWeeklyRecapSender().catch((err) =>
+      logger.error({ err }, "[parish-weekly] initial run failed"),
+    );
   }, 45_000);
 
   bellInterval = setInterval(
@@ -1355,6 +1444,9 @@ export function startBellScheduler(): void {
       );
       runWeeklyDigestSender().catch((err) =>
         logger.error({ err }, "[digest] scheduled run failed"),
+      );
+      runParishWeeklyRecapSender().catch((err) =>
+        logger.error({ err }, "[parish-weekly] scheduled run failed"),
       );
     },
     15 * 60 * 1000,

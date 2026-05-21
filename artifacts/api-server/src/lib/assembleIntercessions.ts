@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import {
   db,
   prayerRequestsTable,
@@ -10,12 +10,54 @@ import {
   prayerFeedEntriesTable,
   prayerFeedRecurringEntriesTable,
   prayerFeedsTable,
+  prayerSessionsTable,
   sharedMomentsTable,
   usersTable,
 } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { getGardenUserIds } from "./garden";
 import type { Slide } from "./assembleMorningPrayer";
+
+// Today's calendar date (YYYY-MM-DD) in a given IANA timezone. Mirrors
+// the helper in lib/bellSender / routes/prayer-feeds — copied here to
+// avoid a cross-file import in what's otherwise a self-contained
+// assembler. Falls back to UTC if the zone string is invalid.
+function todayInTz(tz: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+// Number of distinct parishioners (subscribers of this parish feed)
+// who completed a prayer_sessions row in the last `intervalHours`.
+// "Praying with you" solidarity — used for both the "this week" and
+// "today" counts on parish intercession slides. Pure SQL, idempotent.
+async function parishionersPrayingCount(
+  parishFeedId: number,
+  intervalHours: number,
+): Promise<number> {
+  const [row] = await db
+    .select({
+      count: sql<number>`count(distinct ${prayerSessionsTable.userId})::int`,
+    })
+    .from(prayerSessionsTable)
+    .innerJoin(
+      prayerFeedSubscriptionsTable,
+      and(
+        eq(prayerFeedSubscriptionsTable.userId, prayerSessionsTable.userId),
+        eq(prayerFeedSubscriptionsTable.feedId, parishFeedId),
+      ),
+    )
+    .where(sql`${prayerSessionsTable.endedAt} > NOW() - (${intervalHours}::int * INTERVAL '1 hour')`);
+  return row?.count ?? 0;
+}
 
 // Build the "Intercessions" slide for the Daily Office.
 //
@@ -162,6 +204,45 @@ export async function buildIntercessionsSlide(
         .limit(6)
     : [];
 
+  // --- 5. Parish intercessions — today's slot-based slate (BCP-style
+  //        3-prayer-a-day rhythm) authored by the parish admin. A
+  //        parish is a special prayer_feeds row (kind="parish") with
+  //        day-scheduled entries in prayer_feed_entries; this is the
+  //        wire that puts that admin work in front of each
+  //        parishioner during their actual Office or Devotion. Today
+  //        is resolved in the parish's local TZ, not the viewer's.
+  const parishRow = await db
+    .select({
+      id: prayerFeedsTable.id,
+      title: prayerFeedsTable.title,
+      timezone: prayerFeedsTable.timezone,
+    })
+    .from(prayerFeedsTable)
+    .innerJoin(usersTable, eq(usersTable.parishFeedId, prayerFeedsTable.id))
+    .where(and(
+      eq(usersTable.id, userId),
+      eq(prayerFeedsTable.kind, "parish"),
+      eq(prayerFeedsTable.state, "live"),
+    ))
+    .limit(1);
+  const parish = parishRow[0] ?? null;
+  const parishEntries = parish
+    ? await db
+        .select({
+          slot: prayerFeedEntriesTable.slot,
+          title: prayerFeedEntriesTable.title,
+          body: prayerFeedEntriesTable.body,
+          scriptureRef: prayerFeedEntriesTable.scriptureRef,
+        })
+        .from(prayerFeedEntriesTable)
+        .where(and(
+          eq(prayerFeedEntriesTable.feedId, parish.id),
+          eq(prayerFeedEntriesTable.entryDate, todayInTz(parish.timezone)),
+          eq(prayerFeedEntriesTable.state, "published"),
+        ))
+        .orderBy(asc(prayerFeedEntriesTable.slot))
+    : [];
+
   // Compose the body text. Each source becomes its own section if
   // populated; absent sources are silently skipped. Empty body → no
   // slide at all (return null).
@@ -211,6 +292,11 @@ export async function buildIntercessionsSlide(
     if (lines.length > 0) {
       sections.push(`Across the network today:\n\n${lines.join("\n")}`);
     }
+  }
+
+  if (parish && parishEntries.length > 0) {
+    const lines = parishEntries.map((e) => `· ${e.title}`);
+    sections.push(`At ${parish.title} today:\n\n${lines.join("\n")}`);
   }
 
   if (sections.length === 0) return null;
@@ -392,6 +478,49 @@ export async function buildIntercessionSlides(
     momentToken: r.momentToken,
   }));
 
+  // Parish intercessions — see the matching block in
+  // buildIntercessionsSlide for the rationale. We additionally pull
+  // the two solidarity counts (this-week + today) here so each parish
+  // slide can carry them in its metadata; the prayer-mode renderer
+  // shows them as a chip while the parishioner is reading the prayer.
+  const parishRow = await db
+    .select({
+      id: prayerFeedsTable.id,
+      title: prayerFeedsTable.title,
+      timezone: prayerFeedsTable.timezone,
+    })
+    .from(prayerFeedsTable)
+    .innerJoin(usersTable, eq(usersTable.parishFeedId, prayerFeedsTable.id))
+    .where(and(
+      eq(usersTable.id, userId),
+      eq(prayerFeedsTable.kind, "parish"),
+      eq(prayerFeedsTable.state, "live"),
+    ))
+    .limit(1);
+  const parish = parishRow[0] ?? null;
+  const parishEntries = parish
+    ? await db
+        .select({
+          slot: prayerFeedEntriesTable.slot,
+          title: prayerFeedEntriesTable.title,
+          body: prayerFeedEntriesTable.body,
+          scriptureRef: prayerFeedEntriesTable.scriptureRef,
+        })
+        .from(prayerFeedEntriesTable)
+        .where(and(
+          eq(prayerFeedEntriesTable.feedId, parish.id),
+          eq(prayerFeedEntriesTable.entryDate, todayInTz(parish.timezone)),
+          eq(prayerFeedEntriesTable.state, "published"),
+        ))
+        .orderBy(asc(prayerFeedEntriesTable.slot))
+    : [];
+  const parishWeekCount = parish && parishEntries.length > 0
+    ? await parishionersPrayingCount(parish.id, 24 * 7)
+    : 0;
+  const parishTodayCount = parish && parishEntries.length > 0
+    ? await parishionersPrayingCount(parish.id, 24)
+    : 0;
+
   const slides: Slide[] = [];
   const dayKey = cacheDate.toISOString().slice(0, 10);
 
@@ -507,6 +636,39 @@ export async function buildIntercessionSlides(
         learnMoreUrl: f.learnMoreUrl ?? null,
       },
     });
+  }
+
+  // 5. Parish intercessions — today's published slate. One slide per
+  //    slot, in slot order. Metadata carries solidarity counts so the
+  //    renderer can chip in "N from your parish are praying this with
+  //    you today / this week" — the in-the-moment version of what the
+  //    parish dashboard and post-Office celebration screen already
+  //    show outside the liturgy.
+  if (parish) {
+    for (const e of parishEntries) {
+      const body = (e.body ?? "").trim();
+      slides.push({
+        id: `dev-parish-${parish.id}-${e.slot}-${dayKey}`,
+        type: "intercessions",
+        emoji: "⛪",
+        eyebrow: `TODAY AT ${parish.title.toUpperCase()}`,
+        title: e.title,
+        content: body.length > 0 ? body : e.title,
+        isCallAndResponse: false,
+        callAndResponseLines: null,
+        bcpReference: e.scriptureRef ?? null,
+        isScrollable: body.length > 280,
+        scrollHint: body.length > 280 ? "↓ continue · tap when ready" : null,
+        metadata: {
+          source: "parish",
+          parishTitle: parish.title,
+          parishFeedId: parish.id,
+          parishionersPrayingThisWeek: parishWeekCount,
+          parishionersPrayingToday: parishTodayCount,
+          scriptureRef: e.scriptureRef ?? null,
+        },
+      });
+    }
   }
 
   return slides;

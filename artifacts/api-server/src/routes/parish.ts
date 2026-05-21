@@ -31,6 +31,7 @@ import {
   usersTable,
   betaUsersTable,
   prayerSessionsTable,
+  parishAdminsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import { isUserBeta } from "../lib/parishGate";
@@ -459,14 +460,28 @@ async function canManageParish(userId: number, parishId: number): Promise<{
       eq(prayerFeedsTable.kind, "parish"),
     ));
   if (!parish) return { allowed: false, parish: null };
+  // The original creator is implicitly an admin (no parish_admins row
+  // required for them — they're the seed).
   if (parish.creatorUserId === userId) return { allowed: true, parish };
+  // Additional admins, granted by the creator (or by another admin)
+  // via POST /api/parishes/:slug/admins.
+  const [coAdmin] = await db
+    .select({ id: parishAdminsTable.id })
+    .from(parishAdminsTable)
+    .where(and(
+      eq(parishAdminsTable.parishFeedId, parish.id),
+      eq(parishAdminsTable.userId, userId),
+    ));
+  if (coAdmin) return { allowed: true, parish };
+  // Phoebe staff (beta_users.is_admin) retain global manage powers
+  // for support purposes.
   const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
   if (!u) return { allowed: false, parish };
-  const [admin] = await db
+  const [staffAdmin] = await db
     .select({ isAdmin: betaUsersTable.isAdmin })
     .from(betaUsersTable)
     .where(eq(betaUsersTable.email, u.email.toLowerCase()));
-  return { allowed: !!admin?.isAdmin, parish };
+  return { allowed: !!staffAdmin?.isAdmin, parish };
 }
 
 // ─── GET /api/parish/admin/parishes ───────────────────────────────────────
@@ -499,8 +514,11 @@ router.get("/parish/admin/parishes", async (req, res) => {
           .from(prayerFeedsTable)
           .where(eq(prayerFeedsTable.kind, "parish"))
           .orderBy(asc(prayerFeedsTable.title))
+      // Non-staff: parishes the user CREATED or was added to as a
+      // co-admin (parish_admins). DISTINCT because the join can
+      // multiply a creator-also-listed row.
       : await db
-          .select({
+          .selectDistinct({
             id: prayerFeedsTable.id,
             slug: prayerFeedsTable.slug,
             title: prayerFeedsTable.title,
@@ -509,9 +527,13 @@ router.get("/parish/admin/parishes", async (req, res) => {
             subscriberCount: prayerFeedsTable.subscriberCount,
           })
           .from(prayerFeedsTable)
+          .leftJoin(parishAdminsTable, and(
+            eq(parishAdminsTable.parishFeedId, prayerFeedsTable.id),
+            eq(parishAdminsTable.userId, session.id),
+          ))
           .where(and(
             eq(prayerFeedsTable.kind, "parish"),
-            eq(prayerFeedsTable.creatorUserId, session.id),
+            sql`(${prayerFeedsTable.creatorUserId} = ${session.id} OR ${parishAdminsTable.id} IS NOT NULL)`,
           ))
           .orderBy(asc(prayerFeedsTable.title));
     res.json({ parishes: rows, isStaffAdmin });
@@ -803,6 +825,200 @@ router.post("/parish/admin/concerns/:id/close", async (req, res) => {
     console.error("[parish] close concern failed:", err);
     res.status(500).json({ error: "Failed to close." });
   }
+});
+
+// ─── Parish creation (self-serve) + co-admin management ───────────────────
+// Any beta user can create a new parish — they become its first admin
+// and are subscribed automatically. The creator can then grant the
+// same admin powers to other beta users by email.
+//
+// Parishes are private-by-default; the creator flips visibility from
+// the manage page if they want a public discovery link. Sluug
+// generation is deterministic + collision-padded so two churches with
+// the same name don't fight.
+
+import crypto from "crypto";
+
+function slugifyParishName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "parish";
+}
+
+const createParishSchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  tagline: z.string().trim().max(200).optional(),
+  coverEmoji: z.string().trim().max(8).optional(),
+  timezone: z.string().trim().max(60).optional(),
+});
+
+router.post("/parishes", async (req, res): Promise<void> => {
+  const session = req.user ? (req.user as { id: number }) : null;
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  // Beta-gated for now. The schema-level capacity is built but the
+  // product surface is still in pilot.
+  if (!(await isUserBeta(session.id))) {
+    res.status(403).json({ error: "Parish creation is in beta." });
+    return;
+  }
+  const parsed = createParishSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    return;
+  }
+  const { title, tagline, coverEmoji, timezone } = parsed.data;
+
+  // Mint a unique slug. First try the slugified title; if taken, suffix
+  // a short random hex segment until we land on a fresh one. (Two
+  // collisions in a row is essentially impossible with 24-bit suffixes
+  // so the bounded loop is just a defensive cap.)
+  let slug = slugifyParishName(title);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const [existing] = await db.select({ id: prayerFeedsTable.id })
+      .from(prayerFeedsTable).where(eq(prayerFeedsTable.slug, slug)).limit(1);
+    if (!existing) break;
+    slug = `${slugifyParishName(title)}-${crypto.randomBytes(3).toString("hex")}`;
+  }
+
+  try {
+    const [parish] = await db
+      .insert(prayerFeedsTable)
+      .values({
+        slug,
+        title,
+        tagline: tagline ?? null,
+        coverEmoji: coverEmoji ?? "⛪",
+        timezone: timezone ?? "America/New_York",
+        kind: "parish",
+        state: "live",
+        visibility: "private",
+        creatorUserId: session.id,
+      })
+      .returning();
+
+    // Auto-subscribe the creator. They're the seed parishioner; the
+    // single-parish rule (users.parish_feed_id) follows the existing
+    // subscribe handler's invariant.
+    await db.update(usersTable)
+      .set({ parishFeedId: parish.id })
+      .where(eq(usersTable.id, session.id));
+    await db.insert(prayerFeedSubscriptionsTable).values({
+      feedId: parish.id,
+      userId: session.id,
+    }).onConflictDoNothing();
+    await db.update(prayerFeedsTable)
+      .set({ subscriberCount: 1, updatedAt: new Date() })
+      .where(eq(prayerFeedsTable.id, parish.id));
+
+    res.status(201).json({ parish });
+  } catch (err) {
+    console.error("[/parishes POST] failed:", err);
+    res.status(500).json({ error: "Couldn't create parish." });
+  }
+});
+
+// Add another admin to a parish — by email so a creator doesn't need
+// to know the user's id. Allowed for any caller who already manages
+// the parish (creator or existing co-admin).
+router.post("/parishes/:slug/admins", async (req, res): Promise<void> => {
+  const session = req.user ? (req.user as { id: number }) : null;
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const slug = String(req.params.slug);
+  const [parish] = await db.select().from(prayerFeedsTable)
+    .where(and(eq(prayerFeedsTable.slug, slug), eq(prayerFeedsTable.kind, "parish")));
+  if (!parish) { res.status(404).json({ error: "Parish not found" }); return; }
+  const { allowed } = await canManageParish(session.id, parish.id);
+  if (!allowed) { res.status(403).json({ error: "Admin only." }); return; }
+  const email = String((req.body as { email?: unknown } | undefined)?.email ?? "")
+    .trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    res.status(400).json({ error: "A valid email address is required." });
+    return;
+  }
+  const [target] = await db.select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable).where(eq(usersTable.email, email));
+  if (!target) {
+    res.status(404).json({ error: "No Phoebe account found for that email." });
+    return;
+  }
+  if (target.id === parish.creatorUserId) {
+    res.status(409).json({ error: "That person is already the parish creator." });
+    return;
+  }
+  try {
+    await db.insert(parishAdminsTable).values({
+      parishFeedId: parish.id,
+      userId: target.id,
+      addedByUserId: session.id,
+    }).onConflictDoNothing();
+    res.json({ ok: true, name: target.name });
+  } catch (err) {
+    console.error("[/parishes/:slug/admins POST] failed:", err);
+    res.status(500).json({ error: "Couldn't add admin." });
+  }
+});
+
+router.delete("/parishes/:slug/admins/:userId", async (req, res): Promise<void> => {
+  const session = req.user ? (req.user as { id: number }) : null;
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const slug = String(req.params.slug);
+  const targetUserId = parseInt(String(req.params.userId), 10);
+  if (!Number.isFinite(targetUserId)) {
+    res.status(400).json({ error: "Invalid user id" }); return;
+  }
+  const [parish] = await db.select().from(prayerFeedsTable)
+    .where(and(eq(prayerFeedsTable.slug, slug), eq(prayerFeedsTable.kind, "parish")));
+  if (!parish) { res.status(404).json({ error: "Parish not found" }); return; }
+  const { allowed } = await canManageParish(session.id, parish.id);
+  if (!allowed) { res.status(403).json({ error: "Admin only." }); return; }
+  if (targetUserId === parish.creatorUserId) {
+    res.status(400).json({ error: "The creator can't be removed — transfer ownership first." });
+    return;
+  }
+  await db.delete(parishAdminsTable).where(and(
+    eq(parishAdminsTable.parishFeedId, parish.id),
+    eq(parishAdminsTable.userId, targetUserId),
+  ));
+  res.json({ ok: true });
+});
+
+// List the admins of a parish for the manage UI: creator + co-admins.
+router.get("/parishes/:slug/admins", async (req, res): Promise<void> => {
+  const session = req.user ? (req.user as { id: number }) : null;
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const slug = String(req.params.slug);
+  const [parish] = await db.select().from(prayerFeedsTable)
+    .where(and(eq(prayerFeedsTable.slug, slug), eq(prayerFeedsTable.kind, "parish")));
+  if (!parish) { res.status(404).json({ error: "Parish not found" }); return; }
+  const { allowed } = await canManageParish(session.id, parish.id);
+  if (!allowed) { res.status(403).json({ error: "Admin only." }); return; }
+  const coAdmins = await db
+    .select({
+      userId: parishAdminsTable.userId,
+      name: usersTable.name,
+      email: usersTable.email,
+      createdAt: parishAdminsTable.createdAt,
+    })
+    .from(parishAdminsTable)
+    .innerJoin(usersTable, eq(usersTable.id, parishAdminsTable.userId))
+    .where(eq(parishAdminsTable.parishFeedId, parish.id));
+  const [creator] = parish.creatorUserId != null
+    ? await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+        .from(usersTable).where(eq(usersTable.id, parish.creatorUserId))
+    : [];
+  res.json({
+    creator: creator
+      ? { userId: creator.id, name: creator.name, email: creator.email }
+      : null,
+    coAdmins: coAdmins.map((c) => ({
+      userId: c.userId,
+      name: c.name,
+      email: c.email,
+      addedAt: c.createdAt.toISOString(),
+    })),
+  });
 });
 
 export default router;

@@ -116,6 +116,11 @@ export const usersTable = pgTable("users", {
   // we only push once per local day. NULL = never sent.
   parishOfficeMorningSentDate: text("parish_office_morning_sent_date"),
   parishOfficeEveningSentDate: text("parish_office_evening_sent_date"),
+  // YYYY-MM-DD (parish TZ) of the last Saturday-evening "your parish
+  // prayed with you this week" recap we fired for this user. NULL =
+  // never sent. Idempotent on the local Saturday so a parishioner
+  // doesn't get two recap pushes in the same evening window.
+  parishWeeklyRecapSentDate: text("parish_weekly_recap_sent_date"),
   // YYYY-MM-DD (UTC) of the last "How can we pray for you?" email this
   // user received. Per-user daily dedup so that if they belong to two
   // groups and both admins send the prompt on the same day, the user

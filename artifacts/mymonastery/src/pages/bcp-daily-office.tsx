@@ -1922,6 +1922,51 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               </div>
             );
           })()}
+          {/* Parish solidarity chip — shown on the intercession slides
+              that come from the viewer's parish (assembleIntercessions
+              metadata.source === "parish"). Prefers the today count
+              when non-zero (more immediate), falls back to the
+              this-week count, hides entirely when both are zero.
+              Same numbers the parish dashboard + post-Office
+              celebration screen show — surfaced here so the
+              parishioner sees them in the moment they're praying. */}
+          {currentSlide.type === "intercessions" && (() => {
+            const meta = currentSlide.metadata as
+              | { source?: unknown; parishionersPrayingToday?: unknown; parishionersPrayingThisWeek?: unknown }
+              | undefined;
+            if (meta?.source !== "parish") return null;
+            const today =
+              typeof meta.parishionersPrayingToday === "number" ? meta.parishionersPrayingToday : 0;
+            const week =
+              typeof meta.parishionersPrayingThisWeek === "number" ? meta.parishionersPrayingThisWeek : 0;
+            if (today === 0 && week === 0) return null;
+            const label = today > 0
+              ? today === 1
+                ? "1 from your parish is praying with you today."
+                : `${today} from your parish are praying with you today.`
+              : week === 1
+                ? "1 from your parish has prayed with you this week."
+                : `${week} from your parish have prayed with you this week.`;
+            return (
+              <p
+                style={{
+                  alignSelf: "center",
+                  margin: "8px 0 0",
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  background: "rgba(46,107,64,0.12)",
+                  border: "1px solid rgba(46,107,64,0.28)",
+                  color: "#A8C5A0",
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  textAlign: "center",
+                }}
+              >
+                ⛪ {label}
+              </p>
+            );
+          })()}
           {currentSlide.bcpReference && (
             <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: FAINT_GREEN, margin: 0, marginTop: 8 }}>
               {currentSlide.bcpReference}

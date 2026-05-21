@@ -32,6 +32,7 @@ export * from "./prayer_feeds";
 export * from "./prayer_feed_entries";
 export * from "./prayer_feed_subscriptions";
 export * from "./prayer_feed_prayers";
+export * from "./parish_admins";
 export * from "./device_tokens";
 export * from "./web_push_subscriptions";
 export * from "./content_reports";
