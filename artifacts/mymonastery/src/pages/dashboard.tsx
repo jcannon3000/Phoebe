@@ -5036,31 +5036,17 @@ export default function Dashboard() {
 
               {/* Per-feed "begin praying" anchors — one card per
                   subscribed prayer feed. Open to everyone now (the
-                  earlier beta gate is gone). Section eyebrow matches
-                  the small-caps feast subtitle style at the top of
-                  the dashboard so the feed group reads as a named
-                  section, not a loose stack. The mb-2 below the row
-                  gives the section a little breathing room before the
-                  "This week" heading drops in.  */}
+                  earlier beta gate is gone). No section heading per
+                  user direction — the cards sit directly under
+                  PrayerOfficeCard as a quieter continuation rather
+                  than a separate named group. The mb-2 below gives
+                  a little breathing room before the next dashboard
+                  section ("This week" etc.) drops in. */}
               {subscribedFeeds.length > 0 && (
-                <div className="mt-5 mb-2">
-                  <p
-                    className="mb-2"
-                    style={{
-                      color: "rgba(143,175,150,0.5)",
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      fontSize: 11,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Prayer for Justice Feeds
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    {subscribedFeeds.map((row) => (
-                      <FeedPrayerCard key={row.feed.id} feed={row} />
-                    ))}
-                  </div>
+                <div className="mt-3 mb-2 flex flex-col gap-3">
+                  {subscribedFeeds.map((row) => (
+                    <FeedPrayerCard key={row.feed.id} feed={row} />
+                  ))}
                 </div>
               )}
             </>
