@@ -466,7 +466,12 @@ function PrayingScreen({
               className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{ background: BUTTON_BG, color: WARM_TEXT, minWidth: 200 }}
             >
-              {safeIdx + 1 >= total ? "Done →" : "Amen →"}
+              {/* "Amen →" on every slide, including the last. The Amen
+                  tap on the final slide still advances the walk into
+                  signup; the label just keeps the prayer vocabulary
+                  consistent rather than switching to "Done" for the
+                  closing beat. */}
+              Amen →
             </button>
           </div>
           <button
@@ -684,11 +689,14 @@ function SignupStep({
 
         {/* iOS download banner — page-scoped (not the global
             IOSAppDownloadPrompt, which only fires post-auth). Shown
-            here regardless of platform: iOS visitors get a real
-            install path, desktop visitors get a "Phoebe is also on
-            iPhone" reminder they can act on later. Tap opens the
-            App Store in a new tab so the half-filled signup form
-            isn't lost. */}
+            on web (iOS visitors get a real install path, desktop
+            visitors get a "Phoebe is also on iPhone" reminder).
+            Hidden inside our own native shell — those users already
+            have the app and an App Store link from inside the app is
+            both jarring and self-defeating. Detected via the same
+            PhoebeNative.isNative() probe IOSAppDownloadPrompt /
+            WebPushPermissionPrompt / DesktopAppPrompt use. */}
+        {!(typeof window !== "undefined" && (window as { PhoebeNative?: { isNative?: () => boolean } }).PhoebeNative?.isNative?.()) && (
         <a
           href="https://apps.apple.com/us/app/phoebe-prayer-together/id6763552921"
           target="_blank"
@@ -733,6 +741,7 @@ function SignupStep({
             Get
           </span>
         </a>
+        )}
       </motion.div>
     </div>
   );
