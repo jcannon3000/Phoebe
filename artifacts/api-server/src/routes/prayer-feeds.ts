@@ -155,6 +155,10 @@ type FeedIntercession = {
   createdAt: Date;
   prayedToday: boolean;
   prayCount: number;
+  // True when the viewer has logged a check-in on this intercession
+  // at least once on ANY date. Drives the "X new prayers" count on
+  // the dashboard FeedPrayerCard — counted as `everPrayed === false`.
+  everPrayed: boolean;
 };
 
 async function loadFeedIntercessions(
@@ -232,6 +236,7 @@ async function loadFeedIntercessions(
       createdAt: m.createdAt,
       prayedToday: myWindowDates.get(m.id)?.has(today) ?? false,
       prayCount: prayerEmails.get(m.id)?.size ?? 0,
+      everPrayed: (myWindowDates.get(m.id)?.size ?? 0) > 0,
     });
     byFeed.set(m.feedId, list);
   }
@@ -585,7 +590,11 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
   // Feeds are a flat ongoing list now — there is no per-day entry, so
   // the dashboard card previews the feed's newest intercession.
   const out = subs.map(({ feed }) => {
-    const newest = (byFeed.get(feed.id) ?? [])[0] ?? null;
+    const list = byFeed.get(feed.id) ?? [];
+    const newest = list[0] ?? null;
+    // Intercessions the viewer has NEVER prayed (no check-in row on
+    // any date). Drives the "X New Prayers" pulse on FeedPrayerCard.
+    const unprayedCount = list.reduce((n, it) => n + (it.everPrayed ? 0 : 1), 0);
     return {
       feed,
       todayEntry: newest
@@ -600,6 +609,7 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
         : null,
       prayedToday: newest?.prayedToday ?? false,
       weekPrayers: weekPrayersByFeed.get(feed.id) ?? [],
+      unprayedCount,
     };
   });
   res.json({ subscriptions: out });

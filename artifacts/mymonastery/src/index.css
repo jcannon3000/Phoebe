@@ -347,6 +347,16 @@ textarea:focus {
 }
 .animate-turn-pulse { animation: turn-pulse 2.5s ease-in-out infinite; }
 
+/* ── FeedPrayerCard new-prayers pulse — slow, sage-green border
+   breathe applied to the dashboard's per-feed card when the viewer
+   has unprayed intercessions. Drops off the moment they walk the
+   list. Calmer than turn-pulse (longer period, less contrast). */
+@keyframes feed-card-pulse {
+  0%, 100% { border-color: rgba(46,107,64,0.4); }
+  50%      { border-color: rgba(143,210,160,0.85); }
+}
+.animate-feed-card-pulse { animation: feed-card-pulse 2.6s ease-in-out infinite; }
+
 @keyframes bar-pulse {
   0%, 100% { background-color: rgba(200,212,192,0.2); }
   50%      { background-color: rgba(200,212,192,1); }

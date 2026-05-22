@@ -394,6 +394,10 @@ type SubscribedFeed = {
   // intercessions in the last 7 days. Server-truth — backs the avatar
   // stack on FeedPrayerCard. Optional for older API builds.
   weekPrayers?: Array<{ id: number; name: string; avatarUrl: string | null }>;
+  // Intercessions in this feed the viewer has NEVER prayed (no
+  // check-in on any date). Drives the "X New Prayers" pulsing CTA
+  // on the dashboard card. Optional — older API builds omit.
+  unprayedCount?: number;
 };
 
 // ─── Reusable card sub-components ────────────────────────────────────────────
@@ -2627,7 +2631,14 @@ function PrayerOfficeCard() {
 // from moment_posts check-ins against any of the feed's intercessions.
 // Tap routes to /prayer-feeds/{slug} where "Pray the full list" lives.
 function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
-  const { feed, prayedToday } = row;
+  const { feed, prayedToday, unprayedCount } = row;
+  const newCount = unprayedCount ?? 0;
+  // "New prayers" trumps "Prayer completed" — even if the viewer has
+  // walked today's deck, a fresh intercession added afterwards still
+  // deserves the call-out. The pulse + count CTA only shows when the
+  // unprayed count is non-zero; the "View list" + "Completed" pills
+  // otherwise behave as before.
+  const showsNewCallout = newCount > 0;
   return (
     <div
       className="relative flex rounded-xl overflow-hidden"
@@ -2635,10 +2646,21 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
         // Slightly lighter than PrayerOfficeCard's 0.08 fill so the two
         // cards read as a paired set without looking like the same row.
         background: "rgba(46,107,64,0.14)",
+        // Border becomes a pulsing animation when there's a new
+        // intercession to pray — the class wins over the inline color.
         border: "1px solid rgba(46,107,64,0.4)",
       }}
     >
-      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+      <div
+        className={`flex-1 px-4 py-[14px] flex items-center justify-between gap-3 ${
+          showsNewCallout ? "animate-feed-card-pulse rounded-xl" : ""
+        }`}
+        style={
+          showsNewCallout
+            ? { border: "1px solid rgba(46,107,64,0.4)", margin: -1 }
+            : undefined
+        }
+      >
         {/* Title sits on a single row with the CTA(s) to the right —
             no avatars, no eyebrow, no subtitle. Smaller than the
             PrayerOfficeCard title so the feed cards read as quieter
@@ -2656,7 +2678,33 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
           {feed.title} {feed.coverEmoji ?? "🌿"}
         </p>
 
-        {prayedToday ? (
+        {showsNewCallout ? (
+          // New addition since the user last prayed this feed. The
+          // single pulsing pill replaces both the "Begin praying" and
+          // the "Completed | View list" splits — once the user walks
+          // through the count zeros and the card reverts to whichever
+          // resting state matches prayedToday.
+          <Link href={`/prayer-feeds/${feed.slug}?play=1`} className="shrink-0">
+            <div
+              role="button"
+              tabIndex={0}
+              className="rounded-full text-center cursor-pointer"
+              style={{
+                background: "rgba(46,107,64,0.32)",
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 13,
+                fontWeight: 500,
+                padding: "6px 14px",
+                border: "1px solid rgba(143,210,160,0.55)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {newCount === 1 ? "1 New Prayer" : `${newCount} New Prayers`}{" "}
+              <span aria-hidden>→</span>
+            </div>
+          </Link>
+        ) : prayedToday ? (
           // Two compact pills inline with the title: a settled
           // "Prayer completed ✓" status + a tappable "View list →" that
           // routes to the feed page (no auto-play, since the user has
@@ -4987,15 +5035,15 @@ export default function Dashboard() {
               </div>
 
               {/* Per-feed "begin praying" anchors — one card per
-                  subscribed prayer feed. Beta-gated for now: this
-                  surface stacks under PrayerOfficeCard and we want to
-                  vet it with the smaller audience before opening it
-                  to everyone. Section eyebrow matches the small-caps
-                  feast subtitle style at the top of the dashboard so
-                  the feed group reads as a named section, not a
-                  loose stack. */}
-              {isBeta && subscribedFeeds.length > 0 && (
-                <div className="mt-5">
+                  subscribed prayer feed. Open to everyone now (the
+                  earlier beta gate is gone). Section eyebrow matches
+                  the small-caps feast subtitle style at the top of
+                  the dashboard so the feed group reads as a named
+                  section, not a loose stack. The mb-2 below the row
+                  gives the section a little breathing room before the
+                  "This week" heading drops in.  */}
+              {subscribedFeeds.length > 0 && (
+                <div className="mt-5 mb-2">
                   <p
                     className="mb-2"
                     style={{
