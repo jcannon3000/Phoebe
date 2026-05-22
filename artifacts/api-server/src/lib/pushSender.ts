@@ -568,8 +568,11 @@ export async function sendPushToUsers(userIds: number[], payload: PushPayload): 
 }
 
 // Names the sender so the recipient knows who started the prayer. Tap
-// deep-links to the same prayer-from-me detail slide the prayer list
-// already shows — recipient sees who wrote it and reads the prayer text.
+// deep-links into the prayers-for-me slideshow with the tapped prayer
+// focused — the deck starts on this prayer and then walks through every
+// other active prayer someone is currently offering for them. Previously
+// the link opened a single-prayer modal on /prayer-list which buried any
+// other concurrent prayers in the list below.
 export function sendPrayerForYouPush(
   recipientUserId: number,
   senderName: string,
@@ -579,7 +582,7 @@ export function sendPrayerForYouPush(
   return sendPushToUser(recipientUserId, {
     title: `${firstName} is praying for you`,
     body: "Open Phoebe to see.",
-    path: `/prayer-list?detail=prayer-from:${prayerForId}`,
+    path: `/prayer-mode?queue=prayers-for-me&focus=${prayerForId}`,
     threadId: "prayer-for-you",
     sound: PHOEBE_SOUND_HIGH,
   });
