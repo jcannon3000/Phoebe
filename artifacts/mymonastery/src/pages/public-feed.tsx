@@ -629,6 +629,58 @@ function SignupStep({
         >
           ← Back
         </button>
+
+        {/* iOS download banner — page-scoped (not the global
+            IOSAppDownloadPrompt, which only fires post-auth). Shown
+            here regardless of platform: iOS visitors get a real
+            install path, desktop visitors get a "Phoebe is also on
+            iPhone" reminder they can act on later. Tap opens the
+            App Store in a new tab so the half-filled signup form
+            isn't lost. */}
+        <a
+          href="https://apps.apple.com/us/app/phoebe-prayer-together/id6763552921"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 mt-8 rounded-2xl px-4 py-3 transition-opacity hover:opacity-90"
+          style={{
+            background: "rgba(46,107,64,0.10)",
+            border: "1px solid rgba(46,107,64,0.25)",
+            textDecoration: "none",
+          }}
+        >
+          <img
+            src="/phoebe-app-icon.png"
+            alt=""
+            width={40}
+            height={40}
+            style={{ borderRadius: 9, objectFit: "cover", flexShrink: 0 }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p
+              className="text-[14px] font-semibold leading-tight"
+              style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK }}
+            >
+              Phoebe for iPhone
+            </p>
+            <p
+              className="text-[12px] mt-0.5"
+              style={{ color: SAGE, fontFamily: SPACE_GROTESK }}
+            >
+              Daily Office, in your pocket.
+            </p>
+          </div>
+          <span
+            className="text-[12px] font-semibold px-3 py-1.5 rounded-full shrink-0"
+            style={{
+              background: "rgba(46,107,64,0.35)",
+              color: WARM_TEXT,
+              border: "1px solid rgba(46,107,64,0.55)",
+              fontFamily: SPACE_GROTESK,
+            }}
+          >
+            Get
+          </span>
+        </a>
       </motion.div>
     </div>
   );
