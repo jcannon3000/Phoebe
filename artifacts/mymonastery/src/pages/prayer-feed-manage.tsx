@@ -142,29 +142,14 @@ export default function PrayerFeedManagePage() {
           ← Back
         </button>
 
-        {/* Feed header */}
-        <div className="flex items-start gap-3 mb-2">
-          <div
-            className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0"
-            style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
-          >
-            {feed.coverEmoji ?? "🕊️"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1
-              className="text-xl font-bold leading-tight"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              {feed.title}
-            </h1>
-            {feed.tagline && (
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{feed.tagline}</p>
-            )}
-            <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-              {feed.subscriberCount} subscriber{feed.subscriberCount === 1 ? "" : "s"} · {feed.state}
-            </p>
-          </div>
-        </div>
+        {/* Feed header — admins can tap the pencil to edit name +
+            description inline. Title is required (server min(1)),
+            description is optional (max 200 chars per the schema). */}
+        <FeedHeaderSection
+          feed={feed}
+          onSave={(patch) => updateFeed.mutate(patch)}
+          isSaving={updateFeed.isPending}
+        />
 
         {/* State toggle */}
         <div className="flex gap-2 mb-4">
@@ -290,6 +275,168 @@ export default function PrayerFeedManagePage() {
 // action. On the iOS Capacitor shell + any device with the Web Share
 // API, this surfaces the system share sheet (Messages, Mail, social
 // apps, copy to clipboard); on desktop browsers without it we fall
+// Editable feed header — name + description. Read-only by default,
+// flips to two inputs + Save/Cancel when the admin taps Edit. Empties
+// out tagline cleanly (sends null) so an admin can wipe a stale
+// description without setting it to a single space.
+function FeedHeaderSection({
+  feed,
+  onSave,
+  isSaving,
+}: {
+  feed: Feed;
+  onSave: (patch: { title?: string; tagline?: string | null }) => void;
+  isSaving: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(feed.title);
+  const [tagline, setTagline] = useState(feed.tagline ?? "");
+
+  function startEdit() {
+    setTitle(feed.title);
+    setTagline(feed.tagline ?? "");
+    setEditing(true);
+  }
+  function cancel() {
+    setEditing(false);
+  }
+  function save() {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) return;
+    const trimmedTagline = tagline.trim();
+    const patch: { title?: string; tagline?: string | null } = {};
+    if (trimmedTitle !== feed.title) patch.title = trimmedTitle;
+    // tagline is nullable: empty string → null so the description is
+    // actually cleared rather than stored as "".
+    const taglineForServer = trimmedTagline.length === 0 ? null : trimmedTagline;
+    if (taglineForServer !== (feed.tagline ?? null)) patch.tagline = taglineForServer;
+    if (Object.keys(patch).length > 0) onSave(patch);
+    setEditing(false);
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-start gap-3 mb-2">
+        <div
+          className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0"
+          style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
+        >
+          {feed.coverEmoji ?? "🕊️"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h1
+              className="text-xl font-bold leading-tight"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              {feed.title}
+            </h1>
+            <button
+              type="button"
+              onClick={startEdit}
+              className="text-[11px] font-medium px-2 py-0.5 rounded-full transition-opacity hover:opacity-80"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.35)",
+                color: "#A8C5A0",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+              aria-label="Edit feed name and description"
+            >
+              Edit
+            </button>
+          </div>
+          {feed.tagline && (
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{feed.tagline}</p>
+          )}
+          <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
+            {feed.subscriberCount} subscriber{feed.subscriberCount === 1 ? "" : "s"} · {feed.state}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-3 mb-2">
+      <div
+        className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0"
+        style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
+      >
+        {feed.coverEmoji ?? "🕊️"}
+      </div>
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={80}
+          placeholder="Feed name"
+          className="px-3 py-2 text-base font-bold rounded-lg"
+          style={{
+            background: "rgba(200,212,192,0.06)",
+            border: "1px solid rgba(46,107,64,0.35)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            outline: "none",
+          }}
+          autoFocus
+        />
+        <textarea
+          value={tagline}
+          onChange={(e) => setTagline(e.target.value)}
+          maxLength={200}
+          placeholder="Optional description — one line about this feed."
+          rows={2}
+          className="px-3 py-2 text-sm rounded-lg resize-none"
+          style={{
+            background: "rgba(200,212,192,0.06)",
+            border: "1px solid rgba(46,107,64,0.35)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            outline: "none",
+          }}
+        />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={save}
+            disabled={isSaving || !title.trim()}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full disabled:opacity-50"
+            style={{
+              background: "#2D5E3F",
+              border: "1px solid rgba(46,107,64,0.6)",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              cursor: title.trim() ? "pointer" : "not-allowed",
+            }}
+          >
+            {isSaving ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={isSaving}
+            className="text-xs font-medium px-3 py-1.5"
+            style={{
+              color: "rgba(143,175,150,0.85)",
+              fontFamily: "'Space Grotesk', sans-serif",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <span className="text-[10px] ml-auto" style={{ color: "rgba(143,175,150,0.5)" }}>
+            {tagline.length}/200
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // back to a plain clipboard copy with a brief "Copied" confirmation.
 //
 // The base URL is hardcoded to the production host on purpose: a
