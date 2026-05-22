@@ -2714,7 +2714,7 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
             >
               Prayer completed <span aria-hidden>✓</span>
             </div>
-            <Link href={`/prayer-feeds/${feed.slug}`} className="flex-1">
+            <Link href={`/prayer-feeds/${feed.slug}?play=1`} className="flex-1">
               <div
                 role="button"
                 tabIndex={0}
@@ -2734,7 +2734,7 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
             </Link>
           </div>
         ) : (
-          <Link href={`/prayer-feeds/${feed.slug}`}>
+          <Link href={`/prayer-feeds/${feed.slug}?play=1`}>
             <div
               role="button"
               tabIndex={0}

@@ -1158,6 +1158,10 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
       learnMoreUrl: sharedMomentsTable.learnMoreUrl,
       state: sharedMomentsTable.state,
       createdAt: sharedMomentsTable.createdAt,
+      // Needed by the feed slideshow so each Continue can POST an amen
+      // via /api/moment/:momentToken/amen — that's what makes the
+      // dashboard's "Prayer completed ✓" pill flip after a walk.
+      momentToken: sharedMomentsTable.momentToken,
     })
     .from(sharedMomentsTable)
     .where(and(...conditions))

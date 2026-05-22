@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +56,10 @@ interface FeedIntercession {
   // this week" under the slide body. Optional — server is older or
   // table is empty when 0.
   weekPrayCount?: number;
+  // Per-moment token. Each Continue tap POSTs /api/moment/{token}/amen
+  // so the walk actually logs a check-in — that's what makes the
+  // dashboard's "Begin praying / Prayer completed ✓" pill flip.
+  momentToken?: string;
 }
 
 export default function PrayerFeedDetailPage() {
@@ -112,6 +116,33 @@ export default function PrayerFeedDetailPage() {
     if (deck.length === 0) return;
     setSlideshow({ deck, index: Math.max(0, Math.min(index, deck.length - 1)) });
   }
+
+  // ?play=1 — auto-launch "Pray the full list" the first time the
+  // page settles with intercessions loaded. Used by the dashboard's
+  // FeedPrayerCard "Begin praying" CTA so a tap goes straight into
+  // the slideshow rather than dumping the user onto the static
+  // listing page first. Mirrors PrayerOfficeCard, whose CTA navigates
+  // straight into /prayer-chooser without an intermediate detail page.
+  const autoPlayRef = useRef(false);
+  const wantsAutoPlay = (() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("play") === "1";
+  })();
+  useEffect(() => {
+    if (!wantsAutoPlay) return;
+    if (autoPlayRef.current) return;
+    if (intercessions.length === 0) return;
+    autoPlayRef.current = true;
+    openSlideshow(intercessions, 0);
+    // Strip the param so a back-out + re-entry doesn't re-trigger
+    // the slideshow against the user's expectation.
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("play");
+      window.history.replaceState({}, "", url.toString());
+    } catch { /* non-fatal */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsAutoPlay, intercessions.length]);
 
   // ── Render ─────────────────────────────────────────────────────────────
   if (authLoading || !user || feedQ.isLoading) {
@@ -314,9 +345,29 @@ export default function PrayerFeedDetailPage() {
           if (!cur) return null;
           const total = slideshow.deck.length;
           const isLast = slideshow.index >= total - 1;
+          // Log a check-in for the current intercession. Best-effort —
+          // even if the network drops, we still advance so a flaky
+          // connection doesn't trap the user mid-walk. Idempotent
+          // server-side (one check-in per user per moment per day).
+          const logCurrent = () => {
+            if (cur.momentToken) {
+              apiRequest("POST", `/api/moment/${cur.momentToken}/amen`, {}).catch(() => {});
+            }
+          };
           const advance = () => {
-            if (isLast) setSlideshow(null);
-            else setSlideshow({ deck: slideshow.deck, index: slideshow.index + 1 });
+            logCurrent();
+            if (isLast) {
+              // Invalidate the dashboard's subscribed-feeds query so
+              // the home-screen FeedPrayerCard flips "Begin praying"
+              // → "Prayer completed ✓" without a hard refresh. The
+              // feed detail's own caches refresh too for the static
+              // prayed-this-week line on the cards.
+              qc.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+              qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/intercessions`] });
+              setSlideshow(null);
+            } else {
+              setSlideshow({ deck: slideshow.deck, index: slideshow.index + 1 });
+            }
           };
           const back = () => {
             if (slideshow.index > 0) {
