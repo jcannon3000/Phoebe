@@ -2629,30 +2629,18 @@ function PrayerOfficeCard() {
 function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
   const { feed, prayedToday, weekPrayers } = row;
   const otherPrayers = (weekPrayers ?? []).filter((p) => !!p.avatarUrl);
-  const countCopy = otherPrayers.length === 0
-    ? null
-    : otherPrayers.length === 1
-      ? "1 person has prayed this week"
-      : `${otherPrayers.length} people have prayed this week`;
-  const eyebrow = "Prayer feed";
   return (
     <div
       className="relative flex rounded-xl overflow-hidden"
       style={{
-        background: "rgba(46,107,64,0.08)",
+        // Slightly lighter than PrayerOfficeCard's 0.08 fill so the two
+        // cards read as a paired set without looking like the same row.
+        background: "rgba(46,107,64,0.14)",
         border: "1px solid rgba(46,107,64,0.4)",
       }}
     >
       <div className="flex-1 px-4 pt-[20px] pb-[20px]">
-        <div className="flex items-start justify-between gap-2">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-widest"
-            style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
-          >
-            {eyebrow}
-          </p>
-        </div>
-        <div className="mt-[4px] flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p
               className="text-2xl font-semibold"
@@ -2665,19 +2653,6 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
             >
               {feed.coverEmoji ?? "🌿"} {feed.title}
             </p>
-            {countCopy && (
-              <p
-                className="text-[11px]"
-                style={{
-                  color: "rgba(143,175,150,0.7)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  margin: 0,
-                  marginTop: 10,
-                }}
-              >
-                {countCopy}
-              </p>
-            )}
           </div>
           {otherPrayers.length > 0 && (
             <div className="flex items-center -space-x-2 shrink-0">
