@@ -34,9 +34,9 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     eyebrow: "THE DAILY OFFICE",
-    headline: "A prayer older than its troubles.",
+    headline: "The Church's oldest daily prayer.",
     body:
-      "For more than sixteen centuries, Christians have stopped twice a day to pray — morning and evening — in monasteries, in parishes, in kitchens. The Office carried the faithful through plagues, exiles, and the long, ordinary middle. It still does.",
+      "For more than sixteen centuries, Christians have stopped twice a day to pray — morning and evening — in monasteries, in parishes, in kitchens. The Office has carried the faithful through plagues, exiles, and the long, ordinary middle. It still does.",
   },
   {
     eyebrow: "STABILITAS",
