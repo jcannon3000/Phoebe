@@ -304,6 +304,14 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/parish/admin" ||
         location.startsWith("/parish/celebration") ||
         location.startsWith("/bcp") ||
+        // The offices-only home now shows the same PrayerOfficeCard +
+        // FeedPrayerCard surfaces the full app does, so the chooser
+        // sheet and the feed-walk slideshow have to be reachable.
+        // Same for the moment detail page each feed-intercession
+        // card on the Prayer List section taps through to.
+        location === "/prayer-chooser" ||
+        location.startsWith("/prayer-mode") ||
+        location.startsWith("/moments/") ||
         // Public prayer feeds — discovery + detail. Offices-only and
         // parish-only members may browse and subscribe to public feeds
         // (the API enforces public/private; feed management stays

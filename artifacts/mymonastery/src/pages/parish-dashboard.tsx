@@ -19,8 +19,15 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
+import {
+  PrayerOfficeCard,
+  FeedPrayerCard,
+  type SubscribedFeed as SubscribedFeedDashboard,
+} from "./dashboard";
 
 const BG = "#091A10";
 const WARM_TEXT = "#F0EDE6";
@@ -85,18 +92,11 @@ export default function ParishDashboard() {
   // who came in via /feed/:slug (the public-feed signup auto-subscribes
   // them) or who later browsed and subscribed manually. For parish-only
   // users we keep the surface focused on the parish itself.
-  type SubscribedFeed = {
-    feed: {
-      id: number;
-      slug: string;
-      title: string;
-      tagline: string | null;
-      coverEmoji: string | null;
-      subscriberCount: number;
-    };
-    todayEntry: { id: number; title: string; body: string | null } | null;
-    prayedToday: boolean;
-  };
+  //
+  // Type imported from dashboard.tsx so FeedPrayerCard can consume the
+  // same row shape — gives offices-only users the identical
+  // "Begin praying" / "X New Prayers" UI as the full app.
+  type SubscribedFeed = SubscribedFeedDashboard;
   const subscribedFeedsQuery = useQuery<{ subscriptions: SubscribedFeed[] }>({
     queryKey: ["/api/prayer-feeds/subscribed"],
     queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
@@ -104,12 +104,241 @@ export default function ParishDashboard() {
     staleTime: 60_000,
   });
 
+  // For offices-only users we render the feed's intercessions as a
+  // "Prayer List"-style card stack at the bottom of the page — the
+  // direct analogue of the personal prayer-request list the full
+  // dashboard surfaces. Each card taps through to /moments/:id.
+  // Fetched from /api/prayer-feeds/:slug/intercessions for each
+  // subscribed feed; queries are deduped by feed slug.
+  type FeedIntercession = {
+    id: number;
+    intercessionTopic: string | null;
+    intercessionFullText: string | null;
+    name: string;
+    feedSlug?: string;
+    feedTitle?: string;
+    feedEmoji?: string | null;
+  };
+  const subscribedFeedsData = subscribedFeedsQuery.data?.subscriptions ?? [];
+  const firstFeedSlug = subscribedFeedsData[0]?.feed.slug ?? null;
+  const feedIntercessionsQuery = useQuery<{ intercessions: FeedIntercession[] }>({
+    queryKey: [`/api/prayer-feeds/${firstFeedSlug}/intercessions`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${firstFeedSlug}/intercessions`),
+    enabled: !!user && user?.accessTier === "offices-only" && !!firstFeedSlug,
+    staleTime: 60_000,
+  });
+  const feedIntercessions = (feedIntercessionsQuery.data?.intercessions ?? []).slice(0, 5);
+
   if (authLoading || !user) return null;
 
   const data = todayQuery.data;
   const subscribedFeeds = subscribedFeedsQuery.data?.subscriptions ?? [];
-  const hasFeeds = user.accessTier === "offices-only" && subscribedFeeds.length > 0;
+  // hasFeeds removed — offices-only now branches early to its own
+  // render, and parish-only doesn't surface a feed list here.
   const isMorning = new Date().getHours() < 12;
+
+  // ─── Offices-only home ─────────────────────────────────────────────
+  // A trimmed version of the full /dashboard layout. Same header
+  // rhythm (date + feast subtitle), same PrayerOfficeCard, same
+  // FeedPrayerCard(s), then the feed's intercessions rendered as a
+  // "Prayer List"-style card stack at the bottom in place of the
+  // full app's personal prayer-request section.
+  if (user.accessTier === "offices-only") {
+    return (
+      <div style={{ background: BG, minHeight: "100vh", color: WARM_TEXT }}>
+        <div
+          style={{
+            maxWidth: 600,
+            margin: "0 auto",
+            padding:
+              "calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 32px)",
+          }}
+        >
+          {/* Brand + Menu row — same shape the full dashboard uses. */}
+          <div className="flex items-center justify-between mb-6">
+            <p
+              style={{
+                fontFamily: SPACE_GROTESK,
+                fontSize: 30,
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                color: WARM_TEXT,
+                margin: 0,
+              }}
+            >
+              Phoebe
+            </p>
+            <Link href="/parish/settings">
+              <span
+                style={{
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 13,
+                  color: SAGE,
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  background: "rgba(200,212,192,0.08)",
+                  border: "1px solid rgba(200,212,192,0.18)",
+                  cursor: "pointer",
+                }}
+              >
+                Menu
+              </span>
+            </Link>
+          </div>
+
+          {/* Date + feast subtitle — same component the full
+              dashboard uses. */}
+          <h1
+            style={{
+              fontFamily: SPACE_GROTESK,
+              fontSize: 28,
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              color: WARM_TEXT,
+              margin: 0,
+              lineHeight: 1.1,
+            }}
+          >
+            {format(new Date(), "EEEE, d MMMM")}
+          </h1>
+          <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
+
+          {/* The shared PrayerOfficeCard. Drives the entire daily
+              office rhythm — morning vs evening, prayed/not, who else
+              prayed this week. */}
+          <div className="mt-5">
+            <PrayerOfficeCard />
+          </div>
+
+          {/* FeedPrayerCard stack — same component the full dashboard
+              renders. "Begin praying / X New Prayers / Completed |
+              View list" comes for free. */}
+          {subscribedFeedsData.length > 0 && (
+            <div className="mt-3 mb-2 flex flex-col gap-3">
+              {subscribedFeedsData.map((row) => (
+                <FeedPrayerCard key={row.feed.id} feed={row} />
+              ))}
+            </div>
+          )}
+
+          {/* Subscribe prompt when an offices-only user hasn't picked
+              a feed yet — the rest of the page would otherwise be
+              empty for them. */}
+          {subscribedFeedsData.length === 0 && (
+            <Link href="/prayer-feeds">
+              <div
+                style={{
+                  marginTop: 16,
+                  background: "rgba(46,107,64,0.10)",
+                  border: "1px solid rgba(46,107,64,0.25)",
+                  borderRadius: 16,
+                  padding: "16px 18px",
+                  cursor: "pointer",
+                }}
+              >
+                <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>
+                  🌍 Explore prayer feeds
+                </p>
+                <p style={{ color: SAGE, fontSize: 12, margin: "4px 0 0" }}>
+                  Follow a public feed — its intercessions join your daily office.
+                </p>
+              </div>
+            </Link>
+          )}
+
+          {/* Prayer List — the feed's intercessions as cards. Stands
+              in for the full app's personal prayer-request list at
+              the bottom of /dashboard. Each card taps to the
+              moment detail page. */}
+          {firstFeedSlug && feedIntercessions.length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-end justify-between mb-2">
+                <h2
+                  style={{
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 22,
+                    fontWeight: 700,
+                    letterSpacing: "-0.01em",
+                    color: WARM_TEXT,
+                    margin: 0,
+                  }}
+                >
+                  Prayer List
+                </h2>
+                <Link href={`/prayer-feeds/${firstFeedSlug}`}>
+                  <span
+                    style={{
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 11,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: FAINT_GREEN,
+                      cursor: "pointer",
+                    }}
+                  >
+                    View all
+                  </span>
+                </Link>
+              </div>
+              <div className="flex flex-col gap-2">
+                {feedIntercessions.map((it) => {
+                  const feedRow = subscribedFeedsData.find((f) => f.feed.slug === firstFeedSlug);
+                  const feedTitle = feedRow?.feed.title ?? "Prayer feed";
+                  const feedEmoji = feedRow?.feed.coverEmoji ?? "🌿";
+                  return (
+                    <Link key={it.id} href={`/moments/${it.id}`}>
+                      <div
+                        style={{
+                          background: "rgba(46,107,64,0.08)",
+                          border: "1px solid rgba(46,107,64,0.25)",
+                          borderRadius: 12,
+                          padding: "12px 14px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontFamily: SPACE_GROTESK,
+                            fontSize: 10,
+                            letterSpacing: "0.18em",
+                            textTransform: "uppercase",
+                            color: "rgba(143,175,150,0.55)",
+                            margin: 0,
+                          }}
+                        >
+                          From {feedEmoji} {feedTitle}
+                        </p>
+                        <p
+                          style={{
+                            fontFamily: SPACE_GROTESK,
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: WARM_TEXT,
+                            margin: "4px 0 0",
+                          }}
+                        >
+                          {it.intercessionTopic || it.name || "Intercession"}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Footer — quiet links, same as before. */}
+          <div className="flex flex-col items-center gap-2 mt-10">
+            <Link href="/bcp">
+              <span style={{ color: SAGE, fontSize: 13, fontFamily: SPACE_GROTESK, cursor: "pointer" }}>
+                Browse the Book of Common Prayer →
+              </span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: BG, minHeight: "100vh", color: WARM_TEXT }}>
@@ -202,36 +431,6 @@ export default function ParishDashboard() {
                 )}
               </div>
             </div>
-          </div>
-        ) : user.accessTier === "offices-only" ? (
-          <div className="mb-6">
-            <p
-              style={{
-                fontFamily: SPACE_GROTESK,
-                fontSize: 11,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                color: FAINT_GREEN,
-                marginBottom: 6,
-              }}
-            >
-              Daily prayer
-            </p>
-            <h1
-              style={{
-                fontFamily: SPACE_GROTESK,
-                fontSize: 22,
-                fontWeight: 600,
-                letterSpacing: "-0.01em",
-                color: WARM_TEXT,
-                margin: 0,
-              }}
-            >
-              Pause and pray.
-            </h1>
-            <p style={{ color: SAGE, fontSize: 13, marginTop: 4 }}>
-              Morning and evening, from the Book of Common Prayer.
-            </p>
           </div>
         ) : null}
 
@@ -343,88 +542,9 @@ export default function ParishDashboard() {
             intercession + taps through to the full feed detail. When
             the user has no subscriptions this whole block is hidden
             and the offices stay primary. */}
-        {hasFeeds && (
-          <>
-            <p
-              style={{
-                fontFamily: SPACE_GROTESK,
-                fontSize: 11,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                color: FAINT_GREEN,
-                marginBottom: 8,
-              }}
-            >
-              {subscribedFeeds.length === 1 ? "Your feed" : "Your feeds"}
-            </p>
-            <div className="space-y-2 mb-6">
-              {subscribedFeeds.map((sf) => (
-                <Link key={sf.feed.id} href={`/prayer-feeds/${sf.feed.slug}`}>
-                  <div
-                    style={{
-                      background: "#0F2818",
-                      border: `1px solid ${BORDER}`,
-                      borderRadius: 16,
-                      padding: "14px 16px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 22,
-                        width: 40,
-                        height: 40,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: 12,
-                        background: "rgba(46,107,64,0.18)",
-                        border: "1px solid rgba(46,107,64,0.3)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {sf.feed.coverEmoji ?? "🕊️"}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p
-                        style={{
-                          fontFamily: SPACE_GROTESK,
-                          fontSize: 15,
-                          fontWeight: 600,
-                          color: WARM_TEXT,
-                          margin: 0,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {sf.feed.title}
-                      </p>
-                      <p
-                        style={{
-                          fontFamily: SPACE_GROTESK,
-                          fontSize: 12,
-                          color: sf.todayEntry ? SAGE : "rgba(143,175,150,0.6)",
-                          fontStyle: sf.todayEntry ? "normal" : "italic",
-                          margin: "2px 0 0",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {sf.todayEntry ? sf.todayEntry.title : "Nothing new yet."}
-                      </p>
-                    </div>
-                    <span style={{ color: SAGE, fontSize: 16 }}>→</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </>
-        )}
+        {/* (Subscribed-feeds card row removed — offices-only is now
+            served by the early-return above; parish-only doesn't show
+            a feed list at this level.) */}
 
         {/* Office entry points */}
         <p
@@ -437,7 +557,7 @@ export default function ParishDashboard() {
             marginBottom: 8,
           }}
         >
-          {user.accessTier === "offices-only" ? "Pray the office" : "Pray with your parish"}
+          Pray with your parish
         </p>
         <div className="grid grid-cols-2 gap-2 mb-6">
           <OfficeButton
@@ -457,31 +577,9 @@ export default function ParishDashboard() {
           />
         </div>
 
-        {/* Public prayer feeds — discovery card for an offices-only
-            member who hasn't subscribed to anything yet. Once they
-            have at least one subscription, the "Your feeds" section
-            above is the primary surface and this card is hidden to
-            avoid two paths to the same place. */}
-        {user.accessTier === "offices-only" && !hasFeeds && (
-          <Link href="/prayer-feeds">
-            <div
-              style={{
-                background: "rgba(46,107,64,0.10)",
-                border: "1px solid rgba(46,107,64,0.25)",
-                borderRadius: 16,
-                padding: "16px 18px",
-                cursor: "pointer",
-              }}
-            >
-              <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>
-                🌍 Explore prayer feeds
-              </p>
-              <p style={{ color: SAGE, fontSize: 12, margin: "4px 0 0" }}>
-                Follow a public feed — its intercessions join your daily office.
-              </p>
-            </div>
-          </Link>
-        )}
+        {/* (Offices-only "explore feeds" card removed — that tier is
+            served by the early-return at the top of this component
+            now and never reaches the parish render below.) */}
 
         {/* Private prayer concern — visible only to the parish admin
             (the priest / pastor). The card is intentionally quieter

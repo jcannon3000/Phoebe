@@ -2354,7 +2354,7 @@ function NewPrayerRequestsCard({
 // with a small "or pray full Morning/Evening Prayer →" link as
 // alternate. Time threshold is noon — same threshold the Daily
 // Office picker uses for "today's office."
-function PrayerOfficeCard() {
+export function PrayerOfficeCard() {
   const isMorning = new Date().getHours() < 12;
   const eyebrow = "Book of Common Prayer";
   // Office-streak pill above the CTA. Same data source as before,
@@ -2630,7 +2630,8 @@ function PrayerOfficeCard() {
 // `prayedToday` is server-truth, computed by /api/prayer-feeds/subscribed
 // from moment_posts check-ins against any of the feed's intercessions.
 // Tap routes to /prayer-feeds/{slug} where "Pray the full list" lives.
-function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
+export type { SubscribedFeed };
+export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
   const { feed, prayedToday, unprayedCount } = row;
   const newCount = unprayedCount ?? 0;
   // "New prayers" trumps "Prayer completed" — even if the viewer has
