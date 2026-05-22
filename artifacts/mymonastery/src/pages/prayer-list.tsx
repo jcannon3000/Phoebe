@@ -44,6 +44,13 @@ type Moment = {
   // practices are group-based rather than people-based now.
   group?: { id: number; name: string; slug: string; emoji: string | null } | null;
   additionalGroups?: Array<{ id: number; name: string; slug: string; emoji: string | null }>;
+  // Prayer-feed attachment. When non-null this moment is owned by a
+  // prayer feed (e.g. "For Oak Flat" under Phoebe Climate). Those
+  // moments are surfaced on the prayer-list page via the FeedCard
+  // collapse row ("Phoebe Climate — 2 intercessions today"), so we
+  // exclude them from the per-intercession card list below to avoid
+  // double-rendering the same prayer in the same section.
+  prayerFeedId?: number | null;
 };
 
 type PrayerRequest = {
@@ -1317,7 +1324,14 @@ export default function PrayerListPage() {
   });
 
   const intercessions = (momentsData?.moments ?? []).filter(
-    (m) => m.templateType === "intercession",
+    (m) => m.templateType === "intercession"
+      // Exclude prayer-feed-attached intercessions ("For Oak Flat"
+      // under Phoebe Climate, etc.) — the section already renders
+      // a single collapsed FeedCard for each subscribed feed
+      // ("Phoebe Climate — 2 intercessions today"), so surfacing
+      // each feed intercession as its own card here too means the
+      // same prayer shows up twice in the same section.
+      && (m.prayerFeedId == null),
   );
   const intercessionsSorted = [
     ...intercessions.filter((m) => m.windowOpen),

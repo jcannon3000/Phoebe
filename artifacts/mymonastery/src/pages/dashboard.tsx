@@ -2501,12 +2501,24 @@ export function PrayerOfficeCard() {
               Profile pictures only — entries without an avatar are
               filtered out. */}
           {(() => {
+            // The avatar rail intentionally only renders people with
+            // a profile photo (cleaner visual — initials chips next
+            // to a row of real faces felt mismatched). The COUNT
+            // text, though, has to reflect everyone who prayed:
+            // otherwise a user without an avatar silently drops from
+            // the tally, and the displayed number jumps around as
+            // pray-ers come and go from the avatar-filtered subset
+            // (this is what made the home card read 7 yesterday and
+            // 3 today even though more people had prayed in the
+            // interim). Use the full list for the count, the
+            // filtered list for the rail.
+            const totalCount = communityPrayed.length;
             const withAvatars = communityPrayed.filter((p) => !!p.avatarUrl);
-            const countCopy = withAvatars.length === 0
+            const countCopy = totalCount === 0
               ? null
-              : withAvatars.length === 1
+              : totalCount === 1
                 ? "1 person prayed with you this week"
-                : `${withAvatars.length} people prayed with you this week`;
+                : `${totalCount} people prayed with you this week`;
             return (
               // Title sits tight to the eyebrow above, with breathing
               // room below before the "N people prayed with you this
@@ -2679,96 +2691,58 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
           {feed.title} {feed.coverEmoji ?? "🌿"}
         </p>
 
-        {showsNewCallout ? (
-          // New addition since the user last prayed this feed. The
-          // single pulsing pill replaces both the "Begin praying" and
-          // the "Completed | View list" splits — once the user walks
-          // through the count zeros and the card reverts to whichever
-          // resting state matches prayedToday.
-          <Link href={`/prayer-mode?queue=feed&slug=${feed.slug}`} className="shrink-0">
-            <div
-              role="button"
-              tabIndex={0}
-              className="rounded-full text-center cursor-pointer"
-              style={{
-                background: "rgba(46,107,64,0.32)",
-                color: "#F0EDE6",
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 13,
-                fontWeight: 500,
-                padding: "6px 14px",
-                border: "1px solid rgba(143,210,160,0.55)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {newCount === 1 ? "1 New Prayer" : `${newCount} New Prayers`}{" "}
-              <span aria-hidden>→</span>
-            </div>
-          </Link>
-        ) : prayedToday ? (
-          // Two compact pills inline with the title: a settled
-          // "Prayer completed ✓" status + a tappable "Pray again →"
-          // that re-opens the feed's slideshow (same /prayer-mode
-          // queue the new-callout pill uses). Matches PrayerOfficeCard's
-          // post-prayer convention so the two cards feel paired.
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div
-              aria-label={`${feed.title} prayed today`}
-              className="rounded-full text-center"
-              style={{
-                background: "rgba(46,107,64,0.10)",
-                color: "rgba(168,197,160,0.9)",
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 12,
-                fontWeight: 500,
-                padding: "5px 10px",
-                border: "1px solid rgba(46,107,64,0.22)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Prayer completed <span aria-hidden>✓</span>
-            </div>
-            <Link href={`/prayer-mode?queue=feed&slug=${feed.slug}`}>
+        {/* Single CTA per state — keeps the card readable on narrow
+            mobile widths where the previous "Completed ✓ | Pray again"
+            split competed with the feed title for horizontal space.
+            States in priority order:
+              • new-callout: pulsing "N New Prayers →" pill linking
+                straight into the slideshow. Wins over prayedToday
+                because a fresh intercession added after today's
+                walk still deserves the call-out.
+              • prayedToday: "View list →" — the user has prayed it,
+                so the next sensible affordance is to read the list,
+                not to re-pray. Links to the feed detail page where
+                "Pray the full list" lives if they want to re-walk.
+              • default: "Begin praying →" linking into the slideshow.
+        */}
+        {(() => {
+          const slidePath = `/prayer-mode?queue=feed&slug=${feed.slug}`;
+          const listPath = `/prayer-feeds/${feed.slug}`;
+          const cta = showsNewCallout
+            ? {
+                label: newCount === 1 ? "1 New Prayer" : `${newCount} New Prayers`,
+                href: slidePath,
+                emphasized: true,
+              }
+            : prayedToday
+            ? { label: "View list", href: listPath, emphasized: false }
+            : { label: "Begin praying", href: slidePath, emphasized: false };
+          return (
+            <Link href={cta.href} className="shrink-0">
               <div
                 role="button"
                 tabIndex={0}
                 className="rounded-full text-center cursor-pointer"
                 style={{
-                  background: "rgba(46,107,64,0.28)",
+                  background: cta.emphasized
+                    ? "rgba(46,107,64,0.32)"
+                    : "rgba(46,107,64,0.28)",
                   color: "#F0EDE6",
                   fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 500,
-                  padding: "5px 10px",
-                  border: "1px solid rgba(46,107,64,0.45)",
+                  padding: "6px 14px",
+                  border: cta.emphasized
+                    ? "1px solid rgba(143,210,160,0.55)"
+                    : "1px solid rgba(46,107,64,0.45)",
                   whiteSpace: "nowrap",
                 }}
               >
-                Pray again <span aria-hidden>→</span>
+                {cta.label} <span aria-hidden>→</span>
               </div>
             </Link>
-          </div>
-        ) : (
-          <Link href={`/prayer-mode?queue=feed&slug=${feed.slug}`} className="shrink-0">
-            <div
-              role="button"
-              tabIndex={0}
-              className="rounded-full text-center cursor-pointer"
-              style={{
-                background: "rgba(46,107,64,0.28)",
-                color: "#F0EDE6",
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 13,
-                fontWeight: 500,
-                padding: "6px 14px",
-                border: "1px solid rgba(46,107,64,0.45)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Begin praying <span aria-hidden>→</span>
-            </div>
-          </Link>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
