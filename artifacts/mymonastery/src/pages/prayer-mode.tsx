@@ -1585,6 +1585,7 @@ function ClosingSlide({
   showSetReminder = false,
   reminderSide = "morning",
   doneLabel = "Done",
+  officesOnly = false,
 }: {
   celebration: { streak: number } | null;
   /** Still accepted for symmetry with the celebration animation, but no
@@ -1603,6 +1604,11 @@ function ClosingSlide({
   /** Label for the primary button. "Done" exits; "Continue" advances
    *  to the follow-on habit slide on the closingOnly path. */
   doneLabel?: string;
+  /** Offices-only viewers don't have friends or a garden — the
+   *  "Make praying for your friends a daily habit" copy below
+   *  doesn't fit them. We swap to feed-rhythm copy when this is
+   *  true (and there are no co-prayers to acknowledge). */
+  officesOnly?: boolean;
 }) {
   void _streak;
   const visibleAvatars = coPrayers.slice(0, 5);
@@ -1723,13 +1729,17 @@ function ClosingSlide({
           className="text-base leading-relaxed"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          Make praying for your friends a daily habit.
+          {officesOnly
+            ? "Make daily prayer a rhythm."
+            : "Make praying for your friends a daily habit."}
         </p>
         <p
           className="text-[13px] leading-relaxed mt-2"
           style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          Come back tomorrow — your friends will be carrying things, and so will you.
+          {officesOnly
+            ? "Come back tomorrow — the world keeps turning, and your prayers shape the day."
+            : "Come back tomorrow — your friends will be carrying things, and so will you."}
         </p>
       </motion.div>
 
@@ -1785,6 +1795,22 @@ export default function PrayerModePage() {
   // four broad queries off for offices-only viewers and treat their
   // "data" as empty in dataReady + closing-detection below.
   const officesOnly = user?.accessTier === "offices-only";
+
+  // Defense in depth: an offices-only viewer who lands on /prayer-mode
+  // without a queue param (old push deep-link, manually typed URL,
+  // missed-update copy in some non-chooser surface) would hang on the
+  // loading screen because the default queue requires four daily
+  // queries that 403 for them. Send them back to the chooser, which
+  // routes them to /prayer-mode?queue=feed&slug=… instead.
+  useEffect(() => {
+    if (!officesOnly) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const queue = params.get("queue");
+    if (!queue) {
+      setLocation("/prayer-chooser");
+    }
+  }, [officesOnly, setLocation]);
 
   // Track time-spent for the community metrics' "Time praying" row.
   // Mounts a clock that pauses on background and commits a single
@@ -2789,6 +2815,21 @@ export default function PrayerModePage() {
     const captured = slides;
     setFrozenSlides(captured);
     let resumeAt = 0;
+    // queue=feed with ?focus={intercessionId}: opens the slideshow
+    // directly on the tapped intercession (e.g. a Prayer List card
+    // on the offices-only home routes here so an offices-only viewer
+    // can pray a specific climate intercession without us routing
+    // them to /moments/:id, which 403s for their tier). We match the
+    // focusId against feedIntercessionsQuery.data.intercessions and
+    // use its array index — the slide-build step preserves order, so
+    // index N in intercessions == slide N in the deck for queue=feed.
+    if (queueMode === "feed" && focusId !== null) {
+      const list = feedIntercessionsQuery.data?.intercessions ?? [];
+      const matchIdx = list.findIndex(e => e.id === focusId);
+      if (matchIdx >= 0 && matchIdx < captured.length) {
+        resumeAt = matchIdx;
+      }
+    }
     // Two flows force a fresh-from-zero start, both intentionally:
     //   • seamlessFlow — coming from the Daily Office / Devotion
     //     intercession portal; the user is mid-liturgy and expects
@@ -3324,6 +3365,35 @@ export default function PrayerModePage() {
     }, 300);
   };
 
+  // When offices-only users finish a prayer-feed walk, also stamp
+  // the daily office-completed localStorage flag for the current
+  // half-day (morning vs evening, threshold = noon local). The
+  // HabitSlide reads those flags from localStorage in addition to
+  // the server-side prayer_sessions rows, so writing them here makes
+  // the feed walk count toward the user's daily rhythm grid. Without
+  // this the rhythm shows blank pillars for offices-only viewers
+  // since they never run a Daily Office, even though they DID pray.
+  useEffect(() => {
+    if (phase !== "closing") return;
+    if (!officesOnly) return;
+    try {
+      const now = new Date();
+      const dateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const side = now.getHours() < 12 ? "morning" : "evening";
+      // Reuse the office-completed flag the BCP screen writes — same
+      // key shape, so HabitSlide picks it up without a code change.
+      // We pick the "devotion" variant rather than the full office
+      // variant since a feed walk is closer in length / shape to a
+      // Daily Devotion than a Morning/Evening Prayer.
+      const key = side === "morning"
+        ? `phoebe:office-completed:morning-devotion:${dateKey}`
+        : `phoebe:office-completed:early-evening-devotion:${dateKey}`;
+      localStorage.setItem(key, "1");
+    } catch {
+      /* private mode / quota — non-fatal */
+    }
+  }, [phase, officesOnly]);
+
   if (authLoading || !user) return null;
 
   // Hold a calm loading screen until the slide list is captured into
@@ -3455,20 +3525,34 @@ export default function PrayerModePage() {
           </div>
         )}
 
+        {/* Closing summary. For offices-only viewers we keep this
+            slide visible but its copy adapts in ClosingSlide itself
+            (no "friends" language when there are no co-prayers).
+            Done advances to the HabitSlide for both closingOnly (the
+            office-handoff path) AND offices-only feed walks — that's
+            where the user's morning/evening rhythm grid lives, and
+            we want feed prayer to feed into it. */}
         {phase === "closing" && (
           <ClosingSlide
             celebration={celebration}
             streak={celebration?.streak ?? streakData?.streak ?? 0}
             coPrayers={coPrayersData?.people ?? []}
-            // On the closingOnly path (user came from finishing an
-            // office), the closing slide's primary button advances to
-            // the habit-rhythm slide instead of exiting. On the
-            // standalone slideshow path it still exits.
-            onDone={closingOnly ? () => setPhase("habit") : handleDone}
+            officesOnly={officesOnly}
+            // ClosingSlide's primary button advances to the habit
+            // rhythm slide on TWO paths:
+            //   • closingOnly — office handoff (existing behaviour)
+            //   • offices-only — feed walkers also land on their
+            //     habit page so they can see today's rhythm
+            // Otherwise it exits to the home screen.
+            onDone={
+              closingOnly || officesOnly
+                ? () => setPhase("habit")
+                : handleDone
+            }
             visible={slideVisible}
             showSetReminder={showSetReminder}
             reminderSide={reminderSide}
-            doneLabel={closingOnly ? "Continue" : "Done"}
+            doneLabel={closingOnly || officesOnly ? "Continue" : "Done"}
           />
         )}
         {phase === "habit" && (

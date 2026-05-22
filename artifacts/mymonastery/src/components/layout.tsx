@@ -23,10 +23,19 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const logout = useLogout();
   const [, setLocation] = useLocation();
   const { isAdmin: isBetaAdmin, isBeta, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
+  // and /api/prayer-feeds/mine (requireBeta). Firing them on every
+  // drawer open / Layout mount used to trip NetworkBanner's "flaky"
+  // heuristic on the very first paint of the offices-only home —
+  // user saw "Having trouble reaching the server" even though the
+  // server was working as designed. The early `officesOnly` flag
+  // below is repeated further down because it sits inside this
+  // function and the queries are declared above their consumer.
+  const earlyOfficesOnly = user?.accessTier === "offices-only";
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
-    enabled: !!user,
+    enabled: !!user && !earlyOfficesOnly,
   });
 
   // Pending join-request counts per community the caller admins.
@@ -36,18 +45,20 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: pendingCounts } = useQuery<{ total: number; byGroup: Record<number, number> }>({
     queryKey: ["/api/me/pending-join-request-counts"],
     queryFn: () => apiRequest("GET", "/api/me/pending-join-request-counts"),
-    enabled: !!user,
+    enabled: !!user && !earlyOfficesOnly,
     staleTime: 30_000,
   });
 
   // Prayer feeds the user created (admins). Drives whether the
   // "Manage Prayer Feeds" entry appears in the side menu — non-
   // creators don't see it. Uses /api/prayer-feeds/mine which
-  // already gates on creatorUserId server-side.
+  // already gates on creatorUserId server-side. Offices-only
+  // accounts can never be feed creators (beta-only feature), so
+  // we skip the fetch for them.
   const { data: myFeedsData } = useQuery<{ feeds: Array<{ slug: string }> }>({
     queryKey: ["/api/prayer-feeds/mine"],
     queryFn: () => apiRequest("GET", "/api/prayer-feeds/mine"),
-    enabled: !!user,
+    enabled: !!user && !earlyOfficesOnly,
     staleTime: 60_000,
   });
   const myFeeds = myFeedsData?.feeds ?? [];

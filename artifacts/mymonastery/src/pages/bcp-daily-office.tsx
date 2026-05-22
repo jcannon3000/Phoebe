@@ -1982,7 +1982,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               opening acclamation. Only on the first slide; once the
               reader is moving through the devotion they shouldn't
               keep seeing alternate routes. */}
-          {isDevotion && slideIdx === 0 && !onComplete && (
+          {isDevotion && slideIdx === 0 && !onComplete && !officesOnlyViewer && (
+            // Offices-only users get this row hidden entirely:
+            // /prayer-mode (no queue) would loading-screen for them
+            // because the default queue depends on /api/moments +
+            // /api/prayer-requests, both 403 for that tier. They have
+            // no parallel "skip to your prayer feed" affordance here
+            // yet (no subscribed-feeds query in scope); the chooser
+            // page surfaces a Prayer Feed option for the same flow
+            // one step up, so dropping the link here is the safest
+            // outcome until/unless a feed-aware variant is added.
             <div
               style={{
                 marginTop: 28,

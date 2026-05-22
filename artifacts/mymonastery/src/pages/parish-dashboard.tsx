@@ -29,6 +29,7 @@ import {
   FeedPrayerCard,
   type SubscribedFeed as SubscribedFeedDashboard,
 } from "./dashboard";
+import { PHOEBE_HIDE_OFFICES_LS_KEY } from "./settings";
 
 const BG = "#091A10";
 const WARM_TEXT = "#F0EDE6";
@@ -128,7 +129,11 @@ export default function ParishDashboard() {
     enabled: !!user && user?.accessTier === "offices-only" && !!firstFeedSlug,
     staleTime: 60_000,
   });
-  const feedIntercessions = (feedIntercessionsQuery.data?.intercessions ?? []).slice(0, 5);
+  // Don't cap here — the rendered Prayer List section uses the same
+  // ~3.5-card clamp + bottom-fade pattern the full dashboard's
+  // PrayerListCarousel uses, so the user can scroll for more rather
+  // than the section silently truncating at 5.
+  const feedIntercessions = feedIntercessionsQuery.data?.intercessions ?? [];
 
   if (authLoading || !user) return null;
 
@@ -137,6 +142,20 @@ export default function ParishDashboard() {
   // hasFeeds removed — offices-only now branches early to its own
   // render, and parish-only doesn't surface a feed list here.
   const isMorning = new Date().getHours() < 12;
+
+  // Settings → "Hide the Daily Office on home" toggle. Read on every
+  // render so a Settings → back trip picks up the change without
+  // needing a storage event. The flag is purely visual; it doesn't
+  // affect what /api/prayer-streak/community-prayed-week returns,
+  // since the office rhythm is still considered the canonical anchor
+  // server-side.
+  const hideOffices = (() => {
+    try {
+      return localStorage.getItem(PHOEBE_HIDE_OFFICES_LS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  })();
 
   // ─── Offices-only home ─────────────────────────────────────────────
   // A trimmed version of the full /dashboard layout. Same header
@@ -172,10 +191,14 @@ export default function ParishDashboard() {
 
           {/* The shared PrayerOfficeCard. Drives the entire daily
               office rhythm — morning vs evening, prayed/not, who else
-              prayed this week. */}
-          <div className="mt-5">
-            <PrayerOfficeCard />
-          </div>
+              prayed this week. Hidden when the user has opted out
+              of seeing the offices on home via Settings → Phoebe
+              home → Hide the Daily Office on home. */}
+          {!hideOffices && (
+            <div className="mt-5">
+              <PrayerOfficeCard />
+            </div>
+          )}
 
           {/* FeedPrayerCard stack — same component the full dashboard
               renders. "Begin praying / X New Prayers / Completed |
@@ -215,84 +238,135 @@ export default function ParishDashboard() {
 
           {/* Prayer List — the feed's intercessions as cards. Stands
               in for the full app's personal prayer-request list at
-              the bottom of /dashboard. Each card taps to the
-              moment detail page. */}
-          {firstFeedSlug && feedIntercessions.length > 0 && (
-            <div className="mt-8">
-              <div className="flex items-end justify-between mb-2">
-                <h2
-                  style={{
-                    fontFamily: SPACE_GROTESK,
-                    fontSize: 22,
-                    fontWeight: 700,
-                    letterSpacing: "-0.01em",
-                    color: WARM_TEXT,
-                    margin: 0,
-                  }}
-                >
-                  Prayer List
-                </h2>
-                <Link href={`/prayer-feeds/${firstFeedSlug}`}>
-                  <span
+              the bottom of /dashboard. Each card taps through to the
+              moment detail page. Layout mirrors the full dashboard's
+              PrayerListCarousel: title + divider + "View all" pill,
+              then a vertical card stack clamped to ~3.5 rows with a
+              bottom fade once the list overflows, so the same
+              "scroll for more" affordance reads on both surfaces. */}
+          {firstFeedSlug && feedIntercessions.length > 0 && (() => {
+            const feedRow = subscribedFeedsData.find((f) => f.feed.slug === firstFeedSlug);
+            const feedTitle = feedRow?.feed.title ?? "Prayer feed";
+            const feedEmoji = feedRow?.feed.coverEmoji ?? "🌿";
+            // Same constants the dashboard's PrayerListCarousel uses
+            // — three full cards plus a half-row peek.
+            const CLAMP = 280;
+            const overflowing = feedIntercessions.length > 3;
+            return (
+              <div className="mt-8">
+                {/* Title row: matches the full dashboard's
+                    PrayerListCarousel — heading + horizontal
+                    divider + "View all" pill aligned right. */}
+                <div className="flex items-center gap-3 mb-2">
+                  <h3
+                    className="text-lg font-semibold"
+                    style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK }}
+                  >
+                    Prayer List
+                  </h3>
+                  <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+                  <Link
+                    href={`/prayer-feeds/${firstFeedSlug}`}
+                    className="text-[10px] font-semibold uppercase transition-opacity hover:opacity-80"
                     style={{
+                      color: "rgba(143,175,150,0.55)",
+                      letterSpacing: "0.12em",
                       fontFamily: SPACE_GROTESK,
-                      fontSize: 11,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: FAINT_GREEN,
-                      cursor: "pointer",
                     }}
                   >
                     View all
-                  </span>
-                </Link>
-              </div>
-              <div className="flex flex-col gap-2">
-                {feedIntercessions.map((it) => {
-                  const feedRow = subscribedFeedsData.find((f) => f.feed.slug === firstFeedSlug);
-                  const feedTitle = feedRow?.feed.title ?? "Prayer feed";
-                  const feedEmoji = feedRow?.feed.coverEmoji ?? "🌿";
-                  return (
-                    <Link key={it.id} href={`/moments/${it.id}`}>
-                      <div
-                        style={{
-                          background: "rgba(46,107,64,0.08)",
-                          border: "1px solid rgba(46,107,64,0.25)",
-                          borderRadius: 12,
-                          padding: "12px 14px",
-                          cursor: "pointer",
-                        }}
+                  </Link>
+                </div>
+
+                <div style={{ position: "relative" }}>
+                  <div
+                    className="space-y-2"
+                    style={
+                      overflowing
+                        ? {
+                            maxHeight: CLAMP,
+                            overflowY: "auto",
+                            WebkitOverflowScrolling: "touch",
+                            paddingBottom: 8,
+                          }
+                        : undefined
+                    }
+                  >
+                    {feedIntercessions.map((it) => (
+                      // Route into the feed-walk slideshow with
+                      // ?focus={id} so the slideshow opens directly
+                      // on the tapped intercession instead of the
+                      // top of the deck. The previous href was
+                      // /moments/:id which 403s for offices-only
+                      // viewers (the /moments prefix is blocked
+                      // server-side) and left them on an endless
+                      // loading screen.
+                      <Link
+                        key={it.id}
+                        href={`/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeedSlug)}&focus=${it.id}`}
+                        className="block"
                       >
-                        <p
+                        <div
+                          className="relative flex rounded-xl overflow-hidden"
                           style={{
-                            fontFamily: SPACE_GROTESK,
-                            fontSize: 10,
-                            letterSpacing: "0.18em",
-                            textTransform: "uppercase",
-                            color: "rgba(143,175,150,0.55)",
-                            margin: 0,
+                            background: "rgba(46,107,64,0.15)",
+                            border: "1px solid rgba(46,107,64,0.28)",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                           }}
                         >
-                          From {feedEmoji} {feedTitle}
-                        </p>
-                        <p
-                          style={{
-                            fontFamily: SPACE_GROTESK,
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: WARM_TEXT,
-                            margin: "4px 0 0",
-                          }}
-                        >
-                          {it.intercessionTopic || it.name || "Intercession"}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
+                          {/* Green left-rail spacer — matches the
+                              avatar-rail width on the full dashboard
+                              cards so heights line up visually. */}
+                          <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+                          <div className="flex-1 px-4 pt-3 pb-3">
+                            <div className="flex items-center gap-3">
+                              {/* Emoji "avatar" — the feed's cover
+                                  emoji stands in for the per-prayer
+                                  avatar the full dashboard shows. */}
+                              <div
+                                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                                style={{
+                                  background: "#1A4A2E",
+                                  border: "1px solid rgba(46,107,64,0.3)",
+                                  fontSize: 18,
+                                }}
+                              >
+                                {feedEmoji}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate"
+                                  style={{ color: "rgba(143,175,150,0.55)" }}
+                                >
+                                  From {feedTitle}
+                                </p>
+                                <p
+                                  className="text-sm leading-snug line-clamp-2"
+                                  style={{ color: WARM_TEXT }}
+                                >
+                                  {it.intercessionTopic || it.name || "Intercession"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                  {/* Bottom fade — only when overflowing. Same
+                      gradient the dashboard uses; ends in the
+                      parish page bg color (BG) so the peek reads
+                      as "more below" instead of a hard cutoff. */}
+                  {overflowing && (
+                    <div
+                      className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+                      style={{ background: `linear-gradient(to bottom, transparent 20%, ${BG})` }}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Footer — quiet links, same as before. */}
           <div className="flex flex-col items-center gap-2 mt-10">

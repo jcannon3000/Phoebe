@@ -42,13 +42,30 @@ export function NetworkBanner() {
   // every error, decay it after 30s, and clear it when anything
   // succeeds — so a run of transient failures raises the banner, and
   // a single recovery brings it back down.
+  //
+  // Critically, we IGNORE 4xx (auth / permission / not-found) errors
+  // here. Those are policy decisions made by a happily reachable
+  // server — not a sign the network is flaky. Offices-only accounts
+  // 403 on /api/groups, /api/prayer-feeds/mine, etc.; counting those
+  // would trip the banner on first paint of every screen even though
+  // everything is working as designed. Only true network-class
+  // failures (fetch reject, 5xx, timeout) should drive the banner.
   useEffect(() => {
     const cache = queryClient.getQueryCache();
     const unsub = cache.subscribe((event) => {
       if (event.type !== "updated") return;
-      const action = (event as { action?: { type?: string } }).action;
+      const action = (event as {
+        action?: { type?: string; error?: unknown };
+      }).action;
       if (!action) return;
       if (action.type === "error") {
+        // apiRequest throws Error with a `status` property on non-2xx
+        // responses. Pull it off and skip 4xx so a "Forbidden" doesn't
+        // masquerade as "network down."
+        const status = (action.error as { status?: number } | undefined)?.status;
+        if (typeof status === "number" && status >= 400 && status < 500) {
+          return;
+        }
         setRecentErrors((n) => {
           const next = n + 1;
           window.setTimeout(() => setRecentErrors((m) => Math.max(0, m - 1)), 30_000);

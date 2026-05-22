@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
@@ -33,6 +34,28 @@ export default function PrayerChooserPage() {
   // The Examen is pilot-only — same gate as the menu entry + the
   // habit-slide pill.
   const { isBeta } = useBetaStatus();
+  // Offices-only accounts have no communities, no personal prayer
+  // requests, no garden. The first chooser option ("Community
+  // Intercessions" → /prayer-mode) makes no sense for them — the
+  // page would fetch /api/moments + /api/prayer-requests +
+  // /api/prayers-for, all of which 403, and the slideshow's
+  // dataReady gate would hang on a loading screen forever. Instead
+  // we surface their subscribed prayer feed as the first option and
+  // route directly to the feed walk (?queue=feed&slug=…), the same
+  // path the dashboard FeedPrayerCard's "Pray again" CTA uses.
+  const { user } = useAuth();
+  const officesOnly = user?.accessTier === "offices-only";
+
+  // Fetch subscribed feeds for offices-only users so we can route the
+  // first option to /prayer-mode?queue=feed&slug={firstFeed.slug}.
+  type SubscribedFeed = { feed: { id: number; slug: string; title: string; coverEmoji: string | null } };
+  const subscribedFeedsQuery = useQuery<{ subscriptions: SubscribedFeed[] }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
+    enabled: !!user && officesOnly,
+    staleTime: 60_000,
+  });
+  const firstFeed = subscribedFeedsQuery.data?.subscriptions?.[0]?.feed ?? null;
 
   // Time-of-day split — same threshold the dashboard card uses (noon).
   const hour = new Date().getHours();
@@ -82,17 +105,34 @@ export default function PrayerChooserPage() {
     href: string;
     verb: string;
   };
-  // Three options: Community Intercessions (slideshow) first as the
-  // shortest depth, then Devotion (BCP short form), then Office
-  // (BCP full Morning/Evening Prayer).
+  // First option swaps shape by tier:
+  //   • Full / parish-only / beta: "Community Intercessions" — the
+  //     daily walk through the viewer's requests + intercessions.
+  //   • Offices-only: "Prayer feed" — their subscribed feed's
+  //     intercessions, routed straight to /prayer-mode?queue=feed
+  //     so it doesn't hit any of the blocked-prefix endpoints.
+  //     Hidden entirely when the user has no subscription yet
+  //     (we'd have nowhere to send them).
+  const firstOption: Option | null = officesOnly
+    ? (firstFeed
+        ? {
+            title: "Prayer feed",
+            sub: `Today's intercessions from ${firstFeed.coverEmoji ?? "🌿"} ${firstFeed.title}`,
+            duration: "< 5 Min",
+            href: `/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeed.slug)}`,
+            verb: "Start",
+          }
+        : null)
+    : {
+        title: "Community Intercessions",
+        sub: "Your prayer list, no liturgy",
+        duration: "< 5 Min",
+        href: "/prayer-mode",
+        verb: "Start",
+      };
+
   const options: Option[] = [
-    {
-      title: "Community Intercessions",
-      sub: "Your prayer list, no liturgy",
-      duration: "< 5 Min",
-      href: "/prayer-mode",
-      verb: "Start",
-    },
+    ...(firstOption ? [firstOption] : []),
     {
       title: devotionLabel,
       sub: "From the Book of Common Prayer",

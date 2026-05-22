@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 
 // ── Prayer chooser ──────────────────────────────────────────────────────────
 //
@@ -56,6 +58,21 @@ function buildDevotionContext(): DevotionContext {
 export default function PrayerStartPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const officesOnly = user?.accessTier === "offices-only";
+
+  // Offices-only users have no /prayer-mode default queue (it 403s
+  // on the four daily queries and loading-screens), so we route the
+  // "Skip to …" link to their first subscribed feed's slideshow
+  // (?queue=feed&slug=…). Hidden entirely if they're not subscribed
+  // to a feed yet — surfacing a link to nothing isn't helpful.
+  type SubscribedFeed = { feed: { slug: string; title: string } };
+  const subscribedFeedsQuery = useQuery<{ subscriptions: SubscribedFeed[] }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
+    enabled: !!user && officesOnly,
+    staleTime: 60_000,
+  });
+  const firstFeedSlug = subscribedFeedsQuery.data?.subscriptions?.[0]?.feed.slug ?? null;
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -64,6 +81,12 @@ export default function PrayerStartPage() {
   if (isLoading || !user) return null;
 
   const ctx = buildDevotionContext();
+  // What the "Skip …" link reads + where it goes, per tier.
+  const skipLink: { label: string; href: string } | null = officesOnly
+    ? (firstFeedSlug
+        ? { label: "Skip to prayer feed →", href: `/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeedSlug)}` }
+        : null)
+    : { label: "Skip to community prayer list →", href: "/prayer-mode" };
 
   return (
     <Layout>
@@ -153,24 +176,26 @@ export default function PrayerStartPage() {
           className="w-full flex flex-col items-center"
           style={{ gap: 14, padding: "0 20px" }}
         >
-          <button
-            type="button"
-            onClick={() => setLocation("/prayer-mode")}
-            style={{
-              background: "none",
-              border: "none",
-              color: SAGE,
-              fontFamily: SPACE_GROTESK,
-              fontSize: 14,
-              cursor: "pointer",
-              padding: 6,
-              textDecoration: "underline",
-              textDecorationColor: "rgba(143,175,150,0.35)",
-              textUnderlineOffset: 4,
-            }}
-          >
-            Skip to community prayer list →
-          </button>
+          {skipLink && (
+            <button
+              type="button"
+              onClick={() => setLocation(skipLink.href)}
+              style={{
+                background: "none",
+                border: "none",
+                color: SAGE,
+                fontFamily: SPACE_GROTESK,
+                fontSize: 14,
+                cursor: "pointer",
+                padding: 6,
+                textDecoration: "underline",
+                textDecorationColor: "rgba(143,175,150,0.35)",
+                textUnderlineOffset: 4,
+              }}
+            >
+              {skipLink.label}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setLocation(ctx.fullOfficeHref)}
